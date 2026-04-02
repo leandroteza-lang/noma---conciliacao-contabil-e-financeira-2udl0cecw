@@ -1,8 +1,14 @@
-export type Empresa = 'NOMA PARTS' | 'LS ALMEIDA' | 'NOMA SERVICE' | 'PF'
+export interface Organization {
+  id: string
+  name: string | null
+  cnpj: string | null
+  status: boolean | null
+  user_id: string | null
+}
 
 export interface Account {
   id: string
-  empresa: Empresa
+  organization_id: string
   contaContabil: string
   descricao: string
   banco: string

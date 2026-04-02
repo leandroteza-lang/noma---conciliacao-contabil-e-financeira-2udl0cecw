@@ -19,13 +19,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Account, Empresa } from '@/types'
-import { EMPRESAS } from '@/lib/constants'
+import { Account, Organization } from '@/types'
 
 const schema = z.object({
-  empresa: z.enum(['NOMA PARTS', 'LS ALMEIDA', 'NOMA SERVICE', 'PF'], {
-    required_error: 'Selecione uma empresa',
-  }),
+  organization_id: z.string().min(1, 'Selecione uma empresa'),
   contaContabil: z.string().min(1, 'Campo obrigatório'),
   descricao: z.string().min(1, 'Campo obrigatório'),
   banco: z.string().min(1, 'Campo obrigatório'),
@@ -41,9 +38,18 @@ interface Props {
   onClose: () => void
   onSave: (data: Omit<Account, 'id'>) => void
   initialData?: Account | null
+  organizations: Organization[]
+  defaultOrganizationId?: string
 }
 
-export function AccountFormModal({ isOpen, onClose, onSave, initialData }: Props) {
+export function AccountFormModal({
+  isOpen,
+  onClose,
+  onSave,
+  initialData,
+  organizations,
+  defaultOrganizationId,
+}: Props) {
   const {
     register,
     handleSubmit,
@@ -53,10 +59,16 @@ export function AccountFormModal({ isOpen, onClose, onSave, initialData }: Props
     watch,
   } = useForm<FormData>({
     resolver: zodResolver(schema),
-    defaultValues: { banco: '-', agencia: '-', numeroConta: '-', classificacao: 'Banco' },
+    defaultValues: {
+      banco: '-',
+      agencia: '-',
+      numeroConta: '-',
+      classificacao: 'Banco',
+      organization_id: defaultOrganizationId || '',
+    },
   })
 
-  const empresaValue = watch('empresa')
+  const orgValue = watch('organization_id')
 
   useEffect(() => {
     if (isOpen) {
@@ -70,14 +82,15 @@ export function AccountFormModal({ isOpen, onClose, onSave, initialData }: Props
           classificacao: 'Banco',
           contaContabil: '',
           descricao: '',
+          organization_id:
+            defaultOrganizationId || (organizations.length > 0 ? organizations[0].id : ''),
         })
       }
     }
-  }, [isOpen, initialData, reset])
+  }, [isOpen, initialData, reset, defaultOrganizationId, organizations])
 
   const onSubmit = (data: FormData) => {
     onSave(data as Omit<Account, 'id'>)
-    onClose()
   }
 
   return (
@@ -92,23 +105,22 @@ export function AccountFormModal({ isOpen, onClose, onSave, initialData }: Props
           <div className="grid grid-cols-2 gap-x-4 gap-y-5">
             <div className="space-y-2 col-span-2 sm:col-span-1">
               <Label>Empresa *</Label>
-              <Select
-                value={empresaValue}
-                onValueChange={(val) => setValue('empresa', val as Empresa)}
-              >
-                <SelectTrigger className={errors.empresa ? 'border-red-500' : ''}>
+              <Select value={orgValue} onValueChange={(val) => setValue('organization_id', val)}>
+                <SelectTrigger className={errors.organization_id ? 'border-red-500' : ''}>
                   <SelectValue placeholder="Selecione..." />
                 </SelectTrigger>
                 <SelectContent>
-                  {EMPRESAS.map((emp) => (
-                    <SelectItem key={emp} value={emp}>
-                      {emp}
+                  {organizations.map((org) => (
+                    <SelectItem key={org.id} value={org.id}>
+                      {org.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-              {errors.empresa && (
-                <span className="text-xs text-red-500 font-medium">{errors.empresa.message}</span>
+              {errors.organization_id && (
+                <span className="text-xs text-red-500 font-medium">
+                  {errors.organization_id.message}
+                </span>
               )}
             </div>
             <div className="space-y-2 col-span-2 sm:col-span-1">

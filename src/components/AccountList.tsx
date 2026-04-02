@@ -1,4 +1,4 @@
-import { Edit2, Trash2, Building } from 'lucide-react'
+import { Trash2, Building } from 'lucide-react'
 import { useState, useRef, useEffect } from 'react'
 import {
   Table,
@@ -12,18 +12,38 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
-import { Account } from '@/types'
-import { EMPRESA_THEME, EMPRESAS } from '@/lib/constants'
+import { Account, Organization } from '@/types'
 import { cn } from '@/lib/utils'
 
 interface Props {
   accounts: Account[]
-  onEdit: (account: Account) => void
+  organizations: Organization[]
   onDelete: (id: string) => void
   onUpdateInline?: (id: string, field: keyof Account, value: string) => Promise<boolean>
 }
 
-function EditableCell({ value, field, isEditing, onEditStart, onEditCommit, onEditCancel }: any) {
+const getTheme = (name: string | null | undefined) => {
+  const n = name?.toUpperCase() || ''
+  if (n.includes('NOMA PARTS'))
+    return { badge: 'bg-blue-100 text-blue-800', border: 'border-blue-500' }
+  if (n.includes('LS ALMEIDA'))
+    return { badge: 'bg-yellow-100 text-yellow-800', border: 'border-yellow-500' }
+  if (n.includes('NOMA SERVICE'))
+    return { badge: 'bg-orange-100 text-orange-800', border: 'border-orange-500' }
+  if (n.includes('PF'))
+    return { badge: 'bg-purple-100 text-purple-800', border: 'border-purple-500' }
+  return { badge: 'bg-slate-100 text-slate-800', border: 'border-slate-500' }
+}
+
+function EditableCell({
+  value,
+  field,
+  isEditing,
+  onEditStart,
+  onEditCommit,
+  onEditCancel,
+  organizations,
+}: any) {
   const [tempVal, setTempVal] = useState(value)
   const inputRef = useRef<any>(null)
 
@@ -41,22 +61,30 @@ function EditableCell({ value, field, isEditing, onEditStart, onEditCommit, onEd
   }
 
   if (!isEditing) {
+    if (field === 'organization_id') {
+      const org = organizations.find((o: Organization) => o.id === value)
+      const theme = getTheme(org?.name)
+      return (
+        <div
+          className="cursor-pointer hover:bg-slate-100/50 p-1 -m-1 rounded min-h-[28px] flex items-center"
+          onClick={onEditStart}
+        >
+          <Badge
+            variant="outline"
+            className={cn('py-0.5 whitespace-nowrap shadow-sm', theme.badge)}
+          >
+            {org?.name || 'Desconhecida'}
+          </Badge>
+        </div>
+      )
+    }
+
     return (
       <div
         className="cursor-pointer hover:bg-slate-100/50 p-1 -m-1 rounded min-h-[28px] flex items-center"
         onClick={onEditStart}
       >
-        {field === 'empresa' ? (
-          <Badge
-            variant="outline"
-            className={cn(
-              'py-0.5 whitespace-nowrap shadow-sm',
-              EMPRESA_THEME[value]?.badge || 'bg-slate-100',
-            )}
-          >
-            {value}
-          </Badge>
-        ) : field === 'classificacao' ? (
+        {field === 'classificacao' ? (
           <Badge
             variant="secondary"
             className="bg-slate-100 text-slate-600 font-normal hover:bg-slate-200"
@@ -70,7 +98,7 @@ function EditableCell({ value, field, isEditing, onEditStart, onEditCommit, onEd
     )
   }
 
-  if (field === 'empresa') {
+  if (field === 'organization_id') {
     return (
       <select
         ref={inputRef}
@@ -80,9 +108,10 @@ function EditableCell({ value, field, isEditing, onEditStart, onEditCommit, onEd
         onKeyDown={handleKeyDown}
         className="w-full text-sm border border-blue-400 rounded p-1 outline-none ring-2 ring-blue-500/20 bg-white"
       >
-        {EMPRESAS.map((emp) => (
-          <option key={emp} value={emp}>
-            {emp}
+        <option value="">Selecione...</option>
+        {organizations.map((org: Organization) => (
+          <option key={org.id} value={org.id}>
+            {org.name}
           </option>
         ))}
       </select>
@@ -101,15 +130,17 @@ function EditableCell({ value, field, isEditing, onEditStart, onEditCommit, onEd
   )
 }
 
-export function AccountList({ accounts, onEdit, onDelete, onUpdateInline }: Props) {
+export function AccountList({ accounts, organizations, onDelete, onUpdateInline }: Props) {
   const [editing, setEditing] = useState<{ id: string; field: keyof Account } | null>(null)
 
   const handleEditCommit = async (id: string, field: keyof Account, val: string) => {
+    if (!val && field !== 'organization_id') {
+      // Optional: add validation here if needed, but proceeding with empty string if intended
+    }
     if (onUpdateInline) {
-      const success = await onUpdateInline(id, field, val)
-      if (success) setEditing(null)
-      else setEditing(null)
-    } else setEditing(null)
+      await onUpdateInline(id, field, val)
+    }
+    setEditing(null)
   }
 
   if (accounts.length === 0) {
@@ -129,7 +160,7 @@ export function AccountList({ accounts, onEdit, onDelete, onUpdateInline }: Prop
         <Table>
           <TableHeader>
             <TableRow className="bg-slate-50/80">
-              <TableHead className="w-[160px]">Empresa</TableHead>
+              <TableHead className="w-[180px]">Empresa</TableHead>
               <TableHead>Conta Contábil</TableHead>
               <TableHead>Descrição</TableHead>
               <TableHead>Banco</TableHead>
@@ -144,7 +175,7 @@ export function AccountList({ accounts, onEdit, onDelete, onUpdateInline }: Prop
               <TableRow key={acc.id} className="group hover:bg-slate-50/50">
                 {(
                   [
-                    'empresa',
+                    'organization_id',
                     'contaContabil',
                     'descricao',
                     'banco',
@@ -160,6 +191,7 @@ export function AccountList({ accounts, onEdit, onDelete, onUpdateInline }: Prop
                     <EditableCell
                       value={acc[field]}
                       field={field}
+                      organizations={organizations}
                       isEditing={editing?.id === acc.id && editing?.field === field}
                       onEditStart={() => setEditing({ id: acc.id, field })}
                       onEditCommit={(val: string) =>
@@ -188,51 +220,52 @@ export function AccountList({ accounts, onEdit, onDelete, onUpdateInline }: Prop
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:hidden">
-        {accounts.map((acc) => (
-          <Card
-            key={acc.id}
-            className={cn(
-              'border-l-4 shadow-sm',
-              EMPRESA_THEME[acc.empresa]?.border || 'border-slate-500',
-            )}
-          >
-            <CardContent className="p-4 flex justify-between items-start">
-              <div className="space-y-3 flex-1 pr-4">
-                {(['empresa', 'descricao', 'contaContabil'] as const).map((field) => (
-                  <div
-                    key={field}
-                    className={
-                      field === 'descricao'
-                        ? 'font-bold text-lg'
-                        : field === 'contaContabil'
-                          ? 'font-mono text-xs text-slate-500'
-                          : ''
-                    }
-                  >
-                    <EditableCell
-                      value={acc[field]}
-                      field={field}
-                      isEditing={editing?.id === acc.id && editing?.field === field}
-                      onEditStart={() => setEditing({ id: acc.id, field })}
-                      onEditCommit={(val: string) =>
-                        val !== acc[field] ? handleEditCommit(acc.id, field, val) : setEditing(null)
+        {accounts.map((acc) => {
+          const org = organizations.find((o) => o.id === acc.organization_id)
+          const theme = getTheme(org?.name)
+          return (
+            <Card key={acc.id} className={cn('border-l-4 shadow-sm', theme.border)}>
+              <CardContent className="p-4 flex justify-between items-start">
+                <div className="space-y-3 flex-1 pr-4">
+                  {(['organization_id', 'descricao', 'contaContabil'] as const).map((field) => (
+                    <div
+                      key={field}
+                      className={
+                        field === 'descricao'
+                          ? 'font-bold text-lg'
+                          : field === 'contaContabil'
+                            ? 'font-mono text-xs text-slate-500'
+                            : ''
                       }
-                      onEditCancel={() => setEditing(null)}
-                    />
-                  </div>
-                ))}
-              </div>
-              <Button
-                variant="outline"
-                size="icon"
-                className="text-slate-500 hover:text-red-600 hover:bg-red-50 bg-white"
-                onClick={() => onDelete(acc.id)}
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-              </Button>
-            </CardContent>
-          </Card>
-        ))}
+                    >
+                      <EditableCell
+                        value={acc[field]}
+                        field={field}
+                        organizations={organizations}
+                        isEditing={editing?.id === acc.id && editing?.field === field}
+                        onEditStart={() => setEditing({ id: acc.id, field })}
+                        onEditCommit={(val: string) =>
+                          val !== acc[field]
+                            ? handleEditCommit(acc.id, field, val)
+                            : setEditing(null)
+                        }
+                        onEditCancel={() => setEditing(null)}
+                      />
+                    </div>
+                  ))}
+                </div>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="text-slate-500 hover:text-red-600 hover:bg-red-50 bg-white"
+                  onClick={() => onDelete(acc.id)}
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+              </CardContent>
+            </Card>
+          )
+        })}
       </div>
     </div>
   )
