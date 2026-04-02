@@ -40,7 +40,12 @@ Deno.serve(async (req: Request) => {
     const records = payload.records
     const type = payload.type
 
-    if (type !== 'BANK_ACCOUNTS' && type !== 'COST_CENTERS' && type !== 'CHART_ACCOUNTS') {
+    if (
+      type !== 'BANK_ACCOUNTS' &&
+      type !== 'COST_CENTERS' &&
+      type !== 'CHART_ACCOUNTS' &&
+      type !== 'MAPPINGS'
+    ) {
       return new Response(
         JSON.stringify({ error: 'Tipo de importação não suportado atualmente por esta função' }),
         {
@@ -315,6 +320,106 @@ Deno.serve(async (req: Request) => {
           account_code: strCode,
           account_name: String(name),
           account_type: String(accountType || ''),
+        })
+
+        if (insertError) {
+          rejected++
+          errors.push(`Linha ${rowNum}: Erro ao inserir no banco - ${insertError.message}`)
+        } else {
+          inserted++
+        }
+      }
+    } else if (type === 'MAPPINGS') {
+      for (let i = 0; i < records.length; i++) {
+        const row = records[i]
+        const rowNum = i + 1
+
+        const empresa = row['EMPRESA']
+        const centroCusto = row['CENTRO_CUSTO']
+        const contaContabil = row['CONTA_CONTABIL']
+        const tipoMapeamento = row['TIPO_MAPEAMENTO']
+
+        if (!empresa || String(empresa).trim() === '') {
+          rejected++
+          errors.push(`Linha ${rowNum}: A coluna EMPRESA está vazia.`)
+          continue
+        }
+
+        if (!centroCusto || String(centroCusto).trim() === '') {
+          rejected++
+          errors.push(`Linha ${rowNum}: A coluna CENTRO_CUSTO está vazia.`)
+          continue
+        }
+
+        if (!contaContabil || String(contaContabil).trim() === '') {
+          rejected++
+          errors.push(`Linha ${rowNum}: A coluna CONTA_CONTABIL está vazia.`)
+          continue
+        }
+
+        const orgId = orgMap.get(String(empresa).trim().toLowerCase())
+        if (!orgId) {
+          rejected++
+          errors.push(`Linha ${rowNum}: A empresa "${empresa}" não foi encontrada na sua conta.`)
+          continue
+        }
+
+        const strCentroCusto = String(centroCusto).trim()
+        const strContaContabil = String(contaContabil).trim()
+
+        const { data: ccData, error: ccError } = await supabase
+          .from('cost_centers')
+          .select('id')
+          .eq('organization_id', orgId)
+          .eq('code', strCentroCusto)
+          .maybeSingle()
+
+        if (ccError || !ccData) {
+          rejected++
+          errors.push(`Linha ${rowNum}: Centro de Custo "${strCentroCusto}" não encontrado.`)
+          continue
+        }
+
+        const { data: caData, error: caError } = await supabase
+          .from('chart_of_accounts')
+          .select('id')
+          .eq('organization_id', orgId)
+          .eq('account_code', strContaContabil)
+          .maybeSingle()
+
+        if (caError || !caData) {
+          rejected++
+          errors.push(`Linha ${rowNum}: Conta Contábil "${strContaContabil}" não encontrada.`)
+          continue
+        }
+
+        const { data: existing, error: checkError } = await supabase
+          .from('account_mapping')
+          .select('id')
+          .eq('organization_id', orgId)
+          .eq('cost_center_id', ccData.id)
+          .eq('chart_account_id', caData.id)
+          .maybeSingle()
+
+        if (checkError) {
+          rejected++
+          errors.push(`Linha ${rowNum}: Falha ao verificar duplicata - ${checkError.message}`)
+          continue
+        }
+
+        if (existing) {
+          rejected++
+          errors.push(
+            `Linha ${rowNum}: O mapeamento entre "${strCentroCusto}" e "${strContaContabil}" já existe.`,
+          )
+          continue
+        }
+
+        const { error: insertError } = await supabase.from('account_mapping').insert({
+          organization_id: orgId,
+          cost_center_id: ccData.id,
+          chart_account_id: caData.id,
+          mapping_type: String(tipoMapeamento || 'DE/PARA'),
         })
 
         if (insertError) {

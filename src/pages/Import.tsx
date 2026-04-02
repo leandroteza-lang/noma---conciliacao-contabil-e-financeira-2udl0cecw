@@ -70,6 +70,12 @@ const IMPORT_TYPES = {
     required: ['EMPRESA', 'CODIGO_CONTA', 'NOME_CONTA', 'TIPO_CONTA'],
     optional: [],
   },
+  MAPPINGS: {
+    id: 'MAPPINGS',
+    label: 'Mapeamento DE/PARA (Edge Function)',
+    required: ['EMPRESA', 'CENTRO_CUSTO', 'CONTA_CONTABIL'],
+    optional: ['TIPO_MAPEAMENTO'],
+  },
 }
 
 interface ImportResult {
@@ -132,8 +138,8 @@ export default function Import() {
         'GERAR_LCTO_DOMINIO',
         'PLANO_DOMINIO',
       ])
-      setSelectedSheet('CADASTRO_CAIXA_BCOS_TGA')
-      setImportType('BANK_ACCOUNTS')
+      setSelectedSheet('DE-PARA')
+      setImportType('MAPPINGS')
       setIsUploading(false)
       toast({
         title: 'Arquivo processado',
@@ -188,6 +194,10 @@ export default function Import() {
           } else if (col === 'TIPO_CONTA') {
             const tipos = ['Ativo', 'Passivo', 'Receita', 'Despesa']
             row[col] = isMissingReq ? '' : tipos[Math.floor(Math.random() * tipos.length)]
+          } else if (col === 'CENTRO_CUSTO') {
+            row[col] = isMissingReq ? '' : `CC-${batchBase}-${i}`
+          } else if (col === 'CONTA_CONTABIL') {
+            row[col] = isMissingReq ? '' : `CA-${batchBase}-${i}`
           } else {
             row[col] = isMissingReq ? '' : `Mock ${col} ${i + 1}`
           }
@@ -198,6 +208,8 @@ export default function Import() {
             row[col] = Math.random() > 0.5 ? 'Analítica' : 'Sintética'
           } else if (col === 'FIXO_OU_VARIAVEL') {
             row[col] = Math.random() > 0.5 ? 'Fixo' : 'Variável'
+          } else if (col === 'TIPO_MAPEAMENTO') {
+            row[col] = 'DE/PARA'
           } else {
             row[col] = `Dado ${col} ${i + 1}`
           }
@@ -695,7 +707,9 @@ export default function Import() {
                     ? '/centros-de-custo'
                     : importType === 'CHART_ACCOUNTS'
                       ? '/plano-de-contas'
-                      : '/'
+                      : importType === 'MAPPINGS'
+                        ? '/mapeamento'
+                        : '/'
                 }
               >
                 <List className="h-4 w-4 mr-2" />
@@ -703,7 +717,9 @@ export default function Import() {
                   ? 'Ver Centros de Custo'
                   : importType === 'CHART_ACCOUNTS'
                     ? 'Ver Plano de Contas'
-                    : 'Ver Listagem de Contas'}
+                    : importType === 'MAPPINGS'
+                      ? 'Ver Mapeamentos'
+                      : 'Ver Listagem de Contas'}
               </Link>
             </Button>
           </CardFooter>
