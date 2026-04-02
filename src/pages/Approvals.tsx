@@ -176,8 +176,17 @@ export default function Approvals() {
         (a, b) => new Date(b.requestedAt || 0).getTime() - new Date(a.requestedAt || 0).getTime(),
       )
       setItems(unified)
-      setNewUsers(newUsersRes.data || [])
+      const fetchedNewUsers = newUsersRes.data || []
+      setNewUsers(fetchedNewUsers)
       setSelectedIds((prev) => prev.filter((id) => unified.some((i) => i.id === id)))
+
+      setActiveTab((prev) =>
+        prev === 'pending' &&
+        fetchedNewUsers.length > 0 &&
+        unified.filter((i) => i.pending).length === 0
+          ? 'new_users'
+          : prev,
+      )
     } catch (e: any) {
       toast({ title: 'Erro ao carregar', description: e.message, variant: 'destructive' })
     } finally {

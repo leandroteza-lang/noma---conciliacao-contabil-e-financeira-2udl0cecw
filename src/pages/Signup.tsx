@@ -101,21 +101,35 @@ export default function Signup() {
       return
     }
 
-    const { error } = await signUp(email, password, {
-      name,
-      organization,
-      cpf,
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: {
+          name,
+          organization,
+          cpf,
+        },
+      },
     })
 
     setLoading(false)
 
     if (error) {
+      const isAlreadyRegistered =
+        error.message?.toLowerCase().includes('already registered') ||
+        error.message?.toLowerCase().includes('already exists')
+      const isRateLimited = error.message?.toLowerCase().includes('rate limit')
       toast({
         title: 'Erro ao criar conta',
         description:
           error.message && error.message.includes('CPF_DUPLICATE')
             ? 'Este CPF já está cadastrado no sistema.'
-            : error.message || 'Erro desconhecido',
+            : isAlreadyRegistered
+              ? 'Este e-mail já está cadastrado no sistema.'
+              : isRateLimited
+                ? 'Muitas tentativas. Por favor, aguarde alguns minutos e tente novamente.'
+                : error.message || 'Erro desconhecido',
         variant: 'destructive',
       })
     } else {
