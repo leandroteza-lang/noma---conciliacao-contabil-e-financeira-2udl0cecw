@@ -17,6 +17,7 @@ import {
   Loader2,
   ArrowUpDown,
   Upload,
+  Mail,
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
 import { useAuth } from '@/hooks/use-auth'
@@ -500,6 +501,30 @@ export default function UsersPage() {
     fetchData()
   }
 
+  const handleResendEmail = async (userRecord: any) => {
+    try {
+      toast({ title: 'Aguarde', description: 'Enviando e-mail...' })
+      const res = await supabase.functions.invoke('manage-user', {
+        body: {
+          action: 'resend_email',
+          user_id: userRecord.user_id,
+          email: userRecord.email,
+          name: userRecord.name,
+        },
+      })
+      if (res.error) throw res.error
+      if (res.data && res.data.success === false) throw new Error(res.data.error)
+
+      toast({ title: 'Sucesso', description: 'E-mail reenviado com sucesso!' })
+    } catch (e: any) {
+      toast({
+        title: 'Erro',
+        description: e.message || 'Falha ao reenviar e-mail',
+        variant: 'destructive',
+      })
+    }
+  }
+
   const handleExport = async (formatType: 'pdf' | 'excel') => {
     try {
       toast({ title: 'Aguarde', description: 'Gerando relatório...' })
@@ -819,14 +844,26 @@ export default function UsersPage() {
                         <TableCell className="py-2 px-4 text-right">
                           <div className="flex items-center justify-end gap-1">
                             {canEdit && (
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => openModal(e)}
-                                className="h-8 w-8 text-slate-500 hover:text-blue-600"
-                              >
-                                <Edit className="h-4 w-4" />
-                              </Button>
+                              <>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => handleResendEmail(e)}
+                                  className="h-8 w-8 text-slate-500 hover:text-green-600"
+                                  title="Reenviar E-mail de Acesso"
+                                >
+                                  <Mail className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => openModal(e)}
+                                  className="h-8 w-8 text-slate-500 hover:text-blue-600"
+                                  title="Editar"
+                                >
+                                  <Edit className="h-4 w-4" />
+                                </Button>
+                              </>
                             )}
                             {canDelete && (
                               <Button
