@@ -15,7 +15,17 @@ import {
   List,
   CheckSquare,
   GripVertical,
+  Key,
 } from 'lucide-react'
+import { ChangePasswordModal } from '@/components/ChangePasswordModal'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { useAuth } from '@/hooks/use-auth'
 import { cn } from '@/lib/utils'
 import { useState, useEffect } from 'react'
@@ -126,6 +136,7 @@ export default function Layout() {
 
   const [draggedItemPath, setDraggedItemPath] = useState<string | null>(null)
   const [pendingCount, setPendingCount] = useState(0)
+  const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false)
 
   useEffect(() => {
     const hasAprovacoesAccess =
@@ -401,15 +412,38 @@ export default function Layout() {
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <span className="text-sm font-medium text-slate-700 hidden sm:block">
-              {profile?.name || user.email}
-            </span>
-            <Avatar className="h-9 w-9 border border-slate-200 shadow-sm">
-              <AvatarImage src={profile?.avatar_url || ''} className="object-cover" />
-              <AvatarFallback className="bg-blue-50 text-blue-700 font-semibold">
-                {(profile?.name || user.email || 'U').substring(0, 2).toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
+            <DropdownMenu>
+              <DropdownMenuTrigger className="flex items-center gap-3 outline-none">
+                <span className="text-sm font-medium text-slate-700 hidden sm:block">
+                  {profile?.name || user.email}
+                </span>
+                <Avatar className="h-9 w-9 border border-slate-200 shadow-sm cursor-pointer hover:ring-2 hover:ring-blue-100 transition-all">
+                  <AvatarImage src={profile?.avatar_url || ''} className="object-cover" />
+                  <AvatarFallback className="bg-blue-50 text-blue-700 font-semibold">
+                    {(profile?.name || user.email || 'U').substring(0, 2).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuLabel>Minha Conta</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={() => setIsChangePasswordOpen(true)}
+                  className="cursor-pointer"
+                >
+                  <Key className="h-4 w-4 mr-2" />
+                  Alterar Senha
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={handleLogout}
+                  className="cursor-pointer text-red-600 focus:text-red-600 focus:bg-red-50"
+                >
+                  <LogOut className="h-4 w-4 mr-2" />
+                  Sair da conta
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </header>
 
@@ -421,6 +455,7 @@ export default function Layout() {
           </div>
         </main>
       </SidebarInset>
+      <ChangePasswordModal open={isChangePasswordOpen} onOpenChange={setIsChangePasswordOpen} />
     </SidebarProvider>
   )
 }

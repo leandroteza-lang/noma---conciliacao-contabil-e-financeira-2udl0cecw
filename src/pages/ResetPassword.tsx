@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { Lock, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { isStrongPassword } from '@/components/ChangePasswordModal'
 import { Input } from '@/components/ui/input'
 import { PasswordInput } from '@/components/ui/password-input'
 import { Label } from '@/components/ui/label'
@@ -48,10 +49,11 @@ export default function ResetPassword() {
       return
     }
 
-    if (password.length < 6) {
+    if (!isStrongPassword(password)) {
       toast({
-        title: 'Senha muito curta',
-        description: 'A senha deve ter pelo menos 6 caracteres.',
+        title: 'Senha fraca',
+        description:
+          'A senha deve ter no mínimo 8 caracteres, contendo letras maiúsculas, minúsculas, números e caracteres especiais.',
         variant: 'destructive',
       })
       return
