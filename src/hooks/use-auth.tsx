@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase/client'
 interface AuthContextType {
   user: User | null
   session: Session | null
+  role: 'admin' | 'supervisor' | 'collaborator'
   signUp: (email: string, password: string, metadata?: any) => Promise<{ error: any }>
   signIn: (email: string, password: string) => Promise<{ error: any }>
   signOut: () => Promise<{ error: any }>
@@ -24,19 +25,38 @@ export const useAuth = () => {
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null)
   const [session, setSession] = useState<Session | null>(null)
+  const [role, setRole] = useState<'admin' | 'supervisor' | 'collaborator'>('admin')
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    const fetchRole = (email?: string) => {
+      if (!email) return
+      supabase
+        .from('employees')
+        .select('role')
+        .eq('email', email)
+        .maybeSingle()
+        .then(({ data }) => {
+          if (data?.role) setRole(data.role as any)
+        })
+    }
+
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
       setSession(session)
       setUser(session?.user ?? null)
+      if (session?.user?.email) {
+        fetchRole(session.user.email)
+      }
       setLoading(false)
     })
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session)
       setUser(session?.user ?? null)
+      if (session?.user?.email) {
+        fetchRole(session.user.email)
+      }
       setLoading(false)
     })
     return () => subscription.unsubscribe()
@@ -76,7 +96,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   return (
     <AuthContext.Provider
-      value={{ user, session, signUp, signIn, signOut, resetPassword, updatePassword, loading }}
+      value={{
+        user,
+        session,
+        role,
+        signUp,
+        signIn,
+        signOut,
+        resetPassword,
+        updatePassword,
+        loading,
+      }}
     >
       {children}
     </AuthContext.Provider>

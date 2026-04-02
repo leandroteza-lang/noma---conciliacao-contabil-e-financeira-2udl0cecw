@@ -31,18 +31,38 @@ import {
 } from '@/components/ui/sidebar'
 
 const menuItems = [
-  { title: 'Dashboard', path: '/dashboard', icon: PieChart },
-  { title: 'Listagem de Contas', path: '/', icon: Home },
-  { title: 'Empresas', path: '/empresas', icon: Building2 },
-  { title: 'Departamentos', path: '/departamentos', icon: Briefcase },
-  { title: 'Funcionários', path: '/funcionarios', icon: Users },
-  { title: 'Importar Dados', path: '/import', icon: Upload },
-  { title: 'Mapeamento DE/PARA', path: '/mapeamento', icon: ArrowRightLeft },
-  { title: 'Lançamentos Contábeis', path: '/lancamentos', icon: BookOpen },
+  { title: 'Dashboard', path: '/dashboard', icon: PieChart, roles: ['admin', 'supervisor'] },
+  {
+    title: 'Listagem de Contas',
+    path: '/',
+    icon: Home,
+    roles: ['admin', 'supervisor', 'collaborator'],
+  },
+  { title: 'Empresas', path: '/empresas', icon: Building2, roles: ['admin', 'supervisor'] },
+  {
+    title: 'Departamentos',
+    path: '/departamentos',
+    icon: Briefcase,
+    roles: ['admin', 'supervisor'],
+  },
+  { title: 'Funcionários', path: '/funcionarios', icon: Users, roles: ['admin'] },
+  { title: 'Importar Dados', path: '/import', icon: Upload, roles: ['admin'] },
+  {
+    title: 'Mapeamento DE/PARA',
+    path: '/mapeamento',
+    icon: ArrowRightLeft,
+    roles: ['admin', 'supervisor'],
+  },
+  {
+    title: 'Lançamentos Contábeis',
+    path: '/lancamentos',
+    icon: BookOpen,
+    roles: ['admin', 'supervisor', 'collaborator'],
+  },
 ]
 
 export default function Layout() {
-  const { user, loading, signOut } = useAuth()
+  const { user, loading, signOut, role } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
 
@@ -81,35 +101,37 @@ export default function Layout() {
           <SidebarGroup>
             <SidebarGroupContent>
               <SidebarMenu>
-                {menuItems.map((item) => {
-                  const isActive = location.pathname === item.path
-                  return (
-                    <SidebarMenuItem key={item.path}>
-                      <SidebarMenuButton
-                        asChild
-                        isActive={isActive}
-                        tooltip={item.title}
-                        size="lg"
-                        className={cn(
-                          'transition-all duration-200',
-                          isActive
-                            ? 'bg-blue-50 text-blue-700 shadow-sm hover:bg-blue-50 hover:text-blue-700'
-                            : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900',
-                        )}
-                      >
-                        <Link to={item.path}>
-                          <item.icon
-                            className={cn(
-                              'size-4 shrink-0',
-                              isActive ? 'text-blue-700' : 'text-slate-400',
-                            )}
-                          />
-                          <span className="font-medium">{item.title}</span>
-                        </Link>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  )
-                })}
+                {menuItems
+                  .filter((item) => item.roles.includes(role))
+                  .map((item) => {
+                    const isActive = location.pathname === item.path
+                    return (
+                      <SidebarMenuItem key={item.path}>
+                        <SidebarMenuButton
+                          asChild
+                          isActive={isActive}
+                          tooltip={item.title}
+                          size="lg"
+                          className={cn(
+                            'transition-all duration-200',
+                            isActive
+                              ? 'bg-blue-50 text-blue-700 shadow-sm hover:bg-blue-50 hover:text-blue-700'
+                              : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900',
+                          )}
+                        >
+                          <Link to={item.path}>
+                            <item.icon
+                              className={cn(
+                                'size-4 shrink-0',
+                                isActive ? 'text-blue-700' : 'text-slate-400',
+                              )}
+                            />
+                            <span className="font-medium">{item.title}</span>
+                          </Link>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    )
+                  })}
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>

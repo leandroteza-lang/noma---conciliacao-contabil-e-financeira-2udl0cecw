@@ -63,6 +63,7 @@ const schema = z.object({
   department_id: z.string().optional().nullable().or(z.literal('')),
   status: z.boolean().default(true),
   companies: z.array(z.string()).default([]),
+  role: z.enum(['admin', 'supervisor', 'collaborator']).default('collaborator'),
 })
 type FormData = z.infer<typeof schema>
 
@@ -85,8 +86,11 @@ export default function Employees() {
 
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 10
-  const { user } = useAuth()
+  const { user, role: currentUserRole } = useAuth()
   const { toast } = useToast()
+
+  const canEdit = currentUserRole === 'admin'
+  const canDelete = currentUserRole === 'admin'
 
   const {
     register,
@@ -97,7 +101,7 @@ export default function Employees() {
     watch,
   } = useForm<FormData>({
     resolver: zodResolver(schema),
-    defaultValues: { status: true, companies: [] },
+    defaultValues: { status: true, companies: [], role: 'collaborator' },
   })
   const statusValue = watch('status')
 
@@ -179,11 +183,20 @@ export default function Employees() {
         phone: item.phone || '',
         department_id: item.department_id || '',
         status: item.status ?? true,
+        role: item.role || 'collaborator',
         companies: item.employee_companies?.map((ec: any) => ec.organization_id) || [],
       })
     } else {
       setEditingId(null)
-      reset({ name: '', email: '', phone: '', department_id: '', status: true, companies: [] })
+      reset({
+        name: '',
+        email: '',
+        phone: '',
+        department_id: '',
+        status: true,
+        role: 'collaborator',
+        companies: [],
+      })
     }
     setIsModalOpen(true)
   }
@@ -198,6 +211,7 @@ export default function Employees() {
         phone: data.phone || null,
         department_id: data.department_id || null,
         status: data.status,
+        role: data.role,
         user_id: user.id,
       }
       let empId = editingId
@@ -301,7 +315,9 @@ export default function Employees() {
     <div className="container mx-auto p-4 sm:p-6 max-w-7xl space-y-6 animate-in fade-in duration-500">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-slate-900">Funcionários</h1>
+          <h1 className="text-3xl font-bold tracking-tight text-slate-900">
+            Funcionários / Usuários
+          </h1>
           <p className="text-slate-500 mt-1">Cadastre e gerencie os usuários do sistema.</p>
         </div>
         <div className="flex items-center gap-2">
@@ -326,9 +342,11 @@ export default function Employees() {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-          <Button onClick={() => openModal()} className="gap-2 bg-blue-600 hover:bg-blue-700">
-            <Plus className="h-4 w-4" /> Novo Funcionário
-          </Button>
+          {canEdit && (
+            <Button onClick={() => openModal()} className="gap-2 bg-blue-600 hover:bg-blue-700">
+              <Plus className="h-4 w-4" /> Novo Funcionário
+            </Button>
+          )}
         </div>
       </div>
 
@@ -454,6 +472,14 @@ export default function Employees() {
                     </TableHead>
                     <TableHead
                       className="cursor-pointer hover:bg-slate-100"
+                      onClick={() => handleSort('role')}
+                    >
+                      <div className="flex items-center gap-2">
+                        Perfil <ArrowUpDown className="h-3 w-3 text-slate-400" />
+                      </div>
+                    </TableHead>
+                    <TableHead
+                      className="cursor-pointer hover:bg-slate-100"
                       onClick={() => handleSort('status')}
                     >
                       <div className="flex items-center gap-2">
@@ -461,7 +487,7 @@ export default function Employees() {
                       </div>
                     </TableHead>
                     <TableHead>Vínculos</TableHead>
-                    <TableHead className="text-right">Ações</TableHead>
+                    {(canEdit || canDelete) && <TableHead className="text-right">Ações</TableHead>}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -483,6 +509,13 @@ export default function Employees() {
                       <TableCell className="py-2 px-4 text-sm text-slate-600">
                         {e.departments?.name || '-'}
                       </TableCell>
+                      <TableCell className="py-2 px-4 text-sm text-slate-600">
+                        {e.role === 'admin'
+                          ? 'Administrador'
+                          : e.role === 'supervisor'
+                            ? 'Supervisor'
+                            : 'Colaborador'}
+                      </TableCell>
                       <TableCell className="py-2 px-4">
                         <Badge
                           variant={e.status ? 'default' : 'secondary'}
@@ -498,26 +531,32 @@ export default function Employees() {
                       <TableCell className="py-2 px-4 text-[12px] text-slate-500">
                         {e.employee_companies?.length || 0} empresa(s)
                       </TableCell>
-                      <TableCell className="py-2 px-4 text-right">
-                        <div className="flex items-center justify-end gap-1">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => openModal(e)}
-                            className="h-8 w-8 text-slate-500 hover:text-blue-600"
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleDelete(e.id)}
-                            className="h-8 w-8 text-slate-500 hover:text-red-600 hover:bg-red-50"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
+                      {(canEdit || canDelete) && (
+                        <TableCell className="py-2 px-4 text-right">
+                          <div className="flex items-center justify-end gap-1">
+                            {canEdit && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => openModal(e)}
+                                className="h-8 w-8 text-slate-500 hover:text-blue-600"
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                            )}
+                            {canDelete && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleDelete(e.id)}
+                                className="h-8 w-8 text-slate-500 hover:text-red-600 hover:bg-red-50"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            )}
+                          </div>
+                        </TableCell>
+                      )}
                     </TableRow>
                   ))}
                 </TableBody>
@@ -582,7 +621,7 @@ export default function Employees() {
                 <Label>Telefone</Label>
                 <Input {...register('phone')} placeholder="(00) 00000-0000" />
               </div>
-              <div className="space-y-2 md:col-span-2">
+              <div className="space-y-2">
                 <Label>Departamento</Label>
                 <Select
                   value={watch('department_id') || 'none'}
@@ -598,6 +637,19 @@ export default function Employees() {
                         {d.name}
                       </SelectItem>
                     ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Perfil de Acesso</Label>
+                <Select value={watch('role')} onValueChange={(v: any) => setValue('role', v)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="admin">Administrador</SelectItem>
+                    <SelectItem value="supervisor">Supervisor</SelectItem>
+                    <SelectItem value="collaborator">Colaborador</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

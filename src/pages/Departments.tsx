@@ -47,7 +47,7 @@ import {
 import { format } from 'date-fns'
 
 const schema = z.object({
-  code: z.string().min(1, 'Código é obrigatório'),
+  code: z.string().optional(),
   name: z.string().min(2, 'Nome deve ter no mínimo 2 caracteres'),
 })
 type FormData = z.infer<typeof schema>
@@ -64,8 +64,11 @@ export default function Departments() {
   )
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 10
-  const { user } = useAuth()
+  const { user, role } = useAuth()
   const { toast } = useToast()
+
+  const canEdit = role === 'admin' || role === 'supervisor'
+  const canDelete = role === 'admin'
 
   const {
     register,
@@ -143,16 +146,42 @@ export default function Departments() {
     if (!user) return
     setIsSubmitting(true)
     try {
+      let finalCode = data.code?.trim() || ''
+      if (!finalCode) {
+        finalCode = `DEP-${Math.floor(Math.random() * 10000)
+          .toString()
+          .padStart(4, '0')}`
+      } else {
+        let query = supabase
+          .from('departments')
+          .select('id')
+          .eq('code', finalCode)
+          .eq('user_id', user.id)
+        if (editingId) query = query.neq('id', editingId)
+        const { data: existing } = await query.maybeSingle()
+        if (existing) {
+          toast({
+            title: 'Erro',
+            description: 'Este código já está em uso.',
+            variant: 'destructive',
+          })
+          setIsSubmitting(false)
+          return
+        }
+      }
+
       if (editingId) {
         const { error } = await supabase
           .from('departments')
-          .update(data)
+          .update({ code: finalCode, name: data.name })
           .eq('id', editingId)
           .eq('user_id', user.id)
         if (error) throw error
         toast({ title: 'Sucesso', description: 'Departamento atualizado!' })
       } else {
-        const { error } = await supabase.from('departments').insert([{ ...data, user_id: user.id }])
+        const { error } = await supabase
+          .from('departments')
+          .insert([{ code: finalCode, name: data.name, user_id: user.id }])
         if (error) throw error
         toast({ title: 'Sucesso', description: 'Departamento criado!' })
       }
@@ -255,9 +284,11 @@ export default function Departments() {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-          <Button onClick={() => openModal()} className="gap-2 bg-blue-600 hover:bg-blue-700">
-            <Plus className="h-4 w-4" /> Novo Departamento
-          </Button>
+          {canEdit && (
+            <Button onClick={() => openModal()} className="gap-2 bg-blue-600 hover:bg-blue-700">
+              <Plus className="h-4 w-4" /> Novo Departamento
+            </Button>
+          )}
         </div>
       </div>
 
@@ -324,7 +355,7 @@ export default function Departments() {
                         Criado em <ArrowUpDown className="h-3 w-3 text-slate-400" />
                       </div>
                     </TableHead>
-                    <TableHead className="text-right">Ações</TableHead>
+                    {(canEdit || canDelete) && <TableHead className="text-right">Ações</TableHead>}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -337,26 +368,32 @@ export default function Departments() {
                       <TableCell className="py-2 px-4 text-[13px] text-slate-500">
                         {item.created_at ? format(new Date(item.created_at), 'dd/MM/yyyy') : '-'}
                       </TableCell>
-                      <TableCell className="py-2 px-4 text-right">
-                        <div className="flex items-center justify-end gap-1">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => openModal(item)}
-                            className="h-8 w-8 text-slate-500 hover:text-blue-600"
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleDelete(item.id)}
-                            className="h-8 w-8 text-slate-500 hover:text-red-600 hover:bg-red-50"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
+                      {(canEdit || canDelete) && (
+                        <TableCell className="py-2 px-4 text-right">
+                          <div className="flex items-center justify-end gap-1">
+                            {canEdit && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => openModal(item)}
+                                className="h-8 w-8 text-slate-500 hover:text-blue-600"
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                            )}
+                            {canDelete && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleDelete(item.id)}
+                                className="h-8 w-8 text-slate-500 hover:text-red-600 hover:bg-red-50"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            )}
+                          </div>
+                        </TableCell>
+                      )}
                     </TableRow>
                   ))}
                 </TableBody>
@@ -403,10 +440,11 @@ export default function Departments() {
           </DialogHeader>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 mt-4">
             <div className="space-y-2">
-              <Label>
-                Código <span className="text-red-500">*</span>
-              </Label>
-              <Input {...register('code')} placeholder="Ex: RH" />
+              <Label>Código</Label>
+              <Input
+                {...register('code')}
+                placeholder="Ex: RH (Deixe em branco para gerar automático)"
+              />
               {errors.code && <span className="text-xs text-red-500">{errors.code.message}</span>}
             </div>
             <div className="space-y-2">
