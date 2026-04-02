@@ -172,7 +172,7 @@ export default function Import() {
             row[col] = isMissingReq ? '' : selectedOrgName
           } else if (col === 'CONTA_CONTABIL') {
             // Conta aleatória para evitar conflito a cada teste
-            row[col] = isMissingReq ? '' : `CC-${Math.floor(Math.random() * 100000)}`
+            row[col] = isMissingReq ? '' : `CA-${Math.floor(Math.random() * 100000)}`
           } else if (col === 'COD') {
             row[col] = isMissingReq
               ? ''
@@ -196,8 +196,6 @@ export default function Import() {
             row[col] = isMissingReq ? '' : tipos[Math.floor(Math.random() * tipos.length)]
           } else if (col === 'CENTRO_CUSTO') {
             row[col] = isMissingReq ? '' : `CC-${batchBase}-${i}`
-          } else if (col === 'CONTA_CONTABIL') {
-            row[col] = isMissingReq ? '' : `CA-${batchBase}-${i}`
           } else {
             row[col] = isMissingReq ? '' : `Mock ${col} ${i + 1}`
           }
