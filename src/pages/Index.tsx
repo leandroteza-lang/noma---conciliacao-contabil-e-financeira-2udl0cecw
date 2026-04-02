@@ -47,7 +47,7 @@ export default function Index() {
     } else if (data) {
       const mapped = data.map((row) => ({
         id: row.id,
-        empresa: row.company_name || '',
+        empresa: (row.company_name as any) || '',
         contaContabil: row.account_code || '',
         descricao: row.description || '',
         banco: row.bank_code || '',
@@ -62,6 +62,17 @@ export default function Index() {
 
   useEffect(() => {
     fetchAccounts()
+
+    const channel = supabase
+      .channel('public:bank_accounts')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'bank_accounts' }, () => {
+        fetchAccounts()
+      })
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -75,9 +86,49 @@ export default function Index() {
     })
   }, [accounts, searchQuery, empresaFilter])
 
+  const handleUpdateInline = async (id: string, field: keyof Account, value: string) => {
+    if (!value || !value.toString().trim()) {
+      toast({
+        title: 'Campo inválido',
+        description: 'O valor não pode ser vazio.',
+        variant: 'destructive',
+      })
+      return false
+    }
+
+    const fieldMap: Record<string, string> = {
+      empresa: 'company_name',
+      contaContabil: 'account_code',
+      descricao: 'description',
+      banco: 'bank_code',
+      agencia: 'agency',
+      numeroConta: 'account_number',
+      classificacao: 'classification',
+    }
+
+    const dbField = fieldMap[field]
+    if (!dbField) return false
+
+    try {
+      const { error } = await supabase
+        .from('bank_accounts')
+        .update({ [dbField]: value })
+        .eq('id', id)
+      if (error) throw error
+
+      toast({ title: 'Sucesso', description: 'Registro atualizado com sucesso.' })
+      setAccounts((prev) =>
+        prev.map((acc) => (acc.id === id ? { ...acc, [field]: value as any } : acc)),
+      )
+      return true
+    } catch (err: any) {
+      toast({ title: 'Erro ao atualizar', description: err.message, variant: 'destructive' })
+      return false
+    }
+  }
+
   const handleSave = async (data: Omit<Account, 'id'>) => {
     try {
-      // Fetch user's organization first
       const { data: orgData, error: orgError } = await supabase
         .from('organizations')
         .select('id')
@@ -106,10 +157,7 @@ export default function Index() {
       } else {
         const { error } = await supabase.from('bank_accounts').insert(dbRow)
         if (error) throw error
-        toast({
-          title: 'Conta criada com sucesso',
-          description: 'O novo registro foi adicionado à lista.',
-        })
+        toast({ title: 'Conta criada com sucesso', description: 'O novo registro foi adicionado.' })
       }
       setIsFormOpen(false)
       fetchAccounts()
@@ -132,13 +180,8 @@ export default function Index() {
     if (deletingId) {
       try {
         const { error } = await supabase.from('bank_accounts').delete().eq('id', deletingId)
-
         if (error) throw error
-
-        toast({
-          title: 'Registro removido',
-          description: 'A conta foi deletada com sucesso.',
-        })
+        toast({ title: 'Registro removido', description: 'A conta foi deletada com sucesso.' })
         setIsDeleteOpen(false)
         fetchAccounts()
       } catch (err: any) {
@@ -154,7 +197,6 @@ export default function Index() {
 
   return (
     <div className="space-y-6">
-      {/* Header Actions & Filters */}
       <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between bg-white p-4 rounded-xl shadow-sm border border-slate-200">
         <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto flex-1 max-w-2xl">
           <div className="relative w-full sm:w-72">
@@ -197,23 +239,25 @@ export default function Index() {
         </Button>
       </div>
 
-      {/* Data List Component */}
       {loading ? (
         <div className="flex justify-center py-16">
           <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
         </div>
       ) : (
-        <AccountList accounts={filteredAccounts} onEdit={handleEdit} onDelete={handleDeleteClick} />
+        <AccountList
+          accounts={filteredAccounts}
+          onEdit={handleEdit}
+          onDelete={handleDeleteClick}
+          onUpdateInline={handleUpdateInline}
+        />
       )}
 
-      {/* Modals */}
       <AccountFormModal
         isOpen={isFormOpen}
         onClose={() => setIsFormOpen(false)}
         onSave={handleSave}
         initialData={editingAccount}
       />
-
       <DeleteConfirmModal
         isOpen={isDeleteOpen}
         onClose={() => setIsDeleteOpen(false)}
