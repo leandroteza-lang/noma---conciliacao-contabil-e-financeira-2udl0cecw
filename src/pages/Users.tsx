@@ -124,11 +124,17 @@ export default function UsersPage() {
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(10)
   const [selectedIds, setSelectedIds] = useState<string[]>([])
-  const { user, role: currentUserRole } = useAuth()
+  const { user, role: currentUserRole, permissions } = useAuth()
   const { toast } = useToast()
 
-  const canEdit = currentUserRole === 'admin'
-  const canDelete = currentUserRole === 'admin'
+  const canEdit =
+    currentUserRole === 'admin' ||
+    (Array.isArray(permissions) &&
+      (permissions.includes('all') || permissions.includes('usuarios')))
+  const canDelete =
+    currentUserRole === 'admin' ||
+    (Array.isArray(permissions) &&
+      (permissions.includes('all') || permissions.includes('usuarios')))
 
   const {
     register,

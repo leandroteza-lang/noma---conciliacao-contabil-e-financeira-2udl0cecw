@@ -128,7 +128,11 @@ export default function Layout() {
   const [pendingCount, setPendingCount] = useState(0)
 
   useEffect(() => {
-    if (role !== 'admin') return
+    const hasAprovacoesAccess =
+      role === 'admin' ||
+      (Array.isArray(permissions) &&
+        (permissions.includes('all') || permissions.includes('aprovacoes')))
+    if (!hasAprovacoesAccess) return
     const fetchPending = async () => {
       const [orgs, depts, emps, newUsers, costs, charts, banks] = await Promise.all([
         supabase
@@ -197,7 +201,7 @@ export default function Layout() {
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [role, location.pathname])
+  }, [role, permissions, location.pathname])
 
   const handleDragStart = (e: React.DragEvent, path: string) => {
     setDraggedItemPath(path)
@@ -289,13 +293,14 @@ export default function Layout() {
                 {(() => {
                   const allowedItems = MENU_ITEMS.filter((item) => {
                     const userRole = role || 'collaborator'
-                    if (item.roles && !item.roles.includes(userRole)) return false
-
                     if (userRole === 'admin') return true
 
                     const perms = Array.isArray(permissions) ? permissions : []
-                    if (perms.includes('all')) return true
-                    return perms.includes(item.id)
+                    if (perms.includes('all') || perms.includes(item.id)) return true
+
+                    if (item.roles && item.roles.includes(userRole)) return true
+
+                    return false
                   })
 
                   // Apply custom ordering
