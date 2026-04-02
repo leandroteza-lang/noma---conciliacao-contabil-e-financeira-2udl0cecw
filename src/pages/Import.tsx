@@ -64,6 +64,12 @@ const IMPORT_TYPES = {
     required: ['EMPRESA', 'COD', 'DESCRICAO'],
     optional: ['TIPO_TGA', 'FIXO_OU_VARIAVEL', 'CLASSIFICACAO', 'OPERACIONAL'],
   },
+  CHART_ACCOUNTS: {
+    id: 'CHART_ACCOUNTS',
+    label: 'Plano de Contas (Edge Function)',
+    required: ['EMPRESA', 'CODIGO_CONTA', 'NOME_CONTA', 'TIPO_CONTA'],
+    optional: [],
+  },
 }
 
 interface ImportResult {
@@ -119,7 +125,13 @@ export default function Import() {
 
     // Simulando leitura de arquivo Excel local
     setTimeout(() => {
-      setSheets(['DE-PARA', 'PLANO_TGA', 'CADASTRO_CAIXA_BCOS_TGA', 'GERAR_LCTO_DOMINIO'])
+      setSheets([
+        'DE-PARA',
+        'PLANO_TGA',
+        'CADASTRO_CAIXA_BCOS_TGA',
+        'GERAR_LCTO_DOMINIO',
+        'PLANO_DOMINIO',
+      ])
       setSelectedSheet('CADASTRO_CAIXA_BCOS_TGA')
       setImportType('BANK_ACCOUNTS')
       setIsUploading(false)
@@ -163,6 +175,19 @@ export default function Import() {
                 : i === 1
                   ? `${batchBase}.1`
                   : `${batchBase}.1.${i}`
+          } else if (col === 'CODIGO_CONTA') {
+            row[col] = isMissingReq
+              ? ''
+              : i === 0
+                ? `${batchBase}`
+                : i === 1
+                  ? `${batchBase}.1`
+                  : `${batchBase}.1.${i}`
+          } else if (col === 'NOME_CONTA') {
+            row[col] = isMissingReq ? '' : `Conta Contábil ${i + 1}`
+          } else if (col === 'TIPO_CONTA') {
+            const tipos = ['Ativo', 'Passivo', 'Receita', 'Despesa']
+            row[col] = isMissingReq ? '' : tipos[Math.floor(Math.random() * tipos.length)]
           } else {
             row[col] = isMissingReq ? '' : `Mock ${col} ${i + 1}`
           }
@@ -664,9 +689,21 @@ export default function Import() {
               Importar Novo Arquivo
             </Button>
             <Button asChild>
-              <Link to={importType === 'COST_CENTERS' ? '/centros-de-custo' : '/'}>
+              <Link
+                to={
+                  importType === 'COST_CENTERS'
+                    ? '/centros-de-custo'
+                    : importType === 'CHART_ACCOUNTS'
+                      ? '/plano-de-contas'
+                      : '/'
+                }
+              >
                 <List className="h-4 w-4 mr-2" />
-                {importType === 'COST_CENTERS' ? 'Ver Centros de Custo' : 'Ver Listagem de Contas'}
+                {importType === 'COST_CENTERS'
+                  ? 'Ver Centros de Custo'
+                  : importType === 'CHART_ACCOUNTS'
+                    ? 'Ver Plano de Contas'
+                    : 'Ver Listagem de Contas'}
               </Link>
             </Button>
           </CardFooter>

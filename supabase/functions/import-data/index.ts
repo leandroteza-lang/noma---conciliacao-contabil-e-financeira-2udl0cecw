@@ -34,7 +34,7 @@ Deno.serve(async (req: Request) => {
     const records = payload.records
     const type = payload.type
 
-    if (type !== 'BANK_ACCOUNTS' && type !== 'COST_CENTERS') {
+    if (type !== 'BANK_ACCOUNTS' && type !== 'COST_CENTERS' && type !== 'CHART_ACCOUNTS') {
       return new Response(
         JSON.stringify({ error: 'Tipo de importação não suportado atualmente por esta função' }),
         {
@@ -238,6 +238,78 @@ Deno.serve(async (req: Request) => {
           classification: String(row['CLASSIFICACAO'] || ''),
           operational: String(row['OPERACIONAL'] || ''),
         } as any)
+
+        if (insertError) {
+          rejected++
+          errors.push(`Linha ${rowNum}: Erro ao inserir no banco - ${insertError.message}`)
+        } else {
+          inserted++
+        }
+      }
+    } else if (type === 'CHART_ACCOUNTS') {
+      for (let i = 0; i < records.length; i++) {
+        const row = records[i]
+        const rowNum = i + 1
+
+        const empresa = row['EMPRESA']
+        const code = row['CODIGO_CONTA']
+        const name = row['NOME_CONTA']
+        const accountType = row['TIPO_CONTA']
+
+        if (!empresa || String(empresa).trim() === '') {
+          rejected++
+          errors.push(`Linha ${rowNum}: A coluna EMPRESA está vazia.`)
+          continue
+        }
+
+        if (!code || String(code).trim() === '') {
+          rejected++
+          errors.push(`Linha ${rowNum}: A coluna CODIGO_CONTA está vazia.`)
+          continue
+        }
+
+        if (!name || String(name).trim() === '') {
+          rejected++
+          errors.push(`Linha ${rowNum}: A coluna NOME_CONTA está vazia.`)
+          continue
+        }
+
+        const orgId = orgMap.get(String(empresa).trim().toLowerCase())
+        if (!orgId) {
+          rejected++
+          errors.push(`Linha ${rowNum}: A empresa "${empresa}" não foi encontrada na sua conta.`)
+          continue
+        }
+
+        const strCode = String(code).trim()
+
+        const { data: existing, error: checkError } = await supabase
+          .from('chart_of_accounts')
+          .select('id')
+          .eq('organization_id', orgId)
+          .eq('account_code', strCode)
+          .maybeSingle()
+
+        if (checkError) {
+          rejected++
+          errors.push(`Linha ${rowNum}: Falha ao verificar duplicata - ${checkError.message}`)
+          continue
+        }
+
+        if (existing) {
+          rejected++
+          errors.push(
+            `Linha ${rowNum}: O código de conta "${strCode}" já está cadastrado para esta empresa.`,
+          )
+          continue
+        }
+
+        const { error: insertError } = await supabase.from('chart_of_accounts').insert({
+          organization_id: orgId,
+          account_code: strCode,
+          account_name: String(name),
+          account_type: String(accountType || ''),
+        })
 
         if (insertError) {
           rejected++

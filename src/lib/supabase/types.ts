@@ -206,28 +206,40 @@ export type Database = {
       }
       cost_centers: {
         Row: {
+          classification: string | null
           code: string | null
           created_at: string | null
           description: string | null
+          fixed_variable: string | null
           id: string
+          operational: string | null
           organization_id: string | null
           parent_id: string | null
+          type_tga: string | null
         }
         Insert: {
+          classification?: string | null
           code?: string | null
           created_at?: string | null
           description?: string | null
+          fixed_variable?: string | null
           id?: string
+          operational?: string | null
           organization_id?: string | null
           parent_id?: string | null
+          type_tga?: string | null
         }
         Update: {
+          classification?: string | null
           code?: string | null
           created_at?: string | null
           description?: string | null
+          fixed_variable?: string | null
           id?: string
+          operational?: string | null
           organization_id?: string | null
           parent_id?: string | null
+          type_tga?: string | null
         }
         Relationships: [
           {
@@ -522,6 +534,10 @@ export const Constants = {
 //   description: character varying (nullable)
 //   parent_id: uuid (nullable)
 //   created_at: timestamp with time zone (nullable, default: now())
+//   type_tga: character varying (nullable)
+//   fixed_variable: character varying (nullable)
+//   classification: character varying (nullable)
+//   operational: character varying (nullable)
 // Table: financial_movements
 //   id: uuid (not null, default: gen_random_uuid())
 //   organization_id: uuid (nullable)

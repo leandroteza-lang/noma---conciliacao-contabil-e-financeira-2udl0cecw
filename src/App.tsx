@@ -8,6 +8,7 @@ import Companies from './pages/Companies'
 import Mapping from './pages/Mapping'
 import Entries from './pages/Entries'
 import CostCenters from './pages/CostCenters'
+import ChartAccounts from './pages/ChartAccounts'
 import Login from './pages/Login'
 import Signup from './pages/Signup'
 import ForgotPassword from './pages/ForgotPassword'
@@ -34,6 +35,7 @@ const App = () => (
             <Route path="/mapeamento" element={<Mapping />} />
             <Route path="/lancamentos" element={<Entries />} />
             <Route path="/centros-de-custo" element={<CostCenters />} />
+            <Route path="/plano-de-contas" element={<ChartAccounts />} />
           </Route>
           <Route path="*" element={<NotFound />} />
         </Routes>
