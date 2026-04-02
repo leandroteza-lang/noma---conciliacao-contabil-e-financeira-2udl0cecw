@@ -6,6 +6,13 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { PasswordInput } from '@/components/ui/password-input'
 import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { useToast } from '@/hooks/use-toast'
 import {
   Card,
@@ -19,9 +26,11 @@ import { cn } from '@/lib/utils'
 
 export default function Signup() {
   const { signUp, user, loading: authLoading } = useAuth()
+  const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
+  const [organization, setOrganization] = useState('')
   const [loading, setLoading] = useState(false)
   const navigate = useNavigate()
   const { toast } = useToast()
@@ -35,30 +44,26 @@ export default function Signup() {
   const hasNumber = /[0-9]/.test(password)
   const isPasswordValid = isLengthValid && hasUpperCase && hasLowerCase && hasNumber
   const isMatch = password === confirmPassword && password.length > 0
+  const isFormValid =
+    isPasswordValid && isMatch && name.trim().length > 0 && organization.length > 0
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (!isPasswordValid) {
+    if (!isFormValid) {
       toast({
-        title: 'Senha muito fraca',
-        description: 'Por favor, siga os requisitos de senha.',
-        variant: 'destructive',
-      })
-      return
-    }
-
-    if (!isMatch) {
-      toast({
-        title: 'Senhas não conferem',
-        description: 'A confirmação de senha está diferente.',
+        title: 'Dados inválidos',
+        description: 'Por favor, preencha todos os campos corretamente.',
         variant: 'destructive',
       })
       return
     }
 
     setLoading(true)
-    const { error } = await signUp(email, password)
+    const { error } = await signUp(email, password, {
+      name,
+      organization,
+    })
     setLoading(false)
 
     if (error) {
@@ -69,16 +74,15 @@ export default function Signup() {
       })
     } else {
       toast({
-        title: 'Conta criada!',
-        description:
-          'Verifique seu e-mail para confirmar a conta ou faça login se o auto-login estiver habilitado.',
+        title: 'Conta criada com sucesso!',
+        description: 'Seu cadastro foi realizado. Você já pode fazer login.',
       })
-      navigate('/')
+      navigate('/login')
     }
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4">
+    <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4 py-12">
       <div className="w-full max-w-md space-y-8">
         <div className="flex flex-col items-center text-center">
           <div className="bg-blue-600 p-3 rounded-xl text-white shadow-lg mb-4">
@@ -96,6 +100,18 @@ export default function Signup() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
+                <Label htmlFor="name">Nome Completo</Label>
+                <Input
+                  id="name"
+                  type="text"
+                  placeholder="Seu nome completo"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
                 <Label htmlFor="email">E-mail</Label>
                 <Input
                   id="email"
@@ -106,6 +122,22 @@ export default function Signup() {
                   required
                 />
               </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="organization">Organização</Label>
+                <Select value={organization} onValueChange={setOrganization} required>
+                  <SelectTrigger id="organization">
+                    <SelectValue placeholder="Selecione uma organização" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="NOMA PARTS">NOMA PARTS</SelectItem>
+                    <SelectItem value="LS ALMEIDA">LS ALMEIDA</SelectItem>
+                    <SelectItem value="NOMA SERVICE">NOMA SERVICE</SelectItem>
+                    <SelectItem value="PF">PF</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
               <div className="space-y-2">
                 <Label htmlFor="password">Senha</Label>
                 <PasswordInput
@@ -191,7 +223,7 @@ export default function Signup() {
               <Button
                 type="submit"
                 className="w-full bg-blue-600 hover:bg-blue-700"
-                disabled={loading || !isPasswordValid || !isMatch}
+                disabled={loading || !isFormValid}
               >
                 {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                 Criar Conta
