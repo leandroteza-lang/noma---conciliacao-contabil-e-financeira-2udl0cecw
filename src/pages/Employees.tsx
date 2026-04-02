@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import * as z from 'zod'
+import { Link } from 'react-router-dom'
 import {
   Users,
   Plus,
@@ -15,6 +16,7 @@ import {
   ChevronRight,
   Loader2,
   ArrowUpDown,
+  Upload,
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
 import { useAuth } from '@/hooks/use-auth'
@@ -57,6 +59,21 @@ import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { format } from 'date-fns'
 
+const ROUTINES = [
+  { id: 'all', label: 'Acesso Total (Todas as Rotinas)' },
+  { id: 'dashboard', label: 'Dashboard' },
+  { id: 'analises', label: 'Análises' },
+  { id: 'listagem', label: 'Listagem de Contas' },
+  { id: 'lancamentos', label: 'Lançamentos Contábeis' },
+  { id: 'empresas', label: 'Empresas' },
+  { id: 'departamentos', label: 'Departamentos' },
+  { id: 'centros-de-custo', label: 'Centros de Custo' },
+  { id: 'plano-de-contas', label: 'Plano de Contas' },
+  { id: 'mapeamento', label: 'Mapeamento DE/PARA' },
+  { id: 'funcionarios', label: 'Funcionários' },
+  { id: 'import', label: 'Importar Dados' },
+]
+
 const isValidCPF = (cpf: string) => {
   cpf = cpf.replace(/[^\d]+/g, '')
   if (cpf === '' || cpf.length !== 11 || /^(\d)\1{10}$/.test(cpf)) return false
@@ -87,6 +104,7 @@ const schema = z.object({
   department_id: z.string().optional().nullable().or(z.literal('')),
   status: z.boolean().default(true),
   companies: z.array(z.string()).default([]),
+  permissions: z.array(z.string()).default(['all']),
   role: z.enum(['admin', 'supervisor', 'collaborator']).default('collaborator'),
 })
 type FormData = z.infer<typeof schema>
@@ -125,7 +143,7 @@ export default function Employees() {
     watch,
   } = useForm<FormData>({
     resolver: zodResolver(schema),
-    defaultValues: { status: true, companies: [], role: 'collaborator' },
+    defaultValues: { status: true, companies: [], permissions: ['all'], role: 'collaborator' },
   })
   const statusValue = watch('status')
 
@@ -213,6 +231,7 @@ export default function Employees() {
         department_id: item.department_id || '',
         status: item.status ?? true,
         role: item.role || 'collaborator',
+        permissions: Array.isArray(item.permissions) ? item.permissions : ['all'],
         companies: item.employee_companies?.map((ec: any) => ec.organization_id) || [],
       })
     } else {
@@ -227,6 +246,7 @@ export default function Employees() {
         department_id: '',
         status: true,
         role: 'collaborator',
+        permissions: ['all'],
         companies: [],
       })
     }
@@ -247,8 +267,9 @@ export default function Employees() {
         department_id: data.department_id || null,
         status: data.status,
         role: data.role,
+        permissions: data.permissions.length === 0 ? ['all'] : data.permissions,
         user_id: user.id,
-      }
+      } as any
       let empId = editingId
       if (editingId) {
         const { error } = await supabase
@@ -378,9 +399,16 @@ export default function Employees() {
             </DropdownMenuContent>
           </DropdownMenu>
           {canEdit && (
-            <Button onClick={() => openModal()} className="gap-2 bg-blue-600 hover:bg-blue-700">
-              <Plus className="h-4 w-4" /> Novo Funcionário
-            </Button>
+            <>
+              <Button variant="outline" className="gap-2" asChild>
+                <Link to="/import">
+                  <Upload className="h-4 w-4" /> Importar
+                </Link>
+              </Button>
+              <Button onClick={() => openModal()} className="gap-2 bg-blue-600 hover:bg-blue-700">
+                <Plus className="h-4 w-4" /> Novo Funcionário
+              </Button>
+            </>
           )}
         </div>
       </div>
@@ -633,17 +661,18 @@ export default function Employees() {
       </Card>
 
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-        <DialogContent className="sm:max-w-[650px] max-h-[90vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editingId ? 'Editar Funcionário' : 'Novo Funcionário'}</DialogTitle>
             <DialogDescription>Preencha os dados do funcionário abaixo.</DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 mt-4">
             <Tabs defaultValue="main" className="w-full">
-              <TabsList className="grid w-full grid-cols-3 mb-4">
-                <TabsTrigger value="main">Dados Principais</TabsTrigger>
-                <TabsTrigger value="contact">Contato e End.</TabsTrigger>
-                <TabsTrigger value="access">Acesso e Vínculos</TabsTrigger>
+              <TabsList className="grid w-full grid-cols-4 mb-4">
+                <TabsTrigger value="main">Principal</TabsTrigger>
+                <TabsTrigger value="contact">Contato</TabsTrigger>
+                <TabsTrigger value="access">Acesso</TabsTrigger>
+                <TabsTrigger value="permissions">Permissões</TabsTrigger>
               </TabsList>
 
               <TabsContent value="main" className="space-y-4 animate-in fade-in-50">
@@ -766,6 +795,51 @@ export default function Employees() {
                     checked={statusValue}
                     onCheckedChange={(val) => setValue('status', val)}
                   />
+                </div>
+              </TabsContent>
+
+              <TabsContent value="permissions" className="space-y-4 animate-in fade-in-50">
+                <div className="space-y-4">
+                  <div className="space-y-0.5">
+                    <Label className="text-base font-semibold">Permissões de Rotina</Label>
+                    <p className="text-xs text-slate-500">
+                      Selecione quais rotinas este usuário poderá acessar.
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[300px] overflow-y-auto p-1">
+                    {ROUTINES.map((routine) => (
+                      <div
+                        key={routine.id}
+                        className="flex items-center space-x-2 bg-slate-50 p-2.5 rounded border border-slate-100"
+                      >
+                        <Checkbox
+                          id={`perm-${routine.id}`}
+                          checked={watch('permissions')?.includes(routine.id)}
+                          onCheckedChange={(checked) => {
+                            const cur = watch('permissions') || []
+                            if (routine.id === 'all') {
+                              setValue('permissions', checked ? ['all'] : [])
+                            } else {
+                              let next = checked
+                                ? [...cur, routine.id]
+                                : cur.filter((id) => id !== routine.id)
+                              if (checked) {
+                                next = next.filter((id) => id !== 'all')
+                              }
+                              setValue('permissions', next)
+                            }
+                          }}
+                        />
+                        <label
+                          htmlFor={`perm-${routine.id}`}
+                          className="text-sm cursor-pointer flex-1 leading-none font-medium"
+                        >
+                          {routine.label}
+                        </label>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </TabsContent>
             </Tabs>

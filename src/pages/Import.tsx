@@ -9,6 +9,7 @@ import {
   UploadCloud,
   XCircle,
   List,
+  Download,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -44,6 +45,32 @@ import { Switch } from '@/components/ui/switch'
 import { supabase } from '@/lib/supabase/client'
 
 const IMPORT_TYPES = {
+  COMPANIES: {
+    id: 'COMPANIES',
+    label: 'Empresas (Edge Function)',
+    required: ['NOME'],
+    optional: ['CNPJ', 'CPF', 'EMAIL', 'TELEFONE', 'ENDERECO', 'OBSERVACOES'],
+  },
+  DEPARTMENTS: {
+    id: 'DEPARTMENTS',
+    label: 'Departamentos (Edge Function)',
+    required: ['NOME'],
+    optional: ['CODIGO'],
+  },
+  EMPLOYEES: {
+    id: 'EMPLOYEES',
+    label: 'Funcionários (Edge Function)',
+    required: ['NOME'],
+    optional: [
+      'CPF',
+      'EMAIL',
+      'TELEFONE',
+      'ENDERECO',
+      'OBSERVACOES',
+      'DEPARTAMENTO_CODIGO',
+      'PERFIL',
+    ],
+  },
   FINANCIAL_ENTRIES: {
     id: 'FINANCIAL_ENTRIES',
     label: 'Lançamentos Domínio (Edge Function)',
@@ -130,11 +157,11 @@ export default function Import() {
     const selectedFile = e.target.files?.[0]
     if (!selectedFile) return
 
-    if (!selectedFile.name.endsWith('.xlsx')) {
+    if (!selectedFile.name.endsWith('.xlsx') && !selectedFile.name.endsWith('.csv')) {
       toast({
         variant: 'destructive',
         title: 'Arquivo inválido',
-        description: 'Por favor, selecione um arquivo Excel (.xlsx).',
+        description: 'Por favor, selecione um arquivo Excel (.xlsx) ou CSV (.csv).',
       })
       return
     }
@@ -146,14 +173,15 @@ export default function Import() {
     // Simulando leitura de arquivo Excel local
     setTimeout(() => {
       setSheets([
+        'DADOS',
         'DE-PARA',
         'PLANO_TGA',
         'CADASTRO_CAIXA_BCOS_TGA',
         'GERAR_LCTO_DOMINIO',
         'PLANO_DOMINIO',
       ])
-      setSelectedSheet('GERAR_LCTO_DOMINIO')
-      setImportType('FINANCIAL_ENTRIES')
+      setSelectedSheet('DADOS')
+      setImportType(importType || 'COMPANIES')
       setIsUploading(false)
       toast({
         title: 'Arquivo processado',
@@ -190,12 +218,13 @@ export default function Import() {
             row[col] = isMissingReq ? '' : d.toISOString().split('T')[0]
           } else if (col === 'VALOR') {
             row[col] = isMissingReq ? '' : (Math.random() * 1000).toFixed(2)
-          } else if (col === 'CONTA_DEBITO' || col === 'CONTA_CREDITO') {
+          } else if (
+            col === 'CONTA_DEBITO' ||
+            col === 'CONTA_CREDITO' ||
+            col === 'CONTA_CONTABIL'
+          ) {
             row[col] = isMissingReq ? '' : `CA-${Math.floor(Math.random() * 100000)}`
-          } else if (col === 'CONTA_CONTABIL') {
-            // Conta aleatória para evitar conflito a cada teste
-            row[col] = isMissingReq ? '' : `CA-${Math.floor(Math.random() * 100000)}`
-          } else if (col === 'COD') {
+          } else if (col === 'COD' || col === 'CODIGO_CONTA') {
             row[col] = isMissingReq
               ? ''
               : i === 0
@@ -203,16 +232,10 @@ export default function Import() {
                 : i === 1
                   ? `${batchBase}.1`
                   : `${batchBase}.1.${i}`
-          } else if (col === 'CODIGO_CONTA') {
+          } else if (col === 'NOME_CONTA' || col === 'NOME') {
             row[col] = isMissingReq
               ? ''
-              : i === 0
-                ? `${batchBase}`
-                : i === 1
-                  ? `${batchBase}.1`
-                  : `${batchBase}.1.${i}`
-          } else if (col === 'NOME_CONTA') {
-            row[col] = isMissingReq ? '' : `Conta Contábil ${i + 1}`
+              : `${col === 'NOME' ? 'Nome Genérico' : 'Conta Contábil'} ${i + 1}`
           } else if (col === 'TIPO_CONTA') {
             const tipos = ['Ativo', 'Passivo', 'Receita', 'Despesa']
             row[col] = isMissingReq ? '' : tipos[Math.floor(Math.random() * tipos.length)]
@@ -232,6 +255,12 @@ export default function Import() {
             row[col] = 'DE/PARA'
           } else if (col === 'TIPO_MOVIMENTO') {
             row[col] = Math.random() > 0.5 ? 'Débito' : 'Crédito'
+          } else if (col === 'PERFIL') {
+            row[col] = 'collaborator'
+          } else if (col === 'DEPARTAMENTO_CODIGO') {
+            row[col] = 'DEP-123'
+          } else if (col === 'CNPJ') {
+            row[col] = `00.000.000/0001-${Math.floor(10 + Math.random() * 89)}`
           } else {
             row[col] = `Dado ${col} ${i + 1}`
           }
@@ -341,6 +370,19 @@ export default function Import() {
     }
   }
 
+  const downloadTemplate = () => {
+    if (!importType) return
+    const config = IMPORT_TYPES[importType as keyof typeof IMPORT_TYPES]
+    const headers = [...config.required, ...config.optional].join(';')
+    const csvContent = 'data:text/csv;charset=utf-8,' + encodeURIComponent(headers + '\n')
+    const link = document.createElement('a')
+    link.setAttribute('href', csvContent)
+    link.setAttribute('download', `template_${importType.toLowerCase()}.csv`)
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  }
+
   const resetForm = () => {
     setFile(null)
     setSheets([])
@@ -362,7 +404,7 @@ export default function Import() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Importação de Dados</h1>
           <p className="text-muted-foreground">
-            Importe planilhas Excel para cadastro em lote via Edge Functions.
+            Importe planilhas Excel ou CSV para cadastro em lote via Edge Functions.
           </p>
         </div>
       </div>
@@ -372,7 +414,7 @@ export default function Import() {
           <CardHeader>
             <CardTitle>1. Selecionar Arquivo</CardTitle>
             <CardDescription>
-              Faça o upload do seu arquivo Excel (.xlsx) para iniciar.
+              Faça o upload do seu arquivo Excel (.xlsx) ou CSV (.csv) para iniciar.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -386,13 +428,13 @@ export default function Import() {
                   Clique para selecionar ou arraste o arquivo
                 </h3>
                 <p className="text-sm text-muted-foreground">
-                  Apenas arquivos .xlsx são suportados
+                  Apenas arquivos .xlsx ou .csv são suportados
                 </p>
                 <input
                   type="file"
                   ref={fileInputRef}
                   className="hidden"
-                  accept=".xlsx, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                  accept=".xlsx, .csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, text/csv"
                   onChange={handleFileChange}
                 />
               </div>
@@ -434,7 +476,10 @@ export default function Import() {
         <Card className="animate-fade-in">
           <CardHeader>
             <CardTitle>2. Configuração de Importação</CardTitle>
-            <CardDescription>Selecione a aba e o tipo de importação.</CardDescription>
+            <CardDescription>
+              Selecione a aba e o tipo de importação para validar os dados ou baixe o modelo
+              esperado.
+            </CardDescription>
           </CardHeader>
           <CardContent className="grid md:grid-cols-2 gap-6">
             <div className="space-y-2">
@@ -454,18 +499,25 @@ export default function Import() {
             </div>
             <div className="space-y-2">
               <Label>Tipo de Dados</Label>
-              <Select value={importType} onValueChange={setImportType} disabled={isImporting}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione o tipo..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {Object.values(IMPORT_TYPES).map((t) => (
-                    <SelectItem key={t.id} value={t.id}>
-                      {t.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="flex gap-2">
+                <Select value={importType} onValueChange={setImportType} disabled={isImporting}>
+                  <SelectTrigger className="flex-1">
+                    <SelectValue placeholder="Selecione o tipo..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Object.values(IMPORT_TYPES).map((t) => (
+                      <SelectItem key={t.id} value={t.id}>
+                        {t.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {importType && (
+                  <Button variant="outline" onClick={downloadTemplate} title="Baixar Modelo CSV">
+                    <Download className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -733,19 +785,17 @@ export default function Import() {
                         ? '/mapeamento'
                         : importType === 'FINANCIAL_ENTRIES'
                           ? '/lancamentos'
-                          : '/'
+                          : importType === 'COMPANIES'
+                            ? '/empresas'
+                            : importType === 'DEPARTMENTS'
+                              ? '/departamentos'
+                              : importType === 'EMPLOYEES'
+                                ? '/funcionarios'
+                                : '/'
                 }
               >
                 <List className="h-4 w-4 mr-2" />
-                {importType === 'COST_CENTERS'
-                  ? 'Ver Centros de Custo'
-                  : importType === 'CHART_ACCOUNTS'
-                    ? 'Ver Plano de Contas'
-                    : importType === 'MAPPINGS'
-                      ? 'Ver Mapeamentos'
-                      : importType === 'FINANCIAL_ENTRIES'
-                        ? 'Ver Lançamentos'
-                        : 'Ver Listagem de Contas'}
+                Ir para o Cadastro
               </Link>
             </Button>
           </CardFooter>

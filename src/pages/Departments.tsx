@@ -15,7 +15,9 @@ import {
   ChevronRight,
   Loader2,
   ArrowUpDown,
+  Upload,
 } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { supabase } from '@/lib/supabase/client'
 import { useAuth } from '@/hooks/use-auth'
 import { useToast } from '@/hooks/use-toast'
@@ -193,8 +195,24 @@ export default function Departments() {
   }
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Deseja excluir este departamento?')) return
     try {
+      const { data: linked } = await supabase
+        .from('employees')
+        .select('id')
+        .eq('department_id', id)
+        .limit(1)
+
+      if (linked && linked.length > 0) {
+        toast({
+          title: 'Ação Bloqueada',
+          description: 'Este departamento possui funcionários vinculados e não pode ser excluído.',
+          variant: 'destructive',
+        })
+        return
+      }
+
+      if (!confirm('Deseja excluir este departamento?')) return
+
       const { error } = await supabase
         .from('departments')
         .delete()
@@ -283,9 +301,16 @@ export default function Departments() {
             </DropdownMenuContent>
           </DropdownMenu>
           {canEdit && (
-            <Button onClick={() => openModal()} className="gap-2 bg-blue-600 hover:bg-blue-700">
-              <Plus className="h-4 w-4" /> Novo Departamento
-            </Button>
+            <>
+              <Button variant="outline" className="gap-2" asChild>
+                <Link to="/import">
+                  <Upload className="h-4 w-4" /> Importar
+                </Link>
+              </Button>
+              <Button onClick={() => openModal()} className="gap-2 bg-blue-600 hover:bg-blue-700">
+                <Plus className="h-4 w-4" /> Novo Departamento
+              </Button>
+            </>
           )}
         </div>
       </div>

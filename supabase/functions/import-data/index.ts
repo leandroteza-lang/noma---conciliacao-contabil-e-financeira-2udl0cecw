@@ -40,13 +40,18 @@ Deno.serve(async (req: Request) => {
     const records = payload.records
     const type = payload.type
 
-    if (
-      type !== 'BANK_ACCOUNTS' &&
-      type !== 'COST_CENTERS' &&
-      type !== 'CHART_ACCOUNTS' &&
-      type !== 'MAPPINGS' &&
-      type !== 'FINANCIAL_ENTRIES'
-    ) {
+    const SUPPORTED_TYPES = [
+      'BANK_ACCOUNTS',
+      'COST_CENTERS',
+      'CHART_ACCOUNTS',
+      'MAPPINGS',
+      'FINANCIAL_ENTRIES',
+      'COMPANIES',
+      'DEPARTMENTS',
+      'EMPLOYEES',
+    ]
+
+    if (!SUPPORTED_TYPES.includes(type)) {
       return new Response(
         JSON.stringify({ error: 'Tipo de importação não suportado atualmente por esta função' }),
         {
@@ -69,7 +74,14 @@ Deno.serve(async (req: Request) => {
       .select('id, name')
       .eq('user_id', user.id)
 
-    if (orgsError) {
+    if (
+      orgsError &&
+      (type === 'BANK_ACCOUNTS' ||
+        type === 'COST_CENTERS' ||
+        type === 'CHART_ACCOUNTS' ||
+        type === 'MAPPINGS' ||
+        type === 'FINANCIAL_ENTRIES')
+    ) {
       throw new Error('Erro ao buscar organizações do usuário: ' + orgsError.message)
     }
 
@@ -80,7 +92,166 @@ Deno.serve(async (req: Request) => {
       })
     }
 
-    if (type === 'BANK_ACCOUNTS') {
+    if (type === 'COMPANIES') {
+      for (let i = 0; i < records.length; i++) {
+        const row = records[i]
+        const rowNum = i + 1
+
+        const nome = row['NOME']
+        if (!nome || String(nome).trim() === '') {
+          rejected++
+          errors.push(`Linha ${rowNum}: A coluna NOME está vazia.`)
+          continue
+        }
+
+        const cnpj = String(row['CNPJ'] || '').trim()
+        const cpf = String(row['CPF'] || '').trim()
+
+        if (cnpj) {
+          const { data: existingCnpj } = await supabase
+            .from('organizations')
+            .select('id')
+            .eq('cnpj', cnpj)
+            .eq('user_id', user.id)
+            .maybeSingle()
+          if (existingCnpj) {
+            rejected++
+            errors.push(`Linha ${rowNum}: CNPJ "${cnpj}" já cadastrado.`)
+            continue
+          }
+        }
+
+        const { error: insertError } = await supabase.from('organizations').insert({
+          user_id: user.id,
+          name: String(nome),
+          cnpj: cnpj || null,
+          cpf: cpf || null,
+          email: String(row['EMAIL'] || ''),
+          phone: String(row['TELEFONE'] || ''),
+          address: String(row['ENDERECO'] || ''),
+          observations: String(row['OBSERVACOES'] || ''),
+          status: true,
+        })
+
+        if (insertError) {
+          rejected++
+          errors.push(`Linha ${rowNum}: Erro ao inserir - ${insertError.message}`)
+        } else {
+          inserted++
+        }
+      }
+    } else if (type === 'DEPARTMENTS') {
+      for (let i = 0; i < records.length; i++) {
+        const row = records[i]
+        const rowNum = i + 1
+
+        const nome = row['NOME']
+        if (!nome || String(nome).trim() === '') {
+          rejected++
+          errors.push(`Linha ${rowNum}: A coluna NOME está vazia.`)
+          continue
+        }
+
+        const codigo = String(row['CODIGO'] || '').trim()
+
+        if (codigo) {
+          const { data: existingCode } = await supabase
+            .from('departments')
+            .select('id')
+            .eq('code', codigo)
+            .eq('user_id', user.id)
+            .maybeSingle()
+          if (existingCode) {
+            rejected++
+            errors.push(`Linha ${rowNum}: Código "${codigo}" já cadastrado.`)
+            continue
+          }
+        }
+
+        const { error: insertError } = await supabase.from('departments').insert({
+          user_id: user.id,
+          name: String(nome),
+          code: codigo || `DEP-${Math.random().toString(36).substring(2, 8).toUpperCase()}`,
+        })
+
+        if (insertError) {
+          rejected++
+          errors.push(`Linha ${rowNum}: Erro ao inserir - ${insertError.message}`)
+        } else {
+          inserted++
+        }
+      }
+    } else if (type === 'EMPLOYEES') {
+      for (let i = 0; i < records.length; i++) {
+        const row = records[i]
+        const rowNum = i + 1
+
+        const nome = row['NOME']
+        if (!nome || String(nome).trim() === '') {
+          rejected++
+          errors.push(`Linha ${rowNum}: A coluna NOME está vazia.`)
+          continue
+        }
+
+        let depId = null
+        const depCode = String(row['DEPARTAMENTO_CODIGO'] || '').trim()
+        if (depCode) {
+          const { data: dep } = await supabase
+            .from('departments')
+            .select('id')
+            .eq('code', depCode)
+            .eq('user_id', user.id)
+            .maybeSingle()
+          if (dep) {
+            depId = dep.id
+          } else {
+            rejected++
+            errors.push(`Linha ${rowNum}: Departamento com código "${depCode}" não encontrado.`)
+            continue
+          }
+        }
+
+        const email = String(row['EMAIL'] || '').trim()
+        if (email) {
+          const { data: existingUser } = await supabase
+            .from('employees')
+            .select('id')
+            .eq('email', email)
+            .eq('user_id', user.id)
+            .maybeSingle()
+          if (existingUser) {
+            rejected++
+            errors.push(`Linha ${rowNum}: E-mail "${email}" já está em uso por outro funcionário.`)
+            continue
+          }
+        }
+
+        const perfil = String(row['PERFIL'] || 'collaborator').toLowerCase()
+        const validRoles = ['admin', 'supervisor', 'collaborator']
+        const roleToInsert = validRoles.includes(perfil) ? perfil : 'collaborator'
+
+        const { error: insertError } = await supabase.from('employees').insert({
+          user_id: user.id,
+          name: String(nome),
+          cpf: String(row['CPF'] || '') || null,
+          email: email || null,
+          phone: String(row['TELEFONE'] || '') || null,
+          address: String(row['ENDERECO'] || '') || null,
+          observations: String(row['OBSERVACOES'] || '') || null,
+          role: roleToInsert,
+          permissions: ['all'],
+          department_id: depId,
+          status: true,
+        })
+
+        if (insertError) {
+          rejected++
+          errors.push(`Linha ${rowNum}: Erro ao inserir - ${insertError.message}`)
+        } else {
+          inserted++
+        }
+      }
+    } else if (type === 'BANK_ACCOUNTS') {
       for (let i = 0; i < records.length; i++) {
         const row = records[i]
         const rowNum = i + 1

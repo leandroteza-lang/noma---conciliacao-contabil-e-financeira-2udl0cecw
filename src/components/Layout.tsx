@@ -16,6 +16,7 @@ import {
 } from 'lucide-react'
 import { useAuth } from '@/hooks/use-auth'
 import { cn } from '@/lib/utils'
+import { ChevronUp, ChevronDown } from 'lucide-react'
 import {
   Sidebar,
   SidebarContent,
@@ -77,9 +78,31 @@ const menuItems = [
 ]
 
 export default function Layout() {
-  const { user, loading, signOut, role } = useAuth()
+  const { user, loading, signOut, role, permissions, menuOrder, setMenuOrder } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
+
+  const handleMoveUp = (e: React.MouseEvent, index: number, currentList: any[]) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (index === 0) return
+    const newList = [...currentList]
+    const temp = newList[index]
+    newList[index] = newList[index - 1]
+    newList[index - 1] = temp
+    setMenuOrder(newList.map((item) => item.path))
+  }
+
+  const handleMoveDown = (e: React.MouseEvent, index: number, currentList: any[]) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (index === currentList.length - 1) return
+    const newList = [...currentList]
+    const temp = newList[index]
+    newList[index] = newList[index + 1]
+    newList[index + 1] = temp
+    setMenuOrder(newList.map((item) => item.path))
+  }
 
   if (loading) {
     return (
@@ -116,9 +139,24 @@ export default function Layout() {
           <SidebarGroup>
             <SidebarGroupContent>
               <SidebarMenu>
-                {menuItems
-                  .filter((item) => item.roles.includes(role))
-                  .map((item) => {
+                {(() => {
+                  const allowedItems = menuItems.filter((item) => {
+                    if (permissions.includes('all')) return true
+                    const routeId = item.path.replace('/', '') || 'listagem'
+                    return permissions.includes(routeId)
+                  })
+
+                  // Apply custom ordering
+                  const sortedItems = [...allowedItems].sort((a, b) => {
+                    const idxA = menuOrder.indexOf(a.path)
+                    const idxB = menuOrder.indexOf(b.path)
+                    if (idxA === -1 && idxB === -1) return 0
+                    if (idxA === -1) return 1
+                    if (idxB === -1) return -1
+                    return idxA - idxB
+                  })
+
+                  return sortedItems.map((item, index) => {
                     const isActive = location.pathname === item.path
                     return (
                       <SidebarMenuItem key={item.path}>
@@ -128,25 +166,46 @@ export default function Layout() {
                           tooltip={item.title}
                           size="lg"
                           className={cn(
-                            'transition-all duration-200',
+                            'transition-all duration-200 group relative',
                             isActive
                               ? 'bg-blue-50 text-blue-700 shadow-sm hover:bg-blue-50 hover:text-blue-700'
                               : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900',
                           )}
                         >
-                          <Link to={item.path}>
-                            <item.icon
-                              className={cn(
-                                'size-4 shrink-0',
-                                isActive ? 'text-blue-700' : 'text-slate-400',
+                          <Link to={item.path} className="flex items-center justify-between w-full">
+                            <div className="flex items-center gap-2">
+                              <item.icon
+                                className={cn(
+                                  'size-4 shrink-0',
+                                  isActive ? 'text-blue-700' : 'text-slate-400',
+                                )}
+                              />
+                              <span className="font-medium">{item.title}</span>
+                            </div>
+                            <div className="hidden group-hover:flex items-center opacity-50 hover:opacity-100">
+                              {index > 0 && (
+                                <button
+                                  onClick={(e) => handleMoveUp(e, index, sortedItems)}
+                                  className="p-1 hover:bg-slate-200 rounded"
+                                >
+                                  <ChevronUp className="size-3" />
+                                </button>
                               )}
-                            />
-                            <span className="font-medium">{item.title}</span>
+                              {index < sortedItems.length - 1 && (
+                                <button
+                                  onClick={(e) => handleMoveDown(e, index, sortedItems)}
+                                  className="p-1 hover:bg-slate-200 rounded"
+                                >
+                                  <ChevronDown className="size-3" />
+                                </button>
+                              )}
+                            </div>
                           </Link>
                         </SidebarMenuButton>
                       </SidebarMenuItem>
                     )
-                  })}
+                  })
+                })()}
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>

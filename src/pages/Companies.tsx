@@ -15,7 +15,9 @@ import {
   ChevronRight,
   Loader2,
   ArrowUpDown,
+  Upload,
 } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { supabase } from '@/lib/supabase/client'
 import { useAuth } from '@/hooks/use-auth'
 import { useToast } from '@/hooks/use-toast'
@@ -327,8 +329,30 @@ export default function Companies() {
   }
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Deseja realmente excluir esta empresa? Esta ação não pode ser desfeita.')) return
     try {
+      const [{ data: banks }, { data: costs }, { data: emps }] = await Promise.all([
+        supabase.from('bank_accounts').select('id').eq('organization_id', id).limit(1),
+        supabase.from('cost_centers').select('id').eq('organization_id', id).limit(1),
+        supabase
+          .from('employee_companies')
+          .select('employee_id')
+          .eq('organization_id', id)
+          .limit(1),
+      ])
+
+      if ((banks && banks.length > 0) || (costs && costs.length > 0) || (emps && emps.length > 0)) {
+        toast({
+          title: 'Ação Bloqueada',
+          description:
+            'Esta empresa possui contas bancárias, centros de custo ou funcionários vinculados e não pode ser excluída.',
+          variant: 'destructive',
+        })
+        return
+      }
+
+      if (!confirm('Deseja realmente excluir esta empresa? Esta ação não pode ser desfeita.'))
+        return
+
       const { error } = await supabase
         .from('organizations')
         .delete()
@@ -426,6 +450,11 @@ export default function Companies() {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+          <Button variant="outline" className="gap-2" asChild>
+            <Link to="/import">
+              <Upload className="h-4 w-4" /> Importar
+            </Link>
+          </Button>
           <Button onClick={() => openModal()} className="gap-2 bg-blue-600 hover:bg-blue-700">
             <Plus className="h-4 w-4" /> Nova Empresa
           </Button>

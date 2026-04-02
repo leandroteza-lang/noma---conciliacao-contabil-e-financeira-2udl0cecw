@@ -6,6 +6,9 @@ interface AuthContextType {
   user: User | null
   session: Session | null
   role: 'admin' | 'supervisor' | 'collaborator'
+  permissions: string[]
+  menuOrder: string[]
+  setMenuOrder: (order: string[]) => void
   signUp: (email: string, password: string, metadata?: any) => Promise<{ error: any }>
   signIn: (email: string, password: string) => Promise<{ error: any }>
   signOut: () => Promise<{ error: any }>
@@ -26,6 +29,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null)
   const [session, setSession] = useState<Session | null>(null)
   const [role, setRole] = useState<'admin' | 'supervisor' | 'collaborator'>('admin')
+  const [permissions, setPermissions] = useState<string[]>(['all'])
+  const [menuOrder, setMenuOrderState] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -33,14 +38,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (!email) return
       supabase
         .from('employees')
-        .select('role')
+        .select('role, permissions, menu_order')
         .eq('email', email)
         .maybeSingle()
         .then(({ data }) => {
-          if (data?.role) {
-            setRole(data.role as any)
+          if (data) {
+            setRole((data.role as any) || 'admin')
+            setPermissions(Array.isArray(data.permissions) ? data.permissions : ['all'])
+            setMenuOrderState(Array.isArray(data.menu_order) ? data.menu_order : [])
           } else {
             setRole('admin')
+            setPermissions(['all'])
+            setMenuOrderState([])
           }
         })
     }
@@ -98,12 +107,25 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return { error }
   }
 
+  const setMenuOrder = async (order: string[]) => {
+    setMenuOrderState(order)
+    if (user?.email) {
+      await supabase
+        .from('employees')
+        .update({ menu_order: order } as any)
+        .eq('email', user.email)
+    }
+  }
+
   return (
     <AuthContext.Provider
       value={{
         user,
         session,
         role,
+        permissions,
+        menuOrder,
+        setMenuOrder,
         signUp,
         signIn,
         signOut,
