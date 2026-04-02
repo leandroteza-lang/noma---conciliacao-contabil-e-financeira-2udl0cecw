@@ -61,6 +61,7 @@ export type Database = {
       accounting_entries: {
         Row: {
           amount: number | null
+          cost_center_id: string | null
           created_at: string | null
           credit_account_id: string | null
           debit_account_id: string | null
@@ -72,6 +73,7 @@ export type Database = {
         }
         Insert: {
           amount?: number | null
+          cost_center_id?: string | null
           created_at?: string | null
           credit_account_id?: string | null
           debit_account_id?: string | null
@@ -83,6 +85,7 @@ export type Database = {
         }
         Update: {
           amount?: number | null
+          cost_center_id?: string | null
           created_at?: string | null
           credit_account_id?: string | null
           debit_account_id?: string | null
@@ -93,6 +96,13 @@ export type Database = {
           status?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: 'accounting_entries_cost_center_id_fkey'
+            columns: ['cost_center_id']
+            isOneToOne: false
+            referencedRelation: 'cost_centers'
+            referencedColumns: ['id']
+          },
           {
             foreignKeyName: 'accounting_entries_credit_account_id_fkey'
             columns: ['credit_account_id']
@@ -507,6 +517,7 @@ export const Constants = {
 //   description: character varying (nullable)
 //   status: character varying (nullable, default: 'Draft'::character varying)
 //   created_at: timestamp with time zone (nullable, default: now())
+//   cost_center_id: uuid (nullable)
 // Table: bank_accounts
 //   id: uuid (not null, default: gen_random_uuid())
 //   organization_id: uuid (nullable)
@@ -563,6 +574,7 @@ export const Constants = {
 //   FOREIGN KEY account_mapping_organization_id_fkey: FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE
 //   PRIMARY KEY account_mapping_pkey: PRIMARY KEY (id)
 // Table: accounting_entries
+//   FOREIGN KEY accounting_entries_cost_center_id_fkey: FOREIGN KEY (cost_center_id) REFERENCES cost_centers(id) ON DELETE SET NULL
 //   FOREIGN KEY accounting_entries_credit_account_id_fkey: FOREIGN KEY (credit_account_id) REFERENCES chart_of_accounts(id) ON DELETE SET NULL
 //   FOREIGN KEY accounting_entries_debit_account_id_fkey: FOREIGN KEY (debit_account_id) REFERENCES chart_of_accounts(id) ON DELETE SET NULL
 //   FOREIGN KEY accounting_entries_organization_id_fkey: FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE
