@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Lock, Loader2 } from 'lucide-react'
-import { useAuth } from '@/hooks/use-auth'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { PasswordInput } from '@/components/ui/password-input'
@@ -18,7 +17,6 @@ import {
 } from '@/components/ui/card'
 
 export default function ResetPassword() {
-  const { updatePassword } = useAuth()
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [loading, setLoading] = useState(false)
@@ -61,23 +59,30 @@ export default function ResetPassword() {
     }
 
     setLoading(true)
-    const { error } = await updatePassword(password)
-    setLoading(false)
+    try {
+      const { error } = await supabase.auth.updateUser({ password })
 
-    if (error) {
+      if (error) {
+        toast({
+          title: 'Erro ao redefinir senha',
+          description: error.message,
+          variant: 'destructive',
+        })
+      } else {
+        toast({
+          title: 'Senha redefinida com sucesso!',
+          description: 'Sua senha foi atualizada. Redirecionando para o sistema...',
+        })
+        navigate('/dashboard')
+      }
+    } catch (err: any) {
       toast({
-        title: 'Erro ao redefinir senha',
-        description: error.message,
+        title: 'Erro inesperado',
+        description: err.message || 'Ocorreu um erro ao salvar a nova senha.',
         variant: 'destructive',
       })
-    } else {
-      toast({
-        title: 'Senha redefinida com sucesso!',
-        description: 'Sua senha foi atualizada. Você já pode fazer login.',
-      })
-      // Sign out to force the user to login with the new password
-      await supabase.auth.signOut()
-      navigate('/login')
+    } finally {
+      setLoading(false)
     }
   }
 
