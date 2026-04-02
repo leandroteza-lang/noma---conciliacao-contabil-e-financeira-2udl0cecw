@@ -268,6 +268,101 @@ export type Database = {
           },
         ]
       }
+      departments: {
+        Row: {
+          code: string | null
+          created_at: string
+          id: string
+          name: string
+          user_id: string
+        }
+        Insert: {
+          code?: string | null
+          created_at?: string
+          id?: string
+          name: string
+          user_id: string
+        }
+        Update: {
+          code?: string | null
+          created_at?: string
+          id?: string
+          name?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      employee_companies: {
+        Row: {
+          employee_id: string
+          organization_id: string
+        }
+        Insert: {
+          employee_id: string
+          organization_id: string
+        }
+        Update: {
+          employee_id?: string
+          organization_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'employee_companies_employee_id_fkey'
+            columns: ['employee_id']
+            isOneToOne: false
+            referencedRelation: 'employees'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'employee_companies_organization_id_fkey'
+            columns: ['organization_id']
+            isOneToOne: false
+            referencedRelation: 'organizations'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      employees: {
+        Row: {
+          created_at: string
+          department_id: string | null
+          email: string | null
+          id: string
+          name: string
+          phone: string | null
+          status: boolean | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          department_id?: string | null
+          email?: string | null
+          id?: string
+          name: string
+          phone?: string | null
+          status?: boolean | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          department_id?: string | null
+          email?: string | null
+          id?: string
+          name?: string
+          phone?: string | null
+          status?: boolean | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'employees_department_id_fkey'
+            columns: ['department_id']
+            isOneToOne: false
+            referencedRelation: 'departments'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       financial_movements: {
         Row: {
           amount: number | null
@@ -564,6 +659,24 @@ export const Constants = {
 //   fixed_variable: character varying (nullable)
 //   classification: character varying (nullable)
 //   operational: character varying (nullable)
+// Table: departments
+//   id: uuid (not null, default: gen_random_uuid())
+//   user_id: uuid (not null)
+//   code: character varying (nullable)
+//   name: character varying (not null)
+//   created_at: timestamp with time zone (not null, default: now())
+// Table: employee_companies
+//   employee_id: uuid (not null)
+//   organization_id: uuid (not null)
+// Table: employees
+//   id: uuid (not null, default: gen_random_uuid())
+//   user_id: uuid (not null)
+//   name: character varying (not null)
+//   email: character varying (nullable)
+//   phone: character varying (nullable)
+//   department_id: uuid (nullable)
+//   status: boolean (nullable, default: true)
+//   created_at: timestamp with time zone (not null, default: now())
 // Table: financial_movements
 //   id: uuid (not null, default: gen_random_uuid())
 //   organization_id: uuid (nullable)
@@ -609,6 +722,17 @@ export const Constants = {
 //   FOREIGN KEY cost_centers_organization_id_fkey: FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE
 //   FOREIGN KEY cost_centers_parent_id_fkey: FOREIGN KEY (parent_id) REFERENCES cost_centers(id) ON DELETE CASCADE
 //   PRIMARY KEY cost_centers_pkey: PRIMARY KEY (id)
+// Table: departments
+//   PRIMARY KEY departments_pkey: PRIMARY KEY (id)
+//   FOREIGN KEY departments_user_id_fkey: FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE
+// Table: employee_companies
+//   FOREIGN KEY employee_companies_employee_id_fkey: FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE CASCADE
+//   FOREIGN KEY employee_companies_organization_id_fkey: FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE
+//   PRIMARY KEY employee_companies_pkey: PRIMARY KEY (employee_id, organization_id)
+// Table: employees
+//   FOREIGN KEY employees_department_id_fkey: FOREIGN KEY (department_id) REFERENCES departments(id) ON DELETE SET NULL
+//   PRIMARY KEY employees_pkey: PRIMARY KEY (id)
+//   FOREIGN KEY employees_user_id_fkey: FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE
 // Table: financial_movements
 //   FOREIGN KEY financial_movements_bank_account_id_fkey: FOREIGN KEY (bank_account_id) REFERENCES bank_accounts(id) ON DELETE SET NULL
 //   FOREIGN KEY financial_movements_cost_center_id_fkey: FOREIGN KEY (cost_center_id) REFERENCES cost_centers(id) ON DELETE SET NULL
@@ -664,6 +788,31 @@ export const Constants = {
 //     USING: (organization_id IN ( SELECT organizations.id    FROM organizations   WHERE (organizations.user_id = auth.uid())))
 //   Policy "org_cost_centers_update" (UPDATE, PERMISSIVE) roles={authenticated}
 //     USING: (organization_id IN ( SELECT organizations.id    FROM organizations   WHERE (organizations.user_id = auth.uid())))
+// Table: departments
+//   Policy "user_departments_delete" (DELETE, PERMISSIVE) roles={authenticated}
+//     USING: (user_id = auth.uid())
+//   Policy "user_departments_insert" (INSERT, PERMISSIVE) roles={authenticated}
+//     WITH CHECK: (user_id = auth.uid())
+//   Policy "user_departments_select" (SELECT, PERMISSIVE) roles={authenticated}
+//     USING: (user_id = auth.uid())
+//   Policy "user_departments_update" (UPDATE, PERMISSIVE) roles={authenticated}
+//     USING: (user_id = auth.uid())
+// Table: employee_companies
+//   Policy "user_employee_companies_delete" (DELETE, PERMISSIVE) roles={authenticated}
+//     USING: (employee_id IN ( SELECT employees.id    FROM employees   WHERE (employees.user_id = auth.uid())))
+//   Policy "user_employee_companies_insert" (INSERT, PERMISSIVE) roles={authenticated}
+//     WITH CHECK: (employee_id IN ( SELECT employees.id    FROM employees   WHERE (employees.user_id = auth.uid())))
+//   Policy "user_employee_companies_select" (SELECT, PERMISSIVE) roles={authenticated}
+//     USING: (employee_id IN ( SELECT employees.id    FROM employees   WHERE (employees.user_id = auth.uid())))
+// Table: employees
+//   Policy "user_employees_delete" (DELETE, PERMISSIVE) roles={authenticated}
+//     USING: (user_id = auth.uid())
+//   Policy "user_employees_insert" (INSERT, PERMISSIVE) roles={authenticated}
+//     WITH CHECK: (user_id = auth.uid())
+//   Policy "user_employees_select" (SELECT, PERMISSIVE) roles={authenticated}
+//     USING: (user_id = auth.uid())
+//   Policy "user_employees_update" (UPDATE, PERMISSIVE) roles={authenticated}
+//     USING: (user_id = auth.uid())
 // Table: financial_movements
 //   Policy "org_financial_movements_delete" (DELETE, PERMISSIVE) roles={authenticated}
 //     USING: (organization_id IN ( SELECT organizations.id    FROM organizations   WHERE (organizations.user_id = auth.uid())))

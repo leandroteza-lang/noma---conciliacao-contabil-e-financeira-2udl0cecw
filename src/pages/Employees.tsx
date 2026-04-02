@@ -585,14 +585,14 @@ export default function Employees() {
               <div className="space-y-2 md:col-span-2">
                 <Label>Departamento</Label>
                 <Select
-                  value={watch('department_id') || ''}
-                  onValueChange={(v) => setValue('department_id', v)}
+                  value={watch('department_id') || 'none'}
+                  onValueChange={(v) => setValue('department_id', v === 'none' ? '' : v)}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Selecione..." />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Nenhum</SelectItem>
+                    <SelectItem value="none">Nenhum</SelectItem>
                     {departments.map((d) => (
                       <SelectItem key={d.id} value={d.id}>
                         {d.name}
