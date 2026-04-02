@@ -1,45 +1,42 @@
-import { useState, useEffect } from 'react'
-import { CheckSquare, Trash2, RotateCcw, Loader2, Check, AlertCircle } from 'lucide-react'
+import { useState, useEffect, useMemo } from 'react'
+import {
+  CheckSquare,
+  RotateCcw,
+  Trash2,
+  Loader2,
+  AlertCircle,
+  CalendarIcon,
+  Eraser,
+} from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
 import { useAuth } from '@/hooks/use-auth'
 import { useToast } from '@/hooks/use-toast'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
-import { Badge } from '@/components/ui/badge'
-import { Checkbox } from '@/components/ui/checkbox'
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Calendar } from '@/components/ui/calendar'
+import { Label } from '@/components/ui/label'
 import { format } from 'date-fns'
-import { ptBR } from 'date-fns/locale'
-
-interface PendingItem {
-  id: string
-  type:
-    | 'organization'
-    | 'department'
-    | 'employee'
-    | 'cost_center'
-    | 'chart_account'
-    | 'bank_account'
-  typeLabel: string
-  name: string
-  requestedAt: string
-  requestedBy?: string
-  requestedByName?: string
-  originalData: any
-}
+import { cn } from '@/lib/utils'
+import { ItemsTable, PendingItem } from '@/components/approvals/ItemsTable'
 
 export default function Approvals() {
   const [items, setItems] = useState<PendingItem[]>([])
   const [loading, setLoading] = useState(true)
   const [processingId, setProcessingId] = useState<string | null>(null)
   const [selectedIds, setSelectedIds] = useState<string[]>([])
+  const [activeTab, setActiveTab] = useState<'pending' | 'trash'>('pending')
+  const [filterCategory, setFilterCategory] = useState<string>('all')
+  const [filterRequester, setFilterRequester] = useState<string>('all')
+  const [filterDate, setFilterDate] = useState<Date | undefined>()
   const { role } = useAuth()
   const { toast } = useToast()
 
@@ -48,89 +45,127 @@ export default function Approvals() {
     try {
       setLoading(true)
       const [orgs, depts, emps, costs, charts, banks] = await Promise.all([
-        supabase.from('organizations').select('*').eq('pending_deletion', true),
-        supabase.from('departments').select('*').eq('pending_deletion', true),
-        supabase.from('employees').select('*').eq('pending_deletion', true),
-        supabase.from('cost_centers').select('*').eq('pending_deletion', true),
-        supabase.from('chart_of_accounts').select('*').eq('pending_deletion', true),
-        supabase.from('bank_accounts').select('*').eq('pending_deletion', true),
+        supabase
+          .from('organizations')
+          .select('*')
+          .or('pending_deletion.eq.true,deleted_at.not.is.null'),
+        supabase
+          .from('departments')
+          .select('*')
+          .or('pending_deletion.eq.true,deleted_at.not.is.null'),
+        supabase
+          .from('employees')
+          .select('*')
+          .or('pending_deletion.eq.true,deleted_at.not.is.null'),
+        supabase
+          .from('cost_centers')
+          .select('*')
+          .or('pending_deletion.eq.true,deleted_at.not.is.null'),
+        supabase
+          .from('chart_of_accounts')
+          .select('*')
+          .or('pending_deletion.eq.true,deleted_at.not.is.null'),
+        supabase
+          .from('bank_accounts')
+          .select('*')
+          .or('pending_deletion.eq.true,deleted_at.not.is.null'),
       ])
 
       const unified: PendingItem[] = [
-        ...(orgs.data || []).map((o) => ({
+        ...(orgs.data || []).map((o: any) => ({
           id: o.id,
           type: 'organization' as const,
           typeLabel: 'Empresa',
           name: o.name,
           requestedAt: o.deletion_requested_at || o.created_at,
           requestedBy: o.deletion_requested_by,
+          deletedAt: o.deleted_at,
+          deletedBy: o.deleted_by,
+          pending: o.pending_deletion,
           originalData: o,
         })),
-        ...(depts.data || []).map((d) => ({
+        ...(depts.data || []).map((d: any) => ({
           id: d.id,
           type: 'department' as const,
           typeLabel: 'Departamento',
           name: d.name,
           requestedAt: d.deletion_requested_at || d.created_at,
           requestedBy: d.deletion_requested_by,
+          deletedAt: d.deleted_at,
+          deletedBy: d.deleted_by,
+          pending: d.pending_deletion,
           originalData: d,
         })),
-        ...(emps.data || []).map((e) => ({
+        ...(emps.data || []).map((e: any) => ({
           id: e.id,
           type: 'employee' as const,
           typeLabel: 'Funcionário',
           name: e.name,
           requestedAt: e.deletion_requested_at || e.created_at,
           requestedBy: e.deletion_requested_by,
+          deletedAt: e.deleted_at,
+          deletedBy: e.deleted_by,
+          pending: e.pending_deletion,
           originalData: e,
         })),
-        ...(costs.data || []).map((c) => ({
+        ...(costs.data || []).map((c: any) => ({
           id: c.id,
           type: 'cost_center' as const,
           typeLabel: 'Centro de Custo',
           name: `${c.code} - ${c.description}`,
           requestedAt: c.deletion_requested_at || c.created_at,
           requestedBy: c.deletion_requested_by,
+          deletedAt: c.deleted_at,
+          deletedBy: c.deleted_by,
+          pending: c.pending_deletion,
           originalData: c,
         })),
-        ...(charts.data || []).map((c) => ({
+        ...(charts.data || []).map((c: any) => ({
           id: c.id,
           type: 'chart_account' as const,
           typeLabel: 'Conta Contábil',
           name: `${c.account_code} - ${c.account_name}`,
           requestedAt: c.deletion_requested_at || c.created_at,
           requestedBy: c.deletion_requested_by,
+          deletedAt: c.deleted_at,
+          deletedBy: c.deleted_by,
+          pending: c.pending_deletion,
           originalData: c,
         })),
-        ...(banks.data || []).map((b) => ({
+        ...(banks.data || []).map((b: any) => ({
           id: b.id,
           type: 'bank_account' as const,
           typeLabel: 'Conta Bancária',
           name: `${b.bank_code} - ${b.description}`,
           requestedAt: b.deletion_requested_at || b.created_at,
           requestedBy: b.deletion_requested_by,
+          deletedAt: b.deleted_at,
+          deletedBy: b.deleted_by,
+          pending: b.pending_deletion,
           originalData: b,
         })),
       ]
 
-      const requesterIds = [...new Set(unified.map((i) => i.requestedBy).filter(Boolean))]
-      if (requesterIds.length > 0) {
-        const { data: requesters } = await supabase
+      const userIds = [
+        ...new Set(unified.flatMap((i) => [i.requestedBy, i.deletedBy]).filter(Boolean)),
+      ]
+      if (userIds.length > 0) {
+        const { data: users } = await supabase
           .from('employees')
           .select('user_id, name')
-          .in('user_id', requesterIds)
-        const reqMap: Record<string, string> = {}
-        requesters?.forEach((r) => {
-          if (r.user_id) reqMap[r.user_id] = r.name
+          .in('user_id', userIds)
+        const userMap: Record<string, string> = {}
+        users?.forEach((u: any) => {
+          if (u.user_id) userMap[u.user_id] = u.name
         })
         unified.forEach((i) => {
-          if (i.requestedBy) {
-            i.requestedByName = reqMap[i.requestedBy] || 'Usuário Desconhecido'
-          }
+          if (i.requestedBy) i.requestedByName = userMap[i.requestedBy] || 'Usuário Desconhecido'
+          if (i.deletedBy) i.deletedByName = userMap[i.deletedBy] || 'Usuário Desconhecido'
         })
       }
-
-      unified.sort((a, b) => new Date(b.requestedAt).getTime() - new Date(a.requestedAt).getTime())
+      unified.sort(
+        (a, b) => new Date(b.requestedAt || 0).getTime() - new Date(a.requestedAt || 0).getTime(),
+      )
       setItems(unified)
       setSelectedIds((prev) => prev.filter((id) => unified.some((i) => i.id === id)))
     } catch (e: any) {
@@ -143,44 +178,76 @@ export default function Approvals() {
   useEffect(() => {
     fetchPendingItems()
   }, [role])
+  useEffect(() => {
+    setSelectedIds([])
+  }, [activeTab])
 
-  const getTableForType = (type: PendingItem['type']) => {
-    switch (type) {
-      case 'organization':
-        return 'organizations'
-      case 'department':
-        return 'departments'
-      case 'employee':
-        return 'employees'
-      case 'cost_center':
-        return 'cost_centers'
-      case 'chart_account':
-        return 'chart_of_accounts'
-      case 'bank_account':
-        return 'bank_accounts'
-      default:
-        return ''
+  const getTableForType = (type: string) => {
+    const map: Record<string, string> = {
+      organization: 'organizations',
+      department: 'departments',
+      employee: 'employees',
+      cost_center: 'cost_centers',
+      chart_account: 'chart_of_accounts',
+      bank_account: 'bank_accounts',
     }
+    return map[type] || ''
   }
 
   const handleApprove = async (item: PendingItem) => {
-    if (!confirm(`Deseja realmente EXCLUIR DEFINITIVAMENTE o(a) ${item.typeLabel} "${item.name}"?`))
-      return
-
     setProcessingId(item.id)
     try {
-      const table = getTableForType(item.type)
-      const { error } = await supabase.from(table).delete().eq('id', item.id)
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+      const { error } = await supabase
+        .from(getTableForType(item.type))
+        .update({
+          pending_deletion: false,
+          deleted_at: new Date().toISOString(),
+          deleted_by: user?.id,
+        } as any)
+        .eq('id', item.id)
+      if (error) throw error
+      toast({ title: 'Aprovado', description: 'Registro movido para a lixeira.' })
+      fetchPendingItems()
+    } catch (e: any) {
+      toast({ title: 'Erro', description: e.message, variant: 'destructive' })
+    } finally {
+      setProcessingId(null)
+    }
+  }
 
-      if (error) {
-        if (error.message.includes('violates foreign key constraint')) {
-          throw new Error(
-            'Não é possível excluir. Existem registros vinculados a este item no sistema.',
-          )
-        }
-        throw error
-      }
+  const handleRestore = async (item: PendingItem) => {
+    setProcessingId(item.id)
+    try {
+      const { error } = await supabase
+        .from(getTableForType(item.type))
+        .update({
+          pending_deletion: false,
+          deletion_requested_at: null,
+          deletion_requested_by: null,
+          deleted_at: null,
+          deleted_by: null,
+        } as any)
+        .eq('id', item.id)
+      if (error) throw error
+      toast({ title: 'Restaurado', description: 'O registro voltou a ficar ativo no sistema.' })
+      fetchPendingItems()
+    } catch (e: any) {
+      toast({ title: 'Erro', description: e.message, variant: 'destructive' })
+    } finally {
+      setProcessingId(null)
+    }
+  }
 
+  const handleHardDelete = async (item: PendingItem) => {
+    if (!confirm(`Deseja realmente EXCLUIR DEFINITIVAMENTE o(a) ${item.typeLabel} "${item.name}"?`))
+      return
+    setProcessingId(item.id)
+    try {
+      const { error } = await supabase.from(getTableForType(item.type)).delete().eq('id', item.id)
+      if (error) throw error
       toast({ title: 'Excluído', description: 'Registro removido permanentemente.' })
       fetchPendingItems()
     } catch (e: any) {
@@ -190,280 +257,250 @@ export default function Approvals() {
     }
   }
 
-  const handleRestore = async (item: PendingItem) => {
-    setProcessingId(item.id)
-    try {
-      const table = getTableForType(item.type)
-      const { error } = await supabase
-        .from(table)
-        .update({
-          pending_deletion: false,
-          deletion_requested_at: null,
-          deletion_requested_by: null,
-        })
-        .eq('id', item.id)
-
-      if (error) throw error
-
-      toast({ title: 'Restaurado', description: 'O registro voltou a ficar ativo no sistema.' })
-      fetchPendingItems()
-    } catch (e: any) {
-      toast({ title: 'Erro ao restaurar', description: e.message, variant: 'destructive' })
-    } finally {
-      setProcessingId(null)
-    }
-  }
-
-  const handleBulkApprove = async () => {
+  const handleBulkAction = async (action: 'approve' | 'restore' | 'hardDelete') => {
     if (selectedIds.length === 0) return
     if (
-      !confirm(
-        `Deseja realmente EXCLUIR DEFINITIVAMENTE os ${selectedIds.length} itens selecionados?`,
-      )
+      action === 'hardDelete' &&
+      !confirm(`Deseja EXCLUIR DEFINITIVAMENTE os ${selectedIds.length} itens selecionados?`)
     )
       return
-
     setProcessingId('bulk')
     try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
       const itemsToProcess = items.filter((i) => selectedIds.includes(i.id))
-      let hasError = false
-
       for (const item of itemsToProcess) {
-        const table = getTableForType(item.type)
-        const { error } = await supabase.from(table).delete().eq('id', item.id)
-        if (error) hasError = true
+        if (action === 'hardDelete') {
+          await supabase.from(getTableForType(item.type)).delete().eq('id', item.id)
+        } else if (action === 'approve') {
+          await supabase
+            .from(getTableForType(item.type))
+            .update({
+              pending_deletion: false,
+              deleted_at: new Date().toISOString(),
+              deleted_by: user?.id,
+            } as any)
+            .eq('id', item.id)
+        } else {
+          await supabase
+            .from(getTableForType(item.type))
+            .update({
+              pending_deletion: false,
+              deletion_requested_at: null,
+              deletion_requested_by: null,
+              deleted_at: null,
+              deleted_by: null,
+            } as any)
+            .eq('id', item.id)
+        }
       }
-
-      if (hasError) {
-        toast({
-          title: 'Aviso',
-          description:
-            'Alguns itens não puderam ser excluídos devido a relacionamentos no banco de dados.',
-          variant: 'destructive',
-        })
-      } else {
-        toast({
-          title: 'Exclusão concluída',
-          description: 'Os registros selecionados foram permanentemente removidos.',
-        })
-      }
+      toast({
+        title: 'Ação concluída',
+        description: 'Os registros selecionados foram processados.',
+      })
       setSelectedIds([])
       fetchPendingItems()
     } catch (e: any) {
-      toast({ title: 'Erro na exclusão em lote', description: e.message, variant: 'destructive' })
+      toast({ title: 'Erro na ação em lote', description: e.message, variant: 'destructive' })
     } finally {
       setProcessingId(null)
     }
   }
 
-  const handleBulkRestore = async () => {
-    if (selectedIds.length === 0) return
+  const pendingItems = items.filter((i) => i.pending)
+  const trashItems = items.filter((i) => i.deletedAt)
+  const uniqueTrashRequesters = useMemo(
+    () =>
+      Array.from(new Map(trashItems.map((i) => [i.deletedBy, i.deletedByName])).entries()).map(
+        ([id, name]) => ({ id, name: name || 'Desconhecido' }),
+      ),
+    [trashItems],
+  )
 
-    setProcessingId('bulk')
-    try {
-      const itemsToProcess = items.filter((i) => selectedIds.includes(i.id))
-
-      for (const item of itemsToProcess) {
-        const table = getTableForType(item.type)
-        await supabase
-          .from(table)
-          .update({
-            pending_deletion: false,
-            deletion_requested_at: null,
-            deletion_requested_by: null,
-          })
-          .eq('id', item.id)
-      }
-
-      toast({
-        title: 'Restauração concluída',
-        description: 'Os registros selecionados foram restaurados com sucesso.',
-      })
-      setSelectedIds([])
-      fetchPendingItems()
-    } catch (e: any) {
-      toast({
-        title: 'Erro na restauração em lote',
-        description: e.message,
-        variant: 'destructive',
-      })
-    } finally {
-      setProcessingId(null)
+  const filteredTrash = trashItems.filter((item) => {
+    if (filterCategory !== 'all' && item.type !== filterCategory) return false
+    if (filterRequester !== 'all' && item.deletedBy !== filterRequester) return false
+    if (filterDate && item.deletedAt) {
+      const itemD = new Date(item.deletedAt)
+      if (
+        itemD.getFullYear() !== filterDate.getFullYear() ||
+        itemD.getMonth() !== filterDate.getMonth() ||
+        itemD.getDate() !== filterDate.getDate()
+      )
+        return false
     }
-  }
+    return true
+  })
 
-  if (role !== 'admin') {
+  if (role !== 'admin')
     return (
-      <div className="container mx-auto p-4 sm:p-6 max-w-7xl flex flex-col items-center justify-center min-h-[60vh]">
+      <div className="container mx-auto p-4 flex flex-col items-center justify-center min-h-[60vh]">
         <AlertCircle className="h-16 w-16 text-slate-300 mb-4" />
-        <h2 className="text-2xl font-bold text-slate-700">Acesso Restrito</h2>
-        <p className="text-slate-500">
-          Apenas administradores podem acessar a central de aprovações.
-        </p>
+        <h2 className="text-2xl font-bold">Acesso Restrito</h2>
       </div>
     )
-  }
+
+  const currentList = activeTab === 'pending' ? pendingItems : filteredTrash
 
   return (
     <div className="container mx-auto p-4 sm:p-6 max-w-7xl space-y-6 animate-in fade-in duration-500">
       <div>
         <h1 className="text-3xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
-          <CheckSquare className="h-8 w-8 text-blue-600" />
-          Central de Aprovações
+          <CheckSquare className="h-8 w-8 text-blue-600" /> Central de Aprovações
         </h1>
-        <p className="text-slate-500 mt-1">Gerencie as solicitações de exclusão do sistema.</p>
+        <p className="text-slate-500 mt-1">
+          Gerencie as solicitações pendentes e itens na lixeira.
+        </p>
       </div>
 
-      {selectedIds.length > 0 && (
-        <div className="bg-slate-50 border border-slate-200 rounded-md p-3 flex items-center justify-between animate-in fade-in slide-in-from-top-2">
-          <span className="text-sm font-medium text-slate-700">
-            {selectedIds.length} item(ns) selecionado(s)
-          </span>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleBulkRestore}
-              disabled={processingId === 'bulk'}
-              className="gap-2 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-            >
-              {processingId === 'bulk' ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <RotateCcw className="h-4 w-4" />
-              )}
-              Restaurar Selecionados
-            </Button>
-            <Button
-              variant="destructive"
-              size="sm"
-              onClick={handleBulkApprove}
-              disabled={processingId === 'bulk'}
-              className="gap-2"
-            >
-              {processingId === 'bulk' ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Trash2 className="h-4 w-4" />
-              )}
-              Aprovar Selecionados
-            </Button>
-          </div>
-        </div>
-      )}
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'pending' | 'trash')}>
+        <TabsList className="mb-2">
+          <TabsTrigger value="pending">Pendentes ({pendingItems.length})</TabsTrigger>
+          <TabsTrigger value="trash">Lixeira ({trashItems.length})</TabsTrigger>
+        </TabsList>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Exclusões Pendentes</CardTitle>
-          <CardDescription>
-            Revise os registros marcados para exclusão por outros usuários.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="p-0">
-          {loading ? (
-            <div className="py-12 flex justify-center">
-              <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+        {activeTab === 'trash' && (
+          <div className="flex flex-col sm:flex-row gap-4 mb-4 items-end bg-slate-50 p-4 rounded-md border border-slate-200">
+            <div className="space-y-1">
+              <Label>Categoria</Label>
+              <Select value={filterCategory} onValueChange={setFilterCategory}>
+                <SelectTrigger className="w-[160px] bg-white">
+                  <SelectValue placeholder="Todas" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas</SelectItem>
+                  <SelectItem value="organization">Empresa</SelectItem>
+                  <SelectItem value="department">Departamento</SelectItem>
+                  <SelectItem value="employee">Funcionário</SelectItem>
+                  <SelectItem value="cost_center">Centro de Custo</SelectItem>
+                  <SelectItem value="chart_account">Conta Contábil</SelectItem>
+                  <SelectItem value="bank_account">Conta Bancária</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-          ) : items.length === 0 ? (
-            <div className="py-12 text-center text-slate-500 flex flex-col items-center">
-              <Check className="h-12 w-12 text-green-400 mb-3" />
-              <p className="text-lg font-medium text-slate-700">Tudo limpo!</p>
-              <p>Não há solicitações de exclusão pendentes.</p>
+            <div className="space-y-1">
+              <Label>Excluído por</Label>
+              <Select value={filterRequester} onValueChange={setFilterRequester}>
+                <SelectTrigger className="w-[160px] bg-white">
+                  <SelectValue placeholder="Todos" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos</SelectItem>
+                  {uniqueTrashRequesters.map(
+                    (r) =>
+                      r.id && (
+                        <SelectItem key={r.id} value={r.id}>
+                          {r.name}
+                        </SelectItem>
+                      ),
+                  )}
+                </SelectContent>
+              </Select>
             </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader className="bg-slate-50">
-                  <TableRow>
-                    <TableHead className="w-12 text-center">
-                      <Checkbox
-                        checked={items.length > 0 && selectedIds.length === items.length}
-                        onCheckedChange={(checked) => {
-                          if (checked) setSelectedIds(items.map((i) => i.id))
-                          else setSelectedIds([])
-                        }}
-                      />
-                    </TableHead>
-                    <TableHead>Tipo</TableHead>
-                    <TableHead>Nome / Identificação</TableHead>
-                    <TableHead>Solicitado por</TableHead>
-                    <TableHead>Data da Solicitação</TableHead>
-                    <TableHead className="text-right">Ações</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {items.map((item) => (
-                    <TableRow key={item.id} className="hover:bg-slate-50/50">
-                      <TableCell className="py-3 px-4 text-center">
-                        <Checkbox
-                          checked={selectedIds.includes(item.id)}
-                          onCheckedChange={(checked) => {
-                            if (checked) setSelectedIds((prev) => [...prev, item.id])
-                            else setSelectedIds((prev) => prev.filter((id) => id !== item.id))
-                          }}
-                        />
-                      </TableCell>
-                      <TableCell className="py-3 px-4">
-                        <Badge
-                          variant="outline"
-                          className="bg-orange-50 text-orange-700 border-orange-200"
-                        >
-                          {item.typeLabel}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="py-3 px-4 font-medium text-slate-900">
-                        {item.name}
-                      </TableCell>
-                      <TableCell className="py-3 px-4 text-slate-600 text-sm">
-                        {item.requestedByName || '-'}
-                      </TableCell>
-                      <TableCell className="py-3 px-4 text-slate-500 text-sm">
-                        {item.requestedAt
-                          ? format(new Date(item.requestedAt), "dd 'de' MMMM 'às' HH:mm", {
-                              locale: ptBR,
-                            })
-                          : '-'}
-                      </TableCell>
-                      <TableCell className="py-3 px-4 text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleRestore(item)}
-                            disabled={!!processingId}
-                            className="gap-1.5 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                          >
-                            {processingId === item.id ? (
-                              <Loader2 className="h-3 w-3 animate-spin" />
-                            ) : (
-                              <RotateCcw className="h-3 w-3" />
-                            )}
-                            Restaurar
-                          </Button>
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            onClick={() => handleApprove(item)}
-                            disabled={!!processingId}
-                            className="gap-1.5"
-                          >
-                            {processingId === item.id ? (
-                              <Loader2 className="h-3 w-3 animate-spin" />
-                            ) : (
-                              <Trash2 className="h-3 w-3" />
-                            )}
-                            Aprovar
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+            <div className="space-y-1">
+              <Label>Data</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      'w-[160px] justify-start text-left font-normal bg-white',
+                      !filterDate && 'text-muted-foreground',
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {filterDate ? format(filterDate, 'dd/MM/yyyy') : 'Qualquer data'}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0">
+                  <Calendar
+                    mode="single"
+                    selected={filterDate}
+                    onSelect={setFilterDate}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
             </div>
-          )}
-        </CardContent>
-      </Card>
+            {(filterCategory !== 'all' || filterRequester !== 'all' || filterDate) && (
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  setFilterCategory('all')
+                  setFilterRequester('all')
+                  setFilterDate(undefined)
+                }}
+                className="text-slate-500"
+              >
+                <Eraser className="h-4 w-4 mr-2" /> Limpar
+              </Button>
+            )}
+          </div>
+        )}
+
+        {selectedIds.length > 0 && (
+          <div className="bg-slate-50 border border-slate-200 rounded-md p-3 flex items-center justify-between mb-4 animate-in slide-in-from-top-2">
+            <span className="text-sm font-medium text-slate-700">
+              {selectedIds.length} item(ns) selecionado(s)
+            </span>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleBulkAction('restore')}
+                disabled={processingId === 'bulk'}
+                className="text-blue-600 hover:text-blue-700"
+              >
+                <RotateCcw className="h-4 w-4 mr-2" /> Restaurar
+              </Button>
+              {activeTab === 'pending' ? (
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => handleBulkAction('approve')}
+                  disabled={processingId === 'bulk'}
+                >
+                  <Trash2 className="h-4 w-4 mr-2" /> Aprovar Exclusão
+                </Button>
+              ) : (
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => handleBulkAction('hardDelete')}
+                  disabled={processingId === 'bulk'}
+                >
+                  <Trash2 className="h-4 w-4 mr-2" /> Excluir Definitivamente
+                </Button>
+              )}
+            </div>
+          </div>
+        )}
+
+        <Card>
+          <CardContent className="p-0">
+            {loading ? (
+              <div className="py-12 flex justify-center">
+                <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+              </div>
+            ) : (
+              <ItemsTable
+                items={currentList}
+                isTrash={activeTab === 'trash'}
+                selectedIds={selectedIds}
+                onSelect={(id, c) =>
+                  setSelectedIds((prev) => (c ? [...prev, id] : prev.filter((x) => x !== id)))
+                }
+                onSelectAll={(c) => setSelectedIds(c ? currentList.map((i) => i.id) : [])}
+                processingId={processingId}
+                onRestore={handleRestore}
+                onApprove={handleApprove}
+                onHardDelete={handleHardDelete}
+              />
+            )}
+          </CardContent>
+        </Card>
+      </Tabs>
     </div>
   )
 }

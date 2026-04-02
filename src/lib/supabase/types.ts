@@ -137,9 +137,12 @@ export type Database = {
           classification: string | null
           company_name: string | null
           created_at: string | null
+          deletion_requested_at: string | null
+          deletion_requested_by: string | null
           description: string | null
           id: string
           organization_id: string | null
+          pending_deletion: boolean | null
         }
         Insert: {
           account_code?: string | null
@@ -151,9 +154,12 @@ export type Database = {
           classification?: string | null
           company_name?: string | null
           created_at?: string | null
+          deletion_requested_at?: string | null
+          deletion_requested_by?: string | null
           description?: string | null
           id?: string
           organization_id?: string | null
+          pending_deletion?: boolean | null
         }
         Update: {
           account_code?: string | null
@@ -165,9 +171,12 @@ export type Database = {
           classification?: string | null
           company_name?: string | null
           created_at?: string | null
+          deletion_requested_at?: string | null
+          deletion_requested_by?: string | null
           description?: string | null
           id?: string
           organization_id?: string | null
+          pending_deletion?: boolean | null
         }
         Relationships: [
           {
@@ -185,24 +194,33 @@ export type Database = {
           account_name: string | null
           account_type: string | null
           created_at: string | null
+          deletion_requested_at: string | null
+          deletion_requested_by: string | null
           id: string
           organization_id: string | null
+          pending_deletion: boolean | null
         }
         Insert: {
           account_code?: string | null
           account_name?: string | null
           account_type?: string | null
           created_at?: string | null
+          deletion_requested_at?: string | null
+          deletion_requested_by?: string | null
           id?: string
           organization_id?: string | null
+          pending_deletion?: boolean | null
         }
         Update: {
           account_code?: string | null
           account_name?: string | null
           account_type?: string | null
           created_at?: string | null
+          deletion_requested_at?: string | null
+          deletion_requested_by?: string | null
           id?: string
           organization_id?: string | null
+          pending_deletion?: boolean | null
         }
         Relationships: [
           {
@@ -219,36 +237,45 @@ export type Database = {
           classification: string | null
           code: string | null
           created_at: string | null
+          deletion_requested_at: string | null
+          deletion_requested_by: string | null
           description: string | null
           fixed_variable: string | null
           id: string
           operational: string | null
           organization_id: string | null
           parent_id: string | null
+          pending_deletion: boolean | null
           type_tga: string | null
         }
         Insert: {
           classification?: string | null
           code?: string | null
           created_at?: string | null
+          deletion_requested_at?: string | null
+          deletion_requested_by?: string | null
           description?: string | null
           fixed_variable?: string | null
           id?: string
           operational?: string | null
           organization_id?: string | null
           parent_id?: string | null
+          pending_deletion?: boolean | null
           type_tga?: string | null
         }
         Update: {
           classification?: string | null
           code?: string | null
           created_at?: string | null
+          deletion_requested_at?: string | null
+          deletion_requested_by?: string | null
           description?: string | null
           fixed_variable?: string | null
           id?: string
           operational?: string | null
           organization_id?: string | null
           parent_id?: string | null
+          pending_deletion?: boolean | null
           type_tga?: string | null
         }
         Relationships: [
@@ -686,6 +713,9 @@ export const Constants = {
 //   classification: character varying (nullable)
 //   created_at: timestamp with time zone (nullable, default: now())
 //   company_name: character varying (nullable)
+//   pending_deletion: boolean (nullable, default: false)
+//   deletion_requested_at: timestamp with time zone (nullable)
+//   deletion_requested_by: uuid (nullable)
 // Table: chart_of_accounts
 //   id: uuid (not null, default: gen_random_uuid())
 //   organization_id: uuid (nullable)
@@ -693,6 +723,9 @@ export const Constants = {
 //   account_name: character varying (nullable)
 //   account_type: character varying (nullable)
 //   created_at: timestamp with time zone (nullable, default: now())
+//   pending_deletion: boolean (nullable, default: false)
+//   deletion_requested_at: timestamp with time zone (nullable)
+//   deletion_requested_by: uuid (nullable)
 // Table: cost_centers
 //   id: uuid (not null, default: gen_random_uuid())
 //   organization_id: uuid (nullable)
@@ -704,6 +737,9 @@ export const Constants = {
 //   fixed_variable: character varying (nullable)
 //   classification: character varying (nullable)
 //   operational: character varying (nullable)
+//   pending_deletion: boolean (nullable, default: false)
+//   deletion_requested_at: timestamp with time zone (nullable)
+//   deletion_requested_by: uuid (nullable)
 // Table: departments
 //   id: uuid (not null, default: gen_random_uuid())
 //   user_id: uuid (not null)
@@ -773,12 +809,15 @@ export const Constants = {
 //   FOREIGN KEY accounting_entries_organization_id_fkey: FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE
 //   PRIMARY KEY accounting_entries_pkey: PRIMARY KEY (id)
 // Table: bank_accounts
+//   FOREIGN KEY bank_accounts_deletion_requested_by_fkey: FOREIGN KEY (deletion_requested_by) REFERENCES auth.users(id) ON DELETE SET NULL
 //   FOREIGN KEY bank_accounts_organization_id_fkey: FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE
 //   PRIMARY KEY bank_accounts_pkey: PRIMARY KEY (id)
 // Table: chart_of_accounts
+//   FOREIGN KEY chart_of_accounts_deletion_requested_by_fkey: FOREIGN KEY (deletion_requested_by) REFERENCES auth.users(id) ON DELETE SET NULL
 //   FOREIGN KEY chart_of_accounts_organization_id_fkey: FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE
 //   PRIMARY KEY chart_of_accounts_pkey: PRIMARY KEY (id)
 // Table: cost_centers
+//   FOREIGN KEY cost_centers_deletion_requested_by_fkey: FOREIGN KEY (deletion_requested_by) REFERENCES auth.users(id) ON DELETE SET NULL
 //   FOREIGN KEY cost_centers_organization_id_fkey: FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE
 //   FOREIGN KEY cost_centers_parent_id_fkey: FOREIGN KEY (parent_id) REFERENCES cost_centers(id) ON DELETE CASCADE
 //   PRIMARY KEY cost_centers_pkey: PRIMARY KEY (id)
