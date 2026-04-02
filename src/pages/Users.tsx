@@ -1269,24 +1269,29 @@ export default function UsersPage() {
               <Copy className="h-4 w-4" /> Copiar Link
             </Button>
             <Button
-              asChild
-              className="bg-green-600 hover:bg-green-700 gap-2 text-white cursor-pointer"
+              type="button"
+              className="bg-green-600 hover:bg-green-700 gap-2 text-white"
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                const phone = inviteLinkInfo?.phone ? inviteLinkInfo.phone.replace(/\D/g, '') : ''
+                const text = encodeURIComponent(
+                  `Olá ${inviteLinkInfo?.name}, aqui está o seu link de acesso ao sistema Gestão de Contas:\n\n${inviteLinkInfo?.link}`,
+                )
+                const url = phone
+                  ? `https://wa.me/55${phone}?text=${text}`
+                  : `https://api.whatsapp.com/send?text=${text}`
+
+                const link = document.createElement('a')
+                link.href = url
+                link.target = '_blank'
+                link.rel = 'noopener noreferrer'
+                document.body.appendChild(link)
+                link.click()
+                document.body.removeChild(link)
+              }}
             >
-              <a
-                href={
-                  inviteLinkInfo?.phone
-                    ? `https://wa.me/55${inviteLinkInfo.phone.replace(/\D/g, '')}?text=${encodeURIComponent(
-                        `Olá ${inviteLinkInfo.name}, aqui está o seu link de acesso ao sistema Gestão de Contas:\n\n${inviteLinkInfo.link}`,
-                      )}`
-                    : `https://api.whatsapp.com/send?text=${encodeURIComponent(
-                        `Olá ${inviteLinkInfo?.name}, aqui está o seu link de acesso ao sistema Gestão de Contas:\n\n${inviteLinkInfo?.link}`,
-                      )}`
-                }
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <MessageSquare className="h-4 w-4" /> Enviar por WhatsApp
-              </a>
+              <MessageSquare className="h-4 w-4" /> Enviar por WhatsApp
             </Button>
           </div>
         </DialogContent>
