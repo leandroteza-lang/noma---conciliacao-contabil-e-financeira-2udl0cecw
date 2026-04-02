@@ -39,6 +39,7 @@ Deno.serve(async (req: Request) => {
     const payload = await req.json()
     const records = payload.records
     const type = payload.type
+    const fileName = payload.fileName
 
     const SUPPORTED_TYPES = [
       'BANK_ACCOUNTS',
@@ -67,7 +68,12 @@ Deno.serve(async (req: Request) => {
 
     let inserted = 0
     let rejected = 0
-    const errors: string[] = []
+    const errors: any[] = []
+
+    const addError = (rowNum: number, msg: string, rowData: any) => {
+      rejected++
+      errors.push({ row: rowNum, error: msg, data: rowData })
+    }
 
     const { data: orgs, error: orgsError } = await supabase
       .from('organizations')
@@ -100,8 +106,7 @@ Deno.serve(async (req: Request) => {
 
         const nome = row['NOME']
         if (!nome || String(nome).trim() === '') {
-          rejected++
-          errors.push(`Linha ${rowNum}: A coluna NOME está vazia.`)
+          addError(rowNum, 'A coluna NOME está vazia.', row)
           continue
         }
 
@@ -117,8 +122,7 @@ Deno.serve(async (req: Request) => {
             .is('deleted_at', null)
             .maybeSingle()
           if (existingCnpj) {
-            rejected++
-            errors.push(`Linha ${rowNum}: CNPJ "${cnpj}" já cadastrado.`)
+            addError(rowNum, `CNPJ "${cnpj}" já cadastrado.`, row)
             continue
           }
         }
@@ -136,8 +140,7 @@ Deno.serve(async (req: Request) => {
         })
 
         if (insertError) {
-          rejected++
-          errors.push(`Linha ${rowNum}: Erro ao inserir - ${insertError.message}`)
+          addError(rowNum, `Erro ao inserir - ${insertError.message}`, row)
         } else {
           inserted++
         }
@@ -149,8 +152,7 @@ Deno.serve(async (req: Request) => {
 
         const nome = row['NOME']
         if (!nome || String(nome).trim() === '') {
-          rejected++
-          errors.push(`Linha ${rowNum}: A coluna NOME está vazia.`)
+          addError(rowNum, 'A coluna NOME está vazia.', row)
           continue
         }
 
@@ -165,8 +167,7 @@ Deno.serve(async (req: Request) => {
             .is('deleted_at', null)
             .maybeSingle()
           if (existingCode) {
-            rejected++
-            errors.push(`Linha ${rowNum}: Código "${codigo}" já cadastrado.`)
+            addError(rowNum, `Código "${codigo}" já cadastrado.`, row)
             continue
           }
         }
@@ -178,8 +179,7 @@ Deno.serve(async (req: Request) => {
         })
 
         if (insertError) {
-          rejected++
-          errors.push(`Linha ${rowNum}: Erro ao inserir - ${insertError.message}`)
+          addError(rowNum, `Erro ao inserir - ${insertError.message}`, row)
         } else {
           inserted++
         }
@@ -191,8 +191,7 @@ Deno.serve(async (req: Request) => {
 
         const nome = row['NOME']
         if (!nome || String(nome).trim() === '') {
-          rejected++
-          errors.push(`Linha ${rowNum}: A coluna NOME está vazia.`)
+          addError(rowNum, 'A coluna NOME está vazia.', row)
           continue
         }
 
@@ -209,9 +208,10 @@ Deno.serve(async (req: Request) => {
           if (dep) {
             depId = dep.id
           } else {
-            rejected++
-            errors.push(
-              `Linha ${rowNum}: Departamento com código "${depCode}" não encontrado ou excluído.`,
+            addError(
+              rowNum,
+              `Departamento com código "${depCode}" não encontrado ou excluído.`,
+              row,
             )
             continue
           }
@@ -227,8 +227,7 @@ Deno.serve(async (req: Request) => {
             .is('deleted_at', null)
             .maybeSingle()
           if (existingUser) {
-            rejected++
-            errors.push(`Linha ${rowNum}: E-mail "${email}" já está em uso por outro funcionário.`)
+            addError(rowNum, `E-mail "${email}" já está em uso por outro funcionário.`, row)
             continue
           }
         }
@@ -252,8 +251,7 @@ Deno.serve(async (req: Request) => {
         })
 
         if (insertError) {
-          rejected++
-          errors.push(`Linha ${rowNum}: Erro ao inserir - ${insertError.message}`)
+          addError(rowNum, `Erro ao inserir - ${insertError.message}`, row)
         } else {
           inserted++
         }
@@ -267,21 +265,18 @@ Deno.serve(async (req: Request) => {
         const contaContabil = row['CONTA_CONTABIL']
 
         if (!empresa || String(empresa).trim() === '') {
-          rejected++
-          errors.push(`Linha ${rowNum}: A coluna EMPRESA está vazia.`)
+          addError(rowNum, 'A coluna EMPRESA está vazia.', row)
           continue
         }
 
         if (!contaContabil || String(contaContabil).trim() === '') {
-          rejected++
-          errors.push(`Linha ${rowNum}: A coluna CONTA_CONTABIL está vazia.`)
+          addError(rowNum, 'A coluna CONTA_CONTABIL está vazia.', row)
           continue
         }
 
         const orgId = orgMap.get(String(empresa).trim().toLowerCase())
         if (!orgId) {
-          rejected++
-          errors.push(`Linha ${rowNum}: A empresa "${empresa}" não foi encontrada na sua conta.`)
+          addError(rowNum, `A empresa "${empresa}" não foi encontrada na sua conta.`, row)
           continue
         }
 
@@ -294,15 +289,15 @@ Deno.serve(async (req: Request) => {
           .maybeSingle()
 
         if (checkError) {
-          rejected++
-          errors.push(`Linha ${rowNum}: Falha ao verificar duplicata - ${checkError.message}`)
+          addError(rowNum, `Falha ao verificar duplicata - ${checkError.message}`, row)
           continue
         }
 
         if (existing) {
-          rejected++
-          errors.push(
-            `Linha ${rowNum}: A Conta Contábil "${contaContabil}" já está cadastrada para esta empresa.`,
+          addError(
+            rowNum,
+            `A Conta Contábil "${contaContabil}" já está cadastrada para esta empresa.`,
+            row,
           )
           continue
         }
@@ -321,8 +316,7 @@ Deno.serve(async (req: Request) => {
         })
 
         if (insertError) {
-          rejected++
-          errors.push(`Linha ${rowNum}: Erro ao inserir no banco - ${insertError.message}`)
+          addError(rowNum, `Erro ao inserir no banco - ${insertError.message}`, row)
         } else {
           inserted++
         }
@@ -340,27 +334,23 @@ Deno.serve(async (req: Request) => {
         const description = row['DESCRICAO']
 
         if (!empresa || String(empresa).trim() === '') {
-          rejected++
-          errors.push(`Linha ${rowNum}: A coluna EMPRESA está vazia.`)
+          addError(rowNum, 'A coluna EMPRESA está vazia.', row)
           continue
         }
 
         if (!code || String(code).trim() === '') {
-          rejected++
-          errors.push(`Linha ${rowNum}: A coluna COD está vazia.`)
+          addError(rowNum, 'A coluna COD está vazia.', row)
           continue
         }
 
         if (!description || String(description).trim() === '') {
-          rejected++
-          errors.push(`Linha ${rowNum}: A coluna DESCRICAO está vazia.`)
+          addError(rowNum, 'A coluna DESCRICAO está vazia.', row)
           continue
         }
 
         const orgId = orgMap.get(String(empresa).trim().toLowerCase())
         if (!orgId) {
-          rejected++
-          errors.push(`Linha ${rowNum}: A empresa "${empresa}" não foi encontrada na sua conta.`)
+          addError(rowNum, `A empresa "${empresa}" não foi encontrada na sua conta.`, row)
           continue
         }
 
@@ -381,19 +371,17 @@ Deno.serve(async (req: Request) => {
             .maybeSingle()
 
           if (parentError) {
-            rejected++
-            errors.push(
-              `Linha ${rowNum}: Erro ao buscar centro de custo pai - ${parentError.message}`,
-            )
+            addError(rowNum, `Erro ao buscar centro de custo pai - ${parentError.message}`, row)
             continue
           }
 
           if (parentData) {
             parentId = parentData.id
           } else {
-            rejected++
-            errors.push(
-              `Linha ${rowNum}: Centro de custo pai "${parentCode}" não encontrado para hierarquia.`,
+            addError(
+              rowNum,
+              `Centro de custo pai "${parentCode}" não encontrado para hierarquia.`,
+              row,
             )
             continue
           }
@@ -408,16 +396,12 @@ Deno.serve(async (req: Request) => {
           .maybeSingle()
 
         if (checkError) {
-          rejected++
-          errors.push(`Linha ${rowNum}: Falha ao verificar duplicata - ${checkError.message}`)
+          addError(rowNum, `Falha ao verificar duplicata - ${checkError.message}`, row)
           continue
         }
 
         if (existing) {
-          rejected++
-          errors.push(
-            `Linha ${rowNum}: O código "${strCode}" já está cadastrado para esta empresa.`,
-          )
+          addError(rowNum, `O código "${strCode}" já está cadastrado para esta empresa.`, row)
           continue
         }
 
@@ -433,8 +417,7 @@ Deno.serve(async (req: Request) => {
         } as any)
 
         if (insertError) {
-          rejected++
-          errors.push(`Linha ${rowNum}: Erro ao inserir no banco - ${insertError.message}`)
+          addError(rowNum, `Erro ao inserir no banco - ${insertError.message}`, row)
         } else {
           inserted++
         }
@@ -450,27 +433,23 @@ Deno.serve(async (req: Request) => {
         const accountType = row['TIPO_CONTA']
 
         if (!empresa || String(empresa).trim() === '') {
-          rejected++
-          errors.push(`Linha ${rowNum}: A coluna EMPRESA está vazia.`)
+          addError(rowNum, 'A coluna EMPRESA está vazia.', row)
           continue
         }
 
         if (!code || String(code).trim() === '') {
-          rejected++
-          errors.push(`Linha ${rowNum}: A coluna CODIGO_CONTA está vazia.`)
+          addError(rowNum, 'A coluna CODIGO_CONTA está vazia.', row)
           continue
         }
 
         if (!name || String(name).trim() === '') {
-          rejected++
-          errors.push(`Linha ${rowNum}: A coluna NOME_CONTA está vazia.`)
+          addError(rowNum, 'A coluna NOME_CONTA está vazia.', row)
           continue
         }
 
         const orgId = orgMap.get(String(empresa).trim().toLowerCase())
         if (!orgId) {
-          rejected++
-          errors.push(`Linha ${rowNum}: A empresa "${empresa}" não foi encontrada na sua conta.`)
+          addError(rowNum, `A empresa "${empresa}" não foi encontrada na sua conta.`, row)
           continue
         }
 
@@ -485,15 +464,15 @@ Deno.serve(async (req: Request) => {
           .maybeSingle()
 
         if (checkError) {
-          rejected++
-          errors.push(`Linha ${rowNum}: Falha ao verificar duplicata - ${checkError.message}`)
+          addError(rowNum, `Falha ao verificar duplicata - ${checkError.message}`, row)
           continue
         }
 
         if (existing) {
-          rejected++
-          errors.push(
-            `Linha ${rowNum}: O código de conta "${strCode}" já está cadastrado para esta empresa.`,
+          addError(
+            rowNum,
+            `O código de conta "${strCode}" já está cadastrado para esta empresa.`,
+            row,
           )
           continue
         }
@@ -506,8 +485,7 @@ Deno.serve(async (req: Request) => {
         })
 
         if (insertError) {
-          rejected++
-          errors.push(`Linha ${rowNum}: Erro ao inserir no banco - ${insertError.message}`)
+          addError(rowNum, `Erro ao inserir no banco - ${insertError.message}`, row)
         } else {
           inserted++
         }
@@ -523,27 +501,23 @@ Deno.serve(async (req: Request) => {
         const tipoMapeamento = row['TIPO_MAPEAMENTO']
 
         if (!empresa || String(empresa).trim() === '') {
-          rejected++
-          errors.push(`Linha ${rowNum}: A coluna EMPRESA está vazia.`)
+          addError(rowNum, 'A coluna EMPRESA está vazia.', row)
           continue
         }
 
         if (!centroCusto || String(centroCusto).trim() === '') {
-          rejected++
-          errors.push(`Linha ${rowNum}: A coluna CENTRO_CUSTO está vazia.`)
+          addError(rowNum, 'A coluna CENTRO_CUSTO está vazia.', row)
           continue
         }
 
         if (!contaContabil || String(contaContabil).trim() === '') {
-          rejected++
-          errors.push(`Linha ${rowNum}: A coluna CONTA_CONTABIL está vazia.`)
+          addError(rowNum, 'A coluna CONTA_CONTABIL está vazia.', row)
           continue
         }
 
         const orgId = orgMap.get(String(empresa).trim().toLowerCase())
         if (!orgId) {
-          rejected++
-          errors.push(`Linha ${rowNum}: A empresa "${empresa}" não foi encontrada na sua conta.`)
+          addError(rowNum, `A empresa "${empresa}" não foi encontrada na sua conta.`, row)
           continue
         }
 
@@ -559,8 +533,7 @@ Deno.serve(async (req: Request) => {
           .maybeSingle()
 
         if (ccError || !ccData) {
-          rejected++
-          errors.push(`Linha ${rowNum}: Centro de Custo "${strCentroCusto}" não encontrado.`)
+          addError(rowNum, `Centro de Custo "${strCentroCusto}" não encontrado.`, row)
           continue
         }
 
@@ -573,8 +546,7 @@ Deno.serve(async (req: Request) => {
           .maybeSingle()
 
         if (caError || !caData) {
-          rejected++
-          errors.push(`Linha ${rowNum}: Conta Contábil "${strContaContabil}" não encontrada.`)
+          addError(rowNum, `Conta Contábil "${strContaContabil}" não encontrada.`, row)
           continue
         }
 
@@ -587,15 +559,15 @@ Deno.serve(async (req: Request) => {
           .maybeSingle()
 
         if (checkError) {
-          rejected++
-          errors.push(`Linha ${rowNum}: Falha ao verificar duplicata - ${checkError.message}`)
+          addError(rowNum, `Falha ao verificar duplicata - ${checkError.message}`, row)
           continue
         }
 
         if (existing) {
-          rejected++
-          errors.push(
-            `Linha ${rowNum}: O mapeamento entre "${strCentroCusto}" e "${strContaContabil}" já existe.`,
+          addError(
+            rowNum,
+            `O mapeamento entre "${strCentroCusto}" e "${strContaContabil}" já existe.`,
+            row,
           )
           continue
         }
@@ -608,8 +580,7 @@ Deno.serve(async (req: Request) => {
         })
 
         if (insertError) {
-          rejected++
-          errors.push(`Linha ${rowNum}: Erro ao inserir no banco - ${insertError.message}`)
+          addError(rowNum, `Erro ao inserir no banco - ${insertError.message}`, row)
         } else {
           inserted++
         }
@@ -628,36 +599,31 @@ Deno.serve(async (req: Request) => {
         const contaCredito = row['CONTA_CREDITO']
 
         if (!empresa || String(empresa).trim() === '') {
-          rejected++
-          errors.push(`Linha ${rowNum}: A coluna EMPRESA está vazia.`)
+          addError(rowNum, 'A coluna EMPRESA está vazia.', row)
           continue
         }
 
         if (!data || String(data).trim() === '') {
-          rejected++
-          errors.push(`Linha ${rowNum}: A coluna DATA está vazia.`)
+          addError(rowNum, 'A coluna DATA está vazia.', row)
           continue
         }
 
         const parsedDate = new Date(data)
         if (isNaN(parsedDate.getTime())) {
-          rejected++
-          errors.push(`Linha ${rowNum}: A coluna DATA possui formato inválido.`)
+          addError(rowNum, 'A coluna DATA possui formato inválido.', row)
           continue
         }
 
         const valorStr = String(valorRaw).replace(',', '.')
         const valor = parseFloat(valorStr)
         if (isNaN(valor)) {
-          rejected++
-          errors.push(`Linha ${rowNum}: A coluna VALOR possui formato numérico inválido.`)
+          addError(rowNum, 'A coluna VALOR possui formato numérico inválido.', row)
           continue
         }
 
         const orgId = orgMap.get(String(empresa).trim().toLowerCase())
         if (!orgId) {
-          rejected++
-          errors.push(`Linha ${rowNum}: A empresa "${empresa}" não foi encontrada.`)
+          addError(rowNum, `A empresa "${empresa}" não foi encontrada.`, row)
           continue
         }
 
@@ -670,8 +636,7 @@ Deno.serve(async (req: Request) => {
           .maybeSingle()
 
         if (ccError || !ccData) {
-          rejected++
-          errors.push(`Linha ${rowNum}: Centro de Custo "${strCentroCusto}" não encontrado.`)
+          addError(rowNum, `Centro de Custo "${strCentroCusto}" não encontrado.`, row)
           continue
         }
 
@@ -685,8 +650,7 @@ Deno.serve(async (req: Request) => {
           .maybeSingle()
 
         if (debitError || !debitData) {
-          rejected++
-          errors.push(`Linha ${rowNum}: Conta Débito "${strContaDebito}" não encontrada.`)
+          addError(rowNum, `Conta Débito "${strContaDebito}" não encontrada.`, row)
           continue
         }
 
@@ -700,8 +664,7 @@ Deno.serve(async (req: Request) => {
           .maybeSingle()
 
         if (creditError || !creditData) {
-          rejected++
-          errors.push(`Linha ${rowNum}: Conta Crédito "${strContaCredito}" não encontrada.`)
+          addError(rowNum, `Conta Crédito "${strContaCredito}" não encontrada.`, row)
           continue
         }
 
@@ -718,16 +681,12 @@ Deno.serve(async (req: Request) => {
           .maybeSingle()
 
         if (checkError) {
-          rejected++
-          errors.push(`Linha ${rowNum}: Falha ao verificar duplicata - ${checkError.message}`)
+          addError(rowNum, `Falha ao verificar duplicata - ${checkError.message}`, row)
           continue
         }
 
         if (existing) {
-          rejected++
-          errors.push(
-            `Linha ${rowNum}: Lançamento já existe com mesma data, valor e centro de custo.`,
-          )
+          addError(rowNum, `Lançamento já existe com mesma data, valor e centro de custo.`, row)
           continue
         }
 
@@ -746,10 +705,7 @@ Deno.serve(async (req: Request) => {
           .single()
 
         if (insertError) {
-          rejected++
-          errors.push(
-            `Linha ${rowNum}: Erro ao inserir movimento financeiro - ${insertError.message}`,
-          )
+          addError(rowNum, `Erro ao inserir movimento financeiro - ${insertError.message}`, row)
           continue
         }
 
@@ -766,13 +722,22 @@ Deno.serve(async (req: Request) => {
 
         if (aeError) {
           await supabase.from('financial_movements').delete().eq('id', fm.id)
-          rejected++
-          errors.push(`Linha ${rowNum}: Erro ao inserir lançamento contábil - ${aeError.message}`)
+          addError(rowNum, `Erro ao inserir lançamento contábil - ${aeError.message}`, row)
         } else {
           inserted++
         }
       }
     }
+
+    await supabase.from('import_history').insert({
+      user_id: user.id,
+      import_type: type,
+      file_name: fileName || 'Importação via CSV',
+      total_records: records.length,
+      success_count: inserted,
+      error_count: rejected,
+      status: 'Completed',
+    })
 
     return new Response(JSON.stringify({ inserted, rejected, errors }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

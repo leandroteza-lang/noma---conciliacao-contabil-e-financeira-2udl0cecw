@@ -462,6 +462,42 @@ export type Database = {
         }
         Relationships: []
       }
+      import_history: {
+        Row: {
+          created_at: string
+          error_count: number | null
+          file_name: string | null
+          id: string
+          import_type: string
+          status: string | null
+          success_count: number | null
+          total_records: number | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          error_count?: number | null
+          file_name?: string | null
+          id?: string
+          import_type: string
+          status?: string | null
+          success_count?: number | null
+          total_records?: number | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          error_count?: number | null
+          file_name?: string | null
+          id?: string
+          import_type?: string
+          status?: string | null
+          success_count?: number | null
+          total_records?: number | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       financial_movements: {
         Row: {
           amount: number | null

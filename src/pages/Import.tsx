@@ -43,6 +43,15 @@ import { Label } from '@/components/ui/label'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Switch } from '@/components/ui/switch'
 import { supabase } from '@/lib/supabase/client'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog'
+import { format } from 'date-fns'
+import { ptBR } from 'date-fns/locale'
 
 const IMPORT_TYPES = {
   COMPANIES: {
@@ -119,10 +128,16 @@ const IMPORT_TYPES = {
   },
 }
 
+interface ImportError {
+  row: number
+  error: string
+  data: any
+}
+
 interface ImportResult {
   inserted: number
   rejected: number
-  errors: string[]
+  errors: ImportError[]
 }
 
 export default function Import() {
@@ -130,6 +145,8 @@ export default function Import() {
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [file, setFile] = useState<File | null>(null)
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false)
+  const [history, setHistory] = useState<any[]>([])
   const [isUploading, setIsUploading] = useState(false)
   const [sheets, setSheets] = useState<string[]>([])
   const [selectedSheet, setSelectedSheet] = useState<string>('')
@@ -304,12 +321,23 @@ export default function Import() {
     setImportProgress(30) // Progresso inicial (enviando...)
 
     try {
+      // Explicitly get token to avoid 'Usuário não autenticado'
+      const {
+        data: { session },
+      } = await supabase.auth.getSession()
+
       // Chamando a Edge Function
       const { data, error } = await supabase.functions.invoke('import-data', {
         body: {
           records: validationInfo.validRecords,
           type: importType,
+          fileName: file?.name || 'Importação via CSV',
         },
+        headers: session
+          ? {
+              Authorization: `Bearer ${session.access_token}`,
+            }
+          : undefined,
       })
 
       if (error) {
@@ -362,6 +390,46 @@ export default function Import() {
     setShowOnlyErrors(false)
   }
 
+  const downloadErrors = () => {
+    if (!importResult || importResult.errors.length === 0) return
+
+    const firstRowData = importResult.errors[0].data || {}
+    const originalCols = Object.keys(firstRowData)
+
+    const headers = ['Linha', 'Erro', ...originalCols].join(';')
+
+    const rows = importResult.errors
+      .map((err) => {
+        const rowData = originalCols
+          .map((col) => `"${String(err.data[col] || '').replace(/"/g, '""')}"`)
+          .join(';')
+        return `${err.row};"${err.error}";${rowData}`
+      })
+      .join('\n')
+
+    const csvContent =
+      'data:text/csv;charset=utf-8,\uFEFF' + encodeURIComponent(headers + '\n' + rows)
+    const link = document.createElement('a')
+    link.setAttribute('href', csvContent)
+    link.setAttribute('download', `erros_importacao_${importType}.csv`)
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  }
+
+  const loadHistory = async () => {
+    const { data } = await supabase
+      .from('import_history')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(50)
+    if (data) setHistory(data)
+  }
+
+  useEffect(() => {
+    if (isHistoryOpen) loadHistory()
+  }, [isHistoryOpen])
+
   return (
     <div className="container mx-auto max-w-5xl py-8 space-y-6 animate-fade-in-up">
       <div className="flex items-center gap-4">
@@ -370,12 +438,16 @@ export default function Import() {
             <ArrowLeft className="h-4 w-4" />
           </Link>
         </Button>
-        <div>
+        <div className="flex-1">
           <h1 className="text-3xl font-bold tracking-tight">Importação de Dados</h1>
           <p className="text-muted-foreground">
-            Importe planilhas Excel ou CSV para cadastro em lote via Edge Functions.
+            Importe planilhas CSV para cadastro em lote. Validado em tempo real.
           </p>
         </div>
+        <Button variant="outline" onClick={() => setIsHistoryOpen(true)}>
+          <List className="h-4 w-4 mr-2" />
+          Histórico
+        </Button>
       </div>
 
       {!importResult && (
@@ -721,16 +793,30 @@ export default function Import() {
             </div>
 
             {importResult.errors.length > 0 && (
-              <div className="mt-6 space-y-3">
-                <h4 className="font-semibold text-red-600 flex items-center gap-2">
-                  <XCircle className="h-4 w-4" /> Relatório de Erros ({importResult.errors.length})
-                </h4>
+              <div className="mt-6 space-y-4">
+                <div className="flex items-center justify-between">
+                  <h4 className="font-semibold text-red-600 flex items-center gap-2">
+                    <XCircle className="h-4 w-4" /> Relatório de Erros ({importResult.errors.length}
+                    )
+                  </h4>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={downloadErrors}
+                    className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    Baixar Erros (CSV)
+                  </Button>
+                </div>
                 <ScrollArea className="h-40 w-full rounded-md border p-4 bg-muted/30">
                   <ul className="space-y-2 text-sm">
                     {importResult.errors.map((err, i) => (
                       <li key={i} className="text-muted-foreground flex items-start gap-2">
                         <span className="min-w-1.5 h-1.5 rounded-full bg-red-500 mt-1.5" />
-                        <span>{err}</span>
+                        <span>
+                          <strong>Linha {err.row}:</strong> {err.error}
+                        </span>
                       </li>
                     ))}
                   </ul>
@@ -769,6 +855,64 @@ export default function Import() {
           </CardFooter>
         </Card>
       )}
+
+      <Dialog open={isHistoryOpen} onOpenChange={setIsHistoryOpen}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <DialogTitle>Histórico de Importações</DialogTitle>
+            <DialogDescription>
+              Acompanhe o status dos últimos lotes processados na sua conta.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex-1 overflow-auto mt-4 border rounded-md">
+            <Table>
+              <TableHeader className="bg-slate-50 sticky top-0 z-10">
+                <TableRow>
+                  <TableHead>Data</TableHead>
+                  <TableHead>Arquivo</TableHead>
+                  <TableHead>Tipo</TableHead>
+                  <TableHead className="text-right">Total</TableHead>
+                  <TableHead className="text-right text-green-600">Sucesso</TableHead>
+                  <TableHead className="text-right text-red-600">Erro</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {history.length > 0 ? (
+                  history.map((h) => (
+                    <TableRow key={h.id}>
+                      <TableCell className="whitespace-nowrap">
+                        {format(new Date(h.created_at), 'dd/MM/yyyy HH:mm', { locale: ptBR })}
+                      </TableCell>
+                      <TableCell className="font-medium max-w-[200px] truncate" title={h.file_name}>
+                        {h.file_name || '-'}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline">
+                          {IMPORT_TYPES[h.import_type as keyof typeof IMPORT_TYPES]?.label ||
+                            h.import_type}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right font-semibold">{h.total_records}</TableCell>
+                      <TableCell className="text-right text-green-600 font-semibold">
+                        {h.success_count}
+                      </TableCell>
+                      <TableCell className="text-right text-red-600 font-semibold">
+                        {h.error_count}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
+                      Nenhuma importação encontrada.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
