@@ -3,9 +3,8 @@ import { Link } from 'react-router-dom'
 import { Lock, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { isStrongPassword } from '@/components/ChangePasswordModal'
-import { Input } from '@/components/ui/input'
-import { PasswordInput } from '@/components/ui/password-input'
 import { Label } from '@/components/ui/label'
+import { PasswordInput } from '@/components/ui/password-input'
 import { useToast } from '@/hooks/use-toast'
 import { supabase } from '@/lib/supabase/client'
 import {
@@ -22,19 +21,67 @@ export default function ResetPassword() {
   const [confirmPassword, setConfirmPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [isError, setIsError] = useState(false)
+  const [isChecking, setIsChecking] = useState(true)
   const { toast } = useToast()
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!session) {
-        setIsError(true)
-        toast({
-          title: 'Link inválido ou expirado',
-          description: 'Por favor, solicite uma nova redefinição de senha.',
-          variant: 'destructive',
-        })
+    let mounted = true
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      if (session && mounted) {
+        setIsError(false)
+        setIsChecking(false)
       }
     })
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        if (mounted) {
+          setIsError(false)
+          setIsChecking(false)
+        }
+      } else {
+        const hash = window.location.hash
+        if (hash && hash.includes('access_token')) {
+          // Will be handled by onAuthStateChange, but set a fallback timeout
+          setTimeout(() => {
+            if (mounted) {
+              supabase.auth.getSession().then(({ data: { session: delayedSession } }) => {
+                if (!delayedSession && mounted) {
+                  setIsError(true)
+                  setIsChecking(false)
+                  toast({
+                    title: 'Link inválido ou expirado',
+                    description: 'Por favor, solicite uma nova redefinição de senha.',
+                    variant: 'destructive',
+                  })
+                } else if (delayedSession && mounted) {
+                  setIsError(false)
+                  setIsChecking(false)
+                }
+              })
+            }
+          }, 2000)
+        } else {
+          if (mounted) {
+            setIsError(true)
+            setIsChecking(false)
+            toast({
+              title: 'Link inválido ou expirado',
+              description: 'Por favor, solicite uma nova redefinição de senha.',
+              variant: 'destructive',
+            })
+          }
+        }
+      }
+    })
+
+    return () => {
+      mounted = false
+      subscription.unsubscribe()
+    }
   }, [toast])
 
   const handleUpdate = async (e: React.FormEvent) => {
@@ -86,6 +133,17 @@ export default function ResetPassword() {
     } finally {
       setLoading(false)
     }
+  }
+
+  if (isChecking) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4">
+        <div className="flex flex-col items-center justify-center space-y-4">
+          <Loader2 className="h-10 w-10 animate-spin text-blue-600" />
+          <p className="text-slate-600 font-medium animate-pulse">Verificando link de acesso...</p>
+        </div>
+      </div>
+    )
   }
 
   if (isError) {
