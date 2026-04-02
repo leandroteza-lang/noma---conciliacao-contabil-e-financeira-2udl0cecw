@@ -57,6 +57,7 @@ import {
 } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { format } from 'date-fns'
 import { MENU_ITEMS } from '@/components/Layout'
 
@@ -96,18 +97,21 @@ const schema = z.object({
   status: z.boolean().default(true),
   companies: z.array(z.string()).default([]),
   permissions: z.array(z.string()).default(['all']),
-  role: z.enum(['admin', 'supervisor', 'collaborator']).default('collaborator'),
+  role: z.enum(['admin', 'supervisor', 'collaborator', 'client_user']).default('collaborator'),
 })
 type FormData = z.infer<typeof schema>
 
-export default function Employees() {
-  const [employees, setEmployees] = useState<any[]>([])
+export default function UsersPage() {
+  const [users, setUsers] = useState<any[]>([])
   const [departments, setDepartments] = useState<any[]>([])
   const [organizations, setOrganizations] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
+
+  const [avatarFile, setAvatarFile] = useState<File | null>(null)
+  const [avatarPreview, setAvatarPreview] = useState<string>('')
 
   const [search, setSearch] = useState('')
   const [filterStatus, setFilterStatus] = useState('all')
@@ -144,8 +148,8 @@ export default function Employees() {
     try {
       const [empRes, depRes, orgRes] = await Promise.all([
         supabase
-          .from('employees')
-          .select(`*, departments(id, name), employee_companies(organization_id)`)
+          .from('cadastro_usuarios')
+          .select(`*, departments(id, name), cadastro_usuarios_companies(organization_id)`)
           .neq('pending_deletion', true)
           .is('deleted_at', null)
           .order('created_at', { ascending: false }),
@@ -163,7 +167,7 @@ export default function Employees() {
           .order('name'),
       ])
       if (empRes.error) throw empRes.error
-      setEmployees(empRes.data || [])
+      setUsers(empRes.data || [])
       setDepartments(depRes.data || [])
       setOrganizations(orgRes.data || [])
     } catch (e: any) {
@@ -178,7 +182,7 @@ export default function Employees() {
   }, [user])
 
   const filtered = useMemo(() => {
-    return employees.filter((e) => {
+    return users.filter((e) => {
       const matchSearch = search
         ? e.name?.toLowerCase().includes(search.toLowerCase()) || e.cpf?.includes(search)
         : true
@@ -187,11 +191,11 @@ export default function Employees() {
       const matchDept = filterDept !== 'all' ? e.department_id === filterDept : true
       const matchCompany =
         filterCompany !== 'all'
-          ? e.employee_companies?.some((ec: any) => ec.organization_id === filterCompany)
+          ? e.cadastro_usuarios_companies?.some((ec: any) => ec.organization_id === filterCompany)
           : true
       return matchSearch && matchStatus && matchDept && matchCompany
     })
-  }, [employees, search, filterStatus, filterDept, filterCompany])
+  }, [users, search, filterStatus, filterDept, filterCompany])
 
   const handleSort = (key: string) => {
     let direction: 'asc' | 'desc' = 'asc'
@@ -223,8 +227,10 @@ export default function Employees() {
   const totalPages = Math.max(1, Math.ceil(sorted.length / itemsPerPage))
 
   const openModal = (item?: any) => {
+    setAvatarFile(null)
     if (item) {
       setEditingId(item.id)
+      setAvatarPreview(item.avatar_url || '')
       reset({
         name: item.name || '',
         cpf: item.cpf || '',
@@ -236,10 +242,11 @@ export default function Employees() {
         status: item.status ?? true,
         role: item.role || 'collaborator',
         permissions: Array.isArray(item.permissions) ? item.permissions : ['all'],
-        companies: item.employee_companies?.map((ec: any) => ec.organization_id) || [],
+        companies: item.cadastro_usuarios_companies?.map((ec: any) => ec.organization_id) || [],
       })
     } else {
       setEditingId(null)
+      setAvatarPreview('')
       reset({
         name: '',
         cpf: '',
@@ -261,6 +268,20 @@ export default function Employees() {
     if (!user) return
     setIsSubmitting(true)
     try {
+      let uploadedUrl = editingId ? users.find((u) => u.id === editingId)?.avatar_url || null : null
+
+      if (avatarFile) {
+        const fileExt = avatarFile.name.split('.').pop()
+        const fileName = `${user.id}_${Math.random()}.${fileExt}`
+        const { error: uploadError } = await supabase.storage
+          .from('avatars')
+          .upload(fileName, avatarFile)
+        if (!uploadError) {
+          const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(fileName)
+          uploadedUrl = urlData.publicUrl
+        }
+      }
+
       const payload = {
         name: data.name,
         cpf: data.cpf || null,
@@ -273,33 +294,44 @@ export default function Employees() {
         role: data.role,
         permissions: data.permissions.length === 0 ? ['all'] : data.permissions,
         user_id: user.id,
+        avatar_url: uploadedUrl,
       } as any
+
       let empId = editingId
       if (editingId) {
         const { error } = await supabase
-          .from('employees')
+          .from('cadastro_usuarios')
           .update(payload)
           .eq('id', editingId)
           .eq('user_id', user.id)
         if (error) throw error
       } else {
+        payload.approval_status = 'pending'
         const { data: ins, error } = await supabase
-          .from('employees')
+          .from('cadastro_usuarios')
           .insert([payload])
           .select()
           .single()
         if (error) throw error
         empId = ins.id
+        toast({
+          title: 'Convite Simulado',
+          description: `Um convite foi enviado para ${data.email || 'o usuário'} e está pendente de aprovação.`,
+        })
       }
+
       if (empId) {
-        await supabase.from('employee_companies').delete().eq('employee_id', empId)
+        await supabase.from('cadastro_usuarios_companies').delete().eq('usuario_id', empId)
         if (data.companies.length > 0) {
-          const links = data.companies.map((oid) => ({ employee_id: empId, organization_id: oid }))
-          const { error: linkErr } = await supabase.from('employee_companies').insert(links)
+          const links = data.companies.map((oid) => ({ usuario_id: empId, organization_id: oid }))
+          const { error: linkErr } = await supabase
+            .from('cadastro_usuarios_companies')
+            .insert(links)
           if (linkErr) throw linkErr
         }
       }
-      toast({ title: 'Sucesso', description: 'Funcionário salvo com sucesso!' })
+
+      toast({ title: 'Sucesso', description: 'Cadastro de usuário salvo com sucesso!' })
       setIsModalOpen(false)
       fetchData()
     } catch (e: any) {
@@ -310,10 +342,10 @@ export default function Employees() {
   }
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Deseja solicitar a exclusão deste funcionário?')) return
+    if (!confirm('Deseja solicitar a exclusão deste usuário?')) return
     try {
       const { error } = await supabase
-        .from('employees')
+        .from('cadastro_usuarios')
         .update({
           pending_deletion: true,
           deletion_requested_at: new Date().toISOString(),
@@ -334,10 +366,10 @@ export default function Employees() {
 
   const handleBulkDelete = async () => {
     if (selectedIds.length === 0) return
-    if (!confirm(`Deseja solicitar a exclusão de ${selectedIds.length} funcionário(s)?`)) return
+    if (!confirm(`Deseja solicitar a exclusão de ${selectedIds.length} usuário(s)?`)) return
 
     const { error } = await supabase
-      .from('employees')
+      .from('cadastro_usuarios')
       .update({
         pending_deletion: true,
         deletion_requested_at: new Date().toISOString(),
@@ -351,7 +383,7 @@ export default function Employees() {
     } else {
       toast({
         title: 'Sucesso',
-        description: `${selectedIds.length} funcionário(s) enviado(s) para aprovação.`,
+        description: `${selectedIds.length} usuário(s) enviado(s) para aprovação.`,
       })
     }
 
@@ -372,14 +404,11 @@ export default function Employees() {
           created_at: e.created_at ? format(new Date(e.created_at), 'dd/MM/yyyy') : '',
         })),
       }
-      const res = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/export-employees`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-          body: JSON.stringify(payload),
-        },
-      )
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/export-users`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify(payload),
+      })
       if (!res.ok) throw new Error('Falha ao exportar')
       const result = await res.json()
       if (formatType === 'excel') {
@@ -391,12 +420,12 @@ export default function Employees() {
         })
         const link = document.createElement('a')
         link.href = URL.createObjectURL(blob)
-        link.download = 'funcionarios.xlsx'
+        link.download = 'usuarios.xlsx'
         link.click()
       } else {
         const link = document.createElement('a')
         link.href = result.pdf
-        link.download = 'funcionarios.pdf'
+        link.download = 'usuarios.pdf'
         link.click()
       }
       toast({ title: 'Sucesso', description: 'Relatório gerado!' })
@@ -409,10 +438,8 @@ export default function Employees() {
     <div className="container mx-auto p-4 sm:p-6 max-w-7xl space-y-6 animate-in fade-in duration-500">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-slate-900">
-            Funcionários / Usuários
-          </h1>
-          <p className="text-slate-500 mt-1">Cadastre e gerencie os usuários do sistema.</p>
+          <h1 className="text-3xl font-bold tracking-tight text-slate-900">Cadastro de Usuários</h1>
+          <p className="text-slate-500 mt-1">Cadastre e gerencie os perfis de acesso do sistema.</p>
         </div>
         <div className="flex items-center gap-2">
           <DropdownMenu>
@@ -444,7 +471,7 @@ export default function Employees() {
                 </Link>
               </Button>
               <Button onClick={() => openModal()} className="gap-2 bg-blue-600 hover:bg-blue-700">
-                <Plus className="h-4 w-4" /> Novo Funcionário
+                <Plus className="h-4 w-4" /> Novo Usuário
               </Button>
             </>
           )}
@@ -559,7 +586,7 @@ export default function Employees() {
           ) : filtered.length === 0 ? (
             <div className="py-12 text-center text-slate-500 flex flex-col items-center">
               <Users className="h-12 w-12 text-slate-300 mb-3" />
-              <p>Nenhum funcionário encontrado.</p>
+              <p>Nenhum usuário encontrado.</p>
             </div>
           ) : (
             <div className="rounded-md border-0 overflow-x-auto">
@@ -582,7 +609,7 @@ export default function Employees() {
                       onClick={() => handleSort('name')}
                     >
                       <div className="flex items-center gap-2">
-                        Funcionário <ArrowUpDown className="h-3 w-3 text-slate-400" />
+                        Usuário <ArrowUpDown className="h-3 w-3 text-slate-400" />
                       </div>
                     </TableHead>
                     <TableHead
@@ -628,10 +655,13 @@ export default function Employees() {
                         </TableCell>
                       )}
                       <TableCell className="py-2 px-4 font-medium">
-                        <div className="flex items-center gap-2">
-                          <div className="h-8 w-8 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center shrink-0 text-xs font-bold">
-                            {e.name.substring(0, 2).toUpperCase()}
-                          </div>
+                        <div className="flex items-center gap-3">
+                          <Avatar className="h-9 w-9 border border-slate-200">
+                            <AvatarImage src={e.avatar_url || ''} className="object-cover" />
+                            <AvatarFallback className="bg-blue-100 text-blue-700 text-xs font-bold">
+                              {e.name.substring(0, 2).toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
                           <div>
                             <p className="text-slate-900 text-sm font-semibold">{e.name}</p>
                             {(e.email || e.phone || e.cpf) && (
@@ -650,22 +680,31 @@ export default function Employees() {
                           ? 'Administrador'
                           : e.role === 'supervisor'
                             ? 'Supervisor'
-                            : 'Colaborador'}
+                            : e.role === 'client_user'
+                              ? 'Usuário Cliente'
+                              : 'Colaborador'}
                       </TableCell>
                       <TableCell className="py-2 px-4">
-                        <Badge
-                          variant={e.status ? 'default' : 'secondary'}
-                          className={
-                            e.status
-                              ? 'bg-green-100 text-green-800 text-[11px] h-5'
-                              : 'bg-slate-100 text-slate-600 text-[11px] h-5'
-                          }
-                        >
-                          {e.status ? 'Ativo' : 'Inativo'}
-                        </Badge>
+                        <div className="flex flex-col gap-1">
+                          <Badge
+                            variant={e.status ? 'default' : 'secondary'}
+                            className={
+                              e.status
+                                ? 'bg-green-100 text-green-800 text-[11px] h-5 w-fit'
+                                : 'bg-slate-100 text-slate-600 text-[11px] h-5 w-fit'
+                            }
+                          >
+                            {e.status ? 'Ativo' : 'Inativo'}
+                          </Badge>
+                          {e.approval_status === 'pending' && (
+                            <span className="text-[10px] text-amber-600 font-medium bg-amber-50 px-1.5 py-0.5 rounded-sm w-fit">
+                              Pendente Aprovação
+                            </span>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell className="py-2 px-4 text-[12px] text-slate-500">
-                        {e.employee_companies?.length || 0} empresa(s)
+                        {e.cadastro_usuarios_companies?.length || 0} empresa(s)
                       </TableCell>
                       {(canEdit || canDelete) && (
                         <TableCell className="py-2 px-4 text-right">
@@ -756,8 +795,8 @@ export default function Employees() {
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
         <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{editingId ? 'Editar Funcionário' : 'Novo Funcionário'}</DialogTitle>
-            <DialogDescription>Preencha os dados do funcionário abaixo.</DialogDescription>
+            <DialogTitle>{editingId ? 'Editar Usuário' : 'Novo Usuário'}</DialogTitle>
+            <DialogDescription>Preencha os dados do usuário abaixo.</DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 mt-4">
             <Tabs defaultValue="main" className="w-full">
@@ -769,6 +808,31 @@ export default function Employees() {
               </TabsList>
 
               <TabsContent value="main" className="space-y-4 animate-in fade-in-50">
+                <div className="flex flex-col items-center justify-center space-y-4 mb-6">
+                  <Avatar className="h-24 w-24 border-2 border-slate-100 shadow-sm">
+                    <AvatarImage src={avatarPreview} className="object-cover" />
+                    <AvatarFallback className="bg-slate-50 text-slate-400">
+                      <Upload className="h-8 w-8" />
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex items-center justify-center w-full">
+                    <label className="cursor-pointer bg-white border border-slate-200 text-sm font-medium text-slate-700 py-1.5 px-4 rounded-md hover:bg-slate-50 transition-colors shadow-sm">
+                      <span>Alterar Foto</span>
+                      <input
+                        type="file"
+                        className="hidden"
+                        accept="image/*"
+                        onChange={(e) => {
+                          if (e.target.files && e.target.files[0]) {
+                            setAvatarFile(e.target.files[0])
+                            setAvatarPreview(URL.createObjectURL(e.target.files[0]))
+                          }
+                        }}
+                      />
+                    </label>
+                  </div>
+                </div>
+
                 <div className="space-y-2">
                   <Label>
                     Nome <span className="text-red-500">*</span>
@@ -840,6 +904,7 @@ export default function Employees() {
                         <SelectItem value="admin">Administrador</SelectItem>
                         <SelectItem value="supervisor">Supervisor</SelectItem>
                         <SelectItem value="collaborator">Colaborador</SelectItem>
+                        <SelectItem value="client_user">Usuário Cliente</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -882,7 +947,7 @@ export default function Employees() {
                 <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-100 mt-2">
                   <div className="space-y-0.5">
                     <Label className="text-base">Status</Label>
-                    <p className="text-xs text-slate-500">Defina se o funcionário está ativo.</p>
+                    <p className="text-xs text-slate-500">Defina se o usuário está ativo.</p>
                   </div>
                   <Switch
                     checked={statusValue}

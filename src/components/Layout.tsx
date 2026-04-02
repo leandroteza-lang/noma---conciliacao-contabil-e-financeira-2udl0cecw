@@ -20,6 +20,7 @@ import { useAuth } from '@/hooks/use-auth'
 import { cn } from '@/lib/utils'
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase/client'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import {
   Sidebar,
   SidebarContent,
@@ -101,9 +102,9 @@ export const MENU_ITEMS = [
     roles: ['admin', 'supervisor'],
   },
   {
-    id: 'funcionarios',
-    title: 'Funcionários',
-    path: '/funcionarios',
+    id: 'usuarios',
+    title: 'Cadastro de Usuários',
+    path: '/usuarios',
     icon: Users,
     roles: ['admin'],
   },
@@ -118,7 +119,7 @@ export const MENU_ITEMS = [
 ]
 
 export default function Layout() {
-  const { user, loading, signOut, role, permissions, menuOrder, setMenuOrder } = useAuth()
+  const { user, loading, signOut, role, permissions, menuOrder, setMenuOrder, profile } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
 
@@ -128,13 +129,21 @@ export default function Layout() {
   useEffect(() => {
     if (role !== 'admin') return
     const fetchPending = async () => {
-      const [orgs, depts, emps, costs, charts, banks] = await Promise.all([
+      const [orgs, depts, emps, newUsers, costs, charts, banks] = await Promise.all([
         supabase
           .from('organizations')
           .select('id', { count: 'exact' })
           .eq('pending_deletion', true),
         supabase.from('departments').select('id', { count: 'exact' }).eq('pending_deletion', true),
-        supabase.from('employees').select('id', { count: 'exact' }).eq('pending_deletion', true),
+        supabase
+          .from('cadastro_usuarios')
+          .select('id', { count: 'exact' })
+          .eq('pending_deletion', true),
+        supabase
+          .from('cadastro_usuarios')
+          .select('id', { count: 'exact' })
+          .eq('approval_status', 'pending')
+          .is('deleted_at', null),
         supabase.from('cost_centers').select('id', { count: 'exact' }).eq('pending_deletion', true),
         supabase
           .from('chart_of_accounts')
@@ -149,6 +158,7 @@ export default function Layout() {
         (orgs.count || 0) +
         (depts.count || 0) +
         (emps.count || 0) +
+        (newUsers.count || 0) +
         (costs.count || 0) +
         (charts.count || 0) +
         (banks.count || 0)
@@ -165,7 +175,11 @@ export default function Layout() {
         fetchPending,
       )
       .on('postgres_changes', { event: '*', schema: 'public', table: 'departments' }, fetchPending)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'employees' }, fetchPending)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'cadastro_usuarios' },
+        fetchPending,
+      )
       .on('postgres_changes', { event: '*', schema: 'public', table: 'cost_centers' }, fetchPending)
       .on(
         'postgres_changes',
@@ -220,6 +234,32 @@ export default function Layout() {
 
   if (!user) {
     return <Navigate to="/login" replace />
+  }
+
+  if (profile?.approval_status === 'pending') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4">
+        <div className="max-w-md w-full bg-white rounded-xl shadow-sm border border-slate-200 p-8 text-center animate-in fade-in zoom-in duration-500">
+          <div className="mx-auto w-16 h-16 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center mb-6">
+            <Users className="w-8 h-8" />
+          </div>
+          <h1 className="text-2xl font-bold text-slate-900 mb-2">Acesso em Análise</h1>
+          <p className="text-slate-600 mb-8 leading-relaxed">
+            Seu cadastro foi recebido com sucesso e está aguardando aprovação de um administrador.
+            Você receberá um aviso assim que seu acesso for liberado.
+          </p>
+          <button
+            onClick={async () => {
+              await signOut()
+              navigate('/login')
+            }}
+            className="w-full py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium rounded-lg transition-colors"
+          >
+            Sair e voltar ao Login
+          </button>
+        </div>
+      </div>
+    )
   }
 
   const handleLogout = async () => {
@@ -332,15 +372,28 @@ export default function Layout() {
       </Sidebar>
 
       <SidebarInset className="bg-slate-50 min-w-0">
-        <header className="flex h-16 shrink-0 items-center gap-2 border-b border-slate-200 bg-white px-4 sticky top-0 z-30 shadow-sm">
-          <SidebarTrigger className="-ml-2 text-slate-600" />
-          <div className="flex items-center gap-3 md:hidden ml-2">
-            <div className="bg-blue-600 p-1.5 rounded-lg text-white shadow-sm flex items-center justify-center">
-              <Wallet className="size-5" />
+        <header className="flex h-16 shrink-0 items-center gap-2 border-b border-slate-200 bg-white px-4 sticky top-0 z-30 shadow-sm justify-between">
+          <div className="flex items-center gap-2">
+            <SidebarTrigger className="-ml-2 text-slate-600" />
+            <div className="flex items-center gap-3 md:hidden ml-2">
+              <div className="bg-blue-600 p-1.5 rounded-lg text-white shadow-sm flex items-center justify-center">
+                <Wallet className="size-5" />
+              </div>
+              <span className="font-bold text-slate-800 tracking-tight truncate">
+                Gestão de Contas
+              </span>
             </div>
-            <span className="font-bold text-slate-800 tracking-tight truncate">
-              Gestão de Contas
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="text-sm font-medium text-slate-700 hidden sm:block">
+              {profile?.name || user.email}
             </span>
+            <Avatar className="h-9 w-9 border border-slate-200 shadow-sm">
+              <AvatarImage src={profile?.avatar_url || ''} className="object-cover" />
+              <AvatarFallback className="bg-blue-50 text-blue-700 font-semibold">
+                {(profile?.name || user.email || 'U').substring(0, 2).toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
           </div>
         </header>
 

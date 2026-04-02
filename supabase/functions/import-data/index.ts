@@ -220,7 +220,7 @@ Deno.serve(async (req: Request) => {
         const email = String(row['EMAIL'] || '').trim()
         if (email) {
           const { data: existingUser } = await supabase
-            .from('employees')
+            .from('cadastro_usuarios')
             .select('id')
             .eq('email', email)
             .eq('user_id', user.id)
@@ -234,10 +234,10 @@ Deno.serve(async (req: Request) => {
         }
 
         const perfil = String(row['PERFIL'] || 'collaborator').toLowerCase()
-        const validRoles = ['admin', 'supervisor', 'collaborator']
+        const validRoles = ['admin', 'supervisor', 'collaborator', 'client_user']
         const roleToInsert = validRoles.includes(perfil) ? perfil : 'collaborator'
 
-        const { error: insertError } = await supabase.from('employees').insert({
+        const { error: insertError } = await supabase.from('cadastro_usuarios').insert({
           user_id: user.id,
           name: String(nome),
           cpf: String(row['CPF'] || '') || null,

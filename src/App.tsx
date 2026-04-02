@@ -6,7 +6,7 @@ import Index from './pages/Index'
 import Import from './pages/Import'
 import Companies from './pages/Companies'
 import Departments from './pages/Departments'
-import Employees from './pages/Employees'
+import Users from './pages/Users'
 import Mapping from './pages/Mapping'
 import Entries from './pages/Entries'
 import CostCenters from './pages/CostCenters'
@@ -37,7 +37,7 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/empresas" element={<Companies />} />
             <Route path="/departamentos" element={<Departments />} />
-            <Route path="/funcionarios" element={<Employees />} />
+            <Route path="/usuarios" element={<Users />} />
             <Route path="/import" element={<Import />} />
             <Route path="/mapeamento" element={<Mapping />} />
             <Route path="/lancamentos" element={<Entries />} />

@@ -34,7 +34,8 @@ export default function Approvals() {
   const [loading, setLoading] = useState(true)
   const [processingId, setProcessingId] = useState<string | null>(null)
   const [selectedIds, setSelectedIds] = useState<string[]>([])
-  const [activeTab, setActiveTab] = useState<'pending' | 'trash'>('pending')
+  const [activeTab, setActiveTab] = useState<'pending' | 'new_users' | 'trash'>('pending')
+  const [newUsers, setNewUsers] = useState<any[]>([])
   const [progress, setProgress] = useState(0)
   const [isProcessing, setIsProcessing] = useState(false)
   const [filterCategory, setFilterCategory] = useState<string>('all')
@@ -47,7 +48,7 @@ export default function Approvals() {
     if (role !== 'admin') return
     try {
       setLoading(true)
-      const [orgs, depts, emps, costs, charts, banks] = await Promise.all([
+      const [orgs, depts, emps, newUsersRes, costs, charts, banks] = await Promise.all([
         supabase
           .from('organizations')
           .select('*')
@@ -57,9 +58,14 @@ export default function Approvals() {
           .select('*')
           .or('pending_deletion.eq.true,deleted_at.not.is.null'),
         supabase
-          .from('employees')
+          .from('cadastro_usuarios')
           .select('*')
           .or('pending_deletion.eq.true,deleted_at.not.is.null'),
+        supabase
+          .from('cadastro_usuarios')
+          .select('*')
+          .eq('approval_status', 'pending')
+          .is('deleted_at', null),
         supabase
           .from('cost_centers')
           .select('*')
@@ -170,6 +176,7 @@ export default function Approvals() {
         (a, b) => new Date(b.requestedAt || 0).getTime() - new Date(a.requestedAt || 0).getTime(),
       )
       setItems(unified)
+      setNewUsers(newUsersRes.data || [])
       setSelectedIds((prev) => prev.filter((id) => unified.some((i) => i.id === id)))
     } catch (e: any) {
       toast({ title: 'Erro ao carregar', description: e.message, variant: 'destructive' })
@@ -189,12 +196,54 @@ export default function Approvals() {
     const map: Record<string, string> = {
       organization: 'organizations',
       department: 'departments',
-      employee: 'employees',
+      employee: 'cadastro_usuarios',
       cost_center: 'cost_centers',
       chart_account: 'chart_of_accounts',
       bank_account: 'bank_accounts',
     }
     return map[type] || ''
+  }
+
+  const handleApproveNewUser = async (id: string) => {
+    setProcessingId(id)
+    setIsProcessing(true)
+    setProgress(50)
+    try {
+      const { error } = await supabase
+        .from('cadastro_usuarios')
+        .update({ approval_status: 'approved' } as any)
+        .eq('id', id)
+      if (error) throw error
+      setProgress(100)
+      toast({ title: 'Aprovado', description: 'O acesso do usuário foi liberado.' })
+      fetchPendingItems()
+    } catch (e: any) {
+      toast({ title: 'Erro', description: e.message, variant: 'destructive' })
+    } finally {
+      setProcessingId(null)
+      setIsProcessing(false)
+      setProgress(0)
+    }
+  }
+
+  const handleRejectNewUser = async (id: string) => {
+    if (!confirm('Deseja realmente rejeitar este cadastro? O registro será excluído.')) return
+    setProcessingId(id)
+    setIsProcessing(true)
+    setProgress(50)
+    try {
+      const { error } = await supabase.from('cadastro_usuarios').delete().eq('id', id)
+      if (error) throw error
+      setProgress(100)
+      toast({ title: 'Rejeitado', description: 'O cadastro foi removido.' })
+      fetchPendingItems()
+    } catch (e: any) {
+      toast({ title: 'Erro', description: e.message, variant: 'destructive' })
+    } finally {
+      setProcessingId(null)
+      setIsProcessing(false)
+      setProgress(0)
+    }
   }
 
   const handleApprove = async (item: PendingItem) => {
@@ -379,9 +428,13 @@ export default function Approvals() {
         </p>
       </div>
 
-      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'pending' | 'trash')}>
-        <TabsList className="mb-2">
-          <TabsTrigger value="pending">Pendentes ({pendingItems.length})</TabsTrigger>
+      <Tabs
+        value={activeTab}
+        onValueChange={(v) => setActiveTab(v as 'pending' | 'new_users' | 'trash')}
+      >
+        <TabsList className="mb-2 w-full justify-start overflow-x-auto">
+          <TabsTrigger value="pending">Pendentes de Exclusão ({pendingItems.length})</TabsTrigger>
+          <TabsTrigger value="new_users">Novos Usuários ({newUsers.length})</TabsTrigger>
           <TabsTrigger value="trash">Lixeira ({trashItems.length})</TabsTrigger>
         </TabsList>
 
@@ -517,6 +570,61 @@ export default function Approvals() {
             {loading ? (
               <div className="py-12 flex justify-center">
                 <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+              </div>
+            ) : activeTab === 'new_users' ? (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm text-left">
+                  <thead className="bg-slate-50 border-b border-slate-200">
+                    <tr>
+                      <th className="px-4 py-3 font-medium text-slate-600">Usuário</th>
+                      <th className="px-4 py-3 font-medium text-slate-600">Email</th>
+                      <th className="px-4 py-3 font-medium text-slate-600">Perfil Solicitado</th>
+                      <th className="px-4 py-3 font-medium text-slate-600 text-right">Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {newUsers.length === 0 ? (
+                      <tr>
+                        <td colSpan={4} className="py-12 text-center text-slate-500">
+                          Nenhum cadastro pendente de aprovação.
+                        </td>
+                      </tr>
+                    ) : (
+                      newUsers.map((user) => (
+                        <tr
+                          key={user.id}
+                          className="border-b border-slate-100 hover:bg-slate-50/50"
+                        >
+                          <td className="px-4 py-3 font-medium text-slate-900">{user.name}</td>
+                          <td className="px-4 py-3 text-slate-600">{user.email || '-'}</td>
+                          <td className="px-4 py-3 text-slate-600 capitalize">
+                            {user.role.replace('_', ' ')}
+                          </td>
+                          <td className="px-4 py-3 text-right">
+                            <div className="flex justify-end gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleRejectNewUser(user.id)}
+                                disabled={!!processingId}
+                              >
+                                Rejeitar
+                              </Button>
+                              <Button
+                                size="sm"
+                                onClick={() => handleApproveNewUser(user.id)}
+                                disabled={!!processingId}
+                                className="bg-green-600 hover:bg-green-700"
+                              >
+                                Aprovar
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
               </div>
             ) : (
               <ItemsTable

@@ -5,9 +5,10 @@ import { supabase } from '@/lib/supabase/client'
 interface AuthContextType {
   user: User | null
   session: Session | null
-  role: 'admin' | 'supervisor' | 'collaborator'
+  role: 'admin' | 'supervisor' | 'collaborator' | 'client_user'
   permissions: string[]
   menuOrder: string[]
+  profile: { name: string; avatar_url: string | null; approval_status: string } | null
   setMenuOrder: (order: string[]) => void
   signUp: (email: string, password: string, metadata?: any) => Promise<{ error: any }>
   signIn: (email: string, password: string) => Promise<{ error: any }>
@@ -28,28 +29,39 @@ export const useAuth = () => {
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null)
   const [session, setSession] = useState<Session | null>(null)
-  const [role, setRole] = useState<'admin' | 'supervisor' | 'collaborator'>('admin')
+  const [role, setRole] = useState<'admin' | 'supervisor' | 'collaborator' | 'client_user'>('admin')
   const [permissions, setPermissions] = useState<string[]>(['all'])
   const [menuOrder, setMenuOrderState] = useState<string[]>([])
+  const [profile, setProfile] = useState<{
+    name: string
+    avatar_url: string | null
+    approval_status: string
+  } | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const fetchRole = (userId?: string) => {
-      if (!userId) return
+    const fetchRole = (userEmail?: string) => {
+      if (!userEmail) return
       supabase
-        .from('employees')
-        .select('role, permissions, menu_order')
-        .eq('user_id', userId)
+        .from('cadastro_usuarios')
+        .select('role, permissions, menu_order, approval_status, name, avatar_url')
+        .eq('email', userEmail)
         .maybeSingle()
         .then(({ data }) => {
           if (data) {
             setRole((data.role as any) || 'admin')
             setPermissions(Array.isArray(data.permissions) ? data.permissions : ['all'])
             setMenuOrderState(Array.isArray(data.menu_order) ? data.menu_order : [])
+            setProfile({
+              name: data.name,
+              avatar_url: data.avatar_url,
+              approval_status: data.approval_status || 'approved',
+            })
           } else {
             setRole('admin')
             setPermissions(['all'])
             setMenuOrderState([])
+            setProfile(null)
           }
         })
     }
@@ -59,16 +71,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     } = supabase.auth.onAuthStateChange((event, session) => {
       setSession(session)
       setUser(session?.user ?? null)
-      if (session?.user?.id) {
-        fetchRole(session.user.id)
+      if (session?.user?.email) {
+        fetchRole(session.user.email)
       }
       setLoading(false)
     })
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session)
       setUser(session?.user ?? null)
-      if (session?.user?.id) {
-        fetchRole(session.user.id)
+      if (session?.user?.email) {
+        fetchRole(session.user.email)
       }
       setLoading(false)
     })
@@ -109,11 +121,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const setMenuOrder = async (order: string[]) => {
     setMenuOrderState(order)
-    if (user?.id) {
+    if (user?.email) {
       await supabase
-        .from('employees')
+        .from('cadastro_usuarios')
         .update({ menu_order: order } as any)
-        .eq('user_id', user.id)
+        .eq('email', user.email)
     }
   }
 
@@ -125,6 +137,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         role,
         permissions,
         menuOrder,
+        profile,
         setMenuOrder,
         signUp,
         signIn,

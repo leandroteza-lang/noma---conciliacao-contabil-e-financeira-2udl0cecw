@@ -31,13 +31,15 @@ Deno.serve(async (req: Request) => {
               ? 'Administrador'
               : r.role === 'supervisor'
                 ? 'Supervisor'
-                : 'Colaborador',
+                : r.role === 'client_user'
+                  ? 'Usuário Cliente'
+                  : 'Colaborador',
           Status: r.status ? 'Ativo' : 'Inativo',
           'Data Criação': r.created_at || '',
         })),
       )
       const workbook = XLSX.utils.book_new()
-      XLSX.utils.book_append_sheet(workbook, worksheet, 'Funcionários')
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Usuários')
       const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'base64' })
 
       return new Response(JSON.stringify({ excel: excelBuffer }), {
@@ -48,7 +50,7 @@ Deno.serve(async (req: Request) => {
     if (format === 'pdf') {
       const doc = new jsPDF()
       doc.setFontSize(16)
-      doc.text('Relatório de Funcionários', 14, 20)
+      doc.text('Relatório de Usuários', 14, 20)
 
       doc.setFontSize(10)
       let y = 35
