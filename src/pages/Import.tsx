@@ -40,6 +40,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Label } from '@/components/ui/label'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import { Switch } from '@/components/ui/switch'
 import { supabase } from '@/lib/supabase/client'
 
 const IMPORT_TYPES = {
@@ -87,6 +88,7 @@ export default function Import() {
   const [isImporting, setIsImporting] = useState(false)
   const [importProgress, setImportProgress] = useState(0)
   const [importResult, setImportResult] = useState<ImportResult | null>(null)
+  const [showOnlyErrors, setShowOnlyErrors] = useState(false)
 
   // Fetch organizations to generate realistic mock data that maps successfully
   useEffect(() => {
@@ -195,7 +197,7 @@ export default function Import() {
       const missing = req.filter((col) => !row[col] || String(row[col]).trim() === '')
       if (missing.length > 0) {
         invalid++
-        if (errors.length < 5) errors.push({ row: idx + 1, missing })
+        errors.push({ row: idx + 1, missing })
       } else {
         valid++
         validRecords.push(row)
@@ -204,6 +206,16 @@ export default function Import() {
 
     return { valid, invalid, total: rawData.length, missingColumns: [], errors, validRecords }
   }, [rawData, importType])
+
+  const previewData = useMemo(() => {
+    if (!importType || rawData.length === 0) return []
+    const req = IMPORT_TYPES[importType as keyof typeof IMPORT_TYPES].required
+    let filtered = rawData
+    if (showOnlyErrors) {
+      filtered = rawData.filter((row) => req.some((c) => !row[c] || String(row[c]).trim() === ''))
+    }
+    return filtered.slice(0, 10)
+  }, [rawData, showOnlyErrors, importType])
 
   const columns = useMemo(() => {
     if (rawData.length === 0) return []
@@ -262,6 +274,7 @@ export default function Import() {
     setImportType('')
     setRawData([])
     setImportResult(null)
+    setShowOnlyErrors(false)
   }
 
   return (
@@ -428,27 +441,65 @@ export default function Import() {
             )}
 
             {validationInfo.invalid > 0 && validationInfo.missingColumns.length === 0 && (
-              <Alert className="bg-amber-500/10 text-amber-700 border-amber-500/30">
-                <AlertCircle className="h-4 w-4 text-amber-600" />
-                <AlertTitle>Atenção: Linhas Ignoradas</AlertTitle>
-                <AlertDescription>
-                  {validationInfo.invalid} linhas não possuem todas as colunas obrigatórias e não
-                  serão enviadas.
-                </AlertDescription>
-              </Alert>
+              <div className="space-y-4">
+                <Alert className="bg-amber-500/10 text-amber-700 border-amber-500/30">
+                  <AlertCircle className="h-4 w-4 text-amber-600" />
+                  <AlertTitle>Atenção: Linhas Ignoradas</AlertTitle>
+                  <AlertDescription>
+                    {validationInfo.invalid} linhas não possuem todas as colunas obrigatórias e não
+                    serão enviadas.
+                  </AlertDescription>
+                </Alert>
+
+                <div className="border rounded-md p-4 bg-amber-50/50 dark:bg-amber-950/10">
+                  <h4 className="font-semibold text-amber-700 dark:text-amber-500 flex items-center gap-2 mb-3">
+                    <List className="h-4 w-4" /> Relatório de Pendências
+                  </h4>
+                  <ScrollArea className="h-32 w-full pr-4">
+                    <ul className="space-y-2 text-sm">
+                      {validationInfo.errors.map((err) => (
+                        <li key={err.row} className="flex items-start gap-2 text-muted-foreground">
+                          <span className="min-w-1.5 h-1.5 rounded-full bg-amber-500 mt-1.5" />
+                          <span>
+                            <strong>Linha {err.row}:</strong> As colunas obrigatórias a seguir estão
+                            vazias:{' '}
+                            <span className="font-medium text-foreground">
+                              {err.missing.join(', ')}
+                            </span>
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </ScrollArea>
+                </div>
+              </div>
             )}
 
             {columns.length > 0 && validationInfo.missingColumns.length === 0 && (
               <div className="space-y-3">
-                <h3 className="font-medium flex items-center gap-2">
-                  <FileType2 className="h-4 w-4 text-muted-foreground" />
-                  Preview dos Dados (Primeiras 5 linhas)
-                </h3>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <h3 className="font-medium flex items-center gap-2">
+                    <FileType2 className="h-4 w-4 text-muted-foreground" />
+                    Preview dos Dados (Exibindo até 10 linhas)
+                  </h3>
+                  {validationInfo.invalid > 0 && (
+                    <div className="flex items-center space-x-2 bg-muted/50 p-1.5 rounded-md border">
+                      <Switch
+                        id="show-errors"
+                        checked={showOnlyErrors}
+                        onCheckedChange={setShowOnlyErrors}
+                      />
+                      <Label htmlFor="show-errors" className="cursor-pointer">
+                        Mostrar apenas erros
+                      </Label>
+                    </div>
+                  )}
+                </div>
                 <div className="border rounded-md overflow-hidden">
                   <Table>
                     <TableHeader className="bg-muted/50">
                       <TableRow>
-                        <TableHead className="w-[50px] text-center">#</TableHead>
+                        <TableHead className="w-[60px] text-center">Linha</TableHead>
                         {columns.map((col) => (
                           <TableHead key={col} className="whitespace-nowrap">
                             {col}
@@ -457,40 +508,60 @@ export default function Import() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {rawData.slice(0, 5).map((row, idx) => {
-                        const isInvalid = IMPORT_TYPES[
-                          importType as keyof typeof IMPORT_TYPES
-                        ].required.some((c) => !row[c])
-                        return (
-                          <TableRow
-                            key={idx}
-                            className={isInvalid ? 'bg-red-500/5 hover:bg-red-500/10' : ''}
-                          >
-                            <TableCell className="text-center text-muted-foreground">
-                              {idx + 1}
-                            </TableCell>
-                            {columns.map((col) => (
-                              <TableCell key={col}>
-                                {!row[col] &&
-                                IMPORT_TYPES[
-                                  importType as keyof typeof IMPORT_TYPES
-                                ].required.includes(col) ? (
-                                  <Badge variant="destructive" className="text-[10px] h-5">
-                                    Vazio
-                                  </Badge>
-                                ) : (
-                                  <span
-                                    className="truncate max-w-[150px] inline-block"
-                                    title={row[col]}
-                                  >
-                                    {row[col]}
-                                  </span>
-                                )}
+                      {previewData.length > 0 ? (
+                        previewData.map((row, idx) => {
+                          const originalIndex = rawData.indexOf(row) + 1
+                          const isInvalid = IMPORT_TYPES[
+                            importType as keyof typeof IMPORT_TYPES
+                          ].required.some((c) => !row[c])
+                          return (
+                            <TableRow
+                              key={originalIndex}
+                              className={
+                                isInvalid
+                                  ? 'bg-red-500/10 hover:bg-red-500/20 transition-colors'
+                                  : ''
+                              }
+                            >
+                              <TableCell className="text-center text-muted-foreground font-medium">
+                                {originalIndex}
                               </TableCell>
-                            ))}
-                          </TableRow>
-                        )
-                      })}
+                              {columns.map((col) => {
+                                const isMissingRequired =
+                                  !row[col] &&
+                                  IMPORT_TYPES[
+                                    importType as keyof typeof IMPORT_TYPES
+                                  ].required.includes(col)
+                                return (
+                                  <TableCell
+                                    key={col}
+                                    className={isMissingRequired ? 'bg-red-500/20' : ''}
+                                  >
+                                    {isMissingRequired ? (
+                                      <Badge variant="destructive" className="text-[10px] h-5">
+                                        Vazio
+                                      </Badge>
+                                    ) : (
+                                      <span
+                                        className="truncate max-w-[150px] inline-block"
+                                        title={row[col]}
+                                      >
+                                        {row[col]}
+                                      </span>
+                                    )}
+                                  </TableCell>
+                                )
+                              })}
+                            </TableRow>
+                          )
+                        })
+                      ) : (
+                        <TableRow>
+                          <TableCell colSpan={columns.length + 1} className="h-24 text-center">
+                            Nenhum registro encontrado para a visualização atual.
+                          </TableCell>
+                        </TableRow>
+                      )}
                     </TableBody>
                   </Table>
                 </div>
