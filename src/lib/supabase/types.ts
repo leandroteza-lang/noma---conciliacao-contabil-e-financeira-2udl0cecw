@@ -9,7 +9,322 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      account_mapping: {
+        Row: {
+          chart_account_id: string | null
+          cost_center_id: string | null
+          created_at: string | null
+          id: string
+          mapping_type: string | null
+          organization_id: string | null
+        }
+        Insert: {
+          chart_account_id?: string | null
+          cost_center_id?: string | null
+          created_at?: string | null
+          id?: string
+          mapping_type?: string | null
+          organization_id?: string | null
+        }
+        Update: {
+          chart_account_id?: string | null
+          cost_center_id?: string | null
+          created_at?: string | null
+          id?: string
+          mapping_type?: string | null
+          organization_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'account_mapping_chart_account_id_fkey'
+            columns: ['chart_account_id']
+            isOneToOne: false
+            referencedRelation: 'chart_of_accounts'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'account_mapping_cost_center_id_fkey'
+            columns: ['cost_center_id']
+            isOneToOne: false
+            referencedRelation: 'cost_centers'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'account_mapping_organization_id_fkey'
+            columns: ['organization_id']
+            isOneToOne: false
+            referencedRelation: 'organizations'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      accounting_entries: {
+        Row: {
+          amount: number | null
+          created_at: string | null
+          credit_account_id: string | null
+          debit_account_id: string | null
+          description: string | null
+          entry_date: string | null
+          id: string
+          organization_id: string | null
+          status: string | null
+        }
+        Insert: {
+          amount?: number | null
+          created_at?: string | null
+          credit_account_id?: string | null
+          debit_account_id?: string | null
+          description?: string | null
+          entry_date?: string | null
+          id?: string
+          organization_id?: string | null
+          status?: string | null
+        }
+        Update: {
+          amount?: number | null
+          created_at?: string | null
+          credit_account_id?: string | null
+          debit_account_id?: string | null
+          description?: string | null
+          entry_date?: string | null
+          id?: string
+          organization_id?: string | null
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'accounting_entries_credit_account_id_fkey'
+            columns: ['credit_account_id']
+            isOneToOne: false
+            referencedRelation: 'chart_of_accounts'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'accounting_entries_debit_account_id_fkey'
+            columns: ['debit_account_id']
+            isOneToOne: false
+            referencedRelation: 'chart_of_accounts'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'accounting_entries_organization_id_fkey'
+            columns: ['organization_id']
+            isOneToOne: false
+            referencedRelation: 'organizations'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      bank_accounts: {
+        Row: {
+          account_code: string | null
+          account_number: string | null
+          account_type: string | null
+          agency: string | null
+          bank_code: string | null
+          check_digit: string | null
+          classification: string | null
+          created_at: string | null
+          description: string | null
+          id: string
+          organization_id: string | null
+        }
+        Insert: {
+          account_code?: string | null
+          account_number?: string | null
+          account_type?: string | null
+          agency?: string | null
+          bank_code?: string | null
+          check_digit?: string | null
+          classification?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          organization_id?: string | null
+        }
+        Update: {
+          account_code?: string | null
+          account_number?: string | null
+          account_type?: string | null
+          agency?: string | null
+          bank_code?: string | null
+          check_digit?: string | null
+          classification?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          organization_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'bank_accounts_organization_id_fkey'
+            columns: ['organization_id']
+            isOneToOne: false
+            referencedRelation: 'organizations'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      chart_of_accounts: {
+        Row: {
+          account_code: string | null
+          account_name: string | null
+          account_type: string | null
+          created_at: string | null
+          id: string
+          organization_id: string | null
+        }
+        Insert: {
+          account_code?: string | null
+          account_name?: string | null
+          account_type?: string | null
+          created_at?: string | null
+          id?: string
+          organization_id?: string | null
+        }
+        Update: {
+          account_code?: string | null
+          account_name?: string | null
+          account_type?: string | null
+          created_at?: string | null
+          id?: string
+          organization_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'chart_of_accounts_organization_id_fkey'
+            columns: ['organization_id']
+            isOneToOne: false
+            referencedRelation: 'organizations'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      cost_centers: {
+        Row: {
+          code: string | null
+          created_at: string | null
+          description: string | null
+          id: string
+          organization_id: string | null
+          parent_id: string | null
+        }
+        Insert: {
+          code?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          organization_id?: string | null
+          parent_id?: string | null
+        }
+        Update: {
+          code?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          organization_id?: string | null
+          parent_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'cost_centers_organization_id_fkey'
+            columns: ['organization_id']
+            isOneToOne: false
+            referencedRelation: 'organizations'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'cost_centers_parent_id_fkey'
+            columns: ['parent_id']
+            isOneToOne: false
+            referencedRelation: 'cost_centers'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      financial_movements: {
+        Row: {
+          amount: number | null
+          bank_account_id: string | null
+          cost_center_id: string | null
+          created_at: string | null
+          description: string | null
+          id: string
+          movement_date: string | null
+          organization_id: string | null
+          status: string | null
+        }
+        Insert: {
+          amount?: number | null
+          bank_account_id?: string | null
+          cost_center_id?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          movement_date?: string | null
+          organization_id?: string | null
+          status?: string | null
+        }
+        Update: {
+          amount?: number | null
+          bank_account_id?: string | null
+          cost_center_id?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          movement_date?: string | null
+          organization_id?: string | null
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'financial_movements_bank_account_id_fkey'
+            columns: ['bank_account_id']
+            isOneToOne: false
+            referencedRelation: 'bank_accounts'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'financial_movements_cost_center_id_fkey'
+            columns: ['cost_center_id']
+            isOneToOne: false
+            referencedRelation: 'cost_centers'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'financial_movements_organization_id_fkey'
+            columns: ['organization_id']
+            isOneToOne: false
+            referencedRelation: 'organizations'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      organizations: {
+        Row: {
+          cnpj: string | null
+          created_at: string | null
+          id: string
+          name: string | null
+          status: boolean | null
+        }
+        Insert: {
+          cnpj?: string | null
+          created_at?: string | null
+          id?: string
+          name?: string | null
+          status?: boolean | null
+        }
+        Update: {
+          cnpj?: string | null
+          created_at?: string | null
+          id?: string
+          name?: string | null
+          status?: boolean | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -153,3 +468,125 @@ export const Constants = {
 // IMPORTANT: The TypeScript types above map UUID, TEXT, VARCHAR all to "string".
 // Use the COLUMN TYPES section below to know the real PostgreSQL type for each column.
 // Always use the correct PostgreSQL type when writing SQL migrations.
+
+// --- COLUMN TYPES (actual PostgreSQL types) ---
+// Use this to know the real database type when writing migrations.
+// "string" in TypeScript types above may be uuid, text, varchar, timestamptz, etc.
+// Table: account_mapping
+//   id: uuid (not null, default: gen_random_uuid())
+//   organization_id: uuid (nullable)
+//   cost_center_id: uuid (nullable)
+//   chart_account_id: uuid (nullable)
+//   mapping_type: character varying (nullable)
+//   created_at: timestamp with time zone (nullable, default: now())
+// Table: accounting_entries
+//   id: uuid (not null, default: gen_random_uuid())
+//   organization_id: uuid (nullable)
+//   entry_date: date (nullable)
+//   debit_account_id: uuid (nullable)
+//   credit_account_id: uuid (nullable)
+//   amount: numeric (nullable)
+//   description: character varying (nullable)
+//   status: character varying (nullable, default: 'Draft'::character varying)
+//   created_at: timestamp with time zone (nullable, default: now())
+// Table: bank_accounts
+//   id: uuid (not null, default: gen_random_uuid())
+//   organization_id: uuid (nullable)
+//   account_code: character varying (nullable)
+//   account_type: character varying (nullable)
+//   description: character varying (nullable)
+//   bank_code: character varying (nullable)
+//   agency: character varying (nullable)
+//   account_number: character varying (nullable)
+//   check_digit: character varying (nullable)
+//   classification: character varying (nullable)
+//   created_at: timestamp with time zone (nullable, default: now())
+// Table: chart_of_accounts
+//   id: uuid (not null, default: gen_random_uuid())
+//   organization_id: uuid (nullable)
+//   account_code: character varying (nullable)
+//   account_name: character varying (nullable)
+//   account_type: character varying (nullable)
+//   created_at: timestamp with time zone (nullable, default: now())
+// Table: cost_centers
+//   id: uuid (not null, default: gen_random_uuid())
+//   organization_id: uuid (nullable)
+//   code: character varying (nullable)
+//   description: character varying (nullable)
+//   parent_id: uuid (nullable)
+//   created_at: timestamp with time zone (nullable, default: now())
+// Table: financial_movements
+//   id: uuid (not null, default: gen_random_uuid())
+//   organization_id: uuid (nullable)
+//   movement_date: date (nullable)
+//   description: character varying (nullable)
+//   amount: numeric (nullable)
+//   cost_center_id: uuid (nullable)
+//   bank_account_id: uuid (nullable)
+//   status: character varying (nullable, default: 'Pending'::character varying)
+//   created_at: timestamp with time zone (nullable, default: now())
+// Table: organizations
+//   id: uuid (not null, default: gen_random_uuid())
+//   cnpj: character varying (nullable)
+//   name: character varying (nullable)
+//   status: boolean (nullable, default: true)
+//   created_at: timestamp with time zone (nullable, default: now())
+
+// --- CONSTRAINTS ---
+// Table: account_mapping
+//   FOREIGN KEY account_mapping_chart_account_id_fkey: FOREIGN KEY (chart_account_id) REFERENCES chart_of_accounts(id) ON DELETE CASCADE
+//   FOREIGN KEY account_mapping_cost_center_id_fkey: FOREIGN KEY (cost_center_id) REFERENCES cost_centers(id) ON DELETE CASCADE
+//   FOREIGN KEY account_mapping_organization_id_fkey: FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE
+//   PRIMARY KEY account_mapping_pkey: PRIMARY KEY (id)
+// Table: accounting_entries
+//   FOREIGN KEY accounting_entries_credit_account_id_fkey: FOREIGN KEY (credit_account_id) REFERENCES chart_of_accounts(id) ON DELETE SET NULL
+//   FOREIGN KEY accounting_entries_debit_account_id_fkey: FOREIGN KEY (debit_account_id) REFERENCES chart_of_accounts(id) ON DELETE SET NULL
+//   FOREIGN KEY accounting_entries_organization_id_fkey: FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE
+//   PRIMARY KEY accounting_entries_pkey: PRIMARY KEY (id)
+// Table: bank_accounts
+//   FOREIGN KEY bank_accounts_organization_id_fkey: FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE
+//   PRIMARY KEY bank_accounts_pkey: PRIMARY KEY (id)
+// Table: chart_of_accounts
+//   FOREIGN KEY chart_of_accounts_organization_id_fkey: FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE
+//   PRIMARY KEY chart_of_accounts_pkey: PRIMARY KEY (id)
+// Table: cost_centers
+//   FOREIGN KEY cost_centers_organization_id_fkey: FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE
+//   FOREIGN KEY cost_centers_parent_id_fkey: FOREIGN KEY (parent_id) REFERENCES cost_centers(id) ON DELETE CASCADE
+//   PRIMARY KEY cost_centers_pkey: PRIMARY KEY (id)
+// Table: financial_movements
+//   FOREIGN KEY financial_movements_bank_account_id_fkey: FOREIGN KEY (bank_account_id) REFERENCES bank_accounts(id) ON DELETE SET NULL
+//   FOREIGN KEY financial_movements_cost_center_id_fkey: FOREIGN KEY (cost_center_id) REFERENCES cost_centers(id) ON DELETE SET NULL
+//   FOREIGN KEY financial_movements_organization_id_fkey: FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE
+//   PRIMARY KEY financial_movements_pkey: PRIMARY KEY (id)
+// Table: organizations
+//   PRIMARY KEY organizations_pkey: PRIMARY KEY (id)
+
+// --- ROW LEVEL SECURITY POLICIES ---
+// Table: account_mapping
+//   Policy "authenticated_all_account_mapping" (ALL, PERMISSIVE) roles={authenticated}
+//     USING: true
+//     WITH CHECK: true
+// Table: accounting_entries
+//   Policy "authenticated_all_accounting_entries" (ALL, PERMISSIVE) roles={authenticated}
+//     USING: true
+//     WITH CHECK: true
+// Table: bank_accounts
+//   Policy "authenticated_all_bank_accounts" (ALL, PERMISSIVE) roles={authenticated}
+//     USING: true
+//     WITH CHECK: true
+// Table: chart_of_accounts
+//   Policy "authenticated_all_chart_of_accounts" (ALL, PERMISSIVE) roles={authenticated}
+//     USING: true
+//     WITH CHECK: true
+// Table: cost_centers
+//   Policy "authenticated_all_cost_centers" (ALL, PERMISSIVE) roles={authenticated}
+//     USING: true
+//     WITH CHECK: true
+// Table: financial_movements
+//   Policy "authenticated_all_financial_movements" (ALL, PERMISSIVE) roles={authenticated}
+//     USING: true
+//     WITH CHECK: true
+// Table: organizations
+//   Policy "authenticated_all_organizations" (ALL, PERMISSIVE) roles={authenticated}
+//     USING: true
+//     WITH CHECK: true

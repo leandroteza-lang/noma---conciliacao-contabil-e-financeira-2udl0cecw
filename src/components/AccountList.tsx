@@ -60,7 +60,8 @@ export function AccountList({ accounts, onEdit, onDelete }: Props) {
                     variant="outline"
                     className={cn(
                       'font-medium shadow-sm py-1 whitespace-nowrap',
-                      EMPRESA_THEME[acc.empresa].badge,
+                      EMPRESA_THEME[acc.empresa]?.badge ||
+                        'bg-slate-100 text-slate-800 border-slate-200',
                     )}
                   >
                     {acc.empresa}
@@ -114,7 +115,7 @@ export function AccountList({ accounts, onEdit, onDelete }: Props) {
             key={acc.id}
             className={cn(
               'overflow-hidden border-l-4 shadow-sm transition-shadow hover:shadow-md',
-              EMPRESA_THEME[acc.empresa].border,
+              EMPRESA_THEME[acc.empresa]?.border || 'border-slate-500',
             )}
           >
             <CardContent className="p-4 sm:p-5">
@@ -122,7 +123,11 @@ export function AccountList({ accounts, onEdit, onDelete }: Props) {
                 <div className="pr-4">
                   <Badge
                     variant="outline"
-                    className={cn('mb-2.5 shadow-sm py-0.5', EMPRESA_THEME[acc.empresa].badge)}
+                    className={cn(
+                      'mb-2.5 shadow-sm py-0.5',
+                      EMPRESA_THEME[acc.empresa]?.badge ||
+                        'bg-slate-100 text-slate-800 border-slate-200',
+                    )}
                   >
                     {acc.empresa}
                   </Badge>

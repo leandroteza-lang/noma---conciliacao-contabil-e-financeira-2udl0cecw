@@ -3,6 +3,8 @@ import { Toaster } from '@/components/ui/toaster'
 import { Toaster as Sonner } from '@/components/ui/sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import Index from './pages/Index'
+import Login from './pages/Login'
+import Signup from './pages/Signup'
 import NotFound from './pages/NotFound'
 import Layout from './components/Layout'
 import { AuthProvider } from './hooks/use-auth'
@@ -14,6 +16,8 @@ const App = () => (
         <Toaster />
         <Sonner />
         <Routes>
+          <Route path="/login" element={<Login />} />
+          <Route path="/signup" element={<Signup />} />
           <Route element={<Layout />}>
             <Route path="/" element={<Index />} />
           </Route>

@@ -1,5 +1,5 @@
-import { useState, useMemo } from 'react'
-import { Search, Plus, Filter } from 'lucide-react'
+import { useState, useMemo, useEffect } from 'react'
+import { Search, Plus, Filter, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -14,10 +14,12 @@ import { AccountList } from '@/components/AccountList'
 import { AccountFormModal } from '@/components/AccountFormModal'
 import { DeleteConfirmModal } from '@/components/DeleteConfirmModal'
 import { Account } from '@/types'
-import { EMPRESAS, MOCK_ACCOUNTS } from '@/lib/constants'
+import { EMPRESAS } from '@/lib/constants'
+import { supabase } from '@/lib/supabase/client'
 
 export default function Index() {
-  const [accounts, setAccounts] = useState<Account[]>(MOCK_ACCOUNTS)
+  const [accounts, setAccounts] = useState<Account[]>([])
+  const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [empresaFilter, setEmpresaFilter] = useState<string>('all')
 
@@ -29,6 +31,40 @@ export default function Index() {
 
   const { toast } = useToast()
 
+  const fetchAccounts = async () => {
+    setLoading(true)
+    const { data, error } = await supabase
+      .from('bank_accounts')
+      .select('*')
+      .order('created_at', { ascending: false })
+
+    if (error) {
+      toast({
+        title: 'Erro ao carregar contas',
+        description: error.message,
+        variant: 'destructive',
+      })
+    } else if (data) {
+      const mapped = data.map((row) => ({
+        id: row.id,
+        empresa: row.company_name || '',
+        contaContabil: row.account_code || '',
+        descricao: row.description || '',
+        banco: row.bank_code || '',
+        agencia: row.agency || '',
+        numeroConta: row.account_number || '',
+        classificacao: row.classification || '',
+      }))
+      setAccounts(mapped)
+    }
+    setLoading(false)
+  }
+
+  useEffect(() => {
+    fetchAccounts()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   const filteredAccounts = useMemo(() => {
     return accounts.filter((acc) => {
       const matchesSearch =
@@ -39,19 +75,46 @@ export default function Index() {
     })
   }, [accounts, searchQuery, empresaFilter])
 
-  const handleSave = (data: Omit<Account, 'id'>) => {
-    if (editingAccount) {
-      setAccounts((prev) =>
-        prev.map((a) => (a.id === editingAccount.id ? { ...data, id: a.id } : a)),
-      )
-      toast({ title: 'Alterações salvas', description: 'O registro foi atualizado com sucesso.' })
-    } else {
-      const newAccount = { ...data, id: Math.random().toString(36).substring(2, 9) }
-      setAccounts((prev) => [newAccount, ...prev])
-      toast({
-        title: 'Conta criada com sucesso',
-        description: 'O novo registro foi adicionado à lista.',
-      })
+  const handleSave = async (data: Omit<Account, 'id'>) => {
+    try {
+      // Fetch user's organization first
+      const { data: orgData, error: orgError } = await supabase
+        .from('organizations')
+        .select('id')
+        .single()
+
+      if (orgError) throw new Error('Não foi possível encontrar a organização do usuário.')
+
+      const dbRow = {
+        organization_id: orgData.id,
+        company_name: data.empresa,
+        account_code: data.contaContabil,
+        description: data.descricao,
+        bank_code: data.banco,
+        agency: data.agencia,
+        account_number: data.numeroConta,
+        classification: data.classificacao,
+      }
+
+      if (editingAccount) {
+        const { error } = await supabase
+          .from('bank_accounts')
+          .update(dbRow)
+          .eq('id', editingAccount.id)
+        if (error) throw error
+        toast({ title: 'Alterações salvas', description: 'O registro foi atualizado com sucesso.' })
+      } else {
+        const { error } = await supabase.from('bank_accounts').insert(dbRow)
+        if (error) throw error
+        toast({
+          title: 'Conta criada com sucesso',
+          description: 'O novo registro foi adicionado à lista.',
+        })
+      }
+      setIsFormOpen(false)
+      fetchAccounts()
+    } catch (err: any) {
+      toast({ title: 'Erro ao salvar', description: err.message, variant: 'destructive' })
     }
   }
 
@@ -65,14 +128,22 @@ export default function Index() {
     setIsDeleteOpen(true)
   }
 
-  const handleConfirmDelete = () => {
+  const handleConfirmDelete = async () => {
     if (deletingId) {
-      setAccounts((prev) => prev.filter((a) => a.id !== deletingId))
-      toast({
-        title: 'Registro removido',
-        description: 'A conta foi deletada com sucesso.',
-        variant: 'destructive',
-      })
+      try {
+        const { error } = await supabase.from('bank_accounts').delete().eq('id', deletingId)
+
+        if (error) throw error
+
+        toast({
+          title: 'Registro removido',
+          description: 'A conta foi deletada com sucesso.',
+        })
+        setIsDeleteOpen(false)
+        fetchAccounts()
+      } catch (err: any) {
+        toast({ title: 'Erro ao deletar', description: err.message, variant: 'destructive' })
+      }
     }
   }
 
@@ -127,7 +198,13 @@ export default function Index() {
       </div>
 
       {/* Data List Component */}
-      <AccountList accounts={filteredAccounts} onEdit={handleEdit} onDelete={handleDeleteClick} />
+      {loading ? (
+        <div className="flex justify-center py-16">
+          <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+        </div>
+      ) : (
+        <AccountList accounts={filteredAccounts} onEdit={handleEdit} onDelete={handleDeleteClick} />
+      )}
 
       {/* Modals */}
       <AccountFormModal
