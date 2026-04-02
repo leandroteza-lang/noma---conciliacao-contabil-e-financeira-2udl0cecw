@@ -1,5 +1,17 @@
 DO $
 BEGIN
+  UPDATE public.cadastro_usuarios
+  SET cpf = NULL
+  WHERE id IN (
+    SELECT id
+    FROM (
+      SELECT id, ROW_NUMBER() OVER (PARTITION BY cpf ORDER BY created_at DESC) as rn
+      FROM public.cadastro_usuarios
+      WHERE cpf IS NOT NULL AND cpf != ''
+    ) t
+    WHERE t.rn > 1
+  );
+
   IF NOT EXISTS (
     SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE c.relname = 'cadastro_usuarios_cpf_idx' AND n.nspname = 'public'
   ) THEN
