@@ -1269,25 +1269,21 @@ export default function UsersPage() {
               <Copy className="h-4 w-4" /> Copiar Link
             </Button>
             <Button
-              asChild
+              type="button"
+              onClick={() => {
+                if (!inviteLinkInfo?.link) return
+                const text = `Olá ${inviteLinkInfo.name}, aqui está o seu link de acesso ao sistema Gestão de Contas:\n\n${inviteLinkInfo.link}`
+                const phoneParam = inviteLinkInfo.phone
+                  ? inviteLinkInfo.phone.replace(/\D/g, '')
+                  : ''
+                const url = phoneParam
+                  ? `https://wa.me/55${phoneParam}?text=${encodeURIComponent(text)}`
+                  : `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`
+                window.open(url, '_blank', 'noopener,noreferrer')
+              }}
               className="bg-green-600 hover:bg-green-700 gap-2 text-white cursor-pointer"
             >
-              <a
-                href={(() => {
-                  if (!inviteLinkInfo?.link) return '#'
-                  const text = `Olá ${inviteLinkInfo.name}, aqui está o seu link de acesso ao sistema Gestão de Contas:\n\n${inviteLinkInfo.link}`
-                  const phoneParam = inviteLinkInfo.phone
-                    ? inviteLinkInfo.phone.replace(/\D/g, '')
-                    : ''
-                  return phoneParam
-                    ? `https://wa.me/55${phoneParam}?text=${encodeURIComponent(text)}`
-                    : `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`
-                })()}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <MessageSquare className="h-4 w-4" /> Enviar por WhatsApp
-              </a>
+              <MessageSquare className="h-4 w-4" /> Enviar por WhatsApp
             </Button>
           </div>
         </DialogContent>

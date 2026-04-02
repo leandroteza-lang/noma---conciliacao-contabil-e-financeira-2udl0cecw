@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { Lock, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -21,7 +21,6 @@ export default function ResetPassword() {
   const [confirmPassword, setConfirmPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [isError, setIsError] = useState(false)
-  const navigate = useNavigate()
   const { toast } = useToast()
 
   useEffect(() => {
@@ -73,7 +72,8 @@ export default function ResetPassword() {
           title: 'Senha redefinida com sucesso!',
           description: 'Sua senha foi atualizada. Redirecionando para o sistema...',
         })
-        navigate('/dashboard')
+        // Força o recarregamento via window.location para assegurar que a nova sessão e os estados globais do App sejam totalmente re-sincronizados, evitando tela branca
+        window.location.href = '/dashboard'
       }
     } catch (err: any) {
       toast({
