@@ -288,14 +288,15 @@ export default function Layout() {
                 {(() => {
                   const allowedItems = MENU_ITEMS.filter((item) => {
                     if (item.roles && !item.roles.includes(role)) return false
-                    if (permissions.includes('all')) return true
-                    return permissions.includes(item.id)
+                    if (permissions?.includes('all')) return true
+                    return permissions?.includes(item.id)
                   })
 
                   // Apply custom ordering
                   const sortedItems = [...allowedItems].sort((a, b) => {
-                    const idxA = menuOrder.indexOf(a.path)
-                    const idxB = menuOrder.indexOf(b.path)
+                    const safeMenuOrder = menuOrder || []
+                    const idxA = safeMenuOrder.indexOf(a.path)
+                    const idxB = safeMenuOrder.indexOf(b.path)
                     if (idxA === -1 && idxB === -1) return 0
                     if (idxA === -1) return 1
                     if (idxB === -1) return -1
