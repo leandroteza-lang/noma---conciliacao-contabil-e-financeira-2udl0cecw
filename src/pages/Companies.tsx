@@ -36,6 +36,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
+import { Checkbox } from '@/components/ui/checkbox'
 import {
   Dialog,
   DialogContent,
@@ -189,6 +190,8 @@ export default function Companies() {
 
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 10
+
+  const [selectedIds, setSelectedIds] = useState<string[]>([])
 
   const { user } = useAuth()
   const { toast } = useToast()
@@ -355,7 +358,11 @@ export default function Companies() {
 
       const { error } = await supabase
         .from('organizations')
-        .update({ pending_deletion: true, deletion_requested_at: new Date().toISOString() })
+        .update({
+          pending_deletion: true,
+          deletion_requested_at: new Date().toISOString(),
+          deletion_requested_by: user?.id,
+        })
         .eq('id', id)
         .eq('user_id', user?.id)
       if (error) throw error
@@ -367,6 +374,62 @@ export default function Companies() {
     } catch (error: any) {
       toast({ title: 'Erro', description: error.message, variant: 'destructive' })
     }
+  }
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.length === 0) return
+    if (!confirm(`Deseja solicitar a exclusão de ${selectedIds.length} empresa(s)?`)) return
+
+    const checkPromises = selectedIds.map(async (id) => {
+      const [{ data: banks }, { data: costs }, { data: emps }] = await Promise.all([
+        supabase.from('bank_accounts').select('id').eq('organization_id', id).limit(1),
+        supabase.from('cost_centers').select('id').eq('organization_id', id).limit(1),
+        supabase
+          .from('employee_companies')
+          .select('employee_id')
+          .eq('organization_id', id)
+          .limit(1),
+      ])
+      const hasRelations =
+        (banks && banks.length > 0) || (costs && costs.length > 0) || (emps && emps.length > 0)
+      return { id, hasRelations }
+    })
+
+    const results = await Promise.all(checkPromises)
+    const toDelete = results.filter((r) => !r.hasRelations).map((r) => r.id)
+    const blocked = results.filter((r) => r.hasRelations).map((r) => r.id)
+
+    if (toDelete.length > 0) {
+      const { error } = await supabase
+        .from('organizations')
+        .update({
+          pending_deletion: true,
+          deletion_requested_at: new Date().toISOString(),
+          deletion_requested_by: user?.id,
+        })
+        .in('id', toDelete)
+        .eq('user_id', user?.id)
+
+      if (error) {
+        toast({ title: 'Erro', description: error.message, variant: 'destructive' })
+      } else {
+        toast({
+          title: 'Sucesso',
+          description: `${toDelete.length} empresa(s) enviada(s) para aprovação.`,
+        })
+      }
+    }
+
+    if (blocked.length > 0) {
+      toast({
+        title: 'Ação Parcialmente Bloqueada',
+        description: `${blocked.length} empresa(s) possuem vínculos (contas, centros ou funcionários) e não puderam ser excluídas.`,
+        variant: 'destructive',
+      })
+    }
+
+    setSelectedIds([])
+    fetchOrganizations()
   }
 
   const handleExport = async (formatType: 'pdf' | 'excel') => {
@@ -530,6 +593,17 @@ export default function Companies() {
         </CardContent>
       </Card>
 
+      {selectedIds.length > 0 && (
+        <div className="bg-slate-50 border border-slate-200 rounded-md p-3 flex items-center justify-between animate-in fade-in slide-in-from-top-2">
+          <span className="text-sm font-medium text-slate-700">
+            {selectedIds.length} item(ns) selecionado(s)
+          </span>
+          <Button variant="destructive" size="sm" onClick={handleBulkDelete} className="gap-2">
+            <Trash2 className="h-4 w-4" /> Excluir Selecionados
+          </Button>
+        </div>
+      )}
+
       <Card>
         <CardContent className="p-0">
           {loading ? (
@@ -546,6 +620,17 @@ export default function Companies() {
               <Table>
                 <TableHeader className="bg-slate-50">
                   <TableRow>
+                    <TableHead className="w-12 text-center">
+                      <Checkbox
+                        checked={
+                          paginatedOrgs.length > 0 && selectedIds.length === paginatedOrgs.length
+                        }
+                        onCheckedChange={(checked) => {
+                          if (checked) setSelectedIds(paginatedOrgs.map((o) => o.id))
+                          else setSelectedIds([])
+                        }}
+                      />
+                    </TableHead>
                     <TableHead
                       className="cursor-pointer hover:bg-slate-100 transition-colors"
                       onClick={() => handleSort('name')}
@@ -592,6 +677,15 @@ export default function Companies() {
                 <TableBody>
                   {paginatedOrgs.map((org) => (
                     <TableRow key={org.id} className="hover:bg-slate-50/50">
+                      <TableCell className="py-2 px-4 text-center">
+                        <Checkbox
+                          checked={selectedIds.includes(org.id)}
+                          onCheckedChange={(checked) => {
+                            if (checked) setSelectedIds((prev) => [...prev, org.id])
+                            else setSelectedIds((prev) => prev.filter((id) => id !== org.id))
+                          }}
+                        />
+                      </TableCell>
                       <TableCell className="py-2 px-4 font-medium">
                         <div className="flex items-center gap-2">
                           <div className="h-7 w-7 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center shrink-0 text-[10px] font-bold">

@@ -119,6 +119,7 @@ export default function Employees() {
 
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 10
+  const [selectedIds, setSelectedIds] = useState<string[]>([])
   const { user, role: currentUserRole } = useAuth()
   const { toast } = useToast()
 
@@ -302,7 +303,11 @@ export default function Employees() {
     try {
       const { error } = await supabase
         .from('employees')
-        .update({ pending_deletion: true, deletion_requested_at: new Date().toISOString() })
+        .update({
+          pending_deletion: true,
+          deletion_requested_at: new Date().toISOString(),
+          deletion_requested_by: user?.id,
+        })
         .eq('id', id)
         .eq('user_id', user?.id)
       if (error) throw error
@@ -314,6 +319,33 @@ export default function Employees() {
     } catch (e: any) {
       toast({ title: 'Erro', description: e.message, variant: 'destructive' })
     }
+  }
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.length === 0) return
+    if (!confirm(`Deseja solicitar a exclusão de ${selectedIds.length} funcionário(s)?`)) return
+
+    const { error } = await supabase
+      .from('employees')
+      .update({
+        pending_deletion: true,
+        deletion_requested_at: new Date().toISOString(),
+        deletion_requested_by: user?.id,
+      })
+      .in('id', selectedIds)
+      .eq('user_id', user?.id)
+
+    if (error) {
+      toast({ title: 'Erro', description: error.message, variant: 'destructive' })
+    } else {
+      toast({
+        title: 'Sucesso',
+        description: `${selectedIds.length} funcionário(s) enviado(s) para aprovação.`,
+      })
+    }
+
+    setSelectedIds([])
+    fetchData()
   }
 
   const handleExport = async (formatType: 'pdf' | 'excel') => {
@@ -496,6 +528,17 @@ export default function Employees() {
         </CardContent>
       </Card>
 
+      {selectedIds.length > 0 && canDelete && (
+        <div className="bg-slate-50 border border-slate-200 rounded-md p-3 flex items-center justify-between animate-in fade-in slide-in-from-top-2">
+          <span className="text-sm font-medium text-slate-700">
+            {selectedIds.length} item(ns) selecionado(s)
+          </span>
+          <Button variant="destructive" size="sm" onClick={handleBulkDelete} className="gap-2">
+            <Trash2 className="h-4 w-4" /> Excluir Selecionados
+          </Button>
+        </div>
+      )}
+
       <Card>
         <CardContent className="p-0">
           {loading ? (
@@ -512,6 +555,17 @@ export default function Employees() {
               <Table>
                 <TableHeader className="bg-slate-50">
                   <TableRow>
+                    {canDelete && (
+                      <TableHead className="w-12 text-center">
+                        <Checkbox
+                          checked={paginated.length > 0 && selectedIds.length === paginated.length}
+                          onCheckedChange={(checked) => {
+                            if (checked) setSelectedIds(paginated.map((e) => e.id))
+                            else setSelectedIds([])
+                          }}
+                        />
+                      </TableHead>
+                    )}
                     <TableHead
                       className="cursor-pointer hover:bg-slate-100"
                       onClick={() => handleSort('name')}
@@ -551,6 +605,17 @@ export default function Employees() {
                 <TableBody>
                   {paginated.map((e) => (
                     <TableRow key={e.id} className="hover:bg-slate-50/50">
+                      {canDelete && (
+                        <TableCell className="py-2 px-4 text-center">
+                          <Checkbox
+                            checked={selectedIds.includes(e.id)}
+                            onCheckedChange={(checked) => {
+                              if (checked) setSelectedIds((prev) => [...prev, e.id])
+                              else setSelectedIds((prev) => prev.filter((id) => id !== e.id))
+                            }}
+                          />
+                        </TableCell>
+                      )}
                       <TableCell className="py-2 px-4 font-medium">
                         <div className="flex items-center gap-2">
                           <div className="h-8 w-8 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center shrink-0 text-xs font-bold">

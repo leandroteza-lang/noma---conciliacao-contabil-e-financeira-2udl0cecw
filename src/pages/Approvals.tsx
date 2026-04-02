@@ -23,6 +23,8 @@ interface PendingItem {
   typeLabel: string
   name: string
   requestedAt: string
+  requestedBy?: string
+  requestedByName?: string
   originalData: any
 }
 
@@ -50,6 +52,7 @@ export default function Approvals() {
           typeLabel: 'Empresa',
           name: o.name,
           requestedAt: o.deletion_requested_at || o.created_at,
+          requestedBy: o.deletion_requested_by,
           originalData: o,
         })),
         ...(depts.data || []).map((d) => ({
@@ -58,6 +61,7 @@ export default function Approvals() {
           typeLabel: 'Departamento',
           name: d.name,
           requestedAt: d.deletion_requested_at || d.created_at,
+          requestedBy: d.deletion_requested_by,
           originalData: d,
         })),
         ...(emps.data || []).map((e) => ({
@@ -66,9 +70,27 @@ export default function Approvals() {
           typeLabel: 'Funcionário',
           name: e.name,
           requestedAt: e.deletion_requested_at || e.created_at,
+          requestedBy: e.deletion_requested_by,
           originalData: e,
         })),
       ]
+
+      const requesterIds = [...new Set(unified.map((i) => i.requestedBy).filter(Boolean))]
+      if (requesterIds.length > 0) {
+        const { data: requesters } = await supabase
+          .from('employees')
+          .select('user_id, name')
+          .in('user_id', requesterIds)
+        const reqMap: Record<string, string> = {}
+        requesters?.forEach((r) => {
+          if (r.user_id) reqMap[r.user_id] = r.name
+        })
+        unified.forEach((i) => {
+          if (i.requestedBy) {
+            i.requestedByName = reqMap[i.requestedBy] || 'Usuário Desconhecido'
+          }
+        })
+      }
 
       unified.sort((a, b) => new Date(b.requestedAt).getTime() - new Date(a.requestedAt).getTime())
       setItems(unified)
@@ -194,6 +216,7 @@ export default function Approvals() {
                   <TableRow>
                     <TableHead>Tipo</TableHead>
                     <TableHead>Nome / Identificação</TableHead>
+                    <TableHead>Solicitado por</TableHead>
                     <TableHead>Data da Solicitação</TableHead>
                     <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
@@ -211,6 +234,9 @@ export default function Approvals() {
                       </TableCell>
                       <TableCell className="py-3 px-4 font-medium text-slate-900">
                         {item.name}
+                      </TableCell>
+                      <TableCell className="py-3 px-4 text-slate-600 text-sm">
+                        {item.requestedByName || '-'}
                       </TableCell>
                       <TableCell className="py-3 px-4 text-slate-500 text-sm">
                         {item.requestedAt

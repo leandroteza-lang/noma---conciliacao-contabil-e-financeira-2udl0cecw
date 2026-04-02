@@ -272,22 +272,28 @@ export type Database = {
         Row: {
           code: string | null
           created_at: string
+          deletion_requested_at: string | null
           id: string
           name: string
+          pending_deletion: boolean | null
           user_id: string
         }
         Insert: {
           code?: string | null
           created_at?: string
+          deletion_requested_at?: string | null
           id?: string
           name: string
+          pending_deletion?: boolean | null
           user_id: string
         }
         Update: {
           code?: string | null
           created_at?: string
+          deletion_requested_at?: string | null
           id?: string
           name?: string
+          pending_deletion?: boolean | null
           user_id?: string
         }
         Relationships: []
@@ -327,12 +333,14 @@ export type Database = {
           address: string | null
           cpf: string | null
           created_at: string
+          deletion_requested_at: string | null
           department_id: string | null
           email: string | null
           id: string
           menu_order: Json | null
           name: string
           observations: string | null
+          pending_deletion: boolean | null
           permissions: Json | null
           phone: string | null
           role: string | null
@@ -343,12 +351,14 @@ export type Database = {
           address?: string | null
           cpf?: string | null
           created_at?: string
+          deletion_requested_at?: string | null
           department_id?: string | null
           email?: string | null
           id?: string
           menu_order?: Json | null
           name: string
           observations?: string | null
+          pending_deletion?: boolean | null
           permissions?: Json | null
           phone?: string | null
           role?: string | null
@@ -359,12 +369,14 @@ export type Database = {
           address?: string | null
           cpf?: string | null
           created_at?: string
+          deletion_requested_at?: string | null
           department_id?: string | null
           email?: string | null
           id?: string
           menu_order?: Json | null
           name?: string
           observations?: string | null
+          pending_deletion?: boolean | null
           permissions?: Json | null
           phone?: string | null
           role?: string | null
@@ -445,10 +457,12 @@ export type Database = {
           cnpj: string | null
           cpf: string | null
           created_at: string | null
+          deletion_requested_at: string | null
           email: string | null
           id: string
           name: string | null
           observations: string | null
+          pending_deletion: boolean | null
           phone: string | null
           status: boolean | null
           user_id: string | null
@@ -458,10 +472,12 @@ export type Database = {
           cnpj?: string | null
           cpf?: string | null
           created_at?: string | null
+          deletion_requested_at?: string | null
           email?: string | null
           id?: string
           name?: string | null
           observations?: string | null
+          pending_deletion?: boolean | null
           phone?: string | null
           status?: boolean | null
           user_id?: string | null
@@ -471,10 +487,12 @@ export type Database = {
           cnpj?: string | null
           cpf?: string | null
           created_at?: string | null
+          deletion_requested_at?: string | null
           email?: string | null
           id?: string
           name?: string | null
           observations?: string | null
+          pending_deletion?: boolean | null
           phone?: string | null
           status?: boolean | null
           user_id?: string | null
@@ -683,6 +701,8 @@ export const Constants = {
 //   code: character varying (nullable)
 //   name: character varying (not null)
 //   created_at: timestamp with time zone (not null, default: now())
+//   pending_deletion: boolean (nullable, default: false)
+//   deletion_requested_at: timestamp with time zone (nullable)
 // Table: employee_companies
 //   employee_id: uuid (not null)
 //   organization_id: uuid (not null)
@@ -701,6 +721,8 @@ export const Constants = {
 //   observations: text (nullable)
 //   permissions: jsonb (nullable, default: '["all"]'::jsonb)
 //   menu_order: jsonb (nullable, default: '[]'::jsonb)
+//   pending_deletion: boolean (nullable, default: false)
+//   deletion_requested_at: timestamp with time zone (nullable)
 // Table: financial_movements
 //   id: uuid (not null, default: gen_random_uuid())
 //   organization_id: uuid (nullable)
@@ -723,6 +745,8 @@ export const Constants = {
 //   email: character varying (nullable)
 //   address: text (nullable)
 //   observations: text (nullable)
+//   pending_deletion: boolean (nullable, default: false)
+//   deletion_requested_at: timestamp with time zone (nullable)
 
 // --- CONSTRAINTS ---
 // Table: account_mapping

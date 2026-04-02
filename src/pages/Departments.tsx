@@ -33,6 +33,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import { Checkbox } from '@/components/ui/checkbox'
 import {
   Dialog,
   DialogContent,
@@ -66,6 +67,7 @@ export default function Departments() {
   )
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 10
+  const [selectedIds, setSelectedIds] = useState<string[]>([])
   const { user, role } = useAuth()
   const { toast } = useToast()
 
@@ -216,7 +218,11 @@ export default function Departments() {
 
       const { error } = await supabase
         .from('departments')
-        .update({ pending_deletion: true, deletion_requested_at: new Date().toISOString() })
+        .update({
+          pending_deletion: true,
+          deletion_requested_at: new Date().toISOString(),
+          deletion_requested_by: user?.id,
+        })
         .eq('id', id)
         .eq('user_id', user?.id)
       if (error) throw error
@@ -228,6 +234,54 @@ export default function Departments() {
     } catch (error: any) {
       toast({ title: 'Erro', description: error.message, variant: 'destructive' })
     }
+  }
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.length === 0) return
+    if (!confirm(`Deseja solicitar a exclusão de ${selectedIds.length} departamento(s)?`)) return
+
+    const checkPromises = selectedIds.map(async (id) => {
+      const { data: linked } = await supabase
+        .from('employees')
+        .select('id')
+        .eq('department_id', id)
+        .limit(1)
+      return { id, hasRelations: linked && linked.length > 0 }
+    })
+
+    const results = await Promise.all(checkPromises)
+    const toDelete = results.filter((r) => !r.hasRelations).map((r) => r.id)
+    const blocked = results.filter((r) => r.hasRelations).map((r) => r.id)
+
+    if (toDelete.length > 0) {
+      const { error } = await supabase
+        .from('departments')
+        .update({
+          pending_deletion: true,
+          deletion_requested_at: new Date().toISOString(),
+          deletion_requested_by: user?.id,
+        })
+        .in('id', toDelete)
+        .eq('user_id', user?.id)
+
+      if (error) toast({ title: 'Erro', description: error.message, variant: 'destructive' })
+      else
+        toast({
+          title: 'Sucesso',
+          description: `${toDelete.length} departamento(s) enviado(s) para aprovação.`,
+        })
+    }
+
+    if (blocked.length > 0) {
+      toast({
+        title: 'Ação Parcialmente Bloqueada',
+        description: `${blocked.length} departamento(s) possuem funcionários vinculados e não puderam ser excluídos.`,
+        variant: 'destructive',
+      })
+    }
+
+    setSelectedIds([])
+    fetchDepartments()
   }
 
   const handleExport = async (formatType: 'pdf' | 'excel') => {
@@ -342,6 +396,17 @@ export default function Departments() {
         </CardContent>
       </Card>
 
+      {selectedIds.length > 0 && canDelete && (
+        <div className="bg-slate-50 border border-slate-200 rounded-md p-3 flex items-center justify-between animate-in fade-in slide-in-from-top-2">
+          <span className="text-sm font-medium text-slate-700">
+            {selectedIds.length} item(ns) selecionado(s)
+          </span>
+          <Button variant="destructive" size="sm" onClick={handleBulkDelete} className="gap-2">
+            <Trash2 className="h-4 w-4" /> Excluir Selecionados
+          </Button>
+        </div>
+      )}
+
       <Card>
         <CardContent className="p-0">
           {loading ? (
@@ -358,6 +423,17 @@ export default function Departments() {
               <Table>
                 <TableHeader className="bg-slate-50">
                   <TableRow>
+                    {canDelete && (
+                      <TableHead className="w-12 text-center">
+                        <Checkbox
+                          checked={paginated.length > 0 && selectedIds.length === paginated.length}
+                          onCheckedChange={(checked) => {
+                            if (checked) setSelectedIds(paginated.map((d) => d.id))
+                            else setSelectedIds([])
+                          }}
+                        />
+                      </TableHead>
+                    )}
                     <TableHead
                       className="cursor-pointer hover:bg-slate-100"
                       onClick={() => handleSort('code')}
@@ -388,6 +464,17 @@ export default function Departments() {
                 <TableBody>
                   {paginated.map((item) => (
                     <TableRow key={item.id} className="hover:bg-slate-50/50">
+                      {canDelete && (
+                        <TableCell className="py-2 px-4 text-center">
+                          <Checkbox
+                            checked={selectedIds.includes(item.id)}
+                            onCheckedChange={(checked) => {
+                              if (checked) setSelectedIds((prev) => [...prev, item.id])
+                              else setSelectedIds((prev) => prev.filter((id) => id !== item.id))
+                            }}
+                          />
+                        </TableCell>
+                      )}
                       <TableCell className="py-2 px-4 font-medium text-slate-600">
                         {item.code}
                       </TableCell>
