@@ -1,6 +1,15 @@
 import { useState, useRef, useEffect, useMemo } from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowLeft, FileSpreadsheet, AlertCircle, CheckCircle2, FileType2 } from 'lucide-react'
+import {
+  ArrowLeft,
+  FileSpreadsheet,
+  AlertCircle,
+  CheckCircle2,
+  FileType2,
+  UploadCloud,
+  XCircle,
+  List,
+} from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   Card,
@@ -30,28 +39,36 @@ import { useToast } from '@/hooks/use-toast'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Label } from '@/components/ui/label'
+import { ScrollArea } from '@/components/ui/scroll-area'
+import { supabase } from '@/lib/supabase/client'
 
 const IMPORT_TYPES = {
   BANK_ACCOUNTS: {
     id: 'BANK_ACCOUNTS',
-    label: 'Contas Bancárias',
-    required: ['EMPRESA', 'CONTA_CONTABIL', 'DESCRICAO'],
+    label: 'Contas Bancárias (Edge Function)',
+    required: ['EMPRESA', 'CONTA_CONTABIL'],
+    optional: [
+      'CODCAIXA',
+      'DESCRICAO',
+      'NUMBANCO',
+      'NUMAGENCIA',
+      'NROCONTA',
+      'CLASSIFICACAO',
+      'DIGITOCONTA',
+    ],
   },
   COST_CENTERS: {
     id: 'COST_CENTERS',
     label: 'Centros de Custo',
     required: ['EMPRESA', 'CODIGO_CC', 'NOME_CC'],
+    optional: [],
   },
-  CHART_OF_ACCOUNTS: {
-    id: 'CHART_OF_ACCOUNTS',
-    label: 'Plano de Contas',
-    required: ['CODIGO', 'CLASSIFICACAO', 'NOME_CONTA'],
-  },
-  MAPPING: {
-    id: 'MAPPING',
-    label: 'Mapeamento DE/PARA',
-    required: ['DE_CONTA', 'PARA_CONTA', 'TIPO'],
-  },
+}
+
+interface ImportResult {
+  inserted: number
+  rejected: number
+  errors: string[]
 }
 
 export default function Import() {
@@ -65,9 +82,21 @@ export default function Import() {
   const [importType, setImportType] = useState<string>('')
 
   const [rawData, setRawData] = useState<any[]>([])
+  const [orgs, setOrgs] = useState<{ id: string; name: string }[]>([])
 
   const [isImporting, setIsImporting] = useState(false)
   const [importProgress, setImportProgress] = useState(0)
+  const [importResult, setImportResult] = useState<ImportResult | null>(null)
+
+  // Fetch organizations to generate realistic mock data that maps successfully
+  useEffect(() => {
+    supabase
+      .from('organizations')
+      .select('id, name')
+      .then(({ data }) => {
+        setOrgs(data || [])
+      })
+  }, [])
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0]
@@ -84,49 +113,66 @@ export default function Import() {
 
     setFile(selectedFile)
     setIsUploading(true)
+    setImportResult(null)
 
-    // Simulando leitura do arquivo Excel e extração das abas
+    // Simulando leitura de arquivo Excel local
     setTimeout(() => {
       setSheets(['DE-PARA', 'PLANO_TGA', 'CADASTRO_CAIXA_BCOS_TGA', 'GERAR_LCTO_DOMINIO'])
-      setSelectedSheet('')
-      setImportType('')
-      setRawData([])
+      setSelectedSheet('CADASTRO_CAIXA_BCOS_TGA')
+      setImportType('BANK_ACCOUNTS')
       setIsUploading(false)
       toast({
-        title: 'Arquivo carregado',
-        description: 'Selecione a aba e o tipo de dados para continuar.',
+        title: 'Arquivo processado',
+        description: 'Aba principal selecionada automaticamente.',
       })
     }, 1500)
   }
 
+  // Generate mock extracted data based on sheet and type
   useEffect(() => {
     if (selectedSheet && importType) {
-      // Mock de extração de dados da aba selecionada
-      const req = IMPORT_TYPES[importType as keyof typeof IMPORT_TYPES].required
+      const typeConfig = IMPORT_TYPES[importType as keyof typeof IMPORT_TYPES]
       const rows = []
-      const numRows = Math.floor(Math.random() * 50) + 20
+      const numRows = Math.floor(Math.random() * 20) + 15
 
       for (let i = 0; i < numRows; i++) {
         const row: any = {}
-        req.forEach((col) => {
-          // Probabilidade pequena de vir vazio para simular validação
-          const isMissing = Math.random() < 0.1
-          row[col] = isMissing ? '' : `Mock ${col} ${i + 1}`
+        const isMissingReq = Math.random() < 0.05 // 5% de chance de vir vazio (para testar erro)
+        const isUnknownOrg = Math.random() < 0.1 // 10% de chance de empresa inexistente (para testar erro)
+
+        const selectedOrgName = isUnknownOrg
+          ? 'Empresa Fantasma LTDA'
+          : orgs.length > 0
+            ? orgs[Math.floor(Math.random() * orgs.length)].name
+            : 'Minha Empresa'
+
+        typeConfig.required.forEach((col) => {
+          if (col === 'EMPRESA') {
+            row[col] = isMissingReq ? '' : selectedOrgName
+          } else if (col === 'CONTA_CONTABIL') {
+            // Conta aleatória para evitar conflito a cada teste
+            row[col] = isMissingReq ? '' : `CC-${Math.floor(Math.random() * 100000)}`
+          } else {
+            row[col] = isMissingReq ? '' : `Mock ${col} ${i + 1}`
+          }
         })
-        row['COLUNA_EXTRA'] = `Extra info ${i + 1}`
+
+        typeConfig.optional.forEach((col) => {
+          row[col] = `Dado ${col} ${i + 1}`
+        })
+
         rows.push(row)
       }
       setRawData(rows)
     } else {
       setRawData([])
     }
-  }, [selectedSheet, importType])
+  }, [selectedSheet, importType, orgs])
 
   const validationInfo = useMemo(() => {
     if (!importType || rawData.length === 0) return null
 
     const req = IMPORT_TYPES[importType as keyof typeof IMPORT_TYPES].required
-
     let valid = 0
     let invalid = 0
     const missingColumns = req.filter((c) => !Object.keys(rawData[0] || {}).includes(c))
@@ -138,24 +184,25 @@ export default function Import() {
         total: rawData.length,
         missingColumns,
         errors: [],
+        validRecords: [],
       }
     }
 
     const errors: { row: number; missing: string[] }[] = []
+    const validRecords: any[] = []
 
     rawData.forEach((row, idx) => {
       const missing = req.filter((col) => !row[col] || String(row[col]).trim() === '')
       if (missing.length > 0) {
         invalid++
-        if (errors.length < 5) {
-          errors.push({ row: idx + 1, missing })
-        }
+        if (errors.length < 5) errors.push({ row: idx + 1, missing })
       } else {
         valid++
+        validRecords.push(row)
       }
     })
 
-    return { valid, invalid, total: rawData.length, missingColumns: [], errors }
+    return { valid, invalid, total: rawData.length, missingColumns: [], errors, validRecords }
   }, [rawData, importType])
 
   const columns = useMemo(() => {
@@ -163,40 +210,58 @@ export default function Import() {
     return Object.keys(rawData[0])
   }, [rawData])
 
-  const confirmImport = () => {
-    if (!validationInfo || validationInfo.valid === 0 || validationInfo.missingColumns.length > 0) {
+  const confirmImport = async () => {
+    if (!validationInfo || validationInfo.validRecords.length === 0) {
       toast({
         variant: 'destructive',
-        title: 'Erro de Validação',
-        description: 'Não há registros válidos para importar.',
+        title: 'Erro',
+        description: 'Nenhum registro válido para importar.',
       })
       return
     }
 
     setIsImporting(true)
-    setImportProgress(0)
+    setImportProgress(30) // Progresso inicial (enviando...)
 
-    const interval = setInterval(() => {
-      setImportProgress((p) => {
-        if (p >= 100) {
-          clearInterval(interval)
-          setIsImporting(false)
-          toast({
-            title: 'Importação Concluída',
-            description: `${validationInfo.valid} registros foram importados com sucesso.`,
-          })
-          setTimeout(() => {
-            setFile(null)
-            setSheets([])
-            setSelectedSheet('')
-            setImportType('')
-            setRawData([])
-          }, 2000)
-          return 100
-        }
-        return p + 20
+    try {
+      // Chamando a Edge Function
+      const { data, error } = await supabase.functions.invoke('import-data', {
+        body: {
+          records: validationInfo.validRecords,
+          type: importType,
+        },
       })
-    }, 500)
+
+      if (error) {
+        throw new Error(error.message || 'Erro desconhecido ao chamar a função')
+      }
+
+      setImportProgress(100)
+      setImportResult(data)
+
+      toast({
+        title: 'Processamento Finalizado',
+        description: `${data.inserted} registros inseridos, ${data.rejected} rejeitados.`,
+      })
+    } catch (err: any) {
+      toast({
+        variant: 'destructive',
+        title: 'Falha na Importação',
+        description: err.message,
+      })
+      setImportProgress(0)
+    } finally {
+      setIsImporting(false)
+    }
+  }
+
+  const resetForm = () => {
+    setFile(null)
+    setSheets([])
+    setSelectedSheet('')
+    setImportType('')
+    setRawData([])
+    setImportResult(null)
   }
 
   return (
@@ -210,83 +275,79 @@ export default function Import() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Importação de Dados</h1>
           <p className="text-muted-foreground">
-            Importe suas planilhas Excel (.xlsx) para o sistema.
+            Importe planilhas Excel para cadastro em lote via Edge Functions.
           </p>
         </div>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>1. Selecionar Arquivo</CardTitle>
-          <CardDescription>
-            Faça o upload do seu arquivo Excel para iniciar a importação.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {!file ? (
-            <div
-              className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-12 text-center hover:bg-muted/50 transition-colors cursor-pointer"
-              onClick={() => fileInputRef.current?.click()}
-            >
-              <FileSpreadsheet className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-              <h3 className="font-semibold text-lg mb-1">
-                Clique para selecionar ou arraste o arquivo
-              </h3>
-              <p className="text-sm text-muted-foreground">Apenas arquivos .xlsx são suportados</p>
-              <input
-                type="file"
-                ref={fileInputRef}
-                className="hidden"
-                accept=".xlsx, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                onChange={handleFileChange}
-              />
-            </div>
-          ) : (
-            <div className="flex items-center justify-between p-4 border rounded-lg bg-muted/30">
-              <div className="flex items-center gap-3">
-                <FileSpreadsheet className="h-8 w-8 text-primary" />
-                <div>
-                  <p className="font-medium">{file.name}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {(file.size / 1024).toFixed(2)} KB
-                  </p>
-                </div>
-              </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  setFile(null)
-                  setSheets([])
-                  setSelectedSheet('')
-                  setImportType('')
-                  setRawData([])
-                }}
-                disabled={isUploading || isImporting}
+      {!importResult && (
+        <Card>
+          <CardHeader>
+            <CardTitle>1. Selecionar Arquivo</CardTitle>
+            <CardDescription>
+              Faça o upload do seu arquivo Excel (.xlsx) para iniciar.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {!file ? (
+              <div
+                className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-12 text-center hover:bg-muted/50 transition-colors cursor-pointer"
+                onClick={() => fileInputRef.current?.click()}
               >
-                Trocar arquivo
-              </Button>
-            </div>
-          )}
-
-          {isUploading && (
-            <div className="mt-4 space-y-2">
-              <div className="flex justify-between text-sm">
-                <span>Lendo arquivo...</span>
+                <UploadCloud className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                <h3 className="font-semibold text-lg mb-1">
+                  Clique para selecionar ou arraste o arquivo
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  Apenas arquivos .xlsx são suportados
+                </p>
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  className="hidden"
+                  accept=".xlsx, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                  onChange={handleFileChange}
+                />
               </div>
-              <Progress value={45} className="h-2 animate-pulse" />
-            </div>
-          )}
-        </CardContent>
-      </Card>
+            ) : (
+              <div className="flex items-center justify-between p-4 border rounded-lg bg-muted/30">
+                <div className="flex items-center gap-3">
+                  <FileSpreadsheet className="h-8 w-8 text-primary" />
+                  <div>
+                    <p className="font-medium">{file.name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {(file.size / 1024).toFixed(2)} KB
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={resetForm}
+                  disabled={isUploading || isImporting}
+                >
+                  Trocar arquivo
+                </Button>
+              </div>
+            )}
 
-      {sheets.length > 0 && (
+            {isUploading && (
+              <div className="mt-4 space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span>Lendo abas do arquivo...</span>
+                </div>
+                <Progress value={45} className="h-2 animate-pulse" />
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {!importResult && sheets.length > 0 && (
         <Card className="animate-fade-in">
           <CardHeader>
             <CardTitle>2. Configuração de Importação</CardTitle>
-            <CardDescription>
-              Selecione a aba da planilha e o tipo de dados correspondente.
-            </CardDescription>
+            <CardDescription>Selecione a aba e o tipo de importação.</CardDescription>
           </CardHeader>
           <CardContent className="grid md:grid-cols-2 gap-6">
             <div className="space-y-2">
@@ -323,12 +384,12 @@ export default function Import() {
         </Card>
       )}
 
-      {selectedSheet && importType && validationInfo && (
+      {!importResult && selectedSheet && importType && validationInfo && (
         <Card className="animate-fade-in">
           <CardHeader>
             <CardTitle>3. Validação e Preview</CardTitle>
             <CardDescription>
-              Revise as primeiras linhas e os resultados da validação de colunas.
+              Revise os dados antes de enviá-los para processamento no banco.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -337,9 +398,7 @@ export default function Import() {
                 <AlertCircle className="h-4 w-4" />
                 <AlertTitle>Estrutura Inválida</AlertTitle>
                 <AlertDescription>
-                  A planilha selecionada não possui as colunas obrigatórias para este tipo de dado.
-                  <br className="my-1" />
-                  Colunas ausentes:{' '}
+                  Colunas obrigatórias ausentes:{' '}
                   <span className="font-semibold">{validationInfo.missingColumns.join(', ')}</span>
                 </AlertDescription>
               </Alert>
@@ -354,7 +413,7 @@ export default function Import() {
                     {validationInfo.valid}
                   </span>
                   <span className="text-sm text-green-600/80 dark:text-green-500/80 font-medium">
-                    Linhas Válidas
+                    Prontas para Envio
                   </span>
                 </div>
                 <div className="bg-red-500/10 p-4 rounded-lg flex flex-col items-center justify-center text-center border border-red-500/20">
@@ -362,44 +421,22 @@ export default function Import() {
                     {validationInfo.invalid}
                   </span>
                   <span className="text-sm text-red-600/80 dark:text-red-500/80 font-medium">
-                    Linhas Inválidas
+                    Incompletas (Ignoradas)
                   </span>
                 </div>
               </div>
             )}
 
             {validationInfo.invalid > 0 && validationInfo.missingColumns.length === 0 && (
-              <Alert className="bg-amber-500/10 text-amber-700 border-amber-500/30 dark:text-amber-400">
-                <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-                <AlertTitle>Atenção: Linhas com Erro</AlertTitle>
+              <Alert className="bg-amber-500/10 text-amber-700 border-amber-500/30">
+                <AlertCircle className="h-4 w-4 text-amber-600" />
+                <AlertTitle>Atenção: Linhas Ignoradas</AlertTitle>
                 <AlertDescription>
-                  Existem {validationInfo.invalid} linhas com campos obrigatórios vazios. Elas serão{' '}
-                  <strong>ignoradas</strong> na importação.
-                  <ul className="list-disc pl-5 mt-2 space-y-1">
-                    {validationInfo.errors.map((e, i) => (
-                      <li key={i}>
-                        Linha {e.row}: Campos vazios ({e.missing.join(', ')})
-                      </li>
-                    ))}
-                    {validationInfo.invalid > 5 && (
-                      <li>...e mais {validationInfo.invalid - 5} linhas com erro.</li>
-                    )}
-                  </ul>
+                  {validationInfo.invalid} linhas não possuem todas as colunas obrigatórias e não
+                  serão enviadas.
                 </AlertDescription>
               </Alert>
             )}
-
-            {validationInfo.invalid === 0 &&
-              validationInfo.missingColumns.length === 0 &&
-              rawData.length > 0 && (
-                <Alert className="bg-green-500/10 text-green-700 border-green-500/30 dark:text-green-400">
-                  <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
-                  <AlertTitle>Tudo Certo!</AlertTitle>
-                  <AlertDescription>
-                    Os dados estão no formato correto e prontos para importação.
-                  </AlertDescription>
-                </Alert>
-              )}
 
             {columns.length > 0 && validationInfo.missingColumns.length === 0 && (
               <div className="space-y-3">
@@ -413,21 +450,23 @@ export default function Import() {
                       <TableRow>
                         <TableHead className="w-[50px] text-center">#</TableHead>
                         {columns.map((col) => (
-                          <TableHead key={col}>{col}</TableHead>
+                          <TableHead key={col} className="whitespace-nowrap">
+                            {col}
+                          </TableHead>
                         ))}
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {rawData.slice(0, 5).map((row, idx) => {
-                        const isRowInvalid = IMPORT_TYPES[
+                        const isInvalid = IMPORT_TYPES[
                           importType as keyof typeof IMPORT_TYPES
                         ].required.some((c) => !row[c])
                         return (
                           <TableRow
                             key={idx}
-                            className={isRowInvalid ? 'bg-red-500/5 hover:bg-red-500/10' : ''}
+                            className={isInvalid ? 'bg-red-500/5 hover:bg-red-500/10' : ''}
                           >
-                            <TableCell className="text-center font-medium text-muted-foreground">
+                            <TableCell className="text-center text-muted-foreground">
                               {idx + 1}
                             </TableCell>
                             {columns.map((col) => (
@@ -441,7 +480,7 @@ export default function Import() {
                                   </Badge>
                                 ) : (
                                   <span
-                                    className="truncate max-w-[200px] inline-block"
+                                    className="truncate max-w-[150px] inline-block"
                                     title={row[col]}
                                   >
                                     {row[col]}
@@ -462,7 +501,7 @@ export default function Import() {
             {isImporting ? (
               <div className="space-y-2">
                 <div className="flex justify-between text-sm font-medium">
-                  <span>Importando dados para o banco...</span>
+                  <span>Processando dados no servidor (Edge Function)...</span>
                   <span>{importProgress}%</span>
                 </div>
                 <Progress value={importProgress} className="h-2" />
@@ -470,21 +509,80 @@ export default function Import() {
             ) : (
               <div className="flex justify-between items-center w-full">
                 <p className="text-sm text-muted-foreground">
-                  Certifique-se de que os dados e as colunas estão corretos antes de continuar.
+                  Os dados válidos serão processados remotamente.
                 </p>
                 <Button
                   onClick={confirmImport}
-                  disabled={
-                    !validationInfo ||
-                    validationInfo.valid === 0 ||
-                    validationInfo.missingColumns.length > 0
-                  }
+                  disabled={validationInfo.valid === 0 || validationInfo.missingColumns.length > 0}
                 >
                   <CheckCircle2 className="h-4 w-4 mr-2" />
-                  Confirmar Importação
+                  Confirmar e Processar
                 </Button>
               </div>
             )}
+          </CardFooter>
+        </Card>
+      )}
+
+      {importResult && (
+        <Card className="animate-fade-in border-green-500/30">
+          <CardHeader className="bg-green-500/5 pb-8">
+            <div className="mx-auto bg-green-500/20 p-4 rounded-full mb-4">
+              <CheckCircle2 className="h-10 w-10 text-green-600" />
+            </div>
+            <CardTitle className="text-center text-2xl">Processamento Concluído</CardTitle>
+            <CardDescription className="text-center">
+              A Edge Function finalizou a validação e inserção dos registros no banco de dados.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="-mt-6">
+            <div className="grid grid-cols-2 gap-4 bg-background border rounded-lg p-6 shadow-sm">
+              <div className="flex flex-col items-center gap-1">
+                <span className="text-4xl font-bold text-green-600">{importResult.inserted}</span>
+                <span className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
+                  Inseridos com Sucesso
+                </span>
+              </div>
+              <div className="flex flex-col items-center gap-1 border-l">
+                <span
+                  className={`text-4xl font-bold ${importResult.rejected > 0 ? 'text-red-500' : 'text-muted-foreground'}`}
+                >
+                  {importResult.rejected}
+                </span>
+                <span className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
+                  Rejeitados/Duplicados
+                </span>
+              </div>
+            </div>
+
+            {importResult.errors.length > 0 && (
+              <div className="mt-6 space-y-3">
+                <h4 className="font-semibold text-red-600 flex items-center gap-2">
+                  <XCircle className="h-4 w-4" /> Relatório de Erros ({importResult.errors.length})
+                </h4>
+                <ScrollArea className="h-40 w-full rounded-md border p-4 bg-muted/30">
+                  <ul className="space-y-2 text-sm">
+                    {importResult.errors.map((err, i) => (
+                      <li key={i} className="text-muted-foreground flex items-start gap-2">
+                        <span className="min-w-1.5 h-1.5 rounded-full bg-red-500 mt-1.5" />
+                        <span>{err}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </ScrollArea>
+              </div>
+            )}
+          </CardContent>
+          <CardFooter className="flex justify-center gap-4 bg-muted/10 p-6 border-t">
+            <Button variant="outline" onClick={resetForm}>
+              Importar Novo Arquivo
+            </Button>
+            <Button asChild>
+              <Link to="/">
+                <List className="h-4 w-4 mr-2" />
+                Ver Listagem de Contas
+              </Link>
+            </Button>
           </CardFooter>
         </Card>
       )}
