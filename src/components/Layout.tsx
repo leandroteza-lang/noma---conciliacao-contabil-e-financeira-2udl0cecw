@@ -61,13 +61,13 @@ export default function Layout() {
 
   return (
     <SidebarProvider>
-      <Sidebar collapsible="icon" className="z-20">
+      <Sidebar collapsible="offcanvas" className="z-20">
         <SidebarHeader className="border-b border-sidebar-border px-4 py-4 h-16 flex justify-center">
           <div className="flex items-center gap-3 overflow-hidden w-full">
             <div className="bg-blue-600 p-1.5 rounded-lg text-white shadow-sm flex items-center justify-center shrink-0">
               <Wallet className="size-5" />
             </div>
-            <span className="font-bold text-slate-800 tracking-tight truncate group-data-[collapsible=icon]:hidden">
+            <span className="font-bold text-slate-800 tracking-tight truncate group-data-[collapsible=offcanvas]:hidden">
               Gestão de Contas
             </span>
           </div>
