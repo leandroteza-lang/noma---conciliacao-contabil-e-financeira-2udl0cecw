@@ -44,7 +44,8 @@ Deno.serve(async (req: Request) => {
       type !== 'BANK_ACCOUNTS' &&
       type !== 'COST_CENTERS' &&
       type !== 'CHART_ACCOUNTS' &&
-      type !== 'MAPPINGS'
+      type !== 'MAPPINGS' &&
+      type !== 'FINANCIAL_ENTRIES'
     ) {
       return new Response(
         JSON.stringify({ error: 'Tipo de importação não suportado atualmente por esta função' }),
@@ -425,6 +426,162 @@ Deno.serve(async (req: Request) => {
         if (insertError) {
           rejected++
           errors.push(`Linha ${rowNum}: Erro ao inserir no banco - ${insertError.message}`)
+        } else {
+          inserted++
+        }
+      }
+    } else if (type === 'FINANCIAL_ENTRIES') {
+      for (let i = 0; i < records.length; i++) {
+        const row = records[i]
+        const rowNum = i + 1
+
+        const empresa = row['EMPRESA']
+        const data = row['DATA']
+        const descricao = row['DESCRICAO']
+        const valorRaw = row['VALOR']
+        const centroCusto = row['CENTRO_CUSTO']
+        const contaDebito = row['CONTA_DEBITO']
+        const contaCredito = row['CONTA_CREDITO']
+
+        if (!empresa || String(empresa).trim() === '') {
+          rejected++
+          errors.push(`Linha ${rowNum}: A coluna EMPRESA está vazia.`)
+          continue
+        }
+
+        if (!data || String(data).trim() === '') {
+          rejected++
+          errors.push(`Linha ${rowNum}: A coluna DATA está vazia.`)
+          continue
+        }
+
+        const parsedDate = new Date(data)
+        if (isNaN(parsedDate.getTime())) {
+          rejected++
+          errors.push(`Linha ${rowNum}: A coluna DATA possui formato inválido.`)
+          continue
+        }
+
+        const valorStr = String(valorRaw).replace(',', '.')
+        const valor = parseFloat(valorStr)
+        if (isNaN(valor)) {
+          rejected++
+          errors.push(`Linha ${rowNum}: A coluna VALOR possui formato numérico inválido.`)
+          continue
+        }
+
+        const orgId = orgMap.get(String(empresa).trim().toLowerCase())
+        if (!orgId) {
+          rejected++
+          errors.push(`Linha ${rowNum}: A empresa "${empresa}" não foi encontrada.`)
+          continue
+        }
+
+        const strCentroCusto = String(centroCusto).trim()
+        const { data: ccData, error: ccError } = await supabase
+          .from('cost_centers')
+          .select('id')
+          .eq('organization_id', orgId)
+          .eq('code', strCentroCusto)
+          .maybeSingle()
+
+        if (ccError || !ccData) {
+          rejected++
+          errors.push(`Linha ${rowNum}: Centro de Custo "${strCentroCusto}" não encontrado.`)
+          continue
+        }
+
+        const strContaDebito = String(contaDebito).trim()
+        const { data: debitData, error: debitError } = await supabase
+          .from('chart_of_accounts')
+          .select('id')
+          .eq('organization_id', orgId)
+          .eq('account_code', strContaDebito)
+          .maybeSingle()
+
+        if (debitError || !debitData) {
+          rejected++
+          errors.push(`Linha ${rowNum}: Conta Débito "${strContaDebito}" não encontrada.`)
+          continue
+        }
+
+        const strContaCredito = String(contaCredito).trim()
+        const { data: creditData, error: creditError } = await supabase
+          .from('chart_of_accounts')
+          .select('id')
+          .eq('organization_id', orgId)
+          .eq('account_code', strContaCredito)
+          .maybeSingle()
+
+        if (creditError || !creditData) {
+          rejected++
+          errors.push(`Linha ${rowNum}: Conta Crédito "${strContaCredito}" não encontrada.`)
+          continue
+        }
+
+        const formattedDate = parsedDate.toISOString().split('T')[0]
+
+        // Validação de duplicatas por data/valor/conta(centro de custo)
+        const { data: existing, error: checkError } = await supabase
+          .from('financial_movements')
+          .select('id')
+          .eq('organization_id', orgId)
+          .eq('movement_date', formattedDate)
+          .eq('amount', valor)
+          .eq('cost_center_id', ccData.id)
+          .maybeSingle()
+
+        if (checkError) {
+          rejected++
+          errors.push(`Linha ${rowNum}: Falha ao verificar duplicata - ${checkError.message}`)
+          continue
+        }
+
+        if (existing) {
+          rejected++
+          errors.push(
+            `Linha ${rowNum}: Lançamento já existe com mesma data, valor e centro de custo.`,
+          )
+          continue
+        }
+
+        // Inserir em financial_movements
+        const { data: fm, error: insertError } = await supabase
+          .from('financial_movements')
+          .insert({
+            organization_id: orgId,
+            movement_date: formattedDate,
+            amount: valor,
+            description: String(descricao || ''),
+            cost_center_id: ccData.id,
+            status: 'Concluído',
+          })
+          .select()
+          .single()
+
+        if (insertError) {
+          rejected++
+          errors.push(
+            `Linha ${rowNum}: Erro ao inserir movimento financeiro - ${insertError.message}`,
+          )
+          continue
+        }
+
+        // Inserir em accounting_entries para manter integridade
+        const { error: aeError } = await supabase.from('accounting_entries').insert({
+          organization_id: orgId,
+          entry_date: formattedDate,
+          amount: valor,
+          description: String(descricao || ''),
+          debit_account_id: debitData.id,
+          credit_account_id: creditData.id,
+          status: 'Concluído',
+        })
+
+        if (aeError) {
+          await supabase.from('financial_movements').delete().eq('id', fm.id)
+          rejected++
+          errors.push(`Linha ${rowNum}: Erro ao inserir lançamento contábil - ${aeError.message}`)
         } else {
           inserted++
         }

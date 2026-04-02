@@ -44,6 +44,20 @@ import { Switch } from '@/components/ui/switch'
 import { supabase } from '@/lib/supabase/client'
 
 const IMPORT_TYPES = {
+  FINANCIAL_ENTRIES: {
+    id: 'FINANCIAL_ENTRIES',
+    label: 'Lançamentos Domínio (Edge Function)',
+    required: [
+      'EMPRESA',
+      'DATA',
+      'DESCRICAO',
+      'VALOR',
+      'CENTRO_CUSTO',
+      'CONTA_DEBITO',
+      'CONTA_CREDITO',
+    ],
+    optional: ['TIPO_MOVIMENTO'],
+  },
   BANK_ACCOUNTS: {
     id: 'BANK_ACCOUNTS',
     label: 'Contas Bancárias (Edge Function)',
@@ -138,8 +152,8 @@ export default function Import() {
         'GERAR_LCTO_DOMINIO',
         'PLANO_DOMINIO',
       ])
-      setSelectedSheet('DE-PARA')
-      setImportType('MAPPINGS')
+      setSelectedSheet('GERAR_LCTO_DOMINIO')
+      setImportType('FINANCIAL_ENTRIES')
       setIsUploading(false)
       toast({
         title: 'Arquivo processado',
@@ -170,6 +184,14 @@ export default function Import() {
         typeConfig.required.forEach((col) => {
           if (col === 'EMPRESA') {
             row[col] = isMissingReq ? '' : selectedOrgName
+          } else if (col === 'DATA') {
+            const d = new Date()
+            d.setDate(d.getDate() - i)
+            row[col] = isMissingReq ? '' : d.toISOString().split('T')[0]
+          } else if (col === 'VALOR') {
+            row[col] = isMissingReq ? '' : (Math.random() * 1000).toFixed(2)
+          } else if (col === 'CONTA_DEBITO' || col === 'CONTA_CREDITO') {
+            row[col] = isMissingReq ? '' : `CA-${Math.floor(Math.random() * 100000)}`
           } else if (col === 'CONTA_CONTABIL') {
             // Conta aleatória para evitar conflito a cada teste
             row[col] = isMissingReq ? '' : `CA-${Math.floor(Math.random() * 100000)}`
@@ -208,6 +230,8 @@ export default function Import() {
             row[col] = Math.random() > 0.5 ? 'Fixo' : 'Variável'
           } else if (col === 'TIPO_MAPEAMENTO') {
             row[col] = 'DE/PARA'
+          } else if (col === 'TIPO_MOVIMENTO') {
+            row[col] = Math.random() > 0.5 ? 'Débito' : 'Crédito'
           } else {
             row[col] = `Dado ${col} ${i + 1}`
           }
@@ -707,7 +731,9 @@ export default function Import() {
                       ? '/plano-de-contas'
                       : importType === 'MAPPINGS'
                         ? '/mapeamento'
-                        : '/'
+                        : importType === 'FINANCIAL_ENTRIES'
+                          ? '/lancamentos'
+                          : '/'
                 }
               >
                 <List className="h-4 w-4 mr-2" />
@@ -717,7 +743,9 @@ export default function Import() {
                     ? 'Ver Plano de Contas'
                     : importType === 'MAPPINGS'
                       ? 'Ver Mapeamentos'
-                      : 'Ver Listagem de Contas'}
+                      : importType === 'FINANCIAL_ENTRIES'
+                        ? 'Ver Lançamentos'
+                        : 'Ver Listagem de Contas'}
               </Link>
             </Button>
           </CardFooter>
