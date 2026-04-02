@@ -143,25 +143,56 @@ export default function Import() {
   const [importResult, setImportResult] = useState<ImportResult | null>(null)
   const [showOnlyErrors, setShowOnlyErrors] = useState(false)
 
-  // Fetch organizations to generate realistic mock data that maps successfully
-  useEffect(() => {
-    supabase
-      .from('organizations')
-      .select('id, name')
-      .then(({ data }) => {
-        setOrgs(data || [])
-      })
-  }, [])
+  const parseCSV = (text: string) => {
+    const lines = text.split(/\r?\n/).filter((line) => line.trim() !== '')
+    if (lines.length === 0) return []
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const firstLine = lines[0]
+    const separator = firstLine.includes(';') ? ';' : ','
+
+    const splitLine = (str: string) => {
+      const result = []
+      let current = ''
+      let inQuotes = false
+      for (let i = 0; i < str.length; i++) {
+        const char = str[i]
+        if (char === '"') {
+          inQuotes = !inQuotes
+        } else if (char === separator && !inQuotes) {
+          result.push(current)
+          current = ''
+        } else {
+          current += char
+        }
+      }
+      result.push(current)
+      return result
+    }
+
+    const headers = splitLine(lines[0]).map((h) => h.trim())
+    const result = []
+
+    for (let i = 1; i < lines.length; i++) {
+      const values = splitLine(lines[i])
+      const row: any = {}
+      headers.forEach((header, index) => {
+        row[header] = values[index] !== undefined ? values[index].trim() : ''
+      })
+      result.push(row)
+    }
+    return result
+  }
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0]
     if (!selectedFile) return
 
-    if (!selectedFile.name.endsWith('.xlsx') && !selectedFile.name.endsWith('.csv')) {
+    if (!selectedFile.name.endsWith('.csv')) {
       toast({
         variant: 'destructive',
         title: 'Arquivo inválido',
-        description: 'Por favor, selecione um arquivo Excel (.xlsx) ou CSV (.csv).',
+        description:
+          'Por favor, selecione um arquivo CSV (.csv). Modelos baixados são em formato CSV.',
       })
       return
     }
@@ -170,109 +201,43 @@ export default function Import() {
     setIsUploading(true)
     setImportResult(null)
 
-    // Simulando leitura de arquivo Excel local
-    setTimeout(() => {
-      setSheets([
-        'DADOS',
-        'DE-PARA',
-        'PLANO_TGA',
-        'CADASTRO_CAIXA_BCOS_TGA',
-        'GERAR_LCTO_DOMINIO',
-        'PLANO_DOMINIO',
-      ])
+    try {
+      const text = await selectedFile.text()
+      const parsedData = parseCSV(text)
+
+      setRawData(parsedData)
+      setSheets(['DADOS'])
       setSelectedSheet('DADOS')
-      setImportType(importType || 'COMPANIES')
+
+      if (parsedData.length > 0) {
+        const headers = Object.keys(parsedData[0])
+        let detectedType = ''
+        for (const [key, config] of Object.entries(IMPORT_TYPES)) {
+          const hasAllRequired = config.required.every((req) => headers.includes(req))
+          if (hasAllRequired) {
+            detectedType = key
+            break
+          }
+        }
+        if (detectedType) {
+          setImportType(detectedType)
+        }
+      }
+
       setIsUploading(false)
       toast({
         title: 'Arquivo processado',
-        description: 'Aba principal selecionada automaticamente.',
+        description: 'Dados extraídos com sucesso.',
       })
-    }, 1500)
-  }
-
-  // Generate mock extracted data based on sheet and type
-  useEffect(() => {
-    if (selectedSheet && importType) {
-      const typeConfig = IMPORT_TYPES[importType as keyof typeof IMPORT_TYPES]
-      const rows = []
-      const numRows = Math.floor(Math.random() * 20) + 15
-      const batchBase = Math.floor(Math.random() * 10000)
-
-      for (let i = 0; i < numRows; i++) {
-        const row: any = {}
-        const isMissingReq = Math.random() < 0.05 // 5% de chance de vir vazio (para testar erro)
-        const isUnknownOrg = Math.random() < 0.1 // 10% de chance de empresa inexistente (para testar erro)
-
-        const selectedOrgName = isUnknownOrg
-          ? 'Empresa Fantasma LTDA'
-          : orgs.length > 0
-            ? orgs[Math.floor(Math.random() * orgs.length)].name
-            : 'Minha Empresa'
-
-        typeConfig.required.forEach((col) => {
-          if (col === 'EMPRESA') {
-            row[col] = isMissingReq ? '' : selectedOrgName
-          } else if (col === 'DATA') {
-            const d = new Date()
-            d.setDate(d.getDate() - i)
-            row[col] = isMissingReq ? '' : d.toISOString().split('T')[0]
-          } else if (col === 'VALOR') {
-            row[col] = isMissingReq ? '' : (Math.random() * 1000).toFixed(2)
-          } else if (
-            col === 'CONTA_DEBITO' ||
-            col === 'CONTA_CREDITO' ||
-            col === 'CONTA_CONTABIL'
-          ) {
-            row[col] = isMissingReq ? '' : `CA-${Math.floor(Math.random() * 100000)}`
-          } else if (col === 'COD' || col === 'CODIGO_CONTA') {
-            row[col] = isMissingReq
-              ? ''
-              : i === 0
-                ? `${batchBase}`
-                : i === 1
-                  ? `${batchBase}.1`
-                  : `${batchBase}.1.${i}`
-          } else if (col === 'NOME_CONTA' || col === 'NOME') {
-            row[col] = isMissingReq
-              ? ''
-              : `${col === 'NOME' ? 'Nome Genérico' : 'Conta Contábil'} ${i + 1}`
-          } else if (col === 'TIPO_CONTA') {
-            const tipos = ['Ativo', 'Passivo', 'Receita', 'Despesa']
-            row[col] = isMissingReq ? '' : tipos[Math.floor(Math.random() * tipos.length)]
-          } else if (col === 'CENTRO_CUSTO') {
-            row[col] = isMissingReq ? '' : `CC-${batchBase}-${i}`
-          } else {
-            row[col] = isMissingReq ? '' : `Mock ${col} ${i + 1}`
-          }
-        })
-
-        typeConfig.optional.forEach((col) => {
-          if (col === 'TIPO_TGA') {
-            row[col] = Math.random() > 0.5 ? 'Analítica' : 'Sintética'
-          } else if (col === 'FIXO_OU_VARIAVEL') {
-            row[col] = Math.random() > 0.5 ? 'Fixo' : 'Variável'
-          } else if (col === 'TIPO_MAPEAMENTO') {
-            row[col] = 'DE/PARA'
-          } else if (col === 'TIPO_MOVIMENTO') {
-            row[col] = Math.random() > 0.5 ? 'Débito' : 'Crédito'
-          } else if (col === 'PERFIL') {
-            row[col] = 'collaborator'
-          } else if (col === 'DEPARTAMENTO_CODIGO') {
-            row[col] = 'DEP-123'
-          } else if (col === 'CNPJ') {
-            row[col] = `00.000.000/0001-${Math.floor(10 + Math.random() * 89)}`
-          } else {
-            row[col] = `Dado ${col} ${i + 1}`
-          }
-        })
-
-        rows.push(row)
-      }
-      setRawData(rows)
-    } else {
-      setRawData([])
+    } catch (err: any) {
+      setIsUploading(false)
+      toast({
+        variant: 'destructive',
+        title: 'Erro ao ler arquivo',
+        description: err.message,
+      })
     }
-  }, [selectedSheet, importType, orgs])
+  }
 
   const validationInfo = useMemo(() => {
     if (!importType || rawData.length === 0) return null
@@ -351,6 +316,10 @@ export default function Import() {
         throw new Error(error.message || 'Erro desconhecido ao chamar a função')
       }
 
+      if (data?.error) {
+        throw new Error(data.error)
+      }
+
       setImportProgress(100)
       setImportResult(data)
 
@@ -374,7 +343,7 @@ export default function Import() {
     if (!importType) return
     const config = IMPORT_TYPES[importType as keyof typeof IMPORT_TYPES]
     const headers = [...config.required, ...config.optional].join(';')
-    const csvContent = 'data:text/csv;charset=utf-8,' + encodeURIComponent(headers + '\n')
+    const csvContent = 'data:text/csv;charset=utf-8,\uFEFF' + encodeURIComponent(headers + '\n')
     const link = document.createElement('a')
     link.setAttribute('href', csvContent)
     link.setAttribute('download', `template_${importType.toLowerCase()}.csv`)
@@ -414,7 +383,8 @@ export default function Import() {
           <CardHeader>
             <CardTitle>1. Selecionar Arquivo</CardTitle>
             <CardDescription>
-              Faça o upload do seu arquivo Excel (.xlsx) ou CSV (.csv) para iniciar.
+              Faça o upload do seu arquivo CSV (.csv) para iniciar. O modelo baixado no passo
+              seguinte é o formato ideal.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -427,16 +397,14 @@ export default function Import() {
                 <h3 className="font-semibold text-lg mb-1">
                   Clique para selecionar ou arraste o arquivo
                 </h3>
-                <p className="text-sm text-muted-foreground">
-                  Apenas arquivos .xlsx ou .csv são suportados
-                </p>
+                <p className="text-sm text-muted-foreground">Apenas arquivos .csv são suportados</p>
                 <input
                   type="file"
                   ref={fileInputRef}
                   className="hidden"
-                  accept=".xlsx, .csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, text/csv"
+                  accept=".csv, text/csv"
                   onChange={handleFileChange}
-                />
+                />{' '}
               </div>
             ) : (
               <div className="flex items-center justify-between p-4 border rounded-lg bg-muted/30">
