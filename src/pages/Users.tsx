@@ -18,6 +18,9 @@ import {
   ArrowUpDown,
   Upload,
   Mail,
+  Link2,
+  Copy,
+  MessageSquare,
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
 import { useAuth } from '@/hooks/use-auth'
@@ -125,6 +128,11 @@ export default function UsersPage() {
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(10)
   const [selectedIds, setSelectedIds] = useState<string[]>([])
+  const [inviteLinkInfo, setInviteLinkInfo] = useState<{
+    link: string
+    name: string
+    phone: string | null
+  } | null>(null)
   const { user, role: currentUserRole, permissions } = useAuth()
   const { toast } = useToast()
 
@@ -309,6 +317,8 @@ export default function UsersPage() {
       } as any
 
       let empId = editingId
+      let actionLinkToDisplay = null
+
       if (editingId) {
         if (data.cpf) {
           const { data: existing } = await supabase
@@ -424,6 +434,8 @@ export default function UsersPage() {
           throw new Error('Falha ao sincronizar o usuário criado.')
         }
 
+        actionLinkToDisplay = res.data?.actionLink
+
         toast({
           title: 'Convite Enviado',
           description: `Um convite foi enviado para ${data.email} e está pendente de aprovação.`,
@@ -444,6 +456,14 @@ export default function UsersPage() {
       toast({ title: 'Sucesso', description: 'Cadastro de usuário salvo com sucesso!' })
       setIsModalOpen(false)
       fetchData()
+
+      if (actionLinkToDisplay) {
+        setInviteLinkInfo({
+          link: actionLinkToDisplay,
+          name: data.name,
+          phone: data.phone || null,
+        })
+      }
     } catch (e: any) {
       toast({ title: 'Erro ao salvar', description: e.message, variant: 'destructive' })
     } finally {
@@ -499,6 +519,36 @@ export default function UsersPage() {
 
     setSelectedIds([])
     fetchData()
+  }
+
+  const handleGenerateLink = async (userRecord: any) => {
+    try {
+      toast({ title: 'Aguarde', description: 'Gerando link de acesso...' })
+      const res = await supabase.functions.invoke('manage-user', {
+        body: {
+          action: 'resend_email',
+          user_id: userRecord.user_id,
+          email: userRecord.email,
+          name: userRecord.name,
+        },
+      })
+      if (res.error) throw res.error
+      if (res.data && res.data.success === false) throw new Error(res.data.error)
+
+      setInviteLinkInfo({
+        link: res.data.actionLink,
+        name: userRecord.name,
+        phone: userRecord.phone || null,
+      })
+
+      toast({ title: 'Sucesso', description: 'Link gerado com sucesso!' })
+    } catch (e: any) {
+      toast({
+        title: 'Erro',
+        description: e.message || 'Falha ao gerar link',
+        variant: 'destructive',
+      })
+    }
   }
 
   const handleResendEmail = async (userRecord: any) => {
@@ -848,8 +898,17 @@ export default function UsersPage() {
                                 <Button
                                   variant="ghost"
                                   size="icon"
+                                  onClick={() => handleGenerateLink(e)}
+                                  className="h-8 w-8 text-slate-500 hover:text-emerald-600"
+                                  title="Gerar Link de Acesso"
+                                >
+                                  <Link2 className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
                                   onClick={() => handleResendEmail(e)}
-                                  className="h-8 w-8 text-slate-500 hover:text-green-600"
+                                  className="h-8 w-8 text-slate-500 hover:text-blue-600"
                                   title="Reenviar E-mail de Acesso"
                                 >
                                   <Mail className="h-4 w-4" />
@@ -1173,6 +1232,61 @@ export default function UsersPage() {
               </Button>
             </div>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!inviteLinkInfo} onOpenChange={(open) => !open && setInviteLinkInfo(null)}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Link de Acesso Gerado</DialogTitle>
+            <DialogDescription>
+              O link de acesso para <strong>{inviteLinkInfo?.name}</strong> foi gerado com sucesso.
+              Você pode copiá-lo ou enviar diretamente pelo WhatsApp.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 my-4">
+            <div className="flex items-center gap-2 p-3 bg-slate-50 border border-slate-200 rounded-md break-all">
+              <span className="text-sm text-slate-700 flex-1 select-all">
+                {inviteLinkInfo?.link}
+              </span>
+            </div>
+          </div>
+          <div className="flex justify-end gap-3">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                if (inviteLinkInfo?.link) {
+                  navigator.clipboard.writeText(inviteLinkInfo.link)
+                  toast({
+                    title: 'Copiado!',
+                    description: 'Link copiado para a área de transferência.',
+                  })
+                }
+              }}
+              className="gap-2"
+            >
+              <Copy className="h-4 w-4" /> Copiar Link
+            </Button>
+            <Button
+              type="button"
+              onClick={() => {
+                if (inviteLinkInfo?.link) {
+                  const text = `Olá ${inviteLinkInfo.name}, aqui está o seu link de acesso ao sistema Gestão de Contas:\n\n${inviteLinkInfo.link}`
+                  const phoneParam = inviteLinkInfo.phone
+                    ? inviteLinkInfo.phone.replace(/\D/g, '')
+                    : ''
+                  const url = phoneParam
+                    ? `https://wa.me/55${phoneParam}?text=${encodeURIComponent(text)}`
+                    : `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`
+                  window.open(url, '_blank')
+                }
+              }}
+              className="bg-green-600 hover:bg-green-700 gap-2 text-white"
+            >
+              <MessageSquare className="h-4 w-4" /> Enviar por WhatsApp
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

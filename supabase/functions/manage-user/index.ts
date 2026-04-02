@@ -86,7 +86,7 @@ Deno.serve(async (req: Request) => {
         console.log('[EMAIL SIMULATION] Link:', actionLink)
       }
 
-      return new Response(JSON.stringify({ success: true }), {
+      return new Response(JSON.stringify({ success: true, actionLink }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     } else if (action === 'invite') {
@@ -200,7 +200,7 @@ Deno.serve(async (req: Request) => {
         }
       }
 
-      return new Response(JSON.stringify({ success: true, user: actionUser }), {
+      return new Response(JSON.stringify({ success: true, user: actionUser, actionLink }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     } else if (action === 'delete') {

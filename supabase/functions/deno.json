@@ -1,13 +1,13 @@
 {
   "_versions": {
-    "import-data": 8,
-    "generate-entries": 1,
-    "export-dashboard": 1,
-    "export-analysis": 1,
-    "export-companies": 2,
-    "export-departments": 1,
-    "export-users": 1,
-    "manage-user": 5,
-    "send-email": 2
+    "import-data": 9,
+    "generate-entries": 2,
+    "export-dashboard": 2,
+    "export-analysis": 2,
+    "export-companies": 3,
+    "export-departments": 2,
+    "export-users": 2,
+    "manage-user": 7,
+    "send-email": 3
   }
 }
