@@ -5,12 +5,12 @@ import { supabase } from '@/lib/supabase/client'
 interface AuthContextType {
   user: User | null
   session: Session | null
-  role: string | null
   profile: any | null
-  permissions: any[]
-  menuOrder: any[]
-  setMenuOrder: (order: any[]) => void
-  signUp: (email: string, password: string, metadata?: any) => Promise<{ error: any }>
+  role: string | null
+  permissions: string[]
+  menuOrder: string[]
+  setMenuOrder: (order: string[]) => void
+  signUp: (email: string, password: string) => Promise<{ error: any }>
   signIn: (email: string, password: string) => Promise<{ error: any }>
   signOut: () => Promise<{ error: any }>
   loading: boolean
@@ -27,36 +27,43 @@ export const useAuth = () => {
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null)
   const [session, setSession] = useState<Session | null>(null)
-  const [role, setRole] = useState<string | null>(null)
   const [profile, setProfile] = useState<any | null>(null)
-  const [permissions, setPermissions] = useState<any[]>([])
-  const [menuOrder, setMenuOrder] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    const fetchProfile = async (userId: string) => {
-      const { data } = await supabase
+  const fetchProfile = async (userId: string) => {
+    try {
+      const { data, error } = await supabase
         .from('cadastro_usuarios')
         .select('*')
         .eq('user_id', userId)
         .is('deleted_at', null)
-        .order('created_at', { ascending: true })
-        .limit(1)
         .maybeSingle()
 
-      if (data?.approval_status === 'pending') {
-        await supabase.auth.signOut()
-        setRole(null)
-        setProfile(null)
-        setPermissions([])
-        setMenuOrder([])
+      if (data) {
+        setProfile(data)
       } else {
-        setRole(data?.role || null)
-        setProfile(data || null)
-        setPermissions(Array.isArray(data?.permissions) ? data.permissions : [])
-        setMenuOrder(Array.isArray(data?.menu_order) ? data.menu_order : [])
+        setProfile(null)
       }
+    } catch (err) {
+      console.error('Error fetching profile:', err)
     }
+  }
+
+  useEffect(() => {
+    let mounted = true
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!mounted) return
+      setSession(session)
+      setUser(session?.user ?? null)
+      if (session?.user) {
+        fetchProfile(session.user.id).then(() => {
+          if (mounted) setLoading(false)
+        })
+      } else {
+        setLoading(false)
+      }
+    })
 
     const {
       data: { subscription },
@@ -64,113 +71,90 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setSession(session)
       setUser(session?.user ?? null)
       if (session?.user) {
-        fetchProfile(session.user.id).finally(() => setLoading(false))
+        fetchProfile(session.user.id).then(() => {
+          if (mounted) setLoading(false)
+        })
       } else {
-        setRole(null)
         setProfile(null)
-        setPermissions([])
-        setMenuOrder([])
-        setLoading(false)
+        if (mounted) setLoading(false)
       }
     })
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session)
-      setUser(session?.user ?? null)
-      if (session?.user) {
-        fetchProfile(session.user.id).finally(() => setLoading(false))
-      } else {
-        setRole(null)
-        setProfile(null)
-        setPermissions([])
-        setMenuOrder([])
-        setLoading(false)
-      }
-    })
-
-    return () => subscription.unsubscribe()
+    return () => {
+      mounted = false
+      subscription.unsubscribe()
+    }
   }, [])
 
-  const updateMenuOrder = async (newOrder: any[]) => {
-    setMenuOrder(newOrder)
-    if (user) {
-      await supabase
-        .from('cadastro_usuarios')
-        .update({ menu_order: newOrder })
-        .eq('user_id', user.id)
-    }
-  }
+  // Realtime subscription for profile changes to ensure permissions are always up to date
+  useEffect(() => {
+    if (!user?.id) return
 
-  const signUp = async (email: string, password: string, metadata?: any) => {
+    const channel = supabase
+      .channel(`profile_changes_${user.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'cadastro_usuarios',
+          filter: `user_id=eq.${user.id}`,
+        },
+        (payload) => {
+          if (payload.new) {
+            setProfile(payload.new)
+          }
+        },
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [user?.id])
+
+  const signUp = async (email: string, password: string) => {
     const { error } = await supabase.auth.signUp({
       email,
       password,
-      options: {
-        data: metadata,
-        emailRedirectTo: `${window.location.origin}/`,
-      },
+      options: { emailRedirectTo: `${window.location.origin}/` },
     })
     return { error }
   }
 
   const signIn = async (email: string, password: string) => {
-    const { data: signInData, error } = await supabase.auth.signInWithPassword({ email, password })
-
-    if (error) return { error }
-
-    if (signInData.user) {
-      const { data: userProfile } = await supabase
-        .from('cadastro_usuarios')
-        .select('approval_status')
-        .eq('user_id', signInData.user.id)
-        .is('deleted_at', null)
-        .order('created_at', { ascending: true })
-        .limit(1)
-        .maybeSingle()
-
-      if (userProfile?.approval_status === 'pending') {
-        await supabase.auth.signOut()
-        return {
-          error: new Error('Sua conta ainda está pendente de aprovação pelo administrador.'),
-        }
-      }
-    }
-
-    return { error: null }
+    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    return { error }
   }
 
   const signOut = async () => {
-    setRole(null)
     setProfile(null)
-    setPermissions([])
-    setMenuOrder([])
     setUser(null)
     setSession(null)
-
-    try {
-      Object.keys(localStorage).forEach((key) => {
-        if (key.startsWith('sb-') && key.endsWith('-auth-token')) {
-          localStorage.removeItem(key)
-        }
-      })
-    } catch (e) {
-      console.warn('Failed to clear localStorage', e)
-    }
-
     const { error } = await supabase.auth.signOut()
     return { error }
   }
+
+  const setMenuOrder = async (order: string[]) => {
+    if (!user) return
+    setProfile((prev: any) => (prev ? { ...prev, menu_order: order } : null))
+    await supabase.from('cadastro_usuarios').update({ menu_order: order }).eq('user_id', user.id)
+  }
+
+  const role = profile?.role || 'collaborator'
+  const permissions = Array.isArray(profile?.permissions) ? profile.permissions : ['all']
+  const menuOrder = Array.isArray(profile?.menu_order) ? profile.menu_order : []
 
   return (
     <AuthContext.Provider
       value={{
         user,
         session,
-        role,
         profile,
+        role,
         permissions,
         menuOrder,
-        setMenuOrder: updateMenuOrder,
+        setMenuOrder,
         signUp,
         signIn,
         signOut,

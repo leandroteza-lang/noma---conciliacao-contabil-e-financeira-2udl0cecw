@@ -462,42 +462,6 @@ export type Database = {
         }
         Relationships: []
       }
-      import_history: {
-        Row: {
-          created_at: string
-          error_count: number | null
-          file_name: string | null
-          id: string
-          import_type: string
-          status: string | null
-          success_count: number | null
-          total_records: number | null
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          error_count?: number | null
-          file_name?: string | null
-          id?: string
-          import_type: string
-          status?: string | null
-          success_count?: number | null
-          total_records?: number | null
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          error_count?: number | null
-          file_name?: string | null
-          id?: string
-          import_type?: string
-          status?: string | null
-          success_count?: number | null
-          total_records?: number | null
-          user_id?: string
-        }
-        Relationships: []
-      }
       financial_movements: {
         Row: {
           amount: number | null
@@ -555,6 +519,42 @@ export type Database = {
             referencedColumns: ['id']
           },
         ]
+      }
+      import_history: {
+        Row: {
+          created_at: string
+          error_count: number | null
+          file_name: string | null
+          id: string
+          import_type: string
+          status: string | null
+          success_count: number | null
+          total_records: number | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          error_count?: number | null
+          file_name?: string | null
+          id?: string
+          import_type: string
+          status?: string | null
+          success_count?: number | null
+          total_records?: number | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          error_count?: number | null
+          file_name?: string | null
+          id?: string
+          import_type?: string
+          status?: string | null
+          success_count?: number | null
+          total_records?: number | null
+          user_id?: string
+        }
+        Relationships: []
       }
       organizations: {
         Row: {
@@ -870,6 +870,16 @@ export const Constants = {
 //   bank_account_id: uuid (nullable)
 //   status: character varying (nullable, default: 'Pending'::character varying)
 //   created_at: timestamp with time zone (nullable, default: now())
+// Table: import_history
+//   id: uuid (not null, default: gen_random_uuid())
+//   user_id: uuid (not null)
+//   import_type: character varying (not null)
+//   file_name: character varying (nullable)
+//   total_records: integer (nullable, default: 0)
+//   success_count: integer (nullable, default: 0)
+//   error_count: integer (nullable, default: 0)
+//   status: character varying (nullable, default: 'Completed'::character varying)
+//   created_at: timestamp with time zone (not null, default: now())
 // Table: organizations
 //   id: uuid (not null, default: gen_random_uuid())
 //   cnpj: character varying (nullable)
@@ -936,6 +946,9 @@ export const Constants = {
 //   FOREIGN KEY financial_movements_cost_center_id_fkey: FOREIGN KEY (cost_center_id) REFERENCES cost_centers(id) ON DELETE SET NULL
 //   FOREIGN KEY financial_movements_organization_id_fkey: FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE
 //   PRIMARY KEY financial_movements_pkey: PRIMARY KEY (id)
+// Table: import_history
+//   PRIMARY KEY import_history_pkey: PRIMARY KEY (id)
+//   FOREIGN KEY import_history_user_id_fkey: FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE
 // Table: organizations
 //   FOREIGN KEY organizations_deleted_by_fkey: FOREIGN KEY (deleted_by) REFERENCES auth.users(id) ON DELETE SET NULL
 //   FOREIGN KEY organizations_deletion_requested_by_fkey: FOREIGN KEY (deletion_requested_by) REFERENCES auth.users(id) ON DELETE SET NULL
@@ -1026,6 +1039,13 @@ export const Constants = {
 //     USING: (organization_id IN ( SELECT organizations.id    FROM organizations   WHERE (organizations.user_id = auth.uid())))
 //   Policy "org_financial_movements_update" (UPDATE, PERMISSIVE) roles={authenticated}
 //     USING: (organization_id IN ( SELECT organizations.id    FROM organizations   WHERE (organizations.user_id = auth.uid())))
+// Table: import_history
+//   Policy "user_import_history_delete" (DELETE, PERMISSIVE) roles={authenticated}
+//     USING: (user_id = auth.uid())
+//   Policy "user_import_history_insert" (INSERT, PERMISSIVE) roles={authenticated}
+//     WITH CHECK: (user_id = auth.uid())
+//   Policy "user_import_history_select" (SELECT, PERMISSIVE) roles={authenticated}
+//     USING: (user_id = auth.uid())
 // Table: organizations
 //   Policy "employee_organization_select" (SELECT, PERMISSIVE) roles={authenticated}
 //     USING: (id IN ( SELECT ec.organization_id    FROM (cadastro_usuarios_companies ec      JOIN cadastro_usuarios e ON ((e.id = ec.usuario_id)))   WHERE ((e.email)::text = (auth.jwt() ->> 'email'::text))))

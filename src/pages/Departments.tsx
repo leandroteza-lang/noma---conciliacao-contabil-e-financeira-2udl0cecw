@@ -75,11 +75,14 @@ export default function Departments() {
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(10)
   const [selectedIds, setSelectedIds] = useState<string[]>([])
-  const { user, role } = useAuth()
+  const { user, role, permissions } = useAuth()
   const { toast } = useToast()
 
-  const canEdit = role === 'admin' || role === 'supervisor'
-  const canDelete = role === 'admin'
+  const safePerms = Array.isArray(permissions) ? permissions : []
+  const hasFullAccess = safePerms.includes('all') || safePerms.includes('departamentos')
+
+  const canEdit = role === 'admin' || role === 'supervisor' || hasFullAccess
+  const canDelete = role === 'admin' || hasFullAccess
 
   const {
     register,
