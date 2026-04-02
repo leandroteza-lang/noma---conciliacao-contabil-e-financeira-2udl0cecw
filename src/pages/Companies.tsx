@@ -230,7 +230,20 @@ export default function Companies() {
   }
 
   useEffect(() => {
+    if (!user) return
+
     fetchOrganizations()
+
+    const channel = supabase
+      .channel('schema-db-changes-organizations')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'organizations' }, () => {
+        fetchOrganizations()
+      })
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
   }, [user])
 
   const filteredOrgs = useMemo(() => {
