@@ -3,7 +3,6 @@ import { createClient } from 'jsr:@supabase/supabase-js@2'
 import { corsHeaders } from '../_shared/cors.ts'
 
 Deno.serve(async (req: Request) => {
-  // Handle CORS preflight request
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
@@ -35,7 +34,7 @@ Deno.serve(async (req: Request) => {
     const records = payload.records
     const type = payload.type
 
-    if (type !== 'BANK_ACCOUNTS') {
+    if (type !== 'BANK_ACCOUNTS' && type !== 'COST_CENTERS') {
       return new Response(
         JSON.stringify({ error: 'Tipo de importação não suportado atualmente por esta função' }),
         {
@@ -53,7 +52,6 @@ Deno.serve(async (req: Request) => {
     let rejected = 0
     const errors: string[] = []
 
-    // Fetch user organizations to resolve EMPRESA names to organization_id
     const { data: orgs, error: orgsError } = await supabase
       .from('organizations')
       .select('id, name')
@@ -70,74 +68,183 @@ Deno.serve(async (req: Request) => {
       })
     }
 
-    // Process each record sequentially
-    for (let i = 0; i < records.length; i++) {
-      const row = records[i]
-      const rowNum = i + 1
+    if (type === 'BANK_ACCOUNTS') {
+      for (let i = 0; i < records.length; i++) {
+        const row = records[i]
+        const rowNum = i + 1
 
-      const empresa = row['EMPRESA']
-      const contaContabil = row['CONTA_CONTABIL']
+        const empresa = row['EMPRESA']
+        const contaContabil = row['CONTA_CONTABIL']
 
-      if (!empresa || String(empresa).trim() === '') {
-        rejected++
-        errors.push(`Linha ${rowNum}: A coluna EMPRESA está vazia.`)
-        continue
+        if (!empresa || String(empresa).trim() === '') {
+          rejected++
+          errors.push(`Linha ${rowNum}: A coluna EMPRESA está vazia.`)
+          continue
+        }
+
+        if (!contaContabil || String(contaContabil).trim() === '') {
+          rejected++
+          errors.push(`Linha ${rowNum}: A coluna CONTA_CONTABIL está vazia.`)
+          continue
+        }
+
+        const orgId = orgMap.get(String(empresa).trim().toLowerCase())
+        if (!orgId) {
+          rejected++
+          errors.push(`Linha ${rowNum}: A empresa "${empresa}" não foi encontrada na sua conta.`)
+          continue
+        }
+
+        const { data: existing, error: checkError } = await supabase
+          .from('bank_accounts')
+          .select('id')
+          .eq('organization_id', orgId)
+          .eq('account_code', String(contaContabil))
+          .maybeSingle()
+
+        if (checkError) {
+          rejected++
+          errors.push(`Linha ${rowNum}: Falha ao verificar duplicata - ${checkError.message}`)
+          continue
+        }
+
+        if (existing) {
+          rejected++
+          errors.push(
+            `Linha ${rowNum}: A Conta Contábil "${contaContabil}" já está cadastrada para esta empresa.`,
+          )
+          continue
+        }
+
+        const { error: insertError } = await supabase.from('bank_accounts').insert({
+          organization_id: orgId,
+          account_code: String(contaContabil),
+          account_type: String(row['CODCAIXA'] || ''),
+          description: String(row['DESCRICAO'] || ''),
+          bank_code: String(row['NUMBANCO'] || ''),
+          agency: String(row['NUMAGENCIA'] || ''),
+          account_number: String(row['NROCONTA'] || ''),
+          classification: String(row['CLASSIFICACAO'] || ''),
+          check_digit: String(row['DIGITOCONTA'] || ''),
+          company_name: String(empresa),
+        })
+
+        if (insertError) {
+          rejected++
+          errors.push(`Linha ${rowNum}: Erro ao inserir no banco - ${insertError.message}`)
+        } else {
+          inserted++
+        }
       }
+    } else if (type === 'COST_CENTERS') {
+      const sortedRecords = [...records].map((r, i) => ({ ...r, _originalIndex: i + 1 }))
+      sortedRecords.sort((a, b) => String(a['COD'] || '').length - String(b['COD'] || '').length)
 
-      if (!contaContabil || String(contaContabil).trim() === '') {
-        rejected++
-        errors.push(`Linha ${rowNum}: A coluna CONTA_CONTABIL está vazia.`)
-        continue
-      }
+      for (let i = 0; i < sortedRecords.length; i++) {
+        const row = sortedRecords[i]
+        const rowNum = row._originalIndex
 
-      const orgId = orgMap.get(String(empresa).trim().toLowerCase())
-      if (!orgId) {
-        rejected++
-        errors.push(`Linha ${rowNum}: A empresa "${empresa}" não foi encontrada na sua conta.`)
-        continue
-      }
+        const empresa = row['EMPRESA']
+        const code = row['COD']
+        const description = row['DESCRICAO']
 
-      // Check for duplicates by account_code within the same organization
-      const { data: existing, error: checkError } = await supabase
-        .from('bank_accounts')
-        .select('id')
-        .eq('organization_id', orgId)
-        .eq('account_code', String(contaContabil))
-        .maybeSingle()
+        if (!empresa || String(empresa).trim() === '') {
+          rejected++
+          errors.push(`Linha ${rowNum}: A coluna EMPRESA está vazia.`)
+          continue
+        }
 
-      if (checkError) {
-        rejected++
-        errors.push(`Linha ${rowNum}: Falha ao verificar duplicata - ${checkError.message}`)
-        continue
-      }
+        if (!code || String(code).trim() === '') {
+          rejected++
+          errors.push(`Linha ${rowNum}: A coluna COD está vazia.`)
+          continue
+        }
 
-      if (existing) {
-        rejected++
-        errors.push(
-          `Linha ${rowNum}: A Conta Contábil "${contaContabil}" já está cadastrada para esta empresa.`,
-        )
-        continue
-      }
+        if (!description || String(description).trim() === '') {
+          rejected++
+          errors.push(`Linha ${rowNum}: A coluna DESCRICAO está vazia.`)
+          continue
+        }
 
-      // Insert new bank account
-      const { error: insertError } = await supabase.from('bank_accounts').insert({
-        organization_id: orgId,
-        account_code: String(contaContabil),
-        account_type: String(row['CODCAIXA'] || ''),
-        description: String(row['DESCRICAO'] || ''),
-        bank_code: String(row['NUMBANCO'] || ''),
-        agency: String(row['NUMAGENCIA'] || ''),
-        account_number: String(row['NROCONTA'] || ''),
-        classification: String(row['CLASSIFICACAO'] || ''),
-        check_digit: String(row['DIGITOCONTA'] || ''),
-        company_name: String(empresa),
-      })
+        const orgId = orgMap.get(String(empresa).trim().toLowerCase())
+        if (!orgId) {
+          rejected++
+          errors.push(`Linha ${rowNum}: A empresa "${empresa}" não foi encontrada na sua conta.`)
+          continue
+        }
 
-      if (insertError) {
-        rejected++
-        errors.push(`Linha ${rowNum}: Erro ao inserir no banco - ${insertError.message}`)
-      } else {
-        inserted++
+        const strCode = String(code).trim()
+        let parentId = null
+
+        if (strCode.includes('.')) {
+          const codeParts = strCode.split('.')
+          codeParts.pop()
+          const parentCode = codeParts.join('.')
+
+          const { data: parentData, error: parentError } = await supabase
+            .from('cost_centers')
+            .select('id')
+            .eq('organization_id', orgId)
+            .eq('code', parentCode)
+            .maybeSingle()
+
+          if (parentError) {
+            rejected++
+            errors.push(
+              `Linha ${rowNum}: Erro ao buscar centro de custo pai - ${parentError.message}`,
+            )
+            continue
+          }
+
+          if (parentData) {
+            parentId = parentData.id
+          } else {
+            rejected++
+            errors.push(
+              `Linha ${rowNum}: Centro de custo pai "${parentCode}" não encontrado para hierarquia.`,
+            )
+            continue
+          }
+        }
+
+        const { data: existing, error: checkError } = await supabase
+          .from('cost_centers')
+          .select('id')
+          .eq('organization_id', orgId)
+          .eq('code', strCode)
+          .maybeSingle()
+
+        if (checkError) {
+          rejected++
+          errors.push(`Linha ${rowNum}: Falha ao verificar duplicata - ${checkError.message}`)
+          continue
+        }
+
+        if (existing) {
+          rejected++
+          errors.push(
+            `Linha ${rowNum}: O código "${strCode}" já está cadastrado para esta empresa.`,
+          )
+          continue
+        }
+
+        const { error: insertError } = await supabase.from('cost_centers').insert({
+          organization_id: orgId,
+          code: strCode,
+          description: String(description),
+          parent_id: parentId,
+          type_tga: String(row['TIPO_TGA'] || ''),
+          fixed_variable: String(row['FIXO_OU_VARIAVEL'] || ''),
+          classification: String(row['CLASSIFICACAO'] || ''),
+          operational: String(row['OPERACIONAL'] || ''),
+        } as any)
+
+        if (insertError) {
+          rejected++
+          errors.push(`Linha ${rowNum}: Erro ao inserir no banco - ${insertError.message}`)
+        } else {
+          inserted++
+        }
       }
     }
 

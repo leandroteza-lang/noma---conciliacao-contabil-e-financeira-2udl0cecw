@@ -7,6 +7,7 @@ import Import from './pages/Import'
 import Companies from './pages/Companies'
 import Mapping from './pages/Mapping'
 import Entries from './pages/Entries'
+import CostCenters from './pages/CostCenters'
 import Login from './pages/Login'
 import Signup from './pages/Signup'
 import ForgotPassword from './pages/ForgotPassword'
@@ -32,6 +33,7 @@ const App = () => (
             <Route path="/import" element={<Import />} />
             <Route path="/mapeamento" element={<Mapping />} />
             <Route path="/lancamentos" element={<Entries />} />
+            <Route path="/centros-de-custo" element={<CostCenters />} />
           </Route>
           <Route path="*" element={<NotFound />} />
         </Routes>

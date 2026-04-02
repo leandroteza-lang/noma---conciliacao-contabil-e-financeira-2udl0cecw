@@ -60,9 +60,9 @@ const IMPORT_TYPES = {
   },
   COST_CENTERS: {
     id: 'COST_CENTERS',
-    label: 'Centros de Custo',
-    required: ['EMPRESA', 'CODIGO_CC', 'NOME_CC'],
-    optional: [],
+    label: 'Centros de Custo (Edge Function)',
+    required: ['EMPRESA', 'COD', 'DESCRICAO'],
+    optional: ['TIPO_TGA', 'FIXO_OU_VARIAVEL', 'CLASSIFICACAO', 'OPERACIONAL'],
   },
 }
 
@@ -136,6 +136,7 @@ export default function Import() {
       const typeConfig = IMPORT_TYPES[importType as keyof typeof IMPORT_TYPES]
       const rows = []
       const numRows = Math.floor(Math.random() * 20) + 15
+      const batchBase = Math.floor(Math.random() * 10000)
 
       for (let i = 0; i < numRows; i++) {
         const row: any = {}
@@ -154,13 +155,27 @@ export default function Import() {
           } else if (col === 'CONTA_CONTABIL') {
             // Conta aleatória para evitar conflito a cada teste
             row[col] = isMissingReq ? '' : `CC-${Math.floor(Math.random() * 100000)}`
+          } else if (col === 'COD') {
+            row[col] = isMissingReq
+              ? ''
+              : i === 0
+                ? `${batchBase}`
+                : i === 1
+                  ? `${batchBase}.1`
+                  : `${batchBase}.1.${i}`
           } else {
             row[col] = isMissingReq ? '' : `Mock ${col} ${i + 1}`
           }
         })
 
         typeConfig.optional.forEach((col) => {
-          row[col] = `Dado ${col} ${i + 1}`
+          if (col === 'TIPO_TGA') {
+            row[col] = Math.random() > 0.5 ? 'Analítica' : 'Sintética'
+          } else if (col === 'FIXO_OU_VARIAVEL') {
+            row[col] = Math.random() > 0.5 ? 'Fixo' : 'Variável'
+          } else {
+            row[col] = `Dado ${col} ${i + 1}`
+          }
         })
 
         rows.push(row)
@@ -649,9 +664,9 @@ export default function Import() {
               Importar Novo Arquivo
             </Button>
             <Button asChild>
-              <Link to="/">
+              <Link to={importType === 'COST_CENTERS' ? '/centros-de-custo' : '/'}>
                 <List className="h-4 w-4 mr-2" />
-                Ver Listagem de Contas
+                {importType === 'COST_CENTERS' ? 'Ver Centros de Custo' : 'Ver Listagem de Contas'}
               </Link>
             </Button>
           </CardFooter>
