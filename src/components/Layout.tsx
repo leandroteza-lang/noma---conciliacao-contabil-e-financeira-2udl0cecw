@@ -10,6 +10,7 @@ import {
   ArrowRightLeft,
   BookOpen,
   Building2,
+  PieChart,
 } from 'lucide-react'
 import { useAuth } from '@/hooks/use-auth'
 import { Button } from '@/components/ui/button'
@@ -17,6 +18,7 @@ import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import { cn } from '@/lib/utils'
 
 const menuItems = [
+  { title: 'Dashboard', path: '/dashboard', icon: PieChart },
   { title: 'Listagem de Contas', path: '/', icon: Home },
   { title: 'Empresas', path: '/empresas', icon: Building2 },
   { title: 'Importar Dados', path: '/import', icon: Upload },

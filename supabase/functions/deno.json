@@ -1,6 +1,7 @@
 {
   "_versions": {
     "import-data": 4,
-    "generate-entries": 1
+    "generate-entries": 1,
+    "export-dashboard": 1
   }
 }

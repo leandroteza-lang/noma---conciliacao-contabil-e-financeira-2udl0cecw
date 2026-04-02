@@ -9,6 +9,7 @@ import Mapping from './pages/Mapping'
 import Entries from './pages/Entries'
 import CostCenters from './pages/CostCenters'
 import ChartAccounts from './pages/ChartAccounts'
+import Dashboard from './pages/Dashboard'
 import Login from './pages/Login'
 import Signup from './pages/Signup'
 import ForgotPassword from './pages/ForgotPassword'
@@ -36,6 +37,7 @@ const App = () => (
             <Route path="/lancamentos" element={<Entries />} />
             <Route path="/centros-de-custo" element={<CostCenters />} />
             <Route path="/plano-de-contas" element={<ChartAccounts />} />
+            <Route path="/dashboard" element={<Dashboard />} />
           </Route>
           <Route path="*" element={<NotFound />} />
         </Routes>
