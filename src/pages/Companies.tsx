@@ -14,6 +14,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Loader2,
+  ArrowUpDown,
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
 import { useAuth } from '@/hooks/use-auth'
@@ -56,6 +57,25 @@ import {
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 
+const formatCPF = (value: string) => {
+  return value
+    .replace(/\D/g, '')
+    .replace(/(\d{3})(\d)/, '$1.$2')
+    .replace(/(\d{3})(\d)/, '$1.$2')
+    .replace(/(\d{3})(\d{1,2})/, '$1-$2')
+    .replace(/(-\d{2})\d+?$/, '$1')
+}
+
+const formatCNPJ = (value: string) => {
+  return value
+    .replace(/\D/g, '')
+    .replace(/(\d{2})(\d)/, '$1.$2')
+    .replace(/(\d{3})(\d)/, '$1.$2')
+    .replace(/(\d{3})(\d)/, '$1/$2')
+    .replace(/(\d{4})(\d{1,2})/, '$1-$2')
+    .replace(/(-\d{2})\d+?$/, '$1')
+}
+
 const schema = z
   .object({
     name: z.string().min(2, 'Nome deve ter no mínimo 2 caracteres'),
@@ -92,6 +112,10 @@ export default function Companies() {
   const [filterStatus, setFilterStatus] = useState<string>('all')
   const [filterDoc, setFilterDoc] = useState('')
   const [filterDate, setFilterDate] = useState('')
+
+  const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(
+    null,
+  )
 
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 10
@@ -147,8 +171,32 @@ export default function Companies() {
     })
   }, [organizations, search, filterStatus, filterDoc, filterDate])
 
-  const totalPages = Math.max(1, Math.ceil(filteredOrgs.length / itemsPerPage))
-  const paginatedOrgs = filteredOrgs.slice(
+  const handleSort = (key: string) => {
+    let direction: 'asc' | 'desc' = 'asc'
+    if (sortConfig && sortConfig.key === key && sortConfig.direction === 'asc') direction = 'desc'
+    setSortConfig({ key, direction })
+  }
+
+  const sortedOrgs = useMemo(() => {
+    let sortableItems = [...filteredOrgs]
+    if (sortConfig !== null) {
+      sortableItems.sort((a, b) => {
+        let aValue = a[sortConfig.key]
+        let bValue = b[sortConfig.key]
+        if (aValue === null || aValue === undefined) aValue = ''
+        if (bValue === null || bValue === undefined) bValue = ''
+        if (typeof aValue === 'string') aValue = aValue.toLowerCase()
+        if (typeof bValue === 'string') bValue = bValue.toLowerCase()
+        if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1
+        if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1
+        return 0
+      })
+    }
+    return sortableItems
+  }, [filteredOrgs, sortConfig])
+
+  const totalPages = Math.max(1, Math.ceil(sortedOrgs.length / itemsPerPage))
+  const paginatedOrgs = sortedOrgs.slice(
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage,
   )
@@ -234,9 +282,11 @@ export default function Companies() {
 
       const payload = {
         format: formatType,
-        data: filteredOrgs.map((org) => ({
+        data: sortedOrgs.map((org) => ({
           ...org,
           created_at: org.created_at ? format(new Date(org.created_at), 'dd/MM/yyyy') : '',
+          cnpj: formatCNPJ(org.cnpj || ''),
+          cpf: formatCPF(org.cpf || ''),
         })),
       }
 
@@ -254,14 +304,24 @@ export default function Companies() {
       const result = await res.json()
 
       if (formatType === 'excel') {
-        const blob = new Blob([result.csv], { type: 'text/csv;charset=utf-8;' })
+        const binaryString = atob(result.excel)
+        const len = binaryString.length
+        const bytes = new Uint8Array(len)
+        for (let i = 0; i < len; i++) {
+          bytes[i] = binaryString.charCodeAt(i)
+        }
+        const blob = new Blob([bytes], {
+          type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        })
         const link = document.createElement('a')
         link.href = URL.createObjectURL(blob)
-        link.download = 'empresas.csv'
+        link.download = 'empresas.xlsx'
         link.click()
       } else {
-        const w = window.open('')
-        if (w) w.document.write(`<iframe width='100%' height='100%' src='${result.pdf}'></iframe>`)
+        const link = document.createElement('a')
+        link.href = result.pdf
+        link.download = 'empresas.pdf'
+        link.click()
       }
       toast({ title: 'Sucesso', description: 'Relatório gerado com sucesso!' })
     } catch (error: any) {
@@ -294,7 +354,7 @@ export default function Companies() {
                 onClick={() => handleExport('excel')}
                 className="cursor-pointer gap-2"
               >
-                <FileSpreadsheet className="h-4 w-4" /> Excel (CSV)
+                <FileSpreadsheet className="h-4 w-4" /> Excel (XLSX)
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -386,79 +446,114 @@ export default function Companies() {
               <Table>
                 <TableHeader className="bg-slate-50">
                   <TableRow>
-                    <TableHead>Empresa</TableHead>
-                    <TableHead>Documentos</TableHead>
-                    <TableHead>Contato</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Criado em</TableHead>
+                    <TableHead
+                      className="cursor-pointer hover:bg-slate-100 transition-colors"
+                      onClick={() => handleSort('name')}
+                    >
+                      <div className="flex items-center gap-2">
+                        Empresa <ArrowUpDown className="h-3 w-3 text-slate-400" />
+                      </div>
+                    </TableHead>
+                    <TableHead
+                      className="cursor-pointer hover:bg-slate-100 transition-colors"
+                      onClick={() => handleSort('cnpj')}
+                    >
+                      <div className="flex items-center gap-2">
+                        Documentos <ArrowUpDown className="h-3 w-3 text-slate-400" />
+                      </div>
+                    </TableHead>
+                    <TableHead
+                      className="cursor-pointer hover:bg-slate-100 transition-colors"
+                      onClick={() => handleSort('email')}
+                    >
+                      <div className="flex items-center gap-2">
+                        Contato <ArrowUpDown className="h-3 w-3 text-slate-400" />
+                      </div>
+                    </TableHead>
+                    <TableHead
+                      className="cursor-pointer hover:bg-slate-100 transition-colors"
+                      onClick={() => handleSort('status')}
+                    >
+                      <div className="flex items-center gap-2">
+                        Status <ArrowUpDown className="h-3 w-3 text-slate-400" />
+                      </div>
+                    </TableHead>
+                    <TableHead
+                      className="cursor-pointer hover:bg-slate-100 transition-colors"
+                      onClick={() => handleSort('created_at')}
+                    >
+                      <div className="flex items-center gap-2">
+                        Criado em <ArrowUpDown className="h-3 w-3 text-slate-400" />
+                      </div>
+                    </TableHead>
                     <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {paginatedOrgs.map((org) => (
                     <TableRow key={org.id} className="hover:bg-slate-50/50">
-                      <TableCell className="font-medium">
+                      <TableCell className="py-2 px-4 font-medium">
                         <div className="flex items-center gap-2">
-                          <div className="h-8 w-8 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center shrink-0 text-xs font-bold">
+                          <div className="h-7 w-7 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center shrink-0 text-[10px] font-bold">
                             {org.name.substring(0, 2).toUpperCase()}
                           </div>
                           <div>
-                            <p className="text-slate-900">{org.name}</p>
+                            <p className="text-slate-900 text-sm">{org.name}</p>
                             {org.address && (
-                              <p className="text-xs text-slate-500 truncate max-w-[200px]">
+                              <p className="text-[11px] text-slate-500 truncate max-w-[200px]">
                                 {org.address}
                               </p>
                             )}
                           </div>
                         </div>
                       </TableCell>
-                      <TableCell>
-                        <div className="text-sm">
+                      <TableCell className="py-2 px-4">
+                        <div className="text-[13px]">
                           {org.cnpj && (
                             <p>
                               <span className="font-medium text-slate-500 mr-1">CNPJ:</span>
-                              {org.cnpj}
+                              {formatCNPJ(org.cnpj)}
                             </p>
                           )}
                           {org.cpf && (
                             <p>
                               <span className="font-medium text-slate-500 mr-1">CPF:</span>
-                              {org.cpf}
+                              {formatCPF(org.cpf)}
                             </p>
                           )}
                         </div>
                       </TableCell>
-                      <TableCell>
-                        <div className="text-sm text-slate-600">
+                      <TableCell className="py-2 px-4">
+                        <div className="text-[13px] text-slate-600">
                           {org.email && <p>{org.email}</p>}
                           {org.phone && <p>{org.phone}</p>}
                           {!org.email && !org.phone && <span className="text-slate-400">-</span>}
                         </div>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="py-2 px-4">
                         <Badge
                           variant={org.status ? 'default' : 'secondary'}
                           className={
                             org.status
-                              ? 'bg-green-100 text-green-800'
-                              : 'bg-slate-100 text-slate-600'
+                              ? 'bg-green-100 text-green-800 text-[11px] h-5'
+                              : 'bg-slate-100 text-slate-600 text-[11px] h-5'
                           }
                         >
                           {org.status ? 'Ativo' : 'Inativo'}
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-sm text-slate-500">
+                      <TableCell className="py-2 px-4 text-[13px] text-slate-500">
                         {org.created_at
                           ? format(new Date(org.created_at), 'dd/MM/yyyy', { locale: ptBR })
                           : '-'}
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className="py-2 px-4 text-right">
                         <div className="flex items-center justify-end gap-1">
                           <Button
                             variant="ghost"
                             size="icon"
                             onClick={() => openModal(org)}
-                            className="text-slate-500 hover:text-blue-600"
+                            className="h-8 w-8 text-slate-500 hover:text-blue-600"
                           >
                             <Edit className="h-4 w-4" />
                           </Button>
@@ -466,7 +561,7 @@ export default function Companies() {
                             variant="ghost"
                             size="icon"
                             onClick={() => handleDelete(org.id)}
-                            className="text-slate-500 hover:text-red-600 hover:bg-red-50"
+                            className="h-8 w-8 text-slate-500 hover:text-red-600 hover:bg-red-50"
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
@@ -530,12 +625,36 @@ export default function Companies() {
               </div>
               <div className="space-y-2">
                 <Label>CNPJ</Label>
-                <Input {...register('cnpj')} placeholder="00.000.000/0000-00" />
+                <Input
+                  {...(() => {
+                    const { onChange, ...rest } = register('cnpj')
+                    return {
+                      ...rest,
+                      onChange: (e) => {
+                        e.target.value = formatCNPJ(e.target.value)
+                        onChange(e)
+                      },
+                    }
+                  })()}
+                  placeholder="00.000.000/0000-00"
+                />
                 {errors.cnpj && <span className="text-xs text-red-500">{errors.cnpj.message}</span>}
               </div>
               <div className="space-y-2">
                 <Label>CPF</Label>
-                <Input {...register('cpf')} placeholder="000.000.000-00" />
+                <Input
+                  {...(() => {
+                    const { onChange, ...rest } = register('cpf')
+                    return {
+                      ...rest,
+                      onChange: (e) => {
+                        e.target.value = formatCPF(e.target.value)
+                        onChange(e)
+                      },
+                    }
+                  })()}
+                  placeholder="000.000.000-00"
+                />
                 {errors.cpf && <span className="text-xs text-red-500">{errors.cpf.message}</span>}
               </div>
               <div className="space-y-2">

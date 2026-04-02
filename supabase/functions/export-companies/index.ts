@@ -1,5 +1,6 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts'
 import { jsPDF } from 'npm:jspdf@2.5.1'
+import * as XLSX from 'npm:xlsx@0.18.5'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -17,11 +18,22 @@ Deno.serve(async (req: Request) => {
     const { format, data } = await req.json()
 
     if (format === 'excel') {
-      let csv = 'Relatorio de Empresas\n\nNome,CNPJ,CPF,Status,Telefone,Email,Data Criacao\n'
-      data.forEach((r: any) => {
-        csv += `"${r.name}","${r.cnpj || ''}","${r.cpf || ''}","${r.status ? 'Ativo' : 'Inativo'}","${r.phone || ''}","${r.email || ''}","${r.created_at}"\n`
-      })
-      return new Response(JSON.stringify({ csv }), {
+      const worksheet = XLSX.utils.json_to_sheet(
+        data.map((r: any) => ({
+          Nome: r.name,
+          CNPJ: r.cnpj || '',
+          CPF: r.cpf || '',
+          Status: r.status ? 'Ativo' : 'Inativo',
+          Telefone: r.phone || '',
+          Email: r.email || '',
+          'Data Criacao': r.created_at,
+        })),
+      )
+      const workbook = XLSX.utils.book_new()
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Empresas')
+      const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'base64' })
+
+      return new Response(JSON.stringify({ excel: excelBuffer }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     }

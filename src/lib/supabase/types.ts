@@ -328,26 +328,41 @@ export type Database = {
       }
       organizations: {
         Row: {
+          address: string | null
           cnpj: string | null
+          cpf: string | null
           created_at: string | null
+          email: string | null
           id: string
           name: string | null
+          observations: string | null
+          phone: string | null
           status: boolean | null
           user_id: string | null
         }
         Insert: {
+          address?: string | null
           cnpj?: string | null
+          cpf?: string | null
           created_at?: string | null
+          email?: string | null
           id?: string
           name?: string | null
+          observations?: string | null
+          phone?: string | null
           status?: boolean | null
           user_id?: string | null
         }
         Update: {
+          address?: string | null
           cnpj?: string | null
+          cpf?: string | null
           created_at?: string | null
+          email?: string | null
           id?: string
           name?: string | null
+          observations?: string | null
+          phone?: string | null
           status?: boolean | null
           user_id?: string | null
         }
@@ -566,6 +581,11 @@ export const Constants = {
 //   status: boolean (nullable, default: true)
 //   created_at: timestamp with time zone (nullable, default: now())
 //   user_id: uuid (nullable)
+//   cpf: character varying (nullable)
+//   phone: character varying (nullable)
+//   email: character varying (nullable)
+//   address: text (nullable)
+//   observations: text (nullable)
 
 // --- CONSTRAINTS ---
 // Table: account_mapping
