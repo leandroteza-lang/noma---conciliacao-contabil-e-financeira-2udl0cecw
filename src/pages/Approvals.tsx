@@ -7,6 +7,7 @@ import {
   AlertCircle,
   CalendarIcon,
   Eraser,
+  Mail,
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
 import { useAuth } from '@/hooks/use-auth'
@@ -211,6 +212,38 @@ export default function Approvals() {
       bank_account: 'bank_accounts',
     }
     return map[type] || ''
+  }
+
+  const handleResendInvite = async (user: any) => {
+    setProcessingId(`resend-${user.id}`)
+    try {
+      const { data: userData } = await supabase
+        .from('cadastro_usuarios')
+        .select('user_id, email, name')
+        .eq('id', user.id)
+        .single()
+
+      if (!userData?.email || !userData?.user_id)
+        throw new Error('Email ou ID do usuário não encontrado.')
+
+      const { data, error } = await supabase.functions.invoke('manage-user', {
+        body: {
+          action: 'resend_email',
+          user_id: userData.user_id,
+          email: userData.email,
+          name: userData.name,
+        },
+      })
+
+      if (error) throw error
+      if (!data?.success) throw new Error(data?.error || 'Erro ao reenviar convite.')
+
+      toast({ title: 'Convite Reenviado', description: 'O e-mail foi reenviado com sucesso.' })
+    } catch (e: any) {
+      toast({ title: 'Erro', description: e.message, variant: 'destructive' })
+    } finally {
+      setProcessingId(null)
+    }
   }
 
   const handleApproveNewUser = async (id: string) => {
@@ -649,7 +682,21 @@ export default function Approvals() {
                             {user.role.replace('_', ' ')}
                           </td>
                           <td className="px-4 py-3 text-right">
-                            <div className="flex justify-end gap-2">
+                            <div className="flex items-center justify-end gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleResendInvite(user)}
+                                disabled={!!processingId}
+                                className="text-blue-600 hover:text-blue-700"
+                              >
+                                {processingId === `resend-${user.id}` ? (
+                                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                ) : (
+                                  <Mail className="h-4 w-4 mr-2" />
+                                )}
+                                Reenviar
+                              </Button>
                               <Button
                                 variant="outline"
                                 size="sm"
