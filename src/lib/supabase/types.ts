@@ -125,6 +125,7 @@ export type Database = {
           bank_code: string | null
           check_digit: string | null
           classification: string | null
+          company_name: string | null
           created_at: string | null
           description: string | null
           id: string
@@ -138,6 +139,7 @@ export type Database = {
           bank_code?: string | null
           check_digit?: string | null
           classification?: string | null
+          company_name?: string | null
           created_at?: string | null
           description?: string | null
           id?: string
@@ -151,6 +153,7 @@ export type Database = {
           bank_code?: string | null
           check_digit?: string | null
           classification?: string | null
+          company_name?: string | null
           created_at?: string | null
           description?: string | null
           id?: string
@@ -308,6 +311,7 @@ export type Database = {
           id: string
           name: string | null
           status: boolean | null
+          user_id: string | null
         }
         Insert: {
           cnpj?: string | null
@@ -315,6 +319,7 @@ export type Database = {
           id?: string
           name?: string | null
           status?: boolean | null
+          user_id?: string | null
         }
         Update: {
           cnpj?: string | null
@@ -322,6 +327,7 @@ export type Database = {
           id?: string
           name?: string | null
           status?: boolean | null
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -501,6 +507,7 @@ export const Constants = {
 //   check_digit: character varying (nullable)
 //   classification: character varying (nullable)
 //   created_at: timestamp with time zone (nullable, default: now())
+//   company_name: character varying (nullable)
 // Table: chart_of_accounts
 //   id: uuid (not null, default: gen_random_uuid())
 //   organization_id: uuid (nullable)
@@ -531,6 +538,7 @@ export const Constants = {
 //   name: character varying (nullable)
 //   status: boolean (nullable, default: true)
 //   created_at: timestamp with time zone (nullable, default: now())
+//   user_id: uuid (nullable)
 
 // --- CONSTRAINTS ---
 // Table: account_mapping
@@ -560,33 +568,84 @@ export const Constants = {
 //   PRIMARY KEY financial_movements_pkey: PRIMARY KEY (id)
 // Table: organizations
 //   PRIMARY KEY organizations_pkey: PRIMARY KEY (id)
+//   FOREIGN KEY organizations_user_id_fkey: FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE
 
 // --- ROW LEVEL SECURITY POLICIES ---
 // Table: account_mapping
-//   Policy "authenticated_all_account_mapping" (ALL, PERMISSIVE) roles={authenticated}
-//     USING: true
-//     WITH CHECK: true
+//   Policy "org_account_mapping_delete" (DELETE, PERMISSIVE) roles={authenticated}
+//     USING: (organization_id IN ( SELECT organizations.id    FROM organizations   WHERE (organizations.user_id = auth.uid())))
+//   Policy "org_account_mapping_insert" (INSERT, PERMISSIVE) roles={authenticated}
+//     WITH CHECK: (organization_id IN ( SELECT organizations.id    FROM organizations   WHERE (organizations.user_id = auth.uid())))
+//   Policy "org_account_mapping_select" (SELECT, PERMISSIVE) roles={authenticated}
+//     USING: (organization_id IN ( SELECT organizations.id    FROM organizations   WHERE (organizations.user_id = auth.uid())))
+//   Policy "org_account_mapping_update" (UPDATE, PERMISSIVE) roles={authenticated}
+//     USING: (organization_id IN ( SELECT organizations.id    FROM organizations   WHERE (organizations.user_id = auth.uid())))
 // Table: accounting_entries
-//   Policy "authenticated_all_accounting_entries" (ALL, PERMISSIVE) roles={authenticated}
-//     USING: true
-//     WITH CHECK: true
+//   Policy "org_accounting_entries_delete" (DELETE, PERMISSIVE) roles={authenticated}
+//     USING: (organization_id IN ( SELECT organizations.id    FROM organizations   WHERE (organizations.user_id = auth.uid())))
+//   Policy "org_accounting_entries_insert" (INSERT, PERMISSIVE) roles={authenticated}
+//     WITH CHECK: (organization_id IN ( SELECT organizations.id    FROM organizations   WHERE (organizations.user_id = auth.uid())))
+//   Policy "org_accounting_entries_select" (SELECT, PERMISSIVE) roles={authenticated}
+//     USING: (organization_id IN ( SELECT organizations.id    FROM organizations   WHERE (organizations.user_id = auth.uid())))
+//   Policy "org_accounting_entries_update" (UPDATE, PERMISSIVE) roles={authenticated}
+//     USING: (organization_id IN ( SELECT organizations.id    FROM organizations   WHERE (organizations.user_id = auth.uid())))
 // Table: bank_accounts
-//   Policy "authenticated_all_bank_accounts" (ALL, PERMISSIVE) roles={authenticated}
-//     USING: true
-//     WITH CHECK: true
+//   Policy "org_bank_accounts_delete" (DELETE, PERMISSIVE) roles={authenticated}
+//     USING: (organization_id IN ( SELECT organizations.id    FROM organizations   WHERE (organizations.user_id = auth.uid())))
+//   Policy "org_bank_accounts_insert" (INSERT, PERMISSIVE) roles={authenticated}
+//     WITH CHECK: (organization_id IN ( SELECT organizations.id    FROM organizations   WHERE (organizations.user_id = auth.uid())))
+//   Policy "org_bank_accounts_select" (SELECT, PERMISSIVE) roles={authenticated}
+//     USING: (organization_id IN ( SELECT organizations.id    FROM organizations   WHERE (organizations.user_id = auth.uid())))
+//   Policy "org_bank_accounts_update" (UPDATE, PERMISSIVE) roles={authenticated}
+//     USING: (organization_id IN ( SELECT organizations.id    FROM organizations   WHERE (organizations.user_id = auth.uid())))
 // Table: chart_of_accounts
-//   Policy "authenticated_all_chart_of_accounts" (ALL, PERMISSIVE) roles={authenticated}
-//     USING: true
-//     WITH CHECK: true
+//   Policy "org_chart_of_accounts_delete" (DELETE, PERMISSIVE) roles={authenticated}
+//     USING: (organization_id IN ( SELECT organizations.id    FROM organizations   WHERE (organizations.user_id = auth.uid())))
+//   Policy "org_chart_of_accounts_insert" (INSERT, PERMISSIVE) roles={authenticated}
+//     WITH CHECK: (organization_id IN ( SELECT organizations.id    FROM organizations   WHERE (organizations.user_id = auth.uid())))
+//   Policy "org_chart_of_accounts_select" (SELECT, PERMISSIVE) roles={authenticated}
+//     USING: (organization_id IN ( SELECT organizations.id    FROM organizations   WHERE (organizations.user_id = auth.uid())))
+//   Policy "org_chart_of_accounts_update" (UPDATE, PERMISSIVE) roles={authenticated}
+//     USING: (organization_id IN ( SELECT organizations.id    FROM organizations   WHERE (organizations.user_id = auth.uid())))
 // Table: cost_centers
-//   Policy "authenticated_all_cost_centers" (ALL, PERMISSIVE) roles={authenticated}
-//     USING: true
-//     WITH CHECK: true
+//   Policy "org_cost_centers_delete" (DELETE, PERMISSIVE) roles={authenticated}
+//     USING: (organization_id IN ( SELECT organizations.id    FROM organizations   WHERE (organizations.user_id = auth.uid())))
+//   Policy "org_cost_centers_insert" (INSERT, PERMISSIVE) roles={authenticated}
+//     WITH CHECK: (organization_id IN ( SELECT organizations.id    FROM organizations   WHERE (organizations.user_id = auth.uid())))
+//   Policy "org_cost_centers_select" (SELECT, PERMISSIVE) roles={authenticated}
+//     USING: (organization_id IN ( SELECT organizations.id    FROM organizations   WHERE (organizations.user_id = auth.uid())))
+//   Policy "org_cost_centers_update" (UPDATE, PERMISSIVE) roles={authenticated}
+//     USING: (organization_id IN ( SELECT organizations.id    FROM organizations   WHERE (organizations.user_id = auth.uid())))
 // Table: financial_movements
-//   Policy "authenticated_all_financial_movements" (ALL, PERMISSIVE) roles={authenticated}
-//     USING: true
-//     WITH CHECK: true
+//   Policy "org_financial_movements_delete" (DELETE, PERMISSIVE) roles={authenticated}
+//     USING: (organization_id IN ( SELECT organizations.id    FROM organizations   WHERE (organizations.user_id = auth.uid())))
+//   Policy "org_financial_movements_insert" (INSERT, PERMISSIVE) roles={authenticated}
+//     WITH CHECK: (organization_id IN ( SELECT organizations.id    FROM organizations   WHERE (organizations.user_id = auth.uid())))
+//   Policy "org_financial_movements_select" (SELECT, PERMISSIVE) roles={authenticated}
+//     USING: (organization_id IN ( SELECT organizations.id    FROM organizations   WHERE (organizations.user_id = auth.uid())))
+//   Policy "org_financial_movements_update" (UPDATE, PERMISSIVE) roles={authenticated}
+//     USING: (organization_id IN ( SELECT organizations.id    FROM organizations   WHERE (organizations.user_id = auth.uid())))
 // Table: organizations
-//   Policy "authenticated_all_organizations" (ALL, PERMISSIVE) roles={authenticated}
-//     USING: true
-//     WITH CHECK: true
+//   Policy "user_organization_delete" (DELETE, PERMISSIVE) roles={authenticated}
+//     USING: (user_id = auth.uid())
+//   Policy "user_organization_insert" (INSERT, PERMISSIVE) roles={authenticated}
+//     WITH CHECK: (user_id = auth.uid())
+//   Policy "user_organization_select" (SELECT, PERMISSIVE) roles={authenticated}
+//     USING: (user_id = auth.uid())
+//   Policy "user_organization_update" (UPDATE, PERMISSIVE) roles={authenticated}
+//     USING: (user_id = auth.uid())
+
+// --- DATABASE FUNCTIONS ---
+// FUNCTION handle_new_user()
+//   CREATE OR REPLACE FUNCTION public.handle_new_user()
+//    RETURNS trigger
+//    LANGUAGE plpgsql
+//    SECURITY DEFINER
+//   AS $function$
+//   BEGIN
+//     INSERT INTO public.organizations (id, user_id, name)
+//     VALUES (gen_random_uuid(), NEW.id, 'Minha Empresa');
+//     RETURN NEW;
+//   END;
+//   $function$
+//
