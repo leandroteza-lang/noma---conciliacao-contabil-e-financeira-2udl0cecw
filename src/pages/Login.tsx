@@ -34,9 +34,16 @@ export default function Login() {
     setLoading(false)
 
     if (error) {
+      let message = error.message
+      if (message === 'Invalid login credentials') {
+        message = 'E-mail ou senha incorretos. A senha padrão do sistema é Skip@Pass.'
+      } else if (message === 'Email not confirmed') {
+        message = 'Confirme seu endereço de e-mail antes de fazer login.'
+      }
+
       toast({
         title: 'Erro ao fazer login',
-        description: error.message,
+        description: message,
         variant: 'destructive',
       })
     } else {
