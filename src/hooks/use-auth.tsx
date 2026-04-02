@@ -34,12 +34,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const fetchRole = (email?: string) => {
-      if (!email) return
+    const fetchRole = (userId?: string) => {
+      if (!userId) return
       supabase
         .from('employees')
         .select('role, permissions, menu_order')
-        .eq('email', email)
+        .eq('user_id', userId)
         .maybeSingle()
         .then(({ data }) => {
           if (data) {
@@ -59,16 +59,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     } = supabase.auth.onAuthStateChange((event, session) => {
       setSession(session)
       setUser(session?.user ?? null)
-      if (session?.user?.email) {
-        fetchRole(session.user.email)
+      if (session?.user?.id) {
+        fetchRole(session.user.id)
       }
       setLoading(false)
     })
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session)
       setUser(session?.user ?? null)
-      if (session?.user?.email) {
-        fetchRole(session.user.email)
+      if (session?.user?.id) {
+        fetchRole(session.user.id)
       }
       setLoading(false)
     })
@@ -109,11 +109,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const setMenuOrder = async (order: string[]) => {
     setMenuOrderState(order)
-    if (user?.email) {
+    if (user?.id) {
       await supabase
         .from('employees')
         .update({ menu_order: order } as any)
-        .eq('email', user.email)
+        .eq('user_id', user.id)
     }
   }
 

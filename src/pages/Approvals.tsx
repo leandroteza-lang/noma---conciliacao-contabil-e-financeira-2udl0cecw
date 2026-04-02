@@ -14,12 +14,19 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
+import { Checkbox } from '@/components/ui/checkbox'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 
 interface PendingItem {
   id: string
-  type: 'organization' | 'department' | 'employee'
+  type:
+    | 'organization'
+    | 'department'
+    | 'employee'
+    | 'cost_center'
+    | 'chart_account'
+    | 'bank_account'
   typeLabel: string
   name: string
   requestedAt: string
@@ -32,6 +39,7 @@ export default function Approvals() {
   const [items, setItems] = useState<PendingItem[]>([])
   const [loading, setLoading] = useState(true)
   const [processingId, setProcessingId] = useState<string | null>(null)
+  const [selectedIds, setSelectedIds] = useState<string[]>([])
   const { role } = useAuth()
   const { toast } = useToast()
 
@@ -39,10 +47,13 @@ export default function Approvals() {
     if (role !== 'admin') return
     try {
       setLoading(true)
-      const [orgs, depts, emps] = await Promise.all([
+      const [orgs, depts, emps, costs, charts, banks] = await Promise.all([
         supabase.from('organizations').select('*').eq('pending_deletion', true),
         supabase.from('departments').select('*').eq('pending_deletion', true),
         supabase.from('employees').select('*').eq('pending_deletion', true),
+        supabase.from('cost_centers').select('*').eq('pending_deletion', true),
+        supabase.from('chart_of_accounts').select('*').eq('pending_deletion', true),
+        supabase.from('bank_accounts').select('*').eq('pending_deletion', true),
       ])
 
       const unified: PendingItem[] = [
@@ -73,6 +84,33 @@ export default function Approvals() {
           requestedBy: e.deletion_requested_by,
           originalData: e,
         })),
+        ...(costs.data || []).map((c) => ({
+          id: c.id,
+          type: 'cost_center' as const,
+          typeLabel: 'Centro de Custo',
+          name: `${c.code} - ${c.description}`,
+          requestedAt: c.deletion_requested_at || c.created_at,
+          requestedBy: c.deletion_requested_by,
+          originalData: c,
+        })),
+        ...(charts.data || []).map((c) => ({
+          id: c.id,
+          type: 'chart_account' as const,
+          typeLabel: 'Conta Contábil',
+          name: `${c.account_code} - ${c.account_name}`,
+          requestedAt: c.deletion_requested_at || c.created_at,
+          requestedBy: c.deletion_requested_by,
+          originalData: c,
+        })),
+        ...(banks.data || []).map((b) => ({
+          id: b.id,
+          type: 'bank_account' as const,
+          typeLabel: 'Conta Bancária',
+          name: `${b.bank_code} - ${b.description}`,
+          requestedAt: b.deletion_requested_at || b.created_at,
+          requestedBy: b.deletion_requested_by,
+          originalData: b,
+        })),
       ]
 
       const requesterIds = [...new Set(unified.map((i) => i.requestedBy).filter(Boolean))]
@@ -94,6 +132,7 @@ export default function Approvals() {
 
       unified.sort((a, b) => new Date(b.requestedAt).getTime() - new Date(a.requestedAt).getTime())
       setItems(unified)
+      setSelectedIds((prev) => prev.filter((id) => unified.some((i) => i.id === id)))
     } catch (e: any) {
       toast({ title: 'Erro ao carregar', description: e.message, variant: 'destructive' })
     } finally {
@@ -105,19 +144,32 @@ export default function Approvals() {
     fetchPendingItems()
   }, [role])
 
+  const getTableForType = (type: PendingItem['type']) => {
+    switch (type) {
+      case 'organization':
+        return 'organizations'
+      case 'department':
+        return 'departments'
+      case 'employee':
+        return 'employees'
+      case 'cost_center':
+        return 'cost_centers'
+      case 'chart_account':
+        return 'chart_of_accounts'
+      case 'bank_account':
+        return 'bank_accounts'
+      default:
+        return ''
+    }
+  }
+
   const handleApprove = async (item: PendingItem) => {
     if (!confirm(`Deseja realmente EXCLUIR DEFINITIVAMENTE o(a) ${item.typeLabel} "${item.name}"?`))
       return
 
     setProcessingId(item.id)
     try {
-      const table =
-        item.type === 'organization'
-          ? 'organizations'
-          : item.type === 'department'
-            ? 'departments'
-            : 'employees'
-
+      const table = getTableForType(item.type)
       const { error } = await supabase.from(table).delete().eq('id', item.id)
 
       if (error) {
@@ -141,18 +193,13 @@ export default function Approvals() {
   const handleRestore = async (item: PendingItem) => {
     setProcessingId(item.id)
     try {
-      const table =
-        item.type === 'organization'
-          ? 'organizations'
-          : item.type === 'department'
-            ? 'departments'
-            : 'employees'
-
+      const table = getTableForType(item.type)
       const { error } = await supabase
         .from(table)
         .update({
           pending_deletion: false,
           deletion_requested_at: null,
+          deletion_requested_by: null,
         })
         .eq('id', item.id)
 
@@ -162,6 +209,84 @@ export default function Approvals() {
       fetchPendingItems()
     } catch (e: any) {
       toast({ title: 'Erro ao restaurar', description: e.message, variant: 'destructive' })
+    } finally {
+      setProcessingId(null)
+    }
+  }
+
+  const handleBulkApprove = async () => {
+    if (selectedIds.length === 0) return
+    if (
+      !confirm(
+        `Deseja realmente EXCLUIR DEFINITIVAMENTE os ${selectedIds.length} itens selecionados?`,
+      )
+    )
+      return
+
+    setProcessingId('bulk')
+    try {
+      const itemsToProcess = items.filter((i) => selectedIds.includes(i.id))
+      let hasError = false
+
+      for (const item of itemsToProcess) {
+        const table = getTableForType(item.type)
+        const { error } = await supabase.from(table).delete().eq('id', item.id)
+        if (error) hasError = true
+      }
+
+      if (hasError) {
+        toast({
+          title: 'Aviso',
+          description:
+            'Alguns itens não puderam ser excluídos devido a relacionamentos no banco de dados.',
+          variant: 'destructive',
+        })
+      } else {
+        toast({
+          title: 'Exclusão concluída',
+          description: 'Os registros selecionados foram permanentemente removidos.',
+        })
+      }
+      setSelectedIds([])
+      fetchPendingItems()
+    } catch (e: any) {
+      toast({ title: 'Erro na exclusão em lote', description: e.message, variant: 'destructive' })
+    } finally {
+      setProcessingId(null)
+    }
+  }
+
+  const handleBulkRestore = async () => {
+    if (selectedIds.length === 0) return
+
+    setProcessingId('bulk')
+    try {
+      const itemsToProcess = items.filter((i) => selectedIds.includes(i.id))
+
+      for (const item of itemsToProcess) {
+        const table = getTableForType(item.type)
+        await supabase
+          .from(table)
+          .update({
+            pending_deletion: false,
+            deletion_requested_at: null,
+            deletion_requested_by: null,
+          })
+          .eq('id', item.id)
+      }
+
+      toast({
+        title: 'Restauração concluída',
+        description: 'Os registros selecionados foram restaurados com sucesso.',
+      })
+      setSelectedIds([])
+      fetchPendingItems()
+    } catch (e: any) {
+      toast({
+        title: 'Erro na restauração em lote',
+        description: e.message,
+        variant: 'destructive',
+      })
     } finally {
       setProcessingId(null)
     }
@@ -186,10 +311,46 @@ export default function Approvals() {
           <CheckSquare className="h-8 w-8 text-blue-600" />
           Central de Aprovações
         </h1>
-        <p className="text-slate-500 mt-1">
-          Gerencie as solicitações de exclusão do sistema (Soft Delete).
-        </p>
+        <p className="text-slate-500 mt-1">Gerencie as solicitações de exclusão do sistema.</p>
       </div>
+
+      {selectedIds.length > 0 && (
+        <div className="bg-slate-50 border border-slate-200 rounded-md p-3 flex items-center justify-between animate-in fade-in slide-in-from-top-2">
+          <span className="text-sm font-medium text-slate-700">
+            {selectedIds.length} item(ns) selecionado(s)
+          </span>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleBulkRestore}
+              disabled={processingId === 'bulk'}
+              className="gap-2 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+            >
+              {processingId === 'bulk' ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <RotateCcw className="h-4 w-4" />
+              )}
+              Restaurar Selecionados
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={handleBulkApprove}
+              disabled={processingId === 'bulk'}
+              className="gap-2"
+            >
+              {processingId === 'bulk' ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Trash2 className="h-4 w-4" />
+              )}
+              Aprovar Selecionados
+            </Button>
+          </div>
+        </div>
+      )}
 
       <Card>
         <CardHeader>
@@ -214,6 +375,15 @@ export default function Approvals() {
               <Table>
                 <TableHeader className="bg-slate-50">
                   <TableRow>
+                    <TableHead className="w-12 text-center">
+                      <Checkbox
+                        checked={items.length > 0 && selectedIds.length === items.length}
+                        onCheckedChange={(checked) => {
+                          if (checked) setSelectedIds(items.map((i) => i.id))
+                          else setSelectedIds([])
+                        }}
+                      />
+                    </TableHead>
                     <TableHead>Tipo</TableHead>
                     <TableHead>Nome / Identificação</TableHead>
                     <TableHead>Solicitado por</TableHead>
@@ -224,6 +394,15 @@ export default function Approvals() {
                 <TableBody>
                   {items.map((item) => (
                     <TableRow key={item.id} className="hover:bg-slate-50/50">
+                      <TableCell className="py-3 px-4 text-center">
+                        <Checkbox
+                          checked={selectedIds.includes(item.id)}
+                          onCheckedChange={(checked) => {
+                            if (checked) setSelectedIds((prev) => [...prev, item.id])
+                            else setSelectedIds((prev) => prev.filter((id) => id !== item.id))
+                          }}
+                        />
+                      </TableCell>
                       <TableCell className="py-3 px-4">
                         <Badge
                           variant="outline"
@@ -251,7 +430,7 @@ export default function Approvals() {
                             variant="outline"
                             size="sm"
                             onClick={() => handleRestore(item)}
-                            disabled={processingId === item.id}
+                            disabled={!!processingId}
                             className="gap-1.5 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
                           >
                             {processingId === item.id ? (
@@ -265,7 +444,7 @@ export default function Approvals() {
                             variant="destructive"
                             size="sm"
                             onClick={() => handleApprove(item)}
-                            disabled={processingId === item.id}
+                            disabled={!!processingId}
                             className="gap-1.5"
                           >
                             {processingId === item.id ? (
@@ -273,7 +452,7 @@ export default function Approvals() {
                             ) : (
                               <Trash2 className="h-3 w-3" />
                             )}
-                            Aprovar Exclusão
+                            Aprovar
                           </Button>
                         </div>
                       </TableCell>

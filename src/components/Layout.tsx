@@ -128,15 +128,30 @@ export default function Layout() {
   useEffect(() => {
     if (role !== 'admin') return
     const fetchPending = async () => {
-      const [orgs, depts, emps] = await Promise.all([
+      const [orgs, depts, emps, costs, charts, banks] = await Promise.all([
         supabase
           .from('organizations')
           .select('id', { count: 'exact' })
           .eq('pending_deletion', true),
         supabase.from('departments').select('id', { count: 'exact' }).eq('pending_deletion', true),
         supabase.from('employees').select('id', { count: 'exact' }).eq('pending_deletion', true),
+        supabase.from('cost_centers').select('id', { count: 'exact' }).eq('pending_deletion', true),
+        supabase
+          .from('chart_of_accounts')
+          .select('id', { count: 'exact' })
+          .eq('pending_deletion', true),
+        supabase
+          .from('bank_accounts')
+          .select('id', { count: 'exact' })
+          .eq('pending_deletion', true),
       ])
-      const total = (orgs.count || 0) + (depts.count || 0) + (emps.count || 0)
+      const total =
+        (orgs.count || 0) +
+        (depts.count || 0) +
+        (emps.count || 0) +
+        (costs.count || 0) +
+        (charts.count || 0) +
+        (banks.count || 0)
       setPendingCount(total)
     }
     fetchPending()

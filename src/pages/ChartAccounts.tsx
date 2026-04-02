@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Plus, Search, Building2, AlignLeft, Filter } from 'lucide-react'
+import { Plus, Search, Building2, AlignLeft, Filter, Trash2 } from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -14,6 +14,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
+import { Checkbox } from '@/components/ui/checkbox'
 import {
   Select,
   SelectContent,
@@ -22,6 +23,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { useAuth } from '@/hooks/use-auth'
+import { useToast } from '@/hooks/use-toast'
 
 interface ChartAccount {
   id: string
@@ -32,28 +34,33 @@ interface ChartAccount {
 }
 
 export default function ChartAccounts() {
-  const { user } = useAuth()
+  const { user, role } = useAuth()
+  const { toast } = useToast()
   const [accounts, setAccounts] = useState<ChartAccount[]>([])
   const [search, setSearch] = useState('')
   const [typeFilter, setTypeFilter] = useState('all')
   const [loading, setLoading] = useState(true)
+  const [selectedIds, setSelectedIds] = useState<string[]>([])
+
+  const canDelete = role === 'admin'
+
+  const fetchAccounts = async () => {
+    setLoading(true)
+    const { data, error } = await supabase
+      .from('chart_of_accounts')
+      .select('*, organization:organizations(name)')
+      .neq('pending_deletion', true)
+      .order('account_code', { ascending: true })
+
+    if (!error && data) {
+      setAccounts(data as any)
+      setSelectedIds((prev) => prev.filter((id) => data.some((d) => d.id === id)))
+    }
+    setLoading(false)
+  }
 
   useEffect(() => {
     if (!user) return
-
-    const fetchAccounts = async () => {
-      setLoading(true)
-      const { data, error } = await supabase
-        .from('chart_of_accounts')
-        .select('*, organization:organizations(name)')
-        .order('account_code', { ascending: true })
-
-      if (!error && data) {
-        setAccounts(data as any)
-      }
-      setLoading(false)
-    }
-
     fetchAccounts()
 
     const channel = supabase
@@ -88,6 +95,118 @@ export default function ChartAccounts() {
     return level * 1.5
   }
 
+  const handleBulkDelete = async () => {
+    if (selectedIds.length === 0) return
+    if (!confirm(`Deseja solicitar a exclusão de ${selectedIds.length} conta(s) contábil(eis)?`))
+      return
+
+    const checkPromises = selectedIds.map(async (id) => {
+      const { data: linkedMappings } = await supabase
+        .from('account_mapping')
+        .select('id')
+        .eq('chart_account_id', id)
+        .limit(1)
+      const { data: linkedDebits } = await supabase
+        .from('accounting_entries')
+        .select('id')
+        .eq('debit_account_id', id)
+        .limit(1)
+      const { data: linkedCredits } = await supabase
+        .from('accounting_entries')
+        .select('id')
+        .eq('credit_account_id', id)
+        .limit(1)
+
+      const hasRelations =
+        (linkedMappings && linkedMappings.length > 0) ||
+        (linkedDebits && linkedDebits.length > 0) ||
+        (linkedCredits && linkedCredits.length > 0)
+
+      return { id, hasRelations }
+    })
+
+    const results = await Promise.all(checkPromises)
+    const toDelete = results.filter((r) => !r.hasRelations).map((r) => r.id)
+    const blocked = results.filter((r) => r.hasRelations).map((r) => r.id)
+
+    if (toDelete.length > 0) {
+      const { error } = await supabase
+        .from('chart_of_accounts')
+        .update({
+          pending_deletion: true,
+          deletion_requested_at: new Date().toISOString(),
+          deletion_requested_by: user?.id,
+        })
+        .in('id', toDelete)
+
+      if (error) toast({ title: 'Erro', description: error.message, variant: 'destructive' })
+      else
+        toast({
+          title: 'Sucesso',
+          description: `${toDelete.length} conta(s) enviada(s) para aprovação.`,
+        })
+    }
+
+    if (blocked.length > 0) {
+      toast({
+        title: 'Ação Parcialmente Bloqueada',
+        description: `${blocked.length} conta(s) possuem vínculos (lançamentos ou mapeamentos) e não puderam ser excluídas.`,
+        variant: 'destructive',
+      })
+    }
+
+    setSelectedIds([])
+    fetchAccounts()
+  }
+
+  const handleDelete = async (id: string) => {
+    const { data: linkedMappings } = await supabase
+      .from('account_mapping')
+      .select('id')
+      .eq('chart_account_id', id)
+      .limit(1)
+    const { data: linkedDebits } = await supabase
+      .from('accounting_entries')
+      .select('id')
+      .eq('debit_account_id', id)
+      .limit(1)
+    const { data: linkedCredits } = await supabase
+      .from('accounting_entries')
+      .select('id')
+      .eq('credit_account_id', id)
+      .limit(1)
+
+    if (
+      (linkedMappings && linkedMappings.length > 0) ||
+      (linkedDebits && linkedDebits.length > 0) ||
+      (linkedCredits && linkedCredits.length > 0)
+    ) {
+      toast({
+        title: 'Ação Bloqueada',
+        description: 'Esta conta possui vínculos e não pode ser excluída.',
+        variant: 'destructive',
+      })
+      return
+    }
+
+    if (!confirm('Deseja solicitar a exclusão desta conta?')) return
+
+    const { error } = await supabase
+      .from('chart_of_accounts')
+      .update({
+        pending_deletion: true,
+        deletion_requested_at: new Date().toISOString(),
+        deletion_requested_by: user?.id,
+      })
+      .eq('id', id)
+
+    if (error) toast({ title: 'Erro', description: error.message, variant: 'destructive' })
+    else {
+      toast({ title: 'Enviado para Aprovação', description: 'A exclusão foi solicitada.' })
+      fetchAccounts()
+    }
+  }
+
   return (
     <div className="container mx-auto max-w-6xl py-8 space-y-6 animate-fade-in-up">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -105,6 +224,17 @@ export default function ChartAccounts() {
           </Button>
         </div>
       </div>
+
+      {selectedIds.length > 0 && canDelete && (
+        <div className="bg-slate-50 border border-slate-200 rounded-md p-3 flex items-center justify-between animate-in fade-in slide-in-from-top-2">
+          <span className="text-sm font-medium text-slate-700">
+            {selectedIds.length} item(ns) selecionado(s)
+          </span>
+          <Button variant="destructive" size="sm" onClick={handleBulkDelete} className="gap-2">
+            <Trash2 className="h-4 w-4" /> Excluir Selecionados
+          </Button>
+        </div>
+      )}
 
       <Card>
         <CardHeader className="pb-4">
@@ -143,26 +273,51 @@ export default function ChartAccounts() {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="rounded-md border">
+          <div className="rounded-md border overflow-x-auto">
             <Table>
               <TableHeader className="bg-muted/50">
                 <TableRow>
+                  {canDelete && (
+                    <TableHead className="w-12 text-center">
+                      <Checkbox
+                        checked={
+                          filteredData.length > 0 && selectedIds.length === filteredData.length
+                        }
+                        onCheckedChange={(checked) => {
+                          if (checked) setSelectedIds(filteredData.map((d) => d.id))
+                          else setSelectedIds([])
+                        }}
+                      />
+                    </TableHead>
+                  )}
                   <TableHead className="w-[200px]">Código</TableHead>
                   <TableHead>Nome da Conta</TableHead>
                   <TableHead>Tipo</TableHead>
                   <TableHead>Empresa</TableHead>
+                  {canDelete && <TableHead className="text-right">Ações</TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {loading ? (
                   <TableRow>
-                    <TableCell colSpan={4} className="h-24 text-center">
+                    <TableCell colSpan={canDelete ? 6 : 4} className="h-24 text-center">
                       Carregando plano de contas...
                     </TableCell>
                   </TableRow>
                 ) : filteredData.length > 0 ? (
                   filteredData.map((acc) => (
                     <TableRow key={acc.id}>
+                      {canDelete && (
+                        <TableCell className="text-center">
+                          <Checkbox
+                            checked={selectedIds.includes(acc.id)}
+                            onCheckedChange={(checked) => {
+                              if (checked) setSelectedIds((prev) => [...prev, acc.id])
+                              else setSelectedIds((prev) => prev.filter((id) => id !== acc.id))
+                            }}
+                          />
+                        </TableCell>
+                      )}
                       <TableCell className="font-medium whitespace-nowrap">
                         <div
                           className="flex items-center"
@@ -201,11 +356,23 @@ export default function ChartAccounts() {
                           </span>
                         </div>
                       </TableCell>
+                      {canDelete && (
+                        <TableCell className="text-right">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleDelete(acc.id)}
+                            className="h-8 w-8 text-slate-500 hover:text-red-600 hover:bg-red-50"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </TableCell>
+                      )}
                     </TableRow>
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={4} className="h-24 text-center">
+                    <TableCell colSpan={canDelete ? 6 : 4} className="h-24 text-center">
                       Nenhuma conta contábil encontrada.
                     </TableCell>
                   </TableRow>

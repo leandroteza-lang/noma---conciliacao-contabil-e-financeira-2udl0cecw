@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Plus, Search, Building2, Layers } from 'lucide-react'
+import { Plus, Search, Building2, Layers, Trash2 } from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -14,7 +14,9 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
+import { Checkbox } from '@/components/ui/checkbox'
 import { useAuth } from '@/hooks/use-auth'
+import { useToast } from '@/hooks/use-toast'
 
 interface CostCenter {
   id: string
@@ -29,38 +31,40 @@ interface CostCenter {
 }
 
 export default function CostCenters() {
-  const { user } = useAuth()
+  const { user, role } = useAuth()
+  const { toast } = useToast()
   const [costCenters, setCostCenters] = useState<CostCenter[]>([])
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(true)
+  const [selectedIds, setSelectedIds] = useState<string[]>([])
+
+  const canDelete = role === 'admin'
+
+  const fetchCostCenters = async () => {
+    setLoading(true)
+    const { data, error } = await supabase
+      .from('cost_centers')
+      .select('*, organization:organizations(name)')
+      .neq('pending_deletion', true)
+      .order('code', { ascending: true })
+
+    if (!error && data) {
+      setCostCenters(data as any)
+      setSelectedIds((prev) => prev.filter((id) => data.some((d) => d.id === id)))
+    }
+    setLoading(false)
+  }
 
   useEffect(() => {
     if (!user) return
-
-    const fetchCostCenters = async () => {
-      setLoading(true)
-      const { data, error } = await supabase
-        .from('cost_centers')
-        .select('*, organization:organizations(name)')
-        .order('code', { ascending: true })
-
-      if (!error && data) {
-        setCostCenters(data as any)
-      }
-      setLoading(false)
-    }
 
     fetchCostCenters()
 
     const channel = supabase
       .channel('schema-db-changes')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'cost_centers' },
-        (payload) => {
-          fetchCostCenters()
-        },
-      )
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'cost_centers' }, () => {
+        fetchCostCenters()
+      })
       .subscribe()
 
     return () => {
@@ -78,8 +82,120 @@ export default function CostCenters() {
   })
 
   const getIndent = (code: string) => {
+    if (!code) return 0
     const level = (code.match(/\./g) || []).length
     return level * 1.5
+  }
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.length === 0) return
+    if (!confirm(`Deseja solicitar a exclusão de ${selectedIds.length} centro(s) de custo?`)) return
+
+    const checkPromises = selectedIds.map(async (id) => {
+      const { data: linkedMovements } = await supabase
+        .from('financial_movements')
+        .select('id')
+        .eq('cost_center_id', id)
+        .limit(1)
+      const { data: linkedMappings } = await supabase
+        .from('account_mapping')
+        .select('id')
+        .eq('cost_center_id', id)
+        .limit(1)
+      const { data: linkedChildren } = await supabase
+        .from('cost_centers')
+        .select('id')
+        .eq('parent_id', id)
+        .limit(1)
+
+      const hasRelations =
+        (linkedMovements && linkedMovements.length > 0) ||
+        (linkedMappings && linkedMappings.length > 0) ||
+        (linkedChildren && linkedChildren.length > 0)
+
+      return { id, hasRelations }
+    })
+
+    const results = await Promise.all(checkPromises)
+    const toDelete = results.filter((r) => !r.hasRelations).map((r) => r.id)
+    const blocked = results.filter((r) => r.hasRelations).map((r) => r.id)
+
+    if (toDelete.length > 0) {
+      const { error } = await supabase
+        .from('cost_centers')
+        .update({
+          pending_deletion: true,
+          deletion_requested_at: new Date().toISOString(),
+          deletion_requested_by: user?.id,
+        })
+        .in('id', toDelete)
+
+      if (error) toast({ title: 'Erro', description: error.message, variant: 'destructive' })
+      else
+        toast({
+          title: 'Sucesso',
+          description: `${toDelete.length} centro(s) de custo enviado(s) para aprovação.`,
+        })
+    }
+
+    if (blocked.length > 0) {
+      toast({
+        title: 'Ação Parcialmente Bloqueada',
+        description: `${blocked.length} centro(s) de custo possuem vínculos (movimentações, mapeamentos ou sub-centros) e não puderam ser excluídos.`,
+        variant: 'destructive',
+      })
+    }
+
+    setSelectedIds([])
+    fetchCostCenters()
+  }
+
+  const handleDelete = async (id: string) => {
+    const { data: linkedMovements } = await supabase
+      .from('financial_movements')
+      .select('id')
+      .eq('cost_center_id', id)
+      .limit(1)
+    const { data: linkedMappings } = await supabase
+      .from('account_mapping')
+      .select('id')
+      .eq('cost_center_id', id)
+      .limit(1)
+    const { data: linkedChildren } = await supabase
+      .from('cost_centers')
+      .select('id')
+      .eq('parent_id', id)
+      .limit(1)
+
+    if (
+      (linkedMovements && linkedMovements.length > 0) ||
+      (linkedMappings && linkedMappings.length > 0) ||
+      (linkedChildren && linkedChildren.length > 0)
+    ) {
+      toast({
+        title: 'Ação Bloqueada',
+        description: 'Este centro de custo possui vínculos e não pode ser excluído.',
+        variant: 'destructive',
+      })
+      return
+    }
+
+    if (!confirm('Deseja solicitar a exclusão deste centro de custo?')) return
+
+    const { error } = await supabase
+      .from('cost_centers')
+      .update({
+        pending_deletion: true,
+        deletion_requested_at: new Date().toISOString(),
+        deletion_requested_by: user?.id,
+      })
+      .eq('id', id)
+
+    if (error) toast({ title: 'Erro', description: error.message, variant: 'destructive' })
+    else {
+      toast({ title: 'Enviado para Aprovação', description: 'A exclusão foi solicitada.' })
+      fetchCostCenters()
+    }
   }
 
   return (
@@ -102,6 +218,17 @@ export default function CostCenters() {
         </div>
       </div>
 
+      {selectedIds.length > 0 && canDelete && (
+        <div className="bg-slate-50 border border-slate-200 rounded-md p-3 flex items-center justify-between animate-in fade-in slide-in-from-top-2">
+          <span className="text-sm font-medium text-slate-700">
+            {selectedIds.length} item(ns) selecionado(s)
+          </span>
+          <Button variant="destructive" size="sm" onClick={handleBulkDelete} className="gap-2">
+            <Trash2 className="h-4 w-4" /> Excluir Selecionados
+          </Button>
+        </div>
+      )}
+
       <Card>
         <CardHeader className="pb-4">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -122,27 +249,52 @@ export default function CostCenters() {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="rounded-md border">
+          <div className="rounded-md border overflow-x-auto">
             <Table>
               <TableHeader className="bg-muted/50">
                 <TableRow>
+                  {canDelete && (
+                    <TableHead className="w-12 text-center">
+                      <Checkbox
+                        checked={
+                          filteredData.length > 0 && selectedIds.length === filteredData.length
+                        }
+                        onCheckedChange={(checked) => {
+                          if (checked) setSelectedIds(filteredData.map((d) => d.id))
+                          else setSelectedIds([])
+                        }}
+                      />
+                    </TableHead>
+                  )}
                   <TableHead className="w-[200px]">Código</TableHead>
                   <TableHead>Descrição</TableHead>
                   <TableHead>Empresa</TableHead>
                   <TableHead>Tipo / Fixo-Var</TableHead>
                   <TableHead>Classificação</TableHead>
+                  {canDelete && <TableHead className="text-right">Ações</TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {loading ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="h-24 text-center">
+                    <TableCell colSpan={canDelete ? 7 : 5} className="h-24 text-center">
                       Carregando centros de custo...
                     </TableCell>
                   </TableRow>
                 ) : filteredData.length > 0 ? (
                   filteredData.map((cc) => (
                     <TableRow key={cc.id}>
+                      {canDelete && (
+                        <TableCell className="text-center">
+                          <Checkbox
+                            checked={selectedIds.includes(cc.id)}
+                            onCheckedChange={(checked) => {
+                              if (checked) setSelectedIds((prev) => [...prev, cc.id])
+                              else setSelectedIds((prev) => prev.filter((id) => id !== cc.id))
+                            }}
+                          />
+                        </TableCell>
+                      )}
                       <TableCell className="font-medium whitespace-nowrap">
                         <div
                           className="flex items-center"
@@ -176,11 +328,23 @@ export default function CostCenters() {
                           </Badge>
                         )}
                       </TableCell>
+                      {canDelete && (
+                        <TableCell className="text-right">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleDelete(cc.id)}
+                            className="h-8 w-8 text-slate-500 hover:text-red-600 hover:bg-red-50"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </TableCell>
+                      )}
                     </TableRow>
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={5} className="h-24 text-center">
+                    <TableCell colSpan={canDelete ? 7 : 5} className="h-24 text-center">
                       Nenhum centro de custo encontrado.
                     </TableCell>
                   </TableRow>
