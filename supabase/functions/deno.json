@@ -7,7 +7,7 @@
     "export-companies": 2,
     "export-departments": 1,
     "export-users": 1,
-    "manage-user": 1,
-    "send-email": 1
+    "manage-user": 2,
+    "send-email": 2
   }
 }

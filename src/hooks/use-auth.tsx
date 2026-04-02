@@ -5,16 +5,10 @@ import { supabase } from '@/lib/supabase/client'
 interface AuthContextType {
   user: User | null
   session: Session | null
-  role: 'admin' | 'supervisor' | 'collaborator' | 'client_user'
-  permissions: string[]
-  menuOrder: string[]
-  profile: { name: string; avatar_url: string | null; approval_status: string } | null
-  setMenuOrder: (order: string[]) => void
+  role: string | null
   signUp: (email: string, password: string, metadata?: any) => Promise<{ error: any }>
   signIn: (email: string, password: string) => Promise<{ error: any }>
   signOut: () => Promise<{ error: any }>
-  resetPassword: (email: string) => Promise<{ error: any }>
-  updatePassword: (password: string) => Promise<{ error: any }>
   loading: boolean
 }
 
@@ -29,41 +23,23 @@ export const useAuth = () => {
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null)
   const [session, setSession] = useState<Session | null>(null)
-  const [role, setRole] = useState<'admin' | 'supervisor' | 'collaborator' | 'client_user'>('admin')
-  const [permissions, setPermissions] = useState<string[]>(['all'])
-  const [menuOrder, setMenuOrderState] = useState<string[]>([])
-  const [profile, setProfile] = useState<{
-    name: string
-    avatar_url: string | null
-    approval_status: string
-  } | null>(null)
+  const [role, setRole] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const fetchRole = (userEmail?: string) => {
-      if (!userEmail) return
-      supabase
+    const fetchRole = async (userId: string) => {
+      const { data } = await supabase
         .from('cadastro_usuarios')
-        .select('role, permissions, menu_order, approval_status, name, avatar_url')
-        .eq('email', userEmail)
+        .select('role, approval_status')
+        .eq('user_id', userId)
         .maybeSingle()
-        .then(({ data }) => {
-          if (data) {
-            setRole((data.role as any) || 'admin')
-            setPermissions(Array.isArray(data.permissions) ? data.permissions : ['all'])
-            setMenuOrderState(Array.isArray(data.menu_order) ? data.menu_order : [])
-            setProfile({
-              name: data.name,
-              avatar_url: data.avatar_url,
-              approval_status: data.approval_status || 'approved',
-            })
-          } else {
-            setRole('admin')
-            setPermissions(['all'])
-            setMenuOrderState([])
-            setProfile(null)
-          }
-        })
+
+      if (data?.approval_status === 'pending') {
+        await supabase.auth.signOut()
+        setRole(null)
+      } else {
+        setRole(data?.role || null)
+      }
     }
 
     const {
@@ -71,19 +47,25 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     } = supabase.auth.onAuthStateChange((event, session) => {
       setSession(session)
       setUser(session?.user ?? null)
-      if (session?.user?.email) {
-        fetchRole(session.user.email)
+      if (session?.user) {
+        fetchRole(session.user.id).finally(() => setLoading(false))
+      } else {
+        setRole(null)
+        setLoading(false)
       }
-      setLoading(false)
     })
+
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session)
       setUser(session?.user ?? null)
-      if (session?.user?.email) {
-        fetchRole(session.user.email)
+      if (session?.user) {
+        fetchRole(session.user.id).finally(() => setLoading(false))
+      } else {
+        setRole(null)
+        setLoading(false)
       }
-      setLoading(false)
     })
+
     return () => subscription.unsubscribe()
   }, [])
 
@@ -92,61 +74,43 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       email,
       password,
       options: {
-        emailRedirectTo: `${window.location.origin}/login`,
         data: metadata,
+        emailRedirectTo: `${window.location.origin}/`,
       },
     })
     return { error }
   }
+
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
-    return { error }
+    const { data: signInData, error } = await supabase.auth.signInWithPassword({ email, password })
+
+    if (error) return { error }
+
+    if (signInData.user) {
+      const { data: profile } = await supabase
+        .from('cadastro_usuarios')
+        .select('approval_status')
+        .eq('user_id', signInData.user.id)
+        .maybeSingle()
+
+      if (profile?.approval_status === 'pending') {
+        await supabase.auth.signOut()
+        return {
+          error: new Error('Sua conta ainda está pendente de aprovação pelo administrador.'),
+        }
+      }
+    }
+
+    return { error: null }
   }
+
   const signOut = async () => {
     const { error } = await supabase.auth.signOut()
     return { error }
   }
 
-  const resetPassword = async (email: string) => {
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/reset-password`,
-    })
-    return { error }
-  }
-
-  const updatePassword = async (password: string) => {
-    const { error } = await supabase.auth.updateUser({ password })
-    return { error }
-  }
-
-  const setMenuOrder = async (order: string[]) => {
-    setMenuOrderState(order)
-    if (user?.email) {
-      await supabase
-        .from('cadastro_usuarios')
-        .update({ menu_order: order } as any)
-        .eq('email', user.email)
-    }
-  }
-
   return (
-    <AuthContext.Provider
-      value={{
-        user,
-        session,
-        role,
-        permissions,
-        menuOrder,
-        profile,
-        setMenuOrder,
-        signUp,
-        signIn,
-        signOut,
-        resetPassword,
-        updatePassword,
-        loading,
-      }}
-    >
+    <AuthContext.Provider value={{ user, session, role, signUp, signIn, signOut, loading }}>
       {children}
     </AuthContext.Provider>
   )

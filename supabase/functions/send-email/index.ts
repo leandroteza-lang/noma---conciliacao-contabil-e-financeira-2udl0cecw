@@ -13,7 +13,30 @@ Deno.serve(async (req: Request) => {
   try {
     const { to, subject, body } = await req.json()
 
-    console.log(`[EMAIL SIMULATION]`)
+    const resendApiKey = Deno.env.get('RESEND_API_KEY')
+
+    if (resendApiKey) {
+      const res = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${resendApiKey}`,
+        },
+        body: JSON.stringify({
+          from: 'Acme <onboarding@resend.dev>',
+          to: [to],
+          subject: subject,
+          html: `<p>${body}</p>`,
+        }),
+      })
+
+      const data = await res.json()
+      return new Response(JSON.stringify({ success: true, data }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+
+    console.log(`[EMAIL SIMULATION] No RESEND_API_KEY found.`)
     console.log(`To: ${to}`)
     console.log(`Subject: ${subject}`)
     console.log(`Body: ${body}`)

@@ -327,6 +327,15 @@ export default function UsersPage() {
           throw new Error('E-mail é obrigatório para enviar o convite.')
         }
 
+        const { data: existingEmail } = await supabase
+          .from('cadastro_usuarios')
+          .select('id')
+          .eq('email', data.email)
+          .maybeSingle()
+        if (existingEmail) {
+          throw new Error('Este e-mail já está cadastrado no sistema.')
+        }
+
         const res = await supabase.functions.invoke('manage-user', {
           body: {
             action: 'invite',
@@ -341,9 +350,14 @@ export default function UsersPage() {
         })
 
         if (res.error) {
-          if (res.error.message?.includes('CPF_DUPLICATE'))
+          throw new Error(res.error.message || 'Erro ao comunicar com a função de convite.')
+        }
+
+        if (res.data && res.data.success === false) {
+          if (res.data.error?.includes('CPF_DUPLICATE')) {
             throw new Error('CPF já cadastrado no sistema.')
-          throw new Error(res.error.message || 'Erro ao enviar convite')
+          }
+          throw new Error(res.data.error || 'Erro ao enviar convite.')
         }
 
         let createdUser = null

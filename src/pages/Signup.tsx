@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link, useNavigate, Navigate } from 'react-router-dom'
 import { Wallet, Loader2, Check, X } from 'lucide-react'
 import { useAuth } from '@/hooks/use-auth'
+import { supabase } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { PasswordInput } from '@/components/ui/password-input'
@@ -82,11 +83,30 @@ export default function Signup() {
     }
 
     setLoading(true)
+
+    // Check if CPF is already registered
+    const { data: existingCpf } = await supabase
+      .from('cadastro_usuarios')
+      .select('id')
+      .eq('cpf', cpf)
+      .maybeSingle()
+
+    if (existingCpf) {
+      toast({
+        title: 'Erro ao criar conta',
+        description: 'Este CPF já está cadastrado no sistema.',
+        variant: 'destructive',
+      })
+      setLoading(false)
+      return
+    }
+
     const { error } = await signUp(email, password, {
       name,
       organization,
       cpf,
     })
+
     setLoading(false)
 
     if (error) {
@@ -98,16 +118,28 @@ export default function Signup() {
         variant: 'destructive',
       })
     } else {
+      // Find admin to send email to
+      const { data: adminData } = await supabase
+        .from('cadastro_usuarios')
+        .select('email')
+        .eq('role', 'admin')
+        .limit(1)
+        .maybeSingle()
+
+      const adminEmail = adminData?.email || 'admin@seudominio.com'
+
       await supabase.functions.invoke('send-email', {
         body: {
-          to: 'admin@seudominio.com',
+          to: adminEmail,
           subject: 'Novo Cadastro Pendente',
-          body: `O usuário ${name} (${email}) se cadastrou e aguarda sua aprovação.`,
+          body: `O usuário ${name} (${email}) se cadastrou e aguarda sua aprovação na Central de Aprovações.`,
         },
       })
+
       toast({
         title: 'Cadastro recebido!',
-        description: 'Sua conta foi criada e está aguardando aprovação do administrador.',
+        description:
+          'Sua conta foi criada e está aguardando aprovação do administrador. Você receberá um aviso quando for liberado.',
       })
       navigate('/login')
     }

@@ -937,6 +937,10 @@ export const Constants = {
 // Table: cadastro_usuarios
 //   Policy "employee_read_own" (SELECT, PERMISSIVE) roles={authenticated}
 //     USING: ((email)::text = (auth.jwt() ->> 'email'::text))
+//   Policy "read_pending_users" (SELECT, PERMISSIVE) roles={authenticated}
+//     USING: (approval_status = 'pending'::text)
+//   Policy "update_pending_users" (UPDATE, PERMISSIVE) roles={authenticated}
+//     USING: (approval_status = 'pending'::text)
 //   Policy "user_employees_delete" (DELETE, PERMISSIVE) roles={authenticated}
 //     USING: (user_id = auth.uid())
 //   Policy "user_employees_insert" (INSERT, PERMISSIVE) roles={authenticated}
@@ -1009,17 +1013,62 @@ export const Constants = {
 //   AS $function$
 //   DECLARE
 //     org_name text;
+//     req_name text;
+//     req_role text;
+//     req_cpf text;
+//     req_phone text;
+//     req_dep_id uuid;
+//     req_admin_id uuid;
 //   BEGIN
-//     -- Extract organization name from metadata, default to 'Minha Empresa' if not provided
-//     org_name := COALESCE(NEW.raw_user_meta_data->>'organization', 'Minha Empresa');
+//     req_name := COALESCE(NEW.raw_user_meta_data->>'name', NEW.email);
+//     org_name := NEW.raw_user_meta_data->>'organization';
+//     req_role := COALESCE(NEW.raw_user_meta_data->>'role', 'collaborator');
+//     req_cpf := NEW.raw_user_meta_data->>'cpf';
+//     req_phone := NEW.raw_user_meta_data->>'phone';
 //
-//     INSERT INTO public.organizations (id, user_id, name)
-//     VALUES (gen_random_uuid(), NEW.id, org_name);
+//     BEGIN
+//       req_dep_id := (NEW.raw_user_meta_data->>'department_id')::uuid;
+//     EXCEPTION WHEN OTHERS THEN
+//       req_dep_id := NULL;
+//     END;
 //
-//     -- Auto confirm email
-//     UPDATE auth.users SET email_confirmed_at = NOW() WHERE id = NEW.id AND email_confirmed_at IS NULL;
+//     BEGIN
+//       req_admin_id := (NEW.raw_user_meta_data->>'admin_id')::uuid;
+//     EXCEPTION WHEN OTHERS THEN
+//       req_admin_id := NULL;
+//     END;
+//
+//     IF req_cpf IS NOT NULL AND req_cpf != '' THEN
+//       IF EXISTS (SELECT 1 FROM public.cadastro_usuarios WHERE cpf = req_cpf) THEN
+//         RAISE EXCEPTION 'CPF_DUPLICATE';
+//       END IF;
+//     END IF;
+//
+//     INSERT INTO public.cadastro_usuarios (
+//       id, user_id, name, email, role, cpf, phone, department_id, approval_status, status
+//     ) VALUES (
+//       gen_random_uuid(),
+//       COALESCE(req_admin_id, NEW.id),
+//       req_name,
+//       NEW.email,
+//       req_role,
+//       req_cpf,
+//       req_phone,
+//       req_dep_id,
+//       'pending',
+//       true
+//     );
+//
+//     IF org_name IS NOT NULL AND org_name != '' THEN
+//       INSERT INTO public.organizations (id, user_id, name)
+//       VALUES (gen_random_uuid(), NEW.id, org_name);
+//     END IF;
 //
 //     RETURN NEW;
 //   END;
 //   $function$
 //
+
+// --- INDEXES ---
+// Table: cadastro_usuarios
+//   CREATE UNIQUE INDEX cadastro_usuarios_cpf_idx ON public.cadastro_usuarios USING btree (cpf) WHERE ((cpf IS NOT NULL) AND ((cpf)::text <> ''::text))

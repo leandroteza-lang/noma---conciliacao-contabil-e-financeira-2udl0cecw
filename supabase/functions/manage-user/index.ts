@@ -25,17 +25,25 @@ Deno.serve(async (req: Request) => {
       const { data, error } = await supabaseAdmin.auth.admin.inviteUserByEmail(email, {
         data: { name, role, cpf, phone, department_id, admin_id },
       })
-      if (error) throw error
+      if (error) {
+        return new Response(JSON.stringify({ success: false, error: error.message }), {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
+      }
 
       return new Response(JSON.stringify({ success: true, user: data.user }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     }
 
-    throw new Error('Invalid action')
+    return new Response(JSON.stringify({ success: false, error: 'Invalid action' }), {
+      status: 200,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    })
   } catch (err: any) {
-    return new Response(JSON.stringify({ error: err.message }), {
-      status: 400,
+    return new Response(JSON.stringify({ success: false, error: err.message }), {
+      status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
   }
