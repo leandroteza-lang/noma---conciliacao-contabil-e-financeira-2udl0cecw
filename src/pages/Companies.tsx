@@ -217,6 +217,7 @@ export default function Companies() {
         .from('organizations')
         .select('*')
         .neq('pending_deletion', true)
+        .is('deleted_at', null)
         .order('created_at', { ascending: false })
 
       if (error) throw error
@@ -335,8 +336,18 @@ export default function Companies() {
   const handleDelete = async (id: string) => {
     try {
       const [{ data: banks }, { data: costs }, { data: emps }] = await Promise.all([
-        supabase.from('bank_accounts').select('id').eq('organization_id', id).limit(1),
-        supabase.from('cost_centers').select('id').eq('organization_id', id).limit(1),
+        supabase
+          .from('bank_accounts')
+          .select('id')
+          .eq('organization_id', id)
+          .is('deleted_at', null)
+          .limit(1),
+        supabase
+          .from('cost_centers')
+          .select('id')
+          .eq('organization_id', id)
+          .is('deleted_at', null)
+          .limit(1),
         supabase
           .from('employee_companies')
           .select('employee_id')
@@ -382,8 +393,18 @@ export default function Companies() {
 
     const checkPromises = selectedIds.map(async (id) => {
       const [{ data: banks }, { data: costs }, { data: emps }] = await Promise.all([
-        supabase.from('bank_accounts').select('id').eq('organization_id', id).limit(1),
-        supabase.from('cost_centers').select('id').eq('organization_id', id).limit(1),
+        supabase
+          .from('bank_accounts')
+          .select('id')
+          .eq('organization_id', id)
+          .is('deleted_at', null)
+          .limit(1),
+        supabase
+          .from('cost_centers')
+          .select('id')
+          .eq('organization_id', id)
+          .is('deleted_at', null)
+          .limit(1),
         supabase
           .from('employee_companies')
           .select('employee_id')

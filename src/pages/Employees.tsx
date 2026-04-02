@@ -147,9 +147,20 @@ export default function Employees() {
           .from('employees')
           .select(`*, departments(id, name), employee_companies(organization_id)`)
           .neq('pending_deletion', true)
+          .is('deleted_at', null)
           .order('created_at', { ascending: false }),
-        supabase.from('departments').select('*').neq('pending_deletion', true).order('name'),
-        supabase.from('organizations').select('*').neq('pending_deletion', true).order('name'),
+        supabase
+          .from('departments')
+          .select('*')
+          .neq('pending_deletion', true)
+          .is('deleted_at', null)
+          .order('name'),
+        supabase
+          .from('organizations')
+          .select('*')
+          .neq('pending_deletion', true)
+          .is('deleted_at', null)
+          .order('name'),
       ])
       if (empRes.error) throw empRes.error
       setEmployees(empRes.data || [])

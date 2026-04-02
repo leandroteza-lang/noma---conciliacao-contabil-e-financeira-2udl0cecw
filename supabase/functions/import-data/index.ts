@@ -73,6 +73,7 @@ Deno.serve(async (req: Request) => {
       .from('organizations')
       .select('id, name')
       .eq('user_id', user.id)
+      .is('deleted_at', null)
 
     if (
       orgsError &&
@@ -113,6 +114,7 @@ Deno.serve(async (req: Request) => {
             .select('id')
             .eq('cnpj', cnpj)
             .eq('user_id', user.id)
+            .is('deleted_at', null)
             .maybeSingle()
           if (existingCnpj) {
             rejected++
@@ -160,6 +162,7 @@ Deno.serve(async (req: Request) => {
             .select('id')
             .eq('code', codigo)
             .eq('user_id', user.id)
+            .is('deleted_at', null)
             .maybeSingle()
           if (existingCode) {
             rejected++
@@ -201,12 +204,15 @@ Deno.serve(async (req: Request) => {
             .select('id')
             .eq('code', depCode)
             .eq('user_id', user.id)
+            .is('deleted_at', null)
             .maybeSingle()
           if (dep) {
             depId = dep.id
           } else {
             rejected++
-            errors.push(`Linha ${rowNum}: Departamento com código "${depCode}" não encontrado.`)
+            errors.push(
+              `Linha ${rowNum}: Departamento com código "${depCode}" não encontrado ou excluído.`,
+            )
             continue
           }
         }
@@ -218,6 +224,7 @@ Deno.serve(async (req: Request) => {
             .select('id')
             .eq('email', email)
             .eq('user_id', user.id)
+            .is('deleted_at', null)
             .maybeSingle()
           if (existingUser) {
             rejected++
@@ -283,6 +290,7 @@ Deno.serve(async (req: Request) => {
           .select('id')
           .eq('organization_id', orgId)
           .eq('account_code', String(contaContabil))
+          .is('deleted_at', null)
           .maybeSingle()
 
         if (checkError) {
@@ -369,6 +377,7 @@ Deno.serve(async (req: Request) => {
             .select('id')
             .eq('organization_id', orgId)
             .eq('code', parentCode)
+            .is('deleted_at', null)
             .maybeSingle()
 
           if (parentError) {
@@ -395,6 +404,7 @@ Deno.serve(async (req: Request) => {
           .select('id')
           .eq('organization_id', orgId)
           .eq('code', strCode)
+          .is('deleted_at', null)
           .maybeSingle()
 
         if (checkError) {
@@ -471,6 +481,7 @@ Deno.serve(async (req: Request) => {
           .select('id')
           .eq('organization_id', orgId)
           .eq('account_code', strCode)
+          .is('deleted_at', null)
           .maybeSingle()
 
         if (checkError) {
@@ -544,6 +555,7 @@ Deno.serve(async (req: Request) => {
           .select('id')
           .eq('organization_id', orgId)
           .eq('code', strCentroCusto)
+          .is('deleted_at', null)
           .maybeSingle()
 
         if (ccError || !ccData) {
@@ -557,6 +569,7 @@ Deno.serve(async (req: Request) => {
           .select('id')
           .eq('organization_id', orgId)
           .eq('account_code', strContaContabil)
+          .is('deleted_at', null)
           .maybeSingle()
 
         if (caError || !caData) {
@@ -668,6 +681,7 @@ Deno.serve(async (req: Request) => {
           .select('id')
           .eq('organization_id', orgId)
           .eq('account_code', strContaDebito)
+          .is('deleted_at', null)
           .maybeSingle()
 
         if (debitError || !debitData) {
@@ -682,6 +696,7 @@ Deno.serve(async (req: Request) => {
           .select('id')
           .eq('organization_id', orgId)
           .eq('account_code', strContaCredito)
+          .is('deleted_at', null)
           .maybeSingle()
 
         if (creditError || !creditData) {

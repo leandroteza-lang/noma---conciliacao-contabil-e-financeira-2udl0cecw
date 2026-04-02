@@ -46,6 +46,7 @@ export default function CostCenters() {
       .from('cost_centers')
       .select('*, organization:organizations(name)')
       .neq('pending_deletion', true)
+      .is('deleted_at', null)
       .order('code', { ascending: true })
 
     if (!error && data) {
@@ -106,6 +107,7 @@ export default function CostCenters() {
         .from('cost_centers')
         .select('id')
         .eq('parent_id', id)
+        .is('deleted_at', null)
         .limit(1)
 
       const hasRelations =
@@ -165,6 +167,7 @@ export default function CostCenters() {
       .from('cost_centers')
       .select('id')
       .eq('parent_id', id)
+      .is('deleted_at', null)
       .limit(1)
 
     if (

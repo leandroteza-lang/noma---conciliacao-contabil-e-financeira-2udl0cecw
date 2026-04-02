@@ -88,6 +88,7 @@ export default function Departments() {
         .from('departments')
         .select('*')
         .neq('pending_deletion', true)
+        .is('deleted_at', null)
         .order('created_at', { ascending: false })
       if (error) throw error
       setDepartments(data || [])
@@ -161,6 +162,7 @@ export default function Departments() {
         .select('id')
         .eq('code', finalCode)
         .eq('user_id', user.id)
+        .is('deleted_at', null)
       if (editingId) query = query.neq('id', editingId)
       const { data: existing } = await query.maybeSingle()
       if (existing) {
@@ -203,6 +205,7 @@ export default function Departments() {
         .from('employees')
         .select('id')
         .eq('department_id', id)
+        .is('deleted_at', null)
         .limit(1)
 
       if (linked && linked.length > 0) {
@@ -245,6 +248,7 @@ export default function Departments() {
         .from('employees')
         .select('id')
         .eq('department_id', id)
+        .is('deleted_at', null)
         .limit(1)
       return { id, hasRelations: linked && linked.length > 0 }
     })

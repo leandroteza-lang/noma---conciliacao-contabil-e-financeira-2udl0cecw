@@ -50,6 +50,7 @@ export default function ChartAccounts() {
       .from('chart_of_accounts')
       .select('*, organization:organizations(name)')
       .neq('pending_deletion', true)
+      .is('deleted_at', null)
       .order('account_code', { ascending: true })
 
     if (!error && data) {

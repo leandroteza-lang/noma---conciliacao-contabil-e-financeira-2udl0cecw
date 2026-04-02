@@ -137,6 +137,8 @@ export type Database = {
           classification: string | null
           company_name: string | null
           created_at: string | null
+          deleted_at: string | null
+          deleted_by: string | null
           deletion_requested_at: string | null
           deletion_requested_by: string | null
           description: string | null
@@ -154,6 +156,8 @@ export type Database = {
           classification?: string | null
           company_name?: string | null
           created_at?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
           deletion_requested_at?: string | null
           deletion_requested_by?: string | null
           description?: string | null
@@ -171,6 +175,8 @@ export type Database = {
           classification?: string | null
           company_name?: string | null
           created_at?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
           deletion_requested_at?: string | null
           deletion_requested_by?: string | null
           description?: string | null
@@ -194,6 +200,8 @@ export type Database = {
           account_name: string | null
           account_type: string | null
           created_at: string | null
+          deleted_at: string | null
+          deleted_by: string | null
           deletion_requested_at: string | null
           deletion_requested_by: string | null
           id: string
@@ -205,6 +213,8 @@ export type Database = {
           account_name?: string | null
           account_type?: string | null
           created_at?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
           deletion_requested_at?: string | null
           deletion_requested_by?: string | null
           id?: string
@@ -216,6 +226,8 @@ export type Database = {
           account_name?: string | null
           account_type?: string | null
           created_at?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
           deletion_requested_at?: string | null
           deletion_requested_by?: string | null
           id?: string
@@ -237,6 +249,8 @@ export type Database = {
           classification: string | null
           code: string | null
           created_at: string | null
+          deleted_at: string | null
+          deleted_by: string | null
           deletion_requested_at: string | null
           deletion_requested_by: string | null
           description: string | null
@@ -252,6 +266,8 @@ export type Database = {
           classification?: string | null
           code?: string | null
           created_at?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
           deletion_requested_at?: string | null
           deletion_requested_by?: string | null
           description?: string | null
@@ -267,6 +283,8 @@ export type Database = {
           classification?: string | null
           code?: string | null
           created_at?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
           deletion_requested_at?: string | null
           deletion_requested_by?: string | null
           description?: string | null
@@ -299,6 +317,8 @@ export type Database = {
         Row: {
           code: string | null
           created_at: string
+          deleted_at: string | null
+          deleted_by: string | null
           deletion_requested_at: string | null
           deletion_requested_by: string | null
           id: string
@@ -309,6 +329,8 @@ export type Database = {
         Insert: {
           code?: string | null
           created_at?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
           deletion_requested_at?: string | null
           deletion_requested_by?: string | null
           id?: string
@@ -319,6 +341,8 @@ export type Database = {
         Update: {
           code?: string | null
           created_at?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
           deletion_requested_at?: string | null
           deletion_requested_by?: string | null
           id?: string
@@ -363,6 +387,8 @@ export type Database = {
           address: string | null
           cpf: string | null
           created_at: string
+          deleted_at: string | null
+          deleted_by: string | null
           deletion_requested_at: string | null
           deletion_requested_by: string | null
           department_id: string | null
@@ -382,6 +408,8 @@ export type Database = {
           address?: string | null
           cpf?: string | null
           created_at?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
           deletion_requested_at?: string | null
           deletion_requested_by?: string | null
           department_id?: string | null
@@ -401,6 +429,8 @@ export type Database = {
           address?: string | null
           cpf?: string | null
           created_at?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
           deletion_requested_at?: string | null
           deletion_requested_by?: string | null
           department_id?: string | null
@@ -490,6 +520,8 @@ export type Database = {
           cnpj: string | null
           cpf: string | null
           created_at: string | null
+          deleted_at: string | null
+          deleted_by: string | null
           deletion_requested_at: string | null
           deletion_requested_by: string | null
           email: string | null
@@ -506,6 +538,8 @@ export type Database = {
           cnpj?: string | null
           cpf?: string | null
           created_at?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
           deletion_requested_at?: string | null
           deletion_requested_by?: string | null
           email?: string | null
@@ -522,6 +556,8 @@ export type Database = {
           cnpj?: string | null
           cpf?: string | null
           created_at?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
           deletion_requested_at?: string | null
           deletion_requested_by?: string | null
           email?: string | null
@@ -716,6 +752,8 @@ export const Constants = {
 //   pending_deletion: boolean (nullable, default: false)
 //   deletion_requested_at: timestamp with time zone (nullable)
 //   deletion_requested_by: uuid (nullable)
+//   deleted_at: timestamp with time zone (nullable)
+//   deleted_by: uuid (nullable)
 // Table: chart_of_accounts
 //   id: uuid (not null, default: gen_random_uuid())
 //   organization_id: uuid (nullable)
@@ -726,6 +764,8 @@ export const Constants = {
 //   pending_deletion: boolean (nullable, default: false)
 //   deletion_requested_at: timestamp with time zone (nullable)
 //   deletion_requested_by: uuid (nullable)
+//   deleted_at: timestamp with time zone (nullable)
+//   deleted_by: uuid (nullable)
 // Table: cost_centers
 //   id: uuid (not null, default: gen_random_uuid())
 //   organization_id: uuid (nullable)
@@ -740,6 +780,8 @@ export const Constants = {
 //   pending_deletion: boolean (nullable, default: false)
 //   deletion_requested_at: timestamp with time zone (nullable)
 //   deletion_requested_by: uuid (nullable)
+//   deleted_at: timestamp with time zone (nullable)
+//   deleted_by: uuid (nullable)
 // Table: departments
 //   id: uuid (not null, default: gen_random_uuid())
 //   user_id: uuid (not null)
@@ -749,6 +791,8 @@ export const Constants = {
 //   pending_deletion: boolean (nullable, default: false)
 //   deletion_requested_at: timestamp with time zone (nullable)
 //   deletion_requested_by: uuid (nullable)
+//   deleted_at: timestamp with time zone (nullable)
+//   deleted_by: uuid (nullable)
 // Table: employee_companies
 //   employee_id: uuid (not null)
 //   organization_id: uuid (not null)
@@ -770,6 +814,8 @@ export const Constants = {
 //   pending_deletion: boolean (nullable, default: false)
 //   deletion_requested_at: timestamp with time zone (nullable)
 //   deletion_requested_by: uuid (nullable)
+//   deleted_at: timestamp with time zone (nullable)
+//   deleted_by: uuid (nullable)
 // Table: financial_movements
 //   id: uuid (not null, default: gen_random_uuid())
 //   organization_id: uuid (nullable)
@@ -795,6 +841,8 @@ export const Constants = {
 //   pending_deletion: boolean (nullable, default: false)
 //   deletion_requested_at: timestamp with time zone (nullable)
 //   deletion_requested_by: uuid (nullable)
+//   deleted_at: timestamp with time zone (nullable)
+//   deleted_by: uuid (nullable)
 
 // --- CONSTRAINTS ---
 // Table: account_mapping
@@ -809,19 +857,23 @@ export const Constants = {
 //   FOREIGN KEY accounting_entries_organization_id_fkey: FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE
 //   PRIMARY KEY accounting_entries_pkey: PRIMARY KEY (id)
 // Table: bank_accounts
+//   FOREIGN KEY bank_accounts_deleted_by_fkey: FOREIGN KEY (deleted_by) REFERENCES auth.users(id) ON DELETE SET NULL
 //   FOREIGN KEY bank_accounts_deletion_requested_by_fkey: FOREIGN KEY (deletion_requested_by) REFERENCES auth.users(id) ON DELETE SET NULL
 //   FOREIGN KEY bank_accounts_organization_id_fkey: FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE
 //   PRIMARY KEY bank_accounts_pkey: PRIMARY KEY (id)
 // Table: chart_of_accounts
+//   FOREIGN KEY chart_of_accounts_deleted_by_fkey: FOREIGN KEY (deleted_by) REFERENCES auth.users(id) ON DELETE SET NULL
 //   FOREIGN KEY chart_of_accounts_deletion_requested_by_fkey: FOREIGN KEY (deletion_requested_by) REFERENCES auth.users(id) ON DELETE SET NULL
 //   FOREIGN KEY chart_of_accounts_organization_id_fkey: FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE
 //   PRIMARY KEY chart_of_accounts_pkey: PRIMARY KEY (id)
 // Table: cost_centers
+//   FOREIGN KEY cost_centers_deleted_by_fkey: FOREIGN KEY (deleted_by) REFERENCES auth.users(id) ON DELETE SET NULL
 //   FOREIGN KEY cost_centers_deletion_requested_by_fkey: FOREIGN KEY (deletion_requested_by) REFERENCES auth.users(id) ON DELETE SET NULL
 //   FOREIGN KEY cost_centers_organization_id_fkey: FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE
 //   FOREIGN KEY cost_centers_parent_id_fkey: FOREIGN KEY (parent_id) REFERENCES cost_centers(id) ON DELETE CASCADE
 //   PRIMARY KEY cost_centers_pkey: PRIMARY KEY (id)
 // Table: departments
+//   FOREIGN KEY departments_deleted_by_fkey: FOREIGN KEY (deleted_by) REFERENCES auth.users(id) ON DELETE SET NULL
 //   FOREIGN KEY departments_deletion_requested_by_fkey: FOREIGN KEY (deletion_requested_by) REFERENCES auth.users(id) ON DELETE SET NULL
 //   PRIMARY KEY departments_pkey: PRIMARY KEY (id)
 //   FOREIGN KEY departments_user_id_fkey: FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE
@@ -830,6 +882,7 @@ export const Constants = {
 //   FOREIGN KEY employee_companies_organization_id_fkey: FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE
 //   PRIMARY KEY employee_companies_pkey: PRIMARY KEY (employee_id, organization_id)
 // Table: employees
+//   FOREIGN KEY employees_deleted_by_fkey: FOREIGN KEY (deleted_by) REFERENCES auth.users(id) ON DELETE SET NULL
 //   FOREIGN KEY employees_deletion_requested_by_fkey: FOREIGN KEY (deletion_requested_by) REFERENCES auth.users(id) ON DELETE SET NULL
 //   FOREIGN KEY employees_department_id_fkey: FOREIGN KEY (department_id) REFERENCES departments(id) ON DELETE SET NULL
 //   PRIMARY KEY employees_pkey: PRIMARY KEY (id)
@@ -840,6 +893,7 @@ export const Constants = {
 //   FOREIGN KEY financial_movements_organization_id_fkey: FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE
 //   PRIMARY KEY financial_movements_pkey: PRIMARY KEY (id)
 // Table: organizations
+//   FOREIGN KEY organizations_deleted_by_fkey: FOREIGN KEY (deleted_by) REFERENCES auth.users(id) ON DELETE SET NULL
 //   FOREIGN KEY organizations_deletion_requested_by_fkey: FOREIGN KEY (deletion_requested_by) REFERENCES auth.users(id) ON DELETE SET NULL
 //   PRIMARY KEY organizations_pkey: PRIMARY KEY (id)
 //   FOREIGN KEY organizations_user_id_fkey: FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE
