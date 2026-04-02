@@ -4,6 +4,7 @@ import { Lock, Loader2 } from 'lucide-react'
 import { useAuth } from '@/hooks/use-auth'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { PasswordInput } from '@/components/ui/password-input'
 import { Label } from '@/components/ui/label'
 import { useToast } from '@/hooks/use-toast'
 import { supabase } from '@/lib/supabase/client'
@@ -119,9 +120,8 @@ export default function ResetPassword() {
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="password">Nova Senha</Label>
-                <Input
+                <PasswordInput
                   id="password"
-                  type="password"
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
@@ -130,9 +130,8 @@ export default function ResetPassword() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="confirmPassword">Confirmar Nova Senha</Label>
-                <Input
+                <PasswordInput
                   id="confirmPassword"
-                  type="password"
                   placeholder="••••••••"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}

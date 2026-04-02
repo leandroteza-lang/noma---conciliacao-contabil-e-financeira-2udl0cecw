@@ -4,6 +4,7 @@ import { Wallet, Loader2 } from 'lucide-react'
 import { useAuth } from '@/hooks/use-auth'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { PasswordInput } from '@/components/ui/password-input'
 import { Label } from '@/components/ui/label'
 import { useToast } from '@/hooks/use-toast'
 import {
@@ -84,9 +85,8 @@ export default function Login() {
                     Esqueceu a senha?
                   </Link>
                 </div>
-                <Input
+                <PasswordInput
                   id="password"
-                  type="password"
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
