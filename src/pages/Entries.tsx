@@ -78,7 +78,12 @@ export default function Entries() {
         onSuccess={() => setRefreshKey((k) => k + 1)}
       />
 
-      <EntryList orgId={orgId} accounts={data.accounts} refreshKey={refreshKey} />
+      <EntryList
+        orgId={orgId}
+        accounts={data.accounts}
+        costCenters={data.costCenters}
+        refreshKey={refreshKey}
+      />
     </div>
   )
 }

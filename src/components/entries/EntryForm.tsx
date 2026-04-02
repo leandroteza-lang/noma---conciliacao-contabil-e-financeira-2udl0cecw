@@ -29,18 +29,38 @@ export default function EntryForm({ orgId, accounts, costCenters, mappings, onSu
     desc: '',
     amount: '',
     cc: 'none',
+    movementType: 'expense',
     deb: '',
     cred: '',
     status: 'Pendente',
   })
   const [loading, setLoading] = useState(false)
 
-  const handleCcChange = (cc: string) => {
-    setForm((prev) => ({ ...prev, cc }))
+  const updateMapping = (cc: string, type: string) => {
+    let deb = form.deb
+    let cred = form.cred
+
     if (cc !== 'none') {
       const map = mappings.find((m) => m.cost_center_id === cc)
-      if (map) setForm((prev) => ({ ...prev, deb: map.chart_account_id }))
+      if (map) {
+        if (type === 'expense') {
+          deb = map.chart_account_id
+          if (cred === map.chart_account_id) cred = ''
+        } else {
+          cred = map.chart_account_id
+          if (deb === map.chart_account_id) deb = ''
+        }
+      }
     }
+    setForm((prev) => ({ ...prev, cc, movementType: type, deb, cred }))
+  }
+
+  const handleCcChange = (cc: string) => {
+    updateMapping(cc, form.movementType)
+  }
+
+  const handleTypeChange = (type: string) => {
+    updateMapping(form.cc, type)
   }
 
   const handleSubmit = async () => {
@@ -65,8 +85,9 @@ export default function EntryForm({ orgId, accounts, costCenters, mappings, onSu
       amount: val,
       debit_account_id: form.deb,
       credit_account_id: form.cred,
+      cost_center_id: form.cc === 'none' ? null : form.cc,
       status: form.status,
-    })
+    } as any)
 
     if (err1) {
       setLoading(false)
@@ -89,6 +110,7 @@ export default function EntryForm({ orgId, accounts, costCenters, mappings, onSu
       desc: '',
       amount: '',
       cc: 'none',
+      movementType: 'expense',
       deb: '',
       cred: '',
       status: 'Pendente',
@@ -103,8 +125,8 @@ export default function EntryForm({ orgId, accounts, costCenters, mappings, onSu
         <CardTitle className="text-lg">Novo Lançamento</CardTitle>
       </CardHeader>
       <CardContent className="pt-6">
-        <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-7 gap-4 items-end">
-          <div className="space-y-2">
+        <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-8 gap-4 items-end">
+          <div className="space-y-2 lg:col-span-1">
             <Label>Data *</Label>
             <Input
               type="date"
@@ -120,7 +142,7 @@ export default function EntryForm({ orgId, accounts, costCenters, mappings, onSu
               onChange={(e) => setForm({ ...form, desc: e.target.value })}
             />
           </div>
-          <div className="space-y-2">
+          <div className="space-y-2 lg:col-span-1">
             <Label>Valor (R$) *</Label>
             <Input
               type="number"
@@ -129,8 +151,20 @@ export default function EntryForm({ orgId, accounts, costCenters, mappings, onSu
               onChange={(e) => setForm({ ...form, amount: e.target.value })}
             />
           </div>
+          <div className="space-y-2 lg:col-span-1">
+            <Label>Tipo de Mov.</Label>
+            <Select value={form.movementType} onValueChange={handleTypeChange}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="expense">Despesa</SelectItem>
+                <SelectItem value="revenue">Receita</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
           <div className="space-y-2 lg:col-span-2">
-            <Label>Centro de Custo (Opcional)</Label>
+            <Label>Centro de Custo</Label>
             <Select value={form.cc} onValueChange={handleCcChange}>
               <SelectTrigger>
                 <SelectValue placeholder="Selecione..." />
@@ -145,7 +179,7 @@ export default function EntryForm({ orgId, accounts, costCenters, mappings, onSu
               </SelectContent>
             </Select>
           </div>
-          <div className="space-y-2">
+          <div className="space-y-2 lg:col-span-1">
             <Label>Status</Label>
             <Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v })}>
               <SelectTrigger>
@@ -163,7 +197,7 @@ export default function EntryForm({ orgId, accounts, costCenters, mappings, onSu
           <div className="space-y-2">
             <Label className="flex items-center gap-2">
               Conta Débito *
-              {form.cc !== 'none' && (
+              {form.cc !== 'none' && form.movementType === 'expense' && (
                 <span className="text-[10px] bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded">
                   Via Mapeamento DE/PARA
                 </span>
@@ -183,7 +217,14 @@ export default function EntryForm({ orgId, accounts, costCenters, mappings, onSu
             </Select>
           </div>
           <div className="space-y-2">
-            <Label>Conta Crédito *</Label>
+            <Label className="flex items-center gap-2">
+              Conta Crédito *
+              {form.cc !== 'none' && form.movementType === 'revenue' && (
+                <span className="text-[10px] bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded">
+                  Via Mapeamento DE/PARA
+                </span>
+              )}
+            </Label>
             <Select value={form.cred} onValueChange={(v) => setForm({ ...form, cred: v })}>
               <SelectTrigger>
                 <SelectValue placeholder="Selecione a conta..." />
