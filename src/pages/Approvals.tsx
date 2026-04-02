@@ -209,13 +209,30 @@ export default function Approvals() {
     setIsProcessing(true)
     setProgress(50)
     try {
+      const { data: userData } = await supabase
+        .from('cadastro_usuarios')
+        .select('email, name')
+        .eq('id', id)
+        .single()
+
       const { error } = await supabase
         .from('cadastro_usuarios')
         .update({ approval_status: 'approved' } as any)
         .eq('id', id)
       if (error) throw error
+
+      if (userData?.email) {
+        await supabase.functions.invoke('send-email', {
+          body: {
+            to: userData.email,
+            subject: 'Acesso Aprovado!',
+            body: `Olá ${userData.name}, seu cadastro foi aprovado e você já pode acessar o sistema.`,
+          },
+        })
+      }
+
       setProgress(100)
-      toast({ title: 'Aprovado', description: 'O acesso do usuário foi liberado.' })
+      toast({ title: 'Aprovado', description: 'O acesso do usuário foi liberado e notificado.' })
       fetchPendingItems()
     } catch (e: any) {
       toast({ title: 'Erro', description: e.message, variant: 'destructive' })

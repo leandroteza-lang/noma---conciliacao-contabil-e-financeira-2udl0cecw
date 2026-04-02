@@ -194,6 +194,116 @@ export type Database = {
           },
         ]
       }
+      cadastro_usuarios: {
+        Row: {
+          address: string | null
+          approval_status: string | null
+          avatar_url: string | null
+          cpf: string | null
+          created_at: string
+          deleted_at: string | null
+          deleted_by: string | null
+          deletion_requested_at: string | null
+          deletion_requested_by: string | null
+          department_id: string | null
+          email: string | null
+          id: string
+          menu_order: Json | null
+          name: string
+          observations: string | null
+          pending_deletion: boolean | null
+          permissions: Json | null
+          phone: string | null
+          role: string | null
+          status: boolean | null
+          user_id: string
+        }
+        Insert: {
+          address?: string | null
+          approval_status?: string | null
+          avatar_url?: string | null
+          cpf?: string | null
+          created_at?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
+          deletion_requested_at?: string | null
+          deletion_requested_by?: string | null
+          department_id?: string | null
+          email?: string | null
+          id?: string
+          menu_order?: Json | null
+          name: string
+          observations?: string | null
+          pending_deletion?: boolean | null
+          permissions?: Json | null
+          phone?: string | null
+          role?: string | null
+          status?: boolean | null
+          user_id: string
+        }
+        Update: {
+          address?: string | null
+          approval_status?: string | null
+          avatar_url?: string | null
+          cpf?: string | null
+          created_at?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
+          deletion_requested_at?: string | null
+          deletion_requested_by?: string | null
+          department_id?: string | null
+          email?: string | null
+          id?: string
+          menu_order?: Json | null
+          name?: string
+          observations?: string | null
+          pending_deletion?: boolean | null
+          permissions?: Json | null
+          phone?: string | null
+          role?: string | null
+          status?: boolean | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'employees_department_id_fkey'
+            columns: ['department_id']
+            isOneToOne: false
+            referencedRelation: 'departments'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      cadastro_usuarios_companies: {
+        Row: {
+          organization_id: string
+          usuario_id: string
+        }
+        Insert: {
+          organization_id: string
+          usuario_id: string
+        }
+        Update: {
+          organization_id?: string
+          usuario_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'employee_companies_employee_id_fkey'
+            columns: ['usuario_id']
+            isOneToOne: false
+            referencedRelation: 'cadastro_usuarios'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'employee_companies_organization_id_fkey'
+            columns: ['organization_id']
+            isOneToOne: false
+            referencedRelation: 'organizations'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       chart_of_accounts: {
         Row: {
           account_code: string | null
@@ -351,110 +461,6 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
-      }
-      employee_companies: {
-        Row: {
-          employee_id: string
-          organization_id: string
-        }
-        Insert: {
-          employee_id: string
-          organization_id: string
-        }
-        Update: {
-          employee_id?: string
-          organization_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: 'employee_companies_employee_id_fkey'
-            columns: ['employee_id']
-            isOneToOne: false
-            referencedRelation: 'employees'
-            referencedColumns: ['id']
-          },
-          {
-            foreignKeyName: 'employee_companies_organization_id_fkey'
-            columns: ['organization_id']
-            isOneToOne: false
-            referencedRelation: 'organizations'
-            referencedColumns: ['id']
-          },
-        ]
-      }
-      employees: {
-        Row: {
-          address: string | null
-          cpf: string | null
-          created_at: string
-          deleted_at: string | null
-          deleted_by: string | null
-          deletion_requested_at: string | null
-          deletion_requested_by: string | null
-          department_id: string | null
-          email: string | null
-          id: string
-          menu_order: Json | null
-          name: string
-          observations: string | null
-          pending_deletion: boolean | null
-          permissions: Json | null
-          phone: string | null
-          role: string | null
-          status: boolean | null
-          user_id: string
-        }
-        Insert: {
-          address?: string | null
-          cpf?: string | null
-          created_at?: string
-          deleted_at?: string | null
-          deleted_by?: string | null
-          deletion_requested_at?: string | null
-          deletion_requested_by?: string | null
-          department_id?: string | null
-          email?: string | null
-          id?: string
-          menu_order?: Json | null
-          name: string
-          observations?: string | null
-          pending_deletion?: boolean | null
-          permissions?: Json | null
-          phone?: string | null
-          role?: string | null
-          status?: boolean | null
-          user_id: string
-        }
-        Update: {
-          address?: string | null
-          cpf?: string | null
-          created_at?: string
-          deleted_at?: string | null
-          deleted_by?: string | null
-          deletion_requested_at?: string | null
-          deletion_requested_by?: string | null
-          department_id?: string | null
-          email?: string | null
-          id?: string
-          menu_order?: Json | null
-          name?: string
-          observations?: string | null
-          pending_deletion?: boolean | null
-          permissions?: Json | null
-          phone?: string | null
-          role?: string | null
-          status?: boolean | null
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: 'employees_department_id_fkey'
-            columns: ['department_id']
-            isOneToOne: false
-            referencedRelation: 'departments'
-            referencedColumns: ['id']
-          },
-        ]
       }
       financial_movements: {
         Row: {
@@ -754,6 +760,31 @@ export const Constants = {
 //   deletion_requested_by: uuid (nullable)
 //   deleted_at: timestamp with time zone (nullable)
 //   deleted_by: uuid (nullable)
+// Table: cadastro_usuarios
+//   id: uuid (not null, default: gen_random_uuid())
+//   user_id: uuid (not null)
+//   name: character varying (not null)
+//   email: character varying (nullable)
+//   phone: character varying (nullable)
+//   department_id: uuid (nullable)
+//   status: boolean (nullable, default: true)
+//   created_at: timestamp with time zone (not null, default: now())
+//   role: character varying (nullable, default: 'collaborator'::character varying)
+//   cpf: character varying (nullable)
+//   address: text (nullable)
+//   observations: text (nullable)
+//   permissions: jsonb (nullable, default: '["all"]'::jsonb)
+//   menu_order: jsonb (nullable, default: '[]'::jsonb)
+//   pending_deletion: boolean (nullable, default: false)
+//   deletion_requested_at: timestamp with time zone (nullable)
+//   deletion_requested_by: uuid (nullable)
+//   deleted_at: timestamp with time zone (nullable)
+//   deleted_by: uuid (nullable)
+//   approval_status: text (nullable, default: 'approved'::text)
+//   avatar_url: text (nullable)
+// Table: cadastro_usuarios_companies
+//   usuario_id: uuid (not null)
+//   organization_id: uuid (not null)
 // Table: chart_of_accounts
 //   id: uuid (not null, default: gen_random_uuid())
 //   organization_id: uuid (nullable)
@@ -788,29 +819,6 @@ export const Constants = {
 //   code: character varying (nullable)
 //   name: character varying (not null)
 //   created_at: timestamp with time zone (not null, default: now())
-//   pending_deletion: boolean (nullable, default: false)
-//   deletion_requested_at: timestamp with time zone (nullable)
-//   deletion_requested_by: uuid (nullable)
-//   deleted_at: timestamp with time zone (nullable)
-//   deleted_by: uuid (nullable)
-// Table: employee_companies
-//   employee_id: uuid (not null)
-//   organization_id: uuid (not null)
-// Table: employees
-//   id: uuid (not null, default: gen_random_uuid())
-//   user_id: uuid (not null)
-//   name: character varying (not null)
-//   email: character varying (nullable)
-//   phone: character varying (nullable)
-//   department_id: uuid (nullable)
-//   status: boolean (nullable, default: true)
-//   created_at: timestamp with time zone (not null, default: now())
-//   role: character varying (nullable, default: 'collaborator'::character varying)
-//   cpf: character varying (nullable)
-//   address: text (nullable)
-//   observations: text (nullable)
-//   permissions: jsonb (nullable, default: '["all"]'::jsonb)
-//   menu_order: jsonb (nullable, default: '[]'::jsonb)
 //   pending_deletion: boolean (nullable, default: false)
 //   deletion_requested_at: timestamp with time zone (nullable)
 //   deletion_requested_by: uuid (nullable)
@@ -861,6 +869,16 @@ export const Constants = {
 //   FOREIGN KEY bank_accounts_deletion_requested_by_fkey: FOREIGN KEY (deletion_requested_by) REFERENCES auth.users(id) ON DELETE SET NULL
 //   FOREIGN KEY bank_accounts_organization_id_fkey: FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE
 //   PRIMARY KEY bank_accounts_pkey: PRIMARY KEY (id)
+// Table: cadastro_usuarios
+//   FOREIGN KEY employees_deleted_by_fkey: FOREIGN KEY (deleted_by) REFERENCES auth.users(id) ON DELETE SET NULL
+//   FOREIGN KEY employees_deletion_requested_by_fkey: FOREIGN KEY (deletion_requested_by) REFERENCES auth.users(id) ON DELETE SET NULL
+//   FOREIGN KEY employees_department_id_fkey: FOREIGN KEY (department_id) REFERENCES departments(id) ON DELETE SET NULL
+//   PRIMARY KEY employees_pkey: PRIMARY KEY (id)
+//   FOREIGN KEY employees_user_id_fkey: FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE
+// Table: cadastro_usuarios_companies
+//   FOREIGN KEY employee_companies_employee_id_fkey: FOREIGN KEY (usuario_id) REFERENCES cadastro_usuarios(id) ON DELETE CASCADE
+//   FOREIGN KEY employee_companies_organization_id_fkey: FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE
+//   PRIMARY KEY employee_companies_pkey: PRIMARY KEY (usuario_id, organization_id)
 // Table: chart_of_accounts
 //   FOREIGN KEY chart_of_accounts_deleted_by_fkey: FOREIGN KEY (deleted_by) REFERENCES auth.users(id) ON DELETE SET NULL
 //   FOREIGN KEY chart_of_accounts_deletion_requested_by_fkey: FOREIGN KEY (deletion_requested_by) REFERENCES auth.users(id) ON DELETE SET NULL
@@ -877,16 +895,6 @@ export const Constants = {
 //   FOREIGN KEY departments_deletion_requested_by_fkey: FOREIGN KEY (deletion_requested_by) REFERENCES auth.users(id) ON DELETE SET NULL
 //   PRIMARY KEY departments_pkey: PRIMARY KEY (id)
 //   FOREIGN KEY departments_user_id_fkey: FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE
-// Table: employee_companies
-//   FOREIGN KEY employee_companies_employee_id_fkey: FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE CASCADE
-//   FOREIGN KEY employee_companies_organization_id_fkey: FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE
-//   PRIMARY KEY employee_companies_pkey: PRIMARY KEY (employee_id, organization_id)
-// Table: employees
-//   FOREIGN KEY employees_deleted_by_fkey: FOREIGN KEY (deleted_by) REFERENCES auth.users(id) ON DELETE SET NULL
-//   FOREIGN KEY employees_deletion_requested_by_fkey: FOREIGN KEY (deletion_requested_by) REFERENCES auth.users(id) ON DELETE SET NULL
-//   FOREIGN KEY employees_department_id_fkey: FOREIGN KEY (department_id) REFERENCES departments(id) ON DELETE SET NULL
-//   PRIMARY KEY employees_pkey: PRIMARY KEY (id)
-//   FOREIGN KEY employees_user_id_fkey: FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE
 // Table: financial_movements
 //   FOREIGN KEY financial_movements_bank_account_id_fkey: FOREIGN KEY (bank_account_id) REFERENCES bank_accounts(id) ON DELETE SET NULL
 //   FOREIGN KEY financial_movements_cost_center_id_fkey: FOREIGN KEY (cost_center_id) REFERENCES cost_centers(id) ON DELETE SET NULL
@@ -926,6 +934,24 @@ export const Constants = {
 //     USING: (organization_id IN ( SELECT organizations.id    FROM organizations   WHERE (organizations.user_id = auth.uid())))
 //   Policy "org_bank_accounts_update" (UPDATE, PERMISSIVE) roles={authenticated}
 //     USING: (organization_id IN ( SELECT organizations.id    FROM organizations   WHERE (organizations.user_id = auth.uid())))
+// Table: cadastro_usuarios
+//   Policy "employee_read_own" (SELECT, PERMISSIVE) roles={authenticated}
+//     USING: ((email)::text = (auth.jwt() ->> 'email'::text))
+//   Policy "user_employees_delete" (DELETE, PERMISSIVE) roles={authenticated}
+//     USING: (user_id = auth.uid())
+//   Policy "user_employees_insert" (INSERT, PERMISSIVE) roles={authenticated}
+//     WITH CHECK: (user_id = auth.uid())
+//   Policy "user_employees_select" (SELECT, PERMISSIVE) roles={authenticated}
+//     USING: (user_id = auth.uid())
+//   Policy "user_employees_update" (UPDATE, PERMISSIVE) roles={authenticated}
+//     USING: (user_id = auth.uid())
+// Table: cadastro_usuarios_companies
+//   Policy "user_employee_companies_delete" (DELETE, PERMISSIVE) roles={authenticated}
+//     USING: (usuario_id IN ( SELECT cadastro_usuarios.id    FROM cadastro_usuarios   WHERE (cadastro_usuarios.user_id = auth.uid())))
+//   Policy "user_employee_companies_insert" (INSERT, PERMISSIVE) roles={authenticated}
+//     WITH CHECK: (usuario_id IN ( SELECT cadastro_usuarios.id    FROM cadastro_usuarios   WHERE (cadastro_usuarios.user_id = auth.uid())))
+//   Policy "user_employee_companies_select" (SELECT, PERMISSIVE) roles={authenticated}
+//     USING: (usuario_id IN ( SELECT cadastro_usuarios.id    FROM cadastro_usuarios   WHERE (cadastro_usuarios.user_id = auth.uid())))
 // Table: chart_of_accounts
 //   Policy "org_chart_of_accounts_delete" (DELETE, PERMISSIVE) roles={authenticated}
 //     USING: (organization_id IN ( SELECT organizations.id    FROM organizations   WHERE (organizations.user_id = auth.uid())))
@@ -953,24 +979,6 @@ export const Constants = {
 //     USING: (user_id = auth.uid())
 //   Policy "user_departments_update" (UPDATE, PERMISSIVE) roles={authenticated}
 //     USING: (user_id = auth.uid())
-// Table: employee_companies
-//   Policy "user_employee_companies_delete" (DELETE, PERMISSIVE) roles={authenticated}
-//     USING: (employee_id IN ( SELECT employees.id    FROM employees   WHERE (employees.user_id = auth.uid())))
-//   Policy "user_employee_companies_insert" (INSERT, PERMISSIVE) roles={authenticated}
-//     WITH CHECK: (employee_id IN ( SELECT employees.id    FROM employees   WHERE (employees.user_id = auth.uid())))
-//   Policy "user_employee_companies_select" (SELECT, PERMISSIVE) roles={authenticated}
-//     USING: (employee_id IN ( SELECT employees.id    FROM employees   WHERE (employees.user_id = auth.uid())))
-// Table: employees
-//   Policy "employee_read_own" (SELECT, PERMISSIVE) roles={authenticated}
-//     USING: ((email)::text = (auth.jwt() ->> 'email'::text))
-//   Policy "user_employees_delete" (DELETE, PERMISSIVE) roles={authenticated}
-//     USING: (user_id = auth.uid())
-//   Policy "user_employees_insert" (INSERT, PERMISSIVE) roles={authenticated}
-//     WITH CHECK: (user_id = auth.uid())
-//   Policy "user_employees_select" (SELECT, PERMISSIVE) roles={authenticated}
-//     USING: (user_id = auth.uid())
-//   Policy "user_employees_update" (UPDATE, PERMISSIVE) roles={authenticated}
-//     USING: (user_id = auth.uid())
 // Table: financial_movements
 //   Policy "org_financial_movements_delete" (DELETE, PERMISSIVE) roles={authenticated}
 //     USING: (organization_id IN ( SELECT organizations.id    FROM organizations   WHERE (organizations.user_id = auth.uid())))
@@ -982,7 +990,7 @@ export const Constants = {
 //     USING: (organization_id IN ( SELECT organizations.id    FROM organizations   WHERE (organizations.user_id = auth.uid())))
 // Table: organizations
 //   Policy "employee_organization_select" (SELECT, PERMISSIVE) roles={authenticated}
-//     USING: (id IN ( SELECT ec.organization_id    FROM (employee_companies ec      JOIN employees e ON ((e.id = ec.employee_id)))   WHERE ((e.email)::text = (auth.jwt() ->> 'email'::text))))
+//     USING: (id IN ( SELECT ec.organization_id    FROM (cadastro_usuarios_companies ec      JOIN cadastro_usuarios e ON ((e.id = ec.usuario_id)))   WHERE ((e.email)::text = (auth.jwt() ->> 'email'::text))))
 //   Policy "user_organization_delete" (DELETE, PERMISSIVE) roles={authenticated}
 //     USING: (user_id = auth.uid())
 //   Policy "user_organization_insert" (INSERT, PERMISSIVE) roles={authenticated}

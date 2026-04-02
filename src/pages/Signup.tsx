@@ -28,6 +28,7 @@ export default function Signup() {
   const { signUp, user, loading: authLoading } = useAuth()
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
+  const [cpf, setCpf] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [organization, setOrganization] = useState('')
@@ -38,6 +39,23 @@ export default function Signup() {
   if (authLoading) return null
   if (user) return <Navigate to="/" replace />
 
+  const isValidCPF = (val: string) => {
+    const c = val.replace(/[^\d]+/g, '')
+    if (c === '' || c.length !== 11 || /^(\d)\1{10}$/.test(c)) return false
+    let sum = 0,
+      rem
+    for (let i = 1; i <= 9; i++) sum += parseInt(c.substring(i - 1, i)) * (11 - i)
+    rem = (sum * 10) % 11
+    if (rem === 10 || rem === 11) rem = 0
+    if (rem !== parseInt(c.substring(9, 10))) return false
+    sum = 0
+    for (let i = 1; i <= 10; i++) sum += parseInt(c.substring(i - 1, i)) * (12 - i)
+    rem = (sum * 10) % 11
+    if (rem === 10 || rem === 11) rem = 0
+    if (rem !== parseInt(c.substring(10, 11))) return false
+    return true
+  }
+
   const isLengthValid = password.length >= 8
   const hasUpperCase = /[A-Z]/.test(password)
   const hasLowerCase = /[a-z]/.test(password)
@@ -45,7 +63,11 @@ export default function Signup() {
   const isPasswordValid = isLengthValid && hasUpperCase && hasLowerCase && hasNumber
   const isMatch = password === confirmPassword && password.length > 0
   const isFormValid =
-    isPasswordValid && isMatch && name.trim().length > 0 && organization.length > 0
+    isPasswordValid &&
+    isMatch &&
+    name.trim().length > 0 &&
+    organization.length > 0 &&
+    isValidCPF(cpf)
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -63,19 +85,29 @@ export default function Signup() {
     const { error } = await signUp(email, password, {
       name,
       organization,
+      cpf,
     })
     setLoading(false)
 
     if (error) {
       toast({
         title: 'Erro ao criar conta',
-        description: error.message,
+        description: error.message.includes('CPF_DUPLICATE')
+          ? 'Este CPF já está cadastrado no sistema.'
+          : error.message,
         variant: 'destructive',
       })
     } else {
+      await supabase.functions.invoke('send-email', {
+        body: {
+          to: 'admin@seudominio.com',
+          subject: 'Novo Cadastro Pendente',
+          body: `O usuário ${name} (${email}) se cadastrou e aguarda sua aprovação.`,
+        },
+      })
       toast({
-        title: 'Conta criada com sucesso!',
-        description: 'Seu cadastro foi realizado. Você já pode fazer login.',
+        title: 'Cadastro recebido!',
+        description: 'Sua conta foi criada e está aguardando aprovação do administrador.',
       })
       navigate('/login')
     }
@@ -119,6 +151,18 @@ export default function Signup() {
                   placeholder="seu@email.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="cpf">CPF</Label>
+                <Input
+                  id="cpf"
+                  type="text"
+                  placeholder="000.000.000-00"
+                  value={cpf}
+                  onChange={(e) => setCpf(e.target.value)}
                   required
                 />
               </div>

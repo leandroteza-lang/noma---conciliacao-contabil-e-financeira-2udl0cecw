@@ -299,6 +299,15 @@ export default function UsersPage() {
 
       let empId = editingId
       if (editingId) {
+        if (data.cpf) {
+          const { data: existing } = await supabase
+            .from('cadastro_usuarios')
+            .select('id')
+            .eq('cpf', data.cpf)
+            .neq('id', editingId)
+            .maybeSingle()
+          if (existing) throw new Error('CPF já cadastrado no sistema para outro usuário.')
+        }
         const { error } = await supabase
           .from('cadastro_usuarios')
           .update(payload)
@@ -306,17 +315,69 @@ export default function UsersPage() {
           .eq('user_id', user.id)
         if (error) throw error
       } else {
-        payload.approval_status = 'pending'
-        const { data: ins, error } = await supabase
-          .from('cadastro_usuarios')
-          .insert([payload])
-          .select()
-          .single()
-        if (error) throw error
-        empId = ins.id
+        if (data.cpf) {
+          const { data: existing } = await supabase
+            .from('cadastro_usuarios')
+            .select('id')
+            .eq('cpf', data.cpf)
+            .maybeSingle()
+          if (existing) throw new Error('CPF já cadastrado no sistema.')
+        }
+        if (!data.email) {
+          throw new Error('E-mail é obrigatório para enviar o convite.')
+        }
+
+        const res = await supabase.functions.invoke('manage-user', {
+          body: {
+            action: 'invite',
+            email: data.email,
+            name: data.name,
+            role: data.role,
+            cpf: data.cpf || null,
+            phone: data.phone || null,
+            department_id: data.department_id || null,
+            admin_id: user.id,
+          },
+        })
+
+        if (res.error) {
+          if (res.error.message?.includes('CPF_DUPLICATE'))
+            throw new Error('CPF já cadastrado no sistema.')
+          throw new Error(res.error.message || 'Erro ao enviar convite')
+        }
+
+        let createdUser = null
+        for (let i = 0; i < 6; i++) {
+          const { data: u } = await supabase
+            .from('cadastro_usuarios')
+            .select('id')
+            .eq('email', data.email)
+            .maybeSingle()
+          if (u) {
+            createdUser = u
+            break
+          }
+          await new Promise((r) => setTimeout(r, 500))
+        }
+
+        if (createdUser) {
+          empId = createdUser.id
+          await supabase
+            .from('cadastro_usuarios')
+            .update({
+              address: data.address || null,
+              observations: data.observations || null,
+              permissions: data.permissions.length === 0 ? ['all'] : data.permissions,
+              avatar_url: uploadedUrl,
+            })
+            .eq('id', empId)
+        } else {
+          throw new Error('Falha ao sincronizar o usuário criado.')
+        }
+
         toast({
-          title: 'Convite Simulado',
-          description: `Um convite foi enviado para ${data.email || 'o usuário'} e está pendente de aprovação.`,
+          title: 'Convite Enviado',
+          description: `Um convite foi enviado para ${data.email} e está pendente de aprovação.`,
         })
       }
 
