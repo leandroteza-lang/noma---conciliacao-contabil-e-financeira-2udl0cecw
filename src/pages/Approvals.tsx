@@ -258,6 +258,18 @@ export default function Approvals() {
     setIsProcessing(true)
     setProgress(50)
     try {
+      const { data: userData } = await supabase
+        .from('cadastro_usuarios')
+        .select('user_id')
+        .eq('id', id)
+        .single()
+
+      if (userData?.user_id) {
+        await supabase.functions.invoke('manage-user', {
+          body: { action: 'delete', user_id: userData.user_id },
+        })
+      }
+
       const { error } = await supabase.from('cadastro_usuarios').delete().eq('id', id)
       if (error) throw error
       setProgress(100)
@@ -336,6 +348,11 @@ export default function Approvals() {
     setIsProcessing(true)
     setProgress(50)
     try {
+      if (item.type === 'employee' && item.originalData?.user_id) {
+        await supabase.functions.invoke('manage-user', {
+          body: { action: 'delete', user_id: item.originalData.user_id },
+        })
+      }
       const { error } = await supabase.from(getTableForType(item.type)).delete().eq('id', item.id)
       if (error) throw error
       setProgress(100)
@@ -368,6 +385,11 @@ export default function Approvals() {
       let processed = 0
       for (const item of itemsToProcess) {
         if (action === 'hardDelete') {
+          if (item.type === 'employee' && item.originalData?.user_id) {
+            await supabase.functions.invoke('manage-user', {
+              body: { action: 'delete', user_id: item.originalData.user_id },
+            })
+          }
           await supabase.from(getTableForType(item.type)).delete().eq('id', item.id)
         } else if (action === 'approve') {
           await supabase

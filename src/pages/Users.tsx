@@ -362,10 +362,25 @@ export default function UsersPage() {
           if (errorMsg.includes('CPF_DUPLICATE')) {
             throw new Error('CPF já cadastrado no sistema.')
           }
-          if (errorMsg.includes('already been registered')) {
-            throw new Error(
-              'Este e-mail já está cadastrado no sistema (pode estar pendente ou inativo).',
-            )
+          if (errorMsg === 'USER_EXISTS_IN_DB') {
+            if (res.data.isDeleted) {
+              throw new Error(
+                'Este usuário está na Lixeira. Por favor, acesse a Central de Aprovações para restaurá-lo.',
+              )
+            } else if (res.data.isPendingDeletion) {
+              throw new Error(
+                'Este usuário está pendente de exclusão. Verifique a Central de Aprovações.',
+              )
+            } else if (res.data.isPendingApproval) {
+              throw new Error(
+                'Este usuário já foi cadastrado e está aguardando aprovação na Central de Aprovações.',
+              )
+            } else {
+              throw new Error('Este e-mail já está cadastrado e ativo no sistema.')
+            }
+          }
+          if (errorMsg.includes('already been registered') || errorMsg.includes('already exists')) {
+            throw new Error('Este e-mail já está cadastrado no sistema.')
           }
           throw new Error(errorMsg || 'Erro ao enviar convite.')
         }

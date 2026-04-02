@@ -941,6 +941,7 @@ export const Constants = {
 //     USING: (approval_status = 'pending'::text)
 //   Policy "update_pending_users" (UPDATE, PERMISSIVE) roles={authenticated}
 //     USING: (approval_status = 'pending'::text)
+//     WITH CHECK: true
 //   Policy "user_employees_delete" (DELETE, PERMISSIVE) roles={authenticated}
 //     USING: (user_id = auth.uid())
 //   Policy "user_employees_insert" (INSERT, PERMISSIVE) roles={authenticated}
