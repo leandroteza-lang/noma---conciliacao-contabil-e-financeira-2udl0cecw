@@ -762,8 +762,8 @@ export default function UsersPage() {
                           <Avatar className="h-9 w-9 border border-slate-200">
                             <AvatarImage src={e.avatar_url || ''} className="object-cover" />
                             <AvatarFallback className="bg-blue-100 text-blue-700 text-xs font-bold">
-                              {e.name.substring(0, 2).toUpperCase()}
-                            </AvatarFallback>
+                              {(e.name || 'U').substring(0, 2).toUpperCase()}
+                            </AvatarFallback>{' '}
                           </Avatar>
                           <div>
                             <p className="text-slate-900 text-sm font-semibold">{e.name}</p>

@@ -6,6 +6,10 @@ interface AuthContextType {
   user: User | null
   session: Session | null
   role: string | null
+  profile: any | null
+  permissions: any[]
+  menuOrder: any[]
+  setMenuOrder: (order: any[]) => void
   signUp: (email: string, password: string, metadata?: any) => Promise<{ error: any }>
   signIn: (email: string, password: string) => Promise<{ error: any }>
   signOut: () => Promise<{ error: any }>
@@ -24,21 +28,32 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null)
   const [session, setSession] = useState<Session | null>(null)
   const [role, setRole] = useState<string | null>(null)
+  const [profile, setProfile] = useState<any | null>(null)
+  const [permissions, setPermissions] = useState<any[]>([])
+  const [menuOrder, setMenuOrder] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const fetchRole = async (userId: string) => {
+    const fetchProfile = async (userId: string) => {
       const { data } = await supabase
         .from('cadastro_usuarios')
-        .select('role, approval_status')
+        .select('*')
         .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(1)
         .maybeSingle()
 
       if (data?.approval_status === 'pending') {
         await supabase.auth.signOut()
         setRole(null)
+        setProfile(null)
+        setPermissions([])
+        setMenuOrder([])
       } else {
         setRole(data?.role || null)
+        setProfile(data || null)
+        setPermissions(Array.isArray(data?.permissions) ? data.permissions : [])
+        setMenuOrder(Array.isArray(data?.menu_order) ? data.menu_order : [])
       }
     }
 
@@ -48,9 +63,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setSession(session)
       setUser(session?.user ?? null)
       if (session?.user) {
-        fetchRole(session.user.id).finally(() => setLoading(false))
+        fetchProfile(session.user.id).finally(() => setLoading(false))
       } else {
         setRole(null)
+        setProfile(null)
+        setPermissions([])
+        setMenuOrder([])
         setLoading(false)
       }
     })
@@ -59,15 +77,28 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setSession(session)
       setUser(session?.user ?? null)
       if (session?.user) {
-        fetchRole(session.user.id).finally(() => setLoading(false))
+        fetchProfile(session.user.id).finally(() => setLoading(false))
       } else {
         setRole(null)
+        setProfile(null)
+        setPermissions([])
+        setMenuOrder([])
         setLoading(false)
       }
     })
 
     return () => subscription.unsubscribe()
   }, [])
+
+  const updateMenuOrder = async (newOrder: any[]) => {
+    setMenuOrder(newOrder)
+    if (user) {
+      await supabase
+        .from('cadastro_usuarios')
+        .update({ menu_order: newOrder })
+        .eq('user_id', user.id)
+    }
+  }
 
   const signUp = async (email: string, password: string, metadata?: any) => {
     const { error } = await supabase.auth.signUp({
@@ -87,13 +118,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (error) return { error }
 
     if (signInData.user) {
-      const { data: profile } = await supabase
+      const { data: userProfile } = await supabase
         .from('cadastro_usuarios')
         .select('approval_status')
         .eq('user_id', signInData.user.id)
+        .order('created_at', { ascending: false })
+        .limit(1)
         .maybeSingle()
 
-      if (profile?.approval_status === 'pending') {
+      if (userProfile?.approval_status === 'pending') {
         await supabase.auth.signOut()
         return {
           error: new Error('Sua conta ainda está pendente de aprovação pelo administrador.'),
@@ -110,7 +143,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }
 
   return (
-    <AuthContext.Provider value={{ user, session, role, signUp, signIn, signOut, loading }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        session,
+        role,
+        profile,
+        permissions,
+        menuOrder,
+        setMenuOrder: updateMenuOrder,
+        signUp,
+        signIn,
+        signOut,
+        loading,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   )

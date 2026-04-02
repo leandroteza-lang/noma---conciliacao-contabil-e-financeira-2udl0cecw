@@ -582,7 +582,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_auth_user_by_email: { Args: { p_email: string }; Returns: string }
     }
     Enums: {
       [_ in never]: never
@@ -1006,6 +1006,21 @@ export const Constants = {
 //     USING: (user_id = auth.uid())
 
 // --- DATABASE FUNCTIONS ---
+// FUNCTION get_auth_user_by_email(text)
+//   CREATE OR REPLACE FUNCTION public.get_auth_user_by_email(p_email text)
+//    RETURNS uuid
+//    LANGUAGE plpgsql
+//    SECURITY DEFINER
+//    SET search_path TO 'public'
+//   AS $function$
+//   DECLARE
+//     v_user_id UUID;
+//   BEGIN
+//     SELECT id INTO v_user_id FROM auth.users WHERE email = p_email LIMIT 1;
+//     RETURN v_user_id;
+//   END;
+//   $function$
+//
 // FUNCTION handle_new_user()
 //   CREATE OR REPLACE FUNCTION public.handle_new_user()
 //    RETURNS trigger
@@ -1019,7 +1034,6 @@ export const Constants = {
 //     req_cpf text;
 //     req_phone text;
 //     req_dep_id uuid;
-//     req_admin_id uuid;
 //   BEGIN
 //     req_name := COALESCE(NEW.raw_user_meta_data->>'name', NEW.email);
 //     org_name := NEW.raw_user_meta_data->>'organization';
@@ -1033,12 +1047,6 @@ export const Constants = {
 //       req_dep_id := NULL;
 //     END;
 //
-//     BEGIN
-//       req_admin_id := (NEW.raw_user_meta_data->>'admin_id')::uuid;
-//     EXCEPTION WHEN OTHERS THEN
-//       req_admin_id := NULL;
-//     END;
-//
 //     IF req_cpf IS NOT NULL AND req_cpf != '' THEN
 //       IF EXISTS (SELECT 1 FROM public.cadastro_usuarios WHERE cpf = req_cpf) THEN
 //         RAISE EXCEPTION 'CPF_DUPLICATE';
@@ -1049,7 +1057,7 @@ export const Constants = {
 //       id, user_id, name, email, role, cpf, phone, department_id, approval_status, status
 //     ) VALUES (
 //       gen_random_uuid(),
-//       COALESCE(req_admin_id, NEW.id),
+//       NEW.id,
 //       req_name,
 //       NEW.email,
 //       req_role,

@@ -21,6 +21,7 @@ import { cn } from '@/lib/utils'
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase/client'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { ErrorBoundary } from '@/components/ErrorBoundary'
 import {
   Sidebar,
   SidebarContent,
@@ -405,7 +406,9 @@ export default function Layout() {
 
         <main className="flex-1 p-4 sm:p-6 lg:p-8 animate-fade-in w-full overflow-x-hidden">
           <div className="mx-auto max-w-[1400px]">
-            <Outlet />
+            <ErrorBoundary>
+              <Outlet />
+            </ErrorBoundary>
           </div>
         </main>
       </SidebarInset>
