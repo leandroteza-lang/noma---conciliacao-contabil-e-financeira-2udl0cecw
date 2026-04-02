@@ -330,8 +330,10 @@ export type Database = {
           department_id: string | null
           email: string | null
           id: string
+          menu_order: Json | null
           name: string
           observations: string | null
+          permissions: Json | null
           phone: string | null
           role: string | null
           status: boolean | null
@@ -344,8 +346,10 @@ export type Database = {
           department_id?: string | null
           email?: string | null
           id?: string
+          menu_order?: Json | null
           name: string
           observations?: string | null
+          permissions?: Json | null
           phone?: string | null
           role?: string | null
           status?: boolean | null
@@ -358,8 +362,10 @@ export type Database = {
           department_id?: string | null
           email?: string | null
           id?: string
+          menu_order?: Json | null
           name?: string
           observations?: string | null
+          permissions?: Json | null
           phone?: string | null
           role?: string | null
           status?: boolean | null
@@ -693,6 +699,8 @@ export const Constants = {
 //   cpf: character varying (nullable)
 //   address: text (nullable)
 //   observations: text (nullable)
+//   permissions: jsonb (nullable, default: '["all"]'::jsonb)
+//   menu_order: jsonb (nullable, default: '[]'::jsonb)
 // Table: financial_movements
 //   id: uuid (not null, default: gen_random_uuid())
 //   organization_id: uuid (nullable)

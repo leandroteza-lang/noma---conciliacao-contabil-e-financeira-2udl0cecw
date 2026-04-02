@@ -213,6 +213,7 @@ export default function Companies() {
       const { data, error } = await supabase
         .from('organizations')
         .select('*')
+        .neq('pending_deletion', true)
         .order('created_at', { ascending: false })
 
       if (error) throw error
@@ -350,16 +351,18 @@ export default function Companies() {
         return
       }
 
-      if (!confirm('Deseja realmente excluir esta empresa? Esta ação não pode ser desfeita.'))
-        return
+      if (!confirm('Deseja solicitar a exclusão desta empresa?')) return
 
       const { error } = await supabase
         .from('organizations')
-        .delete()
+        .update({ pending_deletion: true, deletion_requested_at: new Date().toISOString() })
         .eq('id', id)
         .eq('user_id', user?.id)
       if (error) throw error
-      toast({ title: 'Sucesso', description: 'Empresa removida.' })
+      toast({
+        title: 'Enviado para Aprovação',
+        description: 'A exclusão foi solicitada e aguarda aprovação do administrador.',
+      })
       fetchOrganizations()
     } catch (error: any) {
       toast({ title: 'Erro', description: error.message, variant: 'destructive' })

@@ -85,6 +85,7 @@ export default function Departments() {
       const { data, error } = await supabase
         .from('departments')
         .select('*')
+        .neq('pending_deletion', true)
         .order('created_at', { ascending: false })
       if (error) throw error
       setDepartments(data || [])
@@ -211,15 +212,18 @@ export default function Departments() {
         return
       }
 
-      if (!confirm('Deseja excluir este departamento?')) return
+      if (!confirm('Deseja solicitar a exclusão deste departamento?')) return
 
       const { error } = await supabase
         .from('departments')
-        .delete()
+        .update({ pending_deletion: true, deletion_requested_at: new Date().toISOString() })
         .eq('id', id)
         .eq('user_id', user?.id)
       if (error) throw error
-      toast({ title: 'Sucesso', description: 'Removido com sucesso.' })
+      toast({
+        title: 'Enviado para Aprovação',
+        description: 'A exclusão foi solicitada e aguarda aprovação do administrador.',
+      })
       fetchDepartments()
     } catch (error: any) {
       toast({ title: 'Erro', description: error.message, variant: 'destructive' })

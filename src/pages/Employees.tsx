@@ -58,20 +58,11 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { format } from 'date-fns'
+import { MENU_ITEMS } from '@/components/Layout'
 
 const ROUTINES = [
   { id: 'all', label: 'Acesso Total (Todas as Rotinas)' },
-  { id: 'dashboard', label: 'Dashboard' },
-  { id: 'analises', label: 'Análises' },
-  { id: 'listagem', label: 'Listagem de Contas' },
-  { id: 'lancamentos', label: 'Lançamentos Contábeis' },
-  { id: 'empresas', label: 'Empresas' },
-  { id: 'departamentos', label: 'Departamentos' },
-  { id: 'centros-de-custo', label: 'Centros de Custo' },
-  { id: 'plano-de-contas', label: 'Plano de Contas' },
-  { id: 'mapeamento', label: 'Mapeamento DE/PARA' },
-  { id: 'funcionarios', label: 'Funcionários' },
-  { id: 'import', label: 'Importar Dados' },
+  ...MENU_ITEMS.map((item) => ({ id: item.id, label: item.title })),
 ]
 
 const isValidCPF = (cpf: string) => {
@@ -154,9 +145,10 @@ export default function Employees() {
         supabase
           .from('employees')
           .select(`*, departments(id, name), employee_companies(organization_id)`)
+          .neq('pending_deletion', true)
           .order('created_at', { ascending: false }),
-        supabase.from('departments').select('*').order('name'),
-        supabase.from('organizations').select('*').order('name'),
+        supabase.from('departments').select('*').neq('pending_deletion', true).order('name'),
+        supabase.from('organizations').select('*').neq('pending_deletion', true).order('name'),
       ])
       if (empRes.error) throw empRes.error
       setEmployees(empRes.data || [])
@@ -306,15 +298,18 @@ export default function Employees() {
   }
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Deseja excluir este funcionário?')) return
+    if (!confirm('Deseja solicitar a exclusão deste funcionário?')) return
     try {
       const { error } = await supabase
         .from('employees')
-        .delete()
+        .update({ pending_deletion: true, deletion_requested_at: new Date().toISOString() })
         .eq('id', id)
         .eq('user_id', user?.id)
       if (error) throw error
-      toast({ title: 'Sucesso', description: 'Removido com sucesso.' })
+      toast({
+        title: 'Enviado para Aprovação',
+        description: 'A exclusão foi solicitada e aguarda aprovação do administrador.',
+      })
       fetchData()
     } catch (e: any) {
       toast({ title: 'Erro', description: e.message, variant: 'destructive' })

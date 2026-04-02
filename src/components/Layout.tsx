@@ -13,10 +13,13 @@ import {
   Briefcase,
   LineChart,
   List,
+  CheckSquare,
+  GripVertical,
 } from 'lucide-react'
 import { useAuth } from '@/hooks/use-auth'
 import { cn } from '@/lib/utils'
-import { ChevronUp, ChevronDown } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { supabase } from '@/lib/supabase/client'
 import {
   Sidebar,
   SidebarContent,
@@ -33,48 +36,85 @@ import {
   SidebarTrigger,
 } from '@/components/ui/sidebar'
 
-const menuItems = [
-  { title: 'Dashboard', path: '/dashboard', icon: PieChart, roles: ['admin', 'supervisor'] },
-  { title: 'Análises', path: '/analises', icon: LineChart, roles: ['admin', 'supervisor'] },
+export const MENU_ITEMS = [
   {
+    id: 'dashboard',
+    title: 'Dashboard',
+    path: '/dashboard',
+    icon: PieChart,
+    roles: ['admin', 'supervisor'],
+  },
+  {
+    id: 'analises',
+    title: 'Análises',
+    path: '/analises',
+    icon: LineChart,
+    roles: ['admin', 'supervisor'],
+  },
+  {
+    id: 'listagem',
     title: 'Listagem de Contas',
     path: '/',
     icon: Home,
     roles: ['admin', 'supervisor', 'collaborator'],
   },
   {
+    id: 'lancamentos',
     title: 'Lançamentos Contábeis',
     path: '/lancamentos',
     icon: BookOpen,
     roles: ['admin', 'supervisor', 'collaborator'],
   },
-  { title: 'Empresas', path: '/empresas', icon: Building2, roles: ['admin', 'supervisor'] },
   {
+    id: 'empresas',
+    title: 'Empresas',
+    path: '/empresas',
+    icon: Building2,
+    roles: ['admin', 'supervisor'],
+  },
+  {
+    id: 'departamentos',
     title: 'Departamentos',
     path: '/departamentos',
     icon: Briefcase,
     roles: ['admin', 'supervisor'],
   },
   {
+    id: 'centros-de-custo',
     title: 'Centros de Custo',
     path: '/centros-de-custo',
     icon: Briefcase,
     roles: ['admin', 'supervisor'],
   },
   {
+    id: 'plano-de-contas',
     title: 'Plano de Contas',
     path: '/plano-de-contas',
     icon: List,
     roles: ['admin', 'supervisor'],
   },
   {
+    id: 'mapeamento',
     title: 'Mapeamento DE/PARA',
     path: '/mapeamento',
     icon: ArrowRightLeft,
     roles: ['admin', 'supervisor'],
   },
-  { title: 'Funcionários', path: '/funcionarios', icon: Users, roles: ['admin'] },
-  { title: 'Importar Dados', path: '/import', icon: Upload, roles: ['admin'] },
+  {
+    id: 'funcionarios',
+    title: 'Funcionários',
+    path: '/funcionarios',
+    icon: Users,
+    roles: ['admin'],
+  },
+  { id: 'import', title: 'Importar Dados', path: '/import', icon: Upload, roles: ['admin'] },
+  {
+    id: 'aprovacoes',
+    title: 'Aprovações',
+    path: '/aprovacoes',
+    icon: CheckSquare,
+    roles: ['admin'],
+  },
 ]
 
 export default function Layout() {
@@ -82,26 +122,50 @@ export default function Layout() {
   const navigate = useNavigate()
   const location = useLocation()
 
-  const handleMoveUp = (e: React.MouseEvent, index: number, currentList: any[]) => {
-    e.preventDefault()
-    e.stopPropagation()
-    if (index === 0) return
-    const newList = [...currentList]
-    const temp = newList[index]
-    newList[index] = newList[index - 1]
-    newList[index - 1] = temp
-    setMenuOrder(newList.map((item) => item.path))
+  const [draggedItemPath, setDraggedItemPath] = useState<string | null>(null)
+  const [pendingCount, setPendingCount] = useState(0)
+
+  useEffect(() => {
+    if (role !== 'admin') return
+    const fetchPending = async () => {
+      const [orgs, depts, emps] = await Promise.all([
+        supabase
+          .from('organizations')
+          .select('id', { count: 'exact' })
+          .eq('pending_deletion', true),
+        supabase.from('departments').select('id', { count: 'exact' }).eq('pending_deletion', true),
+        supabase.from('employees').select('id', { count: 'exact' }).eq('pending_deletion', true),
+      ])
+      const total = (orgs.count || 0) + (depts.count || 0) + (emps.count || 0)
+      setPendingCount(total)
+    }
+    fetchPending()
+  }, [role, location.pathname])
+
+  const handleDragStart = (e: React.DragEvent, path: string) => {
+    setDraggedItemPath(path)
+    e.dataTransfer.effectAllowed = 'move'
   }
 
-  const handleMoveDown = (e: React.MouseEvent, index: number, currentList: any[]) => {
+  const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault()
-    e.stopPropagation()
-    if (index === currentList.length - 1) return
-    const newList = [...currentList]
-    const temp = newList[index]
-    newList[index] = newList[index + 1]
-    newList[index + 1] = temp
-    setMenuOrder(newList.map((item) => item.path))
+    e.dataTransfer.dropEffect = 'move'
+  }
+
+  const handleDrop = (e: React.DragEvent, targetPath: string, sortedItems: any[]) => {
+    e.preventDefault()
+    if (!draggedItemPath || draggedItemPath === targetPath) return
+
+    const currentOrder = sortedItems.map((item) => item.path)
+    const draggedIdx = currentOrder.indexOf(draggedItemPath)
+    const targetIdx = currentOrder.indexOf(targetPath)
+
+    if (draggedIdx !== -1 && targetIdx !== -1) {
+      currentOrder.splice(draggedIdx, 1)
+      currentOrder.splice(targetIdx, 0, draggedItemPath)
+      setMenuOrder(currentOrder)
+    }
+    setDraggedItemPath(null)
   }
 
   if (loading) {
@@ -140,10 +204,10 @@ export default function Layout() {
             <SidebarGroupContent>
               <SidebarMenu>
                 {(() => {
-                  const allowedItems = menuItems.filter((item) => {
+                  const allowedItems = MENU_ITEMS.filter((item) => {
+                    if (item.roles && !item.roles.includes(role)) return false
                     if (permissions.includes('all')) return true
-                    const routeId = item.path.replace('/', '') || 'listagem'
-                    return permissions.includes(routeId)
+                    return permissions.includes(item.id)
                   })
 
                   // Apply custom ordering
@@ -159,7 +223,14 @@ export default function Layout() {
                   return sortedItems.map((item, index) => {
                     const isActive = location.pathname === item.path
                     return (
-                      <SidebarMenuItem key={item.path}>
+                      <SidebarMenuItem
+                        key={item.path}
+                        draggable
+                        onDragStart={(e) => handleDragStart(e, item.path)}
+                        onDragOver={handleDragOver}
+                        onDrop={(e) => handleDrop(e, item.path, sortedItems)}
+                        className={cn(draggedItemPath === item.path && 'opacity-50')}
+                      >
                         <SidebarMenuButton
                           asChild
                           isActive={isActive}
@@ -181,24 +252,14 @@ export default function Layout() {
                                 )}
                               />
                               <span className="font-medium">{item.title}</span>
+                              {item.id === 'aprovacoes' && pendingCount > 0 && (
+                                <span className="ml-auto bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
+                                  {pendingCount}
+                                </span>
+                              )}
                             </div>
-                            <div className="hidden group-hover:flex items-center opacity-50 hover:opacity-100">
-                              {index > 0 && (
-                                <button
-                                  onClick={(e) => handleMoveUp(e, index, sortedItems)}
-                                  className="p-1 hover:bg-slate-200 rounded"
-                                >
-                                  <ChevronUp className="size-3" />
-                                </button>
-                              )}
-                              {index < sortedItems.length - 1 && (
-                                <button
-                                  onClick={(e) => handleMoveDown(e, index, sortedItems)}
-                                  className="p-1 hover:bg-slate-200 rounded"
-                                >
-                                  <ChevronDown className="size-3" />
-                                </button>
-                              )}
+                            <div className="hidden group-hover:flex items-center opacity-40 hover:opacity-100 cursor-grab active:cursor-grabbing">
+                              <GripVertical className="size-4" />
                             </div>
                           </Link>
                         </SidebarMenuButton>

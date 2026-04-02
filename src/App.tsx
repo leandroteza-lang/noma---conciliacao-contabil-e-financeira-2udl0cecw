@@ -13,6 +13,7 @@ import CostCenters from './pages/CostCenters'
 import ChartAccounts from './pages/ChartAccounts'
 import Dashboard from './pages/Dashboard'
 import Analysis from './pages/Analysis'
+import Approvals from './pages/Approvals'
 import Login from './pages/Login'
 import Signup from './pages/Signup'
 import ForgotPassword from './pages/ForgotPassword'
@@ -44,6 +45,7 @@ const App = () => (
             <Route path="/plano-de-contas" element={<ChartAccounts />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/analises" element={<Analysis />} />
+            <Route path="/aprovacoes" element={<Approvals />} />
           </Route>
           <Route path="*" element={<NotFound />} />
         </Routes>
