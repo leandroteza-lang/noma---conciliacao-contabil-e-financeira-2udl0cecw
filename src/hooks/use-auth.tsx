@@ -37,7 +37,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         .eq('email', email)
         .maybeSingle()
         .then(({ data }) => {
-          if (data?.role) setRole(data.role as any)
+          if (data?.role) {
+            setRole(data.role as any)
+          } else {
+            setRole('admin')
+          }
         })
     }
 

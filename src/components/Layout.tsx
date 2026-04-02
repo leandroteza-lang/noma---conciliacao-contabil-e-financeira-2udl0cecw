@@ -11,6 +11,8 @@ import {
   PieChart,
   Users,
   Briefcase,
+  LineChart,
+  List,
 } from 'lucide-react'
 import { useAuth } from '@/hooks/use-auth'
 import { cn } from '@/lib/utils'
@@ -32,10 +34,17 @@ import {
 
 const menuItems = [
   { title: 'Dashboard', path: '/dashboard', icon: PieChart, roles: ['admin', 'supervisor'] },
+  { title: 'Análises', path: '/analises', icon: LineChart, roles: ['admin', 'supervisor'] },
   {
     title: 'Listagem de Contas',
     path: '/',
     icon: Home,
+    roles: ['admin', 'supervisor', 'collaborator'],
+  },
+  {
+    title: 'Lançamentos Contábeis',
+    path: '/lancamentos',
+    icon: BookOpen,
     roles: ['admin', 'supervisor', 'collaborator'],
   },
   { title: 'Empresas', path: '/empresas', icon: Building2, roles: ['admin', 'supervisor'] },
@@ -45,20 +54,26 @@ const menuItems = [
     icon: Briefcase,
     roles: ['admin', 'supervisor'],
   },
-  { title: 'Funcionários', path: '/funcionarios', icon: Users, roles: ['admin'] },
-  { title: 'Importar Dados', path: '/import', icon: Upload, roles: ['admin'] },
+  {
+    title: 'Centros de Custo',
+    path: '/centros-de-custo',
+    icon: Briefcase,
+    roles: ['admin', 'supervisor'],
+  },
+  {
+    title: 'Plano de Contas',
+    path: '/plano-de-contas',
+    icon: List,
+    roles: ['admin', 'supervisor'],
+  },
   {
     title: 'Mapeamento DE/PARA',
     path: '/mapeamento',
     icon: ArrowRightLeft,
     roles: ['admin', 'supervisor'],
   },
-  {
-    title: 'Lançamentos Contábeis',
-    path: '/lancamentos',
-    icon: BookOpen,
-    roles: ['admin', 'supervisor', 'collaborator'],
-  },
+  { title: 'Funcionários', path: '/funcionarios', icon: Users, roles: ['admin'] },
+  { title: 'Importar Dados', path: '/import', icon: Upload, roles: ['admin'] },
 ]
 
 export default function Layout() {

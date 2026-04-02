@@ -324,33 +324,42 @@ export type Database = {
       }
       employees: {
         Row: {
+          address: string | null
+          cpf: string | null
           created_at: string
           department_id: string | null
           email: string | null
           id: string
           name: string
+          observations: string | null
           phone: string | null
           role: string | null
           status: boolean | null
           user_id: string
         }
         Insert: {
+          address?: string | null
+          cpf?: string | null
           created_at?: string
           department_id?: string | null
           email?: string | null
           id?: string
           name: string
+          observations?: string | null
           phone?: string | null
           role?: string | null
           status?: boolean | null
           user_id: string
         }
         Update: {
+          address?: string | null
+          cpf?: string | null
           created_at?: string
           department_id?: string | null
           email?: string | null
           id?: string
           name?: string
+          observations?: string | null
           phone?: string | null
           role?: string | null
           status?: boolean | null
@@ -681,6 +690,9 @@ export const Constants = {
 //   status: boolean (nullable, default: true)
 //   created_at: timestamp with time zone (not null, default: now())
 //   role: character varying (nullable, default: 'collaborator'::character varying)
+//   cpf: character varying (nullable)
+//   address: text (nullable)
+//   observations: text (nullable)
 // Table: financial_movements
 //   id: uuid (not null, default: gen_random_uuid())
 //   organization_id: uuid (nullable)
@@ -809,6 +821,8 @@ export const Constants = {
 //   Policy "user_employee_companies_select" (SELECT, PERMISSIVE) roles={authenticated}
 //     USING: (employee_id IN ( SELECT employees.id    FROM employees   WHERE (employees.user_id = auth.uid())))
 // Table: employees
+//   Policy "employee_read_own" (SELECT, PERMISSIVE) roles={authenticated}
+//     USING: ((email)::text = (auth.jwt() ->> 'email'::text))
 //   Policy "user_employees_delete" (DELETE, PERMISSIVE) roles={authenticated}
 //     USING: (user_id = auth.uid())
 //   Policy "user_employees_insert" (INSERT, PERMISSIVE) roles={authenticated}
@@ -827,6 +841,8 @@ export const Constants = {
 //   Policy "org_financial_movements_update" (UPDATE, PERMISSIVE) roles={authenticated}
 //     USING: (organization_id IN ( SELECT organizations.id    FROM organizations   WHERE (organizations.user_id = auth.uid())))
 // Table: organizations
+//   Policy "employee_organization_select" (SELECT, PERMISSIVE) roles={authenticated}
+//     USING: (id IN ( SELECT ec.organization_id    FROM (employee_companies ec      JOIN employees e ON ((e.id = ec.employee_id)))   WHERE ((e.email)::text = (auth.jwt() ->> 'email'::text))))
 //   Policy "user_organization_delete" (DELETE, PERMISSIVE) roles={authenticated}
 //     USING: (user_id = auth.uid())
 //   Policy "user_organization_insert" (INSERT, PERMISSIVE) roles={authenticated}
