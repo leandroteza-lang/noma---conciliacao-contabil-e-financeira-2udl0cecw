@@ -39,7 +39,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         .from('cadastro_usuarios')
         .select('*')
         .eq('user_id', userId)
-        .order('created_at', { ascending: false })
+        .is('deleted_at', null)
+        .order('created_at', { ascending: true })
         .limit(1)
         .maybeSingle()
 
@@ -122,7 +123,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         .from('cadastro_usuarios')
         .select('approval_status')
         .eq('user_id', signInData.user.id)
-        .order('created_at', { ascending: false })
+        .is('deleted_at', null)
+        .order('created_at', { ascending: true })
         .limit(1)
         .maybeSingle()
 
@@ -138,6 +140,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }
 
   const signOut = async () => {
+    setRole(null)
+    setProfile(null)
+    setPermissions([])
+    setMenuOrder([])
+    setUser(null)
+    setSession(null)
+
+    try {
+      Object.keys(localStorage).forEach((key) => {
+        if (key.startsWith('sb-') && key.endsWith('-auth-token')) {
+          localStorage.removeItem(key)
+        }
+      })
+    } catch (e) {
+      console.warn('Failed to clear localStorage', e)
+    }
+
     const { error } = await supabase.auth.signOut()
     return { error }
   }

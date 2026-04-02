@@ -935,28 +935,25 @@ export const Constants = {
 //   Policy "org_bank_accounts_update" (UPDATE, PERMISSIVE) roles={authenticated}
 //     USING: (organization_id IN ( SELECT organizations.id    FROM organizations   WHERE (organizations.user_id = auth.uid())))
 // Table: cadastro_usuarios
-//   Policy "employee_read_own" (SELECT, PERMISSIVE) roles={authenticated}
-//     USING: ((email)::text = (auth.jwt() ->> 'email'::text))
-//   Policy "read_pending_users" (SELECT, PERMISSIVE) roles={authenticated}
-//     USING: (approval_status = 'pending'::text)
-//   Policy "update_pending_users" (UPDATE, PERMISSIVE) roles={authenticated}
-//     USING: (approval_status = 'pending'::text)
+//   Policy "auth_users_delete" (DELETE, PERMISSIVE) roles={authenticated}
+//     USING: true
+//   Policy "auth_users_insert" (INSERT, PERMISSIVE) roles={authenticated}
 //     WITH CHECK: true
-//   Policy "user_employees_delete" (DELETE, PERMISSIVE) roles={authenticated}
-//     USING: (user_id = auth.uid())
-//   Policy "user_employees_insert" (INSERT, PERMISSIVE) roles={authenticated}
-//     WITH CHECK: (user_id = auth.uid())
-//   Policy "user_employees_select" (SELECT, PERMISSIVE) roles={authenticated}
-//     USING: (user_id = auth.uid())
-//   Policy "user_employees_update" (UPDATE, PERMISSIVE) roles={authenticated}
-//     USING: (user_id = auth.uid())
+//   Policy "auth_users_select" (SELECT, PERMISSIVE) roles={authenticated}
+//     USING: true
+//   Policy "auth_users_update" (UPDATE, PERMISSIVE) roles={authenticated}
+//     USING: true
+//     WITH CHECK: true
 // Table: cadastro_usuarios_companies
 //   Policy "user_employee_companies_delete" (DELETE, PERMISSIVE) roles={authenticated}
-//     USING: (usuario_id IN ( SELECT cadastro_usuarios.id    FROM cadastro_usuarios   WHERE (cadastro_usuarios.user_id = auth.uid())))
+//     USING: true
 //   Policy "user_employee_companies_insert" (INSERT, PERMISSIVE) roles={authenticated}
-//     WITH CHECK: (usuario_id IN ( SELECT cadastro_usuarios.id    FROM cadastro_usuarios   WHERE (cadastro_usuarios.user_id = auth.uid())))
+//     WITH CHECK: true
 //   Policy "user_employee_companies_select" (SELECT, PERMISSIVE) roles={authenticated}
-//     USING: (usuario_id IN ( SELECT cadastro_usuarios.id    FROM cadastro_usuarios   WHERE (cadastro_usuarios.user_id = auth.uid())))
+//     USING: true
+//   Policy "user_employee_companies_update" (UPDATE, PERMISSIVE) roles={authenticated}
+//     USING: true
+//     WITH CHECK: true
 // Table: chart_of_accounts
 //   Policy "org_chart_of_accounts_delete" (DELETE, PERMISSIVE) roles={authenticated}
 //     USING: (organization_id IN ( SELECT organizations.id    FROM organizations   WHERE (organizations.user_id = auth.uid())))

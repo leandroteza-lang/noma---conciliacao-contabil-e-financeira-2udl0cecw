@@ -256,7 +256,9 @@ export default function Layout() {
           <button
             onClick={async () => {
               await signOut()
-              navigate('/login')
+              setTimeout(() => {
+                window.location.replace('/login')
+              }, 50)
             }}
             className="w-full py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium rounded-lg transition-colors"
           >
@@ -269,7 +271,9 @@ export default function Layout() {
 
   const handleLogout = async () => {
     await signOut()
-    navigate('/login')
+    setTimeout(() => {
+      window.location.replace('/login')
+    }, 50)
   }
 
   return (
