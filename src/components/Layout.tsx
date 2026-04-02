@@ -9,6 +9,8 @@ import {
   BookOpen,
   Building2,
   PieChart,
+  Users,
+  Briefcase,
 } from 'lucide-react'
 import { useAuth } from '@/hooks/use-auth'
 import { cn } from '@/lib/utils'
@@ -32,6 +34,8 @@ const menuItems = [
   { title: 'Dashboard', path: '/dashboard', icon: PieChart },
   { title: 'Listagem de Contas', path: '/', icon: Home },
   { title: 'Empresas', path: '/empresas', icon: Building2 },
+  { title: 'Departamentos', path: '/departamentos', icon: Briefcase },
+  { title: 'Funcionários', path: '/funcionarios', icon: Users },
   { title: 'Importar Dados', path: '/import', icon: Upload },
   { title: 'Mapeamento DE/PARA', path: '/mapeamento', icon: ArrowRightLeft },
   { title: 'Lançamentos Contábeis', path: '/lancamentos', icon: BookOpen },
