@@ -287,14 +287,19 @@ export default function Layout() {
               <SidebarMenu>
                 {(() => {
                   const allowedItems = MENU_ITEMS.filter((item) => {
-                    if (item.roles && !item.roles.includes(role)) return false
-                    if (permissions?.includes('all')) return true
-                    return permissions?.includes(item.id)
+                    const userRole = role || 'collaborator'
+                    if (item.roles && !item.roles.includes(userRole)) return false
+
+                    if (userRole === 'admin') return true
+
+                    const perms = Array.isArray(permissions) ? permissions : []
+                    if (perms.includes('all')) return true
+                    return perms.includes(item.id)
                   })
 
                   // Apply custom ordering
                   const sortedItems = [...allowedItems].sort((a, b) => {
-                    const safeMenuOrder = menuOrder || []
+                    const safeMenuOrder = Array.isArray(menuOrder) ? menuOrder : []
                     const idxA = safeMenuOrder.indexOf(a.path)
                     const idxB = safeMenuOrder.indexOf(b.path)
                     if (idxA === -1 && idxB === -1) return 0

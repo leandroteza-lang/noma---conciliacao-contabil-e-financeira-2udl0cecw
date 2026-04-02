@@ -112,9 +112,10 @@ export default function Signup() {
     if (error) {
       toast({
         title: 'Erro ao criar conta',
-        description: error.message.includes('CPF_DUPLICATE')
-          ? 'Este CPF já está cadastrado no sistema.'
-          : error.message,
+        description:
+          error.message && error.message.includes('CPF_DUPLICATE')
+            ? 'Este CPF já está cadastrado no sistema.'
+            : error.message || 'Erro desconhecido',
         variant: 'destructive',
       })
     } else {

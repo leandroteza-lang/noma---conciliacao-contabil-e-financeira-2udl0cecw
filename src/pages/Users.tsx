@@ -184,7 +184,8 @@ export default function UsersPage() {
   const filtered = useMemo(() => {
     return users.filter((e) => {
       const matchSearch = search
-        ? e.name?.toLowerCase().includes(search.toLowerCase()) || e.cpf?.includes(search)
+        ? (e.name?.toLowerCase() || '').includes(search.toLowerCase()) ||
+          (e.cpf || '').includes(search)
         : true
       const matchStatus =
         filterStatus !== 'all' ? (filterStatus === 'active' ? e.status : !e.status) : true
@@ -292,7 +293,10 @@ export default function UsersPage() {
         department_id: data.department_id || null,
         status: data.status,
         role: data.role,
-        permissions: data.permissions.length === 0 ? ['all'] : data.permissions,
+        permissions:
+          Array.isArray(data.permissions) && data.permissions.length > 0
+            ? data.permissions
+            : ['all'],
         user_id: user.id,
         avatar_url: uploadedUrl,
       } as any
@@ -354,10 +358,16 @@ export default function UsersPage() {
         }
 
         if (res.data && res.data.success === false) {
-          if (res.data.error?.includes('CPF_DUPLICATE')) {
+          const errorMsg = String(res.data.error || '')
+          if (errorMsg.includes('CPF_DUPLICATE')) {
             throw new Error('CPF já cadastrado no sistema.')
           }
-          throw new Error(res.data.error || 'Erro ao enviar convite.')
+          if (errorMsg.includes('already been registered')) {
+            throw new Error(
+              'Este e-mail já está cadastrado no sistema (pode estar pendente ou inativo).',
+            )
+          }
+          throw new Error(errorMsg || 'Erro ao enviar convite.')
         }
 
         let createdUser = null
@@ -381,7 +391,10 @@ export default function UsersPage() {
             .update({
               address: data.address || null,
               observations: data.observations || null,
-              permissions: data.permissions.length === 0 ? ['all'] : data.permissions,
+              permissions:
+                Array.isArray(data.permissions) && data.permissions.length > 0
+                  ? data.permissions
+                  : ['all'],
               avatar_url: uploadedUrl,
             })
             .eq('id', empId)
@@ -999,9 +1012,15 @@ export default function UsersPage() {
                         >
                           <Checkbox
                             id={`org-${org.id}`}
-                            checked={watch('companies')?.includes(org.id)}
+                            checked={
+                              Array.isArray(watch('companies'))
+                                ? watch('companies').includes(org.id)
+                                : false
+                            }
                             onCheckedChange={(checked) => {
-                              const cur = watch('companies') || []
+                              const cur = Array.isArray(watch('companies'))
+                                ? watch('companies')
+                                : []
                               setValue(
                                 'companies',
                                 checked ? [...cur, org.id] : cur.filter((id) => id !== org.id),
@@ -1048,9 +1067,15 @@ export default function UsersPage() {
                       >
                         <Checkbox
                           id={`perm-${routine.id}`}
-                          checked={watch('permissions')?.includes(routine.id)}
+                          checked={
+                            Array.isArray(watch('permissions'))
+                              ? watch('permissions').includes(routine.id)
+                              : false
+                          }
                           onCheckedChange={(checked) => {
-                            const cur = watch('permissions') || []
+                            const cur = Array.isArray(watch('permissions'))
+                              ? watch('permissions')
+                              : []
                             if (routine.id === 'all') {
                               setValue('permissions', checked ? ['all'] : [])
                             } else {
