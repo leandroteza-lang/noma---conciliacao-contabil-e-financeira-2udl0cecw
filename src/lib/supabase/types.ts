@@ -330,6 +330,7 @@ export type Database = {
           id: string
           name: string
           phone: string | null
+          role: string | null
           status: boolean | null
           user_id: string
         }
@@ -340,6 +341,7 @@ export type Database = {
           id?: string
           name: string
           phone?: string | null
+          role?: string | null
           status?: boolean | null
           user_id: string
         }
@@ -350,6 +352,7 @@ export type Database = {
           id?: string
           name?: string
           phone?: string | null
+          role?: string | null
           status?: boolean | null
           user_id?: string
         }
@@ -677,6 +680,7 @@ export const Constants = {
 //   department_id: uuid (nullable)
 //   status: boolean (nullable, default: true)
 //   created_at: timestamp with time zone (not null, default: now())
+//   role: character varying (nullable, default: 'collaborator'::character varying)
 // Table: financial_movements
 //   id: uuid (not null, default: gen_random_uuid())
 //   organization_id: uuid (nullable)

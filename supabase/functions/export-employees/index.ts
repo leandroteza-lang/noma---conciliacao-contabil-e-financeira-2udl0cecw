@@ -21,9 +21,17 @@ Deno.serve(async (req: Request) => {
       const worksheet = XLSX.utils.json_to_sheet(
         data.map((r: any) => ({
           Nome: r.name || '',
+          CPF: r.cpf || '',
           Email: r.email || '',
           Telefone: r.phone || '',
+          Endereço: r.address || '',
           Departamento: r.department || '',
+          Perfil:
+            r.role === 'admin'
+              ? 'Administrador'
+              : r.role === 'supervisor'
+                ? 'Supervisor'
+                : 'Colaborador',
           Status: r.status ? 'Ativo' : 'Inativo',
           'Data Criação': r.created_at || '',
         })),
@@ -53,13 +61,20 @@ Deno.serve(async (req: Request) => {
       }
 
       data.forEach((r: any) => {
-        doc.text(`Nome: ${r.name} | Status: ${r.status ? 'Ativo' : 'Inativo'}`, 14, y)
+        doc.text(
+          `Nome: ${r.name} | CPF: ${r.cpf || '-'} | Status: ${r.status ? 'Ativo' : 'Inativo'}`,
+          14,
+          y,
+        )
         y += 6
         checkPage()
         doc.text(`Email: ${r.email || '-'} | Telefone: ${r.phone || '-'}`, 14, y)
         y += 6
         checkPage()
-        doc.text(`Departamento: ${r.department || '-'}`, 14, y)
+        doc.text(`Endereço: ${r.address || '-'}`, 14, y)
+        y += 6
+        checkPage()
+        doc.text(`Departamento: ${r.department || '-'} | Perfil: ${r.role || '-'}`, 14, y)
         y += 10
         checkPage()
       })

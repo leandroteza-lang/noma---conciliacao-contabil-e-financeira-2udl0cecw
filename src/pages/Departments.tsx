@@ -148,26 +148,24 @@ export default function Departments() {
     try {
       let finalCode = data.code?.trim() || ''
       if (!finalCode) {
-        finalCode = `DEP-${Math.floor(Math.random() * 10000)
-          .toString()
-          .padStart(4, '0')}`
-      } else {
-        let query = supabase
-          .from('departments')
-          .select('id')
-          .eq('code', finalCode)
-          .eq('user_id', user.id)
-        if (editingId) query = query.neq('id', editingId)
-        const { data: existing } = await query.maybeSingle()
-        if (existing) {
-          toast({
-            title: 'Erro',
-            description: 'Este código já está em uso.',
-            variant: 'destructive',
-          })
-          setIsSubmitting(false)
-          return
-        }
+        finalCode = `DEP-${Math.random().toString(36).substring(2, 8).toUpperCase()}`
+      }
+
+      let query = supabase
+        .from('departments')
+        .select('id')
+        .eq('code', finalCode)
+        .eq('user_id', user.id)
+      if (editingId) query = query.neq('id', editingId)
+      const { data: existing } = await query.maybeSingle()
+      if (existing) {
+        toast({
+          title: 'Erro',
+          description: 'Este código já está em uso.',
+          variant: 'destructive',
+        })
+        setIsSubmitting(false)
+        return
       }
 
       if (editingId) {

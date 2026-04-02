@@ -54,12 +54,36 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { format } from 'date-fns'
+
+const isValidCPF = (cpf: string) => {
+  cpf = cpf.replace(/[^\d]+/g, '')
+  if (cpf === '' || cpf.length !== 11 || /^(\d)\1{10}$/.test(cpf)) return false
+  let sum = 0,
+    rem
+  for (let i = 1; i <= 9; i++) sum += parseInt(cpf.substring(i - 1, i)) * (11 - i)
+  rem = (sum * 10) % 11
+  if (rem === 10 || rem === 11) rem = 0
+  if (rem !== parseInt(cpf.substring(9, 10))) return false
+  sum = 0
+  for (let i = 1; i <= 10; i++) sum += parseInt(cpf.substring(i - 1, i)) * (12 - i)
+  rem = (sum * 10) % 11
+  if (rem === 10 || rem === 11) rem = 0
+  if (rem !== parseInt(cpf.substring(10, 11))) return false
+  return true
+}
 
 const schema = z.object({
   name: z.string().min(2, 'Nome deve ter no mínimo 2 caracteres'),
+  cpf: z
+    .string()
+    .optional()
+    .refine((val) => !val || isValidCPF(val), 'CPF inválido'),
   email: z.string().email('Email inválido').optional().or(z.literal('')),
   phone: z.string().optional(),
+  address: z.string().optional(),
+  observations: z.string().optional(),
   department_id: z.string().optional().nullable().or(z.literal('')),
   status: z.boolean().default(true),
   companies: z.array(z.string()).default([]),
@@ -133,7 +157,9 @@ export default function Employees() {
 
   const filtered = useMemo(() => {
     return employees.filter((e) => {
-      const matchSearch = search ? e.name?.toLowerCase().includes(search.toLowerCase()) : true
+      const matchSearch = search
+        ? e.name?.toLowerCase().includes(search.toLowerCase()) || e.cpf?.includes(search)
+        : true
       const matchStatus =
         filterStatus !== 'all' ? (filterStatus === 'active' ? e.status : !e.status) : true
       const matchDept = filterDept !== 'all' ? e.department_id === filterDept : true
@@ -179,8 +205,11 @@ export default function Employees() {
       setEditingId(item.id)
       reset({
         name: item.name || '',
+        cpf: item.cpf || '',
         email: item.email || '',
         phone: item.phone || '',
+        address: item.address || '',
+        observations: item.observations || '',
         department_id: item.department_id || '',
         status: item.status ?? true,
         role: item.role || 'collaborator',
@@ -190,8 +219,11 @@ export default function Employees() {
       setEditingId(null)
       reset({
         name: '',
+        cpf: '',
         email: '',
         phone: '',
+        address: '',
+        observations: '',
         department_id: '',
         status: true,
         role: 'collaborator',
@@ -207,8 +239,11 @@ export default function Employees() {
     try {
       const payload = {
         name: data.name,
+        cpf: data.cpf || null,
         email: data.email || null,
         phone: data.phone || null,
+        address: data.address || null,
+        observations: data.observations || null,
         department_id: data.department_id || null,
         status: data.status,
         role: data.role,
@@ -357,7 +392,7 @@ export default function Employees() {
         <CardContent>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
             <div className="space-y-1.5">
-              <Label>Buscar por Nome</Label>
+              <Label>Buscar Nome / CPF</Label>
               <div className="relative">
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-500" />
                 <Input
@@ -495,13 +530,15 @@ export default function Employees() {
                     <TableRow key={e.id} className="hover:bg-slate-50/50">
                       <TableCell className="py-2 px-4 font-medium">
                         <div className="flex items-center gap-2">
-                          <div className="h-7 w-7 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center shrink-0 text-[10px] font-bold">
+                          <div className="h-8 w-8 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center shrink-0 text-xs font-bold">
                             {e.name.substring(0, 2).toUpperCase()}
                           </div>
                           <div>
-                            <p className="text-slate-900 text-sm">{e.name}</p>
-                            {(e.email || e.phone) && (
-                              <p className="text-[11px] text-slate-500">{e.email || e.phone}</p>
+                            <p className="text-slate-900 text-sm font-semibold">{e.name}</p>
+                            {(e.email || e.phone || e.cpf) && (
+                              <p className="text-[11px] text-slate-500">
+                                {e.email || e.cpf || e.phone}
+                              </p>
                             )}
                           </div>
                         </div>
@@ -596,100 +633,142 @@ export default function Employees() {
       </Card>
 
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-[650px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editingId ? 'Editar Funcionário' : 'Novo Funcionário'}</DialogTitle>
-            <DialogDescription>Preencha os dados abaixo.</DialogDescription>
+            <DialogDescription>Preencha os dados do funcionário abaixo.</DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 mt-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2 md:col-span-2">
-                <Label>
-                  Nome <span className="text-red-500">*</span>
-                </Label>
-                <Input {...register('name')} placeholder="Ex: João da Silva" />
-                {errors.name && <span className="text-xs text-red-500">{errors.name.message}</span>}
-              </div>
-              <div className="space-y-2">
-                <Label>E-mail</Label>
-                <Input {...register('email')} type="email" placeholder="joao@empresa.com" />
-                {errors.email && (
-                  <span className="text-xs text-red-500">{errors.email.message}</span>
-                )}
-              </div>
-              <div className="space-y-2">
-                <Label>Telefone</Label>
-                <Input {...register('phone')} placeholder="(00) 00000-0000" />
-              </div>
-              <div className="space-y-2">
-                <Label>Departamento</Label>
-                <Select
-                  value={watch('department_id') || 'none'}
-                  onValueChange={(v) => setValue('department_id', v === 'none' ? '' : v)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">Nenhum</SelectItem>
-                    {departments.map((d) => (
-                      <SelectItem key={d.id} value={d.id}>
-                        {d.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Perfil de Acesso</Label>
-                <Select value={watch('role')} onValueChange={(v: any) => setValue('role', v)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="admin">Administrador</SelectItem>
-                    <SelectItem value="supervisor">Supervisor</SelectItem>
-                    <SelectItem value="collaborator">Colaborador</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2 md:col-span-2">
-                <Label>Empresas Vinculadas</Label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
-                  {organizations.map((org) => (
-                    <div
-                      key={org.id}
-                      className="flex items-center space-x-2 bg-slate-50 p-2.5 rounded border border-slate-100"
+            <Tabs defaultValue="main" className="w-full">
+              <TabsList className="grid w-full grid-cols-3 mb-4">
+                <TabsTrigger value="main">Dados Principais</TabsTrigger>
+                <TabsTrigger value="contact">Contato e End.</TabsTrigger>
+                <TabsTrigger value="access">Acesso e Vínculos</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="main" className="space-y-4 animate-in fade-in-50">
+                <div className="space-y-2">
+                  <Label>
+                    Nome <span className="text-red-500">*</span>
+                  </Label>
+                  <Input {...register('name')} placeholder="Ex: João da Silva" />
+                  {errors.name && (
+                    <span className="text-xs text-red-500">{errors.name.message}</span>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <Label>CPF</Label>
+                  <Input {...register('cpf')} placeholder="000.000.000-00" />
+                  {errors.cpf && <span className="text-xs text-red-500">{errors.cpf.message}</span>}
+                </div>
+                <div className="space-y-2">
+                  <Label>Observações</Label>
+                  <Input {...register('observations')} placeholder="Informações adicionais" />
+                </div>
+              </TabsContent>
+
+              <TabsContent value="contact" className="space-y-4 animate-in fade-in-50">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>E-mail</Label>
+                    <Input {...register('email')} type="email" placeholder="joao@empresa.com" />
+                    {errors.email && (
+                      <span className="text-xs text-red-500">{errors.email.message}</span>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Telefone</Label>
+                    <Input {...register('phone')} placeholder="(00) 00000-0000" />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>Endereço Completo</Label>
+                  <Input {...register('address')} placeholder="Rua, Número, Bairro, Cidade - UF" />
+                </div>
+              </TabsContent>
+
+              <TabsContent value="access" className="space-y-4 animate-in fade-in-50">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Departamento</Label>
+                    <Select
+                      value={watch('department_id') || 'none'}
+                      onValueChange={(v) => setValue('department_id', v === 'none' ? '' : v)}
                     >
-                      <Checkbox
-                        id={`org-${org.id}`}
-                        checked={watch('companies')?.includes(org.id)}
-                        onCheckedChange={(checked) => {
-                          const cur = watch('companies') || []
-                          setValue(
-                            'companies',
-                            checked ? [...cur, org.id] : cur.filter((id) => id !== org.id),
-                          )
-                        }}
-                      />
-                      <label
-                        htmlFor={`org-${org.id}`}
-                        className="text-sm cursor-pointer truncate flex-1 leading-none"
-                      >
-                        {org.name}
-                      </label>
-                    </div>
-                  ))}
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Nenhum</SelectItem>
+                        {departments.map((d) => (
+                          <SelectItem key={d.id} value={d.id}>
+                            {d.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Perfil de Acesso</Label>
+                    <Select value={watch('role')} onValueChange={(v: any) => setValue('role', v)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="admin">Administrador</SelectItem>
+                        <SelectItem value="supervisor">Supervisor</SelectItem>
+                        <SelectItem value="collaborator">Colaborador</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
-              </div>
-              <div className="flex items-center justify-between md:col-span-2 p-3 bg-slate-50 rounded-lg border border-slate-100">
-                <div className="space-y-0.5">
-                  <Label className="text-base">Status</Label>
-                  <p className="text-xs text-slate-500">Defina se o funcionário está ativo.</p>
+                <div className="space-y-2">
+                  <Label>Empresas Vinculadas</Label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2 max-h-[160px] overflow-y-auto p-1">
+                    {organizations.length === 0 ? (
+                      <p className="text-sm text-slate-500 col-span-2">
+                        Nenhuma empresa cadastrada.
+                      </p>
+                    ) : (
+                      organizations.map((org) => (
+                        <div
+                          key={org.id}
+                          className="flex items-center space-x-2 bg-slate-50 p-2.5 rounded border border-slate-100"
+                        >
+                          <Checkbox
+                            id={`org-${org.id}`}
+                            checked={watch('companies')?.includes(org.id)}
+                            onCheckedChange={(checked) => {
+                              const cur = watch('companies') || []
+                              setValue(
+                                'companies',
+                                checked ? [...cur, org.id] : cur.filter((id) => id !== org.id),
+                              )
+                            }}
+                          />
+                          <label
+                            htmlFor={`org-${org.id}`}
+                            className="text-sm cursor-pointer truncate flex-1 leading-none"
+                          >
+                            {org.name}
+                          </label>
+                        </div>
+                      ))
+                    )}
+                  </div>
                 </div>
-                <Switch checked={statusValue} onCheckedChange={(val) => setValue('status', val)} />
-              </div>
-            </div>
+                <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-100 mt-2">
+                  <div className="space-y-0.5">
+                    <Label className="text-base">Status</Label>
+                    <p className="text-xs text-slate-500">Defina se o funcionário está ativo.</p>
+                  </div>
+                  <Switch
+                    checked={statusValue}
+                    onCheckedChange={(val) => setValue('status', val)}
+                  />
+                </div>
+              </TabsContent>
+            </Tabs>
             <div className="flex justify-end gap-3 pt-4 border-t mt-6">
               <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)}>
                 Cancelar
