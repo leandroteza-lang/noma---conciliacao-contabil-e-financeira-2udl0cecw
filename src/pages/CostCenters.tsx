@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Plus, Search, Building2, Layers, Trash2 } from 'lucide-react'
+import { Plus, Search, Building2, Layers, Trash2, ChevronLeft, ChevronRight } from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -15,6 +15,13 @@ import {
 } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { useAuth } from '@/hooks/use-auth'
 import { useToast } from '@/hooks/use-toast'
 
@@ -37,6 +44,9 @@ export default function CostCenters() {
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(true)
   const [selectedIds, setSelectedIds] = useState<string[]>([])
+
+  const [currentPage, setCurrentPage] = useState(1)
+  const [itemsPerPage, setItemsPerPage] = useState(10)
 
   const canDelete = role === 'admin'
 
@@ -81,6 +91,12 @@ export default function CostCenters() {
       (cc.organization?.name && cc.organization.name.toLowerCase().includes(term))
     )
   })
+
+  const totalPages = Math.max(1, Math.ceil(filteredData.length / itemsPerPage))
+  const paginatedData = filteredData.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage,
+  )
 
   const getIndent = (code: string) => {
     if (!code) return 0
@@ -246,8 +262,11 @@ export default function CostCenters() {
                 placeholder="Buscar por código ou descrição..."
                 className="pl-8"
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
+                onChange={(e) => {
+                  setSearch(e.target.value)
+                  setCurrentPage(1)
+                }}
+              />{' '}
             </div>
           </div>
         </CardHeader>
@@ -260,10 +279,10 @@ export default function CostCenters() {
                     <TableHead className="w-12 text-center">
                       <Checkbox
                         checked={
-                          filteredData.length > 0 && selectedIds.length === filteredData.length
+                          paginatedData.length > 0 && selectedIds.length === paginatedData.length
                         }
                         onCheckedChange={(checked) => {
-                          if (checked) setSelectedIds(filteredData.map((d) => d.id))
+                          if (checked) setSelectedIds(paginatedData.map((d) => d.id))
                           else setSelectedIds([])
                         }}
                       />
@@ -284,8 +303,8 @@ export default function CostCenters() {
                       Carregando centros de custo...
                     </TableCell>
                   </TableRow>
-                ) : filteredData.length > 0 ? (
-                  filteredData.map((cc) => (
+                ) : paginatedData.length > 0 ? (
+                  paginatedData.map((cc) => (
                     <TableRow key={cc.id}>
                       {canDelete && (
                         <TableCell className="text-center">
@@ -355,6 +374,58 @@ export default function CostCenters() {
               </TableBody>
             </Table>
           </div>
+
+          {!loading && filteredData.length > 0 && (
+            <div className="flex flex-col sm:flex-row items-center justify-between p-4 border-t border-slate-100 gap-4">
+              <p className="text-sm text-slate-500">
+                Mostrando {(currentPage - 1) * itemsPerPage + 1} até{' '}
+                {Math.min(currentPage * itemsPerPage, filteredData.length)} de {filteredData.length}
+              </p>
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <p className="text-sm text-slate-500 hidden sm:block">Itens por página:</p>
+                  <Select
+                    value={itemsPerPage.toString()}
+                    onValueChange={(v) => {
+                      setItemsPerPage(Number(v))
+                      setCurrentPage(1)
+                    }}
+                  >
+                    <SelectTrigger className="h-8 w-[70px]">
+                      <SelectValue placeholder={itemsPerPage} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="10">10</SelectItem>
+                      <SelectItem value="50">50</SelectItem>
+                      <SelectItem value="100">100</SelectItem>
+                      <SelectItem value="1000">1000</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <span className="text-sm font-medium px-2">
+                    {currentPage} / {totalPages}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                    disabled={currentPage === totalPages}
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

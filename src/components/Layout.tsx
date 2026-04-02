@@ -154,7 +154,34 @@ export default function Layout() {
         (banks.count || 0)
       setPendingCount(total)
     }
+
     fetchPending()
+
+    const channel = supabase
+      .channel('schema-db-changes-layout')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'organizations' },
+        fetchPending,
+      )
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'departments' }, fetchPending)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'employees' }, fetchPending)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'cost_centers' }, fetchPending)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'chart_of_accounts' },
+        fetchPending,
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'bank_accounts' },
+        fetchPending,
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
   }, [role, location.pathname])
 
   const handleDragStart = (e: React.DragEvent, path: string) => {

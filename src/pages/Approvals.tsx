@@ -12,6 +12,7 @@ import { supabase } from '@/lib/supabase/client'
 import { useAuth } from '@/hooks/use-auth'
 import { useToast } from '@/hooks/use-toast'
 import { Card, CardContent } from '@/components/ui/card'
+import { Progress } from '@/components/ui/progress'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
@@ -34,6 +35,8 @@ export default function Approvals() {
   const [processingId, setProcessingId] = useState<string | null>(null)
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [activeTab, setActiveTab] = useState<'pending' | 'trash'>('pending')
+  const [progress, setProgress] = useState(0)
+  const [isProcessing, setIsProcessing] = useState(false)
   const [filterCategory, setFilterCategory] = useState<string>('all')
   const [filterRequester, setFilterRequester] = useState<string>('all')
   const [filterDate, setFilterDate] = useState<Date | undefined>()
@@ -196,6 +199,8 @@ export default function Approvals() {
 
   const handleApprove = async (item: PendingItem) => {
     setProcessingId(item.id)
+    setIsProcessing(true)
+    setProgress(50)
     try {
       const {
         data: { user },
@@ -209,17 +214,22 @@ export default function Approvals() {
         } as any)
         .eq('id', item.id)
       if (error) throw error
+      setProgress(100)
       toast({ title: 'Aprovado', description: 'Registro movido para a lixeira.' })
       fetchPendingItems()
     } catch (e: any) {
       toast({ title: 'Erro', description: e.message, variant: 'destructive' })
     } finally {
       setProcessingId(null)
+      setIsProcessing(false)
+      setProgress(0)
     }
   }
 
   const handleRestore = async (item: PendingItem) => {
     setProcessingId(item.id)
+    setIsProcessing(true)
+    setProgress(50)
     try {
       const { error } = await supabase
         .from(getTableForType(item.type))
@@ -232,12 +242,15 @@ export default function Approvals() {
         } as any)
         .eq('id', item.id)
       if (error) throw error
+      setProgress(100)
       toast({ title: 'Restaurado', description: 'O registro voltou a ficar ativo no sistema.' })
       fetchPendingItems()
     } catch (e: any) {
       toast({ title: 'Erro', description: e.message, variant: 'destructive' })
     } finally {
       setProcessingId(null)
+      setIsProcessing(false)
+      setProgress(0)
     }
   }
 
@@ -245,15 +258,20 @@ export default function Approvals() {
     if (!confirm(`Deseja realmente EXCLUIR DEFINITIVAMENTE o(a) ${item.typeLabel} "${item.name}"?`))
       return
     setProcessingId(item.id)
+    setIsProcessing(true)
+    setProgress(50)
     try {
       const { error } = await supabase.from(getTableForType(item.type)).delete().eq('id', item.id)
       if (error) throw error
+      setProgress(100)
       toast({ title: 'Excluído', description: 'Registro removido permanentemente.' })
       fetchPendingItems()
     } catch (e: any) {
       toast({ title: 'Erro na exclusão', description: e.message, variant: 'destructive' })
     } finally {
       setProcessingId(null)
+      setIsProcessing(false)
+      setProgress(0)
     }
   }
 
@@ -265,11 +283,14 @@ export default function Approvals() {
     )
       return
     setProcessingId('bulk')
+    setIsProcessing(true)
+    setProgress(0)
     try {
       const {
         data: { user },
       } = await supabase.auth.getUser()
       const itemsToProcess = items.filter((i) => selectedIds.includes(i.id))
+      let processed = 0
       for (const item of itemsToProcess) {
         if (action === 'hardDelete') {
           await supabase.from(getTableForType(item.type)).delete().eq('id', item.id)
@@ -294,6 +315,8 @@ export default function Approvals() {
             } as any)
             .eq('id', item.id)
         }
+        processed++
+        setProgress((processed / itemsToProcess.length) * 100)
       }
       toast({
         title: 'Ação concluída',
@@ -305,6 +328,8 @@ export default function Approvals() {
       toast({ title: 'Erro na ação em lote', description: e.message, variant: 'destructive' })
     } finally {
       setProcessingId(null)
+      setIsProcessing(false)
+      setProgress(0)
     }
   }
 
@@ -436,6 +461,16 @@ export default function Approvals() {
                 <Eraser className="h-4 w-4 mr-2" /> Limpar
               </Button>
             )}
+          </div>
+        )}
+
+        {isProcessing && (
+          <div className="mb-4 space-y-2 animate-in fade-in duration-300">
+            <div className="flex justify-between text-sm text-slate-500 font-medium">
+              <span>Processando ações, por favor aguarde...</span>
+              <span>{Math.round(progress)}%</span>
+            </div>
+            <Progress value={progress} className="h-2" />
           </div>
         )}
 
