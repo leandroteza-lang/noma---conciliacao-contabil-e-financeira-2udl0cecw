@@ -1,5 +1,6 @@
 {
   "_versions": {
-    "import-data": 4
+    "import-data": 4,
+    "generate-entries": 1
   }
 }

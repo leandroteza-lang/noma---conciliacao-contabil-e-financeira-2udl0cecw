@@ -3,6 +3,7 @@ import { supabase } from '@/lib/supabase/client'
 import { useAuth } from '@/hooks/use-auth'
 import EntryForm from '@/components/entries/EntryForm'
 import EntryList from '@/components/entries/EntryList'
+import GenerateEntriesModal from '@/components/entries/GenerateEntriesModal'
 
 export default function Entries() {
   const { user } = useAuth()
@@ -55,13 +56,18 @@ export default function Entries() {
 
   return (
     <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-8 animate-in fade-in duration-500">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-slate-900">
             Lançamentos Contábeis
           </h1>
           <p className="text-slate-500 mt-1">Gerencie suas movimentações financeiras e contábeis</p>
         </div>
+        <GenerateEntriesModal
+          costCenters={data.costCenters}
+          accounts={data.accounts}
+          onSuccess={() => setRefreshKey((k) => k + 1)}
+        />
       </div>
 
       <EntryForm
