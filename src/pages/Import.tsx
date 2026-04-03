@@ -10,6 +10,7 @@ import {
   XCircle,
   List,
   Download,
+  ListPlus,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -160,6 +161,8 @@ export default function Import() {
   const [importProgress, setImportProgress] = useState(0)
   const [importResult, setImportResult] = useState<ImportResult | null>(null)
   const [showOnlyErrors, setShowOnlyErrors] = useState(false)
+  const [allowIncomplete, setAllowIncomplete] = useState(false)
+  const [columnMapping, setColumnMapping] = useState<Record<string, string>>({})
 
   const parseCSV = (text: string) => {
     const lines = text.split(/\r?\n/).filter((line) => line.trim() !== '')
@@ -312,9 +315,11 @@ export default function Import() {
     const req = IMPORT_TYPES[importType as keyof typeof IMPORT_TYPES].required
     let valid = 0
     let invalid = 0
-    const missingColumns = req.filter((c) => !Object.keys(rawData[0] || {}).includes(c))
+    const missingColumns = req.filter(
+      (c) => !columns.includes(c) && !Object.values(columnMapping).includes(c),
+    )
 
-    if (missingColumns.length > 0) {
+    if (missingColumns.length > 0 && !allowIncomplete) {
       return {
         valid: 0,
         invalid: rawData.length,
@@ -325,22 +330,43 @@ export default function Import() {
       }
     }
 
-    const errors: { row: number; missing: string[] }[] = []
+    const errors: { row: number; missing: string[]; isWarning?: boolean }[] = []
     const validRecords: any[] = []
 
     rawData.forEach((row, idx) => {
-      const missing = req.filter((col) => !row[col] || String(row[col]).trim() === '')
+      const mappedRow = { ...row }
+      Object.entries(columnMapping).forEach(([extraCol, targetCol]) => {
+        if (targetCol && targetCol !== 'IGNORE') {
+          mappedRow[targetCol] = row[extraCol]
+        }
+      })
+
+      const missing = req.filter((col) => !mappedRow[col] || String(mappedRow[col]).trim() === '')
+
       if (missing.length > 0) {
-        invalid++
-        errors.push({ row: idx + 1, missing })
+        if (allowIncomplete) {
+          valid++
+          validRecords.push(mappedRow)
+          errors.push({ row: idx + 1, missing, isWarning: true })
+        } else {
+          invalid++
+          errors.push({ row: idx + 1, missing, isWarning: false })
+        }
       } else {
         valid++
-        validRecords.push(row)
+        validRecords.push(mappedRow)
       }
     })
 
-    return { valid, invalid, total: rawData.length, missingColumns: [], errors, validRecords }
-  }, [rawData, importType])
+    return {
+      valid,
+      invalid,
+      total: rawData.length,
+      missingColumns: allowIncomplete ? [] : missingColumns,
+      errors,
+      validRecords,
+    }
+  }, [rawData, importType, columnMapping, allowIncomplete, columns])
 
   const previewData = useMemo(() => {
     if (!importType || rawData.length === 0) return []
@@ -356,6 +382,12 @@ export default function Import() {
     if (rawData.length === 0) return []
     return Object.keys(rawData[0])
   }, [rawData])
+
+  const extraColumns = useMemo(() => {
+    if (!importType || columns.length === 0) return []
+    const config = IMPORT_TYPES[importType as keyof typeof IMPORT_TYPES]
+    return columns.filter((c) => !config.required.includes(c) && !config.optional.includes(c))
+  }, [columns, importType])
 
   const confirmImport = async () => {
     if (!validationInfo || validationInfo.validRecords.length === 0) {
@@ -380,6 +412,7 @@ export default function Import() {
           records: validationInfo.validRecords,
           type: importType,
           fileName: file?.name || 'Importação',
+          allowIncomplete: allowIncomplete,
         },
         headers: session
           ? {
@@ -432,6 +465,8 @@ export default function Import() {
     setRawData([])
     setImportResult(null)
     setShowOnlyErrors(false)
+    setAllowIncomplete(false)
+    setColumnMapping({})
   }
 
   const downloadErrors = () => {
@@ -607,6 +642,77 @@ export default function Import() {
                 )}
               </div>
             </div>
+
+            {importType && (
+              <div className="md:col-span-2 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border rounded-md p-4 bg-muted/20">
+                <div className="space-y-0.5">
+                  <Label htmlFor="allow-incomplete" className="text-base cursor-pointer">
+                    Importação Flexível (Ignorar Ausências)
+                  </Label>
+                  <p className="text-sm text-muted-foreground">
+                    Permite enviar os dados mesmo se faltarem colunas ou valores obrigatórios.
+                  </p>
+                </div>
+                <Switch
+                  id="allow-incomplete"
+                  checked={allowIncomplete}
+                  onCheckedChange={setAllowIncomplete}
+                />
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {!importResult && selectedSheet && importType && extraColumns.length > 0 && (
+        <Card className="animate-fade-in border-blue-500/30">
+          <CardHeader className="bg-blue-500/5 pb-4">
+            <CardTitle className="flex items-center gap-2 text-blue-700 dark:text-blue-400">
+              <ListPlus className="h-5 w-5" /> Colunas Adicionais Detectadas
+            </CardTitle>
+            <CardDescription>
+              A planilha possui mais colunas que o padrão. Você pode mapeá-las para os campos
+              opcionais do sistema.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="pt-6">
+            <div className="grid gap-3">
+              {extraColumns.map((col) => {
+                const config = IMPORT_TYPES[importType as keyof typeof IMPORT_TYPES]
+                const availableOptionals = config.optional.filter(
+                  (opt) => !columns.includes(opt) || columnMapping[col] === opt,
+                )
+
+                return (
+                  <div
+                    key={col}
+                    className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-3 rounded-lg border bg-background"
+                  >
+                    <span className="font-medium text-sm truncate max-w-[300px]" title={col}>
+                      {col}
+                    </span>
+                    <Select
+                      value={columnMapping[col] || 'IGNORE'}
+                      onValueChange={(val) => setColumnMapping((prev) => ({ ...prev, [col]: val }))}
+                    >
+                      <SelectTrigger className="w-full sm:w-[300px]">
+                        <SelectValue placeholder="Selecione o destino..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="IGNORE" className="text-muted-foreground italic">
+                          Ignorar coluna
+                        </SelectItem>
+                        {availableOptionals.map((optCol) => (
+                          <SelectItem key={optCol} value={optCol}>
+                            Mapear para: {optCol}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )
+              })}
+            </div>
           </CardContent>
         </Card>
       )}
@@ -690,29 +796,50 @@ export default function Import() {
               </div>
             )}
 
-            {validationInfo.invalid > 0 && validationInfo.missingColumns.length === 0 && (
+            {validationInfo.errors.length > 0 && validationInfo.missingColumns.length === 0 && (
               <div className="space-y-4">
-                <Alert className="bg-amber-500/10 text-amber-700 border-amber-500/30">
-                  <AlertCircle className="h-4 w-4 text-amber-600" />
-                  <AlertTitle>Atenção: Linhas Ignoradas</AlertTitle>
+                <Alert
+                  className={
+                    allowIncomplete
+                      ? 'bg-blue-500/10 text-blue-700 border-blue-500/30'
+                      : 'bg-amber-500/10 text-amber-700 border-amber-500/30'
+                  }
+                >
+                  <AlertCircle
+                    className={`h-4 w-4 ${allowIncomplete ? 'text-blue-600' : 'text-amber-600'}`}
+                  />
+                  <AlertTitle>
+                    {allowIncomplete ? 'Aviso: Importação Forçada' : 'Atenção: Linhas Ignoradas'}
+                  </AlertTitle>
                   <AlertDescription>
-                    {validationInfo.invalid} linhas não possuem todas as colunas obrigatórias e não
-                    serão enviadas.
+                    {allowIncomplete
+                      ? `${validationInfo.errors.length} linhas possuem campos ausentes mas serão enviadas devido à configuração.`
+                      : `${validationInfo.invalid} linhas não possuem todas as colunas obrigatórias e não serão enviadas.`}
                   </AlertDescription>
                 </Alert>
 
-                <div className="border rounded-md p-4 bg-amber-50/50 dark:bg-amber-950/10">
-                  <h4 className="font-semibold text-amber-700 dark:text-amber-500 flex items-center gap-2 mb-3">
-                    <List className="h-4 w-4" /> Relatório de Pendências
+                <div
+                  className={`border rounded-md p-4 ${allowIncomplete ? 'bg-blue-50/50 dark:bg-blue-950/10' : 'bg-amber-50/50 dark:bg-amber-950/10'}`}
+                >
+                  <h4
+                    className={`font-semibold flex items-center gap-2 mb-3 ${allowIncomplete ? 'text-blue-700 dark:text-blue-500' : 'text-amber-700 dark:text-amber-500'}`}
+                  >
+                    <List className="h-4 w-4" /> Relatório de{' '}
+                    {allowIncomplete ? 'Campos Vazios' : 'Pendências'}
                   </h4>
                   <ScrollArea className="h-32 w-full pr-4">
                     <ul className="space-y-2 text-sm">
                       {validationInfo.errors.map((err) => (
                         <li key={err.row} className="flex items-start gap-2 text-muted-foreground">
-                          <span className="min-w-1.5 h-1.5 rounded-full bg-amber-500 mt-1.5" />
+                          <span
+                            className={`min-w-1.5 h-1.5 rounded-full mt-1.5 ${allowIncomplete ? 'bg-blue-500' : 'bg-amber-500'}`}
+                          />
                           <span>
-                            <strong>Linha {err.row}:</strong> As colunas obrigatórias a seguir estão
-                            vazias:{' '}
+                            <strong>Linha {err.row}:</strong>{' '}
+                            {allowIncomplete
+                              ? 'Campos vazios'
+                              : 'As colunas obrigatórias a seguir estão vazias'}
+                            :{' '}
                             <span className="font-medium text-foreground">
                               {err.missing.join(', ')}
                             </span>
@@ -732,18 +859,19 @@ export default function Import() {
                     <FileType2 className="h-4 w-4 text-muted-foreground" />
                     Preview dos Dados (Exibindo até 5 linhas)
                   </h3>
-                  {validationInfo.invalid > 0 && validationInfo.missingColumns.length === 0 && (
-                    <div className="flex items-center space-x-2 bg-muted/50 p-1.5 rounded-md border">
-                      <Switch
-                        id="show-errors"
-                        checked={showOnlyErrors}
-                        onCheckedChange={setShowOnlyErrors}
-                      />
-                      <Label htmlFor="show-errors" className="cursor-pointer">
-                        Mostrar apenas erros
-                      </Label>
-                    </div>
-                  )}
+                  {validationInfo.errors.length > 0 &&
+                    validationInfo.missingColumns.length === 0 && (
+                      <div className="flex items-center space-x-2 bg-muted/50 p-1.5 rounded-md border">
+                        <Switch
+                          id="show-errors"
+                          checked={showOnlyErrors}
+                          onCheckedChange={setShowOnlyErrors}
+                        />
+                        <Label htmlFor="show-errors" className="cursor-pointer">
+                          {allowIncomplete ? 'Mostrar apenas avisos' : 'Mostrar apenas erros'}
+                        </Label>
+                      </div>
+                    )}
                 </div>
                 <div className="border rounded-md overflow-hidden">
                   <Table>

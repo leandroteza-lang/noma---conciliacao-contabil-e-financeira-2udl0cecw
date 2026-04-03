@@ -40,6 +40,7 @@ Deno.serve(async (req: Request) => {
     const records = payload.records
     const type = payload.type
     const fileName = payload.fileName
+    const allowIncomplete = payload.allowIncomplete === true
 
     const SUPPORTED_TYPES = [
       'BANK_ACCOUNTS',
@@ -105,7 +106,7 @@ Deno.serve(async (req: Request) => {
         const rowNum = i + 1
 
         const nome = row['NOME']
-        if (!nome || String(nome).trim() === '') {
+        if (!allowIncomplete && (!nome || String(nome).trim() === '')) {
           addError(rowNum, 'A coluna NOME está vazia.', row)
           continue
         }
@@ -129,7 +130,7 @@ Deno.serve(async (req: Request) => {
 
         const { error: insertError } = await supabase.from('organizations').insert({
           user_id: user.id,
-          name: String(nome),
+          name: String(nome || `Empresa ${rowNum}`),
           cnpj: cnpj || null,
           cpf: cpf || null,
           email: String(row['EMAIL'] || ''),
@@ -151,7 +152,7 @@ Deno.serve(async (req: Request) => {
         const rowNum = i + 1
 
         const nome = row['NOME']
-        if (!nome || String(nome).trim() === '') {
+        if (!allowIncomplete && (!nome || String(nome).trim() === '')) {
           addError(rowNum, 'A coluna NOME está vazia.', row)
           continue
         }
@@ -174,7 +175,7 @@ Deno.serve(async (req: Request) => {
 
         const { error: insertError } = await supabase.from('departments').insert({
           user_id: user.id,
-          name: String(nome),
+          name: String(nome || `Depto ${rowNum}`),
           code: codigo || `DEP-${Math.random().toString(36).substring(2, 8).toUpperCase()}`,
         })
 
@@ -190,7 +191,7 @@ Deno.serve(async (req: Request) => {
         const rowNum = i + 1
 
         const nome = row['NOME']
-        if (!nome || String(nome).trim() === '') {
+        if (!allowIncomplete && (!nome || String(nome).trim() === '')) {
           addError(rowNum, 'A coluna NOME está vazia.', row)
           continue
         }
@@ -207,7 +208,7 @@ Deno.serve(async (req: Request) => {
             .maybeSingle()
           if (dep) {
             depId = dep.id
-          } else {
+          } else if (!allowIncomplete) {
             addError(
               rowNum,
               `Departamento com código "${depCode}" não encontrado ou excluído.`,
@@ -238,7 +239,7 @@ Deno.serve(async (req: Request) => {
 
         const { error: insertError } = await supabase.from('cadastro_usuarios').insert({
           user_id: user.id,
-          name: String(nome),
+          name: String(nome || `Usuário ${rowNum}`),
           cpf: String(row['CPF'] || '') || null,
           email: email || null,
           phone: String(row['TELEFONE'] || '') || null,
@@ -246,7 +247,7 @@ Deno.serve(async (req: Request) => {
           observations: String(row['OBSERVACOES'] || '') || null,
           role: roleToInsert,
           permissions: ['all'],
-          department_id: depId,
+          department_id: depId || null,
           status: true,
         })
 
@@ -264,18 +265,18 @@ Deno.serve(async (req: Request) => {
         const empresa = row['EMPRESA']
         const contaContabil = row['CONTA_CONTABIL']
 
-        if (!empresa || String(empresa).trim() === '') {
+        if (!allowIncomplete && (!empresa || String(empresa).trim() === '')) {
           addError(rowNum, 'A coluna EMPRESA está vazia.', row)
           continue
         }
 
-        if (!contaContabil || String(contaContabil).trim() === '') {
+        if (!allowIncomplete && (!contaContabil || String(contaContabil).trim() === '')) {
           addError(rowNum, 'A coluna CONTA_CONTABIL está vazia.', row)
           continue
         }
 
-        const orgId = orgMap.get(String(empresa).trim().toLowerCase())
-        if (!orgId) {
+        const orgId = empresa ? orgMap.get(String(empresa).trim().toLowerCase()) : null
+        if (!allowIncomplete && !orgId) {
           addError(rowNum, `A empresa "${empresa}" não foi encontrada na sua conta.`, row)
           continue
         }
@@ -283,12 +284,12 @@ Deno.serve(async (req: Request) => {
         const { data: existing, error: checkError } = await supabase
           .from('bank_accounts')
           .select('id')
-          .eq('organization_id', orgId)
-          .eq('account_code', String(contaContabil))
+          .eq('organization_id', orgId || '')
+          .eq('account_code', String(contaContabil || ''))
           .is('deleted_at', null)
           .maybeSingle()
 
-        if (checkError) {
+        if (checkError && orgId) {
           addError(rowNum, `Falha ao verificar duplicata - ${checkError.message}`, row)
           continue
         }
@@ -303,8 +304,8 @@ Deno.serve(async (req: Request) => {
         }
 
         const { error: insertError } = await supabase.from('bank_accounts').insert({
-          organization_id: orgId,
-          account_code: String(contaContabil),
+          organization_id: orgId || null,
+          account_code: String(contaContabil || ''),
           account_type: String(row['CODCAIXA'] || ''),
           description: String(row['DESCRICAO'] || ''),
           bank_code: String(row['NUMBANCO'] || ''),
@@ -312,7 +313,7 @@ Deno.serve(async (req: Request) => {
           account_number: String(row['NROCONTA'] || ''),
           classification: String(row['CLASSIFICACAO'] || ''),
           check_digit: String(row['DIGITOCONTA'] || ''),
-          company_name: String(empresa),
+          company_name: String(empresa || ''),
         })
 
         if (insertError) {
@@ -333,31 +334,31 @@ Deno.serve(async (req: Request) => {
         const code = row['COD']
         const description = row['DESCRICAO']
 
-        if (!empresa || String(empresa).trim() === '') {
+        if (!allowIncomplete && (!empresa || String(empresa).trim() === '')) {
           addError(rowNum, 'A coluna EMPRESA está vazia.', row)
           continue
         }
 
-        if (!code || String(code).trim() === '') {
+        if (!allowIncomplete && (!code || String(code).trim() === '')) {
           addError(rowNum, 'A coluna COD está vazia.', row)
           continue
         }
 
-        if (!description || String(description).trim() === '') {
+        if (!allowIncomplete && (!description || String(description).trim() === '')) {
           addError(rowNum, 'A coluna DESCRICAO está vazia.', row)
           continue
         }
 
-        const orgId = orgMap.get(String(empresa).trim().toLowerCase())
-        if (!orgId) {
+        const orgId = empresa ? orgMap.get(String(empresa).trim().toLowerCase()) : null
+        if (!allowIncomplete && !orgId) {
           addError(rowNum, `A empresa "${empresa}" não foi encontrada na sua conta.`, row)
           continue
         }
 
-        const strCode = String(code).trim()
+        const strCode = String(code || '').trim()
         let parentId = null
 
-        if (strCode.includes('.')) {
+        if (strCode.includes('.') && orgId) {
           const codeParts = strCode.split('.')
           codeParts.pop()
           const parentCode = codeParts.join('.')
@@ -370,14 +371,14 @@ Deno.serve(async (req: Request) => {
             .is('deleted_at', null)
             .maybeSingle()
 
-          if (parentError) {
+          if (parentError && !allowIncomplete) {
             addError(rowNum, `Erro ao buscar centro de custo pai - ${parentError.message}`, row)
             continue
           }
 
           if (parentData) {
             parentId = parentData.id
-          } else {
+          } else if (!allowIncomplete) {
             addError(
               rowNum,
               `Centro de custo pai "${parentCode}" não encontrado para hierarquia.`,
@@ -390,12 +391,12 @@ Deno.serve(async (req: Request) => {
         const { data: existing, error: checkError } = await supabase
           .from('cost_centers')
           .select('id')
-          .eq('organization_id', orgId)
+          .eq('organization_id', orgId || '')
           .eq('code', strCode)
           .is('deleted_at', null)
           .maybeSingle()
 
-        if (checkError) {
+        if (checkError && orgId) {
           addError(rowNum, `Falha ao verificar duplicata - ${checkError.message}`, row)
           continue
         }
@@ -406,10 +407,10 @@ Deno.serve(async (req: Request) => {
         }
 
         const { error: insertError } = await supabase.from('cost_centers').insert({
-          organization_id: orgId,
+          organization_id: orgId || null,
           code: strCode,
-          description: String(description),
-          parent_id: parentId,
+          description: String(description || ''),
+          parent_id: parentId || null,
           type_tga: String(row['TIPO_TGA'] || ''),
           fixed_variable: String(row['FIXO_OU_VARIAVEL'] || ''),
           classification: String(row['CLASSIFICACAO'] || ''),
@@ -432,38 +433,38 @@ Deno.serve(async (req: Request) => {
         const name = row['NOME_CONTA']
         const accountType = row['TIPO_CONTA']
 
-        if (!empresa || String(empresa).trim() === '') {
+        if (!allowIncomplete && (!empresa || String(empresa).trim() === '')) {
           addError(rowNum, 'A coluna EMPRESA está vazia.', row)
           continue
         }
 
-        if (!code || String(code).trim() === '') {
+        if (!allowIncomplete && (!code || String(code).trim() === '')) {
           addError(rowNum, 'A coluna CODIGO_CONTA está vazia.', row)
           continue
         }
 
-        if (!name || String(name).trim() === '') {
+        if (!allowIncomplete && (!name || String(name).trim() === '')) {
           addError(rowNum, 'A coluna NOME_CONTA está vazia.', row)
           continue
         }
 
-        const orgId = orgMap.get(String(empresa).trim().toLowerCase())
-        if (!orgId) {
+        const orgId = empresa ? orgMap.get(String(empresa).trim().toLowerCase()) : null
+        if (!allowIncomplete && !orgId) {
           addError(rowNum, `A empresa "${empresa}" não foi encontrada na sua conta.`, row)
           continue
         }
 
-        const strCode = String(code).trim()
+        const strCode = String(code || '').trim()
 
         const { data: existing, error: checkError } = await supabase
           .from('chart_of_accounts')
           .select('id')
-          .eq('organization_id', orgId)
+          .eq('organization_id', orgId || '')
           .eq('account_code', strCode)
           .is('deleted_at', null)
           .maybeSingle()
 
-        if (checkError) {
+        if (checkError && orgId) {
           addError(rowNum, `Falha ao verificar duplicata - ${checkError.message}`, row)
           continue
         }
@@ -478,9 +479,9 @@ Deno.serve(async (req: Request) => {
         }
 
         const { error: insertError } = await supabase.from('chart_of_accounts').insert({
-          organization_id: orgId,
+          organization_id: orgId || null,
           account_code: strCode,
-          account_name: String(name),
+          account_name: String(name || ''),
           account_type: String(accountType || ''),
         })
 
@@ -500,39 +501,39 @@ Deno.serve(async (req: Request) => {
         const contaContabil = row['CONTA_CONTABIL']
         const tipoMapeamento = row['TIPO_MAPEAMENTO']
 
-        if (!empresa || String(empresa).trim() === '') {
+        if (!allowIncomplete && (!empresa || String(empresa).trim() === '')) {
           addError(rowNum, 'A coluna EMPRESA está vazia.', row)
           continue
         }
 
-        if (!centroCusto || String(centroCusto).trim() === '') {
+        if (!allowIncomplete && (!centroCusto || String(centroCusto).trim() === '')) {
           addError(rowNum, 'A coluna CENTRO_CUSTO está vazia.', row)
           continue
         }
 
-        if (!contaContabil || String(contaContabil).trim() === '') {
+        if (!allowIncomplete && (!contaContabil || String(contaContabil).trim() === '')) {
           addError(rowNum, 'A coluna CONTA_CONTABIL está vazia.', row)
           continue
         }
 
-        const orgId = orgMap.get(String(empresa).trim().toLowerCase())
-        if (!orgId) {
+        const orgId = empresa ? orgMap.get(String(empresa).trim().toLowerCase()) : null
+        if (!allowIncomplete && !orgId) {
           addError(rowNum, `A empresa "${empresa}" não foi encontrada na sua conta.`, row)
           continue
         }
 
-        const strCentroCusto = String(centroCusto).trim()
-        const strContaContabil = String(contaContabil).trim()
+        const strCentroCusto = String(centroCusto || '').trim()
+        const strContaContabil = String(contaContabil || '').trim()
 
         const { data: ccData, error: ccError } = await supabase
           .from('cost_centers')
           .select('id')
-          .eq('organization_id', orgId)
+          .eq('organization_id', orgId || '')
           .eq('code', strCentroCusto)
           .is('deleted_at', null)
           .maybeSingle()
 
-        if (ccError || !ccData) {
+        if (!allowIncomplete && (ccError || !ccData)) {
           addError(rowNum, `Centro de Custo "${strCentroCusto}" não encontrado.`, row)
           continue
         }
@@ -540,42 +541,44 @@ Deno.serve(async (req: Request) => {
         const { data: caData, error: caError } = await supabase
           .from('chart_of_accounts')
           .select('id')
-          .eq('organization_id', orgId)
+          .eq('organization_id', orgId || '')
           .eq('account_code', strContaContabil)
           .is('deleted_at', null)
           .maybeSingle()
 
-        if (caError || !caData) {
+        if (!allowIncomplete && (caError || !caData)) {
           addError(rowNum, `Conta Contábil "${strContaContabil}" não encontrada.`, row)
           continue
         }
 
-        const { data: existing, error: checkError } = await supabase
-          .from('account_mapping')
-          .select('id')
-          .eq('organization_id', orgId)
-          .eq('cost_center_id', ccData.id)
-          .eq('chart_account_id', caData.id)
-          .maybeSingle()
+        if (ccData && caData) {
+          const { data: existing, error: checkError } = await supabase
+            .from('account_mapping')
+            .select('id')
+            .eq('organization_id', orgId || '')
+            .eq('cost_center_id', ccData.id)
+            .eq('chart_account_id', caData.id)
+            .maybeSingle()
 
-        if (checkError) {
-          addError(rowNum, `Falha ao verificar duplicata - ${checkError.message}`, row)
-          continue
-        }
+          if (checkError) {
+            addError(rowNum, `Falha ao verificar duplicata - ${checkError.message}`, row)
+            continue
+          }
 
-        if (existing) {
-          addError(
-            rowNum,
-            `O mapeamento entre "${strCentroCusto}" e "${strContaContabil}" já existe.`,
-            row,
-          )
-          continue
+          if (existing) {
+            addError(
+              rowNum,
+              `O mapeamento entre "${strCentroCusto}" e "${strContaContabil}" já existe.`,
+              row,
+            )
+            continue
+          }
         }
 
         const { error: insertError } = await supabase.from('account_mapping').insert({
-          organization_id: orgId,
-          cost_center_id: ccData.id,
-          chart_account_id: caData.id,
+          organization_id: orgId || null,
+          cost_center_id: ccData?.id || null,
+          chart_account_id: caData?.id || null,
           mapping_type: String(tipoMapeamento || 'DE/PARA'),
         })
 
@@ -598,107 +601,114 @@ Deno.serve(async (req: Request) => {
         const contaDebito = row['CONTA_DEBITO']
         const contaCredito = row['CONTA_CREDITO']
 
-        if (!empresa || String(empresa).trim() === '') {
+        if (!allowIncomplete && (!empresa || String(empresa).trim() === '')) {
           addError(rowNum, 'A coluna EMPRESA está vazia.', row)
           continue
         }
 
-        if (!data || String(data).trim() === '') {
+        if (!allowIncomplete && (!data || String(data).trim() === '')) {
           addError(rowNum, 'A coluna DATA está vazia.', row)
           continue
         }
 
-        const parsedDate = new Date(data)
-        if (isNaN(parsedDate.getTime())) {
-          addError(rowNum, 'A coluna DATA possui formato inválido.', row)
-          continue
+        let parsedDate = new Date()
+        let formattedDate = parsedDate.toISOString().split('T')[0]
+        if (data) {
+          const parsed = new Date(data)
+          if (isNaN(parsed.getTime())) {
+            if (!allowIncomplete) {
+              addError(rowNum, 'A coluna DATA possui formato inválido.', row)
+              continue
+            }
+          } else {
+            parsedDate = parsed
+            formattedDate = parsedDate.toISOString().split('T')[0]
+          }
         }
 
-        const valorStr = String(valorRaw).replace(',', '.')
+        const valorStr = String(valorRaw || '0').replace(',', '.')
         const valor = parseFloat(valorStr)
-        if (isNaN(valor)) {
+        if (!allowIncomplete && isNaN(valor)) {
           addError(rowNum, 'A coluna VALOR possui formato numérico inválido.', row)
           continue
         }
 
-        const orgId = orgMap.get(String(empresa).trim().toLowerCase())
-        if (!orgId) {
+        const orgId = empresa ? orgMap.get(String(empresa).trim().toLowerCase()) : null
+        if (!allowIncomplete && !orgId) {
           addError(rowNum, `A empresa "${empresa}" não foi encontrada.`, row)
           continue
         }
 
-        const strCentroCusto = String(centroCusto).trim()
+        const strCentroCusto = String(centroCusto || '').trim()
         const { data: ccData, error: ccError } = await supabase
           .from('cost_centers')
           .select('id')
-          .eq('organization_id', orgId)
+          .eq('organization_id', orgId || '')
           .eq('code', strCentroCusto)
           .maybeSingle()
 
-        if (ccError || !ccData) {
+        if (!allowIncomplete && (ccError || !ccData)) {
           addError(rowNum, `Centro de Custo "${strCentroCusto}" não encontrado.`, row)
           continue
         }
 
-        const strContaDebito = String(contaDebito).trim()
+        const strContaDebito = String(contaDebito || '').trim()
         const { data: debitData, error: debitError } = await supabase
           .from('chart_of_accounts')
           .select('id')
-          .eq('organization_id', orgId)
+          .eq('organization_id', orgId || '')
           .eq('account_code', strContaDebito)
           .is('deleted_at', null)
           .maybeSingle()
 
-        if (debitError || !debitData) {
+        if (!allowIncomplete && (debitError || !debitData)) {
           addError(rowNum, `Conta Débito "${strContaDebito}" não encontrada.`, row)
           continue
         }
 
-        const strContaCredito = String(contaCredito).trim()
+        const strContaCredito = String(contaCredito || '').trim()
         const { data: creditData, error: creditError } = await supabase
           .from('chart_of_accounts')
           .select('id')
-          .eq('organization_id', orgId)
+          .eq('organization_id', orgId || '')
           .eq('account_code', strContaCredito)
           .is('deleted_at', null)
           .maybeSingle()
 
-        if (creditError || !creditData) {
+        if (!allowIncomplete && (creditError || !creditData)) {
           addError(rowNum, `Conta Crédito "${strContaCredito}" não encontrada.`, row)
           continue
         }
 
-        const formattedDate = parsedDate.toISOString().split('T')[0]
+        if (ccData && !isNaN(valor)) {
+          const { data: existing, error: checkError } = await supabase
+            .from('financial_movements')
+            .select('id')
+            .eq('organization_id', orgId || '')
+            .eq('movement_date', formattedDate)
+            .eq('amount', valor)
+            .eq('cost_center_id', ccData.id)
+            .maybeSingle()
 
-        // Validação de duplicatas por data/valor/conta(centro de custo)
-        const { data: existing, error: checkError } = await supabase
-          .from('financial_movements')
-          .select('id')
-          .eq('organization_id', orgId)
-          .eq('movement_date', formattedDate)
-          .eq('amount', valor)
-          .eq('cost_center_id', ccData.id)
-          .maybeSingle()
+          if (checkError && orgId) {
+            addError(rowNum, `Falha ao verificar duplicata - ${checkError.message}`, row)
+            continue
+          }
 
-        if (checkError) {
-          addError(rowNum, `Falha ao verificar duplicata - ${checkError.message}`, row)
-          continue
+          if (existing) {
+            addError(rowNum, `Lançamento já existe com mesma data, valor e centro de custo.`, row)
+            continue
+          }
         }
 
-        if (existing) {
-          addError(rowNum, `Lançamento já existe com mesma data, valor e centro de custo.`, row)
-          continue
-        }
-
-        // Inserir em financial_movements
         const { data: fm, error: insertError } = await supabase
           .from('financial_movements')
           .insert({
-            organization_id: orgId,
+            organization_id: orgId || null,
             movement_date: formattedDate,
-            amount: valor,
+            amount: isNaN(valor) ? 0 : valor,
             description: String(descricao || ''),
-            cost_center_id: ccData.id,
+            cost_center_id: ccData?.id || null,
             status: 'Concluído',
           })
           .select()
@@ -709,19 +719,18 @@ Deno.serve(async (req: Request) => {
           continue
         }
 
-        // Inserir em accounting_entries para manter integridade
         const { error: aeError } = await supabase.from('accounting_entries').insert({
-          organization_id: orgId,
+          organization_id: orgId || null,
           entry_date: formattedDate,
-          amount: valor,
+          amount: isNaN(valor) ? 0 : valor,
           description: String(descricao || ''),
-          debit_account_id: debitData.id,
-          credit_account_id: creditData.id,
+          debit_account_id: debitData?.id || null,
+          credit_account_id: creditData?.id || null,
           status: 'Concluído',
         })
 
         if (aeError) {
-          await supabase.from('financial_movements').delete().eq('id', fm.id)
+          if (fm) await supabase.from('financial_movements').delete().eq('id', fm.id)
           addError(rowNum, `Erro ao inserir lançamento contábil - ${aeError.message}`, row)
         } else {
           inserted++
