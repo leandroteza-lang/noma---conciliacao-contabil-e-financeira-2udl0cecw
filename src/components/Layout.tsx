@@ -28,7 +28,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { useAuth } from '@/hooks/use-auth'
 import { cn } from '@/lib/utils'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { supabase } from '@/lib/supabase/client'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
@@ -137,6 +137,42 @@ export default function Layout() {
   const [draggedItemPath, setDraggedItemPath] = useState<string | null>(null)
   const [pendingCount, setPendingCount] = useState(0)
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false)
+
+  const allowedItems = useMemo(() => {
+    return MENU_ITEMS.filter((item) => {
+      const userRole = role || 'collaborator'
+      if (userRole === 'admin') return true
+
+      const perms = Array.isArray(permissions) ? permissions : []
+      if (perms.includes('all') || perms.includes(item.id)) return true
+
+      if (item.roles && item.roles.includes(userRole)) return true
+
+      return false
+    })
+  }, [role, permissions])
+
+  const sortedItems = useMemo(() => {
+    return [...allowedItems].sort((a, b) => {
+      const safeMenuOrder = Array.isArray(menuOrder) ? menuOrder : []
+      const idxA = safeMenuOrder.indexOf(a.path)
+      const idxB = safeMenuOrder.indexOf(b.path)
+      if (idxA === -1 && idxB === -1) return 0
+      if (idxA === -1) return 1
+      if (idxB === -1) return -1
+      return idxA - idxB
+    })
+  }, [allowedItems, menuOrder])
+
+  const hasAccessToCurrentRoute = useMemo(() => {
+    const currentMenuItem = MENU_ITEMS.find(
+      (item) =>
+        location.pathname === item.path ||
+        (item.path !== '/' && location.pathname.startsWith(item.path)),
+    )
+    if (!currentMenuItem) return true
+    return allowedItems.some((item) => item.id === currentMenuItem.id)
+  }, [location.pathname, allowedItems])
 
   useEffect(() => {
     const hasAprovacoesAccess =
@@ -280,6 +316,37 @@ export default function Layout() {
     )
   }
 
+  if (!hasAccessToCurrentRoute && sortedItems.length > 0) {
+    return <Navigate to={sortedItems[0].path} replace />
+  }
+
+  if (!hasAccessToCurrentRoute && sortedItems.length === 0) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4">
+        <div className="max-w-md w-full bg-white rounded-xl shadow-sm border border-slate-200 p-8 text-center animate-in fade-in zoom-in duration-500">
+          <div className="mx-auto w-16 h-16 bg-red-50 text-red-600 rounded-full flex items-center justify-center mb-6">
+            <LogOut className="w-8 h-8" />
+          </div>
+          <h1 className="text-2xl font-bold text-slate-900 mb-2">Acesso Negado</h1>
+          <p className="text-slate-600 mb-8 leading-relaxed">
+            Você não tem permissão para acessar nenhuma página do sistema. Contate um administrador.
+          </p>
+          <button
+            onClick={async () => {
+              await signOut()
+              setTimeout(() => {
+                window.location.replace('/login')
+              }, 50)
+            }}
+            className="w-full py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium rounded-lg transition-colors"
+          >
+            Sair e voltar ao Login
+          </button>
+        </div>
+      </div>
+    )
+  }
+
   const handleLogout = async () => {
     await signOut()
     setTimeout(() => {
@@ -305,77 +372,52 @@ export default function Layout() {
           <SidebarGroup>
             <SidebarGroupContent>
               <SidebarMenu>
-                {(() => {
-                  const allowedItems = MENU_ITEMS.filter((item) => {
-                    const userRole = role || 'collaborator'
-                    if (userRole === 'admin') return true
-
-                    const perms = Array.isArray(permissions) ? permissions : []
-                    if (perms.includes('all') || perms.includes(item.id)) return true
-
-                    if (item.roles && item.roles.includes(userRole)) return true
-
-                    return false
-                  })
-
-                  // Apply custom ordering
-                  const sortedItems = [...allowedItems].sort((a, b) => {
-                    const safeMenuOrder = Array.isArray(menuOrder) ? menuOrder : []
-                    const idxA = safeMenuOrder.indexOf(a.path)
-                    const idxB = safeMenuOrder.indexOf(b.path)
-                    if (idxA === -1 && idxB === -1) return 0
-                    if (idxA === -1) return 1
-                    if (idxB === -1) return -1
-                    return idxA - idxB
-                  })
-
-                  return sortedItems.map((item, index) => {
-                    const isActive = location.pathname === item.path
-                    return (
-                      <SidebarMenuItem
-                        key={item.path}
-                        draggable
-                        onDragStart={(e) => handleDragStart(e, item.path)}
-                        onDragOver={handleDragOver}
-                        onDrop={(e) => handleDrop(e, item.path, sortedItems)}
-                        className={cn(draggedItemPath === item.path && 'opacity-50')}
+                {sortedItems.map((item) => {
+                  const isActive = location.pathname === item.path
+                  return (
+                    <SidebarMenuItem
+                      key={item.path}
+                      draggable
+                      onDragStart={(e) => handleDragStart(e, item.path)}
+                      onDragOver={handleDragOver}
+                      onDrop={(e) => handleDrop(e, item.path, sortedItems)}
+                      className={cn(draggedItemPath === item.path && 'opacity-50')}
+                    >
+                      <SidebarMenuButton
+                        asChild
+                        isActive={isActive}
+                        tooltip={item.title}
+                        size="lg"
+                        className={cn(
+                          'transition-all duration-200 group relative',
+                          isActive
+                            ? 'bg-blue-50 text-blue-700 shadow-sm hover:bg-blue-50 hover:text-blue-700'
+                            : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900',
+                        )}
                       >
-                        <SidebarMenuButton
-                          asChild
-                          isActive={isActive}
-                          tooltip={item.title}
-                          size="lg"
-                          className={cn(
-                            'transition-all duration-200 group relative',
-                            isActive
-                              ? 'bg-blue-50 text-blue-700 shadow-sm hover:bg-blue-50 hover:text-blue-700'
-                              : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900',
-                          )}
-                        >
-                          <Link to={item.path} className="flex items-center justify-between w-full">
-                            <div className="flex items-center gap-2">
-                              <item.icon
-                                className={cn(
-                                  'size-4 shrink-0',
-                                  isActive ? 'text-blue-700' : 'text-slate-400',
-                                )}
-                              />
-                              <span className="font-medium">{item.title}</span>
-                              {item.id === 'aprovacoes' && pendingCount > 0 && (
-                                <span className="ml-auto bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
-                                  {pendingCount}
-                                </span>
+                        <Link to={item.path} className="flex items-center justify-between w-full">
+                          <div className="flex items-center gap-2">
+                            <item.icon
+                              className={cn(
+                                'size-4 shrink-0',
+                                isActive ? 'text-blue-700' : 'text-slate-400',
                               )}
-                            </div>
-                            <div className="hidden group-hover:flex items-center opacity-40 hover:opacity-100 cursor-grab active:cursor-grabbing">
-                              <GripVertical className="size-4" />
-                            </div>
-                          </Link>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                    )
-                  })
-                })()}
+                            />
+                            <span className="font-medium">{item.title}</span>
+                            {item.id === 'aprovacoes' && pendingCount > 0 && (
+                              <span className="ml-auto bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
+                                {pendingCount}
+                              </span>
+                            )}
+                          </div>
+                          <div className="hidden group-hover:flex items-center opacity-40 hover:opacity-100 cursor-grab active:cursor-grabbing">
+                            <GripVertical className="size-4" />
+                          </div>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  )
+                })}
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
