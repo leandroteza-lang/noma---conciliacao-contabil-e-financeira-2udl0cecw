@@ -68,18 +68,35 @@ export default function SharedQueriesList() {
       if (userIds.length > 0) {
         const { data: usersData, error: usersError } = await supabase
           .from('cadastro_usuarios')
-          .select('user_id, name')
+          .select('user_id, name, email')
           .in('user_id', userIds)
 
         if (!usersError && usersData) {
-          usersMap = usersData.reduce((acc, u) => ({ ...acc, [u.user_id]: u.name }), {})
+          usersMap = usersData.reduce(
+            (acc, u) => ({ ...acc, [u.user_id]: u.name || u.email || 'Usuário' }),
+            {},
+          )
         }
       }
 
-      const formattedData = data?.map((q) => ({
-        ...q,
-        user_name: q.user_id ? usersMap[q.user_id] || 'Usuário Desconhecido' : 'Sistema',
-      })) as SharedQuery[]
+      const formattedData = data?.map((q) => {
+        let userName = 'Sistema'
+        if (q.user_id) {
+          userName = usersMap[q.user_id]
+          if (!userName) {
+            // Fallback seguro caso o registro em cadastro_usuarios falhe ou demore a sincronizar
+            if (q.user_id === user.id) {
+              userName = user.user_metadata?.name || user.email || 'Você'
+            } else {
+              userName = 'Autoria não identificada'
+            }
+          }
+        }
+        return {
+          ...q,
+          user_name: userName,
+        }
+      }) as SharedQuery[]
 
       setQueries(formattedData)
     } catch (err: any) {
@@ -154,7 +171,7 @@ export default function SharedQueriesList() {
               <TableHead>Criado por</TableHead>
               <TableHead className="text-center">Acessos</TableHead>
               <TableHead className="text-center">Status</TableHead>
-              <TableHead className="text-center">Controle de Acesso</TableHead>
+              <TableHead className="text-center">Configurações de Link</TableHead>
               <TableHead className="text-center w-[80px]">Ações</TableHead>
             </TableRow>
           </TableHeader>

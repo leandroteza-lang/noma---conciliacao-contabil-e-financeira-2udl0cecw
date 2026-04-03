@@ -297,7 +297,7 @@ const BotMessageActions = ({ content, prevPrompt }: { content: string; prevPromp
       </div>
 
       <Dialog open={shareDialogOpen} onOpenChange={setShareDialogOpen}>
-        <DialogContent className="sm:max-w-md z-[120]">
+        <DialogContent className="sm:max-w-md w-[95vw] mx-auto z-[120]">
           <DialogHeader>
             <DialogTitle>Compartilhar Consulta</DialogTitle>
             <DialogDescription>
@@ -306,59 +306,82 @@ const BotMessageActions = ({ content, prevPrompt }: { content: string; prevPromp
           </DialogHeader>
 
           {!generatedLink ? (
-            <div className="flex flex-col space-y-4 py-4">
-              <div className="flex items-center space-x-2">
-                <Switch id="protect-link" checked={isProtected} onCheckedChange={setIsProtected} />
-                <Label htmlFor="protect-link" className="cursor-pointer">
-                  Proteger com senha gerada automaticamente
-                </Label>
+            <div className="flex flex-col space-y-5 py-4">
+              <div className="flex items-start space-x-3">
+                <Switch
+                  id="protect-link"
+                  checked={isProtected}
+                  onCheckedChange={setIsProtected}
+                  className="mt-0.5"
+                />
+                <div className="flex flex-col gap-1">
+                  <Label htmlFor="protect-link" className="cursor-pointer font-medium leading-none">
+                    Proteger com senha
+                  </Label>
+                  {isProtected && (
+                    <p className="text-xs text-muted-foreground leading-snug">
+                      O sistema criará uma senha segura para você compartilhar separadamente. Quem
+                      tiver o link só poderá acessar com a senha.
+                    </p>
+                  )}
+                </div>
               </div>
-              {isProtected && (
-                <p className="text-sm text-muted-foreground ml-11">
-                  O sistema criará uma senha segura para você compartilhar separadamente. Quem tiver
-                  o link só poderá acessar com a senha.
-                </p>
-              )}
-              <div className="flex items-center space-x-2">
+
+              <div className="flex items-start space-x-3">
                 <Switch
                   id="notify-link"
                   checked={notifyFirstAccess}
                   onCheckedChange={setNotifyFirstAccess}
+                  className="mt-0.5"
                 />
-                <Label htmlFor="notify-link" className="cursor-pointer">
-                  Ativar notificações de acesso (sino)
-                </Label>
+                <div className="flex flex-col gap-1">
+                  <Label htmlFor="notify-link" className="cursor-pointer font-medium leading-none">
+                    Notificações de acesso
+                  </Label>
+                  {notifyFirstAccess && (
+                    <p className="text-xs text-muted-foreground leading-snug">
+                      Você será notificado quando este link for acessado pela primeira vez.
+                    </p>
+                  )}
+                </div>
               </div>
-              {notifyFirstAccess && (
-                <p className="text-sm text-muted-foreground ml-11">
-                  Você será notificado quando este link for acessado pela primeira vez.
-                </p>
-              )}
-              <div className="flex items-center space-x-2">
+
+              <div className="flex items-start space-x-3">
                 <Switch
                   id="single-view-link"
                   checked={isSingleView}
                   onCheckedChange={setIsSingleView}
+                  className="mt-0.5"
                 />
-                <Label htmlFor="single-view-link" className="cursor-pointer">
-                  Visualização Única (expira após o 1º acesso)
-                </Label>
+                <div className="flex flex-col gap-1">
+                  <Label
+                    htmlFor="single-view-link"
+                    className="cursor-pointer font-medium leading-none"
+                  >
+                    Visualização Única
+                  </Label>
+                  {isSingleView && (
+                    <p className="text-xs text-muted-foreground leading-snug">
+                      Este link será inutilizado automaticamente após o primeiro acesso.
+                    </p>
+                  )}
+                </div>
               </div>
-              {isSingleView && (
-                <p className="text-sm text-muted-foreground ml-11">
-                  Este link será inutilizado automaticamente após o primeiro acesso.
-                </p>
-              )}
             </div>
           ) : (
-            <div className="py-4 space-y-4">
+            <div className="py-4 space-y-5">
               <div className="space-y-2">
                 <Label>Link de Compartilhamento</Label>
-                <div className="flex items-center gap-2">
-                  <Input readOnly value={generatedLink} className="bg-muted" />
+                <div className="flex items-center gap-2 w-full">
+                  <Input
+                    readOnly
+                    value={generatedLink}
+                    className="bg-muted flex-1 min-w-0 font-mono text-sm"
+                  />
                   <Button
                     size="icon"
                     variant="outline"
+                    className="shrink-0"
                     onClick={() => navigator.clipboard.writeText(generatedLink)}
                   >
                     <Copy className="w-4 h-4" />
@@ -368,15 +391,16 @@ const BotMessageActions = ({ content, prevPrompt }: { content: string; prevPromp
               {isProtected && generatedPassword && (
                 <div className="space-y-2">
                   <Label>Senha de Acesso</Label>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 w-full">
                     <Input
                       readOnly
                       value={generatedPassword}
-                      className="bg-muted font-mono tracking-wider"
+                      className="bg-muted font-mono tracking-wider flex-1 min-w-0 text-sm"
                     />
                     <Button
                       size="icon"
                       variant="outline"
+                      className="shrink-0"
                       onClick={() => navigator.clipboard.writeText(generatedPassword)}
                     >
                       <Copy className="w-4 h-4" />
@@ -388,7 +412,7 @@ const BotMessageActions = ({ content, prevPrompt }: { content: string; prevPromp
                 </div>
               )}
               {isSingleView && (
-                <div className="bg-blue-500/10 text-blue-600 px-4 py-2 rounded-md font-medium text-sm mt-4 w-full text-center flex items-center justify-center gap-2">
+                <div className="bg-blue-500/10 text-blue-600 px-4 py-2 rounded-md font-medium text-sm w-full text-center flex items-center justify-center gap-2">
                   <EyeOff className="w-4 h-4" />
                   Visualização Única Ativada
                 </div>
