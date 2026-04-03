@@ -10,8 +10,8 @@ import {
   XCircle,
   List,
   Download,
-  ListPlus,
   ArrowRight,
+  GitMerge,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -283,6 +283,7 @@ export default function Import() {
     setImportResult(null)
     setWorkbook(null)
     setImportType('')
+    setColumnMapping({})
 
     try {
       if (selectedFile.name.endsWith('.csv')) {
@@ -327,6 +328,7 @@ export default function Import() {
   const handleSheetChange = (sheetName: string) => {
     setSelectedSheet(sheetName)
     setImportResult(null)
+    setColumnMapping({})
     if (workbook) {
       const parsedData = processSheetData(workbook.Sheets[sheetName])
       setRawData(parsedData)
@@ -339,38 +341,28 @@ export default function Import() {
     return Object.keys(rawData[0])
   }, [rawData])
 
-  const extraColumns = useMemo(() => {
-    if (!importType || columns.length === 0) return []
-    const config = IMPORT_TYPES[importType as keyof typeof IMPORT_TYPES]
-    return columns.filter((c) => !config.required.includes(c) && !config.optional.includes(c))
-  }, [columns, importType])
-
   useEffect(() => {
     if (importType && columns.length > 0) {
       const config = IMPORT_TYPES[importType as keyof typeof IMPORT_TYPES]
       const targetCols = [...config.required, ...config.optional]
 
-      setColumnMapping((prev) => {
-        const newMapping = { ...prev }
-        let changed = false
+      const newMapping: Record<string, string> = {}
 
-        extraColumns.forEach((extraCol) => {
-          if (!newMapping[extraCol] || newMapping[extraCol] === 'IGNORE') {
-            const normExtra = normalizeHeader(extraCol)
-            const match = targetCols.find(
-              (t) => normalizeHeader(t) === normExtra && !columns.includes(t),
-            )
-            if (match) {
-              newMapping[extraCol] = match
-              changed = true
-            }
-          }
-        })
-
-        return changed ? newMapping : prev
+      columns.forEach((col) => {
+        const normCol = normalizeHeader(col)
+        const match = targetCols.find((t) => normalizeHeader(t) === normCol)
+        if (match) {
+          newMapping[col] = match
+        } else {
+          newMapping[col] = 'IGNORE'
+        }
       })
+
+      setColumnMapping(newMapping)
+    } else {
+      setColumnMapping({})
     }
-  }, [importType, columns, extraColumns])
+  }, [importType, columns])
 
   const validationInfo = useMemo(() => {
     if (!importType || rawData.length === 0) return null
@@ -378,9 +370,9 @@ export default function Import() {
     const req = IMPORT_TYPES[importType as keyof typeof IMPORT_TYPES].required
     let valid = 0
     let invalid = 0
-    const missingColumns = req.filter(
-      (c) => !columns.includes(c) && !Object.values(columnMapping).includes(c),
-    )
+
+    const mappedTargets = Object.values(columnMapping).filter((t) => t !== 'IGNORE')
+    const missingColumns = req.filter((c) => !mappedTargets.includes(c))
 
     if (missingColumns.length > 0 && !allowIncomplete) {
       return {
@@ -397,10 +389,10 @@ export default function Import() {
     const validRecords: any[] = []
 
     rawData.forEach((row, idx) => {
-      const mappedRow = { ...row }
-      Object.entries(columnMapping).forEach(([extraCol, targetCol]) => {
+      const mappedRow: any = {}
+      Object.entries(columnMapping).forEach(([sourceCol, targetCol]) => {
         if (targetCol && targetCol !== 'IGNORE') {
-          mappedRow[targetCol] = row[extraCol]
+          mappedRow[targetCol] = row[sourceCol]
         }
       })
 
@@ -429,7 +421,7 @@ export default function Import() {
       errors,
       validRecords,
     }
-  }, [rawData, importType, columnMapping, allowIncomplete, columns])
+  }, [rawData, importType, columnMapping, allowIncomplete])
 
   const previewData = useMemo(() => {
     if (!importType || rawData.length === 0) return []
@@ -437,10 +429,10 @@ export default function Import() {
     let filtered = rawData
     if (showOnlyErrors) {
       filtered = rawData.filter((row) => {
-        const mappedRow = { ...row }
-        Object.entries(columnMapping).forEach(([extraCol, targetCol]) => {
+        const mappedRow: any = {}
+        Object.entries(columnMapping).forEach(([sourceCol, targetCol]) => {
           if (targetCol && targetCol !== 'IGNORE') {
-            mappedRow[targetCol] = row[extraCol]
+            mappedRow[targetCol] = row[sourceCol]
           }
         })
         return req.some((c) => !mappedRow[c] || String(mappedRow[c]).trim() === '')
@@ -724,47 +716,49 @@ export default function Import() {
         </Card>
       )}
 
-      {!importResult && selectedSheet && importType && extraColumns.length > 0 && (
+      {!importResult && selectedSheet && importType && columns.length > 0 && (
         <Card className="animate-fade-in border-blue-500/30">
           <CardHeader className="bg-blue-500/5 pb-4">
             <CardTitle className="flex items-center gap-2 text-blue-700 dark:text-blue-400">
-              <ListPlus className="h-5 w-5" /> Colunas Adicionais Detectadas
+              <GitMerge className="h-5 w-5" /> Mapeamento de Colunas (DE / PARA)
             </CardTitle>
             <CardDescription>
-              A planilha possui mais colunas que o padrão. Você pode mapeá-las para os campos
-              opcionais do sistema.
+              Verifique como as colunas da sua planilha estão associadas aos campos do cadastro.
+              Você pode alterar para ignorar ou escolher outro campo livremente.
             </CardDescription>
           </CardHeader>
           <CardContent className="pt-6">
             <div className="grid gap-3">
-              {extraColumns.map((col) => {
+              {columns.map((col) => {
                 const config = IMPORT_TYPES[importType as keyof typeof IMPORT_TYPES]
-                const availableTargets = [...config.required, ...config.optional].filter(
-                  (opt) =>
-                    !columns.includes(opt) &&
-                    (!Object.values(columnMapping).includes(opt) || columnMapping[col] === opt),
-                )
+                const allTargets = [...config.required, ...config.optional]
 
                 return (
                   <div
                     key={col}
-                    className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-3 rounded-lg border bg-background"
+                    className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-3 rounded-lg border bg-background hover:bg-muted/30 transition-colors"
                   >
-                    <span className="font-medium text-sm truncate max-w-[300px]" title={col}>
-                      {col}
-                    </span>
+                    <div className="flex items-center gap-2 flex-1 overflow-hidden">
+                      <FileSpreadsheet className="h-4 w-4 text-muted-foreground shrink-0" />
+                      <span className="font-medium text-sm truncate" title={col}>
+                        {col}
+                      </span>
+                    </div>
+
+                    <ArrowRight className="h-4 w-4 text-muted-foreground hidden sm:block shrink-0" />
+
                     <Select
                       value={columnMapping[col] || 'IGNORE'}
                       onValueChange={(val) => setColumnMapping((prev) => ({ ...prev, [col]: val }))}
                     >
-                      <SelectTrigger className="w-full sm:w-[300px]">
+                      <SelectTrigger className="w-full sm:w-[350px]">
                         <SelectValue placeholder="Selecione o destino..." />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="IGNORE" className="text-muted-foreground italic">
                           Ignorar coluna
                         </SelectItem>
-                        {availableTargets.map((optCol) => {
+                        {allTargets.map((optCol) => {
                           const isReq = config.required.includes(optCol)
                           return (
                             <SelectItem key={optCol} value={optCol}>
@@ -795,10 +789,9 @@ export default function Import() {
               <div className="space-y-4">
                 <Alert variant="destructive">
                   <AlertCircle className="h-4 w-4" />
-                  <AlertTitle>Estrutura Inválida</AlertTitle>
+                  <AlertTitle>Mapeamento Incompleto</AlertTitle>
                   <AlertDescription>
-                    A aba selecionada não possui todas as colunas obrigatórias para este tipo de
-                    importação.
+                    Nem todas as colunas obrigatórias para este tipo de importação foram mapeadas.
                   </AlertDescription>
                 </Alert>
 
@@ -824,7 +817,7 @@ export default function Import() {
                   </div>
                   <div className="border rounded-md p-4 bg-red-500/5">
                     <h4 className="font-semibold mb-3 flex items-center gap-2 text-sm text-red-600 dark:text-red-400">
-                      <AlertCircle className="h-4 w-4" /> Colunas Obrigatórias Ausentes
+                      <AlertCircle className="h-4 w-4" /> Campos Obrigatórios Não Mapeados
                     </h4>
                     <div className="flex flex-wrap gap-1.5">
                       {validationInfo.missingColumns.map((c) => (
@@ -879,7 +872,7 @@ export default function Import() {
                   <AlertDescription>
                     {allowIncomplete
                       ? `${validationInfo.errors.length} linhas possuem campos ausentes mas serão enviadas devido à configuração.`
-                      : `${validationInfo.invalid} linhas não possuem todas as colunas obrigatórias e não serão enviadas.`}
+                      : `${validationInfo.invalid} linhas não possuem todos os campos obrigatórios preenchidos e não serão enviadas.`}
                   </AlertDescription>
                 </Alert>
 
@@ -903,7 +896,7 @@ export default function Import() {
                             <strong>Linha {err.row}:</strong>{' '}
                             {allowIncomplete
                               ? 'Campos vazios'
-                              : 'As colunas obrigatórias a seguir estão vazias'}
+                              : 'Os campos obrigatórios a seguir estão vazios'}
                             :{' '}
                             <span className="font-medium text-foreground">
                               {err.missing.join(', ')}
@@ -939,99 +932,119 @@ export default function Import() {
                     )}
                 </div>
                 <div className="border rounded-md overflow-hidden">
-                  <Table>
-                    <TableHeader className="bg-muted/50">
-                      <TableRow>
-                        <TableHead className="w-[60px] text-center">Linha</TableHead>
-                        {columns.map((col) => {
-                          const isMapped = columnMapping[col] && columnMapping[col] !== 'IGNORE'
-                          const target = isMapped ? columnMapping[col] : col
-                          return (
-                            <TableHead key={col} className="whitespace-nowrap">
-                              <div className="flex flex-col">
-                                <span>{col}</span>
-                                {isMapped && (
-                                  <span className="text-[10px] text-primary flex items-center gap-1">
-                                    <ArrowRight className="w-3 h-3" /> {target}
-                                  </span>
-                                )}
-                              </div>
-                            </TableHead>
-                          )
-                        })}
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {previewData.length > 0 ? (
-                        previewData.map((row, idx) => {
-                          const originalIndex = rawData.indexOf(row) + 1
-                          const req = IMPORT_TYPES[importType as keyof typeof IMPORT_TYPES].required
-
-                          const mappedRow = { ...row }
-                          Object.entries(columnMapping).forEach(([extraCol, targetCol]) => {
-                            if (targetCol && targetCol !== 'IGNORE') {
-                              mappedRow[targetCol] = row[extraCol]
-                            }
-                          })
-
-                          const isInvalid = req.some(
-                            (c) =>
-                              !mappedRow[c] &&
-                              (columns.includes(c) || Object.values(columnMapping).includes(c)),
-                          )
-
-                          return (
-                            <TableRow
-                              key={originalIndex}
-                              className={
-                                isInvalid
-                                  ? 'bg-red-500/10 hover:bg-red-500/20 transition-colors'
-                                  : ''
-                              }
-                            >
-                              <TableCell className="text-center text-muted-foreground font-medium">
-                                {originalIndex}
-                              </TableCell>
-                              {columns.map((col) => {
-                                const targetCol =
-                                  columnMapping[col] && columnMapping[col] !== 'IGNORE'
-                                    ? columnMapping[col]
-                                    : col
-                                const isMissingRequired =
-                                  !mappedRow[targetCol] && req.includes(targetCol)
-
-                                return (
-                                  <TableCell
-                                    key={col}
-                                    className={isMissingRequired ? 'bg-red-500/20' : ''}
-                                  >
-                                    {isMissingRequired ? (
-                                      <Badge variant="destructive" className="text-[10px] h-5">
-                                        Vazio
-                                      </Badge>
-                                    ) : (
-                                      <span
-                                        className="truncate max-w-[150px] inline-block"
-                                        title={row[col]}
-                                      >
-                                        {row[col]}
-                                      </span>
-                                    )}
-                                  </TableCell>
-                                )
-                              })}
-                            </TableRow>
-                          )
-                        })
-                      ) : (
+                  <ScrollArea className="w-full">
+                    <Table>
+                      <TableHeader className="bg-muted/50">
                         <TableRow>
-                          <TableCell colSpan={columns.length + 1} className="h-24 text-center">
-                            Nenhum registro encontrado para a visualização atual.
-                          </TableCell>
+                          <TableHead className="w-[60px] text-center">Linha</TableHead>
+                          {columns.map((col) => {
+                            const isMapped = columnMapping[col] && columnMapping[col] !== 'IGNORE'
+                            const target = isMapped ? columnMapping[col] : col
+                            return (
+                              <TableHead
+                                key={col}
+                                className="whitespace-nowrap bg-muted/20 min-w-[150px]"
+                              >
+                                <div className="flex flex-col gap-1.5 py-2">
+                                  <span
+                                    className="text-xs text-muted-foreground font-normal truncate"
+                                    title={col}
+                                  >
+                                    Planilha: {col}
+                                  </span>
+                                  {isMapped ? (
+                                    <span className="text-sm text-primary font-semibold flex items-center gap-1">
+                                      <ArrowRight className="w-3 h-3 shrink-0" /> {target}
+                                    </span>
+                                  ) : (
+                                    <span className="text-sm text-muted-foreground/50 italic flex items-center gap-1">
+                                      <XCircle className="w-3 h-3 shrink-0" /> Ignorado
+                                    </span>
+                                  )}
+                                </div>
+                              </TableHead>
+                            )
+                          })}
                         </TableRow>
-                      )}
-                    </TableBody>
-                  </Table>
+                      </TableHeader>
+                      <TableBody>
+                        {previewData.length > 0 ? (
+                          previewData.map((row, idx) => {
+                            const originalIndex = rawData.indexOf(row) + 1
+                            const req =
+                              IMPORT_TYPES[importType as keyof typeof IMPORT_TYPES].required
+
+                            const mappedRow: any = {}
+                            Object.entries(columnMapping).forEach(([sourceCol, targetCol]) => {
+                              if (targetCol && targetCol !== 'IGNORE') {
+                                mappedRow[targetCol] = row[sourceCol]
+                              }
+                            })
+
+                            const isInvalid = req.some(
+                              (c) => !mappedRow[c] || String(mappedRow[c]).trim() === '',
+                            )
+
+                            return (
+                              <TableRow
+                                key={originalIndex}
+                                className={
+                                  isInvalid && !allowIncomplete
+                                    ? 'bg-red-500/10 hover:bg-red-500/20 transition-colors'
+                                    : ''
+                                }
+                              >
+                                <TableCell className="text-center text-muted-foreground font-medium">
+                                  {originalIndex}
+                                </TableCell>
+                                {columns.map((col) => {
+                                  const targetCol = columnMapping[col]
+                                  const isMapped = targetCol && targetCol !== 'IGNORE'
+                                  const isMissingRequired =
+                                    isMapped &&
+                                    (!mappedRow[targetCol] ||
+                                      String(mappedRow[targetCol]).trim() === '') &&
+                                    req.includes(targetCol)
+
+                                  return (
+                                    <TableCell
+                                      key={col}
+                                      className={
+                                        isMissingRequired && !allowIncomplete
+                                          ? 'bg-red-500/20'
+                                          : !isMapped
+                                            ? 'text-muted-foreground/40 bg-muted/10'
+                                            : ''
+                                      }
+                                    >
+                                      {isMissingRequired && !allowIncomplete ? (
+                                        <Badge variant="destructive" className="text-[10px] h-5">
+                                          Vazio
+                                        </Badge>
+                                      ) : (
+                                        <span
+                                          className="truncate max-w-[200px] inline-block"
+                                          title={row[col]}
+                                        >
+                                          {row[col] || '-'}
+                                        </span>
+                                      )}
+                                    </TableCell>
+                                  )
+                                })}
+                              </TableRow>
+                            )
+                          })
+                        ) : (
+                          <TableRow>
+                            <TableCell colSpan={columns.length + 1} className="h-24 text-center">
+                              Nenhum registro encontrado para a visualização atual.
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </TableBody>
+                    </Table>
+                  </ScrollArea>
                 </div>
               </div>
             )}
@@ -1046,13 +1059,14 @@ export default function Import() {
                 <Progress value={importProgress} className="h-2" />
               </div>
             ) : (
-              <div className="flex justify-between items-center w-full">
+              <div className="flex flex-col sm:flex-row justify-between items-center gap-4 w-full">
                 <p className="text-sm text-muted-foreground">
                   Os dados válidos serão processados remotamente.
                 </p>
                 <Button
                   onClick={confirmImport}
                   disabled={validationInfo.valid === 0 || validationInfo.missingColumns.length > 0}
+                  className="w-full sm:w-auto"
                 >
                   <CheckCircle2 className="h-4 w-4 mr-2" />
                   Confirmar e Processar
@@ -1078,7 +1092,7 @@ export default function Import() {
             <div className="grid grid-cols-2 gap-4 bg-background border rounded-lg p-6 shadow-sm">
               <div className="flex flex-col items-center gap-1">
                 <span className="text-4xl font-bold text-green-600">{importResult.inserted}</span>
-                <span className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
+                <span className="text-sm font-medium text-muted-foreground uppercase tracking-wider text-center">
                   Inseridos com Sucesso
                 </span>
               </div>
@@ -1088,7 +1102,7 @@ export default function Import() {
                 >
                   {importResult.rejected}
                 </span>
-                <span className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
+                <span className="text-sm font-medium text-muted-foreground uppercase tracking-wider text-center">
                   Rejeitados/Duplicados
                 </span>
               </div>
@@ -1096,7 +1110,7 @@ export default function Import() {
 
             {importResult.errors.length > 0 && (
               <div className="mt-6 space-y-4">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <h4 className="font-semibold text-red-600 flex items-center gap-2">
                     <XCircle className="h-4 w-4" /> Relatório de Erros ({importResult.errors.length}
                     )
@@ -1105,7 +1119,7 @@ export default function Import() {
                     variant="outline"
                     size="sm"
                     onClick={downloadErrors}
-                    className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                    className="text-red-600 hover:text-red-700 hover:bg-red-50 w-full sm:w-auto"
                   >
                     <Download className="h-4 w-4 mr-2" />
                     Baixar Erros (CSV)
@@ -1115,8 +1129,8 @@ export default function Import() {
                   <ul className="space-y-2 text-sm">
                     {importResult.errors.map((err, i) => (
                       <li key={i} className="text-muted-foreground flex items-start gap-2">
-                        <span className="min-w-1.5 h-1.5 rounded-full bg-red-500 mt-1.5" />
-                        <span>
+                        <span className="min-w-1.5 h-1.5 rounded-full bg-red-500 mt-1.5 shrink-0" />
+                        <span className="break-words">
                           <strong>Linha {err.row}:</strong> {err.error}
                         </span>
                       </li>
@@ -1126,11 +1140,11 @@ export default function Import() {
               </div>
             )}
           </CardContent>
-          <CardFooter className="flex justify-center gap-4 bg-muted/10 p-6 border-t">
-            <Button variant="outline" onClick={resetForm}>
+          <CardFooter className="flex flex-col sm:flex-row justify-center gap-4 bg-muted/10 p-6 border-t">
+            <Button variant="outline" onClick={resetForm} className="w-full sm:w-auto">
               Importar Novo Arquivo
             </Button>
-            <Button asChild>
+            <Button asChild className="w-full sm:w-auto">
               <Link
                 to={
                   importType === 'COST_CENTERS'
