@@ -1,57 +1,73 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 
-type Theme = 'dark' | 'light' | 'system'
+type ThemeMode = 'dark' | 'light' | 'system'
+type ColorTheme = 'default' | 'ocean' | 'emerald' | 'midnight'
 
 type ThemeProviderProps = {
   children: React.ReactNode
-  defaultTheme?: Theme
+  defaultMode?: ThemeMode
+  defaultColorTheme?: ColorTheme
   storageKey?: string
 }
 
 type ThemeProviderState = {
-  theme: Theme
-  setTheme: (theme: Theme) => void
+  mode: ThemeMode
+  setMode: (mode: ThemeMode) => void
+  colorTheme: ColorTheme
+  setColorTheme: (theme: ColorTheme) => void
 }
 
 const initialState: ThemeProviderState = {
-  theme: 'system',
-  setTheme: () => null,
+  mode: 'system',
+  setMode: () => null,
+  colorTheme: 'default',
+  setColorTheme: () => null,
 }
 
 const ThemeProviderContext = createContext<ThemeProviderState>(initialState)
 
 export function ThemeProvider({
   children,
-  defaultTheme = 'system',
-  storageKey = 'vite-ui-theme',
+  defaultMode = 'system',
+  defaultColorTheme = 'default',
+  storageKey = 'gc-theme',
   ...props
 }: ThemeProviderProps) {
-  const [theme, setTheme] = useState<Theme>(
-    () => (localStorage.getItem(storageKey) as Theme) || defaultTheme,
+  const [mode, setMode] = useState<ThemeMode>(
+    () => (localStorage.getItem(`${storageKey}-mode`) as ThemeMode) || defaultMode,
+  )
+  const [colorTheme, setColorTheme] = useState<ColorTheme>(
+    () => (localStorage.getItem(`${storageKey}-color`) as ColorTheme) || defaultColorTheme,
   )
 
   useEffect(() => {
     const root = window.document.documentElement
 
     root.classList.remove('light', 'dark')
+    root.classList.remove('theme-default', 'theme-ocean', 'theme-emerald', 'theme-midnight')
 
-    if (theme === 'system') {
+    if (mode === 'system') {
       const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches
         ? 'dark'
         : 'light'
-
       root.classList.add(systemTheme)
-      return
+    } else {
+      root.classList.add(mode)
     }
 
-    root.classList.add(theme)
-  }, [theme])
+    root.classList.add(`theme-${colorTheme}`)
+  }, [mode, colorTheme])
 
   const value = {
-    theme,
-    setTheme: (theme: Theme) => {
-      localStorage.setItem(storageKey, theme)
-      setTheme(theme)
+    mode,
+    setMode: (newMode: ThemeMode) => {
+      localStorage.setItem(`${storageKey}-mode`, newMode)
+      setMode(newMode)
+    },
+    colorTheme,
+    setColorTheme: (newTheme: ColorTheme) => {
+      localStorage.setItem(`${storageKey}-color`, newTheme)
+      setColorTheme(newTheme)
     },
   }
 
@@ -64,8 +80,6 @@ export function ThemeProvider({
 
 export const useTheme = () => {
   const context = useContext(ThemeProviderContext)
-
   if (context === undefined) throw new Error('useTheme must be used within a ThemeProvider')
-
   return context
 }

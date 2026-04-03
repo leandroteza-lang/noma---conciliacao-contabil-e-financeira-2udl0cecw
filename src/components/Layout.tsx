@@ -33,6 +33,7 @@ import {
 import { useAuth } from '@/hooks/use-auth'
 import { cn } from '@/lib/utils'
 import { useState, useEffect, useMemo } from 'react'
+import { useTheme } from '@/components/ThemeProvider'
 import { supabase } from '@/lib/supabase/client'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
@@ -163,8 +164,16 @@ export const MENU_ITEMS: MenuItem[] = [
 
 export default function Layout() {
   const { user, loading, signOut, role, permissions, menuOrder, setMenuOrder, profile } = useAuth()
+  const { setMode, setColorTheme } = useTheme()
   const navigate = useNavigate()
   const location = useLocation()
+
+  useEffect(() => {
+    if (profile) {
+      if (profile.theme_mode) setMode(profile.theme_mode as any)
+      if (profile.color_theme) setColorTheme(profile.color_theme as any)
+    }
+  }, [profile?.theme_mode, profile?.color_theme])
 
   const [draggedItemPath, setDraggedItemPath] = useState<string | null>(null)
   const [pendingCount, setPendingCount] = useState(0)

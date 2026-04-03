@@ -25,7 +25,7 @@ import { AuthProvider } from './hooks/use-auth'
 import { ThemeProvider } from './components/ThemeProvider'
 
 const App = () => (
-  <ThemeProvider defaultTheme="system" storageKey="gc-theme">
+  <ThemeProvider defaultMode="system" defaultColorTheme="default" storageKey="gc-theme">
     <BrowserRouter future={{ v7_startTransition: false, v7_relativeSplatPath: false }}>
       <AuthProvider>
         <TooltipProvider>
