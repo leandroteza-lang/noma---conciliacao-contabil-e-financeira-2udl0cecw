@@ -1,5 +1,5 @@
-import { Trash2, Building } from 'lucide-react'
-import { useState, useRef, useEffect } from 'react'
+import { Trash2, Building, ArrowUpDown, Download, FileText, FileSpreadsheet } from 'lucide-react'
+import { useState, useRef, useEffect, useMemo } from 'react'
 import {
   Table,
   TableBody,
@@ -12,8 +12,17 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
+import { Checkbox } from '@/components/ui/checkbox'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { Account, Organization } from '@/types'
 import { cn } from '@/lib/utils'
+import { useToast } from '@/hooks/use-toast'
+import { supabase } from '@/lib/supabase/client'
 
 interface Props {
   accounts: Account[]
@@ -132,6 +141,121 @@ function EditableCell({
 
 export function AccountList({ accounts, organizations, onDelete, onUpdateInline }: Props) {
   const [editing, setEditing] = useState<{ id: string; field: keyof Account } | null>(null)
+  const [selectedIds, setSelectedIds] = useState<string[]>([])
+  const [sortConfig, setSortConfig] = useState<{
+    key: keyof Account
+    direction: 'asc' | 'desc'
+  } | null>(null)
+  const { toast } = useToast()
+
+  const handleSort = (key: keyof Account) => {
+    let direction: 'asc' | 'desc' = 'asc'
+    if (sortConfig && sortConfig.key === key && sortConfig.direction === 'asc') direction = 'desc'
+    setSortConfig({ key, direction })
+  }
+
+  const sortedAccounts = useMemo(() => {
+    let sortable = [...accounts]
+    if (sortConfig !== null) {
+      sortable.sort((a, b) => {
+        let aVal = a[sortConfig.key] as string
+        let bVal = b[sortConfig.key] as string
+
+        if (sortConfig.key === 'organization_id') {
+          aVal = organizations.find((o: any) => o.id === a.organization_id)?.name || ''
+          bVal = organizations.find((o: any) => o.id === b.organization_id)?.name || ''
+        }
+
+        if (!aVal) aVal = ''
+        if (!bVal) bVal = ''
+
+        if (aVal.toLowerCase() < bVal.toLowerCase()) return sortConfig.direction === 'asc' ? -1 : 1
+        if (aVal.toLowerCase() > bVal.toLowerCase()) return sortConfig.direction === 'asc' ? 1 : -1
+        return 0
+      })
+    }
+    return sortable
+  }, [accounts, sortConfig, organizations])
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.length === 0) return
+    if (!confirm(`Deseja solicitar a exclusão de ${selectedIds.length} conta(s)?`)) return
+
+    const { error } = await supabase
+      .from('bank_accounts')
+      .update({
+        pending_deletion: true,
+        deletion_requested_at: new Date().toISOString(),
+      })
+      .in('id', selectedIds)
+
+    if (error) {
+      toast({ title: 'Erro', description: error.message, variant: 'destructive' })
+    } else {
+      toast({ title: 'Sucesso', description: 'Exclusão solicitada com sucesso.' })
+      setSelectedIds([])
+    }
+  }
+
+  const handleExport = async (formatType: 'pdf' | 'excel' | 'browser') => {
+    try {
+      toast({ title: 'Aguarde', description: 'Gerando relatório...' })
+      const session = await supabase.auth.getSession()
+      const token = session.data.session?.access_token
+
+      const payload = {
+        format: formatType === 'browser' ? 'pdf' : formatType,
+        data: sortedAccounts.map((acc) => ({
+          Empresa: organizations.find((o: any) => o.id === acc.organization_id)?.name || '-',
+          'Conta Contábil': acc.contaContabil || '-',
+          Descrição: acc.descricao || '-',
+          Banco: acc.banco || '-',
+          Agência: acc.agencia || '-',
+          Número: acc.numeroConta || '-',
+          Classificação: acc.classificacao || '-',
+        })),
+      }
+
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/export-bank-accounts`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify(payload),
+        },
+      )
+      if (!res.ok) throw new Error('Falha ao exportar')
+      const result = await res.json()
+
+      if (formatType === 'excel') {
+        const binaryString = atob(result.excel)
+        const bytes = new Uint8Array(binaryString.length)
+        for (let i = 0; i < binaryString.length; i++) bytes[i] = binaryString.charCodeAt(i)
+        const blob = new Blob([bytes], {
+          type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        })
+        const link = document.createElement('a')
+        link.href = URL.createObjectURL(blob)
+        link.download = 'contas.xlsx'
+        link.click()
+      } else if (formatType === 'browser') {
+        const win = window.open()
+        if (win) {
+          win.document.write(
+            `<iframe src="${result.pdf}" frameborder="0" style="border:0; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100%;" allowfullscreen></iframe>`,
+          )
+        }
+      } else {
+        const link = document.createElement('a')
+        link.href = result.pdf
+        link.download = 'contas.pdf'
+        link.click()
+      }
+      toast({ title: 'Sucesso', description: 'Relatório gerado com sucesso!' })
+    } catch (err: any) {
+      toast({ title: 'Erro', description: err.message, variant: 'destructive' })
+    }
+  }
 
   const handleEditCommit = async (id: string, field: keyof Account, val: string) => {
     if (!val && field !== 'organization_id') {
@@ -156,23 +280,131 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
 
   return (
     <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
+        <div>
+          {selectedIds.length > 0 && (
+            <div className="bg-slate-50 border border-slate-200 rounded-md p-2 px-3 flex items-center gap-4 animate-in fade-in">
+              <span className="text-sm font-medium text-slate-700">
+                {selectedIds.length} item(ns) selecionado(s)
+              </span>
+              <Button variant="destructive" size="sm" onClick={handleBulkDelete} className="gap-2">
+                <Trash2 className="h-4 w-4" /> Excluir Selecionados
+              </Button>
+            </div>
+          )}
+        </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" className="gap-2">
+              <Download className="h-4 w-4" /> Exportar
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem
+              onClick={() => handleExport('browser')}
+              className="cursor-pointer gap-2"
+            >
+              <FileText className="h-4 w-4" /> Abrir no Browser
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleExport('pdf')} className="cursor-pointer gap-2">
+              <FileText className="h-4 w-4" /> PDF
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => handleExport('excel')}
+              className="cursor-pointer gap-2"
+            >
+              <FileSpreadsheet className="h-4 w-4" /> Excel (XLSX)
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+
       <div className="hidden lg:block rounded-xl border bg-white shadow-sm overflow-hidden">
         <Table>
           <TableHeader>
             <TableRow className="bg-slate-50/80">
-              <TableHead className="w-[180px]">Empresa</TableHead>
-              <TableHead>Conta Contábil</TableHead>
-              <TableHead>Descrição</TableHead>
-              <TableHead>Banco</TableHead>
-              <TableHead>Agência</TableHead>
-              <TableHead>Número Conta</TableHead>
-              <TableHead>Classificação</TableHead>
+              <TableHead className="w-12 text-center">
+                <Checkbox
+                  checked={
+                    sortedAccounts.length > 0 && selectedIds.length === sortedAccounts.length
+                  }
+                  onCheckedChange={(checked) => {
+                    if (checked) setSelectedIds(sortedAccounts.map((a) => a.id))
+                    else setSelectedIds([])
+                  }}
+                />
+              </TableHead>
+              <TableHead
+                className="w-[180px] cursor-pointer hover:bg-slate-100"
+                onClick={() => handleSort('organization_id')}
+              >
+                <div className="flex items-center gap-2">
+                  Empresa <ArrowUpDown className="h-3 w-3 text-slate-400" />
+                </div>
+              </TableHead>
+              <TableHead
+                className="cursor-pointer hover:bg-slate-100"
+                onClick={() => handleSort('contaContabil')}
+              >
+                <div className="flex items-center gap-2">
+                  Conta Contábil <ArrowUpDown className="h-3 w-3 text-slate-400" />
+                </div>
+              </TableHead>
+              <TableHead
+                className="cursor-pointer hover:bg-slate-100"
+                onClick={() => handleSort('descricao')}
+              >
+                <div className="flex items-center gap-2">
+                  Descrição <ArrowUpDown className="h-3 w-3 text-slate-400" />
+                </div>
+              </TableHead>
+              <TableHead
+                className="cursor-pointer hover:bg-slate-100"
+                onClick={() => handleSort('banco')}
+              >
+                <div className="flex items-center gap-2">
+                  Banco <ArrowUpDown className="h-3 w-3 text-slate-400" />
+                </div>
+              </TableHead>
+              <TableHead
+                className="cursor-pointer hover:bg-slate-100"
+                onClick={() => handleSort('agencia')}
+              >
+                <div className="flex items-center gap-2">
+                  Agência <ArrowUpDown className="h-3 w-3 text-slate-400" />
+                </div>
+              </TableHead>
+              <TableHead
+                className="cursor-pointer hover:bg-slate-100"
+                onClick={() => handleSort('numeroConta')}
+              >
+                <div className="flex items-center gap-2">
+                  Número Conta <ArrowUpDown className="h-3 w-3 text-slate-400" />
+                </div>
+              </TableHead>
+              <TableHead
+                className="cursor-pointer hover:bg-slate-100"
+                onClick={() => handleSort('classificacao')}
+              >
+                <div className="flex items-center gap-2">
+                  Classificação <ArrowUpDown className="h-3 w-3 text-slate-400" />
+                </div>
+              </TableHead>
               <TableHead className="text-right">Ações</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {accounts.map((acc) => (
+            {sortedAccounts.map((acc) => (
               <TableRow key={acc.id} className="group hover:bg-slate-50/50">
+                <TableCell className="text-center">
+                  <Checkbox
+                    checked={selectedIds.includes(acc.id)}
+                    onCheckedChange={(checked) => {
+                      if (checked) setSelectedIds((prev) => [...prev, acc.id])
+                      else setSelectedIds((prev) => prev.filter((id) => id !== acc.id))
+                    }}
+                  />
+                </TableCell>
                 {(
                   [
                     'organization_id',
@@ -220,7 +452,7 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:hidden">
-        {accounts.map((acc) => {
+        {sortedAccounts.map((acc) => {
           const org = organizations.find((o) => o.id === acc.organization_id)
           const theme = getTheme(org?.name)
           return (

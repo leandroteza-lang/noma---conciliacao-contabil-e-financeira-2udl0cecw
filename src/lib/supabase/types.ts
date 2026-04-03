@@ -958,31 +958,31 @@ export const Constants = {
 // --- ROW LEVEL SECURITY POLICIES ---
 // Table: account_mapping
 //   Policy "org_account_mapping_delete" (DELETE, PERMISSIVE) roles={authenticated}
-//     USING: (organization_id IN ( SELECT organizations.id    FROM organizations   WHERE (organizations.user_id = auth.uid())))
+//     USING: ((organization_id IN ( SELECT organizations.id    FROM organizations   WHERE (organizations.user_id = auth.uid()))) OR (organization_id IN ( SELECT cuc.organization_id    FROM (cadastro_usuarios_companies cuc      JOIN cadastro_usuarios cu ON ((cuc.usuario_id = cu.id)))   WHERE ((cu.email)::text = (auth.jwt() ->> 'email'::text)))))
 //   Policy "org_account_mapping_insert" (INSERT, PERMISSIVE) roles={authenticated}
-//     WITH CHECK: (organization_id IN ( SELECT organizations.id    FROM organizations   WHERE (organizations.user_id = auth.uid())))
+//     WITH CHECK: ((organization_id IN ( SELECT organizations.id    FROM organizations   WHERE (organizations.user_id = auth.uid()))) OR (organization_id IN ( SELECT cuc.organization_id    FROM (cadastro_usuarios_companies cuc      JOIN cadastro_usuarios cu ON ((cuc.usuario_id = cu.id)))   WHERE ((cu.email)::text = (auth.jwt() ->> 'email'::text)))))
 //   Policy "org_account_mapping_select" (SELECT, PERMISSIVE) roles={authenticated}
-//     USING: (organization_id IN ( SELECT organizations.id    FROM organizations   WHERE (organizations.user_id = auth.uid())))
+//     USING: ((organization_id IN ( SELECT organizations.id    FROM organizations   WHERE (organizations.user_id = auth.uid()))) OR (organization_id IN ( SELECT cuc.organization_id    FROM (cadastro_usuarios_companies cuc      JOIN cadastro_usuarios cu ON ((cuc.usuario_id = cu.id)))   WHERE ((cu.email)::text = (auth.jwt() ->> 'email'::text)))))
 //   Policy "org_account_mapping_update" (UPDATE, PERMISSIVE) roles={authenticated}
-//     USING: (organization_id IN ( SELECT organizations.id    FROM organizations   WHERE (organizations.user_id = auth.uid())))
+//     USING: ((organization_id IN ( SELECT organizations.id    FROM organizations   WHERE (organizations.user_id = auth.uid()))) OR (organization_id IN ( SELECT cuc.organization_id    FROM (cadastro_usuarios_companies cuc      JOIN cadastro_usuarios cu ON ((cuc.usuario_id = cu.id)))   WHERE ((cu.email)::text = (auth.jwt() ->> 'email'::text)))))
 // Table: accounting_entries
 //   Policy "org_accounting_entries_delete" (DELETE, PERMISSIVE) roles={authenticated}
-//     USING: (organization_id IN ( SELECT organizations.id    FROM organizations   WHERE (organizations.user_id = auth.uid())))
+//     USING: ((organization_id IN ( SELECT organizations.id    FROM organizations   WHERE (organizations.user_id = auth.uid()))) OR (organization_id IN ( SELECT cuc.organization_id    FROM (cadastro_usuarios_companies cuc      JOIN cadastro_usuarios cu ON ((cuc.usuario_id = cu.id)))   WHERE ((cu.email)::text = (auth.jwt() ->> 'email'::text)))))
 //   Policy "org_accounting_entries_insert" (INSERT, PERMISSIVE) roles={authenticated}
-//     WITH CHECK: (organization_id IN ( SELECT organizations.id    FROM organizations   WHERE (organizations.user_id = auth.uid())))
+//     WITH CHECK: ((organization_id IN ( SELECT organizations.id    FROM organizations   WHERE (organizations.user_id = auth.uid()))) OR (organization_id IN ( SELECT cuc.organization_id    FROM (cadastro_usuarios_companies cuc      JOIN cadastro_usuarios cu ON ((cuc.usuario_id = cu.id)))   WHERE ((cu.email)::text = (auth.jwt() ->> 'email'::text)))))
 //   Policy "org_accounting_entries_select" (SELECT, PERMISSIVE) roles={authenticated}
-//     USING: (organization_id IN ( SELECT organizations.id    FROM organizations   WHERE (organizations.user_id = auth.uid())))
+//     USING: ((organization_id IN ( SELECT organizations.id    FROM organizations   WHERE (organizations.user_id = auth.uid()))) OR (organization_id IN ( SELECT cuc.organization_id    FROM (cadastro_usuarios_companies cuc      JOIN cadastro_usuarios cu ON ((cuc.usuario_id = cu.id)))   WHERE ((cu.email)::text = (auth.jwt() ->> 'email'::text)))))
 //   Policy "org_accounting_entries_update" (UPDATE, PERMISSIVE) roles={authenticated}
-//     USING: (organization_id IN ( SELECT organizations.id    FROM organizations   WHERE (organizations.user_id = auth.uid())))
+//     USING: ((organization_id IN ( SELECT organizations.id    FROM organizations   WHERE (organizations.user_id = auth.uid()))) OR (organization_id IN ( SELECT cuc.organization_id    FROM (cadastro_usuarios_companies cuc      JOIN cadastro_usuarios cu ON ((cuc.usuario_id = cu.id)))   WHERE ((cu.email)::text = (auth.jwt() ->> 'email'::text)))))
 // Table: bank_accounts
 //   Policy "org_bank_accounts_delete" (DELETE, PERMISSIVE) roles={authenticated}
-//     USING: (organization_id IN ( SELECT organizations.id    FROM organizations   WHERE (organizations.user_id = auth.uid())))
+//     USING: ((organization_id IN ( SELECT organizations.id    FROM organizations   WHERE (organizations.user_id = auth.uid()))) OR (organization_id IN ( SELECT cuc.organization_id    FROM (cadastro_usuarios_companies cuc      JOIN cadastro_usuarios cu ON ((cuc.usuario_id = cu.id)))   WHERE ((cu.email)::text = (auth.jwt() ->> 'email'::text)))))
 //   Policy "org_bank_accounts_insert" (INSERT, PERMISSIVE) roles={authenticated}
-//     WITH CHECK: (organization_id IN ( SELECT organizations.id    FROM organizations   WHERE (organizations.user_id = auth.uid())))
+//     WITH CHECK: ((organization_id IN ( SELECT organizations.id    FROM organizations   WHERE (organizations.user_id = auth.uid()))) OR (organization_id IN ( SELECT cuc.organization_id    FROM (cadastro_usuarios_companies cuc      JOIN cadastro_usuarios cu ON ((cuc.usuario_id = cu.id)))   WHERE ((cu.email)::text = (auth.jwt() ->> 'email'::text)))))
 //   Policy "org_bank_accounts_select" (SELECT, PERMISSIVE) roles={authenticated}
-//     USING: (organization_id IN ( SELECT organizations.id    FROM organizations   WHERE (organizations.user_id = auth.uid())))
+//     USING: ((organization_id IN ( SELECT organizations.id    FROM organizations   WHERE (organizations.user_id = auth.uid()))) OR (organization_id IN ( SELECT cuc.organization_id    FROM (cadastro_usuarios_companies cuc      JOIN cadastro_usuarios cu ON ((cuc.usuario_id = cu.id)))   WHERE ((cu.email)::text = (auth.jwt() ->> 'email'::text)))))
 //   Policy "org_bank_accounts_update" (UPDATE, PERMISSIVE) roles={authenticated}
-//     USING: (organization_id IN ( SELECT organizations.id    FROM organizations   WHERE (organizations.user_id = auth.uid())))
+//     USING: ((organization_id IN ( SELECT organizations.id    FROM organizations   WHERE (organizations.user_id = auth.uid()))) OR (organization_id IN ( SELECT cuc.organization_id    FROM (cadastro_usuarios_companies cuc      JOIN cadastro_usuarios cu ON ((cuc.usuario_id = cu.id)))   WHERE ((cu.email)::text = (auth.jwt() ->> 'email'::text)))))
 // Table: cadastro_usuarios
 //   Policy "auth_users_delete" (DELETE, PERMISSIVE) roles={authenticated}
 //     USING: true
@@ -1005,22 +1005,22 @@ export const Constants = {
 //     WITH CHECK: true
 // Table: chart_of_accounts
 //   Policy "org_chart_of_accounts_delete" (DELETE, PERMISSIVE) roles={authenticated}
-//     USING: (organization_id IN ( SELECT organizations.id    FROM organizations   WHERE (organizations.user_id = auth.uid())))
+//     USING: ((organization_id IN ( SELECT organizations.id    FROM organizations   WHERE (organizations.user_id = auth.uid()))) OR (organization_id IN ( SELECT cuc.organization_id    FROM (cadastro_usuarios_companies cuc      JOIN cadastro_usuarios cu ON ((cuc.usuario_id = cu.id)))   WHERE ((cu.email)::text = (auth.jwt() ->> 'email'::text)))))
 //   Policy "org_chart_of_accounts_insert" (INSERT, PERMISSIVE) roles={authenticated}
-//     WITH CHECK: (organization_id IN ( SELECT organizations.id    FROM organizations   WHERE (organizations.user_id = auth.uid())))
+//     WITH CHECK: ((organization_id IN ( SELECT organizations.id    FROM organizations   WHERE (organizations.user_id = auth.uid()))) OR (organization_id IN ( SELECT cuc.organization_id    FROM (cadastro_usuarios_companies cuc      JOIN cadastro_usuarios cu ON ((cuc.usuario_id = cu.id)))   WHERE ((cu.email)::text = (auth.jwt() ->> 'email'::text)))))
 //   Policy "org_chart_of_accounts_select" (SELECT, PERMISSIVE) roles={authenticated}
-//     USING: (organization_id IN ( SELECT organizations.id    FROM organizations   WHERE (organizations.user_id = auth.uid())))
+//     USING: ((organization_id IN ( SELECT organizations.id    FROM organizations   WHERE (organizations.user_id = auth.uid()))) OR (organization_id IN ( SELECT cuc.organization_id    FROM (cadastro_usuarios_companies cuc      JOIN cadastro_usuarios cu ON ((cuc.usuario_id = cu.id)))   WHERE ((cu.email)::text = (auth.jwt() ->> 'email'::text)))))
 //   Policy "org_chart_of_accounts_update" (UPDATE, PERMISSIVE) roles={authenticated}
-//     USING: (organization_id IN ( SELECT organizations.id    FROM organizations   WHERE (organizations.user_id = auth.uid())))
+//     USING: ((organization_id IN ( SELECT organizations.id    FROM organizations   WHERE (organizations.user_id = auth.uid()))) OR (organization_id IN ( SELECT cuc.organization_id    FROM (cadastro_usuarios_companies cuc      JOIN cadastro_usuarios cu ON ((cuc.usuario_id = cu.id)))   WHERE ((cu.email)::text = (auth.jwt() ->> 'email'::text)))))
 // Table: cost_centers
 //   Policy "org_cost_centers_delete" (DELETE, PERMISSIVE) roles={authenticated}
-//     USING: (organization_id IN ( SELECT organizations.id    FROM organizations   WHERE (organizations.user_id = auth.uid())))
+//     USING: ((organization_id IN ( SELECT organizations.id    FROM organizations   WHERE (organizations.user_id = auth.uid()))) OR (organization_id IN ( SELECT cuc.organization_id    FROM (cadastro_usuarios_companies cuc      JOIN cadastro_usuarios cu ON ((cuc.usuario_id = cu.id)))   WHERE ((cu.email)::text = (auth.jwt() ->> 'email'::text)))))
 //   Policy "org_cost_centers_insert" (INSERT, PERMISSIVE) roles={authenticated}
-//     WITH CHECK: (organization_id IN ( SELECT organizations.id    FROM organizations   WHERE (organizations.user_id = auth.uid())))
+//     WITH CHECK: ((organization_id IN ( SELECT organizations.id    FROM organizations   WHERE (organizations.user_id = auth.uid()))) OR (organization_id IN ( SELECT cuc.organization_id    FROM (cadastro_usuarios_companies cuc      JOIN cadastro_usuarios cu ON ((cuc.usuario_id = cu.id)))   WHERE ((cu.email)::text = (auth.jwt() ->> 'email'::text)))))
 //   Policy "org_cost_centers_select" (SELECT, PERMISSIVE) roles={authenticated}
-//     USING: (organization_id IN ( SELECT organizations.id    FROM organizations   WHERE (organizations.user_id = auth.uid())))
+//     USING: ((organization_id IN ( SELECT organizations.id    FROM organizations   WHERE (organizations.user_id = auth.uid()))) OR (organization_id IN ( SELECT cuc.organization_id    FROM (cadastro_usuarios_companies cuc      JOIN cadastro_usuarios cu ON ((cuc.usuario_id = cu.id)))   WHERE ((cu.email)::text = (auth.jwt() ->> 'email'::text)))))
 //   Policy "org_cost_centers_update" (UPDATE, PERMISSIVE) roles={authenticated}
-//     USING: (organization_id IN ( SELECT organizations.id    FROM organizations   WHERE (organizations.user_id = auth.uid())))
+//     USING: ((organization_id IN ( SELECT organizations.id    FROM organizations   WHERE (organizations.user_id = auth.uid()))) OR (organization_id IN ( SELECT cuc.organization_id    FROM (cadastro_usuarios_companies cuc      JOIN cadastro_usuarios cu ON ((cuc.usuario_id = cu.id)))   WHERE ((cu.email)::text = (auth.jwt() ->> 'email'::text)))))
 // Table: departments
 //   Policy "user_departments_delete" (DELETE, PERMISSIVE) roles={authenticated}
 //     USING: (user_id = auth.uid())
@@ -1032,13 +1032,13 @@ export const Constants = {
 //     USING: (user_id = auth.uid())
 // Table: financial_movements
 //   Policy "org_financial_movements_delete" (DELETE, PERMISSIVE) roles={authenticated}
-//     USING: (organization_id IN ( SELECT organizations.id    FROM organizations   WHERE (organizations.user_id = auth.uid())))
+//     USING: ((organization_id IN ( SELECT organizations.id    FROM organizations   WHERE (organizations.user_id = auth.uid()))) OR (organization_id IN ( SELECT cuc.organization_id    FROM (cadastro_usuarios_companies cuc      JOIN cadastro_usuarios cu ON ((cuc.usuario_id = cu.id)))   WHERE ((cu.email)::text = (auth.jwt() ->> 'email'::text)))))
 //   Policy "org_financial_movements_insert" (INSERT, PERMISSIVE) roles={authenticated}
-//     WITH CHECK: (organization_id IN ( SELECT organizations.id    FROM organizations   WHERE (organizations.user_id = auth.uid())))
+//     WITH CHECK: ((organization_id IN ( SELECT organizations.id    FROM organizations   WHERE (organizations.user_id = auth.uid()))) OR (organization_id IN ( SELECT cuc.organization_id    FROM (cadastro_usuarios_companies cuc      JOIN cadastro_usuarios cu ON ((cuc.usuario_id = cu.id)))   WHERE ((cu.email)::text = (auth.jwt() ->> 'email'::text)))))
 //   Policy "org_financial_movements_select" (SELECT, PERMISSIVE) roles={authenticated}
-//     USING: (organization_id IN ( SELECT organizations.id    FROM organizations   WHERE (organizations.user_id = auth.uid())))
+//     USING: ((organization_id IN ( SELECT organizations.id    FROM organizations   WHERE (organizations.user_id = auth.uid()))) OR (organization_id IN ( SELECT cuc.organization_id    FROM (cadastro_usuarios_companies cuc      JOIN cadastro_usuarios cu ON ((cuc.usuario_id = cu.id)))   WHERE ((cu.email)::text = (auth.jwt() ->> 'email'::text)))))
 //   Policy "org_financial_movements_update" (UPDATE, PERMISSIVE) roles={authenticated}
-//     USING: (organization_id IN ( SELECT organizations.id    FROM organizations   WHERE (organizations.user_id = auth.uid())))
+//     USING: ((organization_id IN ( SELECT organizations.id    FROM organizations   WHERE (organizations.user_id = auth.uid()))) OR (organization_id IN ( SELECT cuc.organization_id    FROM (cadastro_usuarios_companies cuc      JOIN cadastro_usuarios cu ON ((cuc.usuario_id = cu.id)))   WHERE ((cu.email)::text = (auth.jwt() ->> 'email'::text)))))
 // Table: import_history
 //   Policy "user_import_history_delete" (DELETE, PERMISSIVE) roles={authenticated}
 //     USING: (user_id = auth.uid())

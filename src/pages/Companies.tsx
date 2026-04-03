@@ -322,6 +322,28 @@ export default function Companies() {
     if (!user) return
     setIsSubmitting(true)
     try {
+      if (data.cnpj) {
+        const { data: existingCnpj } = await supabase
+          .from('organizations')
+          .select('id')
+          .eq('cnpj', data.cnpj)
+          .neq('id', editingId || '00000000-0000-0000-0000-000000000000')
+          .is('deleted_at', null)
+          .maybeSingle()
+        if (existingCnpj) throw new Error('CNPJ já cadastrado no sistema.')
+      }
+
+      if (data.cpf) {
+        const { data: existingCpf } = await supabase
+          .from('organizations')
+          .select('id')
+          .eq('cpf', data.cpf)
+          .neq('id', editingId || '00000000-0000-0000-0000-000000000000')
+          .is('deleted_at', null)
+          .maybeSingle()
+        if (existingCpf) throw new Error('CPF já cadastrado no sistema.')
+      }
+
       if (editingId) {
         const { error } = await supabase
           .from('organizations')
@@ -466,14 +488,14 @@ export default function Companies() {
     fetchOrganizations()
   }
 
-  const handleExport = async (formatType: 'pdf' | 'excel') => {
+  const handleExport = async (formatType: 'pdf' | 'excel' | 'browser') => {
     try {
       toast({ title: 'Aguarde', description: 'Gerando relatório...' })
       const session = await supabase.auth.getSession()
       const token = session.data.session?.access_token
 
       const payload = {
-        format: formatType,
+        format: formatType === 'browser' ? 'pdf' : formatType,
         data: sortedOrgs.map((org) => ({
           ...org,
           created_at: org.created_at ? format(new Date(org.created_at), 'dd/MM/yyyy') : '',
@@ -509,6 +531,13 @@ export default function Companies() {
         link.href = URL.createObjectURL(blob)
         link.download = 'empresas.xlsx'
         link.click()
+      } else if (formatType === 'browser') {
+        const win = window.open()
+        if (win) {
+          win.document.write(
+            `<iframe src="${result.pdf}" frameborder="0" style="border:0; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100%;" allowfullscreen></iframe>`,
+          )
+        }
       } else {
         const link = document.createElement('a')
         link.href = result.pdf
@@ -536,6 +565,12 @@ export default function Companies() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                onClick={() => handleExport('browser')}
+                className="cursor-pointer gap-2"
+              >
+                <FileText className="h-4 w-4" /> Abrir no Browser
+              </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={() => handleExport('pdf')}
                 className="cursor-pointer gap-2"
