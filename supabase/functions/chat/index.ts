@@ -89,6 +89,62 @@ Deno.serve(async (req: Request) => {
           parameters: { type: 'object', properties: {} },
         },
       },
+      {
+        type: 'function',
+        function: {
+          name: 'get_users',
+          description: 'Obtém a lista de usuários/funcionários cadastrados no sistema',
+          parameters: { type: 'object', properties: {} },
+        },
+      },
+      {
+        type: 'function',
+        function: {
+          name: 'get_departments',
+          description: 'Obtém a lista de departamentos da empresa',
+          parameters: { type: 'object', properties: {} },
+        },
+      },
+      {
+        type: 'function',
+        function: {
+          name: 'get_chart_accounts',
+          description: 'Obtém o plano de contas contábil (contas contábeis)',
+          parameters: { type: 'object', properties: {} },
+        },
+      },
+      {
+        type: 'function',
+        function: {
+          name: 'get_accounting_entries',
+          description: 'Obtém os lançamentos contábeis recentes',
+          parameters: {
+            type: 'object',
+            properties: {
+              limit: {
+                type: 'number',
+                description: 'Número de registros para retornar (padrão 15)',
+              },
+            },
+          },
+        },
+      },
+      {
+        type: 'function',
+        function: {
+          name: 'get_account_mappings',
+          description: 'Obtém o mapeamento (De/Para) entre centros de custo e contas contábeis',
+          parameters: { type: 'object', properties: {} },
+        },
+      },
+      {
+        type: 'function',
+        function: {
+          name: 'get_tga_account_types',
+          description: 'Obtém os tipos de conta TGA configurados',
+          parameters: { type: 'object', properties: {} },
+        },
+      },
     ]
 
     const { data: orgsData } = await supabase
@@ -128,6 +184,55 @@ Deno.serve(async (req: Request) => {
             .limit(limit)
           return JSON.stringify(data || [])
         }
+        if (name === 'get_users') {
+          const { data } = await supabase
+            .from('cadastro_usuarios')
+            .select('name, email, role, status, department_id')
+            .is('deleted_at', null)
+          return JSON.stringify(data || [])
+        }
+        if (name === 'get_departments') {
+          const { data } = await supabase
+            .from('departments')
+            .select('id, code, name')
+            .is('deleted_at', null)
+          return JSON.stringify(data || [])
+        }
+        if (name === 'get_chart_accounts') {
+          const { data } = await supabase
+            .from('chart_of_accounts')
+            .select('account_code, account_name, account_type')
+            .in('organization_id', orgIds)
+            .is('deleted_at', null)
+          return JSON.stringify(data || [])
+        }
+        if (name === 'get_accounting_entries') {
+          const limit = args.limit || 15
+          const { data } = await supabase
+            .from('accounting_entries')
+            .select('entry_date, description, amount, status, debit_account_id, credit_account_id')
+            .in('organization_id', orgIds)
+            .order('entry_date', { ascending: false })
+            .limit(limit)
+          return JSON.stringify(data || [])
+        }
+        if (name === 'get_account_mappings') {
+          const { data } = await supabase
+            .from('account_mapping')
+            .select(
+              'mapping_type, cost_centers(code, description), chart_of_accounts(account_code, account_name)',
+            )
+            .in('organization_id', orgIds)
+          return JSON.stringify(data || [])
+        }
+        if (name === 'get_tga_account_types') {
+          const { data } = await supabase
+            .from('tipo_conta_tga')
+            .select('codigo, nome, abreviacao')
+            .in('organization_id', orgIds)
+            .is('deleted_at', null)
+          return JSON.stringify(data || [])
+        }
         return 'Função não encontrada'
       } catch (e: any) {
         return `Erro ao executar função: ${e.message}`
@@ -137,9 +242,9 @@ Deno.serve(async (req: Request) => {
     const systemPrompt = {
       role: 'system',
       content: `Você é um assistente virtual especializado em inteligência contábil e financeira, desenvolvido para a Molas Noma.
-Sua missão é ajudar os usuários na extração de dados gerenciais, conciliação e análise de divergências entre o ERP e a gestão financeira.
+Sua missão é ajudar os usuários na extração de dados gerenciais, conciliação, análise de divergências entre o ERP e a gestão financeira, além de fornecer informações sobre toda a estrutura organizacional (empresas, departamentos, usuários/funcionários, plano de contas, mapeamentos, etc).
 Comunique-se em português de forma profissional, direta e com um tom industrial e corporativo.
-Sempre utilize as funções (tools) disponíveis para buscar informações reais no banco de dados e fundamentar suas respostas. Não invente dados.
+Sempre utilize as funções (tools) disponíveis para buscar informações reais no banco de dados e fundamentar suas respostas. Não invente dados. Cruce os dados se necessário para fornecer respostas completas (ex: se perguntarem os usuários e seus departamentos, use get_users e get_departments e faça o vínculo).
 Se não houver informações disponíveis no retorno das funções, informe que os dados não foram encontrados nas tabelas correspondentes.`,
     }
 
