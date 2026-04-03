@@ -699,6 +699,7 @@ export type Database = {
       }
       shared_queries: {
         Row: {
+          access_count: number
           content: string
           created_at: string
           id: string
@@ -708,6 +709,7 @@ export type Database = {
           user_id: string | null
         }
         Insert: {
+          access_count?: number
           content: string
           created_at?: string
           id?: string
@@ -717,6 +719,7 @@ export type Database = {
           user_id?: string | null
         }
         Update: {
+          access_count?: number
           content?: string
           created_at?: string
           id?: string
@@ -786,6 +789,10 @@ export type Database = {
     }
     Functions: {
       get_auth_user_by_email: { Args: { p_email: string }; Returns: string }
+      increment_shared_query_access: {
+        Args: { query_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never
@@ -1091,6 +1098,7 @@ export const Constants = {
 //   created_at: timestamp with time zone (not null, default: now())
 //   is_protected: boolean (nullable, default: false)
 //   password: text (nullable)
+//   access_count: integer (not null, default: 0)
 // Table: tipo_conta_tga
 //   id: uuid (not null, default: gen_random_uuid())
 //   organization_id: uuid (nullable)
@@ -1294,6 +1302,11 @@ export const Constants = {
 //     USING: true
 //   Policy "Users can create shared queries" (INSERT, PERMISSIVE) roles={authenticated}
 //     WITH CHECK: (user_id = auth.uid())
+//   Policy "Users can delete their own shared queries" (DELETE, PERMISSIVE) roles={authenticated}
+//     USING: (user_id = auth.uid())
+//   Policy "Users can update their own shared queries" (UPDATE, PERMISSIVE) roles={authenticated}
+//     USING: (user_id = auth.uid())
+//     WITH CHECK: (user_id = auth.uid())
 // Table: tipo_conta_tga
 //   Policy "org_tipo_conta_tga_delete" (DELETE, PERMISSIVE) roles={authenticated}
 //     USING: ((organization_id IN ( SELECT organizations.id    FROM organizations   WHERE (organizations.user_id = auth.uid()))) OR (organization_id IN ( SELECT cuc.organization_id    FROM (cadastro_usuarios_companies cuc      JOIN cadastro_usuarios cu ON ((cuc.usuario_id = cu.id)))   WHERE ((cu.email)::text = (auth.jwt() ->> 'email'::text)))))
@@ -1373,6 +1386,19 @@ export const Constants = {
 //     END IF;
 //
 //     RETURN NEW;
+//   END;
+//   $function$
+//
+// FUNCTION increment_shared_query_access(uuid)
+//   CREATE OR REPLACE FUNCTION public.increment_shared_query_access(query_id uuid)
+//    RETURNS void
+//    LANGUAGE plpgsql
+//    SECURITY DEFINER
+//   AS $function$
+//   BEGIN
+//     UPDATE public.shared_queries
+//     SET access_count = access_count + 1
+//     WHERE id = query_id;
 //   END;
 //   $function$
 //

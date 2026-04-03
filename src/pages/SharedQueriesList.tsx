@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { supabase } from '@/lib/supabase/client'
 import { useAuth } from '@/hooks/use-auth'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
@@ -14,7 +14,8 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Trash2, Key, Copy, Check, Lock, Unlock, Eye } from 'lucide-react'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Trash2, Key, Copy, Check, Lock, Unlock, Eye, Search, ArrowUpDown } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import {
   Dialog,
@@ -30,9 +31,13 @@ export default function SharedQueriesList() {
   const { toast } = useToast()
   const [queries, setQueries] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
-
+  const [searchTerm, setSearchTerm] = useState('')
+  const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' }>({
+    key: 'created_at',
+    direction: 'desc',
+  })
+  const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [copiedId, setCopiedId] = useState<string | null>(null)
-
   const [passwordDialogOpen, setPasswordDialogOpen] = useState(false)
   const [selectedQuery, setSelectedQuery] = useState<any>(null)
   const [newPassword, setNewPassword] = useState('')
@@ -41,15 +46,8 @@ export default function SharedQueriesList() {
 
   const fetchQueries = async () => {
     if (!user) return
-    const { data, error } = await supabase
-      .from('shared_queries')
-      .select('id, prompt, created_at, is_protected, access_count')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false })
-
-    if (!error && data) {
-      setQueries(data)
-    }
+    const { data } = await supabase.from('shared_queries').select('*').eq('user_id', user.id)
+    if (data) setQueries(data)
     setLoading(false)
   }
 
@@ -58,8 +56,7 @@ export default function SharedQueriesList() {
   }, [user])
 
   const copyToClipboard = (id: string) => {
-    const url = `${window.location.origin}/consulta/${id}`
-    navigator.clipboard.writeText(url)
+    navigator.clipboard.writeText(`${window.location.origin}/consulta/${id}`)
     setCopiedId(id)
     toast({
       title: 'Link copiado!',
@@ -69,75 +66,92 @@ export default function SharedQueriesList() {
   }
 
   const handleDelete = async (id: string) => {
-    if (
-      !confirm(
-        'Tem certeza que deseja excluir este link? Quem tiver o link perderá o acesso imediatamente.',
-      )
-    )
-      return
-
+    if (!confirm('Tem certeza que deseja excluir este link?')) return
     const { error } = await supabase.from('shared_queries').delete().eq('id', id)
-    if (error) {
+    if (error)
       toast({ title: 'Erro ao excluir', description: error.message, variant: 'destructive' })
-    } else {
-      toast({ title: 'Link excluído', description: 'O compartilhamento foi removido com sucesso.' })
-      setQueries(queries.filter((q) => q.id !== id))
+    else {
+      toast({ title: 'Link excluído', description: 'O compartilhamento foi removido.' })
+      setQueries((prev) => prev.filter((q) => q.id !== id))
     }
   }
 
-  const openPasswordDialog = (query: any) => {
-    setSelectedQuery(query)
-    setIsProtected(query.is_protected || false)
-    setNewPassword('')
-    setPasswordDialogOpen(true)
+  const handleBatchDelete = async () => {
+    if (!confirm(`Tem certeza que deseja excluir ${selectedIds.length} links selecionados?`)) return
+    const { error } = await supabase.from('shared_queries').delete().in('id', selectedIds)
+    if (error)
+      toast({ title: 'Erro ao excluir', description: error.message, variant: 'destructive' })
+    else {
+      toast({
+        title: 'Links excluídos',
+        description: `${selectedIds.length} compartilhamentos removidos.`,
+      })
+      setQueries((prev) => prev.filter((q) => !selectedIds.includes(q.id)))
+      setSelectedIds([])
+    }
   }
 
   const handleUpdatePassword = async () => {
     if (!selectedQuery) return
     setUpdating(true)
-
-    const updates: any = { is_protected: isProtected }
-    if (isProtected) {
-      if (!newPassword && selectedQuery.is_protected) {
-        // Keep existing password
-      } else if (!newPassword) {
-        toast({
-          title: 'Atenção',
-          description: 'Digite uma senha para proteger o link.',
-          variant: 'destructive',
-        })
-        setUpdating(false)
-        return
-      } else {
-        updates.password = newPassword
-      }
-    } else {
-      updates.password = null
+    const updates: any = {
+      is_protected: isProtected,
+      password: isProtected ? newPassword || selectedQuery.password : null,
     }
-
+    if (isProtected && !newPassword && !selectedQuery.is_protected) {
+      toast({
+        title: 'Atenção',
+        description: 'Digite uma senha para proteger o link.',
+        variant: 'destructive',
+      })
+      setUpdating(false)
+      return
+    }
     const { error } = await supabase
       .from('shared_queries')
       .update(updates)
       .eq('id', selectedQuery.id)
-
-    if (error) {
-      toast({ title: 'Erro ao atualizar', description: error.message, variant: 'destructive' })
-    } else {
-      toast({ title: 'Sucesso', description: 'As configurações de segurança foram atualizadas.' })
+    if (error) toast({ title: 'Erro', description: error.message, variant: 'destructive' })
+    else {
+      toast({ title: 'Sucesso', description: 'Segurança atualizada.' })
       setPasswordDialogOpen(false)
       fetchQueries()
     }
     setUpdating(false)
   }
 
+  const sortedQueries = useMemo(() => {
+    return [...queries]
+      .filter((q) => q.prompt.toLowerCase().includes(searchTerm.toLowerCase()))
+      .sort((a, b) => {
+        if (a[sortConfig.key] < b[sortConfig.key]) return sortConfig.direction === 'asc' ? -1 : 1
+        if (a[sortConfig.key] > b[sortConfig.key]) return sortConfig.direction === 'asc' ? 1 : -1
+        return 0
+      })
+  }, [queries, searchTerm, sortConfig])
+
+  const handleSort = (key: string) => {
+    setSortConfig((prev) => ({
+      key,
+      direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc',
+    }))
+  }
+
+  const toggleSelectAll = () => {
+    if (selectedIds.length === sortedQueries.length) setSelectedIds([])
+    else setSelectedIds(sortedQueries.map((q) => q.id))
+  }
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => (prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]))
+  }
+
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-foreground tracking-tight">
-          Meus Compartilhamentos
-        </h1>
+        <h1 className="text-3xl font-bold tracking-tight">Meus Compartilhamentos</h1>
         <p className="text-muted-foreground mt-2">
-          Gerencie os links de consultas gerados, acompanhe os acessos e controle as senhas.
+          Gerencie os links gerados, acompanhe acessos e controle senhas.
         </p>
       </div>
 
@@ -149,31 +163,101 @@ export default function SharedQueriesList() {
           </CardDescription>
         </CardHeader>
         <CardContent>
+          <div className="flex items-center justify-between mb-4">
+            <div className="relative w-72">
+              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Pesquisar por consulta..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-8"
+              />
+            </div>
+            {selectedIds.length > 0 && (
+              <Button
+                variant="destructive"
+                onClick={handleBatchDelete}
+                size="sm"
+                className="animate-in fade-in"
+              >
+                <Trash2 className="w-4 h-4 mr-2" />
+                Excluir Selecionados ({selectedIds.length})
+              </Button>
+            )}
+          </div>
+
           {loading ? (
-            <div className="flex justify-center p-8 text-muted-foreground">Carregando...</div>
-          ) : queries.length === 0 ? (
+            <div className="text-center p-8 text-muted-foreground">Carregando...</div>
+          ) : sortedQueries.length === 0 ? (
             <div className="text-center p-8 text-muted-foreground border rounded-lg bg-muted/20">
-              Nenhum compartilhamento ativo no momento.
+              Nenhum compartilhamento encontrado.
             </div>
           ) : (
             <div className="rounded-md border overflow-hidden">
               <Table>
                 <TableHeader>
                   <TableRow className="bg-muted/50 hover:bg-muted/50">
-                    <TableHead>Consulta</TableHead>
-                    <TableHead>Data</TableHead>
-                    <TableHead>Acessos</TableHead>
-                    <TableHead>Segurança</TableHead>
+                    <TableHead className="w-12">
+                      <Checkbox
+                        checked={
+                          selectedIds.length === sortedQueries.length && sortedQueries.length > 0
+                        }
+                        onCheckedChange={toggleSelectAll}
+                      />
+                    </TableHead>
+                    <TableHead>
+                      <Button
+                        variant="ghost"
+                        onClick={() => handleSort('prompt')}
+                        className="h-8 flex items-center gap-1 -ml-4 font-medium"
+                      >
+                        Consulta <ArrowUpDown className="h-3 w-3" />
+                      </Button>
+                    </TableHead>
+                    <TableHead>
+                      <Button
+                        variant="ghost"
+                        onClick={() => handleSort('created_at')}
+                        className="h-8 flex items-center gap-1 -ml-4 font-medium"
+                      >
+                        Data <ArrowUpDown className="h-3 w-3" />
+                      </Button>
+                    </TableHead>
+                    <TableHead>
+                      <Button
+                        variant="ghost"
+                        onClick={() => handleSort('access_count')}
+                        className="h-8 flex items-center gap-1 -ml-4 font-medium"
+                      >
+                        Acessos <ArrowUpDown className="h-3 w-3" />
+                      </Button>
+                    </TableHead>
+                    <TableHead>
+                      <Button
+                        variant="ghost"
+                        onClick={() => handleSort('is_protected')}
+                        className="h-8 flex items-center gap-1 -ml-4 font-medium"
+                      >
+                        Segurança <ArrowUpDown className="h-3 w-3" />
+                      </Button>
+                    </TableHead>
                     <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {queries.map((query) => (
-                    <TableRow key={query.id} className="hover:bg-muted/30 transition-colors">
-                      <TableCell className="max-w-[300px]">
-                        <p className="truncate font-medium" title={query.prompt}>
-                          {query.prompt}
-                        </p>
+                  {sortedQueries.map((query) => (
+                    <TableRow key={query.id} className="hover:bg-muted/30">
+                      <TableCell>
+                        <Checkbox
+                          checked={selectedIds.includes(query.id)}
+                          onCheckedChange={() => toggleSelect(query.id)}
+                        />
+                      </TableCell>
+                      <TableCell
+                        className="max-w-[300px] truncate font-medium"
+                        title={query.prompt}
+                      >
+                        {query.prompt}
                       </TableCell>
                       <TableCell className="text-muted-foreground whitespace-nowrap">
                         {new Date(query.created_at).toLocaleString('pt-BR', {
@@ -197,7 +281,7 @@ export default function SharedQueriesList() {
                             Com senha
                           </Badge>
                         ) : (
-                          <Badge variant="outline" className="bg-muted text-muted-foreground">
+                          <Badge variant="outline" className="bg-muted">
                             <Unlock className="w-3 h-3 mr-1" />
                             Aberto
                           </Badge>
@@ -220,7 +304,12 @@ export default function SharedQueriesList() {
                           <Button
                             variant="ghost"
                             size="icon"
-                            onClick={() => openPasswordDialog(query)}
+                            onClick={() => {
+                              setSelectedQuery(query)
+                              setIsProtected(query.is_protected || false)
+                              setNewPassword('')
+                              setPasswordDialogOpen(true)
+                            }}
                             title="Configurar Senha"
                           >
                             <Key className="w-4 h-4" />
@@ -229,7 +318,6 @@ export default function SharedQueriesList() {
                             variant="ghost"
                             size="icon"
                             onClick={() => handleDelete(query.id)}
-                            title="Excluir Link"
                             className="text-destructive hover:text-destructive hover:bg-destructive/10"
                           >
                             <Trash2 className="w-4 h-4" />
@@ -248,25 +336,22 @@ export default function SharedQueriesList() {
       <Dialog open={passwordDialogOpen} onOpenChange={setPasswordDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Configurar Segurança do Link</DialogTitle>
+            <DialogTitle>Segurança do Link</DialogTitle>
             <DialogDescription>
               Altere as configurações de senha para o link compartilhado.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
+              <Checkbox
                 id="isProtected"
                 checked={isProtected}
-                onChange={(e) => setIsProtected(e.target.checked)}
-                className="w-4 h-4 text-primary rounded border-gray-300 focus:ring-primary focus:ring-offset-background"
+                onCheckedChange={(c) => setIsProtected(!!c)}
               />
               <Label htmlFor="isProtected" className="font-medium cursor-pointer">
                 Proteger link com senha
               </Label>
             </div>
-
             {isProtected && (
               <div className="space-y-2 pl-6 animate-in fade-in slide-in-from-top-2 duration-300">
                 <Label htmlFor="password">Nova Senha</Label>
@@ -275,7 +360,7 @@ export default function SharedQueriesList() {
                   type="text"
                   placeholder={
                     selectedQuery?.is_protected
-                      ? 'Deixe em branco para manter a atual'
+                      ? 'Deixe em branco para manter'
                       : 'Digite a senha...'
                   }
                   value={newPassword}
@@ -289,7 +374,7 @@ export default function SharedQueriesList() {
               Cancelar
             </Button>
             <Button onClick={handleUpdatePassword} disabled={updating}>
-              {updating ? 'Salvando...' : 'Salvar Alterações'}
+              {updating ? 'Salvando...' : 'Salvar'}
             </Button>
           </DialogFooter>
         </DialogContent>
