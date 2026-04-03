@@ -24,6 +24,16 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog'
+import { Switch } from '@/components/ui/switch'
+import { Label } from '@/components/ui/label'
 import { supabase } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
 import * as XLSX from 'xlsx'
@@ -70,6 +80,13 @@ const TypingEffect = ({ content, onComplete }: { content: string; onComplete?: (
 const BotMessageActions = ({ content, prevPrompt }: { content: string; prevPrompt?: string }) => {
   const [copied, setCopied] = useState(false)
   const [shared, setShared] = useState(false)
+
+  const [shareDialogOpen, setShareDialogOpen] = useState(false)
+  const [isProtected, setIsProtected] = useState(false)
+  const [generatedLink, setGeneratedLink] = useState('')
+  const [generatedPassword, setGeneratedPassword] = useState('')
+  const [isGenerating, setIsGenerating] = useState(false)
+
   const { toast } = useToast()
   const { user } = useAuth()
 
@@ -142,20 +159,33 @@ const BotMessageActions = ({ content, prevPrompt }: { content: string; prevPromp
     }
   }
 
-  const handleShare = async () => {
+  const handleShareClick = () => {
     if (!user) {
       toast({ title: 'Erro', description: 'Usuário não autenticado.', variant: 'destructive' })
       return
     }
+    setShareDialogOpen(true)
+    setIsProtected(false)
+    setGeneratedLink('')
+    setGeneratedPassword('')
+  }
+
+  const confirmShare = async () => {
+    if (!user) return
+    setIsGenerating(true)
 
     try {
+      const password = isProtected ? Math.random().toString(36).slice(-6).toUpperCase() : null
+
       const { data, error } = await supabase
         .from('shared_queries')
         .insert({
           user_id: user.id,
           prompt: (prevPrompt || 'Consulta ao Assistente').slice(0, 1000),
           content,
-        })
+          is_protected: isProtected,
+          password: password,
+        } as any)
         .select('id')
         .single()
 
@@ -167,15 +197,21 @@ const BotMessageActions = ({ content, prevPrompt }: { content: string; prevPromp
 
       if (data) {
         const url = `${window.location.origin}/consulta/${data.id}`
+        setGeneratedLink(url)
+        if (password) setGeneratedPassword(password)
+
         try {
           if (navigator.clipboard && window.isSecureContext) {
-            await navigator.clipboard.writeText(url)
+            await navigator.clipboard.writeText(
+              isProtected ? `Link: ${url}\nSenha: ${password}` : url,
+            )
             setShared(true)
             setTimeout(() => setShared(false), 2000)
             toast({
-              title: 'Link copiado com sucesso!',
-              description:
-                'O link de compartilhamento foi gerado e copiado para sua área de transferência.',
+              title: 'Link gerado com sucesso!',
+              description: isProtected
+                ? 'O link e a senha foram copiados para sua área de transferência.'
+                : 'O link foi copiado para sua área de transferência.',
             })
           } else {
             throw new Error('Clipboard API not available')
@@ -195,60 +231,145 @@ const BotMessageActions = ({ content, prevPrompt }: { content: string; prevPromp
         description: 'Falha inesperada ao gerar link.',
         variant: 'destructive',
       })
+    } finally {
+      setIsGenerating(false)
     }
   }
 
   return (
-    <div className="flex items-center gap-1 mt-3 pt-2 border-t border-border/40 text-muted-foreground">
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="h-6 w-6 hover:bg-background/50"
-            title="Exportar"
-          >
-            <Download className="w-3.5 h-3.5" />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" className="z-[110]">
-          <DropdownMenuItem onClick={handleDownloadExcel}>Excel (.xlsx)</DropdownMenuItem>
-          <DropdownMenuItem onClick={handleDownloadCSV}>CSV (.csv)</DropdownMenuItem>
-          <DropdownMenuItem onClick={handleDownloadTXT}>Texto (.txt)</DropdownMenuItem>
-          <DropdownMenuItem onClick={handleDownloadPDF}>PDF (.pdf)</DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon"
-        className="h-6 w-6 hover:bg-background/50"
-        onClick={handleShare}
-        title="Compartilhar Link"
-      >
-        {shared ? (
-          <Check className="w-3.5 h-3.5 text-green-500" />
-        ) : (
-          <LinkIcon className="w-3.5 h-3.5" />
-        )}
-      </Button>
-      <div className="flex-1" />
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon"
-        className="h-6 w-6 hover:bg-background/50"
-        onClick={handleCopy}
-        title="Copiar texto"
-      >
-        {copied ? (
-          <Check className="w-3.5 h-3.5 text-green-500" />
-        ) : (
-          <Copy className="w-3.5 h-3.5" />
-        )}
-      </Button>
-    </div>
+    <>
+      <div className="flex items-center gap-1 mt-3 pt-2 border-t border-border/40 text-muted-foreground">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6 hover:bg-background/50"
+              title="Exportar"
+            >
+              <Download className="w-3.5 h-3.5" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="z-[110]">
+            <DropdownMenuItem onClick={handleDownloadExcel}>Excel (.xlsx)</DropdownMenuItem>
+            <DropdownMenuItem onClick={handleDownloadCSV}>CSV (.csv)</DropdownMenuItem>
+            <DropdownMenuItem onClick={handleDownloadTXT}>Texto (.txt)</DropdownMenuItem>
+            <DropdownMenuItem onClick={handleDownloadPDF}>PDF (.pdf)</DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="h-6 w-6 hover:bg-background/50"
+          onClick={handleShareClick}
+          title="Compartilhar Link"
+        >
+          {shared ? (
+            <Check className="w-3.5 h-3.5 text-green-500" />
+          ) : (
+            <LinkIcon className="w-3.5 h-3.5" />
+          )}
+        </Button>
+        <div className="flex-1" />
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="h-6 w-6 hover:bg-background/50"
+          onClick={handleCopy}
+          title="Copiar texto"
+        >
+          {copied ? (
+            <Check className="w-3.5 h-3.5 text-green-500" />
+          ) : (
+            <Copy className="w-3.5 h-3.5" />
+          )}
+        </Button>
+      </div>
+
+      <Dialog open={shareDialogOpen} onOpenChange={setShareDialogOpen}>
+        <DialogContent className="sm:max-w-md z-[120]">
+          <DialogHeader>
+            <DialogTitle>Compartilhar Consulta</DialogTitle>
+            <DialogDescription>
+              Gere um link para compartilhar o resultado desta consulta com outras pessoas.
+            </DialogDescription>
+          </DialogHeader>
+
+          {!generatedLink ? (
+            <div className="flex flex-col space-y-4 py-4">
+              <div className="flex items-center space-x-2">
+                <Switch id="protect-link" checked={isProtected} onCheckedChange={setIsProtected} />
+                <Label htmlFor="protect-link" className="cursor-pointer">
+                  Proteger com senha gerada automaticamente
+                </Label>
+              </div>
+              {isProtected && (
+                <p className="text-sm text-muted-foreground ml-11">
+                  O sistema criará uma senha segura para você compartilhar separadamente. Quem tiver
+                  o link só poderá acessar com a senha.
+                </p>
+              )}
+            </div>
+          ) : (
+            <div className="py-4 space-y-4">
+              <div className="space-y-2">
+                <Label>Link de Compartilhamento</Label>
+                <div className="flex items-center gap-2">
+                  <Input readOnly value={generatedLink} className="bg-muted" />
+                  <Button
+                    size="icon"
+                    variant="outline"
+                    onClick={() => navigator.clipboard.writeText(generatedLink)}
+                  >
+                    <Copy className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+              {isProtected && generatedPassword && (
+                <div className="space-y-2">
+                  <Label>Senha de Acesso</Label>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      readOnly
+                      value={generatedPassword}
+                      className="bg-muted font-mono tracking-wider"
+                    />
+                    <Button
+                      size="icon"
+                      variant="outline"
+                      onClick={() => navigator.clipboard.writeText(generatedPassword)}
+                    >
+                      <Copy className="w-4 h-4" />
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Copie esta senha e envie para quem for acessar o link.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
+          <DialogFooter>
+            {!generatedLink ? (
+              <>
+                <Button variant="outline" onClick={() => setShareDialogOpen(false)}>
+                  Cancelar
+                </Button>
+                <Button onClick={confirmShare} disabled={isGenerating}>
+                  {isGenerating ? 'Gerando...' : 'Gerar Link'}
+                </Button>
+              </>
+            ) : (
+              <Button onClick={() => setShareDialogOpen(false)}>Fechar</Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   )
 }
 
@@ -302,16 +423,11 @@ export function Chatbot() {
         y: dragElementPos.current.y + dy,
       })
     }
-
-    const handleMouseUp = () => {
-      setIsDragging(false)
-    }
-
+    const handleMouseUp = () => setIsDragging(false)
     if (isDragging) {
       document.addEventListener('mousemove', handleMouseMove)
       document.addEventListener('mouseup', handleMouseUp)
     }
-
     return () => {
       document.removeEventListener('mousemove', handleMouseMove)
       document.removeEventListener('mouseup', handleMouseUp)
@@ -319,9 +435,7 @@ export function Chatbot() {
   }, [isDragging])
 
   useEffect(() => {
-    if (!isOpen) {
-      setPosition({ x: 0, y: 0 })
-    }
+    if (!isOpen) setPosition({ x: 0, y: 0 })
   }, [isOpen])
 
   const fetchHistory = async () => {
@@ -427,12 +541,14 @@ export function Chatbot() {
       }
     }
     if (sId && user)
-      await supabase.from('chat_messages').insert({
-        session_id: sId,
-        role: 'user',
-        content: userContent,
-        attached_file_name: userMessage.attachedFileName,
-      })
+      await supabase
+        .from('chat_messages')
+        .insert({
+          session_id: sId,
+          role: 'user',
+          content: userContent,
+          attached_file_name: userMessage.attachedFileName,
+        })
 
     try {
       const { data, error } = await supabase.functions.invoke('chat', {
