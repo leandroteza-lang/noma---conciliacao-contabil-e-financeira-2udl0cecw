@@ -1,7 +1,9 @@
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useState } from 'react'
+import { format } from 'date-fns'
+import { ptBR } from 'date-fns/locale'
+import { Copy, Ban, Eye, Trash2, CheckCircle2, XCircle } from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
 import { useAuth } from '@/hooks/use-auth'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import {
   Table,
   TableBody,
@@ -12,577 +14,287 @@ import {
 } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Checkbox } from '@/components/ui/checkbox'
-import {
-  Trash2,
-  Key,
-  Copy,
-  Check,
-  Lock,
-  Unlock,
-  Eye,
-  EyeOff,
-  Search,
-  ArrowUpDown,
-  Bell,
-  BellOff,
-  Plus,
-  Ban,
-} from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+
+type SharedQuery = {
+  id: string
+  prompt: string
+  created_at: string
+  access_count: number
+  is_protected: boolean
+  is_revoked: boolean
+  single_view: boolean
+  user_id: string | null
+  user_name?: string
+}
 
 export default function SharedQueriesList() {
+  const [queries, setQueries] = useState<SharedQuery[]>([])
+  const [loading, setLoading] = useState(true)
   const { user } = useAuth()
   const { toast } = useToast()
-  const [queries, setQueries] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
-  const [searchTerm, setSearchTerm] = useState('')
-  const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' }>({
-    key: 'created_at',
-    direction: 'desc',
-  })
-  const [selectedIds, setSelectedIds] = useState<string[]>([])
-  const [copiedId, setCopiedId] = useState<string | null>(null)
-  const [passwordDialogOpen, setPasswordDialogOpen] = useState(false)
-  const [selectedQuery, setSelectedQuery] = useState<any>(null)
-  const [newPassword, setNewPassword] = useState('')
-  const [isProtected, setIsProtected] = useState(false)
-  const [updating, setUpdating] = useState(false)
-  const [userName, setUserName] = useState('')
-
-  const fetchQueries = async () => {
-    if (!user) return
-    const { data } = await supabase.from('shared_queries').select('*').eq('user_id', user.id)
-    if (data) setQueries(data)
-    setLoading(false)
-  }
 
   useEffect(() => {
     fetchQueries()
-
-    const fetchUser = async () => {
-      if (!user) return
-      const { data } = await supabase
-        .from('cadastro_usuarios')
-        .select('name')
-        .eq('user_id', user.id)
-        .maybeSingle()
-      if (data?.name) {
-        setUserName(data.name)
-      }
-    }
-    fetchUser()
   }, [user])
 
-  useEffect(() => {
+  const fetchQueries = async () => {
     if (!user) return
+    setLoading(true)
+    try {
+      const { data, error } = await supabase
+        .from('shared_queries')
+        .select('*')
+        .order('created_at', { ascending: false })
 
-    const channel = supabase
-      .channel('shared_queries_changes_list')
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'shared_queries',
-          filter: `user_id=eq.${user.id}`,
-        },
-        (payload) => {
-          const newRecord = payload.new as any
-          setQueries((prev) =>
-            prev.map((q) => (q.id === newRecord.id ? { ...q, ...newRecord } : q)),
-          )
-        },
-      )
-      .subscribe()
+      if (error) throw error
 
-    return () => {
-      supabase.removeChannel(channel)
-    }
-  }, [user])
+      // Buscar os nomes dos usuários vinculados aos compartilhamentos (resolve o problema do Chatbot)
+      const userIds = Array.from(new Set(data?.map((q) => q.user_id).filter(Boolean) as string[]))
 
-  const copyToClipboard = (id: string) => {
-    const url = `${window.location.origin}/consulta/${id}`
-    const senderName = userName ? userName.toUpperCase() : 'UM CONSULTOR'
-    const message = `Olá! **${senderName}** compartilhou um acesso seguro com você. Acesse pelo link: ${url}`
+      let usersMap: Record<string, string> = {}
+      if (userIds.length > 0) {
+        const { data: usersData, error: usersError } = await supabase
+          .from('cadastro_usuarios')
+          .select('user_id, name')
+          .in('user_id', userIds)
 
-    navigator.clipboard.writeText(message)
-    setCopiedId(id)
-    toast({
-      title: 'Link copiado!',
-      description: 'A mensagem com o link foi copiada para a área de transferência.',
-    })
-    setTimeout(() => setCopiedId(null), 2000)
-  }
+        if (!usersError && usersData) {
+          usersMap = usersData.reduce((acc, u) => ({ ...acc, [u.user_id]: u.name }), {})
+        }
+      }
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Tem certeza que deseja excluir este link?')) return
-    const { error } = await supabase.from('shared_queries').delete().eq('id', id)
-    if (error)
-      toast({ title: 'Erro ao excluir', description: error.message, variant: 'destructive' })
-    else {
-      toast({ title: 'Link excluído', description: 'O compartilhamento foi removido.' })
-      setQueries((prev) => prev.filter((q) => q.id !== id))
-    }
-  }
+      const formattedData = data?.map((q) => ({
+        ...q,
+        user_name: q.user_id ? usersMap[q.user_id] || 'Usuário Desconhecido' : 'Sistema',
+      })) as SharedQuery[]
 
-  const handleBatchDelete = async () => {
-    if (!confirm(`Tem certeza que deseja excluir ${selectedIds.length} links selecionados?`)) return
-    const { error } = await supabase.from('shared_queries').delete().in('id', selectedIds)
-    if (error)
-      toast({ title: 'Erro ao excluir', description: error.message, variant: 'destructive' })
-    else {
+      setQueries(formattedData)
+    } catch (err: any) {
+      console.error(err)
       toast({
-        title: 'Links excluídos',
-        description: `${selectedIds.length} compartilhamentos removidos.`,
-      })
-      setQueries((prev) => prev.filter((q) => !selectedIds.includes(q.id)))
-      setSelectedIds([])
-    }
-  }
-
-  const handleUpdatePassword = async () => {
-    if (!selectedQuery) return
-    setUpdating(true)
-    const updates: any = {
-      is_protected: isProtected,
-      password: isProtected ? newPassword || selectedQuery.password : null,
-    }
-    if (isProtected && !newPassword && !selectedQuery.is_protected) {
-      toast({
-        title: 'Atenção',
-        description: 'Digite uma senha para proteger o link.',
+        title: 'Erro',
+        description: 'Não foi possível carregar os compartilhamentos.',
         variant: 'destructive',
       })
-      setUpdating(false)
-      return
-    }
-    const { error } = await supabase
-      .from('shared_queries')
-      .update(updates)
-      .eq('id', selectedQuery.id)
-    if (error) toast({ title: 'Erro', description: error.message, variant: 'destructive' })
-    else {
-      toast({ title: 'Sucesso', description: 'Segurança atualizada.' })
-      setPasswordDialogOpen(false)
-      fetchQueries()
-    }
-    setUpdating(false)
-  }
-
-  const toggleNotification = async (id: string, currentStatus: boolean) => {
-    const newStatus = !currentStatus
-    const updates = {
-      notify_first_access: newStatus,
-      ...(newStatus ? { first_access_notified: false } : {}),
-    }
-
-    const { error } = await supabase.from('shared_queries').update(updates).eq('id', id)
-
-    if (error) {
-      toast({ title: 'Erro', description: error.message, variant: 'destructive' })
-    } else {
-      setQueries((prev) => prev.map((q) => (q.id === id ? { ...q, ...updates } : q)))
-      toast({
-        title: newStatus ? 'Alerta Ativado' : 'Alerta Desativado',
-        description: newStatus
-          ? 'Você será notificado no próximo acesso a este link.'
-          : 'As notificações para este link foram suspensas.',
-      })
+    } finally {
+      setLoading(false)
     }
   }
 
   const handleRevoke = async (id: string) => {
-    if (!confirm('Deseja revogar o acesso a este link? O link será expirado imediatamente.')) return
-    const { error } = await supabase
-      .from('shared_queries')
-      .update({ is_revoked: true })
-      .eq('id', id)
-    if (error)
-      toast({ title: 'Erro ao revogar', description: error.message, variant: 'destructive' })
-    else {
-      toast({ title: 'Acesso Revogado', description: 'O link não pode mais ser acessado.' })
-      setQueries((prev) => prev.map((q) => (q.id === id ? { ...q, is_revoked: true } : q)))
+    try {
+      const { error } = await supabase
+        .from('shared_queries')
+        .update({ is_revoked: true })
+        .eq('id', id)
+
+      if (error) throw error
+
+      toast({ title: 'Sucesso', description: 'Link revogado com sucesso.' })
+      setQueries(queries.map((q) => (q.id === id ? { ...q, is_revoked: true } : q)))
+    } catch (err: any) {
+      toast({ title: 'Erro', description: 'Falha ao revogar o link.', variant: 'destructive' })
     }
   }
 
-  const sortedQueries = useMemo(() => {
-    return [...queries]
-      .filter((q) => q.prompt.toLowerCase().includes(searchTerm.toLowerCase()))
-      .sort((a, b) => {
-        let valA = a[sortConfig.key]
-        let valB = b[sortConfig.key]
+  const handleDelete = async (id: string) => {
+    try {
+      const { error } = await supabase.from('shared_queries').delete().eq('id', id)
 
-        if (typeof valA === 'boolean') valA = valA ? 1 : 0
-        if (typeof valB === 'boolean') valB = valB ? 1 : 0
+      if (error) throw error
 
-        if (valA < valB) return sortConfig.direction === 'asc' ? -1 : 1
-        if (valA > valB) return sortConfig.direction === 'asc' ? 1 : -1
-        return 0
+      toast({ title: 'Sucesso', description: 'Compartilhamento excluído.' })
+      setQueries(queries.filter((q) => q.id !== id))
+    } catch (err: any) {
+      toast({ title: 'Erro', description: 'Falha ao excluir.', variant: 'destructive' })
+    }
+  }
+
+  const handleCopyLink = async (id: string) => {
+    const url = `${window.location.origin}/consulta/${id}`
+    try {
+      await navigator.clipboard.writeText(url)
+      toast({
+        title: 'Link Copiado',
+        description: 'O link foi copiado para a área de transferência.',
       })
-  }, [queries, searchTerm, sortConfig])
-
-  const handleSort = (key: string) => {
-    setSortConfig((prev) => ({
-      key,
-      direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc',
-    }))
-  }
-
-  const toggleSelectAll = () => {
-    if (selectedIds.length === sortedQueries.length) setSelectedIds([])
-    else setSelectedIds(sortedQueries.map((q) => q.id))
-  }
-
-  const toggleSelect = (id: string) => {
-    setSelectedIds((prev) => (prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]))
+    } catch (err) {
+      toast({ title: 'Erro', description: 'Falha ao copiar link.', variant: 'destructive' })
+    }
   }
 
   return (
-    <div className="space-y-6">
+    <div className="p-6 max-w-[1200px] mx-auto space-y-6 animate-in fade-in duration-500">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Meus Compartilhamentos</h1>
-        <p className="text-muted-foreground mt-2">
-          Gerencie os links gerados, acompanhe acessos e controle senhas.
+        <h1 className="text-2xl font-bold tracking-tight">Meus Compartilhamentos</h1>
+        <p className="text-muted-foreground mt-1">
+          Gerencie os links de consultas e painéis que você compartilhou.
         </p>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Links Ativos</CardTitle>
-          <CardDescription>
-            Lista de todos os resultados que você compartilhou externamente.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center justify-between mb-4">
-            <div className="relative w-72">
-              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Pesquisar por consulta..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-8"
-              />
-            </div>
-            <div className="flex items-center gap-2">
-              {selectedIds.length > 0 && (
-                <Button
-                  variant="destructive"
-                  onClick={handleBatchDelete}
-                  size="sm"
-                  className="animate-in fade-in"
-                >
-                  <Trash2 className="w-4 h-4 mr-2" />
-                  Excluir Selecionados ({selectedIds.length})
-                </Button>
-              )}
-              <Button
-                onClick={() => window.dispatchEvent(new CustomEvent('open-share-modal'))}
-                size="sm"
-                className="bg-primary text-primary-foreground hover:bg-primary/90"
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                Novo Compartilhamento
-              </Button>
-            </div>
-          </div>
-
-          {loading ? (
-            <div className="text-center p-8 text-muted-foreground">Carregando...</div>
-          ) : sortedQueries.length === 0 ? (
-            <div className="text-center p-8 text-muted-foreground border rounded-lg bg-muted/20">
-              Nenhum compartilhamento encontrado.
-            </div>
-          ) : (
-            <div className="rounded-md border overflow-hidden">
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-muted/50 hover:bg-muted/50">
-                    <TableHead className="w-12">
-                      <Checkbox
-                        checked={
-                          selectedIds.length === sortedQueries.length && sortedQueries.length > 0
-                        }
-                        onCheckedChange={toggleSelectAll}
-                      />
-                    </TableHead>
-                    <TableHead>
-                      <Button
-                        variant="ghost"
-                        onClick={() => handleSort('prompt')}
-                        className="h-8 flex items-center gap-1 -ml-4 font-medium"
+      <div className="border rounded-lg bg-card overflow-hidden shadow-sm">
+        <Table>
+          <TableHeader>
+            <TableRow className="bg-muted/50">
+              <TableHead>Data</TableHead>
+              <TableHead>Consulta / Tópico</TableHead>
+              <TableHead>Criado por</TableHead>
+              <TableHead className="text-center">Acessos</TableHead>
+              <TableHead className="text-center">Status</TableHead>
+              <TableHead className="text-center">Controle de Acesso</TableHead>
+              <TableHead className="text-center w-[80px]">Ações</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {loading ? (
+              <TableRow>
+                <TableCell colSpan={7} className="text-center py-12 text-muted-foreground">
+                  <div className="flex flex-col items-center justify-center gap-2">
+                    <div className="h-6 w-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                    Carregando compartilhamentos...
+                  </div>
+                </TableCell>
+              </TableRow>
+            ) : queries.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={7} className="text-center py-12 text-muted-foreground">
+                  Nenhum compartilhamento encontrado.
+                </TableCell>
+              </TableRow>
+            ) : (
+              queries.map((q) => (
+                <TableRow key={q.id} className="group transition-colors hover:bg-muted/30">
+                  <TableCell className="whitespace-nowrap text-sm font-medium">
+                    {format(new Date(q.created_at), 'dd/MM/yyyy HH:mm', { locale: ptBR })}
+                  </TableCell>
+                  <TableCell
+                    className="max-w-[250px] truncate text-muted-foreground"
+                    title={q.prompt}
+                  >
+                    {q.prompt}
+                  </TableCell>
+                  <TableCell className="text-sm font-medium">{q.user_name}</TableCell>
+                  <TableCell className="text-center">
+                    <Badge variant="secondary" className="font-mono">
+                      {q.access_count}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-center">
+                    {q.is_revoked ? (
+                      <Badge
+                        variant="destructive"
+                        className="flex w-[90px] mx-auto items-center justify-center gap-1.5 shadow-sm"
                       >
-                        Consulta <ArrowUpDown className="h-3 w-3" />
-                      </Button>
-                    </TableHead>
-                    <TableHead>
-                      <Button
-                        variant="ghost"
-                        onClick={() => handleSort('created_at')}
-                        className="h-8 flex items-center gap-1 -ml-4 font-medium"
+                        <XCircle className="w-3.5 h-3.5" /> Revogado
+                      </Badge>
+                    ) : (
+                      <Badge
+                        variant="default"
+                        className="bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20 hover:text-emerald-700 flex w-[90px] mx-auto items-center justify-center gap-1.5 shadow-sm border-emerald-200"
                       >
-                        Data <ArrowUpDown className="h-3 w-3" />
-                      </Button>
-                    </TableHead>
-                    <TableHead>
-                      <Button
-                        variant="ghost"
-                        onClick={() => handleSort('access_count')}
-                        className="h-8 flex items-center gap-1 -ml-4 font-medium"
-                      >
-                        Acessos <ArrowUpDown className="h-3 w-3" />
-                      </Button>
-                    </TableHead>
-                    <TableHead>
-                      <Button
-                        variant="ghost"
-                        onClick={() => handleSort('is_protected')}
-                        className="h-8 flex items-center gap-1 -ml-4 font-medium"
-                      >
-                        Segurança <ArrowUpDown className="h-3 w-3" />
-                      </Button>
-                    </TableHead>
-                    <TableHead>
-                      <Button
-                        variant="ghost"
-                        onClick={() => handleSort('is_revoked')}
-                        className="h-8 flex items-center gap-1 -ml-4 font-medium"
-                      >
-                        Status <ArrowUpDown className="h-3 w-3" />
-                      </Button>
-                    </TableHead>
-                    <TableHead>
-                      <Button
-                        variant="ghost"
-                        onClick={() => handleSort('notify_first_access')}
-                        className="h-8 flex items-center gap-1 -ml-4 font-medium"
-                      >
-                        Alerta <ArrowUpDown className="h-3 w-3" />
-                      </Button>
-                    </TableHead>
-                    <TableHead className="text-center font-medium">Controle de Acesso</TableHead>
-                    <TableHead className="text-right font-medium">Ações</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {sortedQueries.map((query) => (
-                    <TableRow key={query.id} className="hover:bg-muted/30">
-                      <TableCell>
-                        <Checkbox
-                          checked={selectedIds.includes(query.id)}
-                          onCheckedChange={() => toggleSelect(query.id)}
-                        />
-                      </TableCell>
-                      <TableCell
-                        className="max-w-[200px] truncate font-medium"
-                        title={query.prompt}
-                      >
-                        {query.prompt}
-                      </TableCell>
-                      <TableCell className="text-muted-foreground whitespace-nowrap">
-                        {new Date(query.created_at).toLocaleString('pt-BR', {
-                          dateStyle: 'short',
-                          timeStyle: 'short',
-                        })}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1.5 text-muted-foreground">
-                          <Eye className="w-4 h-4" />
-                          <span className="font-medium">{query.access_count || 0}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex flex-col gap-1.5 items-start">
-                          {query.is_protected ? (
-                            <Badge
-                              variant="outline"
-                              className="bg-primary/10 text-primary border-primary/20"
-                            >
-                              <Lock className="w-3 h-3 mr-1" />
-                              Com senha
-                            </Badge>
-                          ) : (
-                            <Badge variant="outline" className="bg-muted">
-                              <Unlock className="w-3 h-3 mr-1" />
-                              Aberto
-                            </Badge>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex flex-col gap-1.5 items-start">
-                          {query.is_revoked ? (
-                            <Badge
-                              variant="outline"
-                              className="bg-destructive/10 text-destructive border-destructive/20"
-                            >
-                              <Ban className="w-3 h-3 mr-1" /> Revogado
-                            </Badge>
-                          ) : query.single_view ? (
-                            <Badge
-                              variant="outline"
-                              className={
-                                query.access_count > 0
-                                  ? 'bg-amber-500/10 text-amber-600 border-amber-500/20'
-                                  : 'bg-green-500/10 text-green-600 border-green-500/20'
-                              }
-                            >
-                              {query.access_count > 0 ? (
-                                <>
-                                  <EyeOff className="w-3 h-3 mr-1" /> Consumido
-                                </>
-                              ) : (
-                                <>
-                                  <Eye className="w-3 h-3 mr-1" /> Disponível (Única)
-                                </>
-                              )}
-                            </Badge>
-                          ) : (
-                            <Badge variant="outline" className="bg-muted text-muted-foreground">
-                              Permanente
-                            </Badge>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => toggleNotification(query.id, query.notify_first_access)}
-                          title={query.notify_first_access ? 'Desativar Alerta' : 'Ativar Alerta'}
-                          className={
-                            query.notify_first_access
-                              ? 'text-amber-500 hover:text-amber-600 hover:bg-amber-500/10'
-                              : 'text-muted-foreground'
-                          }
-                        >
-                          {query.notify_first_access ? (
-                            <Bell className="w-4 h-4 mr-1" />
-                          ) : (
-                            <BellOff className="w-4 h-4 mr-1" />
-                          )}
-                          {query.notify_first_access ? 'Ativo' : 'Inativo'}
-                        </Button>
-                      </TableCell>
-                      <TableCell className="whitespace-nowrap">
-                        <div className="flex items-center justify-center gap-2">
-                          {!query.is_revoked && (
-                            <>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => handleRevoke(query.id)}
-                                title="Revogar Acesso"
-                                className="text-amber-600 hover:text-amber-700 hover:bg-amber-500/10"
-                              >
-                                <Ban className="w-4 h-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => copyToClipboard(query.id)}
-                                title="Copiar Link"
-                              >
-                                {copiedId === query.id ? (
-                                  <Check className="w-4 h-4 text-green-500" />
-                                ) : (
-                                  <Copy className="w-4 h-4" />
-                                )}
-                              </Button>
-                            </>
-                          )}
+                        <CheckCircle2 className="w-3.5 h-3.5" /> Ativo
+                      </Badge>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center justify-center gap-1">
+                      <Tooltip>
+                        <TooltipTrigger asChild>
                           <Button
                             variant="ghost"
                             size="icon"
-                            onClick={() => {
-                              setSelectedQuery(query)
-                              setIsProtected(query.is_protected || false)
-                              setNewPassword('')
-                              setPasswordDialogOpen(true)
-                            }}
-                            title="Configurar Senha"
+                            className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                            disabled={q.is_revoked}
+                            onClick={() => handleRevoke(q.id)}
                           >
-                            <Key className="w-4 h-4" />
+                            <Ban className="w-4 h-4" />
                           </Button>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-right whitespace-nowrap">
+                        </TooltipTrigger>
+                        <TooltipContent>Revogar Acesso</TooltipContent>
+                      </Tooltip>
+
+                      {!q.is_revoked ? (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary/10"
+                              onClick={() => handleCopyLink(q.id)}
+                            >
+                              <Copy className="w-4 h-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>Copiar Link</TooltipContent>
+                        </Tooltip>
+                      ) : (
+                        <div className="w-8 h-8" />
+                      )}
+
+                      {q.is_protected ? (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <div className="h-8 w-8 flex items-center justify-center text-muted-foreground bg-secondary/50 rounded-md">
+                              <Eye className="w-4 h-4" />
+                            </div>
+                          </TooltipTrigger>
+                          <TooltipContent>Protegido por Senha</TooltipContent>
+                        </Tooltip>
+                      ) : (
+                        <div className="w-8 h-8" />
+                      )}
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-center">
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => handleDelete(query.id)}
-                          className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                          title="Excluir"
+                          className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-opacity"
                         >
                           <Trash2 className="w-4 h-4" />
                         </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      <Dialog open={passwordDialogOpen} onOpenChange={setPasswordDialogOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Segurança do Link</DialogTitle>
-            <DialogDescription>
-              Altere as configurações de senha para o link compartilhado.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="flex items-center gap-2">
-              <Checkbox
-                id="isProtected"
-                checked={isProtected}
-                onCheckedChange={(c) => setIsProtected(!!c)}
-              />
-              <Label htmlFor="isProtected" className="font-medium cursor-pointer">
-                Proteger link com senha
-              </Label>
-            </div>
-            {isProtected && (
-              <div className="space-y-2 pl-6 animate-in fade-in slide-in-from-top-2 duration-300">
-                <Label htmlFor="password">Nova Senha</Label>
-                <Input
-                  id="password"
-                  type="text"
-                  placeholder={
-                    selectedQuery?.is_protected
-                      ? 'Deixe em branco para manter'
-                      : 'Digite a senha...'
-                  }
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                />
-              </div>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Excluir compartilhamento?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Esta ação não pode ser desfeita. O link deixará de funcionar
+                            imediatamente.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                          <AlertDialogAction
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            onClick={() => handleDelete(q.id)}
+                          >
+                            Excluir
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </TableCell>
+                </TableRow>
+              ))
             )}
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setPasswordDialogOpen(false)}>
-              Cancelar
-            </Button>
-            <Button onClick={handleUpdatePassword} disabled={updating}>
-              {updating ? 'Salvando...' : 'Salvar'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </TableBody>
+        </Table>
+      </div>
     </div>
   )
 }
