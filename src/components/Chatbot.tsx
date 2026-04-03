@@ -12,6 +12,7 @@ import {
   FileText,
   Plus,
   Link as LinkIcon,
+  EyeOff,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -84,6 +85,7 @@ const BotMessageActions = ({ content, prevPrompt }: { content: string; prevPromp
   const [shareDialogOpen, setShareDialogOpen] = useState(false)
   const [isProtected, setIsProtected] = useState(false)
   const [notifyFirstAccess, setNotifyFirstAccess] = useState(false)
+  const [isSingleView, setIsSingleView] = useState(false)
   const [generatedLink, setGeneratedLink] = useState('')
   const [generatedPassword, setGeneratedPassword] = useState('')
   const [isGenerating, setIsGenerating] = useState(false)
@@ -168,6 +170,7 @@ const BotMessageActions = ({ content, prevPrompt }: { content: string; prevPromp
     setShareDialogOpen(true)
     setIsProtected(false)
     setNotifyFirstAccess(false)
+    setIsSingleView(false)
     setGeneratedLink('')
     setGeneratedPassword('')
   }
@@ -188,6 +191,7 @@ const BotMessageActions = ({ content, prevPrompt }: { content: string; prevPromp
           is_protected: isProtected,
           password: password,
           notify_first_access: notifyFirstAccess,
+          single_view: isSingleView,
         } as any)
         .select('id')
         .single()
@@ -330,6 +334,21 @@ const BotMessageActions = ({ content, prevPrompt }: { content: string; prevPromp
                   Você será notificado quando este link for acessado pela primeira vez.
                 </p>
               )}
+              <div className="flex items-center space-x-2">
+                <Switch
+                  id="single-view-link"
+                  checked={isSingleView}
+                  onCheckedChange={setIsSingleView}
+                />
+                <Label htmlFor="single-view-link" className="cursor-pointer">
+                  Visualização Única (expira após o 1º acesso)
+                </Label>
+              </div>
+              {isSingleView && (
+                <p className="text-sm text-muted-foreground ml-11">
+                  Este link será inutilizado automaticamente após o primeiro acesso.
+                </p>
+              )}
             </div>
           ) : (
             <div className="py-4 space-y-4">
@@ -366,6 +385,12 @@ const BotMessageActions = ({ content, prevPrompt }: { content: string; prevPromp
                   <p className="text-xs text-muted-foreground">
                     Copie esta senha e envie para quem for acessar o link.
                   </p>
+                </div>
+              )}
+              {isSingleView && (
+                <div className="bg-blue-500/10 text-blue-600 px-4 py-2 rounded-md font-medium text-sm mt-4 w-full text-center flex items-center justify-center gap-2">
+                  <EyeOff className="w-4 h-4" />
+                  Visualização Única Ativada
                 </div>
               )}
             </div>
