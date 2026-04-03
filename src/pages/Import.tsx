@@ -52,6 +52,7 @@ import {
 } from '@/components/ui/dialog'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
+import * as XLSX from 'xlsx'
 
 const IMPORT_TYPES = {
   COMPANIES: {
@@ -145,6 +146,7 @@ export default function Import() {
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [file, setFile] = useState<File | null>(null)
+  const [workbook, setWorkbook] = useState<XLSX.WorkBook | null>(null)
   const [isHistoryOpen, setIsHistoryOpen] = useState(false)
   const [history, setHistory] = useState<any[]>([])
   const [isUploading, setIsUploading] = useState(false)
@@ -153,7 +155,6 @@ export default function Import() {
   const [importType, setImportType] = useState<string>('')
 
   const [rawData, setRawData] = useState<any[]>([])
-  const [orgs, setOrgs] = useState<{ id: string; name: string }[]>([])
 
   const [isImporting, setIsImporting] = useState(false)
   const [importProgress, setImportProgress] = useState(0)
@@ -200,16 +201,51 @@ export default function Import() {
     return result
   }
 
+  const processSheetData = (ws: XLSX.WorkSheet) => {
+    const raw = XLSX.utils.sheet_to_json(ws, { defval: '' })
+    return raw.map((row: any) => {
+      const newRow: any = {}
+      for (const key in row) {
+        let val = row[key]
+        if (val instanceof Date) {
+          val = val.toISOString().split('T')[0]
+        } else {
+          val = String(val).trim()
+        }
+        newRow[key.trim()] = val
+      }
+      return newRow
+    })
+  }
+
+  const detectImportType = (parsedData: any[]) => {
+    if (parsedData.length > 0) {
+      const headers = Object.keys(parsedData[0])
+      let detectedType = ''
+      for (const [key, config] of Object.entries(IMPORT_TYPES)) {
+        const hasAllRequired = config.required.every((req) => headers.includes(req))
+        if (hasAllRequired) {
+          detectedType = key
+          break
+        }
+      }
+      if (detectedType) {
+        setImportType(detectedType)
+      } else {
+        setImportType('')
+      }
+    }
+  }
+
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0]
     if (!selectedFile) return
 
-    if (!selectedFile.name.endsWith('.csv')) {
+    if (!selectedFile.name.endsWith('.csv') && !selectedFile.name.endsWith('.xlsx')) {
       toast({
         variant: 'destructive',
         title: 'Arquivo inválido',
-        description:
-          'Por favor, selecione um arquivo CSV (.csv). Modelos baixados são em formato CSV.',
+        description: 'Por favor, selecione um arquivo .csv ou .xlsx.',
       })
       return
     }
@@ -217,34 +253,38 @@ export default function Import() {
     setFile(selectedFile)
     setIsUploading(true)
     setImportResult(null)
+    setWorkbook(null)
+    setImportType('')
 
     try {
-      const text = await selectedFile.text()
-      const parsedData = parseCSV(text)
+      if (selectedFile.name.endsWith('.csv')) {
+        const text = await selectedFile.text()
+        const parsedData = parseCSV(text)
 
-      setRawData(parsedData)
-      setSheets(['DADOS'])
-      setSelectedSheet('DADOS')
+        setRawData(parsedData)
+        setSheets(['DADOS (CSV)'])
+        setSelectedSheet('DADOS (CSV)')
+        detectImportType(parsedData)
+      } else {
+        const arrayBuffer = await selectedFile.arrayBuffer()
+        const wb = XLSX.read(arrayBuffer, { type: 'array', cellDates: true })
+        setWorkbook(wb)
+        setSheets(wb.SheetNames)
 
-      if (parsedData.length > 0) {
-        const headers = Object.keys(parsedData[0])
-        let detectedType = ''
-        for (const [key, config] of Object.entries(IMPORT_TYPES)) {
-          const hasAllRequired = config.required.every((req) => headers.includes(req))
-          if (hasAllRequired) {
-            detectedType = key
-            break
-          }
-        }
-        if (detectedType) {
-          setImportType(detectedType)
+        if (wb.SheetNames.length > 0) {
+          const firstSheet = wb.SheetNames[0]
+          setSelectedSheet(firstSheet)
+
+          const parsedData = processSheetData(wb.Sheets[firstSheet])
+          setRawData(parsedData)
+          detectImportType(parsedData)
         }
       }
 
       setIsUploading(false)
       toast({
         title: 'Arquivo processado',
-        description: 'Dados extraídos com sucesso.',
+        description: 'Dados extraídos com sucesso. Selecione a aba se necessário.',
       })
     } catch (err: any) {
       setIsUploading(false)
@@ -253,6 +293,16 @@ export default function Import() {
         title: 'Erro ao ler arquivo',
         description: err.message,
       })
+    }
+  }
+
+  const handleSheetChange = (sheetName: string) => {
+    setSelectedSheet(sheetName)
+    setImportResult(null)
+    if (workbook) {
+      const parsedData = processSheetData(workbook.Sheets[sheetName])
+      setRawData(parsedData)
+      detectImportType(parsedData)
     }
   }
 
@@ -318,20 +368,18 @@ export default function Import() {
     }
 
     setIsImporting(true)
-    setImportProgress(30) // Progresso inicial (enviando...)
+    setImportProgress(30)
 
     try {
-      // Explicitly get token to avoid 'Usuário não autenticado'
       const {
         data: { session },
       } = await supabase.auth.getSession()
 
-      // Chamando a Edge Function
       const { data, error } = await supabase.functions.invoke('import-data', {
         body: {
           records: validationInfo.validRecords,
           type: importType,
-          fileName: file?.name || 'Importação via CSV',
+          fileName: file?.name || 'Importação',
         },
         headers: session
           ? {
@@ -340,13 +388,8 @@ export default function Import() {
           : undefined,
       })
 
-      if (error) {
-        throw new Error(error.message || 'Erro desconhecido ao chamar a função')
-      }
-
-      if (data?.error) {
-        throw new Error(data.error)
-      }
+      if (error) throw new Error(error.message || 'Erro desconhecido ao chamar a função')
+      if (data?.error) throw new Error(data.error)
 
       setImportProgress(100)
       setImportResult(data)
@@ -382,6 +425,7 @@ export default function Import() {
 
   const resetForm = () => {
     setFile(null)
+    setWorkbook(null)
     setSheets([])
     setSelectedSheet('')
     setImportType('')
@@ -441,7 +485,7 @@ export default function Import() {
         <div className="flex-1">
           <h1 className="text-3xl font-bold tracking-tight">Importação de Dados</h1>
           <p className="text-muted-foreground">
-            Importe planilhas CSV para cadastro em lote. Validado em tempo real.
+            Importe planilhas Excel ou CSV para cadastro em lote. Validado em tempo real.
           </p>
         </div>
         <Button variant="outline" onClick={() => setIsHistoryOpen(true)}>
@@ -455,8 +499,7 @@ export default function Import() {
           <CardHeader>
             <CardTitle>1. Selecionar Arquivo</CardTitle>
             <CardDescription>
-              Faça o upload do seu arquivo CSV (.csv) para iniciar. O modelo baixado no passo
-              seguinte é o formato ideal.
+              Faça o upload do seu arquivo Excel (.xlsx) ou CSV (.csv) para iniciar.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -469,14 +512,16 @@ export default function Import() {
                 <h3 className="font-semibold text-lg mb-1">
                   Clique para selecionar ou arraste o arquivo
                 </h3>
-                <p className="text-sm text-muted-foreground">Apenas arquivos .csv são suportados</p>
+                <p className="text-sm text-muted-foreground">
+                  Arquivos .xlsx e .csv são suportados
+                </p>
                 <input
                   type="file"
                   ref={fileInputRef}
                   className="hidden"
-                  accept=".csv, text/csv"
+                  accept=".csv, text/csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, .xlsx"
                   onChange={handleFileChange}
-                />{' '}
+                />
               </div>
             ) : (
               <div className="flex items-center justify-between p-4 border rounded-lg bg-muted/30">
@@ -503,7 +548,7 @@ export default function Import() {
             {isUploading && (
               <div className="mt-4 space-y-2">
                 <div className="flex justify-between text-sm">
-                  <span>Lendo abas do arquivo...</span>
+                  <span>Processando arquivo...</span>
                 </div>
                 <Progress value={45} className="h-2 animate-pulse" />
               </div>
@@ -517,14 +562,17 @@ export default function Import() {
           <CardHeader>
             <CardTitle>2. Configuração de Importação</CardTitle>
             <CardDescription>
-              Selecione a aba e o tipo de importação para validar os dados ou baixe o modelo
-              esperado.
+              Selecione a aba e o tipo de importação para validar os dados.
             </CardDescription>
           </CardHeader>
           <CardContent className="grid md:grid-cols-2 gap-6">
             <div className="space-y-2">
               <Label>Aba da Planilha</Label>
-              <Select value={selectedSheet} onValueChange={setSelectedSheet} disabled={isImporting}>
+              <Select
+                value={selectedSheet}
+                onValueChange={handleSheetChange}
+                disabled={isImporting || file?.name.endsWith('.csv')}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione a aba..." />
                 </SelectTrigger>
