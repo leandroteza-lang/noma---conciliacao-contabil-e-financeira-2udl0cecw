@@ -38,6 +38,7 @@ import { supabase } from '@/lib/supabase/client'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { ThemeToggle } from '@/components/ThemeToggle'
+import { Chatbot } from '@/components/Chatbot'
 import {
   Sidebar,
   SidebarContent,
@@ -756,6 +757,7 @@ export default function Layout() {
         </main>
       </SidebarInset>
       <ChangePasswordModal open={isChangePasswordOpen} onOpenChange={setIsChangePasswordOpen} />
+      <Chatbot />
     </SidebarProvider>
   )
 }
