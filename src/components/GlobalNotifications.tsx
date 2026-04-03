@@ -32,7 +32,7 @@ export function GlobalNotifications() {
     fetchNotifiedQueries()
 
     const channel = supabase
-      .channel('global_shared_queries_changes')
+      .channel(`global_shared_queries_changes_${Math.random().toString(36).substring(2, 9)}`)
       .on(
         'postgres_changes',
         {
