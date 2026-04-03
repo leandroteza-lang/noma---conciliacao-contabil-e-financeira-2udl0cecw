@@ -708,6 +708,7 @@ export type Database = {
           notify_first_access: boolean | null
           password: string | null
           prompt: string
+          single_view: boolean | null
           user_id: string | null
         }
         Insert: {
@@ -720,6 +721,7 @@ export type Database = {
           notify_first_access?: boolean | null
           password?: string | null
           prompt: string
+          single_view?: boolean | null
           user_id?: string | null
         }
         Update: {
@@ -732,6 +734,7 @@ export type Database = {
           notify_first_access?: boolean | null
           password?: string | null
           prompt?: string
+          single_view?: boolean | null
           user_id?: string | null
         }
         Relationships: []
@@ -1107,6 +1110,7 @@ export const Constants = {
 //   access_count: integer (not null, default: 0)
 //   notify_first_access: boolean (nullable, default: false)
 //   first_access_notified: boolean (nullable, default: false)
+//   single_view: boolean (nullable, default: false)
 // Table: tipo_conta_tga
 //   id: uuid (not null, default: gen_random_uuid())
 //   organization_id: uuid (nullable)

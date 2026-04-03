@@ -128,7 +128,7 @@ export function ShareQueryModal() {
                 htmlFor="notify-switch"
                 className="flex items-center gap-2 font-medium cursor-pointer text-sm"
               >
-                Ativar notificações em tempo real
+                Ativar notificações de acesso (sino)
                 <Bell className="w-4 h-4 text-amber-500" />
               </Label>
               <Switch
@@ -138,13 +138,18 @@ export function ShareQueryModal() {
               />
             </div>
 
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between bg-primary/5 p-3 rounded-lg border border-primary/20">
               <Label
                 htmlFor="single-view-switch"
-                className="flex items-center gap-2 font-medium cursor-pointer text-sm"
+                className="flex flex-col gap-1 font-medium cursor-pointer text-sm"
               >
-                Visualização Única
-                <EyeOff className="w-4 h-4 text-blue-500" />
+                <span className="flex items-center gap-2">
+                  Visualização Única
+                  <EyeOff className="w-4 h-4 text-blue-500" />
+                </span>
+                <span className="text-xs text-muted-foreground font-normal">
+                  O link expirará automaticamente após ser acessado pela primeira vez
+                </span>
               </Label>
               <Switch
                 id="single-view-switch"
