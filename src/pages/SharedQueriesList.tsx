@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useState, useMemo, useRef } from 'react'
 import { supabase } from '@/lib/supabase/client'
 import { useAuth } from '@/hooks/use-auth'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
@@ -15,7 +15,19 @@ import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Checkbox } from '@/components/ui/checkbox'
-import { Trash2, Key, Copy, Check, Lock, Unlock, Eye, Search, ArrowUpDown } from 'lucide-react'
+import {
+  Trash2,
+  Key,
+  Copy,
+  Check,
+  Lock,
+  Unlock,
+  Eye,
+  Search,
+  ArrowUpDown,
+  Bell,
+  BellOff,
+} from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import {
   Dialog,
@@ -44,6 +56,12 @@ export default function SharedQueriesList() {
   const [isProtected, setIsProtected] = useState(false)
   const [updating, setUpdating] = useState(false)
 
+  const queriesRef = useRef(queries)
+
+  useEffect(() => {
+    queriesRef.current = queries
+  }, [queries])
+
   const fetchQueries = async () => {
     if (!user) return
     const { data } = await supabase.from('shared_queries').select('*').eq('user_id', user.id)
@@ -54,6 +72,47 @@ export default function SharedQueriesList() {
   useEffect(() => {
     fetchQueries()
   }, [user])
+
+  useEffect(() => {
+    if (!user) return
+
+    const channel = supabase
+      .channel('shared_queries_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'shared_queries',
+          filter: `user_id=eq.${user.id}`,
+        },
+        (payload) => {
+          const newRecord = payload.new as any
+          const existing = queriesRef.current.find((q) => q.id === newRecord.id)
+
+          if (existing) {
+            if (
+              newRecord.notify_first_access &&
+              newRecord.first_access_notified &&
+              !existing.first_access_notified
+            ) {
+              toast({
+                title: '🔔 Novo Acesso!',
+                description: `O link para a consulta "${newRecord.prompt}" foi acessado!`,
+              })
+            }
+            setQueries((prev) =>
+              prev.map((q) => (q.id === newRecord.id ? { ...q, ...newRecord } : q)),
+            )
+          }
+        },
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [user, toast])
 
   const copyToClipboard = (id: string) => {
     navigator.clipboard.writeText(`${window.location.origin}/consulta/${id}`)
@@ -120,12 +179,40 @@ export default function SharedQueriesList() {
     setUpdating(false)
   }
 
+  const toggleNotification = async (id: string, currentStatus: boolean) => {
+    const newStatus = !currentStatus
+    const updates = {
+      notify_first_access: newStatus,
+      ...(newStatus ? { first_access_notified: false } : {}),
+    }
+
+    const { error } = await supabase.from('shared_queries').update(updates).eq('id', id)
+
+    if (error) {
+      toast({ title: 'Erro', description: error.message, variant: 'destructive' })
+    } else {
+      setQueries((prev) => prev.map((q) => (q.id === id ? { ...q, ...updates } : q)))
+      toast({
+        title: newStatus ? 'Alerta Ativado' : 'Alerta Desativado',
+        description: newStatus
+          ? 'Você será notificado no próximo acesso a este link.'
+          : 'As notificações para este link foram suspensas.',
+      })
+    }
+  }
+
   const sortedQueries = useMemo(() => {
     return [...queries]
       .filter((q) => q.prompt.toLowerCase().includes(searchTerm.toLowerCase()))
       .sort((a, b) => {
-        if (a[sortConfig.key] < b[sortConfig.key]) return sortConfig.direction === 'asc' ? -1 : 1
-        if (a[sortConfig.key] > b[sortConfig.key]) return sortConfig.direction === 'asc' ? 1 : -1
+        let valA = a[sortConfig.key]
+        let valB = b[sortConfig.key]
+
+        if (typeof valA === 'boolean') valA = valA ? 1 : 0
+        if (typeof valB === 'boolean') valB = valB ? 1 : 0
+
+        if (valA < valB) return sortConfig.direction === 'asc' ? -1 : 1
+        if (valA > valB) return sortConfig.direction === 'asc' ? 1 : -1
         return 0
       })
   }, [queries, searchTerm, sortConfig])
@@ -241,6 +328,15 @@ export default function SharedQueriesList() {
                         Segurança <ArrowUpDown className="h-3 w-3" />
                       </Button>
                     </TableHead>
+                    <TableHead>
+                      <Button
+                        variant="ghost"
+                        onClick={() => handleSort('notify_first_access')}
+                        className="h-8 flex items-center gap-1 -ml-4 font-medium"
+                      >
+                        Alerta <ArrowUpDown className="h-3 w-3" />
+                      </Button>
+                    </TableHead>
                     <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -254,7 +350,7 @@ export default function SharedQueriesList() {
                         />
                       </TableCell>
                       <TableCell
-                        className="max-w-[300px] truncate font-medium"
+                        className="max-w-[200px] truncate font-medium"
                         title={query.prompt}
                       >
                         {query.prompt}
@@ -286,6 +382,26 @@ export default function SharedQueriesList() {
                             Aberto
                           </Badge>
                         )}
+                      </TableCell>
+                      <TableCell>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => toggleNotification(query.id, query.notify_first_access)}
+                          title={query.notify_first_access ? 'Desativar Alerta' : 'Ativar Alerta'}
+                          className={
+                            query.notify_first_access
+                              ? 'text-amber-500 hover:text-amber-600 hover:bg-amber-500/10'
+                              : 'text-muted-foreground'
+                          }
+                        >
+                          {query.notify_first_access ? (
+                            <Bell className="w-4 h-4 mr-1" />
+                          ) : (
+                            <BellOff className="w-4 h-4 mr-1" />
+                          )}
+                          {query.notify_first_access ? 'Ativo' : 'Inativo'}
+                        </Button>
                       </TableCell>
                       <TableCell className="text-right whitespace-nowrap">
                         <div className="flex items-center justify-end gap-2">
