@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase/client'
-import { useToast } from '@/hooks/use-toast'
-import { useAuth } from '@/hooks/use-auth'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import {
   Table,
   TableBody,
@@ -10,8 +10,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
+import { Checkbox } from '@/components/ui/checkbox'
 import {
   Dialog,
   DialogContent,
@@ -28,50 +27,44 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Label } from '@/components/ui/label'
-import { Badge } from '@/components/ui/badge'
-import { Checkbox } from '@/components/ui/checkbox'
+import { useToast } from '@/hooks/use-toast'
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import { Search, Plus, Trash2, Edit2, Shield, Building, MoreVertical } from 'lucide-react'
+  Search,
+  Trash2,
+  Edit3,
+  UserPlus,
+  Shield,
+  Building2,
+  Activity,
+  Users as UsersIcon,
+} from 'lucide-react'
 
 export default function Users() {
   const [users, setUsers] = useState<any[]>([])
   const [departments, setDepartments] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
-  const [searchTerm, setSearchTerm] = useState('')
-  const [selectedUsers, setSelectedUsers] = useState<string[]>([])
+  const [search, setSearch] = useState('')
+  const [selected, setSelected] = useState<string[]>([])
 
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false)
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false)
-  const [isBatchEditModalOpen, setIsBatchEditModalOpen] = useState(false)
-
-  const [formData, setFormData] = useState<any>({})
-  const [batchEditField, setBatchEditField] = useState('')
-  const [batchEditValue, setBatchEditValue] = useState('')
-  const [saving, setSaving] = useState(false)
+  const [batchEditOpen, setBatchEditOpen] = useState(false)
+  const [batchField, setBatchField] = useState<string>('')
+  const [batchValue, setBatchValue] = useState<string>('')
+  const [batchLoading, setBatchLoading] = useState(false)
 
   const { toast } = useToast()
-  const { user } = useAuth()
 
   const fetchData = async () => {
     setLoading(true)
-    const { data: deps } = await supabase
-      .from('departments')
-      .select('*')
-      .is('deleted_at', null)
-      .order('name')
-    if (deps) setDepartments(deps)
-
-    const { data: usrs } = await supabase
-      .from('cadastro_usuarios')
-      .select('*, departments(name)')
-      .is('deleted_at', null)
-      .order('name')
-    if (usrs) setUsers(usrs)
+    const [usersRes, deptsRes] = await Promise.all([
+      supabase
+        .from('cadastro_usuarios')
+        .select('*, departments(name)')
+        .is('deleted_at', null)
+        .order('name'),
+      supabase.from('departments').select('*').is('deleted_at', null).order('name'),
+    ])
+    if (usersRes.data) setUsers(usersRes.data)
+    if (deptsRes.data) setDepartments(deptsRes.data)
     setLoading(false)
   }
 
@@ -79,314 +72,200 @@ export default function Users() {
     fetchData()
   }, [])
 
-  const filteredUsers = users.filter(
-    (u) =>
-      u.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      u.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      u.cpf?.includes(searchTerm),
-  )
-
-  const toggleSelectAll = () => {
-    if (selectedUsers.length === filteredUsers.length) setSelectedUsers([])
-    else setSelectedUsers(filteredUsers.map((u) => u.id))
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) setSelected(users.map((u) => u.id))
+    else setSelected([])
   }
 
-  const toggleSelect = (id: string) => {
-    if (selectedUsers.includes(id)) setSelectedUsers(selectedUsers.filter((uId) => uId !== id))
-    else setSelectedUsers([...selectedUsers, id])
-  }
-
-  const handleAddSubmit = async () => {
-    if (!formData.name || !formData.email) {
-      toast({
-        title: 'Erro',
-        description: 'Nome e E-mail são obrigatórios',
-        variant: 'destructive',
-      })
-      return
-    }
-    setSaving(true)
-    try {
-      const { data, error } = await supabase.functions.invoke('manage-user', {
-        body: {
-          action: 'invite',
-          email: formData.email,
-          name: formData.name,
-          role: formData.role || 'collaborator',
-          cpf: formData.cpf,
-          phone: formData.phone,
-          department_id: formData.department_id,
-          admin_id: user?.id,
-        },
-      })
-      if (error || !data?.success)
-        throw new Error(error?.message || data?.error || 'Erro ao convidar usuário')
-
-      toast({ title: 'Sucesso', description: 'Usuário convidado com sucesso!' })
-      setIsAddModalOpen(false)
-      setFormData({})
-      fetchData()
-    } catch (err: any) {
-      toast({ title: 'Erro', description: err.message, variant: 'destructive' })
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  const handleEditSubmit = async () => {
-    setSaving(true)
-    try {
-      const { error } = await supabase
-        .from('cadastro_usuarios')
-        .update({
-          name: formData.name,
-          cpf: formData.cpf,
-          phone: formData.phone,
-          department_id: formData.department_id,
-          role: formData.role,
-          status: formData.status,
-        })
-        .eq('id', formData.id)
-
-      if (error) throw error
-      toast({ title: 'Sucesso', description: 'Usuário atualizado com sucesso!' })
-      setIsEditModalOpen(false)
-      setFormData({})
-      fetchData()
-    } catch (err: any) {
-      toast({ title: 'Erro', description: err.message, variant: 'destructive' })
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  const handleDelete = async (userId: string, authUserId: string) => {
-    if (!confirm('Tem certeza que deseja excluir este usuário?')) return
-    try {
-      await supabase
-        .from('cadastro_usuarios')
-        .update({ deleted_at: new Date().toISOString() })
-        .eq('id', userId)
-      if (authUserId) {
-        await supabase.functions.invoke('manage-user', {
-          body: { action: 'delete', user_id: authUserId },
-        })
-      }
-      toast({ title: 'Sucesso', description: 'Usuário excluído.' })
-      fetchData()
-    } catch (err: any) {
-      toast({ title: 'Erro', description: err.message, variant: 'destructive' })
-    }
+  const handleSelect = (id: string, checked: boolean) => {
+    if (checked) setSelected((prev) => [...prev, id])
+    else setSelected((prev) => prev.filter((x) => x !== id))
   }
 
   const handleBatchDelete = async () => {
-    if (!confirm(`Tem certeza que deseja excluir ${selectedUsers.length} usuários?`)) return
-    try {
-      const usersToDelete = users.filter((u) => selectedUsers.includes(u.id))
-      for (const u of usersToDelete) {
-        await supabase
-          .from('cadastro_usuarios')
-          .update({ deleted_at: new Date().toISOString() })
-          .eq('id', u.id)
-        if (u.user_id) {
-          await supabase.functions.invoke('manage-user', {
-            body: { action: 'delete', user_id: u.user_id },
-          })
-        }
-      }
-      toast({ title: 'Sucesso', description: `${selectedUsers.length} usuários excluídos.` })
-      setSelectedUsers([])
+    if (!confirm(`Deseja realmente excluir ${selected.length} usuários?`)) return
+
+    const { error } = await supabase
+      .from('cadastro_usuarios')
+      .update({ deleted_at: new Date().toISOString() })
+      .in('id', selected)
+
+    if (error) {
+      toast({ title: 'Erro', description: error.message, variant: 'destructive' })
+    } else {
+      toast({ title: 'Sucesso', description: `${selected.length} usuários excluídos em lote.` })
+      setSelected([])
       fetchData()
-    } catch (err: any) {
-      toast({ title: 'Erro', description: err.message, variant: 'destructive' })
     }
   }
 
-  const handleBatchEditSubmit = async () => {
-    if (!batchEditField || !batchEditValue) return
-    setSaving(true)
-    try {
-      let updateData: any = {}
-      if (batchEditField === 'role') updateData.role = batchEditValue
-      else if (batchEditField === 'department_id')
-        updateData.department_id = batchEditValue === 'null' ? null : batchEditValue
-      else if (batchEditField === 'status') updateData.status = batchEditValue === 'true'
+  const handleBatchEdit = async () => {
+    if (!batchField || !batchValue) return
+    setBatchLoading(true)
 
-      const { error } = await supabase
-        .from('cadastro_usuarios')
-        .update(updateData)
-        .in('id', selectedUsers)
-      if (error) throw error
+    let updateData: any = {}
+    if (batchField === 'role') updateData.role = batchValue
+    if (batchField === 'department_id')
+      updateData.department_id = batchValue === 'none' ? null : batchValue
+    if (batchField === 'status') updateData.status = batchValue === 'true'
 
-      toast({ title: 'Sucesso', description: `${selectedUsers.length} usuários atualizados.` })
-      setIsBatchEditModalOpen(false)
-      setSelectedUsers([])
-      setBatchEditField('')
-      setBatchEditValue('')
+    const { error } = await supabase.from('cadastro_usuarios').update(updateData).in('id', selected)
+
+    setBatchLoading(false)
+    if (error) {
+      toast({ title: 'Erro na atualização', description: error.message, variant: 'destructive' })
+    } else {
+      toast({
+        title: 'Sucesso',
+        description: `${selected.length} usuários atualizados com sucesso.`,
+      })
+      setBatchEditOpen(false)
+      setSelected([])
       fetchData()
-    } catch (err: any) {
-      toast({ title: 'Erro', description: err.message, variant: 'destructive' })
-    } finally {
-      setSaving(false)
     }
   }
 
-  const getRoleLabel = (role: string) => {
-    const roles: Record<string, string> = {
-      admin: 'Admin',
-      supervisor: 'Supervisor',
-      collaborator: 'Colaborador',
-      client_user: 'Cliente',
-    }
-    return roles[role] || role
-  }
+  const filteredUsers = users.filter(
+    (u) =>
+      u.name?.toLowerCase().includes(search.toLowerCase()) ||
+      u.email?.toLowerCase().includes(search.toLowerCase()),
+  )
 
   return (
-    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+    <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-8">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Gestão de Usuários</h1>
-          <p className="text-muted-foreground">
-            Gerencie os acessos, permissões e departamentos da equipe.
+          <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
+            <UsersIcon className="w-8 h-8 text-primary" />
+            Usuários
+          </h1>
+          <p className="text-muted-foreground mt-1 text-sm md:text-base">
+            Gerencie os acessos, permissões e departamentos da sua equipe.
           </p>
         </div>
-        <Button
-          onClick={() => {
-            setFormData({ status: true })
-            setIsAddModalOpen(true)
-          }}
-        >
-          <Plus className="w-4 h-4 mr-2" />
-          Novo Usuário
+        <Button className="w-full md:w-auto shadow-sm">
+          <UserPlus className="w-4 h-4 mr-2" /> Novo Usuário
         </Button>
       </div>
 
-      <div className="flex flex-col sm:flex-row items-center gap-4 justify-between bg-card p-4 rounded-lg border shadow-sm">
-        <div className="relative w-full sm:max-w-md">
+      <div className="flex flex-col md:flex-row gap-4 items-center justify-between bg-card p-4 rounded-xl border shadow-sm">
+        <div className="relative w-full md:w-96">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
-            placeholder="Buscar por nome, email ou CPF..."
-            className="pl-9 bg-background"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Buscar por nome ou e-mail..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-9 bg-background border-primary/10 shadow-sm"
           />
         </div>
 
-        {selectedUsers.length > 0 && (
-          <div className="flex items-center gap-2 w-full sm:w-auto animate-in zoom-in-95 duration-200">
-            <Badge variant="secondary" className="px-3 py-1 text-sm font-medium shrink-0">
-              {selectedUsers.length} selecionados
-            </Badge>
-            <Button variant="outline" size="sm" onClick={() => setIsBatchEditModalOpen(true)}>
-              <Edit2 className="w-4 h-4 mr-2" />
-              Editar em Lote
-            </Button>
-            <Button variant="destructive" size="sm" onClick={handleBatchDelete}>
-              <Trash2 className="w-4 h-4 mr-2" />
-              Excluir
-            </Button>
-          </div>
-        )}
+        <div className="flex items-center gap-2 w-full md:w-auto h-10">
+          {selected.length > 0 && (
+            <div className="flex items-center gap-2 animate-in fade-in slide-in-from-right-4 duration-300">
+              <span className="text-sm font-bold bg-primary/10 text-primary px-3 py-2 rounded-lg">
+                {selected.length} selecionado(s)
+              </span>
+              <Button
+                variant="secondary"
+                className="shadow-sm"
+                onClick={() => {
+                  setBatchField('')
+                  setBatchValue('')
+                  setBatchEditOpen(true)
+                }}
+              >
+                <Edit3 className="w-4 h-4 mr-2" /> Editar em Lote
+              </Button>
+              <Button variant="destructive" className="shadow-sm" onClick={handleBatchDelete}>
+                <Trash2 className="w-4 h-4 mr-2" /> Excluir em Lote
+              </Button>
+            </div>
+          )}
+        </div>
       </div>
 
-      <div className="border rounded-lg bg-card shadow-sm overflow-hidden">
+      <div className="border rounded-xl bg-card shadow-sm overflow-hidden">
         <Table>
           <TableHeader>
-            <TableRow>
-              <TableHead className="w-12">
+            <TableRow className="bg-muted/50 hover:bg-muted/50">
+              <TableHead className="w-12 text-center">
                 <Checkbox
-                  checked={
-                    selectedUsers.length === filteredUsers.length && filteredUsers.length > 0
-                  }
-                  onCheckedChange={toggleSelectAll}
+                  checked={selected.length === filteredUsers.length && filteredUsers.length > 0}
+                  onCheckedChange={handleSelectAll}
                 />
               </TableHead>
-              <TableHead>Nome</TableHead>
-              <TableHead>Contato</TableHead>
-              <TableHead>Departamento</TableHead>
-              <TableHead>Perfil</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="text-right">Ações</TableHead>
+              <TableHead className="font-bold">Nome Completo</TableHead>
+              <TableHead className="font-bold">E-mail</TableHead>
+              <TableHead className="font-bold">Perfil de Acesso</TableHead>
+              <TableHead className="font-bold">Departamento</TableHead>
+              <TableHead className="font-bold text-center">Status</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center py-8">
-                  Carregando...
+                <TableCell
+                  colSpan={6}
+                  className="text-center py-12 text-muted-foreground font-medium"
+                >
+                  Carregando dados da equipe...
                 </TableCell>
               </TableRow>
             ) : filteredUsers.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                <TableCell
+                  colSpan={6}
+                  className="text-center py-12 text-muted-foreground font-medium"
+                >
                   Nenhum usuário encontrado.
                 </TableCell>
               </TableRow>
             ) : (
-              filteredUsers.map((u) => (
-                <TableRow key={u.id} className={selectedUsers.includes(u.id) ? 'bg-muted/50' : ''}>
-                  <TableCell>
+              filteredUsers.map((user) => (
+                <TableRow
+                  key={user.id}
+                  className={`group transition-colors ${selected.includes(user.id) ? 'bg-primary/5' : ''}`}
+                >
+                  <TableCell className="text-center">
                     <Checkbox
-                      checked={selectedUsers.includes(u.id)}
-                      onCheckedChange={() => toggleSelect(u.id)}
+                      checked={selected.includes(user.id)}
+                      onCheckedChange={(c) => handleSelect(user.id, c as boolean)}
                     />
                   </TableCell>
+                  <TableCell className="font-medium">{user.name}</TableCell>
+                  <TableCell className="text-muted-foreground">{user.email}</TableCell>
                   <TableCell>
-                    <div className="font-medium">{u.name}</div>
-                    <div className="text-xs text-muted-foreground">{u.cpf || 'Sem CPF'}</div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="text-sm">{u.email}</div>
-                    <div className="text-xs text-muted-foreground">{u.phone || 'Sem telefone'}</div>
-                  </TableCell>
-                  <TableCell>
-                    {u.departments?.name ? (
-                      <Badge variant="outline" className="font-normal">
-                        <Building className="w-3 h-3 mr-1" />
-                        {u.departments.name}
-                      </Badge>
-                    ) : (
-                      '-'
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="secondary" className="font-normal">
-                      <Shield className="w-3 h-3 mr-1" />
-                      {getRoleLabel(u.role)}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Badge
-                      variant={u.status ? 'default' : 'destructive'}
-                      className={u.status ? 'bg-green-500 hover:bg-green-600' : ''}
+                    <span
+                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold ${
+                        user.role === 'admin'
+                          ? 'bg-purple-500/10 text-purple-600'
+                          : user.role === 'supervisor'
+                            ? 'bg-blue-500/10 text-blue-600'
+                            : user.role === 'client_user'
+                              ? 'bg-orange-500/10 text-orange-600'
+                              : 'bg-slate-500/10 text-slate-600'
+                      }`}
                     >
-                      {u.status ? 'Ativo' : 'Inativo'}
-                    </Badge>
+                      <Shield className="w-3.5 h-3.5" />
+                      {user.role === 'admin'
+                        ? 'Administrador'
+                        : user.role === 'supervisor'
+                          ? 'Supervisor'
+                          : user.role === 'client_user'
+                            ? 'Cliente'
+                            : 'Colaborador'}
+                    </span>
                   </TableCell>
-                  <TableCell className="text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon">
-                          <MoreVertical className="w-4 h-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem
-                          onClick={() => {
-                            setFormData(u)
-                            setIsEditModalOpen(true)
-                          }}
-                        >
-                          <Edit2 className="w-4 h-4 mr-2" /> Editar
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          className="text-destructive focus:bg-destructive/10"
-                          onClick={() => handleDelete(u.id, u.user_id)}
-                        >
-                          <Trash2 className="w-4 h-4 mr-2" /> Excluir
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                  <TableCell className="font-medium text-muted-foreground">
+                    {user.departments?.name || 'Não atribuído'}
+                  </TableCell>
+                  <TableCell className="text-center">
+                    <span
+                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold ${user.status ? 'bg-green-500/10 text-green-600' : 'bg-red-500/10 text-red-600'}`}
+                    >
+                      <Activity className="w-3.5 h-3.5" />
+                      {user.status ? 'Ativo' : 'Inativo'}
+                    </span>
                   </TableCell>
                 </TableRow>
               ))
@@ -395,41 +274,46 @@ export default function Users() {
         </Table>
       </div>
 
-      <Dialog open={isBatchEditModalOpen} onOpenChange={setIsBatchEditModalOpen}>
-        <DialogContent>
+      {/* Batch Edit Modal */}
+      <Dialog open={batchEditOpen} onOpenChange={setBatchEditOpen}>
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Editar {selectedUsers.length} Usuários em Lote</DialogTitle>
-            <DialogDescription>
-              Selecione um campo para aplicar o mesmo valor a todos os usuários selecionados.
+            <DialogTitle className="text-xl">Edição em Lote</DialogTitle>
+            <DialogDescription className="text-sm">
+              Você está prestes a editar <strong>{selected.length}</strong> usuário(s)
+              simultaneamente. Essa alteração será aplicada a todos.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label>Campo a alterar</Label>
+
+          <div className="space-y-6 py-4">
+            <div className="space-y-3">
+              <Label className="text-sm font-semibold">Campo a ser alterado</Label>
               <Select
-                value={batchEditField}
-                onValueChange={(v) => {
-                  setBatchEditField(v)
-                  setBatchEditValue('')
+                value={batchField}
+                onValueChange={(val) => {
+                  setBatchField(val)
+                  setBatchValue('')
                 }}
               >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione um campo" />
+                <SelectTrigger className="h-12">
+                  <SelectValue placeholder="Escolha um campo para atualizar..." />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="role">Perfil de Acesso</SelectItem>
                   <SelectItem value="department_id">Departamento</SelectItem>
-                  <SelectItem value="status">Status (Ativo/Inativo)</SelectItem>
+                  <SelectItem value="status">Status da Conta</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
-            {batchEditField === 'role' && (
-              <div className="space-y-2">
-                <Label>Novo Perfil</Label>
-                <Select value={batchEditValue} onValueChange={setBatchEditValue}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione o perfil" />
+            {batchField === 'role' && (
+              <div className="space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">
+                <Label className="flex items-center gap-2 text-sm font-semibold">
+                  <Shield className="w-4 h-4 text-blue-500" /> Novo Perfil
+                </Label>
+                <Select value={batchValue} onValueChange={setBatchValue}>
+                  <SelectTrigger className="h-12">
+                    <SelectValue placeholder="Selecione o novo perfil..." />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="admin">Administrador</SelectItem>
@@ -441,15 +325,17 @@ export default function Users() {
               </div>
             )}
 
-            {batchEditField === 'department_id' && (
-              <div className="space-y-2">
-                <Label>Novo Departamento</Label>
-                <Select value={batchEditValue} onValueChange={setBatchEditValue}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione o departamento" />
+            {batchField === 'department_id' && (
+              <div className="space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">
+                <Label className="flex items-center gap-2 text-sm font-semibold">
+                  <Building2 className="w-4 h-4 text-purple-500" /> Novo Departamento
+                </Label>
+                <Select value={batchValue} onValueChange={setBatchValue}>
+                  <SelectTrigger className="h-12">
+                    <SelectValue placeholder="Selecione o departamento..." />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="null">Nenhum Departamento</SelectItem>
+                    <SelectItem value="none">Remover Departamento (Nenhum)</SelectItem>
                     {departments.map((d) => (
                       <SelectItem key={d.id} value={d.id}>
                         {d.name}
@@ -460,146 +346,34 @@ export default function Users() {
               </div>
             )}
 
-            {batchEditField === 'status' && (
-              <div className="space-y-2">
-                <Label>Novo Status</Label>
-                <Select value={batchEditValue} onValueChange={setBatchEditValue}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione o status" />
+            {batchField === 'status' && (
+              <div className="space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">
+                <Label className="flex items-center gap-2 text-sm font-semibold">
+                  <Activity className="w-4 h-4 text-green-500" /> Novo Status
+                </Label>
+                <Select value={batchValue} onValueChange={setBatchValue}>
+                  <SelectTrigger className="h-12">
+                    <SelectValue placeholder="Selecione o status..." />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="true">Ativo</SelectItem>
-                    <SelectItem value="false">Inativo</SelectItem>
+                    <SelectItem value="true">Ativo (Permitir acesso)</SelectItem>
+                    <SelectItem value="false">Inativo (Bloquear acesso)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
             )}
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsBatchEditModalOpen(false)}>
-              Cancelar
-            </Button>
-            <Button
-              onClick={handleBatchEditSubmit}
-              disabled={saving || !batchEditField || !batchEditValue}
-            >
-              {saving ? 'Aplicando...' : 'Aplicar Alterações'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
-      <Dialog
-        open={isAddModalOpen || isEditModalOpen}
-        onOpenChange={(o) => {
-          if (!o) {
-            setIsAddModalOpen(false)
-            setIsEditModalOpen(false)
-          }
-        }}
-      >
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle>
-              {isAddModalOpen ? 'Adicionar Novo Usuário' : 'Editar Usuário'}
-            </DialogTitle>
-          </DialogHeader>
-          <div className="grid grid-cols-2 gap-4 py-4">
-            <div className="space-y-2 col-span-2">
-              <Label>Nome Completo</Label>
-              <Input
-                value={formData.name || ''}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              />
-            </div>
-            <div className="space-y-2 col-span-2 sm:col-span-1">
-              <Label>Email</Label>
-              <Input
-                disabled={isEditModalOpen}
-                value={formData.email || ''}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              />
-            </div>
-            <div className="space-y-2 col-span-2 sm:col-span-1">
-              <Label>CPF</Label>
-              <Input
-                value={formData.cpf || ''}
-                onChange={(e) => setFormData({ ...formData, cpf: e.target.value })}
-              />
-            </div>
-            <div className="space-y-2 col-span-2 sm:col-span-1">
-              <Label>Telefone</Label>
-              <Input
-                value={formData.phone || ''}
-                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-              />
-            </div>
-            <div className="space-y-2 col-span-2 sm:col-span-1">
-              <Label>Departamento</Label>
-              <Select
-                value={formData.department_id || 'null'}
-                onValueChange={(v) =>
-                  setFormData({ ...formData, department_id: v === 'null' ? null : v })
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione..." />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="null">Nenhum</SelectItem>
-                  {departments.map((d) => (
-                    <SelectItem key={d.id} value={d.id}>
-                      {d.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2 col-span-2 sm:col-span-1">
-              <Label>Perfil de Acesso</Label>
-              <Select
-                value={formData.role || 'collaborator'}
-                onValueChange={(v) => setFormData({ ...formData, role: v })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione..." />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="admin">Administrador</SelectItem>
-                  <SelectItem value="supervisor">Supervisor</SelectItem>
-                  <SelectItem value="collaborator">Colaborador</SelectItem>
-                  <SelectItem value="client_user">Usuário Cliente</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2 col-span-2 sm:col-span-1">
-              <Label>Status</Label>
-              <Select
-                value={formData.status !== false ? 'true' : 'false'}
-                onValueChange={(v) => setFormData({ ...formData, status: v === 'true' })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione..." />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="true">Ativo</SelectItem>
-                  <SelectItem value="false">Inativo</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setIsAddModalOpen(false)
-                setIsEditModalOpen(false)
-              }}
-            >
+          <DialogFooter className="gap-2 sm:gap-0 pt-2 border-t">
+            <Button variant="ghost" onClick={() => setBatchEditOpen(false)}>
               Cancelar
             </Button>
-            <Button onClick={isAddModalOpen ? handleAddSubmit : handleEditSubmit} disabled={saving}>
-              {saving ? 'Salvando...' : 'Salvar'}
+            <Button
+              onClick={handleBatchEdit}
+              disabled={!batchField || !batchValue || batchLoading}
+              className="shadow-sm"
+            >
+              {batchLoading ? 'Salvando...' : 'Aplicar Alteração'}
             </Button>
           </DialogFooter>
         </DialogContent>

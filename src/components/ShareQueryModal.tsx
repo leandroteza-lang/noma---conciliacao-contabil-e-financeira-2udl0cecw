@@ -138,17 +138,22 @@ export function ShareQueryModal() {
               />
             </div>
 
-            <div className="flex items-center justify-between bg-primary/5 p-3 rounded-lg border border-primary/20">
+            <div className="flex items-center justify-between bg-primary/5 p-4 rounded-xl border-2 border-primary/20 relative overflow-hidden transition-all duration-300 hover:bg-primary/10">
+              <div className="absolute top-0 left-0 w-1.5 h-full bg-blue-500"></div>
               <Label
                 htmlFor="single-view-switch"
-                className="flex flex-col gap-1 font-medium cursor-pointer text-sm"
+                className="flex flex-col gap-1.5 font-medium cursor-pointer text-sm pl-2"
               >
                 <span className="flex items-center gap-2">
                   Visualização Única
                   <EyeOff className="w-4 h-4 text-blue-500" />
+                  <span className="bg-blue-500 text-white text-[10px] px-1.5 py-0.5 rounded-sm uppercase tracking-wider font-bold animate-pulse">
+                    Novo
+                  </span>
                 </span>
                 <span className="text-xs text-muted-foreground font-normal">
-                  O link expirará automaticamente após ser acessado pela primeira vez
+                  O link expirará automaticamente após ser acessado pela primeira vez. Ideal para
+                  dados sensíveis.
                 </span>
               </Label>
               <Switch

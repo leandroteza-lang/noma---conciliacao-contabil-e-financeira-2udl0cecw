@@ -1,333 +1,192 @@
-import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
-import { Plus, Search, Share2 } from 'lucide-react'
+import { useState, useRef, useEffect } from 'react'
 import { supabase } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import { useAuth } from '@/hooks/use-auth'
+import { Textarea } from '@/components/ui/textarea'
+import { Bot, User as UserIcon, Send, Loader2, Share2, Sparkles } from 'lucide-react'
+import { renderMarkdown } from '@/lib/markdown'
 import { useToast } from '@/hooks/use-toast'
-import { AccountList } from '@/components/AccountList'
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from '@/components/ui/dialog'
-import { Label } from '@/components/ui/label'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
+
+interface Message {
+  role: 'user' | 'assistant'
+  content: string
+}
 
 export default function Index() {
-  const { user } = useAuth()
+  const [messages, setMessages] = useState<Message[]>([
+    {
+      role: 'assistant',
+      content:
+        'Olá! Sou a inteligência artificial da Molas Noma. Como posso ajudar na gestão financeira e contábil hoje?',
+    },
+  ])
+  const [input, setInput] = useState('')
+  const [loading, setLoading] = useState(false)
+  const messagesEndRef = useRef<HTMLDivElement>(null)
   const { toast } = useToast()
-  const [accounts, setAccounts] = useState<any[]>([])
-  const [organizations, setOrganizations] = useState<any[]>([])
-  const [search, setSearch] = useState('')
-  const [loading, setLoading] = useState(true)
-  const [isAddOpen, setIsAddOpen] = useState(false)
-  const [newAccount, setNewAccount] = useState({
-    organization_id: '',
-    account_code: '',
-    description: '',
-    bank_code: '',
-    agency: '',
-    account_number: '',
-    check_digit: '',
-    account_type: '',
-    classification: '',
-  })
 
-  const fetchData = async () => {
-    setLoading(true)
-    const [{ data: orgs }, { data: accs }] = await Promise.all([
-      supabase.from('organizations').select('*').is('deleted_at', null),
-      supabase.from('bank_accounts').select('*').is('deleted_at', null),
-    ])
-    if (orgs) setOrganizations(orgs)
-    if (accs) {
-      const mapped = accs.map((a) => ({
-        id: a.id,
-        organization_id: a.organization_id,
-        contaContabil: a.account_code,
-        descricao: a.description,
-        banco: a.bank_code,
-        agencia: a.agency,
-        numeroConta: a.account_number,
-        digitoConta: a.check_digit,
-        tipoConta: a.account_type,
-        classificacao: a.classification,
-      }))
-      setAccounts(mapped)
-    }
-    setLoading(false)
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }
 
   useEffect(() => {
-    if (user) fetchData()
-  }, [user])
+    scrollToBottom()
+  }, [messages])
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Deseja excluir esta conta?')) return
-    const { error } = await supabase
-      .from('bank_accounts')
-      .update({ pending_deletion: true })
-      .eq('id', id)
-    if (error) toast({ title: 'Erro', description: error.message, variant: 'destructive' })
-    else {
-      toast({ title: 'Sucesso', description: 'Conta enviada para lixeira.' })
-      fetchData()
-    }
-  }
+  const handleSend = async () => {
+    if (!input.trim() || loading) return
 
-  const handleSave = async () => {
-    if (!newAccount.organization_id || !newAccount.account_code) {
+    const userMsg: Message = { role: 'user', content: input.trim() }
+    const newMessages = [...messages, userMsg]
+    setMessages(newMessages)
+    setInput('')
+    setLoading(true)
+
+    try {
+      const { data, error } = await supabase.functions.invoke('chat', {
+        body: { messages: newMessages },
+      })
+
+      if (error) throw error
+
+      if (data?.reply) {
+        setMessages([...newMessages, { role: 'assistant', content: data.reply }])
+      } else {
+        throw new Error('Resposta inválida do servidor')
+      }
+    } catch (err: any) {
       toast({
-        title: 'Aviso',
-        description: 'Empresa e Conta Contábil são obrigatórios.',
+        title: 'Erro ao comunicar com o assistente',
+        description: err.message,
         variant: 'destructive',
       })
-      return
-    }
-    const { error } = await supabase.from('bank_accounts').insert([newAccount])
-    if (error) {
-      toast({ title: 'Erro', description: error.message, variant: 'destructive' })
-    } else {
-      toast({ title: 'Sucesso', description: 'Conta cadastrada com sucesso.' })
-      setIsAddOpen(false)
-      setNewAccount({
-        organization_id: '',
-        account_code: '',
-        description: '',
-        bank_code: '',
-        agency: '',
-        account_number: '',
-        check_digit: '',
-        account_type: '',
-        classification: '',
-      })
-      fetchData()
+      setMessages(newMessages)
+    } finally {
+      setLoading(false)
     }
   }
 
-  const handleShare = () => {
-    const content =
-      filteredData.length > 0
-        ? filteredData
-            .map(
-              (a) =>
-                `Conta: ${a.contaContabil || '-'} | Banco: ${a.banco || '-'} | Ag: ${a.agencia || '-'} | Num: ${a.numeroConta || '-'}`,
-            )
-            .join('\n')
-        : 'Nenhuma conta encontrada.'
-
-    window.dispatchEvent(
-      new CustomEvent('open-share-modal', {
-        detail: {
-          prompt: 'Listagem de Contas Bancárias',
-          content: content,
-        },
-      }),
-    )
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      handleSend()
+    }
   }
 
-  const filteredData = accounts.filter(
-    (a) =>
-      (a.descricao?.toLowerCase() || '').includes(search.toLowerCase()) ||
-      (a.contaContabil?.toLowerCase() || '').includes(search.toLowerCase()) ||
-      (a.banco?.toLowerCase() || '').includes(search.toLowerCase()) ||
-      (a.agencia?.toLowerCase() || '').includes(search.toLowerCase()) ||
-      (a.numeroConta?.toLowerCase() || '').includes(search.toLowerCase()) ||
-      (a.tipoConta?.toLowerCase() || '').includes(search.toLowerCase()) ||
-      (a.classificacao?.toLowerCase() || '').includes(search.toLowerCase()),
-  )
+  const openShareModal = (content: string, index: number) => {
+    let prompt = 'Consulta Gerada'
+    for (let i = index - 1; i >= 0; i--) {
+      if (messages[i].role === 'user') {
+        prompt = messages[i].content
+        break
+      }
+    }
+    const event = new CustomEvent('open-share-modal', { detail: { prompt, content } })
+    window.dispatchEvent(event)
+  }
 
   return (
-    <div className="container mx-auto max-w-6xl py-8 space-y-6 animate-fade-in-up">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Listagem de Contas</h1>
-          <p className="text-muted-foreground">Gerencie as contas bancárias e contas correntes.</p>
+    <div className="flex flex-col h-[calc(100vh-4rem)] max-w-5xl mx-auto bg-background/50">
+      <div className="p-6 pb-4 border-b bg-card flex items-center gap-4 shadow-sm z-10 relative">
+        <div className="w-12 h-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
+          <Sparkles className="w-6 h-6" />
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={handleShare}>
-            <Share2 className="h-4 w-4 mr-2" />
-            Compartilhar
-          </Button>
-          <Button variant="outline" asChild>
-            <Link to="/import">Importar Planilha</Link>
-          </Button>
-          <Button onClick={() => setIsAddOpen(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            Nova Conta
-          </Button>
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Assistente Noma</h1>
+          <p className="text-sm text-muted-foreground font-medium">
+            Inteligência Contábil e Financeira
+          </p>
         </div>
       </div>
 
-      <Card>
-        <CardHeader className="pb-4">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-            <div className="space-y-1">
-              <CardTitle>Listagem de Contas</CardTitle>
-              <CardDescription>Visualize e filtre suas contas cadastradas.</CardDescription>
+      <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-8 scroll-smooth">
+        {messages.map((msg, idx) => (
+          <div
+            key={idx}
+            className={`flex gap-4 ${msg.role === 'user' ? 'flex-row-reverse' : ''} animate-in fade-in slide-in-from-bottom-4 duration-500`}
+          >
+            <div
+              className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 shadow-sm ${
+                msg.role === 'user'
+                  ? 'bg-primary text-primary-foreground'
+                  : 'bg-primary/10 text-primary border border-primary/20'
+              }`}
+            >
+              {msg.role === 'user' ? <UserIcon className="w-5 h-5" /> : <Bot className="w-5 h-5" />}
             </div>
-            <div className="relative w-full sm:w-72">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                type="search"
-                placeholder="Buscar por descrição, código..."
-                className="pl-8"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {loading ? (
-            <div className="text-center py-8 text-muted-foreground">Carregando...</div>
-          ) : (
-            <AccountList
-              accounts={filteredData}
-              organizations={organizations}
-              onDelete={handleDelete}
-              onUpdateInline={async (id, field, val) => {
-                const dbField =
-                  field === 'contaContabil'
-                    ? 'account_code'
-                    : field === 'descricao'
-                      ? 'description'
-                      : field === 'banco'
-                        ? 'bank_code'
-                        : field === 'agencia'
-                          ? 'agency'
-                          : field === 'numeroConta'
-                            ? 'account_number'
-                            : field === 'digitoConta'
-                              ? 'check_digit'
-                              : field === 'tipoConta'
-                                ? 'account_type'
-                                : field === 'classificacao'
-                                  ? 'classification'
-                                  : field
-                const { error } = await supabase
-                  .from('bank_accounts')
-                  .update({ [dbField]: val })
-                  .eq('id', id)
-                if (!error) {
-                  setAccounts((prev) => prev.map((a) => (a.id === id ? { ...a, [field]: val } : a)))
-                  return true
-                }
-                return false
-              }}
-            />
-          )}
-        </CardContent>
-      </Card>
 
-      <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Nova Conta Bancária</DialogTitle>
-            <DialogDescription>Preencha os dados para adicionar uma nova conta.</DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="space-y-2">
-              <Label>Empresa *</Label>
-              <Select
-                value={newAccount.organization_id}
-                onValueChange={(v) => setNewAccount({ ...newAccount, organization_id: v })}
+            <div
+              className={`relative flex flex-col max-w-[90%] md:max-w-[75%] ${msg.role === 'user' ? 'items-end' : 'items-start'}`}
+            >
+              <div
+                className={`p-4 md:p-5 rounded-2xl shadow-sm ${
+                  msg.role === 'user'
+                    ? 'bg-primary text-primary-foreground rounded-tr-none'
+                    : 'bg-card border border-primary/10 rounded-tl-none'
+                }`}
               >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {organizations.map((o) => (
-                    <SelectItem key={o.id} value={o.id}>
-                      {o.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Conta Contábil *</Label>
-              <Input
-                value={newAccount.account_code}
-                onChange={(e) => setNewAccount({ ...newAccount, account_code: e.target.value })}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Descrição</Label>
-              <Input
-                value={newAccount.description}
-                onChange={(e) => setNewAccount({ ...newAccount, description: e.target.value })}
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Banco</Label>
-                <Input
-                  value={newAccount.bank_code}
-                  onChange={(e) => setNewAccount({ ...newAccount, bank_code: e.target.value })}
-                />
+                {msg.role === 'user' ? (
+                  <p className="whitespace-pre-wrap leading-relaxed text-sm md:text-base font-medium">
+                    {msg.content}
+                  </p>
+                ) : (
+                  <div className="prose prose-sm md:prose-base dark:prose-invert max-w-none prose-p:leading-relaxed prose-headings:font-bold">
+                    {renderMarkdown(msg.content)}
+                  </div>
+                )}
               </div>
-              <div className="space-y-2">
-                <Label>Agência</Label>
-                <Input
-                  value={newAccount.agency}
-                  onChange={(e) => setNewAccount({ ...newAccount, agency: e.target.value })}
-                />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Número da Conta</Label>
-                <Input
-                  value={newAccount.account_number}
-                  onChange={(e) => setNewAccount({ ...newAccount, account_number: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Dígito</Label>
-                <Input
-                  value={newAccount.check_digit}
-                  onChange={(e) => setNewAccount({ ...newAccount, check_digit: e.target.value })}
-                />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Tipo de Conta</Label>
-                <Input
-                  value={newAccount.account_type}
-                  onChange={(e) => setNewAccount({ ...newAccount, account_type: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Classificação</Label>
-                <Input
-                  value={newAccount.classification}
-                  onChange={(e) => setNewAccount({ ...newAccount, classification: e.target.value })}
-                />
-              </div>
+
+              {msg.role === 'assistant' && idx > 0 && (
+                <div className="mt-3 flex">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-9 text-xs font-medium text-muted-foreground hover:text-primary hover:bg-primary/5 hover:border-primary/20 transition-all gap-2 bg-background shadow-sm rounded-lg"
+                    onClick={() => openShareModal(msg.content, idx)}
+                  >
+                    <Share2 className="w-4 h-4" />
+                    Compartilhar Resultado
+                  </Button>
+                </div>
+              )}
             </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsAddOpen(false)}>
-              Cancelar
-            </Button>
-            <Button onClick={handleSave}>Salvar</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        ))}
+
+        {loading && (
+          <div className="flex gap-4 animate-in fade-in zoom-in-95 duration-300">
+            <div className="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0 border border-primary/20">
+              <Bot className="w-5 h-5" />
+            </div>
+            <div className="bg-card border border-primary/10 shadow-sm p-4 rounded-2xl rounded-tl-none flex items-center gap-3">
+              <Loader2 className="w-5 h-5 animate-spin text-primary" />
+              <span className="text-sm font-medium text-muted-foreground">
+                Analisando dados e estruturando resposta...
+              </span>
+            </div>
+          </div>
+        )}
+        <div ref={messagesEndRef} className="h-4" />
+      </div>
+
+      <div className="p-4 md:p-6 bg-card border-t shadow-[0_-4px_24px_rgba(0,0,0,0.02)] z-10 relative">
+        <div className="relative flex items-end gap-3 max-w-4xl mx-auto">
+          <Textarea
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="Faça uma pergunta sobre seus dados, centro de custo ou movimentações..."
+            className="min-h-[64px] max-h-[200px] resize-none pr-16 py-4 rounded-2xl shadow-sm bg-background border-primary/20 focus-visible:ring-primary text-base font-medium leading-relaxed"
+          />
+          <Button
+            size="icon"
+            className="absolute right-3 bottom-3 w-10 h-10 rounded-xl shadow-md transition-transform hover:scale-105 active:scale-95"
+            disabled={!input.trim() || loading}
+            onClick={handleSend}
+          >
+            <Send className="w-4 h-4 ml-0.5" />
+          </Button>
+        </div>
+      </div>
     </div>
   )
 }
