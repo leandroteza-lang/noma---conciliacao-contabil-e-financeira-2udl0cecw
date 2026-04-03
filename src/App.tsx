@@ -27,12 +27,14 @@ import Landing from './pages/Landing'
 import { AuthProvider } from './hooks/use-auth'
 import { ThemeProvider } from './components/ThemeProvider'
 import { GlobalNotifications } from './components/GlobalNotifications'
+import { ShareQueryModal } from './components/ShareQueryModal'
 
 const App = () => (
   <ThemeProvider defaultMode="dark" defaultColorTheme="default" storageKey="gc-theme">
     <BrowserRouter future={{ v7_startTransition: false, v7_relativeSplatPath: false }}>
       <AuthProvider>
         <GlobalNotifications />
+        <ShareQueryModal />
         <TooltipProvider>
           <Toaster />
           <Sonner />

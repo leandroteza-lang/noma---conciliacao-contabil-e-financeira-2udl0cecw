@@ -27,6 +27,7 @@ import {
   ArrowUpDown,
   Bell,
   BellOff,
+  Plus,
 } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import {
@@ -258,17 +259,27 @@ export default function SharedQueriesList() {
                 className="pl-8"
               />
             </div>
-            {selectedIds.length > 0 && (
+            <div className="flex items-center gap-2">
+              {selectedIds.length > 0 && (
+                <Button
+                  variant="destructive"
+                  onClick={handleBatchDelete}
+                  size="sm"
+                  className="animate-in fade-in"
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Excluir Selecionados ({selectedIds.length})
+                </Button>
+              )}
               <Button
-                variant="destructive"
-                onClick={handleBatchDelete}
+                onClick={() => window.dispatchEvent(new CustomEvent('open-share-modal'))}
                 size="sm"
-                className="animate-in fade-in"
+                className="bg-primary text-primary-foreground hover:bg-primary/90"
               >
-                <Trash2 className="w-4 h-4 mr-2" />
-                Excluir Selecionados ({selectedIds.length})
+                <Plus className="w-4 h-4 mr-2" />
+                Novo Compartilhamento
               </Button>
-            )}
+            </div>
           </div>
 
           {loading ? (
