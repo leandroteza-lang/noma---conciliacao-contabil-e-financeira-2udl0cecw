@@ -256,6 +256,10 @@ export function Chatbot() {
   const { user } = useAuth()
   const [isOpen, setIsOpen] = useState(false)
   const [activeTab, setActiveTab] = useState('chat')
+  const [position, setPosition] = useState({ x: 0, y: 0 })
+  const [isDragging, setIsDragging] = useState(false)
+  const dragStartPos = useRef({ x: 0, y: 0 })
+  const dragElementPos = useRef({ x: 0, y: 0 })
   const [sessions, setSessions] = useState<any[]>([])
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null)
   const [messages, setMessages] = useState<Message[]>([
@@ -279,6 +283,46 @@ export function Chatbot() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, isOpen, isLoading, activeTab])
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    const target = e.target as HTMLElement
+    if (target.closest('.no-drag')) return
+    setIsDragging(true)
+    dragStartPos.current = { x: e.clientX, y: e.clientY }
+    dragElementPos.current = { ...position }
+  }
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isDragging) return
+      const dx = e.clientX - dragStartPos.current.x
+      const dy = e.clientY - dragStartPos.current.y
+      setPosition({
+        x: dragElementPos.current.x + dx,
+        y: dragElementPos.current.y + dy,
+      })
+    }
+
+    const handleMouseUp = () => {
+      setIsDragging(false)
+    }
+
+    if (isDragging) {
+      document.addEventListener('mousemove', handleMouseMove)
+      document.addEventListener('mouseup', handleMouseUp)
+    }
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove)
+      document.removeEventListener('mouseup', handleMouseUp)
+    }
+  }, [isDragging])
+
+  useEffect(() => {
+    if (!isOpen) {
+      setPosition({ x: 0, y: 0 })
+    }
+  }, [isOpen])
 
   const fetchHistory = async () => {
     if (!user) return
@@ -426,13 +470,19 @@ export function Chatbot() {
   return (
     <div className="fixed bottom-6 right-6 z-[100] flex flex-col items-end">
       {isOpen && (
-        <Card className="w-[350px] sm:w-[400px] h-[580px] mb-4 flex flex-col shadow-2xl border-primary/20 animate-in slide-in-from-bottom-5">
-          <CardHeader className="bg-primary text-primary-foreground p-3 rounded-t-lg flex flex-row items-center justify-between">
-            <div className="flex items-center gap-2">
+        <Card
+          className="w-[350px] sm:w-[400px] h-[580px] mb-4 flex flex-col shadow-2xl border-primary/20 animate-in slide-in-from-bottom-5"
+          style={{ transform: `translate(${position.x}px, ${position.y}px)` }}
+        >
+          <CardHeader
+            className="bg-primary text-primary-foreground p-3 rounded-t-lg flex flex-row items-center justify-between cursor-move select-none"
+            onMouseDown={handleMouseDown}
+          >
+            <div className="flex items-center gap-2 pointer-events-none">
               <Bot className="w-5 h-5" />
               <CardTitle className="text-base font-medium">Assistente</CardTitle>
             </div>
-            <div className="flex gap-1">
+            <div className="flex gap-1 no-drag cursor-default">
               <Button
                 variant="ghost"
                 size="icon"
