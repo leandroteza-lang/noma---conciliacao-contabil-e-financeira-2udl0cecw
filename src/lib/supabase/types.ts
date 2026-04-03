@@ -613,6 +613,59 @@ export type Database = {
         }
         Relationships: []
       }
+      tipo_conta_tga: {
+        Row: {
+          abreviacao: string | null
+          codigo: string
+          created_at: string | null
+          deleted_at: string | null
+          deleted_by: string | null
+          deletion_requested_at: string | null
+          deletion_requested_by: string | null
+          id: string
+          nome: string
+          observacoes: string | null
+          organization_id: string | null
+          pending_deletion: boolean | null
+        }
+        Insert: {
+          abreviacao?: string | null
+          codigo: string
+          created_at?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          deletion_requested_at?: string | null
+          deletion_requested_by?: string | null
+          id?: string
+          nome: string
+          observacoes?: string | null
+          organization_id?: string | null
+          pending_deletion?: boolean | null
+        }
+        Update: {
+          abreviacao?: string | null
+          codigo?: string
+          created_at?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          deletion_requested_at?: string | null
+          deletion_requested_by?: string | null
+          id?: string
+          nome?: string
+          observacoes?: string | null
+          organization_id?: string | null
+          pending_deletion?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'tipo_conta_tga_organization_id_fkey'
+            columns: ['organization_id']
+            isOneToOne: false
+            referencedRelation: 'organizations'
+            referencedColumns: ['id']
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -897,6 +950,19 @@ export const Constants = {
 //   deletion_requested_by: uuid (nullable)
 //   deleted_at: timestamp with time zone (nullable)
 //   deleted_by: uuid (nullable)
+// Table: tipo_conta_tga
+//   id: uuid (not null, default: gen_random_uuid())
+//   organization_id: uuid (nullable)
+//   codigo: character varying (not null)
+//   nome: character varying (not null)
+//   abreviacao: character (nullable)
+//   observacoes: text (nullable)
+//   created_at: timestamp with time zone (nullable, default: now())
+//   deleted_at: timestamp with time zone (nullable)
+//   deleted_by: uuid (nullable)
+//   pending_deletion: boolean (nullable, default: false)
+//   deletion_requested_at: timestamp with time zone (nullable)
+//   deletion_requested_by: uuid (nullable)
 
 // --- CONSTRAINTS ---
 // Table: account_mapping
@@ -954,6 +1020,11 @@ export const Constants = {
 //   FOREIGN KEY organizations_deletion_requested_by_fkey: FOREIGN KEY (deletion_requested_by) REFERENCES auth.users(id) ON DELETE SET NULL
 //   PRIMARY KEY organizations_pkey: PRIMARY KEY (id)
 //   FOREIGN KEY organizations_user_id_fkey: FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE
+// Table: tipo_conta_tga
+//   FOREIGN KEY tipo_conta_tga_deleted_by_fkey: FOREIGN KEY (deleted_by) REFERENCES auth.users(id) ON DELETE SET NULL
+//   FOREIGN KEY tipo_conta_tga_deletion_requested_by_fkey: FOREIGN KEY (deletion_requested_by) REFERENCES auth.users(id) ON DELETE SET NULL
+//   FOREIGN KEY tipo_conta_tga_organization_id_fkey: FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE
+//   PRIMARY KEY tipo_conta_tga_pkey: PRIMARY KEY (id)
 
 // --- ROW LEVEL SECURITY POLICIES ---
 // Table: account_mapping
@@ -1057,6 +1128,15 @@ export const Constants = {
 //     USING: (user_id = auth.uid())
 //   Policy "user_organization_update" (UPDATE, PERMISSIVE) roles={authenticated}
 //     USING: (user_id = auth.uid())
+// Table: tipo_conta_tga
+//   Policy "org_tipo_conta_tga_delete" (DELETE, PERMISSIVE) roles={authenticated}
+//     USING: ((organization_id IN ( SELECT organizations.id    FROM organizations   WHERE (organizations.user_id = auth.uid()))) OR (organization_id IN ( SELECT cuc.organization_id    FROM (cadastro_usuarios_companies cuc      JOIN cadastro_usuarios cu ON ((cuc.usuario_id = cu.id)))   WHERE ((cu.email)::text = (auth.jwt() ->> 'email'::text)))))
+//   Policy "org_tipo_conta_tga_insert" (INSERT, PERMISSIVE) roles={authenticated}
+//     WITH CHECK: ((organization_id IN ( SELECT organizations.id    FROM organizations   WHERE (organizations.user_id = auth.uid()))) OR (organization_id IN ( SELECT cuc.organization_id    FROM (cadastro_usuarios_companies cuc      JOIN cadastro_usuarios cu ON ((cuc.usuario_id = cu.id)))   WHERE ((cu.email)::text = (auth.jwt() ->> 'email'::text)))))
+//   Policy "org_tipo_conta_tga_select" (SELECT, PERMISSIVE) roles={authenticated}
+//     USING: ((organization_id IN ( SELECT organizations.id    FROM organizations   WHERE (organizations.user_id = auth.uid()))) OR (organization_id IN ( SELECT cuc.organization_id    FROM (cadastro_usuarios_companies cuc      JOIN cadastro_usuarios cu ON ((cuc.usuario_id = cu.id)))   WHERE ((cu.email)::text = (auth.jwt() ->> 'email'::text)))))
+//   Policy "org_tipo_conta_tga_update" (UPDATE, PERMISSIVE) roles={authenticated}
+//     USING: ((organization_id IN ( SELECT organizations.id    FROM organizations   WHERE (organizations.user_id = auth.uid()))) OR (organization_id IN ( SELECT cuc.organization_id    FROM (cadastro_usuarios_companies cuc      JOIN cadastro_usuarios cu ON ((cuc.usuario_id = cu.id)))   WHERE ((cu.email)::text = (auth.jwt() ->> 'email'::text)))))
 
 // --- DATABASE FUNCTIONS ---
 // FUNCTION get_auth_user_by_email(text)

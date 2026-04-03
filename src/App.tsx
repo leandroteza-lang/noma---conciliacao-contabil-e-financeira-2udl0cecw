@@ -14,6 +14,7 @@ import ChartAccounts from './pages/ChartAccounts'
 import Dashboard from './pages/Dashboard'
 import Analysis from './pages/Analysis'
 import Approvals from './pages/Approvals'
+import TgaAccountTypes from './pages/TgaAccountTypes'
 import Login from './pages/Login'
 import Signup from './pages/Signup'
 import ForgotPassword from './pages/ForgotPassword'
@@ -46,6 +47,7 @@ const App = () => (
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/analises" element={<Analysis />} />
             <Route path="/aprovacoes" element={<Approvals />} />
+            <Route path="/tipo-conta-tga" element={<TgaAccountTypes />} />
           </Route>
           <Route path="*" element={<NotFound />} />
         </Routes>

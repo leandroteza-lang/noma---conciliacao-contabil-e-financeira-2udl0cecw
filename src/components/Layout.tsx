@@ -16,6 +16,7 @@ import {
   CheckSquare,
   GripVertical,
   Key,
+  Tag,
 } from 'lucide-react'
 import { ChangePasswordModal } from '@/components/ChangePasswordModal'
 import {
@@ -110,6 +111,13 @@ export const MENU_ITEMS = [
     title: 'Mapeamento DE/PARA',
     path: '/mapeamento',
     icon: ArrowRightLeft,
+    roles: ['admin', 'supervisor'],
+  },
+  {
+    id: 'tipo-conta-tga',
+    title: 'Tipos de Conta TGA',
+    path: '/tipo-conta-tga',
+    icon: Tag,
     roles: ['admin', 'supervisor'],
   },
   {
