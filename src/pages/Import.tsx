@@ -309,6 +309,17 @@ export default function Import() {
     }
   }
 
+  const columns = useMemo(() => {
+    if (rawData.length === 0) return []
+    return Object.keys(rawData[0])
+  }, [rawData])
+
+  const extraColumns = useMemo(() => {
+    if (!importType || columns.length === 0) return []
+    const config = IMPORT_TYPES[importType as keyof typeof IMPORT_TYPES]
+    return columns.filter((c) => !config.required.includes(c) && !config.optional.includes(c))
+  }, [columns, importType])
+
   const validationInfo = useMemo(() => {
     if (!importType || rawData.length === 0) return null
 
@@ -377,17 +388,6 @@ export default function Import() {
     }
     return filtered.slice(0, 5)
   }, [rawData, showOnlyErrors, importType])
-
-  const columns = useMemo(() => {
-    if (rawData.length === 0) return []
-    return Object.keys(rawData[0])
-  }, [rawData])
-
-  const extraColumns = useMemo(() => {
-    if (!importType || columns.length === 0) return []
-    const config = IMPORT_TYPES[importType as keyof typeof IMPORT_TYPES]
-    return columns.filter((c) => !config.required.includes(c) && !config.optional.includes(c))
-  }, [columns, importType])
 
   const confirmImport = async () => {
     if (!validationInfo || validationInfo.validRecords.length === 0) {
