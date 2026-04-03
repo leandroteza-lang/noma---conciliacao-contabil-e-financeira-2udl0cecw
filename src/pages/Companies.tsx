@@ -491,6 +491,15 @@ export default function Companies() {
   const handleExport = async (formatType: 'pdf' | 'excel' | 'browser') => {
     try {
       toast({ title: 'Aguarde', description: 'Gerando relatório...' })
+
+      let win: Window | null = null
+      if (formatType === 'browser') {
+        win = window.open('', '_blank')
+        if (win) {
+          win.document.write('Gerando relatório, aguarde...')
+        }
+      }
+
       const session = await supabase.auth.getSession()
       const token = session.data.session?.access_token
 
@@ -513,7 +522,10 @@ export default function Companies() {
         },
       )
 
-      if (!res.ok) throw new Error('Falha ao exportar')
+      if (!res.ok) {
+        if (win) win.close()
+        throw new Error('Falha ao exportar')
+      }
 
       const result = await res.json()
 
@@ -532,11 +544,12 @@ export default function Companies() {
         link.download = 'empresas.xlsx'
         link.click()
       } else if (formatType === 'browser') {
-        const win = window.open()
         if (win) {
+          win.document.open()
           win.document.write(
             `<iframe src="${result.pdf}" frameborder="0" style="border:0; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100%;" allowfullscreen></iframe>`,
           )
+          win.document.close()
         }
       } else {
         const link = document.createElement('a')

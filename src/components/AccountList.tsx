@@ -1,5 +1,15 @@
-import { Trash2, Building, ArrowUpDown, Download, FileText, FileSpreadsheet } from 'lucide-react'
+import {
+  Trash2,
+  Building,
+  ArrowUpDown,
+  Download,
+  FileText,
+  FileSpreadsheet,
+  Edit,
+} from 'lucide-react'
 import { useState, useRef, useEffect, useMemo } from 'react'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Label } from '@/components/ui/label'
 import {
   Table,
   TableBody,
@@ -142,6 +152,8 @@ function EditableCell({
 export function AccountList({ accounts, organizations, onDelete, onUpdateInline }: Props) {
   const [editing, setEditing] = useState<{ id: string; field: keyof Account } | null>(null)
   const [selectedIds, setSelectedIds] = useState<string[]>([])
+  const [editModalAccount, setEditModalAccount] = useState<Account | null>(null)
+  const [isSaving, setIsSaving] = useState(false)
   const [sortConfig, setSortConfig] = useState<{
     key: keyof Account
     direction: 'asc' | 'desc'
@@ -200,6 +212,15 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
   const handleExport = async (formatType: 'pdf' | 'excel' | 'browser') => {
     try {
       toast({ title: 'Aguarde', description: 'Gerando relatório...' })
+
+      let win: Window | null = null
+      if (formatType === 'browser') {
+        win = window.open('', '_blank')
+        if (win) {
+          win.document.write('Gerando relatório, aguarde...')
+        }
+      }
+
       const session = await supabase.auth.getSession()
       const token = session.data.session?.access_token
 
@@ -224,7 +245,11 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
           body: JSON.stringify(payload),
         },
       )
-      if (!res.ok) throw new Error('Falha ao exportar')
+      if (!res.ok) {
+        if (win) win.close()
+        throw new Error('Falha ao exportar')
+      }
+
       const result = await res.json()
 
       if (formatType === 'excel') {
@@ -239,11 +264,12 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
         link.download = 'contas.xlsx'
         link.click()
       } else if (formatType === 'browser') {
-        const win = window.open()
         if (win) {
+          win.document.open()
           win.document.write(
             `<iframe src="${result.pdf}" frameborder="0" style="border:0; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100%;" allowfullscreen></iframe>`,
           )
+          win.document.close()
         }
       } else {
         const link = document.createElement('a')
@@ -265,6 +291,35 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
       await onUpdateInline(id, field, val)
     }
     setEditing(null)
+  }
+
+  const handleEditSave = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!editModalAccount) return
+
+    setIsSaving(true)
+    try {
+      const { error } = await supabase
+        .from('bank_accounts')
+        .update({
+          organization_id: editModalAccount.organization_id,
+          account_code: editModalAccount.contaContabil,
+          description: editModalAccount.descricao,
+          bank_code: editModalAccount.banco,
+          agency: editModalAccount.agencia,
+          account_number: editModalAccount.numeroConta,
+          classification: editModalAccount.classificacao,
+        })
+        .eq('id', editModalAccount.id)
+
+      if (error) throw error
+      toast({ title: 'Sucesso', description: 'Conta atualizada com sucesso!' })
+      setEditModalAccount(null)
+    } catch (err: any) {
+      toast({ title: 'Erro ao salvar', description: err.message, variant: 'destructive' })
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   if (accounts.length === 0) {
@@ -438,6 +493,14 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
                     <Button
                       variant="ghost"
                       size="icon"
+                      className="h-8 w-8 text-slate-400 hover:text-blue-600 hover:bg-blue-50"
+                      onClick={() => setEditModalAccount(acc)}
+                    >
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
                       className="h-8 w-8 text-slate-400 hover:text-red-600 hover:bg-red-50"
                       onClick={() => onDelete(acc.id)}
                     >
@@ -486,19 +549,123 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
                     </div>
                   ))}
                 </div>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  className="text-slate-500 hover:text-red-600 hover:bg-red-50 bg-white"
-                  onClick={() => onDelete(acc.id)}
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </Button>
+                <div className="flex flex-col gap-2">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="text-slate-500 hover:text-blue-600 hover:bg-blue-50 bg-white"
+                    onClick={() => setEditModalAccount(acc)}
+                  >
+                    <Edit className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="text-slate-500 hover:text-red-600 hover:bg-red-50 bg-white"
+                    onClick={() => onDelete(acc.id)}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           )
         })}
       </div>
+
+      <Dialog open={!!editModalAccount} onOpenChange={(open) => !open && setEditModalAccount(null)}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Editar Conta</DialogTitle>
+          </DialogHeader>
+          {editModalAccount && (
+            <form onSubmit={handleEditSave} className="space-y-4 mt-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2 md:col-span-2">
+                  <Label>Empresa</Label>
+                  <select
+                    value={editModalAccount.organization_id || ''}
+                    onChange={(e) =>
+                      setEditModalAccount({ ...editModalAccount, organization_id: e.target.value })
+                    }
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                    required
+                  >
+                    <option value="">Selecione...</option>
+                    {organizations.map((org: Organization) => (
+                      <option key={org.id} value={org.id}>
+                        {org.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Conta Contábil</Label>
+                  <Input
+                    value={editModalAccount.contaContabil || ''}
+                    onChange={(e) =>
+                      setEditModalAccount({ ...editModalAccount, contaContabil: e.target.value })
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Descrição</Label>
+                  <Input
+                    value={editModalAccount.descricao || ''}
+                    onChange={(e) =>
+                      setEditModalAccount({ ...editModalAccount, descricao: e.target.value })
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Banco</Label>
+                  <Input
+                    value={editModalAccount.banco || ''}
+                    onChange={(e) =>
+                      setEditModalAccount({ ...editModalAccount, banco: e.target.value })
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Agência</Label>
+                  <Input
+                    value={editModalAccount.agencia || ''}
+                    onChange={(e) =>
+                      setEditModalAccount({ ...editModalAccount, agencia: e.target.value })
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Número da Conta</Label>
+                  <Input
+                    value={editModalAccount.numeroConta || ''}
+                    onChange={(e) =>
+                      setEditModalAccount({ ...editModalAccount, numeroConta: e.target.value })
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Classificação</Label>
+                  <Input
+                    value={editModalAccount.classificacao || ''}
+                    onChange={(e) =>
+                      setEditModalAccount({ ...editModalAccount, classificacao: e.target.value })
+                    }
+                  />
+                </div>
+              </div>
+              <div className="flex justify-end gap-3 pt-4 border-t mt-4">
+                <Button type="button" variant="outline" onClick={() => setEditModalAccount(null)}>
+                  Cancelar
+                </Button>
+                <Button type="submit" disabled={isSaving} className="bg-blue-600 hover:bg-blue-700">
+                  {isSaving ? 'Salvando...' : 'Salvar Alterações'}
+                </Button>
+              </div>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
