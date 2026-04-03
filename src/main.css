@@ -56,50 +56,49 @@
   }
 
   .dark {
-    /* DEFAULT DARK MODE */
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
+    /* XBIT CRYPTO DASHBOARD THEME */
+    --background: 196 31% 7%;
+    --foreground: 0 0% 100%;
 
-    /* Slightly lighter than background to create visual hierarchy */
-    --card: 217.2 32.6% 10%;
-    --card-foreground: 210 40% 98%;
+    --card: 195 33% 10%;
+    --card-foreground: 0 0% 100%;
 
-    --popover: 217.2 32.6% 10%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 195 33% 10%;
+    --popover-foreground: 0 0% 100%;
 
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 84% 4.9%;
+    --primary: 165 100% 41%;
+    --primary-foreground: 196 31% 7%;
 
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary: 195 33% 15%;
+    --secondary-foreground: 0 0% 100%;
 
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
+    --muted: 195 33% 15%;
+    --muted-foreground: 196 15% 65%;
 
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
+    --accent: 195 33% 15%;
+    --accent-foreground: 0 0% 100%;
 
     --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 214.3 31.8% 91.4%;
+    --border: 195 33% 18%;
+    --input: 195 33% 18%;
+    --ring: 165 100% 41%;
 
-    --sidebar-background: 217.2 32.6% 10%;
-    --sidebar-foreground: 210 40% 98%;
-    --sidebar-primary: 210 40% 98%;
-    --sidebar-primary-foreground: 222.2 84% 4.9%;
-    --sidebar-accent: 217.2 32.6% 17.5%;
-    --sidebar-accent-foreground: 210 40% 98%;
-    --sidebar-border: 217.2 32.6% 17.5%;
-    --sidebar-ring: 214.3 31.8% 91.4%;
+    --sidebar-background: 195 33% 9%;
+    --sidebar-foreground: 0 0% 100%;
+    --sidebar-primary: 165 100% 41%;
+    --sidebar-primary-foreground: 196 31% 7%;
+    --sidebar-accent: 195 33% 15%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 195 33% 15%;
+    --sidebar-ring: 165 100% 41%;
 
-    --chart-1: 270 100% 44%;
-    --chart-2: 164 100% 38%;
-    --chart-3: 43 100% 32%;
-    --chart-4: 340 100% 50%;
-    --chart-5: 10 100% 50%;
+    --chart-1: 165 100% 41%;
+    --chart-2: 196 100% 38%;
+    --chart-3: 209 100% 32%;
+    --chart-4: 42 100% 50%;
+    --chart-5: 33 100% 50%;
   }
 
   /* OCEAN THEME */

@@ -5,7 +5,7 @@ import { LandingBottom } from '@/components/landing/LandingBottom'
 
 export default function Landing() {
   return (
-    <div className="min-h-screen bg-[#1A1A1A] font-sans selection:bg-[#0A7A8C] selection:text-white scroll-smooth">
+    <div className="min-h-screen bg-background font-sans selection:bg-primary/30 selection:text-primary-foreground scroll-smooth">
       <LandingHero />
       <LandingFeatures />
       <LandingTrust />
