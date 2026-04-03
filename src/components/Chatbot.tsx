@@ -12,6 +12,94 @@ type Message = {
   content: string
 }
 
+const processInline = (text: string) => {
+  const parts = text.split(/(\*\*.*?\*\*|\*.*?\*|\[.*?\]\(.*?\))/g)
+  return parts.map((part, i) => {
+    if (part.startsWith('**') && part.endsWith('**')) {
+      return (
+        <strong key={i} className="font-semibold">
+          {part.slice(2, -2)}
+        </strong>
+      )
+    }
+    if (part.startsWith('*') && part.endsWith('*')) {
+      return <em key={i}>{part.slice(1, -1)}</em>
+    }
+    const linkMatch = part.match(/\[(.*?)\]\((.*?)\)/)
+    if (linkMatch) {
+      return (
+        <a
+          key={i}
+          href={linkMatch[2]}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="underline text-primary hover:opacity-80"
+        >
+          {linkMatch[1]}
+        </a>
+      )
+    }
+    return <span key={i}>{part}</span>
+  })
+}
+
+const renderMarkdown = (text: string) => {
+  const lines = text.split('\n')
+  return (
+    <div className="flex flex-col gap-1">
+      {lines.map((line, i) => {
+        if (line.trim() === '') {
+          return <div key={i} className="h-1"></div>
+        }
+        if (line.startsWith('### ')) {
+          return (
+            <h3 key={i} className="font-semibold text-base mt-2">
+              {processInline(line.slice(4))}
+            </h3>
+          )
+        }
+        if (line.startsWith('## ')) {
+          return (
+            <h2 key={i} className="font-bold text-lg mt-3">
+              {processInline(line.slice(3))}
+            </h2>
+          )
+        }
+        if (line.startsWith('# ')) {
+          return (
+            <h1 key={i} className="font-bold text-xl mt-4">
+              {processInline(line.slice(2))}
+            </h1>
+          )
+        }
+        if (line.match(/^[-*]\s/)) {
+          return (
+            <div key={i} className="ml-2 flex gap-2">
+              <span className="select-none">•</span>
+              <span>{processInline(line.slice(2))}</span>
+            </div>
+          )
+        }
+        const numberedListMatch = line.match(/^(\d+\.\s)(.*)/)
+        if (numberedListMatch) {
+          return (
+            <div key={i} className="ml-2 flex gap-2">
+              <span className="select-none min-w-[1.2rem]">{numberedListMatch[1].trim()}</span>
+              <span>{processInline(numberedListMatch[2])}</span>
+            </div>
+          )
+        }
+
+        return (
+          <div key={i} className="min-h-[1rem]">
+            {processInline(line)}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
 export function Chatbot() {
   const [isOpen, setIsOpen] = useState(false)
   const [messages, setMessages] = useState<Message[]>([
@@ -118,13 +206,17 @@ export function Chatbot() {
                     </div>
                     <div
                       className={cn(
-                        'p-3 rounded-lg text-sm shadow-sm whitespace-pre-wrap',
+                        'p-3 rounded-lg text-sm shadow-sm',
                         msg.role === 'user'
                           ? 'bg-primary text-primary-foreground rounded-tr-none'
                           : 'bg-muted text-foreground rounded-tl-none',
                       )}
                     >
-                      {msg.content}
+                      {msg.role === 'user' ? (
+                        <div className="whitespace-pre-wrap">{msg.content}</div>
+                      ) : (
+                        renderMarkdown(msg.content)
+                      )}
                     </div>
                   </div>
                 ))}
