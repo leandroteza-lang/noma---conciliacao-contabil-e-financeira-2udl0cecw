@@ -356,10 +356,10 @@ export default function SharedQueriesList() {
                     <TableHead>
                       <Button
                         variant="ghost"
-                        onClick={() => handleSort('single_view')}
+                        onClick={() => handleSort('is_revoked')}
                         className="h-8 flex items-center gap-1 -ml-4 font-medium"
                       >
-                        Vis. Única <ArrowUpDown className="h-3 w-3" />
+                        Status <ArrowUpDown className="h-3 w-3" />
                       </Button>
                     </TableHead>
                     <TableHead>
@@ -371,7 +371,7 @@ export default function SharedQueriesList() {
                         Alerta <ArrowUpDown className="h-3 w-3" />
                       </Button>
                     </TableHead>
-                    <TableHead className="text-right">Controles</TableHead>
+                    <TableHead className="text-right font-medium">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -433,8 +433,8 @@ export default function SharedQueriesList() {
                               variant="outline"
                               className={
                                 query.access_count > 0
-                                  ? 'bg-destructive/10 text-destructive border-destructive/20'
-                                  : 'bg-amber-500/10 text-amber-600 border-amber-500/20'
+                                  ? 'bg-amber-500/10 text-amber-600 border-amber-500/20'
+                                  : 'bg-green-500/10 text-green-600 border-green-500/20'
                               }
                             >
                               {query.access_count > 0 ? (
@@ -443,12 +443,14 @@ export default function SharedQueriesList() {
                                 </>
                               ) : (
                                 <>
-                                  <Eye className="w-3 h-3 mr-1" /> Disponível
+                                  <Eye className="w-3 h-3 mr-1" /> Disponível (Única)
                                 </>
                               )}
                             </Badge>
                           ) : (
-                            <span className="text-muted-foreground text-sm pl-2">-</span>
+                            <Badge variant="outline" className="bg-muted text-muted-foreground">
+                              Permanente
+                            </Badge>
                           )}
                         </div>
                       </TableCell>

@@ -1,173 +1,139 @@
 import { useEffect, useState } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import { supabase } from '@/lib/supabase/client'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Bot, User as UserIcon, ArrowLeft, Lock, Unlock } from 'lucide-react'
-import { renderMarkdown } from '@/lib/markdown'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Lock, Ban, EyeOff } from 'lucide-react'
 
 export default function SharedQuery() {
   const { id } = useParams()
-  const [query, setQuery] = useState<{
-    prompt: string
-    content: string
-    is_protected?: boolean
-  } | null>(null)
+  const [query, setQuery] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-
-  const [needsPassword, setNeedsPassword] = useState(false)
-  const [passwordInput, setPasswordInput] = useState('')
-  const [passwordError, setPasswordError] = useState(false)
-  const [validating, setValidating] = useState(false)
+  const [errorType, setErrorType] = useState<'revoked' | 'consumed' | 'not_found' | null>(null)
+  const [password, setPassword] = useState('')
+  const [authenticated, setAuthenticated] = useState(false)
+  const [authError, setAuthError] = useState(false)
 
   useEffect(() => {
     const fetchQuery = async () => {
       if (!id) return
-      // Fetch only metadata first
-      const { data, error: err } = await supabase
+      const { data, error: fetchError } = await supabase
         .from('shared_queries')
-        .select('prompt, is_protected, single_view, access_count, is_revoked')
+        .select('*')
         .eq('id', id)
         .maybeSingle()
 
-      if (err || !data) {
-        setError('Consulta não encontrada. O link pode estar quebrado ou a consulta foi removida.')
+      if (fetchError || !data) {
+        setError('Link não encontrado ou inválido.')
+        setErrorType('not_found')
         setLoading(false)
         return
       }
 
-      const queryData = data as any
-
-      if (queryData.is_revoked) {
+      if (data.is_revoked) {
         setError(
           'Acesso Revogado: Este link foi desativado pelo proprietário e não está mais disponível.',
         )
+        setErrorType('revoked')
         setLoading(false)
         return
       }
 
-      if (queryData.single_view && queryData.access_count > 0) {
-        setError(
-          'Este link era de visualização única e já foi acessado. O conteúdo não está mais disponível.',
-        )
+      if (data.single_view && data.access_count > 0) {
+        setError('Acesso Indisponível: Este link era de visualização única e já foi consumido.')
+        setErrorType('consumed')
         setLoading(false)
         return
       }
 
-      if (queryData.is_protected) {
-        setNeedsPassword(true)
-        setQuery({ prompt: queryData.prompt, content: '', is_protected: true })
-        setLoading(false)
-      } else {
-        // Fetch content if not protected
-        const { data: contentData, error: contentErr } = await supabase
-          .from('shared_queries')
-          .select('content')
-          .eq('id', id)
-          .maybeSingle()
-
-        if (contentErr || !contentData) {
-          setError('Erro ao carregar o conteúdo da consulta.')
-        } else {
-          setQuery({ prompt: queryData.prompt, content: contentData.content, is_protected: false })
-          supabase.rpc('increment_shared_query_access', { query_id: id }).then()
-        }
-        setLoading(false)
+      setQuery(data)
+      if (!data.is_protected) {
+        setAuthenticated(true)
+        incrementAccess(data.id)
       }
+      setLoading(false)
     }
     fetchQuery()
   }, [id])
 
-  const handlePasswordSubmit = async (e: React.FormEvent) => {
+  const incrementAccess = async (queryId: string) => {
+    await supabase.rpc('increment_shared_query_access', { query_id: queryId })
+  }
+
+  const handlePasswordSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!id || !passwordInput.trim()) return
-    setValidating(true)
-    setPasswordError(false)
-
-    const { data, error } = await supabase
-      .from('shared_queries')
-      .select('content')
-      .eq('id', id)
-      .eq('password', passwordInput.trim())
-      .maybeSingle()
-
-    if (error || !data) {
-      setPasswordError(true)
-      setValidating(false)
+    if (password === query.password) {
+      setAuthenticated(true)
+      setAuthError(false)
+      incrementAccess(query.id)
     } else {
-      setNeedsPassword(false)
-      setQuery((prev) => (prev ? { ...prev, content: data.content } : null))
-      setValidating(false)
-      supabase.rpc('increment_shared_query_access', { query_id: id }).then()
+      setAuthError(true)
     }
   }
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-muted/30">
-        Carregando consulta...
-      </div>
+      <div className="flex h-screen items-center justify-center bg-muted/20">Carregando...</div>
     )
   }
 
-  if (error || !query) {
+  if (error) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-muted/30 p-4">
-        <Card className="max-w-md w-full text-center py-10 shadow-lg border-primary/10">
-          <CardTitle className="text-xl mb-4">Acesso Indisponível</CardTitle>
-          <p className="text-muted-foreground mb-6 px-4">
-            {error || 'O link pode estar quebrado ou a consulta foi removida.'}
-          </p>
-          <Button asChild>
-            <Link to="/">Ir para o Início</Link>
-          </Button>
+      <div className="flex h-screen items-center justify-center bg-muted/20 p-4">
+        <Card className="w-full max-w-md shadow-lg border-muted animate-in fade-in zoom-in-95 duration-300">
+          <CardHeader className="text-center space-y-2">
+            <div className="mx-auto w-12 h-12 bg-muted rounded-full flex items-center justify-center mb-2">
+              {errorType === 'revoked' ? (
+                <Ban className="w-6 h-6 text-destructive" />
+              ) : errorType === 'consumed' ? (
+                <EyeOff className="w-6 h-6 text-amber-500" />
+              ) : (
+                <EyeOff className="w-6 h-6 text-muted-foreground" />
+              )}
+            </div>
+            <CardTitle className="text-xl">
+              {errorType === 'revoked' ? 'Acesso Revogado' : 'Acesso Indisponível'}
+            </CardTitle>
+            <CardDescription className="text-base">{error}</CardDescription>
+          </CardHeader>
         </Card>
       </div>
     )
   }
 
-  if (needsPassword) {
+  if (query?.is_protected && !authenticated) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-muted/30 p-4 animate-in fade-in zoom-in-95 duration-300">
-        <Card className="max-w-md w-full shadow-lg border-primary/10">
-          <CardHeader className="text-center pb-2">
-            <div className="w-12 h-12 rounded-full bg-primary/10 text-primary flex items-center justify-center mx-auto mb-4">
-              <Lock className="w-6 h-6" />
+      <div className="flex h-screen items-center justify-center bg-muted/20 p-4">
+        <Card className="w-full max-w-md shadow-lg border-muted animate-in fade-in zoom-in-95 duration-300">
+          <CardHeader className="text-center space-y-2">
+            <div className="mx-auto w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mb-2">
+              <Lock className="w-6 h-6 text-primary" />
             </div>
-            <CardTitle className="text-xl">Consulta Protegida</CardTitle>
-            <p className="text-sm text-muted-foreground mt-2">
-              Esta consulta está protegida por senha. Digite a senha fornecida para acessar o
-              conteúdo.
-            </p>
+            <CardTitle className="text-xl">Conteúdo Protegido</CardTitle>
+            <CardDescription>
+              Este link é protegido por senha. Digite a senha para acessar.
+            </CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handlePasswordSubmit} className="space-y-4 pt-4">
+            <form onSubmit={handlePasswordSubmit} className="space-y-4">
               <div className="space-y-2">
                 <Input
                   type="password"
-                  placeholder="Digite a senha..."
-                  value={passwordInput}
-                  onChange={(e) => setPasswordInput(e.target.value)}
-                  className={
-                    passwordError ? 'border-destructive focus-visible:ring-destructive' : ''
-                  }
-                  autoFocus
+                  placeholder="Digite a senha"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className={authError ? 'border-destructive focus-visible:ring-destructive' : ''}
                 />
-                {passwordError && (
-                  <p className="text-xs text-destructive">
-                    Senha incorreta. Verifique e tente novamente.
+                {authError && (
+                  <p className="text-sm text-destructive text-center animate-in slide-in-from-top-1">
+                    Senha incorreta. Tente novamente.
                   </p>
                 )}
               </div>
-              <Button
-                type="submit"
-                className="w-full"
-                disabled={validating || !passwordInput.trim()}
-              >
-                {validating ? 'Verificando...' : 'Acessar Conteúdo'}
-                {!validating && <Unlock className="w-4 h-4 ml-2" />}
+              <Button type="submit" className="w-full">
+                Acessar Conteúdo
               </Button>
             </form>
           </CardContent>
@@ -177,44 +143,18 @@ export default function SharedQuery() {
   }
 
   return (
-    <div className="min-h-screen bg-muted/30 py-10 px-4 flex flex-col items-center">
-      <div className="max-w-3xl w-full mb-4">
-        <Button
-          variant="ghost"
-          asChild
-          className="mb-4 text-muted-foreground hover:text-foreground"
-        >
-          <Link to="/app">
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Voltar ao Sistema
-          </Link>
-        </Button>
-        <Card className="shadow-lg border-primary/10 overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500">
-          <CardHeader className="bg-primary text-primary-foreground p-5">
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <Bot className="w-5 h-5" />
-              Resultado da Consulta
-            </CardTitle>
+    <div className="min-h-screen bg-muted/20 p-4 md:p-8 animate-in fade-in duration-500">
+      <div className="max-w-4xl mx-auto space-y-6">
+        <Card className="shadow-lg border-muted">
+          <CardHeader className="bg-muted/30 border-b">
+            <CardDescription className="uppercase tracking-wider font-semibold text-xs text-primary mb-1">
+              Consulta Compartilhada
+            </CardDescription>
+            <CardTitle className="text-2xl">{query.prompt}</CardTitle>
           </CardHeader>
-          <CardContent className="p-6 space-y-8">
-            <div className="flex gap-4">
-              <div className="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0">
-                <UserIcon className="w-5 h-5" />
-              </div>
-              <div className="flex-1 bg-muted p-4 rounded-xl rounded-tl-none shadow-sm">
-                <p className="text-sm font-medium leading-relaxed">{query.prompt}</p>
-              </div>
-            </div>
-
-            <div className="flex gap-4">
-              <div className="w-10 h-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center shrink-0">
-                <Bot className="w-5 h-5" />
-              </div>
-              <div className="flex-1 overflow-x-auto">
-                <div className="prose prose-sm max-w-none prose-p:leading-relaxed prose-headings:font-bold">
-                  {renderMarkdown(query.content)}
-                </div>
-              </div>
+          <CardContent className="p-6">
+            <div className="prose dark:prose-invert max-w-none whitespace-pre-wrap font-mono text-sm leading-relaxed">
+              {query.content}
             </div>
           </CardContent>
         </Card>
