@@ -15,7 +15,7 @@ export default function SharedQuery() {
     is_protected?: boolean
   } | null>(null)
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const [needsPassword, setNeedsPassword] = useState(false)
   const [passwordInput, setPasswordInput] = useState('')
@@ -28,17 +28,25 @@ export default function SharedQuery() {
       // Fetch only metadata first
       const { data, error: err } = await supabase
         .from('shared_queries')
-        .select('prompt, is_protected')
+        .select('prompt, is_protected, single_view, access_count')
         .eq('id', id)
         .maybeSingle()
 
       if (err || !data) {
-        setError(true)
+        setError('Consulta não encontrada. O link pode estar quebrado ou a consulta foi removida.')
         setLoading(false)
         return
       }
 
       const queryData = data as any
+
+      if (queryData.single_view && queryData.access_count > 0) {
+        setError(
+          'Este link era de visualização única e já foi acessado. O conteúdo não está mais disponível.',
+        )
+        setLoading(false)
+        return
+      }
 
       if (queryData.is_protected) {
         setNeedsPassword(true)
@@ -53,7 +61,7 @@ export default function SharedQuery() {
           .maybeSingle()
 
         if (contentErr || !contentData) {
-          setError(true)
+          setError('Erro ao carregar o conteúdo da consulta.')
         } else {
           setQuery({ prompt: queryData.prompt, content: contentData.content, is_protected: false })
           supabase.rpc('increment_shared_query_access', { query_id: id }).then()
@@ -100,9 +108,9 @@ export default function SharedQuery() {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-muted/30 p-4">
         <Card className="max-w-md w-full text-center py-10 shadow-lg border-primary/10">
-          <CardTitle className="text-xl mb-4">Consulta não encontrada</CardTitle>
-          <p className="text-muted-foreground mb-6">
-            O link pode estar quebrado ou a consulta foi removida.
+          <CardTitle className="text-xl mb-4">Acesso Indisponível</CardTitle>
+          <p className="text-muted-foreground mb-6 px-4">
+            {error || 'O link pode estar quebrado ou a consulta foi removida.'}
           </p>
           <Button asChild>
             <Link to="/">Ir para o Início</Link>

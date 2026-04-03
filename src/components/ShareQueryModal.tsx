@@ -14,7 +14,7 @@ import { Input } from '@/components/ui/input'
 import { useToast } from '@/hooks/use-toast'
 import { supabase } from '@/lib/supabase/client'
 import { useAuth } from '@/hooks/use-auth'
-import { Bell, Check, Copy } from 'lucide-react'
+import { Bell, Check, Copy, EyeOff } from 'lucide-react'
 
 export function ShareQueryModal() {
   const [open, setOpen] = useState(false)
@@ -23,6 +23,7 @@ export function ShareQueryModal() {
   const [content, setContent] = useState('')
   const [notifyFirstAccess, setNotifyFirstAccess] = useState(true)
   const [isProtected, setIsProtected] = useState(false)
+  const [isSingleView, setIsSingleView] = useState(false)
   const [generatedId, setGeneratedId] = useState<string | null>(null)
   const [generatedPassword, setGeneratedPassword] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
@@ -36,6 +37,7 @@ export function ShareQueryModal() {
       setContent(e.detail?.content || 'Conteúdo da consulta...')
       setNotifyFirstAccess(true)
       setIsProtected(false)
+      setIsSingleView(false)
       setGeneratedId(null)
       setGeneratedPassword(null)
       setCopied(false)
@@ -61,6 +63,7 @@ export function ShareQueryModal() {
         notify_first_access: notifyFirstAccess,
         is_protected: isProtected,
         password: newPassword,
+        single_view: isSingleView,
       })
       .select('id')
       .single()
@@ -132,6 +135,21 @@ export function ShareQueryModal() {
                 id="notify-switch"
                 checked={notifyFirstAccess}
                 onCheckedChange={setNotifyFirstAccess}
+              />
+            </div>
+
+            <div className="flex items-center justify-between">
+              <Label
+                htmlFor="single-view-switch"
+                className="flex items-center gap-2 font-medium cursor-pointer text-sm"
+              >
+                Visualização Única
+                <EyeOff className="w-4 h-4 text-blue-500" />
+              </Label>
+              <Switch
+                id="single-view-switch"
+                checked={isSingleView}
+                onCheckedChange={setIsSingleView}
               />
             </div>
           </div>
