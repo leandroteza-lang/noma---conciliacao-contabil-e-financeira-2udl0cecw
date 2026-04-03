@@ -178,6 +178,7 @@ Deno.serve(async (req: Request) => {
     const runTool = async (name: string, args: any) => {
       try {
         if (name === 'get_organizations') {
+          if (orgIds.length === 0) return JSON.stringify([])
           const { data } = await supabase
             .from('organizations')
             .select('name, cnpj, cpf, email, phone, status')
@@ -186,6 +187,7 @@ Deno.serve(async (req: Request) => {
           return JSON.stringify(data || [])
         }
         if (name === 'get_bank_accounts') {
+          if (orgIds.length === 0) return JSON.stringify([])
           const { data } = await supabase
             .from('bank_accounts')
             .select(
@@ -196,6 +198,7 @@ Deno.serve(async (req: Request) => {
           return JSON.stringify(data || [])
         }
         if (name === 'get_cost_centers') {
+          if (orgIds.length === 0) return JSON.stringify([])
           const { data } = await supabase
             .from('cost_centers')
             .select('code, description, classification, type_tga, fixed_variable, operational')
@@ -204,6 +207,7 @@ Deno.serve(async (req: Request) => {
           return JSON.stringify(data || [])
         }
         if (name === 'get_financial_movements') {
+          if (orgIds.length === 0) return JSON.stringify([])
           const limit = args.limit || 15
           const { data } = await supabase
             .from('financial_movements')
@@ -230,6 +234,7 @@ Deno.serve(async (req: Request) => {
           return JSON.stringify(data || [])
         }
         if (name === 'get_chart_accounts') {
+          if (orgIds.length === 0) return JSON.stringify([])
           const { data } = await supabase
             .from('chart_of_accounts')
             .select('account_code, account_name, account_type')
@@ -238,6 +243,7 @@ Deno.serve(async (req: Request) => {
           return JSON.stringify(data || [])
         }
         if (name === 'get_accounting_entries') {
+          if (orgIds.length === 0) return JSON.stringify([])
           const limit = args.limit || 15
           const { data } = await supabase
             .from('accounting_entries')
@@ -250,6 +256,7 @@ Deno.serve(async (req: Request) => {
           return JSON.stringify(data || [])
         }
         if (name === 'get_account_mappings') {
+          if (orgIds.length === 0) return JSON.stringify([])
           const { data } = await supabase
             .from('account_mapping')
             .select(
@@ -259,6 +266,7 @@ Deno.serve(async (req: Request) => {
           return JSON.stringify(data || [])
         }
         if (name === 'get_tga_account_types') {
+          if (orgIds.length === 0) return JSON.stringify([])
           const { data } = await supabase
             .from('tipo_conta_tga')
             .select('codigo, nome, abreviacao')

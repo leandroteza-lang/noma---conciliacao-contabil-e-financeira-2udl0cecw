@@ -83,6 +83,7 @@ const BotMessageActions = ({ content, prevPrompt }: { content: string; prevPromp
 
   const [shareDialogOpen, setShareDialogOpen] = useState(false)
   const [isProtected, setIsProtected] = useState(false)
+  const [notifyFirstAccess, setNotifyFirstAccess] = useState(false)
   const [generatedLink, setGeneratedLink] = useState('')
   const [generatedPassword, setGeneratedPassword] = useState('')
   const [isGenerating, setIsGenerating] = useState(false)
@@ -166,6 +167,7 @@ const BotMessageActions = ({ content, prevPrompt }: { content: string; prevPromp
     }
     setShareDialogOpen(true)
     setIsProtected(false)
+    setNotifyFirstAccess(false)
     setGeneratedLink('')
     setGeneratedPassword('')
   }
@@ -185,6 +187,7 @@ const BotMessageActions = ({ content, prevPrompt }: { content: string; prevPromp
           content,
           is_protected: isProtected,
           password: password,
+          notify_first_access: notifyFirstAccess,
         } as any)
         .select('id')
         .single()
@@ -310,6 +313,21 @@ const BotMessageActions = ({ content, prevPrompt }: { content: string; prevPromp
                 <p className="text-sm text-muted-foreground ml-11">
                   O sistema criará uma senha segura para você compartilhar separadamente. Quem tiver
                   o link só poderá acessar com a senha.
+                </p>
+              )}
+              <div className="flex items-center space-x-2">
+                <Switch
+                  id="notify-link"
+                  checked={notifyFirstAccess}
+                  onCheckedChange={setNotifyFirstAccess}
+                />
+                <Label htmlFor="notify-link" className="cursor-pointer">
+                  Ativar notificações de acesso (sino)
+                </Label>
+              </div>
+              {notifyFirstAccess && (
+                <p className="text-sm text-muted-foreground ml-11">
+                  Você será notificado quando este link for acessado pela primeira vez.
                 </p>
               )}
             </div>
@@ -567,13 +585,20 @@ export function Chatbot() {
         await supabase
           .from('chat_messages')
           .insert({ session_id: sId, role: 'assistant', content: reply })
-    } catch (error) {
+    } catch (error: any) {
+      console.error('Chat error:', error)
+      let errorMsg = 'Erro de conexão ou API Key inválida.'
+      if (error?.context?.error) {
+        errorMsg = error.context.error
+      } else if (error instanceof Error) {
+        errorMsg = error.message
+      }
       setMessages((prev) => [
         ...prev,
         {
           id: Date.now().toString(),
           role: 'assistant',
-          content: 'Erro de conexão ou API Key inválida.',
+          content: `Falha na consulta: ${errorMsg}`,
         },
       ])
     } finally {
