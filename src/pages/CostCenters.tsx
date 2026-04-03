@@ -42,7 +42,10 @@ interface CostCenter {
   fixed_variable: string | null
   classification: string | null
   operational: string | null
+  tipo_lcto: string | null
+  tipo_tga_id: string | null
   organization: { name: string } | null
+  tipo_conta_tga: { nome: string } | null
 }
 
 export default function CostCenters() {
@@ -60,17 +63,36 @@ export default function CostCenters() {
 
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [orgs, setOrgs] = useState<{ id: string; name: string }[]>([])
+  const [tgaOptions, setTgaOptions] = useState<{ id: string; nome: string }[]>([])
   const [submitting, setSubmitting] = useState(false)
   const [newCC, setNewCC] = useState({
     organization_id: '',
     code: '',
     description: '',
+    tipo_lcto: 'none',
+    operational: 'none',
+    tipo_tga_id: 'none',
+    type_tga: '',
+    fixed_variable: '',
   })
 
   const loadOrgs = async () => {
     const { data } = await supabase.from('organizations').select('id, name').is('deleted_at', null)
     if (data) setOrgs(data)
   }
+
+  useEffect(() => {
+    if (newCC.organization_id) {
+      supabase
+        .from('tipo_conta_tga')
+        .select('id, nome')
+        .eq('organization_id', newCC.organization_id)
+        .is('deleted_at', null)
+        .then(({ data }) => setTgaOptions(data || []))
+    } else {
+      setTgaOptions([])
+    }
+  }, [newCC.organization_id])
 
   const handleCreate = async () => {
     if (!newCC.organization_id || !newCC.code || !newCC.description) {
@@ -87,6 +109,11 @@ export default function CostCenters() {
         organization_id: newCC.organization_id,
         code: newCC.code,
         description: newCC.description,
+        tipo_lcto: newCC.tipo_lcto !== 'none' ? newCC.tipo_lcto : null,
+        operational: newCC.operational !== 'none' ? newCC.operational : null,
+        tipo_tga_id: newCC.tipo_tga_id !== 'none' ? newCC.tipo_tga_id : null,
+        type_tga: newCC.type_tga || null,
+        fixed_variable: newCC.fixed_variable || null,
       },
     ])
     setSubmitting(false)
@@ -96,7 +123,16 @@ export default function CostCenters() {
     } else {
       toast({ title: 'Sucesso', description: 'Centro de custo criado.' })
       setIsCreateOpen(false)
-      setNewCC({ organization_id: '', code: '', description: '' })
+      setNewCC({
+        organization_id: '',
+        code: '',
+        description: '',
+        tipo_lcto: 'none',
+        operational: 'none',
+        tipo_tga_id: 'none',
+        type_tga: '',
+        fixed_variable: '',
+      })
       fetchCostCenters()
     }
   }
@@ -105,7 +141,7 @@ export default function CostCenters() {
     setLoading(true)
     const { data, error } = await supabase
       .from('cost_centers')
-      .select('*, organization:organizations(name)')
+      .select('*, organization:organizations(name), tipo_conta_tga(nome)')
       .neq('pending_deletion', true)
       .is('deleted_at', null)
       .order('code', { ascending: true })
@@ -269,7 +305,7 @@ export default function CostCenters() {
   }
 
   return (
-    <div className="container mx-auto max-w-6xl py-8 space-y-6 animate-fade-in-up">
+    <div className="container mx-auto max-w-7xl py-8 space-y-6 animate-fade-in-up">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Centros de Custo</h1>
@@ -294,12 +330,12 @@ export default function CostCenters() {
       </div>
 
       <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>Novo Centro de Custo</DialogTitle>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="space-y-2">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4">
+            <div className="space-y-2 md:col-span-2">
               <Label>Empresa</Label>
               <Select
                 value={newCC.organization_id}
@@ -331,6 +367,74 @@ export default function CostCenters() {
                 value={newCC.description}
                 onChange={(e) => setNewCC({ ...newCC, description: e.target.value })}
                 placeholder="Ex: Diretoria"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Tipo Lcto</Label>
+              <Select
+                value={newCC.tipo_lcto}
+                onValueChange={(v) => setNewCC({ ...newCC, tipo_lcto: v })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Selecione...</SelectItem>
+                  <SelectItem value="A">A</SelectItem>
+                  <SelectItem value="S">S</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Operacional</Label>
+              <Select
+                value={newCC.operational}
+                onValueChange={(v) => setNewCC({ ...newCC, operational: v })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Selecione...</SelectItem>
+                  <SelectItem value="F">F</SelectItem>
+                  <SelectItem value="T">T</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2 md:col-span-2">
+              <Label>Tipo TGA</Label>
+              <Select
+                value={newCC.tipo_tga_id}
+                onValueChange={(v) => setNewCC({ ...newCC, tipo_tga_id: v })}
+                disabled={!newCC.organization_id}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Busque de Tipos de Conta TGA..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Selecione...</SelectItem>
+                  {tgaOptions.map((tga) => (
+                    <SelectItem key={tga.id} value={tga.id}>
+                      {tga.nome}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Tipo</Label>
+              <Input
+                value={newCC.type_tga}
+                onChange={(e) => setNewCC({ ...newCC, type_tga: e.target.value })}
+                placeholder="Ex: T"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Fixo/Variável</Label>
+              <Input
+                value={newCC.fixed_variable}
+                onChange={(e) => setNewCC({ ...newCC, fixed_variable: e.target.value })}
+                placeholder="Ex: Fixo"
               />
             </div>
           </div>
@@ -381,7 +485,7 @@ export default function CostCenters() {
         <CardContent>
           <div className="rounded-md border overflow-x-auto">
             <Table>
-              <TableHeader className="bg-muted/50">
+              <TableHeader className="bg-muted/50 whitespace-nowrap">
                 <TableRow>
                   {canDelete && (
                     <TableHead className="w-12 text-center">
@@ -396,10 +500,14 @@ export default function CostCenters() {
                       />
                     </TableHead>
                   )}
-                  <TableHead className="w-[200px]">Código</TableHead>
+                  <TableHead className="w-[180px]">Código</TableHead>
                   <TableHead>Descrição</TableHead>
                   <TableHead>Empresa</TableHead>
-                  <TableHead>Tipo / Fixo-Var</TableHead>
+                  <TableHead>Tipo Lcto</TableHead>
+                  <TableHead>Operacional</TableHead>
+                  <TableHead>Tipo TGA</TableHead>
+                  <TableHead>Tipo</TableHead>
+                  <TableHead>Fixo/Variável</TableHead>
                   <TableHead>Classificação</TableHead>
                   {canDelete && <TableHead className="text-right">Ações</TableHead>}
                 </TableRow>
@@ -407,13 +515,13 @@ export default function CostCenters() {
               <TableBody>
                 {loading ? (
                   <TableRow>
-                    <TableCell colSpan={canDelete ? 7 : 5} className="h-24 text-center">
+                    <TableCell colSpan={11} className="h-24 text-center">
                       Carregando centros de custo...
                     </TableCell>
                   </TableRow>
                 ) : paginatedData.length > 0 ? (
                   paginatedData.map((cc) => (
-                    <TableRow key={cc.id}>
+                    <TableRow key={cc.id} className="whitespace-nowrap">
                       {canDelete && (
                         <TableCell className="text-center">
                           <Checkbox
@@ -425,7 +533,7 @@ export default function CostCenters() {
                           />
                         </TableCell>
                       )}
-                      <TableCell className="font-medium whitespace-nowrap">
+                      <TableCell className="font-medium">
                         <div
                           className="flex items-center"
                           style={{ paddingLeft: `${getIndent(cc.code)}rem` }}
@@ -443,19 +551,26 @@ export default function CostCenters() {
                           </span>
                         </div>
                       </TableCell>
+                      <TableCell>{cc.tipo_lcto || '-'}</TableCell>
+                      <TableCell>{cc.operational || '-'}</TableCell>
+                      <TableCell>{cc.tipo_conta_tga?.nome || '-'}</TableCell>
                       <TableCell>
-                        <div className="flex gap-1 flex-wrap max-w-[150px]">
-                          {cc.type_tga && <Badge variant="outline">{cc.type_tga}</Badge>}
-                          {cc.fixed_variable && (
-                            <Badge variant="secondary">{cc.fixed_variable}</Badge>
-                          )}
-                        </div>
+                        {cc.type_tga ? <Badge variant="outline">{cc.type_tga}</Badge> : '-'}
                       </TableCell>
                       <TableCell>
-                        {cc.classification && (
+                        {cc.fixed_variable ? (
+                          <Badge variant="secondary">{cc.fixed_variable}</Badge>
+                        ) : (
+                          '-'
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {cc.classification ? (
                           <Badge variant="outline" className="bg-primary/5">
                             {cc.classification}
                           </Badge>
+                        ) : (
+                          '-'
                         )}
                       </TableCell>
                       {canDelete && (
@@ -474,7 +589,7 @@ export default function CostCenters() {
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={canDelete ? 7 : 5} className="h-24 text-center">
+                    <TableCell colSpan={11} className="h-24 text-center">
                       Nenhum centro de custo encontrado.
                     </TableCell>
                   </TableRow>
