@@ -50,6 +50,25 @@ Deno.serve(async (req: Request) => {
       auth: { persistSession: false },
     })
 
+    // Fetch user profile to check permissions
+    const { data: userProfile } = await supabase
+      .from('cadastro_usuarios')
+      .select('role, permissions, status')
+      .eq('user_id', user.id)
+      .is('deleted_at', null)
+      .maybeSingle()
+
+    if (!userProfile || !userProfile.status) {
+      throw new Error('Usuário inativo ou não encontrado no sistema')
+    }
+
+    const hasPerm = (perms: string[]) => {
+      if (userProfile.role === 'admin') return true
+      const userPerms = Array.isArray(userProfile.permissions) ? userProfile.permissions : []
+      if (userPerms.includes('all')) return true
+      return perms.some((p) => userPerms.includes(p))
+    }
+
     const { messages, file } = await req.json()
 
     if (!messages || !Array.isArray(messages)) {
@@ -188,6 +207,8 @@ Deno.serve(async (req: Request) => {
     const runTool = async (name: string, args: any) => {
       try {
         if (name === 'get_organizations') {
+          if (!hasPerm(['view_companies', 'view_organizations']))
+            return 'Acesso negado: Você não tem permissão para visualizar empresas.'
           if (orgIds.length === 0) return JSON.stringify([])
           const { data } = await supabase
             .from('organizations')
@@ -197,6 +218,8 @@ Deno.serve(async (req: Request) => {
           return JSON.stringify(data || [])
         }
         if (name === 'get_bank_accounts') {
+          if (!hasPerm(['view_bank_accounts', 'view_accounts']))
+            return 'Acesso negado: Você não tem permissão para visualizar contas bancárias.'
           if (orgIds.length === 0) return JSON.stringify([])
           const { data } = await supabase
             .from('bank_accounts')
@@ -208,6 +231,8 @@ Deno.serve(async (req: Request) => {
           return JSON.stringify(data || [])
         }
         if (name === 'get_cost_centers') {
+          if (!hasPerm(['view_cost_centers']))
+            return 'Acesso negado: Você não tem permissão para visualizar centros de custo.'
           if (orgIds.length === 0) return JSON.stringify([])
           const { data } = await supabase
             .from('cost_centers')
@@ -217,6 +242,8 @@ Deno.serve(async (req: Request) => {
           return JSON.stringify(data || [])
         }
         if (name === 'get_financial_movements') {
+          if (!hasPerm(['view_entries', 'view_financial_movements']))
+            return 'Acesso negado: Você não tem permissão para visualizar movimentações financeiras.'
           if (orgIds.length === 0) return JSON.stringify([])
           const limit = args.limit || 15
           const { data } = await supabase
@@ -230,6 +257,8 @@ Deno.serve(async (req: Request) => {
           return JSON.stringify(data || [])
         }
         if (name === 'get_users') {
+          if (!hasPerm(['view_users', 'view_employees']))
+            return 'Acesso negado: Você não tem permissão para visualizar usuários.'
           const { data } = await supabase
             .from('cadastro_usuarios')
             .select('name, email, role, status, phone, cpf, departments(name)')
@@ -237,6 +266,8 @@ Deno.serve(async (req: Request) => {
           return JSON.stringify(data || [])
         }
         if (name === 'get_departments') {
+          if (!hasPerm(['view_departments']))
+            return 'Acesso negado: Você não tem permissão para visualizar departamentos.'
           const { data } = await supabase
             .from('departments')
             .select('code, name, created_at')
@@ -244,6 +275,8 @@ Deno.serve(async (req: Request) => {
           return JSON.stringify(data || [])
         }
         if (name === 'get_chart_accounts') {
+          if (!hasPerm(['view_chart_accounts', 'view_chart_of_accounts']))
+            return 'Acesso negado: Você não tem permissão para visualizar o plano de contas.'
           if (orgIds.length === 0) return JSON.stringify([])
           const { data } = await supabase
             .from('chart_of_accounts')
@@ -253,6 +286,8 @@ Deno.serve(async (req: Request) => {
           return JSON.stringify(data || [])
         }
         if (name === 'get_accounting_entries') {
+          if (!hasPerm(['view_entries', 'view_accounting_entries']))
+            return 'Acesso negado: Você não tem permissão para visualizar lançamentos contábeis.'
           if (orgIds.length === 0) return JSON.stringify([])
           const limit = args.limit || 15
           const { data } = await supabase
@@ -266,6 +301,8 @@ Deno.serve(async (req: Request) => {
           return JSON.stringify(data || [])
         }
         if (name === 'get_account_mappings') {
+          if (!hasPerm(['view_mappings', 'view_account_mappings']))
+            return 'Acesso negado: Você não tem permissão para visualizar mapeamentos.'
           if (orgIds.length === 0) return JSON.stringify([])
           const { data } = await supabase
             .from('account_mapping')
@@ -276,6 +313,8 @@ Deno.serve(async (req: Request) => {
           return JSON.stringify(data || [])
         }
         if (name === 'get_tga_account_types') {
+          if (!hasPerm(['view_tga_accounts', 'view_tga']))
+            return 'Acesso negado: Você não tem permissão para visualizar tipos de conta TGA.'
           if (orgIds.length === 0) return JSON.stringify([])
           const { data } = await supabase
             .from('tipo_conta_tga')
@@ -305,6 +344,7 @@ Exemplo:
 - **Email:** joao@exemplo.com
 
 Se não houver informações disponíveis no retorno das funções, informe que os dados não foram encontrados nas tabelas correspondentes.
+Caso receba uma mensagem de "Acesso negado" de alguma função, informe o usuário educadamente que ele não possui a permissão necessária no sistema para acessar essa informação.
 
 2. APENAS DEPOIS de apresentar os dados completos e detalhados, você DEVE OBRIGATORIAMENTE incluir no final da sua resposta um link direto para a página correspondente no sistema em formato Markdown.
 Exemplos de rotas OBRIGATÓRIAS:- Ao listar Empresas/Organizações: inclua [Acessar Gestão de Empresas](/empresas)
