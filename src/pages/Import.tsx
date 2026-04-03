@@ -349,7 +349,7 @@ export default function Import() {
     if (showOnlyErrors) {
       filtered = rawData.filter((row) => req.some((c) => !row[c] || String(row[c]).trim() === ''))
     }
-    return filtered.slice(0, 10)
+    return filtered.slice(0, 5)
   }, [rawData, showOnlyErrors, importType])
 
   const columns = useMemo(() => {
@@ -621,14 +621,50 @@ export default function Import() {
           </CardHeader>
           <CardContent className="space-y-6">
             {validationInfo.missingColumns.length > 0 ? (
-              <Alert variant="destructive">
-                <AlertCircle className="h-4 w-4" />
-                <AlertTitle>Estrutura Inválida</AlertTitle>
-                <AlertDescription>
-                  Colunas obrigatórias ausentes:{' '}
-                  <span className="font-semibold">{validationInfo.missingColumns.join(', ')}</span>
-                </AlertDescription>
-              </Alert>
+              <div className="space-y-4">
+                <Alert variant="destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertTitle>Estrutura Inválida</AlertTitle>
+                  <AlertDescription>
+                    A aba selecionada não possui todas as colunas obrigatórias para este tipo de
+                    importação.
+                  </AlertDescription>
+                </Alert>
+
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div className="border rounded-md p-4 bg-muted/30">
+                    <h4 className="font-semibold mb-3 flex items-center gap-2 text-sm">
+                      <CheckCircle2 className="h-4 w-4 text-green-500" /> Colunas Encontradas na
+                      Planilha
+                    </h4>
+                    <div className="flex flex-wrap gap-1.5">
+                      {columns.length > 0 ? (
+                        columns.map((c) => (
+                          <Badge key={c} variant="secondary" className="text-xs font-normal">
+                            {c}
+                          </Badge>
+                        ))
+                      ) : (
+                        <span className="text-xs text-muted-foreground">
+                          Nenhuma coluna encontrada. Verifique se a planilha possui cabeçalho.
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="border rounded-md p-4 bg-red-500/5">
+                    <h4 className="font-semibold mb-3 flex items-center gap-2 text-sm text-red-600 dark:text-red-400">
+                      <AlertCircle className="h-4 w-4" /> Colunas Obrigatórias Ausentes
+                    </h4>
+                    <div className="flex flex-wrap gap-1.5">
+                      {validationInfo.missingColumns.map((c) => (
+                        <Badge key={c} variant="destructive" className="text-xs">
+                          {c}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
             ) : (
               <div className="grid grid-cols-3 gap-4">
                 <div className="bg-muted/50 p-4 rounded-lg flex flex-col items-center justify-center text-center border">
@@ -689,14 +725,14 @@ export default function Import() {
               </div>
             )}
 
-            {columns.length > 0 && validationInfo.missingColumns.length === 0 && (
+            {columns.length > 0 && (
               <div className="space-y-3">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <h3 className="font-medium flex items-center gap-2">
                     <FileType2 className="h-4 w-4 text-muted-foreground" />
-                    Preview dos Dados (Exibindo até 10 linhas)
+                    Preview dos Dados (Exibindo até 5 linhas)
                   </h3>
-                  {validationInfo.invalid > 0 && (
+                  {validationInfo.invalid > 0 && validationInfo.missingColumns.length === 0 && (
                     <div className="flex items-center space-x-2 bg-muted/50 p-1.5 rounded-md border">
                       <Switch
                         id="show-errors"
@@ -725,9 +761,8 @@ export default function Import() {
                       {previewData.length > 0 ? (
                         previewData.map((row, idx) => {
                           const originalIndex = rawData.indexOf(row) + 1
-                          const isInvalid = IMPORT_TYPES[
-                            importType as keyof typeof IMPORT_TYPES
-                          ].required.some((c) => !row[c])
+                          const req = IMPORT_TYPES[importType as keyof typeof IMPORT_TYPES].required
+                          const isInvalid = req.some((c) => !row[c] && columns.includes(c))
                           return (
                             <TableRow
                               key={originalIndex}
@@ -741,11 +776,7 @@ export default function Import() {
                                 {originalIndex}
                               </TableCell>
                               {columns.map((col) => {
-                                const isMissingRequired =
-                                  !row[col] &&
-                                  IMPORT_TYPES[
-                                    importType as keyof typeof IMPORT_TYPES
-                                  ].required.includes(col)
+                                const isMissingRequired = !row[col] && req.includes(col)
                                 return (
                                   <TableCell
                                     key={col}
