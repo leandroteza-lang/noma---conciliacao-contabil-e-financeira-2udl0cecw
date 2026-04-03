@@ -28,7 +28,7 @@ export default function SharedQuery() {
       // Fetch only metadata first
       const { data, error: err } = await supabase
         .from('shared_queries')
-        .select('prompt, is_protected, single_view, access_count')
+        .select('prompt, is_protected, single_view, access_count, is_revoked')
         .eq('id', id)
         .maybeSingle()
 
@@ -39,6 +39,14 @@ export default function SharedQuery() {
       }
 
       const queryData = data as any
+
+      if (queryData.is_revoked) {
+        setError(
+          'Acesso Revogado: Este link foi desativado pelo proprietário e não está mais disponível.',
+        )
+        setLoading(false)
+        return
+      }
 
       if (queryData.single_view && queryData.access_count > 0) {
         setError(

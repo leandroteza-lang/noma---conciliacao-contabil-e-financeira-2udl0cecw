@@ -203,16 +203,16 @@ export default function SharedQueriesList() {
   }
 
   const handleRevoke = async (id: string) => {
-    if (
-      !confirm('Deseja revogar o acesso a este link de visualização única? O link será expirado.')
-    )
-      return
-    const { error } = await supabase.from('shared_queries').update({ access_count: 1 }).eq('id', id)
+    if (!confirm('Deseja revogar o acesso a este link? O link será expirado imediatamente.')) return
+    const { error } = await supabase
+      .from('shared_queries')
+      .update({ is_revoked: true })
+      .eq('id', id)
     if (error)
       toast({ title: 'Erro ao revogar', description: error.message, variant: 'destructive' })
     else {
       toast({ title: 'Acesso Revogado', description: 'O link não pode mais ser acessado.' })
-      setQueries((prev) => prev.map((q) => (q.id === id ? { ...q, access_count: 1 } : q)))
+      setQueries((prev) => prev.map((q) => (q.id === id ? { ...q, is_revoked: true } : q)))
     }
   }
 
@@ -421,7 +421,14 @@ export default function SharedQueriesList() {
                       </TableCell>
                       <TableCell>
                         <div className="flex flex-col gap-1.5 items-start">
-                          {query.single_view ? (
+                          {query.is_revoked ? (
+                            <Badge
+                              variant="outline"
+                              className="bg-destructive/10 text-destructive border-destructive/20"
+                            >
+                              <Ban className="w-3 h-3 mr-1" /> Revogado
+                            </Badge>
+                          ) : query.single_view ? (
                             <Badge
                               variant="outline"
                               className={
@@ -467,7 +474,7 @@ export default function SharedQueriesList() {
                       </TableCell>
                       <TableCell className="text-right whitespace-nowrap">
                         <div className="flex items-center justify-end gap-2">
-                          {query.single_view && query.access_count === 0 && (
+                          {!query.is_revoked && (
                             <Button
                               variant="ghost"
                               size="icon"
