@@ -36,6 +36,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { supabase } from '@/lib/supabase/client'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
+import { ThemeToggle } from '@/components/ThemeToggle'
 import {
   Sidebar,
   SidebarContent,
@@ -412,8 +413,8 @@ export default function Layout() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     )
   }
@@ -424,13 +425,13 @@ export default function Layout() {
 
   if (profile?.approval_status === 'pending') {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4">
-        <div className="max-w-md w-full bg-white rounded-xl shadow-sm border border-slate-200 p-8 text-center animate-in fade-in zoom-in duration-500">
-          <div className="mx-auto w-16 h-16 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center mb-6">
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+        <div className="max-w-md w-full bg-card rounded-xl shadow-sm border border-border p-8 text-center animate-in fade-in zoom-in duration-500">
+          <div className="mx-auto w-16 h-16 bg-primary/10 text-primary rounded-full flex items-center justify-center mb-6">
             <Users className="w-8 h-8" />
           </div>
-          <h1 className="text-2xl font-bold text-slate-900 mb-2">Acesso em Análise</h1>
-          <p className="text-slate-600 mb-8 leading-relaxed">
+          <h1 className="text-2xl font-bold text-foreground mb-2">Acesso em Análise</h1>
+          <p className="text-muted-foreground mb-8 leading-relaxed">
             Seu cadastro foi recebido com sucesso e está aguardando aprovação de um administrador.
             Você receberá um aviso assim que seu acesso for liberado.
           </p>
@@ -441,7 +442,7 @@ export default function Layout() {
                 window.location.replace('/login')
               }, 50)
             }}
-            className="w-full py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium rounded-lg transition-colors"
+            className="w-full py-2.5 px-4 bg-secondary hover:bg-secondary/80 text-secondary-foreground font-medium rounded-lg transition-colors"
           >
             Sair e voltar ao Login
           </button>
@@ -456,13 +457,13 @@ export default function Layout() {
 
   if (!hasAccessToCurrentRoute && normalizedOrder.length === 0) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4">
-        <div className="max-w-md w-full bg-white rounded-xl shadow-sm border border-slate-200 p-8 text-center animate-in fade-in zoom-in duration-500">
-          <div className="mx-auto w-16 h-16 bg-red-50 text-red-600 rounded-full flex items-center justify-center mb-6">
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+        <div className="max-w-md w-full bg-card rounded-xl shadow-sm border border-border p-8 text-center animate-in fade-in zoom-in duration-500">
+          <div className="mx-auto w-16 h-16 bg-destructive/10 text-destructive rounded-full flex items-center justify-center mb-6">
             <LogOut className="w-8 h-8" />
           </div>
-          <h1 className="text-2xl font-bold text-slate-900 mb-2">Acesso Negado</h1>
-          <p className="text-slate-600 mb-8 leading-relaxed">
+          <h1 className="text-2xl font-bold text-foreground mb-2">Acesso Negado</h1>
+          <p className="text-muted-foreground mb-8 leading-relaxed">
             Você não tem permissão para acessar nenhuma página do sistema. Contate um administrador.
           </p>
           <button
@@ -472,7 +473,7 @@ export default function Layout() {
                 window.location.replace('/login')
               }, 50)
             }}
-            className="w-full py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium rounded-lg transition-colors"
+            className="w-full py-2.5 px-4 bg-secondary hover:bg-secondary/80 text-secondary-foreground font-medium rounded-lg transition-colors"
           >
             Sair e voltar ao Login
           </button>
@@ -493,10 +494,10 @@ export default function Layout() {
       <Sidebar collapsible="offcanvas" className="z-20">
         <SidebarHeader className="border-b border-sidebar-border px-4 py-4 h-16 flex justify-center">
           <div className="flex items-center gap-3 overflow-hidden w-full">
-            <div className="bg-blue-600 p-1.5 rounded-lg text-white shadow-sm flex items-center justify-center shrink-0">
+            <div className="bg-primary p-1.5 rounded-lg text-primary-foreground shadow-sm flex items-center justify-center shrink-0">
               <Wallet className="size-5" />
             </div>
-            <span className="font-bold text-slate-800 tracking-tight truncate group-data-[collapsible=offcanvas]:hidden">
+            <span className="font-bold text-sidebar-foreground tracking-tight truncate group-data-[collapsible=offcanvas]:hidden">
               Gestão de Contas
             </span>
           </div>
@@ -535,18 +536,18 @@ export default function Layout() {
                             <SidebarMenuButton
                               tooltip={item.title}
                               size="lg"
-                              className="flex items-center justify-between w-full cursor-pointer text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                              className="flex items-center justify-between w-full cursor-pointer text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                             >
                               <div className="flex items-center gap-2">
-                                <item.icon className="size-4 shrink-0 text-slate-400 group-data-[state=open]/collapsible:text-blue-700" />
+                                <item.icon className="size-4 shrink-0 text-sidebar-foreground/50 group-data-[state=open]/collapsible:text-primary" />
                                 <span className="font-medium">{item.title}</span>
                               </div>
-                              <ChevronRight className="size-4 text-slate-400 transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
+                              <ChevronRight className="size-4 text-sidebar-foreground/50 transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
                             </SidebarMenuButton>
                           </CollapsibleTrigger>
 
                           <CollapsibleContent>
-                            <SidebarMenuSub className="pr-0 mr-0 border-l border-slate-200 ml-4 pl-2 py-1">
+                            <SidebarMenuSub className="pr-0 mr-0 border-l border-sidebar-border ml-4 pl-2 py-1">
                               {node.children?.map((childPath) => {
                                 const childItem = allowedItems.find((a) => a.path === childPath)
                                 if (!childItem) return null
@@ -566,8 +567,8 @@ export default function Layout() {
                                       className={cn(
                                         'transition-all duration-200 group relative my-0.5',
                                         isChildActive
-                                          ? 'bg-blue-50 text-blue-700 shadow-sm hover:bg-blue-50 hover:text-blue-700'
-                                          : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900',
+                                          ? 'bg-primary/10 text-primary shadow-sm hover:bg-primary/15 hover:text-primary'
+                                          : 'text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
                                       )}
                                     >
                                       <Link
@@ -578,7 +579,9 @@ export default function Layout() {
                                           <childItem.icon
                                             className={cn(
                                               'size-4 shrink-0',
-                                              isChildActive ? 'text-blue-700' : 'text-slate-400',
+                                              isChildActive
+                                                ? 'text-primary'
+                                                : 'text-sidebar-foreground/50',
                                             )}
                                           />
                                           <span className="font-medium">{childItem.title}</span>
@@ -603,11 +606,11 @@ export default function Layout() {
                                     draggedItemPath !== node.path &&
                                     !node.children?.includes(draggedItemPath) &&
                                     !MENU_ITEMS.find((i) => i.path === draggedItemPath)?.isFolder
-                                    ? 'border-slate-200 hover:border-blue-400 hover:bg-blue-50/50'
+                                    ? 'border-sidebar-border hover:border-primary/50 hover:bg-primary/5'
                                     : 'hidden',
                                 )}
                               >
-                                <span className="text-xs text-slate-400 font-medium">
+                                <span className="text-xs text-sidebar-foreground/50 font-medium">
                                   Mover para cá
                                 </span>
                               </SidebarMenuSubItem>
@@ -636,8 +639,8 @@ export default function Layout() {
                         className={cn(
                           'transition-all duration-200 group relative',
                           isActive
-                            ? 'bg-blue-50 text-blue-700 shadow-sm hover:bg-blue-50 hover:text-blue-700'
-                            : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900',
+                            ? 'bg-primary/10 text-primary shadow-sm hover:bg-primary/15 hover:text-primary'
+                            : 'text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
                         )}
                       >
                         <Link to={item.path} className="flex items-center justify-between w-full">
@@ -645,7 +648,7 @@ export default function Layout() {
                             <item.icon
                               className={cn(
                                 'size-4 shrink-0',
-                                isActive ? 'text-blue-700' : 'text-slate-400',
+                                isActive ? 'text-primary' : 'text-sidebar-foreground/50',
                               )}
                             />
                             <span className="font-medium">{item.title}</span>
@@ -674,9 +677,9 @@ export default function Layout() {
               <SidebarMenuButton
                 onClick={handleLogout}
                 size="lg"
-                className="text-slate-600 hover:text-red-600 hover:bg-red-50"
+                className="text-sidebar-foreground/70 hover:text-destructive hover:bg-destructive/10"
               >
-                <LogOut className="size-4 shrink-0 text-slate-400 group-hover/menu-button:text-red-600" />
+                <LogOut className="size-4 shrink-0 text-sidebar-foreground/50 group-hover/menu-button:text-destructive" />
                 <span className="font-medium">Sair da conta</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
@@ -685,28 +688,29 @@ export default function Layout() {
         <SidebarRail />
       </Sidebar>
 
-      <SidebarInset className="bg-slate-50 min-w-0">
-        <header className="flex h-16 shrink-0 items-center gap-2 border-b border-slate-200 bg-white px-4 sticky top-0 z-30 shadow-sm justify-between">
+      <SidebarInset className="bg-muted/30 min-w-0">
+        <header className="flex h-16 shrink-0 items-center gap-2 border-b border-border bg-background px-4 sticky top-0 z-30 shadow-sm justify-between">
           <div className="flex items-center gap-2">
-            <SidebarTrigger className="-ml-2 text-slate-600" />
+            <SidebarTrigger className="-ml-2 text-muted-foreground" />
             <div className="flex items-center gap-3 md:hidden ml-2">
-              <div className="bg-blue-600 p-1.5 rounded-lg text-white shadow-sm flex items-center justify-center">
+              <div className="bg-primary p-1.5 rounded-lg text-primary-foreground shadow-sm flex items-center justify-center">
                 <Wallet className="size-5" />
               </div>
-              <span className="font-bold text-slate-800 tracking-tight truncate">
+              <span className="font-bold text-foreground tracking-tight truncate">
                 Gestão de Contas
               </span>
             </div>
           </div>
           <div className="flex items-center gap-3">
+            <ThemeToggle />
             <DropdownMenu>
               <DropdownMenuTrigger className="flex items-center gap-3 outline-none">
-                <span className="text-sm font-medium text-slate-700 hidden sm:block">
+                <span className="text-sm font-medium text-foreground hidden sm:block">
                   {profile?.name || user.email}
                 </span>
-                <Avatar className="h-9 w-9 border border-slate-200 shadow-sm cursor-pointer hover:ring-2 hover:ring-blue-100 transition-all">
+                <Avatar className="h-9 w-9 border border-border shadow-sm cursor-pointer hover:ring-2 hover:ring-primary/20 transition-all">
                   <AvatarImage src={profile?.avatar_url || ''} className="object-cover" />
-                  <AvatarFallback className="bg-blue-50 text-blue-700 font-semibold">
+                  <AvatarFallback className="bg-primary/10 text-primary font-semibold">
                     {(profile?.name || user.email || 'U').substring(0, 2).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>

@@ -22,38 +22,41 @@ import ResetPassword from './pages/ResetPassword'
 import NotFound from './pages/NotFound'
 import Layout from './components/Layout'
 import { AuthProvider } from './hooks/use-auth'
+import { ThemeProvider } from './components/ThemeProvider'
 
 const App = () => (
-  <BrowserRouter future={{ v7_startTransition: false, v7_relativeSplatPath: false }}>
-    <AuthProvider>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <Routes>
-          <Route path="/login" element={<Login />} />
-          <Route path="/signup" element={<Signup />} />
-          <Route path="/forgot-password" element={<ForgotPassword />} />
-          <Route path="/reset-password" element={<ResetPassword />} />
-          <Route element={<Layout />}>
-            <Route path="/" element={<Index />} />
-            <Route path="/empresas" element={<Companies />} />
-            <Route path="/departamentos" element={<Departments />} />
-            <Route path="/usuarios" element={<Users />} />
-            <Route path="/import" element={<Import />} />
-            <Route path="/mapeamento" element={<Mapping />} />
-            <Route path="/lancamentos" element={<Entries />} />
-            <Route path="/centros-de-custo" element={<CostCenters />} />
-            <Route path="/plano-de-contas" element={<ChartAccounts />} />
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/analises" element={<Analysis />} />
-            <Route path="/aprovacoes" element={<Approvals />} />
-            <Route path="/tipo-conta-tga" element={<TgaAccountTypes />} />
-          </Route>
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </TooltipProvider>
-    </AuthProvider>
-  </BrowserRouter>
+  <ThemeProvider defaultTheme="system" storageKey="gc-theme">
+    <BrowserRouter future={{ v7_startTransition: false, v7_relativeSplatPath: false }}>
+      <AuthProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <Routes>
+            <Route path="/login" element={<Login />} />
+            <Route path="/signup" element={<Signup />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
+            <Route element={<Layout />}>
+              <Route path="/" element={<Index />} />
+              <Route path="/empresas" element={<Companies />} />
+              <Route path="/departamentos" element={<Departments />} />
+              <Route path="/usuarios" element={<Users />} />
+              <Route path="/import" element={<Import />} />
+              <Route path="/mapeamento" element={<Mapping />} />
+              <Route path="/lancamentos" element={<Entries />} />
+              <Route path="/centros-de-custo" element={<CostCenters />} />
+              <Route path="/plano-de-contas" element={<ChartAccounts />} />
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/analises" element={<Analysis />} />
+              <Route path="/aprovacoes" element={<Approvals />} />
+              <Route path="/tipo-conta-tga" element={<TgaAccountTypes />} />
+            </Route>
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </TooltipProvider>
+      </AuthProvider>
+    </BrowserRouter>
+  </ThemeProvider>
 )
 
 export default App
