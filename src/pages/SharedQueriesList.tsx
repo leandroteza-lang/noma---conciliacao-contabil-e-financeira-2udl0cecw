@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo, useRef } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { supabase } from '@/lib/supabase/client'
 import { useAuth } from '@/hooks/use-auth'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
@@ -29,6 +29,7 @@ import {
   Bell,
   BellOff,
   Plus,
+  Ban,
 } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import {
@@ -201,6 +202,20 @@ export default function SharedQueriesList() {
     }
   }
 
+  const handleRevoke = async (id: string) => {
+    if (
+      !confirm('Deseja revogar o acesso a este link de visualização única? O link será expirado.')
+    )
+      return
+    const { error } = await supabase.from('shared_queries').update({ access_count: 1 }).eq('id', id)
+    if (error)
+      toast({ title: 'Erro ao revogar', description: error.message, variant: 'destructive' })
+    else {
+      toast({ title: 'Acesso Revogado', description: 'O link não pode mais ser acessado.' })
+      setQueries((prev) => prev.map((q) => (q.id === id ? { ...q, access_count: 1 } : q)))
+    }
+  }
+
   const sortedQueries = useMemo(() => {
     return [...queries]
       .filter((q) => q.prompt.toLowerCase().includes(searchTerm.toLowerCase()))
@@ -341,6 +356,15 @@ export default function SharedQueriesList() {
                     <TableHead>
                       <Button
                         variant="ghost"
+                        onClick={() => handleSort('single_view')}
+                        className="h-8 flex items-center gap-1 -ml-4 font-medium"
+                      >
+                        Vis. Única <ArrowUpDown className="h-3 w-3" />
+                      </Button>
+                    </TableHead>
+                    <TableHead>
+                      <Button
+                        variant="ghost"
                         onClick={() => handleSort('notify_first_access')}
                         className="h-8 flex items-center gap-1 -ml-4 font-medium"
                       >
@@ -393,7 +417,11 @@ export default function SharedQueriesList() {
                               Aberto
                             </Badge>
                           )}
-                          {query.single_view && (
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex flex-col gap-1.5 items-start">
+                          {query.single_view ? (
                             <Badge
                               variant="outline"
                               className={
@@ -402,9 +430,18 @@ export default function SharedQueriesList() {
                                   : 'bg-amber-500/10 text-amber-600 border-amber-500/20'
                               }
                             >
-                              <EyeOff className="w-3 h-3 mr-1" />
-                              Visualização Única {query.access_count > 0 ? '(Expirado)' : ''}
+                              {query.access_count > 0 ? (
+                                <>
+                                  <EyeOff className="w-3 h-3 mr-1" /> Consumido
+                                </>
+                              ) : (
+                                <>
+                                  <Eye className="w-3 h-3 mr-1" /> Disponível
+                                </>
+                              )}
                             </Badge>
+                          ) : (
+                            <span className="text-muted-foreground text-sm pl-2">-</span>
                           )}
                         </div>
                       </TableCell>
@@ -430,6 +467,17 @@ export default function SharedQueriesList() {
                       </TableCell>
                       <TableCell className="text-right whitespace-nowrap">
                         <div className="flex items-center justify-end gap-2">
+                          {query.single_view && query.access_count === 0 && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleRevoke(query.id)}
+                              title="Revogar Acesso"
+                              className="text-amber-600 hover:text-amber-700 hover:bg-amber-500/10"
+                            >
+                              <Ban className="w-4 h-4" />
+                            </Button>
+                          )}
                           <Button
                             variant="ghost"
                             size="icon"
