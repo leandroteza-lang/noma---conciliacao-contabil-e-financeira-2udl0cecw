@@ -322,9 +322,9 @@ export default function TgaAccountTypes() {
   }
 
   return (
-    <div className="space-y-6 shadow-[0px_0px_6px_0px_#2da8a6]">
+    <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <h1 className="text-2xl font-bold text-slate-800">Tipos de Conta TGA</h1>
+        <h1 className="text-2xl font-bold text-foreground">Tipos de Conta TGA</h1>
         <div className="flex gap-2 w-full sm:w-auto flex-wrap">
           {selectedIds.length > 0 && (
             <Button variant="destructive" onClick={handleBatchDelete}>
@@ -346,13 +346,14 @@ export default function TgaAccountTypes() {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem onClick={() => exportData('pdf')}>
-                <FileText className="w-4 h-4 mr-2 text-red-500" /> PDF
+                <FileText className="w-4 h-4 mr-2 text-destructive" /> PDF
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => exportData('excel')}>
-                <FileSpreadsheet className="w-4 h-4 mr-2 text-green-600" /> Excel (XLSX)
+                <FileSpreadsheet className="w-4 h-4 mr-2 text-green-600 dark:text-green-400" />{' '}
+                Excel (XLSX)
               </DropdownMenuItem>
               <DropdownMenuItem onClick={handlePrint}>
-                <Printer className="w-4 h-4 mr-2 text-blue-500" /> Imprimir
+                <Printer className="w-4 h-4 mr-2 text-primary" /> Imprimir
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -363,20 +364,20 @@ export default function TgaAccountTypes() {
         </div>
       </div>
 
-      <div className="flex items-center space-x-2 bg-white p-3 rounded-lg shadow-sm border border-slate-200">
-        <Search className="w-5 h-5 text-slate-400" />
+      <div className="flex items-center space-x-2 bg-card p-3 rounded-lg shadow-sm border border-border">
+        <Search className="w-5 h-5 text-muted-foreground" />
         <Input
           placeholder="Buscar por código ou nome..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="border-0 focus-visible:ring-0 shadow-none px-0"
+          className="border-0 focus-visible:ring-0 shadow-none px-0 bg-transparent"
         />
       </div>
 
-      <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-x-auto">
+      <div className="bg-card rounded-lg shadow-sm border border-border overflow-x-auto">
         <Table>
           <TableHeader>
-            <TableRow className="bg-slate-50 hover:bg-slate-50">
+            <TableRow className="bg-muted/50 hover:bg-muted/50">
               <TableHead className="w-[50px] py-1.5 px-2 h-8">
                 <Checkbox
                   checked={filteredData.length > 0 && selectedIds.length === filteredData.length}
@@ -387,25 +388,25 @@ export default function TgaAccountTypes() {
                 />
               </TableHead>
               <TableHead
-                className="cursor-pointer hover:bg-slate-100 py-1.5 px-2 h-8"
+                className="cursor-pointer hover:bg-muted py-1.5 px-2 h-8"
                 onClick={() => handleSort('organization_id')}
               >
                 Empresa <ArrowUpDown className="inline w-3 h-3 ml-1" />
               </TableHead>
               <TableHead
-                className="cursor-pointer hover:bg-slate-100 py-1.5 px-2 h-8"
+                className="cursor-pointer hover:bg-muted py-1.5 px-2 h-8"
                 onClick={() => handleSort('codigo')}
               >
                 Código <ArrowUpDown className="inline w-3 h-3 ml-1" />
               </TableHead>
               <TableHead
-                className="cursor-pointer hover:bg-slate-100 py-1.5 px-2 h-8"
+                className="cursor-pointer hover:bg-muted py-1.5 px-2 h-8"
                 onClick={() => handleSort('nome')}
               >
                 Nome <ArrowUpDown className="inline w-3 h-3 ml-1" />
               </TableHead>
               <TableHead
-                className="cursor-pointer hover:bg-slate-100 py-1.5 px-2 h-8"
+                className="cursor-pointer hover:bg-muted py-1.5 px-2 h-8"
                 onClick={() => handleSort('abreviacao')}
               >
                 Abrev. <ArrowUpDown className="inline w-3 h-3 ml-1" />
@@ -419,8 +420,8 @@ export default function TgaAccountTypes() {
                 key={item.id}
                 className={
                   index % 2 === 0
-                    ? 'bg-white hover:bg-blue-50/60'
-                    : 'bg-blue-100 hover:bg-blue-200/80'
+                    ? 'bg-background hover:bg-muted/50'
+                    : 'bg-muted/30 hover:bg-muted/50'
                 }
               >
                 <TableCell className="py-1 px-2">
@@ -432,7 +433,7 @@ export default function TgaAccountTypes() {
                     }}
                   />
                 </TableCell>
-                <TableCell className="py-1 px-2 font-medium text-slate-700">
+                <TableCell className="py-1 px-2 font-medium text-foreground/90">
                   {item.organizations?.name || '-'}
                 </TableCell>
                 <TableCell className="py-1 px-2">{item.codigo}</TableCell>
@@ -444,17 +445,17 @@ export default function TgaAccountTypes() {
                       variant="ghost"
                       size="icon"
                       onClick={() => openModal(item)}
-                      className="h-6 w-6"
+                      className="h-6 w-6 hover:text-primary hover:bg-primary/10"
                     >
-                      <Edit2 className="w-3.5 h-3.5 text-blue-600" />
+                      <Edit2 className="w-3.5 h-3.5 text-primary" />
                     </Button>
                     <Button
                       variant="ghost"
                       size="icon"
                       onClick={() => handleDelete(item.id)}
-                      className="h-6 w-6"
+                      className="h-6 w-6 hover:text-destructive hover:bg-destructive/10"
                     >
-                      <Trash2 className="w-3.5 h-3.5 text-red-600" />
+                      <Trash2 className="w-3.5 h-3.5 text-destructive" />
                     </Button>
                   </div>
                 </TableCell>
@@ -462,7 +463,7 @@ export default function TgaAccountTypes() {
             ))}
             {filteredData.length === 0 && (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-8 text-slate-500">
+                <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                   Nenhum registro encontrado
                 </TableCell>
               </TableRow>

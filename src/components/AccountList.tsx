@@ -44,14 +44,26 @@ interface Props {
 const getTheme = (name: string | null | undefined) => {
   const n = name?.toUpperCase() || ''
   if (n.includes('NOMA PARTS'))
-    return { badge: 'bg-blue-100 text-blue-800', border: 'border-blue-500' }
+    return {
+      badge: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300',
+      border: 'border-blue-500 dark:border-blue-700',
+    }
   if (n.includes('LS ALMEIDA'))
-    return { badge: 'bg-yellow-100 text-yellow-800', border: 'border-yellow-500' }
+    return {
+      badge: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300',
+      border: 'border-yellow-500 dark:border-yellow-700',
+    }
   if (n.includes('NOMA SERVICE'))
-    return { badge: 'bg-orange-100 text-orange-800', border: 'border-orange-500' }
+    return {
+      badge: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300',
+      border: 'border-orange-500 dark:border-orange-700',
+    }
   if (n.includes('PF'))
-    return { badge: 'bg-purple-100 text-purple-800', border: 'border-purple-500' }
-  return { badge: 'bg-slate-100 text-slate-800', border: 'border-slate-500' }
+    return {
+      badge: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300',
+      border: 'border-purple-500 dark:border-purple-700',
+    }
+  return { badge: 'bg-muted text-foreground', border: 'border-border' }
 }
 
 function EditableCell({
@@ -85,7 +97,7 @@ function EditableCell({
       const theme = getTheme(org?.name)
       return (
         <div
-          className="cursor-pointer hover:bg-slate-100/50 p-1 -m-1 rounded min-h-[28px] flex items-center"
+          className="cursor-pointer hover:bg-muted/50 p-1 -m-1 rounded min-h-[28px] flex items-center"
           onClick={onEditStart}
         >
           <Badge
@@ -100,18 +112,18 @@ function EditableCell({
 
     return (
       <div
-        className="cursor-pointer hover:bg-slate-100/50 p-1 -m-1 rounded min-h-[28px] flex items-center"
+        className="cursor-pointer hover:bg-muted/50 p-1 -m-1 rounded min-h-[28px] flex items-center"
         onClick={onEditStart}
       >
         {field === 'classificacao' ? (
           <Badge
             variant="secondary"
-            className="bg-slate-100 text-slate-600 font-normal hover:bg-slate-200"
+            className="bg-muted text-foreground font-normal hover:bg-muted/80"
           >
             {value}
           </Badge>
         ) : (
-          value || <span className="text-slate-300 italic text-xs">Vazio</span>
+          value || <span className="text-muted-foreground/50 italic text-xs">Vazio</span>
         )}
       </div>
     )
@@ -125,7 +137,7 @@ function EditableCell({
         onChange={(e) => setTempVal(e.target.value)}
         onBlur={handleBlur}
         onKeyDown={handleKeyDown}
-        className="w-full text-sm border border-blue-400 rounded p-1 outline-none ring-2 ring-blue-500/20 bg-white"
+        className="w-full text-sm border border-primary/50 rounded p-1 outline-none ring-2 ring-primary/20 bg-background text-foreground"
       >
         <option value="">Selecione...</option>
         {organizations.map((org: Organization) => (
@@ -144,7 +156,7 @@ function EditableCell({
       onChange={(e) => setTempVal(e.target.value)}
       onBlur={handleBlur}
       onKeyDown={handleKeyDown}
-      className="h-7 py-1 px-2 text-sm border-blue-400 focus-visible:ring-blue-500 min-w-[100px]"
+      className="h-7 py-1 px-2 text-sm border-primary/50 focus-visible:ring-primary min-w-[100px]"
     />
   )
 }
@@ -324,11 +336,11 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
 
   if (accounts.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-16 px-4 text-slate-500 bg-white rounded-xl border border-dashed border-slate-300 shadow-sm animate-in fade-in">
-        <div className="bg-slate-100 p-4 rounded-full mb-4">
-          <Building className="h-8 w-8 text-slate-400" />
+      <div className="flex flex-col items-center justify-center py-16 px-4 text-muted-foreground bg-card rounded-xl border border-dashed border-border shadow-sm animate-in fade-in">
+        <div className="bg-muted p-4 rounded-full mb-4">
+          <Building className="h-8 w-8 text-muted-foreground/70" />
         </div>
-        <p className="text-lg font-semibold text-slate-700">Nenhuma conta encontrada</p>
+        <p className="text-lg font-semibold text-foreground">Nenhuma conta encontrada</p>
       </div>
     )
   }
@@ -338,8 +350,8 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
         <div>
           {selectedIds.length > 0 && (
-            <div className="bg-slate-50 border border-slate-200 rounded-md p-2 px-3 flex items-center gap-4 animate-in fade-in">
-              <span className="text-sm font-medium text-slate-700">
+            <div className="bg-muted/50 border border-border rounded-md p-2 px-3 flex items-center gap-4 animate-in fade-in">
+              <span className="text-sm font-medium text-foreground">
                 {selectedIds.length} item(ns) selecionado(s)
               </span>
               <Button variant="destructive" size="sm" onClick={handleBulkDelete} className="gap-2">
@@ -374,10 +386,10 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
         </DropdownMenu>
       </div>
 
-      <div className="hidden lg:block rounded-xl border bg-white shadow-sm overflow-hidden">
+      <div className="hidden lg:block rounded-xl border border-border bg-card shadow-sm overflow-hidden">
         <Table>
           <TableHeader>
-            <TableRow className="bg-slate-50/80">
+            <TableRow className="bg-muted/50">
               <TableHead className="w-12 text-center">
                 <Checkbox
                   checked={
@@ -390,59 +402,59 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
                 />
               </TableHead>
               <TableHead
-                className="w-[180px] cursor-pointer hover:bg-slate-100"
+                className="w-[180px] cursor-pointer hover:bg-muted"
                 onClick={() => handleSort('organization_id')}
               >
                 <div className="flex items-center gap-2">
-                  Empresa <ArrowUpDown className="h-3 w-3 text-slate-400" />
+                  Empresa <ArrowUpDown className="h-3 w-3 text-muted-foreground" />
                 </div>
               </TableHead>
               <TableHead
-                className="cursor-pointer hover:bg-slate-100"
+                className="cursor-pointer hover:bg-muted"
                 onClick={() => handleSort('contaContabil')}
               >
                 <div className="flex items-center gap-2">
-                  Conta Contábil <ArrowUpDown className="h-3 w-3 text-slate-400" />
+                  Conta Contábil <ArrowUpDown className="h-3 w-3 text-muted-foreground" />
                 </div>
               </TableHead>
               <TableHead
-                className="cursor-pointer hover:bg-slate-100"
+                className="cursor-pointer hover:bg-muted"
                 onClick={() => handleSort('descricao')}
               >
                 <div className="flex items-center gap-2">
-                  Descrição <ArrowUpDown className="h-3 w-3 text-slate-400" />
+                  Descrição <ArrowUpDown className="h-3 w-3 text-muted-foreground" />
                 </div>
               </TableHead>
               <TableHead
-                className="cursor-pointer hover:bg-slate-100"
+                className="cursor-pointer hover:bg-muted"
                 onClick={() => handleSort('banco')}
               >
                 <div className="flex items-center gap-2">
-                  Banco <ArrowUpDown className="h-3 w-3 text-slate-400" />
+                  Banco <ArrowUpDown className="h-3 w-3 text-muted-foreground" />
                 </div>
               </TableHead>
               <TableHead
-                className="cursor-pointer hover:bg-slate-100"
+                className="cursor-pointer hover:bg-muted"
                 onClick={() => handleSort('agencia')}
               >
                 <div className="flex items-center gap-2">
-                  Agência <ArrowUpDown className="h-3 w-3 text-slate-400" />
+                  Agência <ArrowUpDown className="h-3 w-3 text-muted-foreground" />
                 </div>
               </TableHead>
               <TableHead
-                className="cursor-pointer hover:bg-slate-100"
+                className="cursor-pointer hover:bg-muted"
                 onClick={() => handleSort('numeroConta')}
               >
                 <div className="flex items-center gap-2">
-                  Número Conta <ArrowUpDown className="h-3 w-3 text-slate-400" />
+                  Número Conta <ArrowUpDown className="h-3 w-3 text-muted-foreground" />
                 </div>
               </TableHead>
               <TableHead
-                className="cursor-pointer hover:bg-slate-100"
+                className="cursor-pointer hover:bg-muted"
                 onClick={() => handleSort('classificacao')}
               >
                 <div className="flex items-center gap-2">
-                  Classificação <ArrowUpDown className="h-3 w-3 text-slate-400" />
+                  Classificação <ArrowUpDown className="h-3 w-3 text-muted-foreground" />
                 </div>
               </TableHead>
               <TableHead className="text-right">Ações</TableHead>
@@ -450,7 +462,7 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
           </TableHeader>
           <TableBody>
             {sortedAccounts.map((acc) => (
-              <TableRow key={acc.id} className="group hover:bg-slate-50/50">
+              <TableRow key={acc.id} className="group hover:bg-muted/50">
                 <TableCell className="text-center">
                   <Checkbox
                     checked={selectedIds.includes(acc.id)}
@@ -493,7 +505,7 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-8 w-8 text-slate-400 hover:text-blue-600 hover:bg-blue-50"
+                      className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary/10"
                       onClick={() => setEditModalAccount(acc)}
                     >
                       <Edit className="h-4 w-4" />
@@ -501,7 +513,7 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-8 w-8 text-slate-400 hover:text-red-600 hover:bg-red-50"
+                      className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
                       onClick={() => onDelete(acc.id)}
                     >
                       <Trash2 className="h-4 w-4" />
@@ -519,9 +531,9 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
           const org = organizations.find((o) => o.id === acc.organization_id)
           const theme = getTheme(org?.name)
           return (
-            <Card key={acc.id} className={cn('border-l-4 shadow-sm', theme.border)}>
+            <Card key={acc.id} className={cn('border-l-4 shadow-sm bg-card', theme.border)}>
               <CardContent className="p-4 flex justify-between items-start">
-                <div className="space-y-3 flex-1 pr-4">
+                <div className="space-y-3 flex-1 pr-4 text-foreground">
                   {(['organization_id', 'descricao', 'contaContabil'] as const).map((field) => (
                     <div
                       key={field}
@@ -529,7 +541,7 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
                         field === 'descricao'
                           ? 'font-bold text-lg'
                           : field === 'contaContabil'
-                            ? 'font-mono text-xs text-slate-500'
+                            ? 'font-mono text-xs text-muted-foreground'
                             : ''
                       }
                     >
@@ -553,7 +565,7 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
                   <Button
                     variant="outline"
                     size="icon"
-                    className="text-slate-500 hover:text-blue-600 hover:bg-blue-50 bg-white"
+                    className="text-muted-foreground hover:text-primary hover:bg-primary/10 bg-background border-border"
                     onClick={() => setEditModalAccount(acc)}
                   >
                     <Edit className="h-3.5 w-3.5" />
@@ -561,7 +573,7 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
                   <Button
                     variant="outline"
                     size="icon"
-                    className="text-slate-500 hover:text-red-600 hover:bg-red-50 bg-white"
+                    className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 bg-background border-border"
                     onClick={() => onDelete(acc.id)}
                   >
                     <Trash2 className="h-3.5 w-3.5" />
@@ -588,7 +600,7 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
                     onChange={(e) =>
                       setEditModalAccount({ ...editModalAccount, organization_id: e.target.value })
                     }
-                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="flex h-10 w-full rounded-md border border-input bg-background text-foreground px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                     required
                   >
                     <option value="">Selecione...</option>
@@ -654,11 +666,15 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
                   />
                 </div>
               </div>
-              <div className="flex justify-end gap-3 pt-4 border-t mt-4">
+              <div className="flex justify-end gap-3 pt-4 border-t border-border mt-4">
                 <Button type="button" variant="outline" onClick={() => setEditModalAccount(null)}>
                   Cancelar
                 </Button>
-                <Button type="submit" disabled={isSaving} className="bg-blue-600 hover:bg-blue-700">
+                <Button
+                  type="submit"
+                  disabled={isSaving}
+                  className="bg-primary hover:bg-primary/90 text-primary-foreground"
+                >
                   {isSaving ? 'Salvando...' : 'Salvar Alterações'}
                 </Button>
               </div>

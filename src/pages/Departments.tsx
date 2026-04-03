@@ -347,8 +347,10 @@ export default function Departments() {
     <div className="container mx-auto p-4 sm:p-6 max-w-7xl space-y-6 animate-in fade-in duration-500">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-slate-900">Departamentos</h1>
-          <p className="text-slate-500 mt-1">Gerencie os departamentos da sua organização.</p>
+          <h1 className="text-3xl font-bold tracking-tight text-foreground">Departamentos</h1>
+          <p className="text-muted-foreground mt-1">
+            Gerencie os departamentos da sua organização.
+          </p>
         </div>
         <div className="flex items-center gap-2">
           <DropdownMenu>
@@ -379,7 +381,10 @@ export default function Departments() {
                   <Upload className="h-4 w-4" /> Importar
                 </Link>
               </Button>
-              <Button onClick={() => openModal()} className="gap-2 bg-blue-600 hover:bg-blue-700">
+              <Button
+                onClick={() => openModal()}
+                className="gap-2 bg-primary hover:bg-primary/90 text-primary-foreground"
+              >
                 <Plus className="h-4 w-4" /> Novo Departamento
               </Button>
             </>
@@ -395,7 +400,7 @@ export default function Departments() {
           <div className="max-w-md space-y-1.5">
             <Label>Buscar por Código ou Nome</Label>
             <div className="relative">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-500" />
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Pesquisar..."
                 className="pl-9"
@@ -411,8 +416,8 @@ export default function Departments() {
       </Card>
 
       {selectedIds.length > 0 && canDelete && (
-        <div className="bg-slate-50 border border-slate-200 rounded-md p-3 flex items-center justify-between animate-in fade-in slide-in-from-top-2">
-          <span className="text-sm font-medium text-slate-700">
+        <div className="bg-muted/50 border border-border rounded-md p-3 flex items-center justify-between animate-in fade-in slide-in-from-top-2">
+          <span className="text-sm font-medium text-foreground">
             {selectedIds.length} item(ns) selecionado(s)
           </span>
           <Button variant="destructive" size="sm" onClick={handleBulkDelete} className="gap-2">
@@ -424,18 +429,18 @@ export default function Departments() {
       <Card>
         <CardContent className="p-0">
           {loading ? (
-            <div className="py-12 flex justify-center text-slate-500">
+            <div className="py-12 flex justify-center text-muted-foreground">
               <Loader2 className="h-8 w-8 animate-spin" />
             </div>
           ) : filtered.length === 0 ? (
-            <div className="py-12 text-center text-slate-500 flex flex-col items-center">
-              <Briefcase className="h-12 w-12 text-slate-300 mb-3" />
+            <div className="py-12 text-center text-muted-foreground flex flex-col items-center">
+              <Briefcase className="h-12 w-12 text-muted-foreground/50 mb-3" />
               <p>Nenhum departamento encontrado.</p>
             </div>
           ) : (
             <div className="rounded-md border-0 overflow-x-auto">
               <Table>
-                <TableHeader className="bg-slate-50">
+                <TableHeader className="bg-muted/50">
                   <TableRow>
                     {canDelete && (
                       <TableHead className="w-12 text-center">
@@ -449,27 +454,27 @@ export default function Departments() {
                       </TableHead>
                     )}
                     <TableHead
-                      className="cursor-pointer hover:bg-slate-100"
+                      className="cursor-pointer hover:bg-muted"
                       onClick={() => handleSort('code')}
                     >
                       <div className="flex items-center gap-2">
-                        Código <ArrowUpDown className="h-3 w-3 text-slate-400" />
+                        Código <ArrowUpDown className="h-3 w-3 text-muted-foreground" />
                       </div>
                     </TableHead>
                     <TableHead
-                      className="cursor-pointer hover:bg-slate-100"
+                      className="cursor-pointer hover:bg-muted"
                       onClick={() => handleSort('name')}
                     >
                       <div className="flex items-center gap-2">
-                        Nome <ArrowUpDown className="h-3 w-3 text-slate-400" />
+                        Nome <ArrowUpDown className="h-3 w-3 text-muted-foreground" />
                       </div>
                     </TableHead>
                     <TableHead
-                      className="cursor-pointer hover:bg-slate-100"
+                      className="cursor-pointer hover:bg-muted"
                       onClick={() => handleSort('created_at')}
                     >
                       <div className="flex items-center gap-2">
-                        Criado em <ArrowUpDown className="h-3 w-3 text-slate-400" />
+                        Criado em <ArrowUpDown className="h-3 w-3 text-muted-foreground" />
                       </div>
                     </TableHead>
                     {(canEdit || canDelete) && <TableHead className="text-right">Ações</TableHead>}
@@ -477,7 +482,7 @@ export default function Departments() {
                 </TableHeader>
                 <TableBody>
                   {paginated.map((item) => (
-                    <TableRow key={item.id} className="hover:bg-slate-50/50">
+                    <TableRow key={item.id} className="hover:bg-muted/50">
                       {canDelete && (
                         <TableCell className="py-2 px-4 text-center">
                           <Checkbox
@@ -489,11 +494,11 @@ export default function Departments() {
                           />
                         </TableCell>
                       )}
-                      <TableCell className="py-2 px-4 font-medium text-slate-600">
+                      <TableCell className="py-2 px-4 font-medium text-foreground/80">
                         {item.code}
                       </TableCell>
-                      <TableCell className="py-2 px-4 text-slate-900">{item.name}</TableCell>
-                      <TableCell className="py-2 px-4 text-[13px] text-slate-500">
+                      <TableCell className="py-2 px-4 text-foreground">{item.name}</TableCell>
+                      <TableCell className="py-2 px-4 text-[13px] text-muted-foreground">
                         {item.created_at ? format(new Date(item.created_at), 'dd/MM/yyyy') : '-'}
                       </TableCell>
                       {(canEdit || canDelete) && (
@@ -504,7 +509,7 @@ export default function Departments() {
                                 variant="ghost"
                                 size="icon"
                                 onClick={() => openModal(item)}
-                                className="h-8 w-8 text-slate-500 hover:text-blue-600"
+                                className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary/10"
                               >
                                 <Edit className="h-4 w-4" />
                               </Button>
@@ -514,7 +519,7 @@ export default function Departments() {
                                 variant="ghost"
                                 size="icon"
                                 onClick={() => handleDelete(item.id)}
-                                className="h-8 w-8 text-slate-500 hover:text-red-600 hover:bg-red-50"
+                                className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
                               >
                                 <Trash2 className="h-4 w-4" />
                               </Button>
@@ -529,14 +534,14 @@ export default function Departments() {
             </div>
           )}
           {!loading && filtered.length > 0 && (
-            <div className="flex flex-col sm:flex-row items-center justify-between p-4 border-t border-slate-100 gap-4">
-              <p className="text-sm text-slate-500">
+            <div className="flex flex-col sm:flex-row items-center justify-between p-4 border-t border-border gap-4">
+              <p className="text-sm text-muted-foreground">
                 Mostrando {(currentPage - 1) * itemsPerPage + 1} até{' '}
                 {Math.min(currentPage * itemsPerPage, filtered.length)} de {filtered.length}
               </p>
               <div className="flex items-center gap-4">
                 <div className="flex items-center gap-2">
-                  <p className="text-sm text-slate-500 hidden sm:block">Itens por página:</p>
+                  <p className="text-sm text-muted-foreground hidden sm:block">Itens por página:</p>
                   <Select
                     value={itemsPerPage.toString()}
                     onValueChange={(v) => {
@@ -595,23 +600,27 @@ export default function Departments() {
                 {...register('code')}
                 placeholder="Ex: RH (Deixe em branco para gerar automático)"
               />
-              {errors.code && <span className="text-xs text-red-500">{errors.code.message}</span>}
+              {errors.code && (
+                <span className="text-xs text-destructive">{errors.code.message}</span>
+              )}
             </div>
             <div className="space-y-2">
               <Label>
-                Nome <span className="text-red-500">*</span>
+                Nome <span className="text-destructive">*</span>
               </Label>
               <Input {...register('name')} placeholder="Ex: Recursos Humanos" />
-              {errors.name && <span className="text-xs text-red-500">{errors.name.message}</span>}
+              {errors.name && (
+                <span className="text-xs text-destructive">{errors.name.message}</span>
+              )}
             </div>
-            <div className="flex justify-end gap-3 pt-4 border-t">
+            <div className="flex justify-end gap-3 pt-4 border-t border-border mt-4">
               <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)}>
                 Cancelar
               </Button>
               <Button
                 type="submit"
                 disabled={isSubmitting}
-                className="bg-blue-600 hover:bg-blue-700 min-w-[120px]"
+                className="bg-primary hover:bg-primary/90 text-primary-foreground min-w-[120px]"
               >
                 {isSubmitting && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
                 {editingId ? 'Salvar' : 'Cadastrar'}
