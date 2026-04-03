@@ -21,6 +21,7 @@ import ForgotPassword from './pages/ForgotPassword'
 import ResetPassword from './pages/ResetPassword'
 import NotFound from './pages/NotFound'
 import Layout from './components/Layout'
+import Landing from './pages/Landing'
 import { AuthProvider } from './hooks/use-auth'
 import { ThemeProvider } from './components/ThemeProvider'
 
@@ -36,8 +37,9 @@ const App = () => (
             <Route path="/signup" element={<Signup />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password" element={<ResetPassword />} />
+            <Route path="/" element={<Landing />} />
             <Route element={<Layout />}>
-              <Route path="/" element={<Index />} />
+              <Route path="/app" element={<Index />} />
               <Route path="/empresas" element={<Companies />} />
               <Route path="/departamentos" element={<Departments />} />
               <Route path="/usuarios" element={<Users />} />

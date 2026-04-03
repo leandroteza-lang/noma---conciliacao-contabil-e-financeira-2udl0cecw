@@ -25,7 +25,7 @@ export default function Login() {
   const { toast } = useToast()
 
   if (authLoading) return null
-  if (user) return <Navigate to="/" replace />
+  if (user) return <Navigate to="/app" replace />
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -47,7 +47,7 @@ export default function Login() {
         variant: 'destructive',
       })
     } else {
-      navigate('/')
+      navigate('/app')
     }
   }
 
