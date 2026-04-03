@@ -11,6 +11,7 @@ import {
   List,
   Download,
   ListPlus,
+  ArrowRight,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -164,6 +165,14 @@ export default function Import() {
   const [allowIncomplete, setAllowIncomplete] = useState(false)
   const [columnMapping, setColumnMapping] = useState<Record<string, string>>({})
 
+  const normalizeHeader = (str: string) => {
+    return str
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toUpperCase()
+      .replace(/[^A-Z0-9]/g, '')
+  }
+
   const parseCSV = (text: string) => {
     const lines = text.split(/\r?\n/).filter((line) => line.trim() !== '')
     if (lines.length === 0) return []
@@ -224,9 +233,13 @@ export default function Import() {
   const detectImportType = (parsedData: any[]) => {
     if (parsedData.length > 0) {
       const headers = Object.keys(parsedData[0])
+      const normalizedHeaders = headers.map(normalizeHeader)
+
       let detectedType = ''
       for (const [key, config] of Object.entries(IMPORT_TYPES)) {
-        const hasAllRequired = config.required.every((req) => headers.includes(req))
+        const hasAllRequired = config.required.every(
+          (req) => headers.includes(req) || normalizedHeaders.includes(normalizeHeader(req)),
+        )
         if (hasAllRequired) {
           detectedType = key
           break
@@ -320,6 +333,33 @@ export default function Import() {
     return columns.filter((c) => !config.required.includes(c) && !config.optional.includes(c))
   }, [columns, importType])
 
+  useEffect(() => {
+    if (importType && columns.length > 0) {
+      const config = IMPORT_TYPES[importType as keyof typeof IMPORT_TYPES]
+      const targetCols = [...config.required, ...config.optional]
+
+      setColumnMapping((prev) => {
+        const newMapping = { ...prev }
+        let changed = false
+
+        extraColumns.forEach((extraCol) => {
+          if (!newMapping[extraCol] || newMapping[extraCol] === 'IGNORE') {
+            const normExtra = normalizeHeader(extraCol)
+            const match = targetCols.find(
+              (t) => normalizeHeader(t) === normExtra && !columns.includes(t),
+            )
+            if (match) {
+              newMapping[extraCol] = match
+              changed = true
+            }
+          }
+        })
+
+        return changed ? newMapping : prev
+      })
+    }
+  }, [importType, columns, extraColumns])
+
   const validationInfo = useMemo(() => {
     if (!importType || rawData.length === 0) return null
 
@@ -384,10 +424,18 @@ export default function Import() {
     const req = IMPORT_TYPES[importType as keyof typeof IMPORT_TYPES].required
     let filtered = rawData
     if (showOnlyErrors) {
-      filtered = rawData.filter((row) => req.some((c) => !row[c] || String(row[c]).trim() === ''))
+      filtered = rawData.filter((row) => {
+        const mappedRow = { ...row }
+        Object.entries(columnMapping).forEach(([extraCol, targetCol]) => {
+          if (targetCol && targetCol !== 'IGNORE') {
+            mappedRow[targetCol] = row[extraCol]
+          }
+        })
+        return req.some((c) => !mappedRow[c] || String(mappedRow[c]).trim() === '')
+      })
     }
     return filtered.slice(0, 5)
-  }, [rawData, showOnlyErrors, importType])
+  }, [rawData, showOnlyErrors, importType, columnMapping])
 
   const confirmImport = async () => {
     if (!validationInfo || validationInfo.validRecords.length === 0) {
@@ -679,8 +727,10 @@ export default function Import() {
             <div className="grid gap-3">
               {extraColumns.map((col) => {
                 const config = IMPORT_TYPES[importType as keyof typeof IMPORT_TYPES]
-                const availableOptionals = config.optional.filter(
-                  (opt) => !columns.includes(opt) || columnMapping[col] === opt,
+                const availableTargets = [...config.required, ...config.optional].filter(
+                  (opt) =>
+                    !columns.includes(opt) &&
+                    (!Object.values(columnMapping).includes(opt) || columnMapping[col] === opt),
                 )
 
                 return (
@@ -702,11 +752,14 @@ export default function Import() {
                         <SelectItem value="IGNORE" className="text-muted-foreground italic">
                           Ignorar coluna
                         </SelectItem>
-                        {availableOptionals.map((optCol) => (
-                          <SelectItem key={optCol} value={optCol}>
-                            Mapear para: {optCol}
-                          </SelectItem>
-                        ))}
+                        {availableTargets.map((optCol) => {
+                          const isReq = config.required.includes(optCol)
+                          return (
+                            <SelectItem key={optCol} value={optCol}>
+                              Mapear para: {optCol} {isReq ? '(Obrigatório)' : '(Opcional)'}
+                            </SelectItem>
+                          )
+                        })}
                       </SelectContent>
                     </Select>
                   </div>
@@ -878,11 +931,22 @@ export default function Import() {
                     <TableHeader className="bg-muted/50">
                       <TableRow>
                         <TableHead className="w-[60px] text-center">Linha</TableHead>
-                        {columns.map((col) => (
-                          <TableHead key={col} className="whitespace-nowrap">
-                            {col}
-                          </TableHead>
-                        ))}
+                        {columns.map((col) => {
+                          const isMapped = columnMapping[col] && columnMapping[col] !== 'IGNORE'
+                          const target = isMapped ? columnMapping[col] : col
+                          return (
+                            <TableHead key={col} className="whitespace-nowrap">
+                              <div className="flex flex-col">
+                                <span>{col}</span>
+                                {isMapped && (
+                                  <span className="text-[10px] text-primary flex items-center gap-1">
+                                    <ArrowRight className="w-3 h-3" /> {target}
+                                  </span>
+                                )}
+                              </div>
+                            </TableHead>
+                          )
+                        })}
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -890,7 +954,20 @@ export default function Import() {
                         previewData.map((row, idx) => {
                           const originalIndex = rawData.indexOf(row) + 1
                           const req = IMPORT_TYPES[importType as keyof typeof IMPORT_TYPES].required
-                          const isInvalid = req.some((c) => !row[c] && columns.includes(c))
+
+                          const mappedRow = { ...row }
+                          Object.entries(columnMapping).forEach(([extraCol, targetCol]) => {
+                            if (targetCol && targetCol !== 'IGNORE') {
+                              mappedRow[targetCol] = row[extraCol]
+                            }
+                          })
+
+                          const isInvalid = req.some(
+                            (c) =>
+                              !mappedRow[c] &&
+                              (columns.includes(c) || Object.values(columnMapping).includes(c)),
+                          )
+
                           return (
                             <TableRow
                               key={originalIndex}
@@ -904,7 +981,13 @@ export default function Import() {
                                 {originalIndex}
                               </TableCell>
                               {columns.map((col) => {
-                                const isMissingRequired = !row[col] && req.includes(col)
+                                const targetCol =
+                                  columnMapping[col] && columnMapping[col] !== 'IGNORE'
+                                    ? columnMapping[col]
+                                    : col
+                                const isMissingRequired =
+                                  !mappedRow[targetCol] && req.includes(targetCol)
+
                                 return (
                                   <TableCell
                                     key={col}
