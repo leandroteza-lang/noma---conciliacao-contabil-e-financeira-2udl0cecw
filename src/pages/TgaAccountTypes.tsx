@@ -38,7 +38,6 @@ export default function TgaAccountTypes() {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [formData, setFormData] = useState({
     organization_id: '',
-    codigo: '',
     nome: '',
     abreviacao: '',
     observacoes: '',
@@ -68,7 +67,18 @@ export default function TgaAccountTypes() {
       .sort((a, b) => {
         const fieldA = a[sort.field] || ''
         const fieldB = b[sort.field] || ''
-        return sort.asc ? fieldA.localeCompare(fieldB) : fieldB.localeCompare(fieldA)
+
+        if (sort.field === 'codigo') {
+          const numA = parseInt(String(fieldA).replace(/\D/g, ''), 10)
+          const numB = parseInt(String(fieldB).replace(/\D/g, ''), 10)
+          if (!isNaN(numA) && !isNaN(numB)) {
+            return sort.asc ? numA - numB : numB - numA
+          }
+        }
+
+        return sort.asc
+          ? String(fieldA).localeCompare(String(fieldB))
+          : String(fieldB).localeCompare(String(fieldA))
       })
   }, [data, search, sort])
 
@@ -80,7 +90,8 @@ export default function TgaAccountTypes() {
     e.preventDefault()
     const payload = {
       ...formData,
-      organization_id: formData.organization_id || null,
+      organization_id:
+        formData.organization_id === 'none' ? null : formData.organization_id || null,
     }
 
     const req = editingId
@@ -115,15 +126,14 @@ export default function TgaAccountTypes() {
     if (item) {
       setEditingId(item.id)
       setFormData({
-        organization_id: item.organization_id || '',
-        codigo: item.codigo,
+        organization_id: item.organization_id || 'none',
         nome: item.nome,
         abreviacao: item.abreviacao || '',
         observacoes: item.observacoes || '',
       })
     } else {
       setEditingId(null)
-      setFormData({ organization_id: '', codigo: '', nome: '', abreviacao: '', observacoes: '' })
+      setFormData({ organization_id: 'none', nome: '', abreviacao: '', observacoes: '' })
     }
     setIsModalOpen(true)
   }
@@ -256,27 +266,16 @@ export default function TgaAccountTypes() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Código</Label>
-                <Input
-                  required
-                  value={formData.codigo}
-                  onChange={(e) => setFormData({ ...formData, codigo: e.target.value })}
-                  placeholder="Ex: 01"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Abreviação</Label>
-                <Input
-                  maxLength={1}
-                  value={formData.abreviacao}
-                  onChange={(e) =>
-                    setFormData({ ...formData, abreviacao: e.target.value.toUpperCase() })
-                  }
-                  placeholder="Ex: D"
-                />
-              </div>
+            <div className="space-y-2">
+              <Label>Abreviação</Label>
+              <Input
+                maxLength={1}
+                value={formData.abreviacao}
+                onChange={(e) =>
+                  setFormData({ ...formData, abreviacao: e.target.value.toUpperCase() })
+                }
+                placeholder="Ex: D"
+              />
             </div>
             <div className="space-y-2">
               <Label>Nome</Label>
