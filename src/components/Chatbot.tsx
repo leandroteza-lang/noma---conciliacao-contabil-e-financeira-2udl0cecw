@@ -167,7 +167,7 @@ const BotMessageActions = ({ content, prevPrompt }: { content: string; prevPromp
             <Download className="w-3.5 h-3.5" />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="start">
+        <DropdownMenuContent align="start" className="z-[110]">
           <DropdownMenuItem onClick={handleDownloadExcel}>Excel (.xlsx)</DropdownMenuItem>
           <DropdownMenuItem onClick={handleDownloadCSV}>CSV (.csv)</DropdownMenuItem>
           <DropdownMenuItem onClick={handleDownloadTXT}>Texto (.txt)</DropdownMenuItem>
@@ -332,14 +332,12 @@ export function Chatbot() {
       }
     }
     if (sId && user)
-      await supabase
-        .from('chat_messages')
-        .insert({
-          session_id: sId,
-          role: 'user',
-          content: userContent,
-          attached_file_name: userMessage.attachedFileName,
-        })
+      await supabase.from('chat_messages').insert({
+        session_id: sId,
+        role: 'user',
+        content: userContent,
+        attached_file_name: userMessage.attachedFileName,
+      })
 
     try {
       const { data, error } = await supabase.functions.invoke('chat', {

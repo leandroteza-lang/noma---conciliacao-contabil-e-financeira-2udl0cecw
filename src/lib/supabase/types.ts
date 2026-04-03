@@ -360,6 +360,65 @@ export type Database = {
           },
         ]
       }
+      chat_messages: {
+        Row: {
+          attached_file_name: string | null
+          content: string
+          created_at: string
+          id: string
+          role: string
+          session_id: string
+        }
+        Insert: {
+          attached_file_name?: string | null
+          content: string
+          created_at?: string
+          id?: string
+          role: string
+          session_id: string
+        }
+        Update: {
+          attached_file_name?: string | null
+          content?: string
+          created_at?: string
+          id?: string
+          role?: string
+          session_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'chat_messages_session_id_fkey'
+            columns: ['session_id']
+            isOneToOne: false
+            referencedRelation: 'chat_sessions'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      chat_sessions: {
+        Row: {
+          created_at: string
+          id: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       cost_centers: {
         Row: {
           classification: string | null
@@ -634,6 +693,30 @@ export type Database = {
           pending_deletion?: boolean | null
           phone?: string | null
           status?: boolean | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      shared_queries: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          prompt: string
+          user_id: string | null
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          prompt: string
+          user_id?: string | null
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          prompt?: string
           user_id?: string | null
         }
         Relationships: []
@@ -913,6 +996,19 @@ export const Constants = {
 //   deletion_requested_by: uuid (nullable)
 //   deleted_at: timestamp with time zone (nullable)
 //   deleted_by: uuid (nullable)
+// Table: chat_messages
+//   id: uuid (not null, default: gen_random_uuid())
+//   session_id: uuid (not null)
+//   role: text (not null)
+//   content: text (not null)
+//   attached_file_name: text (nullable)
+//   created_at: timestamp with time zone (not null, default: now())
+// Table: chat_sessions
+//   id: uuid (not null, default: gen_random_uuid())
+//   user_id: uuid (not null)
+//   title: text (not null)
+//   created_at: timestamp with time zone (not null, default: now())
+//   updated_at: timestamp with time zone (not null, default: now())
 // Table: cost_centers
 //   id: uuid (not null, default: gen_random_uuid())
 //   organization_id: uuid (nullable)
@@ -981,6 +1077,12 @@ export const Constants = {
 //   deletion_requested_by: uuid (nullable)
 //   deleted_at: timestamp with time zone (nullable)
 //   deleted_by: uuid (nullable)
+// Table: shared_queries
+//   id: uuid (not null, default: gen_random_uuid())
+//   user_id: uuid (nullable)
+//   prompt: text (not null)
+//   content: text (not null)
+//   created_at: timestamp with time zone (not null, default: now())
 // Table: tipo_conta_tga
 //   id: uuid (not null, default: gen_random_uuid())
 //   organization_id: uuid (nullable)
@@ -1027,6 +1129,12 @@ export const Constants = {
 //   FOREIGN KEY chart_of_accounts_deletion_requested_by_fkey: FOREIGN KEY (deletion_requested_by) REFERENCES auth.users(id) ON DELETE SET NULL
 //   FOREIGN KEY chart_of_accounts_organization_id_fkey: FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE
 //   PRIMARY KEY chart_of_accounts_pkey: PRIMARY KEY (id)
+// Table: chat_messages
+//   PRIMARY KEY chat_messages_pkey: PRIMARY KEY (id)
+//   FOREIGN KEY chat_messages_session_id_fkey: FOREIGN KEY (session_id) REFERENCES chat_sessions(id) ON DELETE CASCADE
+// Table: chat_sessions
+//   PRIMARY KEY chat_sessions_pkey: PRIMARY KEY (id)
+//   FOREIGN KEY chat_sessions_user_id_fkey: FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE
 // Table: cost_centers
 //   FOREIGN KEY cost_centers_deleted_by_fkey: FOREIGN KEY (deleted_by) REFERENCES auth.users(id) ON DELETE SET NULL
 //   FOREIGN KEY cost_centers_deletion_requested_by_fkey: FOREIGN KEY (deletion_requested_by) REFERENCES auth.users(id) ON DELETE SET NULL
@@ -1052,6 +1160,9 @@ export const Constants = {
 //   FOREIGN KEY organizations_deletion_requested_by_fkey: FOREIGN KEY (deletion_requested_by) REFERENCES auth.users(id) ON DELETE SET NULL
 //   PRIMARY KEY organizations_pkey: PRIMARY KEY (id)
 //   FOREIGN KEY organizations_user_id_fkey: FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE
+// Table: shared_queries
+//   PRIMARY KEY shared_queries_pkey: PRIMARY KEY (id)
+//   FOREIGN KEY shared_queries_user_id_fkey: FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE SET NULL
 // Table: tipo_conta_tga
 //   FOREIGN KEY tipo_conta_tga_deleted_by_fkey: FOREIGN KEY (deleted_by) REFERENCES auth.users(id) ON DELETE SET NULL
 //   FOREIGN KEY tipo_conta_tga_deletion_requested_by_fkey: FOREIGN KEY (deletion_requested_by) REFERENCES auth.users(id) ON DELETE SET NULL
@@ -1115,6 +1226,14 @@ export const Constants = {
 //     USING: ((organization_id IN ( SELECT organizations.id    FROM organizations   WHERE (organizations.user_id = auth.uid()))) OR (organization_id IN ( SELECT cuc.organization_id    FROM (cadastro_usuarios_companies cuc      JOIN cadastro_usuarios cu ON ((cuc.usuario_id = cu.id)))   WHERE ((cu.email)::text = (auth.jwt() ->> 'email'::text)))))
 //   Policy "org_chart_of_accounts_update" (UPDATE, PERMISSIVE) roles={authenticated}
 //     USING: ((organization_id IN ( SELECT organizations.id    FROM organizations   WHERE (organizations.user_id = auth.uid()))) OR (organization_id IN ( SELECT cuc.organization_id    FROM (cadastro_usuarios_companies cuc      JOIN cadastro_usuarios cu ON ((cuc.usuario_id = cu.id)))   WHERE ((cu.email)::text = (auth.jwt() ->> 'email'::text)))))
+// Table: chat_messages
+//   Policy "Users can manage their own chat messages" (ALL, PERMISSIVE) roles={authenticated}
+//     USING: (session_id IN ( SELECT chat_sessions.id    FROM chat_sessions   WHERE (chat_sessions.user_id = auth.uid())))
+//     WITH CHECK: (session_id IN ( SELECT chat_sessions.id    FROM chat_sessions   WHERE (chat_sessions.user_id = auth.uid())))
+// Table: chat_sessions
+//   Policy "Users can manage their own chat sessions" (ALL, PERMISSIVE) roles={authenticated}
+//     USING: (user_id = auth.uid())
+//     WITH CHECK: (user_id = auth.uid())
 // Table: cost_centers
 //   Policy "org_cost_centers_delete" (DELETE, PERMISSIVE) roles={authenticated}
 //     USING: ((organization_id IN ( SELECT organizations.id    FROM organizations   WHERE (organizations.user_id = auth.uid()))) OR (organization_id IN ( SELECT cuc.organization_id    FROM (cadastro_usuarios_companies cuc      JOIN cadastro_usuarios cu ON ((cuc.usuario_id = cu.id)))   WHERE ((cu.email)::text = (auth.jwt() ->> 'email'::text)))))
@@ -1160,6 +1279,13 @@ export const Constants = {
 //     USING: (user_id = auth.uid())
 //   Policy "user_organization_update" (UPDATE, PERMISSIVE) roles={authenticated}
 //     USING: (user_id = auth.uid())
+// Table: shared_queries
+//   Policy "Anon can read shared queries" (SELECT, PERMISSIVE) roles={anon}
+//     USING: true
+//   Policy "Anyone can read shared queries" (SELECT, PERMISSIVE) roles={authenticated}
+//     USING: true
+//   Policy "Users can create shared queries" (INSERT, PERMISSIVE) roles={authenticated}
+//     WITH CHECK: (user_id = auth.uid())
 // Table: tipo_conta_tga
 //   Policy "org_tipo_conta_tga_delete" (DELETE, PERMISSIVE) roles={authenticated}
 //     USING: ((organization_id IN ( SELECT organizations.id    FROM organizations   WHERE (organizations.user_id = auth.uid()))) OR (organization_id IN ( SELECT cuc.organization_id    FROM (cadastro_usuarios_companies cuc      JOIN cadastro_usuarios cu ON ((cuc.usuario_id = cu.id)))   WHERE ((cu.email)::text = (auth.jwt() ->> 'email'::text)))))
