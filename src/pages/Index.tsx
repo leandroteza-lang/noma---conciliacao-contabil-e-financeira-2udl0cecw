@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Plus, Search } from 'lucide-react'
+import { Plus, Search, Share2 } from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -117,6 +117,27 @@ export default function Index() {
     }
   }
 
+  const handleShare = () => {
+    const content =
+      filteredData.length > 0
+        ? filteredData
+            .map(
+              (a) =>
+                `Conta: ${a.contaContabil || '-'} | Banco: ${a.banco || '-'} | Ag: ${a.agencia || '-'} | Num: ${a.numeroConta || '-'}`,
+            )
+            .join('\n')
+        : 'Nenhuma conta encontrada.'
+
+    window.dispatchEvent(
+      new CustomEvent('open-share-modal', {
+        detail: {
+          prompt: 'Listagem de Contas Bancárias',
+          content: content,
+        },
+      }),
+    )
+  }
+
   const filteredData = accounts.filter(
     (a) =>
       (a.descricao?.toLowerCase() || '').includes(search.toLowerCase()) ||
@@ -136,6 +157,10 @@ export default function Index() {
           <p className="text-muted-foreground">Gerencie as contas bancárias e contas correntes.</p>
         </div>
         <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={handleShare}>
+            <Share2 className="h-4 w-4 mr-2" />
+            Compartilhar
+          </Button>
           <Button variant="outline" asChild>
             <Link to="/import">Importar Planilha</Link>
           </Button>

@@ -142,10 +142,10 @@ export function ShareQueryModal() {
               <div className="space-y-0.5">
                 <Label className="flex items-center gap-2 cursor-pointer" htmlFor="notify-switch">
                   <Bell className="w-4 h-4 text-amber-500" />
-                  Notificar Acesso
+                  Sino de Alerta (Notificações)
                 </Label>
                 <p className="text-xs text-muted-foreground">
-                  Receba um alerta sonoro e visual no primeiro acesso.
+                  Ativar notificações em tempo real no primeiro acesso.
                 </p>
               </div>
               <Switch
