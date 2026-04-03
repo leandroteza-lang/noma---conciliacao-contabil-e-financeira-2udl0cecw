@@ -702,6 +702,8 @@ export type Database = {
           content: string
           created_at: string
           id: string
+          is_protected: boolean | null
+          password: string | null
           prompt: string
           user_id: string | null
         }
@@ -709,6 +711,8 @@ export type Database = {
           content: string
           created_at?: string
           id?: string
+          is_protected?: boolean | null
+          password?: string | null
           prompt: string
           user_id?: string | null
         }
@@ -716,6 +720,8 @@ export type Database = {
           content?: string
           created_at?: string
           id?: string
+          is_protected?: boolean | null
+          password?: string | null
           prompt?: string
           user_id?: string | null
         }
@@ -1083,6 +1089,8 @@ export const Constants = {
 //   prompt: text (not null)
 //   content: text (not null)
 //   created_at: timestamp with time zone (not null, default: now())
+//   is_protected: boolean (nullable, default: false)
+//   password: text (nullable)
 // Table: tipo_conta_tga
 //   id: uuid (not null, default: gen_random_uuid())
 //   organization_id: uuid (nullable)

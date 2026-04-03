@@ -19,6 +19,7 @@ import {
   Tag,
   Folder,
   ChevronRight,
+  Share2,
 } from 'lucide-react'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { ChangePasswordModal } from '@/components/ChangePasswordModal'
@@ -152,6 +153,13 @@ export const MENU_ITEMS: MenuItem[] = [
     path: '/aprovacoes',
     icon: CheckSquare,
     roles: ['admin'],
+  },
+  {
+    id: 'compartilhamentos',
+    title: 'Meus Compartilhamentos',
+    path: '/compartilhamentos',
+    icon: Share2,
+    roles: ['admin', 'supervisor', 'collaborator'],
   },
   {
     id: 'cadastros-gerais',

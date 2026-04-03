@@ -21,6 +21,7 @@ import ForgotPassword from './pages/ForgotPassword'
 import ResetPassword from './pages/ResetPassword'
 import NotFound from './pages/NotFound'
 import SharedQuery from './pages/SharedQuery'
+import SharedQueriesList from './pages/SharedQueriesList'
 import Layout from './components/Layout'
 import Landing from './pages/Landing'
 import { AuthProvider } from './hooks/use-auth'
@@ -54,6 +55,7 @@ const App = () => (
               <Route path="/analises" element={<Analysis />} />
               <Route path="/aprovacoes" element={<Approvals />} />
               <Route path="/tipo-conta-tga" element={<TgaAccountTypes />} />
+              <Route path="/compartilhamentos" element={<SharedQueriesList />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>

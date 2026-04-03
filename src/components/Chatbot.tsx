@@ -541,14 +541,12 @@ export function Chatbot() {
       }
     }
     if (sId && user)
-      await supabase
-        .from('chat_messages')
-        .insert({
-          session_id: sId,
-          role: 'user',
-          content: userContent,
-          attached_file_name: userMessage.attachedFileName,
-        })
+      await supabase.from('chat_messages').insert({
+        session_id: sId,
+        role: 'user',
+        content: userContent,
+        attached_file_name: userMessage.attachedFileName,
+      })
 
     try {
       const { data, error } = await supabase.functions.invoke('chat', {

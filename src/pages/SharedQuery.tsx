@@ -56,6 +56,7 @@ export default function SharedQuery() {
           setError(true)
         } else {
           setQuery({ prompt: queryData.prompt, content: contentData.content, is_protected: false })
+          supabase.rpc('increment_shared_query_access', { query_id: id }).then()
         }
         setLoading(false)
       }
@@ -83,6 +84,7 @@ export default function SharedQuery() {
       setNeedsPassword(false)
       setQuery((prev) => (prev ? { ...prev, content: data.content } : null))
       setValidating(false)
+      supabase.rpc('increment_shared_query_access', { query_id: id }).then()
     }
   }
 
