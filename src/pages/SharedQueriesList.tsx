@@ -371,7 +371,7 @@ export default function SharedQueriesList() {
                         Alerta <ArrowUpDown className="h-3 w-3" />
                       </Button>
                     </TableHead>
-                    <TableHead className="text-right">Ações</TableHead>
+                    <TableHead className="text-right">Controles</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -475,28 +475,30 @@ export default function SharedQueriesList() {
                       <TableCell className="text-right whitespace-nowrap">
                         <div className="flex items-center justify-end gap-2">
                           {!query.is_revoked && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleRevoke(query.id)}
-                              title="Revogar Acesso"
-                              className="text-amber-600 hover:text-amber-700 hover:bg-amber-500/10"
-                            >
-                              <Ban className="w-4 h-4" />
-                            </Button>
+                            <>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleRevoke(query.id)}
+                                title="Revogar Acesso"
+                                className="text-amber-600 hover:text-amber-700 hover:bg-amber-500/10"
+                              >
+                                <Ban className="w-4 h-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => copyToClipboard(query.id)}
+                                title="Copiar Link"
+                              >
+                                {copiedId === query.id ? (
+                                  <Check className="w-4 h-4 text-green-500" />
+                                ) : (
+                                  <Copy className="w-4 h-4" />
+                                )}
+                              </Button>
+                            </>
                           )}
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => copyToClipboard(query.id)}
-                            title="Copiar Link"
-                          >
-                            {copiedId === query.id ? (
-                              <Check className="w-4 h-4 text-green-500" />
-                            ) : (
-                              <Copy className="w-4 h-4" />
-                            )}
-                          </Button>
                           <Button
                             variant="ghost"
                             size="icon"

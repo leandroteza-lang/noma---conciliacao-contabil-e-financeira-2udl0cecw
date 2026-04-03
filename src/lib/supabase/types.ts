@@ -705,6 +705,7 @@ export type Database = {
           first_access_notified: boolean | null
           id: string
           is_protected: boolean | null
+          is_revoked: boolean | null
           notify_first_access: boolean | null
           password: string | null
           prompt: string
@@ -718,6 +719,7 @@ export type Database = {
           first_access_notified?: boolean | null
           id?: string
           is_protected?: boolean | null
+          is_revoked?: boolean | null
           notify_first_access?: boolean | null
           password?: string | null
           prompt: string
@@ -731,6 +733,7 @@ export type Database = {
           first_access_notified?: boolean | null
           id?: string
           is_protected?: boolean | null
+          is_revoked?: boolean | null
           notify_first_access?: boolean | null
           password?: string | null
           prompt?: string
@@ -1111,6 +1114,7 @@ export const Constants = {
 //   notify_first_access: boolean (nullable, default: false)
 //   first_access_notified: boolean (nullable, default: false)
 //   single_view: boolean (nullable, default: false)
+//   is_revoked: boolean (nullable, default: false)
 // Table: tipo_conta_tga
 //   id: uuid (not null, default: gen_random_uuid())
 //   organization_id: uuid (nullable)
