@@ -72,10 +72,22 @@ const BotMessageActions = ({ content, prevPrompt }: { content: string; prevPromp
   const { toast } = useToast()
   const { user } = useAuth()
 
-  const handleCopy = () => {
-    navigator.clipboard.writeText(content)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
+  const handleCopy = async () => {
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(content)
+        setCopied(true)
+        setTimeout(() => setCopied(false), 2000)
+      } else {
+        toast({
+          title: 'Erro',
+          description: 'Não foi possível copiar no seu navegador.',
+          variant: 'destructive',
+        })
+      }
+    } catch (err) {
+      toast({ title: 'Erro', description: 'Falha ao copiar o texto.', variant: 'destructive' })
+    }
   }
 
   const getRows = () =>
@@ -130,27 +142,56 @@ const BotMessageActions = ({ content, prevPrompt }: { content: string; prevPromp
   }
 
   const handleShare = async () => {
-    if (!user) return
-    const { data, error } = await supabase
-      .from('shared_queries')
-      .insert({
-        user_id: user.id,
-        prompt: prevPrompt || 'Consulta ao Assistente',
-        content,
-      })
-      .select('id')
-      .single()
+    if (!user) {
+      toast({ title: 'Erro', description: 'Usuário não autenticado.', variant: 'destructive' })
+      return
+    }
 
-    if (data && !error) {
-      const url = `${window.location.origin}/consulta/${data.id}`
-      navigator.clipboard.writeText(url)
+    try {
+      const { data, error } = await supabase
+        .from('shared_queries')
+        .insert({
+          user_id: user.id,
+          prompt: (prevPrompt || 'Consulta ao Assistente').slice(0, 1000),
+          content,
+        })
+        .select('id')
+        .single()
+
+      if (error) {
+        console.error('Error generating link:', error)
+        toast({ title: 'Erro', description: 'Falha ao gerar link.', variant: 'destructive' })
+        return
+      }
+
+      if (data) {
+        const url = `${window.location.origin}/consulta/${data.id}`
+        try {
+          if (navigator.clipboard && window.isSecureContext) {
+            await navigator.clipboard.writeText(url)
+            toast({
+              title: 'Link Copiado!',
+              description:
+                'O link de compartilhamento foi gerado e copiado para sua área de transferência.',
+            })
+          } else {
+            throw new Error('Clipboard API not available')
+          }
+        } catch (clipboardErr) {
+          toast({
+            title: 'Link Gerado!',
+            description: `Copie a URL: ${url}`,
+            duration: 10000,
+          })
+        }
+      }
+    } catch (err) {
+      console.error('Unexpected error:', err)
       toast({
-        title: 'Link Copiado!',
-        description:
-          'O link de compartilhamento foi gerado e copiado para sua área de transferência.',
+        title: 'Erro',
+        description: 'Falha inesperada ao gerar link.',
+        variant: 'destructive',
       })
-    } else {
-      toast({ title: 'Erro', description: 'Falha ao gerar link.', variant: 'destructive' })
     }
   }
 
@@ -159,6 +200,7 @@ const BotMessageActions = ({ content, prevPrompt }: { content: string; prevPromp
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button
+            type="button"
             variant="ghost"
             size="icon"
             className="h-6 w-6 hover:bg-background/50"
@@ -175,6 +217,7 @@ const BotMessageActions = ({ content, prevPrompt }: { content: string; prevPromp
         </DropdownMenuContent>
       </DropdownMenu>
       <Button
+        type="button"
         variant="ghost"
         size="icon"
         className="h-6 w-6 hover:bg-background/50"
@@ -185,6 +228,7 @@ const BotMessageActions = ({ content, prevPrompt }: { content: string; prevPromp
       </Button>
       <div className="flex-1" />
       <Button
+        type="button"
         variant="ghost"
         size="icon"
         className="h-6 w-6 hover:bg-background/50"
