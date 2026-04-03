@@ -616,8 +616,12 @@ export default function UsersPage() {
     <div className="container mx-auto p-4 sm:p-6 max-w-7xl space-y-6 animate-in fade-in duration-500">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-slate-900">Cadastro de Usuários</h1>
-          <p className="text-slate-500 mt-1">Cadastre e gerencie os perfis de acesso do sistema.</p>
+          <h1 className="text-3xl font-bold tracking-tight text-foreground">
+            Cadastro de Usuários
+          </h1>
+          <p className="text-muted-foreground mt-1">
+            Cadastre e gerencie os perfis de acesso do sistema.
+          </p>
         </div>
         <div className="flex items-center gap-2">
           <DropdownMenu>
@@ -648,7 +652,7 @@ export default function UsersPage() {
                   <Upload className="h-4 w-4" /> Importar
                 </Link>
               </Button>
-              <Button onClick={() => openModal()} className="gap-2 bg-blue-600 hover:bg-blue-700">
+              <Button onClick={() => openModal()} className="gap-2">
                 <Plus className="h-4 w-4" /> Novo Usuário
               </Button>
             </>
@@ -665,7 +669,7 @@ export default function UsersPage() {
             <div className="space-y-1.5">
               <Label>Buscar Nome / CPF</Label>
               <div className="relative">
-                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-500" />
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input
                   placeholder="Pesquisar..."
                   className="pl-9"
@@ -745,8 +749,8 @@ export default function UsersPage() {
       </Card>
 
       {selectedIds.length > 0 && canDelete && (
-        <div className="bg-slate-50 border border-slate-200 rounded-md p-3 flex items-center justify-between animate-in fade-in slide-in-from-top-2">
-          <span className="text-sm font-medium text-slate-700">
+        <div className="bg-muted/50 border border-border rounded-md p-3 flex items-center justify-between animate-in fade-in slide-in-from-top-2">
+          <span className="text-sm font-medium text-foreground">
             {selectedIds.length} item(ns) selecionado(s)
           </span>
           <Button variant="destructive" size="sm" onClick={handleBulkDelete} className="gap-2">
@@ -759,17 +763,17 @@ export default function UsersPage() {
         <CardContent className="p-0">
           {loading ? (
             <div className="py-12 flex justify-center">
-              <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
           ) : filtered.length === 0 ? (
-            <div className="py-12 text-center text-slate-500 flex flex-col items-center">
-              <Users className="h-12 w-12 text-slate-300 mb-3" />
+            <div className="py-12 text-center text-muted-foreground flex flex-col items-center">
+              <Users className="h-12 w-12 text-muted-foreground/30 mb-3" />
               <p>Nenhum usuário encontrado.</p>
             </div>
           ) : (
             <div className="rounded-md border-0 overflow-x-auto">
               <Table>
-                <TableHeader className="bg-slate-50">
+                <TableHeader className="bg-muted/50">
                   <TableRow>
                     {canDelete && (
                       <TableHead className="w-12 text-center">
@@ -783,35 +787,35 @@ export default function UsersPage() {
                       </TableHead>
                     )}
                     <TableHead
-                      className="cursor-pointer hover:bg-slate-100"
+                      className="cursor-pointer hover:bg-muted/80"
                       onClick={() => handleSort('name')}
                     >
                       <div className="flex items-center gap-2">
-                        Usuário <ArrowUpDown className="h-3 w-3 text-slate-400" />
+                        Usuário <ArrowUpDown className="h-3 w-3 text-muted-foreground/70" />
                       </div>
                     </TableHead>
                     <TableHead
-                      className="cursor-pointer hover:bg-slate-100"
+                      className="cursor-pointer hover:bg-muted/80"
                       onClick={() => handleSort('department')}
                     >
                       <div className="flex items-center gap-2">
-                        Departamento <ArrowUpDown className="h-3 w-3 text-slate-400" />
+                        Departamento <ArrowUpDown className="h-3 w-3 text-muted-foreground/70" />
                       </div>
                     </TableHead>
                     <TableHead
-                      className="cursor-pointer hover:bg-slate-100"
+                      className="cursor-pointer hover:bg-muted/80"
                       onClick={() => handleSort('role')}
                     >
                       <div className="flex items-center gap-2">
-                        Perfil <ArrowUpDown className="h-3 w-3 text-slate-400" />
+                        Perfil <ArrowUpDown className="h-3 w-3 text-muted-foreground/70" />
                       </div>
                     </TableHead>
                     <TableHead
-                      className="cursor-pointer hover:bg-slate-100"
+                      className="cursor-pointer hover:bg-muted/80"
                       onClick={() => handleSort('status')}
                     >
                       <div className="flex items-center gap-2">
-                        Status <ArrowUpDown className="h-3 w-3 text-slate-400" />
+                        Status <ArrowUpDown className="h-3 w-3 text-muted-foreground/70" />
                       </div>
                     </TableHead>
                     <TableHead>Vínculos</TableHead>
@@ -820,7 +824,7 @@ export default function UsersPage() {
                 </TableHeader>
                 <TableBody>
                   {paginated.map((e) => (
-                    <TableRow key={e.id} className="hover:bg-slate-50/50">
+                    <TableRow key={e.id} className="hover:bg-muted/50">
                       {canDelete && (
                         <TableCell className="py-2 px-4 text-center">
                           <Checkbox
@@ -834,26 +838,26 @@ export default function UsersPage() {
                       )}
                       <TableCell className="py-2 px-4 font-medium">
                         <div className="flex items-center gap-3">
-                          <Avatar className="h-9 w-9 border border-slate-200">
+                          <Avatar className="h-9 w-9 border border-border">
                             <AvatarImage src={e.avatar_url || ''} className="object-cover" />
-                            <AvatarFallback className="bg-blue-100 text-blue-700 text-xs font-bold">
+                            <AvatarFallback className="bg-primary/10 text-primary text-xs font-bold">
                               {(e.name || 'U').substring(0, 2).toUpperCase()}
                             </AvatarFallback>{' '}
                           </Avatar>
                           <div>
-                            <p className="text-slate-900 text-sm font-semibold">{e.name}</p>
+                            <p className="text-foreground text-sm font-semibold">{e.name}</p>
                             {(e.email || e.phone || e.cpf) && (
-                              <p className="text-[11px] text-slate-500">
+                              <p className="text-[11px] text-muted-foreground">
                                 {e.email || e.cpf || e.phone}
                               </p>
                             )}
                           </div>
                         </div>
                       </TableCell>
-                      <TableCell className="py-2 px-4 text-sm text-slate-600">
+                      <TableCell className="py-2 px-4 text-sm text-muted-foreground">
                         {e.departments?.name || '-'}
                       </TableCell>
-                      <TableCell className="py-2 px-4 text-sm text-slate-600">
+                      <TableCell className="py-2 px-4 text-sm text-muted-foreground">
                         {e.role === 'admin'
                           ? 'Administrador'
                           : e.role === 'supervisor'
@@ -868,20 +872,20 @@ export default function UsersPage() {
                             variant={e.status ? 'default' : 'secondary'}
                             className={
                               e.status
-                                ? 'bg-green-100 text-green-800 text-[11px] h-5 w-fit'
-                                : 'bg-slate-100 text-slate-600 text-[11px] h-5 w-fit'
+                                ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 text-[11px] h-5 w-fit border-none hover:bg-emerald-500/25'
+                                : 'bg-muted text-muted-foreground text-[11px] h-5 w-fit border-none'
                             }
                           >
                             {e.status ? 'Ativo' : 'Inativo'}
                           </Badge>
                           {e.approval_status === 'pending' && (
-                            <span className="text-[10px] text-amber-600 font-medium bg-amber-50 px-1.5 py-0.5 rounded-sm w-fit">
+                            <span className="text-[10px] text-amber-600 dark:text-amber-400 font-medium bg-amber-500/10 px-1.5 py-0.5 rounded-sm w-fit">
                               Pendente Aprovação
                             </span>
                           )}
                         </div>
                       </TableCell>
-                      <TableCell className="py-2 px-4 text-[12px] text-slate-500">
+                      <TableCell className="py-2 px-4 text-[12px] text-muted-foreground">
                         {e.cadastro_usuarios_companies?.length || 0} empresa(s)
                       </TableCell>
                       {(canEdit || canDelete) && (
@@ -893,7 +897,7 @@ export default function UsersPage() {
                                   variant="ghost"
                                   size="icon"
                                   onClick={() => handleGenerateLink(e)}
-                                  className="h-8 w-8 text-slate-500 hover:text-emerald-600"
+                                  className="h-8 w-8 text-muted-foreground hover:text-emerald-500"
                                   title="Gerar Link de Acesso"
                                 >
                                   <Link2 className="h-4 w-4" />
@@ -902,7 +906,7 @@ export default function UsersPage() {
                                   variant="ghost"
                                   size="icon"
                                   onClick={() => handleResendEmail(e)}
-                                  className="h-8 w-8 text-slate-500 hover:text-blue-600"
+                                  className="h-8 w-8 text-muted-foreground hover:text-primary"
                                   title="Reenviar E-mail de Acesso"
                                 >
                                   <Mail className="h-4 w-4" />
@@ -911,7 +915,7 @@ export default function UsersPage() {
                                   variant="ghost"
                                   size="icon"
                                   onClick={() => openModal(e)}
-                                  className="h-8 w-8 text-slate-500 hover:text-blue-600"
+                                  className="h-8 w-8 text-muted-foreground hover:text-primary"
                                   title="Editar"
                                 >
                                   <Edit className="h-4 w-4" />
@@ -923,7 +927,7 @@ export default function UsersPage() {
                                 variant="ghost"
                                 size="icon"
                                 onClick={() => handleDelete(e.id)}
-                                className="h-8 w-8 text-slate-500 hover:text-red-600 hover:bg-red-50"
+                                className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
                               >
                                 <Trash2 className="h-4 w-4" />
                               </Button>
@@ -938,14 +942,14 @@ export default function UsersPage() {
             </div>
           )}
           {!loading && filtered.length > 0 && (
-            <div className="flex flex-col sm:flex-row items-center justify-between p-4 border-t border-slate-100 gap-4">
-              <p className="text-sm text-slate-500">
+            <div className="flex flex-col sm:flex-row items-center justify-between p-4 border-t border-border/50 gap-4">
+              <p className="text-sm text-muted-foreground">
                 Mostrando {(currentPage - 1) * itemsPerPage + 1} até{' '}
                 {Math.min(currentPage * itemsPerPage, filtered.length)} de {filtered.length}
               </p>
               <div className="flex items-center gap-4">
                 <div className="flex items-center gap-2">
-                  <p className="text-sm text-slate-500 hidden sm:block">Itens por página:</p>
+                  <p className="text-sm text-muted-foreground hidden sm:block">Itens por página:</p>
                   <Select
                     value={itemsPerPage.toString()}
                     onValueChange={(v) => {
@@ -1008,14 +1012,14 @@ export default function UsersPage() {
 
               <TabsContent value="main" className="space-y-4 animate-in fade-in-50">
                 <div className="flex flex-col items-center justify-center space-y-4 mb-6">
-                  <Avatar className="h-24 w-24 border-2 border-slate-100 shadow-sm">
+                  <Avatar className="h-24 w-24 border-2 border-border/50 shadow-sm">
                     <AvatarImage src={avatarPreview} className="object-cover" />
-                    <AvatarFallback className="bg-slate-50 text-slate-400">
+                    <AvatarFallback className="bg-muted/50 text-muted-foreground">
                       <Upload className="h-8 w-8" />
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex items-center justify-center w-full">
-                    <label className="cursor-pointer bg-white border border-slate-200 text-sm font-medium text-slate-700 py-1.5 px-4 rounded-md hover:bg-slate-50 transition-colors shadow-sm">
+                    <label className="cursor-pointer bg-background border border-border text-sm font-medium text-foreground py-1.5 px-4 rounded-md hover:bg-muted transition-colors shadow-sm">
                       <span>Alterar Foto</span>
                       <input
                         type="file"
@@ -1112,14 +1116,14 @@ export default function UsersPage() {
                   <Label>Empresas Vinculadas</Label>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2 max-h-[160px] overflow-y-auto p-1">
                     {organizations.length === 0 ? (
-                      <p className="text-sm text-slate-500 col-span-2">
+                      <p className="text-sm text-muted-foreground col-span-2">
                         Nenhuma empresa cadastrada.
                       </p>
                     ) : (
                       organizations.map((org) => (
                         <div
                           key={org.id}
-                          className="flex items-center space-x-2 bg-slate-50 p-2.5 rounded border border-slate-100"
+                          className="flex items-center space-x-2 bg-muted/30 p-2.5 rounded border border-border/50"
                         >
                           <Checkbox
                             id={`org-${org.id}`}
@@ -1140,7 +1144,7 @@ export default function UsersPage() {
                           />
                           <label
                             htmlFor={`org-${org.id}`}
-                            className="text-sm cursor-pointer truncate flex-1 leading-none"
+                            className="text-sm cursor-pointer truncate flex-1 leading-none text-foreground"
                           >
                             {org.name}
                           </label>
@@ -1149,10 +1153,10 @@ export default function UsersPage() {
                     )}
                   </div>
                 </div>
-                <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-100 mt-2">
+                <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg border border-border/50 mt-2">
                   <div className="space-y-0.5">
                     <Label className="text-base">Status</Label>
-                    <p className="text-xs text-slate-500">Defina se o usuário está ativo.</p>
+                    <p className="text-xs text-muted-foreground">Defina se o usuário está ativo.</p>
                   </div>
                   <Switch
                     checked={statusValue}
@@ -1165,7 +1169,7 @@ export default function UsersPage() {
                 <div className="space-y-4">
                   <div className="space-y-0.5">
                     <Label className="text-base font-semibold">Permissões de Rotina</Label>
-                    <p className="text-xs text-slate-500">
+                    <p className="text-xs text-muted-foreground">
                       Selecione quais rotinas este usuário poderá acessar.
                     </p>
                   </div>
@@ -1174,7 +1178,7 @@ export default function UsersPage() {
                     {ROUTINES.map((routine) => (
                       <div
                         key={routine.id}
-                        className="flex items-center space-x-2 bg-slate-50 p-2.5 rounded border border-slate-100"
+                        className="flex items-center space-x-2 bg-muted/30 p-2.5 rounded border border-border/50"
                       >
                         <Checkbox
                           id={`perm-${routine.id}`}
@@ -1202,7 +1206,7 @@ export default function UsersPage() {
                         />
                         <label
                           htmlFor={`perm-${routine.id}`}
-                          className="text-sm cursor-pointer flex-1 leading-none font-medium"
+                          className="text-sm cursor-pointer flex-1 leading-none font-medium text-foreground"
                         >
                           {routine.label}
                         </label>
@@ -1216,11 +1220,7 @@ export default function UsersPage() {
               <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)}>
                 Cancelar
               </Button>
-              <Button
-                type="submit"
-                disabled={isSubmitting}
-                className="bg-blue-600 hover:bg-blue-700 min-w-[120px]"
-              >
+              <Button type="submit" disabled={isSubmitting} className="min-w-[120px]">
                 {isSubmitting && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
                 {editingId ? 'Salvar' : 'Cadastrar'}
               </Button>
@@ -1239,8 +1239,8 @@ export default function UsersPage() {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 my-4">
-            <div className="flex items-center gap-2 p-3 bg-slate-50 border border-slate-200 rounded-md break-all">
-              <span className="text-sm text-slate-700 flex-1 select-all">
+            <div className="flex items-center gap-2 p-3 bg-muted/50 border border-border rounded-md break-all">
+              <span className="text-sm text-foreground flex-1 select-all">
                 {inviteLinkInfo?.link}
               </span>
             </div>
@@ -1264,7 +1264,7 @@ export default function UsersPage() {
             </Button>
             <Button
               type="button"
-              className="bg-green-600 hover:bg-green-700 gap-2 text-white"
+              className="bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-600 gap-2 text-white"
               onClick={(e) => {
                 e.preventDefault()
                 e.stopPropagation()

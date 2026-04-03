@@ -199,6 +199,7 @@ export type Database = {
           address: string | null
           approval_status: string | null
           avatar_url: string | null
+          color_theme: string | null
           cpf: string | null
           created_at: string
           deleted_at: string | null
@@ -216,12 +217,14 @@ export type Database = {
           phone: string | null
           role: string | null
           status: boolean | null
+          theme_mode: string | null
           user_id: string
         }
         Insert: {
           address?: string | null
           approval_status?: string | null
           avatar_url?: string | null
+          color_theme?: string | null
           cpf?: string | null
           created_at?: string
           deleted_at?: string | null
@@ -239,12 +242,14 @@ export type Database = {
           phone?: string | null
           role?: string | null
           status?: boolean | null
+          theme_mode?: string | null
           user_id: string
         }
         Update: {
           address?: string | null
           approval_status?: string | null
           avatar_url?: string | null
+          color_theme?: string | null
           cpf?: string | null
           created_at?: string
           deleted_at?: string | null
@@ -262,6 +267,7 @@ export type Database = {
           phone?: string | null
           role?: string | null
           status?: boolean | null
+          theme_mode?: string | null
           user_id?: string
         }
         Relationships: [
@@ -890,6 +896,8 @@ export const Constants = {
 //   deleted_by: uuid (nullable)
 //   approval_status: text (nullable, default: 'approved'::text)
 //   avatar_url: text (nullable)
+//   theme_mode: text (nullable, default: 'system'::text)
+//   color_theme: text (nullable, default: 'default'::text)
 // Table: cadastro_usuarios_companies
 //   usuario_id: uuid (not null)
 //   organization_id: uuid (not null)
