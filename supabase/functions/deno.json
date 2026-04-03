@@ -10,6 +10,7 @@
     "manage-user": 7,
     "send-email": 3,
     "export-bank-accounts": 1,
-    "export-chart-accounts": 1
+    "export-chart-accounts": 1,
+    "export-tga-accounts": 1
   }
 }

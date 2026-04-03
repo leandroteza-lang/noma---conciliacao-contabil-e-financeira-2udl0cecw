@@ -26,7 +26,26 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Label } from '@/components/ui/label'
-import { Search, Plus, Download, Edit2, Trash2, ArrowUpDown } from 'lucide-react'
+import { Checkbox } from '@/components/ui/checkbox'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import {
+  Search,
+  Plus,
+  Download,
+  Edit2,
+  Trash2,
+  ArrowUpDown,
+  ChevronDown,
+  Printer,
+  FileText,
+  FileSpreadsheet,
+  Loader2,
+} from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 
 export default function TgaAccountTypes() {
@@ -36,6 +55,8 @@ export default function TgaAccountTypes() {
   const [sort, setSort] = useState({ field: 'codigo', asc: true })
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
+  const [selectedIds, setSelectedIds] = useState<string[]>([])
+  const [isExporting, setIsExporting] = useState(false)
   const [formData, setFormData] = useState({
     organization_id: '',
     nome: '',
@@ -65,8 +86,10 @@ export default function TgaAccountTypes() {
           i.codigo?.toLowerCase().includes(search.toLowerCase()),
       )
       .sort((a, b) => {
-        const fieldA = a[sort.field] || ''
-        const fieldB = b[sort.field] || ''
+        const fieldA =
+          sort.field === 'organization_id' ? a.organizations?.name || '' : a[sort.field] || ''
+        const fieldB =
+          sort.field === 'organization_id' ? b.organizations?.name || '' : b[sort.field] || ''
 
         if (sort.field === 'codigo') {
           const numA = parseInt(String(fieldA).replace(/\D/g, ''), 10)
@@ -108,16 +131,83 @@ export default function TgaAccountTypes() {
     }
   }
 
+  const checkDependencies = async (id: string, codigo: string) => {
+    const { data: cData } = await supabase
+      .from('cost_centers')
+      .select('id')
+      .or(`type_tga.eq.${codigo},type_tga.eq.${id}`)
+      .is('deleted_at', null)
+      .limit(1)
+
+    if (cData && cData.length > 0) return true
+    return false
+  }
+
   const handleDelete = async (id: string) => {
+    const item = data.find((i) => i.id === id)
+    if (!item) return
+
+    const hasDeps = await checkDependencies(item.id, item.codigo)
+    if (hasDeps) {
+      toast({
+        title: 'Ação não permitida',
+        description: 'Existem centros de custo vinculados a este tipo de conta.',
+        variant: 'destructive',
+      })
+      return
+    }
+
     if (!confirm('Deseja realmente excluir este tipo de conta?')) return
     const { error } = await supabase
       .from('tipo_conta_tga')
       .update({ deleted_at: new Date().toISOString() })
       .eq('id', id)
+
     if (error) {
       toast({ title: 'Erro ao excluir', description: error.message, variant: 'destructive' })
     } else {
       toast({ title: 'Sucesso', description: 'Registro excluído com sucesso.' })
+      setSelectedIds((prev) => prev.filter((selId) => selId !== id))
+      fetchData()
+    }
+  }
+
+  const handleBatchDelete = async () => {
+    if (selectedIds.length === 0) return
+
+    let hasDependencies = false
+    for (const id of selectedIds) {
+      const item = data.find((i) => i.id === id)
+      if (item && (await checkDependencies(item.id, item.codigo))) {
+        hasDependencies = true
+        break
+      }
+    }
+
+    if (hasDependencies) {
+      toast({
+        title: 'Ação não permitida',
+        description: 'Um ou mais registros selecionados possuem vínculos em outras tabelas.',
+        variant: 'destructive',
+      })
+      return
+    }
+
+    if (!confirm(`Deseja realmente excluir ${selectedIds.length} registros?`)) return
+
+    const { error } = await supabase
+      .from('tipo_conta_tga')
+      .update({ deleted_at: new Date().toISOString() })
+      .in('id', selectedIds)
+
+    if (error) {
+      toast({ title: 'Erro ao excluir', description: error.message, variant: 'destructive' })
+    } else {
+      toast({
+        title: 'Sucesso',
+        description: `${selectedIds.length} registros excluídos com sucesso.`,
+      })
+      setSelectedIds([])
       fetchData()
     }
   }
@@ -138,31 +228,136 @@ export default function TgaAccountTypes() {
     setIsModalOpen(true)
   }
 
-  const handleExport = () => {
-    const csv = ['Empresa,Código,Nome,Abreviação,Observações']
-      .concat(
-        data.map(
-          (i) =>
-            `"${i.organizations?.name || ''}","${i.codigo}","${i.nome}","${i.abreviacao || ''}","${i.observacoes || ''}"`,
-        ),
-      )
-      .join('\n')
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
-    const link = document.createElement('a')
-    link.href = URL.createObjectURL(blob)
-    link.download = 'tipos_conta_tga.csv'
-    link.click()
+  const handlePrint = () => {
+    const printWindow = window.open('', '', 'width=800,height=600')
+    if (!printWindow) return
+
+    const html = `
+      <html>
+        <head>
+          <title>Tipos de Conta TGA</title>
+          <style>
+            body { font-family: Arial, sans-serif; padding: 20px; }
+            table { width: 100%; border-collapse: collapse; font-size: 12px; }
+            th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+            th { background-color: #f4f4f4; }
+          </style>
+        </head>
+        <body>
+          <h2>Tipos de Conta TGA</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>Empresa</th>
+                <th>Código</th>
+                <th>Nome</th>
+                <th>Abreviação</th>
+                <th>Observações</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${filteredData
+                .map(
+                  (i) => `
+                <tr>
+                  <td>${i.organizations?.name || 'Geral / Nenhuma'}</td>
+                  <td>${i.codigo}</td>
+                  <td>${i.nome}</td>
+                  <td>${i.abreviacao || ''}</td>
+                  <td>${i.observacoes || ''}</td>
+                </tr>
+              `,
+                )
+                .join('')}
+            </tbody>
+          </table>
+          <script>
+            window.onload = () => { window.print(); window.close(); }
+          </script>
+        </body>
+      </html>
+    `
+    printWindow.document.write(html)
+    printWindow.document.close()
+  }
+
+  const exportData = async (format: 'pdf' | 'excel') => {
+    try {
+      setIsExporting(true)
+      const payload = filteredData.map((item) => ({
+        empresa: item.organizations?.name || 'Geral / Nenhuma',
+        codigo: item.codigo,
+        nome: item.nome,
+        abreviacao: item.abreviacao,
+        observacoes: item.observacoes,
+      }))
+
+      const { data: result, error } = await supabase.functions.invoke('export-tga-accounts', {
+        body: { format, data: payload },
+      })
+
+      if (error) throw error
+
+      if (format === 'excel' && result.excel) {
+        const link = document.createElement('a')
+        link.href = `data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,${result.excel}`
+        link.download = 'tipos_conta_tga.xlsx'
+        link.click()
+      } else if (format === 'pdf' && result.pdf) {
+        const link = document.createElement('a')
+        link.href = result.pdf
+        link.download = 'tipos_conta_tga.pdf'
+        link.click()
+      }
+
+      toast({
+        title: 'Exportação concluída',
+        description: `Arquivo ${format.toUpperCase()} gerado com sucesso.`,
+      })
+    } catch (error: any) {
+      toast({ title: 'Erro ao exportar', description: error.message, variant: 'destructive' })
+    } finally {
+      setIsExporting(false)
+    }
   }
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <h1 className="text-2xl font-bold text-slate-800">Tipos de Conta TGA</h1>
-        <div className="flex gap-2 w-full sm:w-auto">
-          <Button variant="outline" className="flex-1 sm:flex-none" onClick={handleExport}>
-            <Download className="w-4 h-4 mr-2" /> Exportar
-          </Button>
-          <Button className="flex-1 sm:flex-none" onClick={() => openModal()}>
+        <div className="flex gap-2 w-full sm:w-auto flex-wrap">
+          {selectedIds.length > 0 && (
+            <Button variant="destructive" onClick={handleBatchDelete}>
+              <Trash2 className="w-4 h-4 mr-2" />
+              Excluir ({selectedIds.length})
+            </Button>
+          )}
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" disabled={isExporting}>
+                {isExporting ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <Download className="w-4 h-4 mr-2" />
+                )}
+                Exportar <ChevronDown className="w-4 h-4 ml-2" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => exportData('pdf')}>
+                <FileText className="w-4 h-4 mr-2 text-red-500" /> PDF
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => exportData('excel')}>
+                <FileSpreadsheet className="w-4 h-4 mr-2 text-green-600" /> Excel (XLSX)
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handlePrint}>
+                <Printer className="w-4 h-4 mr-2 text-blue-500" /> Imprimir
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <Button onClick={() => openModal()}>
             <Plus className="w-4 h-4 mr-2" /> Novo Tipo
           </Button>
         </div>
@@ -181,49 +376,84 @@ export default function TgaAccountTypes() {
       <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-x-auto">
         <Table>
           <TableHeader>
-            <TableRow>
+            <TableRow className="bg-slate-50 hover:bg-slate-50">
+              <TableHead className="w-[50px] p-3">
+                <Checkbox
+                  checked={filteredData.length > 0 && selectedIds.length === filteredData.length}
+                  onCheckedChange={(c) => {
+                    if (c) setSelectedIds(filteredData.map((i) => i.id))
+                    else setSelectedIds([])
+                  }}
+                />
+              </TableHead>
               <TableHead
-                className="cursor-pointer hover:bg-slate-50"
+                className="cursor-pointer hover:bg-slate-100 p-3"
                 onClick={() => handleSort('organization_id')}
               >
                 Empresa <ArrowUpDown className="inline w-3 h-3 ml-1" />
               </TableHead>
               <TableHead
-                className="cursor-pointer hover:bg-slate-50"
+                className="cursor-pointer hover:bg-slate-100 p-3"
                 onClick={() => handleSort('codigo')}
               >
                 Código <ArrowUpDown className="inline w-3 h-3 ml-1" />
               </TableHead>
               <TableHead
-                className="cursor-pointer hover:bg-slate-50"
+                className="cursor-pointer hover:bg-slate-100 p-3"
                 onClick={() => handleSort('nome')}
               >
                 Nome <ArrowUpDown className="inline w-3 h-3 ml-1" />
               </TableHead>
               <TableHead
-                className="cursor-pointer hover:bg-slate-50"
+                className="cursor-pointer hover:bg-slate-100 p-3"
                 onClick={() => handleSort('abreviacao')}
               >
                 Abrev. <ArrowUpDown className="inline w-3 h-3 ml-1" />
               </TableHead>
-              <TableHead>Ações</TableHead>
+              <TableHead className="p-3">Ações</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredData.map((item) => (
-              <TableRow key={item.id} className="hover:bg-slate-50/50">
-                <TableCell className="font-medium text-slate-700">
+            {filteredData.map((item, index) => (
+              <TableRow
+                key={item.id}
+                className={
+                  index % 2 === 0
+                    ? 'bg-white hover:bg-blue-50/60'
+                    : 'bg-blue-50/40 hover:bg-blue-100/50'
+                }
+              >
+                <TableCell className="p-3">
+                  <Checkbox
+                    checked={selectedIds.includes(item.id)}
+                    onCheckedChange={(c) => {
+                      if (c) setSelectedIds([...selectedIds, item.id])
+                      else setSelectedIds(selectedIds.filter((id) => id !== item.id))
+                    }}
+                  />
+                </TableCell>
+                <TableCell className="p-3 font-medium text-slate-700">
                   {item.organizations?.name || '-'}
                 </TableCell>
-                <TableCell>{item.codigo}</TableCell>
-                <TableCell>{item.nome}</TableCell>
-                <TableCell>{item.abreviacao}</TableCell>
-                <TableCell>
+                <TableCell className="p-3">{item.codigo}</TableCell>
+                <TableCell className="p-3">{item.nome}</TableCell>
+                <TableCell className="p-3">{item.abreviacao}</TableCell>
+                <TableCell className="p-3">
                   <div className="flex items-center gap-1">
-                    <Button variant="ghost" size="icon" onClick={() => openModal(item)}>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => openModal(item)}
+                      className="h-8 w-8"
+                    >
                       <Edit2 className="w-4 h-4 text-blue-600" />
                     </Button>
-                    <Button variant="ghost" size="icon" onClick={() => handleDelete(item.id)}>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleDelete(item.id)}
+                      className="h-8 w-8"
+                    >
                       <Trash2 className="w-4 h-4 text-red-600" />
                     </Button>
                   </div>
@@ -232,7 +462,7 @@ export default function TgaAccountTypes() {
             ))}
             {filteredData.length === 0 && (
               <TableRow>
-                <TableCell colSpan={5} className="text-center py-8 text-slate-500">
+                <TableCell colSpan={6} className="text-center py-8 text-slate-500">
                   Nenhum registro encontrado
                 </TableCell>
               </TableRow>

@@ -630,7 +630,7 @@ export type Database = {
         }
         Insert: {
           abreviacao?: string | null
-          codigo: string
+          codigo?: string
           created_at?: string | null
           deleted_at?: string | null
           deleted_by?: string | null
@@ -953,7 +953,7 @@ export const Constants = {
 // Table: tipo_conta_tga
 //   id: uuid (not null, default: gen_random_uuid())
 //   organization_id: uuid (nullable)
-//   codigo: character varying (not null)
+//   codigo: character varying (not null, default: (nextval('tipo_conta_tga_codigo_seq'::regclass))::character varying)
 //   nome: character varying (not null)
 //   abreviacao: character (nullable)
 //   observacoes: text (nullable)
