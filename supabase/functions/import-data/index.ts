@@ -79,7 +79,6 @@ Deno.serve(async (req: Request) => {
     const { data: orgs, error: orgsError } = await supabase
       .from('organizations')
       .select('id, name')
-      .eq('user_id', user.id)
       .is('deleted_at', null)
 
     if (
@@ -119,7 +118,6 @@ Deno.serve(async (req: Request) => {
             .from('organizations')
             .select('id')
             .eq('cnpj', cnpj)
-            .eq('user_id', user.id)
             .is('deleted_at', null)
             .maybeSingle()
           if (existingCnpj) {
@@ -164,7 +162,6 @@ Deno.serve(async (req: Request) => {
             .from('departments')
             .select('id')
             .eq('code', codigo)
-            .eq('user_id', user.id)
             .is('deleted_at', null)
             .maybeSingle()
           if (existingCode) {
@@ -203,7 +200,6 @@ Deno.serve(async (req: Request) => {
             .from('departments')
             .select('id')
             .eq('code', depCode)
-            .eq('user_id', user.id)
             .is('deleted_at', null)
             .maybeSingle()
           if (dep) {
@@ -224,7 +220,6 @@ Deno.serve(async (req: Request) => {
             .from('cadastro_usuarios')
             .select('id')
             .eq('email', email)
-            .eq('user_id', user.id)
             .is('deleted_at', null)
             .maybeSingle()
           if (existingUser) {
@@ -276,8 +271,12 @@ Deno.serve(async (req: Request) => {
         }
 
         const orgId = empresa ? orgMap.get(String(empresa).trim().toLowerCase()) : null
-        if (!allowIncomplete && !orgId) {
-          addError(rowNum, `A empresa "${empresa}" não foi encontrada na sua conta.`, row)
+        if (!orgId) {
+          addError(
+            rowNum,
+            `A empresa "${empresa}" não foi encontrada na sua conta. (Obrigatório)`,
+            row,
+          )
           continue
         }
 
@@ -304,7 +303,7 @@ Deno.serve(async (req: Request) => {
         }
 
         const { error: insertError } = await supabase.from('bank_accounts').insert({
-          organization_id: orgId || null,
+          organization_id: orgId,
           account_code: String(contaContabil || ''),
           account_type: String(row['CODCAIXA'] || ''),
           description: String(row['DESCRICAO'] || ''),
@@ -350,8 +349,12 @@ Deno.serve(async (req: Request) => {
         }
 
         const orgId = empresa ? orgMap.get(String(empresa).trim().toLowerCase()) : null
-        if (!allowIncomplete && !orgId) {
-          addError(rowNum, `A empresa "${empresa}" não foi encontrada na sua conta.`, row)
+        if (!orgId) {
+          addError(
+            rowNum,
+            `A empresa "${empresa}" não foi encontrada na sua conta. (Obrigatório)`,
+            row,
+          )
           continue
         }
 
@@ -407,7 +410,7 @@ Deno.serve(async (req: Request) => {
         }
 
         const { error: insertError } = await supabase.from('cost_centers').insert({
-          organization_id: orgId || null,
+          organization_id: orgId,
           code: strCode,
           description: String(description || ''),
           parent_id: parentId || null,
@@ -449,8 +452,12 @@ Deno.serve(async (req: Request) => {
         }
 
         const orgId = empresa ? orgMap.get(String(empresa).trim().toLowerCase()) : null
-        if (!allowIncomplete && !orgId) {
-          addError(rowNum, `A empresa "${empresa}" não foi encontrada na sua conta.`, row)
+        if (!orgId) {
+          addError(
+            rowNum,
+            `A empresa "${empresa}" não foi encontrada na sua conta. (Obrigatório)`,
+            row,
+          )
           continue
         }
 
@@ -479,7 +486,7 @@ Deno.serve(async (req: Request) => {
         }
 
         const { error: insertError } = await supabase.from('chart_of_accounts').insert({
-          organization_id: orgId || null,
+          organization_id: orgId,
           account_code: strCode,
           account_name: String(name || ''),
           account_type: String(accountType || ''),
@@ -517,8 +524,12 @@ Deno.serve(async (req: Request) => {
         }
 
         const orgId = empresa ? orgMap.get(String(empresa).trim().toLowerCase()) : null
-        if (!allowIncomplete && !orgId) {
-          addError(rowNum, `A empresa "${empresa}" não foi encontrada na sua conta.`, row)
+        if (!orgId) {
+          addError(
+            rowNum,
+            `A empresa "${empresa}" não foi encontrada na sua conta. (Obrigatório)`,
+            row,
+          )
           continue
         }
 
@@ -576,7 +587,7 @@ Deno.serve(async (req: Request) => {
         }
 
         const { error: insertError } = await supabase.from('account_mapping').insert({
-          organization_id: orgId || null,
+          organization_id: orgId,
           cost_center_id: ccData?.id || null,
           chart_account_id: caData?.id || null,
           mapping_type: String(tipoMapeamento || 'DE/PARA'),
@@ -634,8 +645,12 @@ Deno.serve(async (req: Request) => {
         }
 
         const orgId = empresa ? orgMap.get(String(empresa).trim().toLowerCase()) : null
-        if (!allowIncomplete && !orgId) {
-          addError(rowNum, `A empresa "${empresa}" não foi encontrada.`, row)
+        if (!orgId) {
+          addError(
+            rowNum,
+            `A empresa "${empresa}" não foi encontrada na sua conta. (Obrigatório)`,
+            row,
+          )
           continue
         }
 
@@ -704,7 +719,7 @@ Deno.serve(async (req: Request) => {
         const { data: fm, error: insertError } = await supabase
           .from('financial_movements')
           .insert({
-            organization_id: orgId || null,
+            organization_id: orgId,
             movement_date: formattedDate,
             amount: isNaN(valor) ? 0 : valor,
             description: String(descricao || ''),
@@ -720,7 +735,7 @@ Deno.serve(async (req: Request) => {
         }
 
         const { error: aeError } = await supabase.from('accounting_entries').insert({
-          organization_id: orgId || null,
+          organization_id: orgId,
           entry_date: formattedDate,
           amount: isNaN(valor) ? 0 : valor,
           description: String(descricao || ''),
