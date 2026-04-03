@@ -44,6 +44,8 @@ interface CostCenter {
   operational: string | null
   tipo_lcto: string | null
   tipo_tga_id: string | null
+  contabiliza: string | null
+  observacoes: string | null
   organization: { name: string } | null
   tipo_conta_tga: { nome: string } | null
 }
@@ -74,6 +76,8 @@ export default function CostCenters() {
     tipo_tga_id: 'none',
     type_tga: '',
     fixed_variable: '',
+    contabiliza: 'none',
+    observacoes: '',
   })
 
   const loadOrgs = async () => {
@@ -114,6 +118,8 @@ export default function CostCenters() {
         tipo_tga_id: newCC.tipo_tga_id !== 'none' ? newCC.tipo_tga_id : null,
         type_tga: newCC.type_tga || null,
         fixed_variable: newCC.fixed_variable || null,
+        contabiliza: newCC.contabiliza !== 'none' ? newCC.contabiliza : null,
+        observacoes: newCC.observacoes || null,
       },
     ])
     setSubmitting(false)
@@ -132,6 +138,8 @@ export default function CostCenters() {
         tipo_tga_id: 'none',
         type_tga: '',
         fixed_variable: '',
+        contabiliza: 'none',
+        observacoes: '',
       })
       fetchCostCenters()
     }
@@ -437,6 +445,30 @@ export default function CostCenters() {
                 placeholder="Ex: Fixo"
               />
             </div>
+            <div className="space-y-2">
+              <Label>Contabiliza</Label>
+              <Select
+                value={newCC.contabiliza}
+                onValueChange={(v) => setNewCC({ ...newCC, contabiliza: v })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Selecione...</SelectItem>
+                  <SelectItem value="SIM">SIM</SelectItem>
+                  <SelectItem value="NAO">NÃO</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Observações</Label>
+              <Input
+                value={newCC.observacoes}
+                onChange={(e) => setNewCC({ ...newCC, observacoes: e.target.value })}
+                placeholder="Observações adicionais"
+              />
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsCreateOpen(false)}>
@@ -509,13 +541,15 @@ export default function CostCenters() {
                   <TableHead>Tipo</TableHead>
                   <TableHead>Fixo/Variável</TableHead>
                   <TableHead>Classificação</TableHead>
+                  <TableHead>Contabiliza</TableHead>
+                  <TableHead>Observações</TableHead>
                   {canDelete && <TableHead className="text-right">Ações</TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {loading ? (
                   <TableRow>
-                    <TableCell colSpan={11} className="h-24 text-center">
+                    <TableCell colSpan={13} className="h-24 text-center">
                       Carregando centros de custo...
                     </TableCell>
                   </TableRow>
@@ -573,6 +607,18 @@ export default function CostCenters() {
                           '-'
                         )}
                       </TableCell>
+                      <TableCell>
+                        {cc.contabiliza ? (
+                          <Badge variant={cc.contabiliza === 'SIM' ? 'default' : 'secondary'}>
+                            {cc.contabiliza}
+                          </Badge>
+                        ) : (
+                          '-'
+                        )}
+                      </TableCell>
+                      <TableCell className="max-w-[200px] truncate" title={cc.observacoes || ''}>
+                        {cc.observacoes || '-'}
+                      </TableCell>
                       {canDelete && (
                         <TableCell className="text-right">
                           <Button
@@ -589,7 +635,7 @@ export default function CostCenters() {
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={11} className="h-24 text-center">
+                    <TableCell colSpan={13} className="h-24 text-center">
                       Nenhum centro de custo encontrado.
                     </TableCell>
                   </TableRow>

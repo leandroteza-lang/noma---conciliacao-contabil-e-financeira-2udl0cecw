@@ -370,6 +370,8 @@ export type Database = {
           organization_id: string | null
           parent_id: string | null
           pending_deletion: boolean | null
+          tipo_lcto: string | null
+          tipo_tga_id: string | null
           type_tga: string | null
         }
         Insert: {
@@ -387,6 +389,8 @@ export type Database = {
           organization_id?: string | null
           parent_id?: string | null
           pending_deletion?: boolean | null
+          tipo_lcto?: string | null
+          tipo_tga_id?: string | null
           type_tga?: string | null
         }
         Update: {
@@ -404,6 +408,8 @@ export type Database = {
           organization_id?: string | null
           parent_id?: string | null
           pending_deletion?: boolean | null
+          tipo_lcto?: string | null
+          tipo_tga_id?: string | null
           type_tga?: string | null
         }
         Relationships: [
@@ -419,6 +425,13 @@ export type Database = {
             columns: ['parent_id']
             isOneToOne: false
             referencedRelation: 'cost_centers'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'cost_centers_tipo_tga_id_fkey'
+            columns: ['tipo_tga_id']
+            isOneToOne: false
+            referencedRelation: 'tipo_conta_tga'
             referencedColumns: ['id']
           },
         ]
@@ -902,6 +915,8 @@ export const Constants = {
 //   deletion_requested_by: uuid (nullable)
 //   deleted_at: timestamp with time zone (nullable)
 //   deleted_by: uuid (nullable)
+//   tipo_lcto: character varying (nullable)
+//   tipo_tga_id: uuid (nullable)
 // Table: departments
 //   id: uuid (not null, default: gen_random_uuid())
 //   user_id: uuid (not null)
@@ -1002,6 +1017,7 @@ export const Constants = {
 //   FOREIGN KEY cost_centers_organization_id_fkey: FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE
 //   FOREIGN KEY cost_centers_parent_id_fkey: FOREIGN KEY (parent_id) REFERENCES cost_centers(id) ON DELETE CASCADE
 //   PRIMARY KEY cost_centers_pkey: PRIMARY KEY (id)
+//   FOREIGN KEY cost_centers_tipo_tga_id_fkey: FOREIGN KEY (tipo_tga_id) REFERENCES tipo_conta_tga(id) ON DELETE SET NULL
 // Table: departments
 //   FOREIGN KEY departments_deleted_by_fkey: FOREIGN KEY (deleted_by) REFERENCES auth.users(id) ON DELETE SET NULL
 //   FOREIGN KEY departments_deletion_requested_by_fkey: FOREIGN KEY (deletion_requested_by) REFERENCES auth.users(id) ON DELETE SET NULL
