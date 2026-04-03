@@ -87,7 +87,7 @@ export const MENU_ITEMS: MenuItem[] = [
   {
     id: 'listagem',
     title: 'Listagem de Contas',
-    path: '/',
+    path: '/app',
     icon: Home,
     roles: ['admin', 'supervisor', 'collaborator'],
   },
@@ -256,14 +256,14 @@ export default function Layout() {
         return node.children[0]
       }
     }
-    return '/'
+    return '/app'
   }, [normalizedOrder])
 
   const hasAccessToCurrentRoute = useMemo(() => {
     const currentMenuItem = MENU_ITEMS.find(
       (item) =>
         location.pathname === item.path ||
-        (item.path !== '/' && !item.isFolder && location.pathname.startsWith(item.path)),
+        (!item.isFolder && location.pathname.startsWith(item.path + '/')),
     )
     if (!currentMenuItem) return true
     return allowedItems.some((item) => item.id === currentMenuItem.id)
