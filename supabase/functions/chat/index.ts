@@ -178,12 +178,19 @@ Deno.serve(async (req: Request) => {
     const runTool = async (name: string, args: any) => {
       try {
         if (name === 'get_organizations') {
-          return JSON.stringify(orgsData || [])
+          const { data } = await supabase
+            .from('organizations')
+            .select('name, cnpj, cpf, email, phone, status')
+            .in('id', orgIds)
+            .is('deleted_at', null)
+          return JSON.stringify(data || [])
         }
         if (name === 'get_bank_accounts') {
           const { data } = await supabase
             .from('bank_accounts')
-            .select('company_name, account_code, description, bank_code, agency, account_number')
+            .select(
+              'company_name, account_code, description, bank_code, agency, account_number, classification',
+            )
             .in('organization_id', orgIds)
             .is('deleted_at', null)
           return JSON.stringify(data || [])
@@ -191,7 +198,7 @@ Deno.serve(async (req: Request) => {
         if (name === 'get_cost_centers') {
           const { data } = await supabase
             .from('cost_centers')
-            .select('code, description, classification, type_tga')
+            .select('code, description, classification, type_tga, fixed_variable, operational')
             .in('organization_id', orgIds)
             .is('deleted_at', null)
           return JSON.stringify(data || [])
@@ -200,7 +207,9 @@ Deno.serve(async (req: Request) => {
           const limit = args.limit || 15
           const { data } = await supabase
             .from('financial_movements')
-            .select('movement_date, description, amount, status')
+            .select(
+              'movement_date, description, amount, status, cost_centers(code, description), bank_accounts(description)',
+            )
             .in('organization_id', orgIds)
             .order('movement_date', { ascending: false })
             .limit(limit)
@@ -209,14 +218,14 @@ Deno.serve(async (req: Request) => {
         if (name === 'get_users') {
           const { data } = await supabase
             .from('cadastro_usuarios')
-            .select('name, email, role, status, department_id')
+            .select('name, email, role, status, phone, cpf, departments(name)')
             .is('deleted_at', null)
           return JSON.stringify(data || [])
         }
         if (name === 'get_departments') {
           const { data } = await supabase
             .from('departments')
-            .select('id, code, name')
+            .select('code, name, created_at')
             .is('deleted_at', null)
           return JSON.stringify(data || [])
         }
@@ -232,7 +241,9 @@ Deno.serve(async (req: Request) => {
           const limit = args.limit || 15
           const { data } = await supabase
             .from('accounting_entries')
-            .select('entry_date, description, amount, status, debit_account_id, credit_account_id')
+            .select(
+              'entry_date, description, amount, status, debit_account:chart_of_accounts!accounting_entries_debit_account_id_fkey(account_name), credit_account:chart_of_accounts!accounting_entries_credit_account_id_fkey(account_name)',
+            )
             .in('organization_id', orgIds)
             .order('entry_date', { ascending: false })
             .limit(limit)
