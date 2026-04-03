@@ -22,6 +22,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog'
+import { Label } from '@/components/ui/label'
 import { useAuth } from '@/hooks/use-auth'
 import { useToast } from '@/hooks/use-toast'
 
@@ -49,6 +57,49 @@ export default function CostCenters() {
   const [itemsPerPage, setItemsPerPage] = useState(10)
 
   const canDelete = role === 'admin'
+
+  const [isCreateOpen, setIsCreateOpen] = useState(false)
+  const [orgs, setOrgs] = useState<{ id: string; name: string }[]>([])
+  const [submitting, setSubmitting] = useState(false)
+  const [newCC, setNewCC] = useState({
+    organization_id: '',
+    code: '',
+    description: '',
+  })
+
+  const loadOrgs = async () => {
+    const { data } = await supabase.from('organizations').select('id, name').is('deleted_at', null)
+    if (data) setOrgs(data)
+  }
+
+  const handleCreate = async () => {
+    if (!newCC.organization_id || !newCC.code || !newCC.description) {
+      toast({
+        title: 'Atenção',
+        description: 'Preencha empresa, código e descrição.',
+        variant: 'destructive',
+      })
+      return
+    }
+    setSubmitting(true)
+    const { error } = await supabase.from('cost_centers').insert([
+      {
+        organization_id: newCC.organization_id,
+        code: newCC.code,
+        description: newCC.description,
+      },
+    ])
+    setSubmitting(false)
+
+    if (error) {
+      toast({ title: 'Erro', description: error.message, variant: 'destructive' })
+    } else {
+      toast({ title: 'Sucesso', description: 'Centro de custo criado.' })
+      setIsCreateOpen(false)
+      setNewCC({ organization_id: '', code: '', description: '' })
+      fetchCostCenters()
+    }
+  }
 
   const fetchCostCenters = async () => {
     setLoading(true)
@@ -230,12 +281,69 @@ export default function CostCenters() {
           <Button variant="outline" asChild>
             <Link to="/import">Importar Planilha</Link>
           </Button>
-          <Button>
+          <Button
+            onClick={() => {
+              loadOrgs()
+              setIsCreateOpen(true)
+            }}
+          >
             <Plus className="h-4 w-4 mr-2" />
             Novo Centro de Custo
           </Button>
         </div>
       </div>
+
+      <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Novo Centro de Custo</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="space-y-2">
+              <Label>Empresa</Label>
+              <Select
+                value={newCC.organization_id}
+                onValueChange={(v) => setNewCC({ ...newCC, organization_id: v })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione a empresa" />
+                </SelectTrigger>
+                <SelectContent>
+                  {orgs.map((o) => (
+                    <SelectItem key={o.id} value={o.id}>
+                      {o.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Código</Label>
+              <Input
+                value={newCC.code}
+                onChange={(e) => setNewCC({ ...newCC, code: e.target.value })}
+                placeholder="Ex: 1.01"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Descrição</Label>
+              <Input
+                value={newCC.description}
+                onChange={(e) => setNewCC({ ...newCC, description: e.target.value })}
+                placeholder="Ex: Diretoria"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsCreateOpen(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleCreate} disabled={submitting}>
+              Salvar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {selectedIds.length > 0 && canDelete && (
         <div className="bg-slate-50 border border-slate-200 rounded-md p-3 flex items-center justify-between animate-in fade-in slide-in-from-top-2">
