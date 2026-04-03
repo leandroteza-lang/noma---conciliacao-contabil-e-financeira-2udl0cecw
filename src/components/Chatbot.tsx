@@ -10,19 +10,24 @@ import {
   Copy,
   Check,
   Download,
+  Paperclip,
+  FileText,
 } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card'
 import { supabase } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
+import * as XLSX from 'xlsx'
 
 type Message = {
   id: string
   role: 'user' | 'assistant' | 'system' | 'tool'
   content: string
   isTyping?: boolean
+  attachedFileName?: string
 }
 
 const processInline = (text: string) => {
@@ -40,13 +45,25 @@ const processInline = (text: string) => {
     }
     const linkMatch = part.match(/\[(.*?)\]\((.*?)\)/)
     if (linkMatch) {
+      const url = linkMatch[2]
+      if (url.startsWith('/')) {
+        return (
+          <Link
+            key={i}
+            to={url}
+            className="underline text-primary hover:text-primary/80 font-medium transition-colors"
+          >
+            {linkMatch[1]}
+          </Link>
+        )
+      }
       return (
         <a
           key={i}
-          href={linkMatch[2]}
+          href={url}
           target="_blank"
           rel="noopener noreferrer"
-          className="underline text-primary hover:opacity-80"
+          className="underline text-primary hover:text-primary/80 transition-colors"
         >
           {linkMatch[1]}
         </a>
@@ -157,14 +174,25 @@ const BotMessageActions = ({ content }: { content: string }) => {
     setTimeout(() => setCopied(false), 2000)
   }
 
-  const handleDownload = () => {
-    const element = document.createElement('a')
-    const file = new Blob([content], { type: 'text/plain;charset=utf-8' })
-    element.href = URL.createObjectURL(file)
-    element.download = 'resposta_assistente.txt'
-    document.body.appendChild(element)
-    element.click()
-    document.body.removeChild(element)
+  const handleDownloadExcel = () => {
+    const rows = content
+      .split('\n')
+      .map((line) => {
+        if (line.includes('|')) {
+          const cells = line.split('|').map((cell) => cell.trim())
+          if (cells.every((c) => c === '' || c.match(/^[-:]+$/))) {
+            return null
+          }
+          return cells.filter((cell) => cell !== '')
+        }
+        return [line.replace(/[*#`]/g, '').trim()]
+      })
+      .filter((row) => row !== null && row.length > 0 && row[0] !== '')
+
+    const ws = XLSX.utils.aoa_to_sheet(rows as any[][])
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, 'Resposta')
+    XLSX.writeFile(wb, 'resposta_assistente.xlsx')
   }
 
   return (
@@ -205,8 +233,8 @@ const BotMessageActions = ({ content }: { content: string }) => {
         variant="ghost"
         size="icon"
         className="h-6 w-6 hover:bg-background/50"
-        onClick={handleDownload}
-        title="Baixar Arquivo"
+        onClick={handleDownloadExcel}
+        title="Exportar para Excel (.xlsx)"
       >
         <Download className="w-3.5 h-3.5" />
       </Button>
@@ -227,19 +255,72 @@ export function Chatbot() {
   ])
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [attachedFile, setAttachedFile] = useState<{
+    name: string
+    type: string
+    content: string
+  } | null>(null)
+
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, isOpen, isLoading])
 
-  const handleSend = async () => {
-    if (!input.trim()) return
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
 
-    const userMessage: Message = { id: Date.now().toString(), role: 'user', content: input }
+    let content = ''
+    const ext = file.name.split('.').pop()?.toLowerCase() || ''
+
+    try {
+      if (ext === 'txt' || ext === 'csv') {
+        content = await file.text()
+        setAttachedFile({ name: file.name, type: ext, content })
+      } else if (ext === 'xlsx') {
+        const buffer = await file.arrayBuffer()
+        const wb = XLSX.read(buffer)
+        const ws = wb.Sheets[wb.SheetNames[0]]
+        content = XLSX.utils.sheet_to_csv(ws)
+        setAttachedFile({ name: file.name, type: ext, content })
+      } else if (ext === 'pdf') {
+        const reader = new FileReader()
+        reader.onload = (ev) => {
+          const base64 = (ev.target?.result as string).split(',')[1]
+          setAttachedFile({ name: file.name, type: ext, content: base64 })
+        }
+        reader.readAsDataURL(file)
+        return // FileReader is async, return early
+      } else {
+        content = await file.text()
+        setAttachedFile({ name: file.name, type: ext, content })
+      }
+    } catch (err) {
+      console.error('Error reading file', err)
+    }
+
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }
+
+  const handleSend = async () => {
+    if (!input.trim() && !attachedFile) return
+
+    const userContent = input.trim() || 'Arquivo em anexo.'
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      role: 'user',
+      content: userContent,
+      attachedFileName: attachedFile?.name,
+    }
+
     setMessages((prev) => [...prev, userMessage])
     setInput('')
     setIsLoading(true)
+
+    const currentFile = attachedFile
+    setAttachedFile(null)
 
     try {
       const { data, error } = await supabase.functions.invoke('chat', {
@@ -247,6 +328,7 @@ export function Chatbot() {
           messages: [...messages, userMessage]
             .filter((m) => m.role === 'user' || m.role === 'assistant')
             .map((m) => ({ role: m.role, content: m.content })),
+          file: currentFile,
         },
       })
 
@@ -291,7 +373,7 @@ export function Chatbot() {
   return (
     <div className="fixed bottom-6 right-6 z-[100] flex flex-col items-end">
       {isOpen && (
-        <Card className="w-[350px] sm:w-[400px] h-[550px] mb-4 flex flex-col shadow-2xl border-primary/20 animate-in slide-in-from-bottom-5">
+        <Card className="w-[350px] sm:w-[400px] h-[580px] mb-4 flex flex-col shadow-2xl border-primary/20 animate-in slide-in-from-bottom-5">
           <CardHeader className="bg-primary text-primary-foreground p-4 rounded-t-lg flex flex-row items-center justify-between">
             <div className="flex items-center gap-2">
               <Bot className="w-5 h-5" />
@@ -340,7 +422,15 @@ export function Chatbot() {
                       )}
                     >
                       {msg.role === 'user' ? (
-                        <div className="whitespace-pre-wrap">{msg.content}</div>
+                        <div className="whitespace-pre-wrap flex flex-col gap-1">
+                          {msg.content}
+                          {msg.attachedFileName && (
+                            <div className="flex items-center gap-1 mt-1 text-[11px] opacity-90 bg-primary-foreground/15 px-2 py-1 rounded-md w-fit">
+                              <Paperclip className="w-3 h-3" />
+                              <span className="truncate max-w-[180px]">{msg.attachedFileName}</span>
+                            </div>
+                          )}
+                        </div>
                       ) : (
                         <>
                           {msg.isTyping ? (
@@ -387,21 +477,54 @@ export function Chatbot() {
                 e.preventDefault()
                 handleSend()
               }}
-              className="flex w-full gap-2"
+              className="flex w-full gap-2 items-end"
             >
-              <Input
-                placeholder="Pergunte sobre seus dados..."
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                disabled={isLoading}
-                className="flex-1 rounded-full px-4"
-                autoFocus
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileChange}
+                className="hidden"
+                accept=".txt,.csv,.xlsx,.pdf"
               />
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="shrink-0 rounded-full h-10 w-10 text-muted-foreground hover:text-foreground"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isLoading}
+                title="Anexar arquivo"
+              >
+                <Paperclip className="w-4 h-4" />
+              </Button>
+              <div className="flex-1 flex flex-col bg-background border rounded-2xl overflow-hidden focus-within:ring-1 focus-within:ring-ring">
+                {attachedFile && (
+                  <div className="flex items-center gap-2 px-3 py-1.5 bg-muted/40 border-b text-xs animate-in fade-in zoom-in duration-200">
+                    <FileText className="w-3.5 h-3.5 text-primary" />
+                    <span className="flex-1 truncate font-medium">{attachedFile.name}</span>
+                    <button
+                      type="button"
+                      onClick={() => setAttachedFile(null)}
+                      className="hover:text-destructive hover:bg-destructive/10 p-0.5 rounded-full transition-colors"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                )}
+                <Input
+                  placeholder="Pergunte ou anexe um arquivo..."
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  disabled={isLoading}
+                  className="border-0 focus-visible:ring-0 shadow-none rounded-none h-10 px-3 bg-transparent"
+                  autoFocus
+                />
+              </div>
               <Button
                 type="submit"
                 size="icon"
-                className="rounded-full shrink-0"
-                disabled={isLoading || !input.trim()}
+                className="rounded-full shrink-0 h-10 w-10"
+                disabled={isLoading || (!input.trim() && !attachedFile)}
               >
                 <Send className="w-4 h-4" />
               </Button>

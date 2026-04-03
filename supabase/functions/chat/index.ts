@@ -1,6 +1,8 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts'
 import { createClient } from 'jsr:@supabase/supabase-js@2'
 import OpenAI from 'npm:openai@4'
+import pdfParse from 'npm:pdf-parse@1.1.1'
+import { Buffer } from 'node:buffer'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -38,10 +40,30 @@ Deno.serve(async (req: Request) => {
     } = await supabase.auth.getUser()
     if (userError || !user) throw new Error('Usuário não autenticado')
 
-    const { messages } = await req.json()
+    const { messages, file } = await req.json()
 
     if (!messages || !Array.isArray(messages)) {
       throw new Error('Formato de mensagens inválido')
+    }
+
+    if (file) {
+      let fileText = ''
+      if (file.type === 'pdf') {
+        try {
+          const pdfData = await pdfParse(Buffer.from(file.content, 'base64'))
+          fileText = pdfData.text
+        } catch (e: any) {
+          console.error('Error parsing PDF', e)
+          fileText = 'Erro ao extrair texto do PDF: ' + e.message
+        }
+      } else {
+        fileText = file.content
+      }
+
+      const lastMessage = messages[messages.length - 1]
+      if (lastMessage && lastMessage.role === 'user') {
+        lastMessage.content += `\n\n--- INÍCIO DO CONTEÚDO DO ARQUIVO ANEXADO (${file.name}) ---\n${fileText}\n--- FIM DO CONTEÚDO DO ARQUIVO ---`
+      }
     }
 
     const openai = new OpenAI({ apiKey: openaiKey })
@@ -249,7 +271,18 @@ MUITO IMPORTANTE: Quando for apresentar dados de registros (como usuários, empr
 Exemplo:
 - **Nome:** João Silva
 - **Email:** joao@exemplo.com
-Se não houver informações disponíveis no retorno das funções, informe que os dados não foram encontrados nas tabelas correspondentes.`,
+Se não houver informações disponíveis no retorno das funções, informe que os dados não foram encontrados nas tabelas correspondentes.
+
+ATALHOS E LINKS: Sempre que mencionar áreas ou funcionalidades do sistema, forneça um link rápido em markdown. 
+Exemplos de rotas válidas no sistema:
+- Dashboard: [Dashboard Financeiro](/dashboard)
+- Lançamentos: [Lançamentos Financeiros](/lancamentos)
+- Análises: [Análises Gerenciais](/analises)
+- Empresas: [Gestão de Empresas](/empresas)
+- Departamentos: [Departamentos](/departamentos)
+- Usuários: [Usuários](/usuarios)
+- Centros de Custo: [Centros de Custo](/centros-de-custo)
+- Plano de Contas: [Plano de Contas](/plano-de-contas)`,
     }
 
     const response = await openai.chat.completions.create({
