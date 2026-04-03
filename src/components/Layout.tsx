@@ -17,7 +17,10 @@ import {
   GripVertical,
   Key,
   Tag,
+  Folder,
+  ChevronRight,
 } from 'lucide-react'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { ChangePasswordModal } from '@/components/ChangePasswordModal'
 import {
   DropdownMenu,
@@ -49,7 +52,16 @@ import {
   SidebarTrigger,
 } from '@/components/ui/sidebar'
 
-export const MENU_ITEMS = [
+export type MenuItem = {
+  id: string
+  title: string
+  path: string
+  icon: any
+  roles: string[]
+  isFolder?: boolean
+}
+
+export const MENU_ITEMS: MenuItem[] = [
   {
     id: 'dashboard',
     title: 'Dashboard',
@@ -135,6 +147,14 @@ export const MENU_ITEMS = [
     icon: CheckSquare,
     roles: ['admin'],
   },
+  {
+    id: 'cadastros-gerais',
+    title: 'Cadastros Gerais',
+    path: '#cadastros-gerais',
+    icon: Folder,
+    roles: ['admin', 'supervisor', 'collaborator'],
+    isFolder: true,
+  },
 ]
 
 export default function Layout() {
@@ -160,23 +180,65 @@ export default function Layout() {
     })
   }, [role, permissions])
 
-  const sortedItems = useMemo(() => {
-    return [...allowedItems].sort((a, b) => {
-      const safeMenuOrder = Array.isArray(menuOrder) ? menuOrder : []
-      const idxA = safeMenuOrder.indexOf(a.path)
-      const idxB = safeMenuOrder.indexOf(b.path)
-      if (idxA === -1 && idxB === -1) return 0
-      if (idxA === -1) return 1
-      if (idxB === -1) return -1
-      return idxA - idxB
+  const normalizedOrder = useMemo(() => {
+    const order = Array.isArray(menuOrder) ? menuOrder : []
+    const result: { path: string; children?: string[] }[] = []
+    const foundPaths = new Set<string>()
+
+    order.forEach((item) => {
+      if (typeof item === 'string') {
+        if (allowedItems.some((a) => a.path === item)) {
+          result.push({ path: item })
+          foundPaths.add(item)
+        }
+      } else if (item && typeof item === 'object' && item.path) {
+        if (allowedItems.some((a) => a.path === item.path)) {
+          const children: string[] = []
+          if (Array.isArray(item.children)) {
+            item.children.forEach((child: string) => {
+              if (allowedItems.some((a) => a.path === child) && !foundPaths.has(child)) {
+                children.push(child)
+                foundPaths.add(child)
+              }
+            })
+          }
+          result.push({ path: item.path, children })
+          foundPaths.add(item.path)
+        }
+      }
     })
-  }, [allowedItems, menuOrder])
+
+    allowedItems.forEach((a) => {
+      if (!foundPaths.has(a.path)) {
+        if (a.isFolder) {
+          result.push({ path: a.path, children: [] })
+        } else {
+          result.push({ path: a.path })
+        }
+        foundPaths.add(a.path)
+      }
+    })
+
+    return result
+  }, [menuOrder, allowedItems])
+
+  const firstAvailablePath = useMemo(() => {
+    for (const node of normalizedOrder) {
+      if (!MENU_ITEMS.find((m) => m.path === node.path)?.isFolder) {
+        return node.path
+      }
+      if (node.children && node.children.length > 0) {
+        return node.children[0]
+      }
+    }
+    return '/'
+  }, [normalizedOrder])
 
   const hasAccessToCurrentRoute = useMemo(() => {
     const currentMenuItem = MENU_ITEMS.find(
       (item) =>
         location.pathname === item.path ||
-        (item.path !== '/' && location.pathname.startsWith(item.path)),
+        (item.path !== '/' && !item.isFolder && location.pathname.startsWith(item.path)),
     )
     if (!currentMenuItem) return true
     return allowedItems.some((item) => item.id === currentMenuItem.id)
@@ -259,28 +321,89 @@ export default function Layout() {
   }, [role, permissions, location.pathname])
 
   const handleDragStart = (e: React.DragEvent, path: string) => {
+    e.stopPropagation()
     setDraggedItemPath(path)
     e.dataTransfer.effectAllowed = 'move'
   }
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault()
+    e.stopPropagation()
     e.dataTransfer.dropEffect = 'move'
   }
 
-  const handleDrop = (e: React.DragEvent, targetPath: string, sortedItems: any[]) => {
+  const handleDrop = (
+    e: React.DragEvent,
+    targetPath: string,
+    dropType: 'before' | 'inside' = 'before',
+  ) => {
     e.preventDefault()
+    e.stopPropagation()
     if (!draggedItemPath || draggedItemPath === targetPath) return
 
-    const currentOrder = sortedItems.map((item) => item.path)
-    const draggedIdx = currentOrder.indexOf(draggedItemPath)
-    const targetIdx = currentOrder.indexOf(targetPath)
+    let newOrder = JSON.parse(JSON.stringify(normalizedOrder)) as {
+      path: string
+      children?: string[]
+    }[]
+    let draggedNode: { path: string; children?: string[] } | null = null
+    let draggedIsFolder = false
 
-    if (draggedIdx !== -1 && targetIdx !== -1) {
-      currentOrder.splice(draggedIdx, 1)
-      currentOrder.splice(targetIdx, 0, draggedItemPath)
-      setMenuOrder(currentOrder)
+    newOrder = newOrder
+      .map((node) => {
+        if (node.path === draggedItemPath) {
+          draggedNode = { path: node.path, children: node.children }
+          draggedIsFolder = MENU_ITEMS.find((i) => i.path === draggedItemPath)?.isFolder || false
+          return null
+        }
+        if (node.children) {
+          const childIdx = node.children.indexOf(draggedItemPath)
+          if (childIdx !== -1) {
+            draggedNode = { path: draggedItemPath }
+            node.children.splice(childIdx, 1)
+          }
+        }
+        return node
+      })
+      .filter(Boolean) as { path: string; children?: string[] }[]
+
+    if (!draggedNode) return
+
+    let inserted = false
+
+    if (dropType === 'inside') {
+      const folderNode = newOrder.find((n) => n.path === targetPath)
+      if (folderNode && !draggedIsFolder) {
+        folderNode.children = folderNode.children || []
+        folderNode.children.push(draggedNode.path)
+        inserted = true
+      }
+    } else {
+      for (let i = 0; i < newOrder.length; i++) {
+        if (newOrder[i].path === targetPath) {
+          newOrder.splice(i, 0, draggedNode)
+          inserted = true
+          break
+        }
+        if (newOrder[i].children) {
+          const childIdx = newOrder[i].children!.indexOf(targetPath)
+          if (childIdx !== -1) {
+            if (draggedIsFolder) {
+              newOrder.splice(i, 0, draggedNode)
+            } else {
+              newOrder[i].children!.splice(childIdx, 0, draggedNode.path)
+            }
+            inserted = true
+            break
+          }
+        }
+      }
     }
+
+    if (!inserted) {
+      newOrder.push(draggedNode)
+    }
+
+    setMenuOrder(newOrder)
     setDraggedItemPath(null)
   }
 
@@ -324,11 +447,11 @@ export default function Layout() {
     )
   }
 
-  if (!hasAccessToCurrentRoute && sortedItems.length > 0) {
-    return <Navigate to={sortedItems[0].path} replace />
+  if (!hasAccessToCurrentRoute && normalizedOrder.length > 0) {
+    return <Navigate to={firstAvailablePath} replace />
   }
 
-  if (!hasAccessToCurrentRoute && sortedItems.length === 0) {
+  if (!hasAccessToCurrentRoute && normalizedOrder.length === 0) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4">
         <div className="max-w-md w-full bg-white rounded-xl shadow-sm border border-slate-200 p-8 text-center animate-in fade-in zoom-in duration-500">
@@ -380,16 +503,127 @@ export default function Layout() {
           <SidebarGroup>
             <SidebarGroupContent>
               <SidebarMenu>
-                {sortedItems.map((item) => {
+                {normalizedOrder.map((node) => {
+                  const item = allowedItems.find((a) => a.path === node.path)
+                  if (!item) return null
+
+                  if (item.isFolder) {
+                    const isActive = node.children?.some(
+                      (childPath) =>
+                        location.pathname === childPath ||
+                        location.pathname.startsWith(childPath + '/'),
+                    )
+
+                    return (
+                      <Collapsible
+                        key={node.path}
+                        asChild
+                        defaultOpen={isActive}
+                        className="group/collapsible"
+                      >
+                        <SidebarMenuItem
+                          draggable
+                          onDragStart={(e) => handleDragStart(e, node.path)}
+                          onDragOver={handleDragOver}
+                          onDrop={(e) => handleDrop(e, node.path, 'before')}
+                          className={cn(draggedItemPath === node.path && 'opacity-50')}
+                        >
+                          <CollapsibleTrigger asChild>
+                            <SidebarMenuButton
+                              tooltip={item.title}
+                              size="lg"
+                              className="flex items-center justify-between w-full cursor-pointer text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                            >
+                              <div className="flex items-center gap-2">
+                                <item.icon className="size-4 shrink-0 text-slate-400 group-data-[state=open]/collapsible:text-blue-700" />
+                                <span className="font-medium">{item.title}</span>
+                              </div>
+                              <ChevronRight className="size-4 text-slate-400 transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
+                            </SidebarMenuButton>
+                          </CollapsibleTrigger>
+
+                          <CollapsibleContent>
+                            <SidebarMenuSub className="pr-0 mr-0 border-l border-slate-200 ml-4 pl-2 py-1">
+                              {node.children?.map((childPath) => {
+                                const childItem = allowedItems.find((a) => a.path === childPath)
+                                if (!childItem) return null
+                                const isChildActive = location.pathname === childItem.path
+                                return (
+                                  <SidebarMenuSubItem
+                                    key={childPath}
+                                    draggable
+                                    onDragStart={(e) => handleDragStart(e, childPath)}
+                                    onDragOver={handleDragOver}
+                                    onDrop={(e) => handleDrop(e, childPath, 'before')}
+                                    className={cn(draggedItemPath === childPath && 'opacity-50')}
+                                  >
+                                    <SidebarMenuSubButton
+                                      asChild
+                                      isActive={isChildActive}
+                                      className={cn(
+                                        'transition-all duration-200 group relative my-0.5',
+                                        isChildActive
+                                          ? 'bg-blue-50 text-blue-700 shadow-sm hover:bg-blue-50 hover:text-blue-700'
+                                          : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900',
+                                      )}
+                                    >
+                                      <Link
+                                        to={childItem.path}
+                                        className="flex items-center justify-between w-full"
+                                      >
+                                        <div className="flex items-center gap-2">
+                                          <childItem.icon
+                                            className={cn(
+                                              'size-4 shrink-0',
+                                              isChildActive ? 'text-blue-700' : 'text-slate-400',
+                                            )}
+                                          />
+                                          <span className="font-medium">{childItem.title}</span>
+                                          {childItem.id === 'aprovacoes' && pendingCount > 0 && (
+                                            <span className="ml-auto bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
+                                              {pendingCount}
+                                            </span>
+                                          )}
+                                        </div>
+                                      </Link>
+                                    </SidebarMenuSubButton>
+                                  </SidebarMenuSubItem>
+                                )
+                              })}
+
+                              <SidebarMenuSubItem
+                                onDragOver={handleDragOver}
+                                onDrop={(e) => handleDrop(e, node.path, 'inside')}
+                                className={cn(
+                                  'h-8 mt-1 flex items-center justify-center border-2 border-dashed border-transparent rounded-md transition-colors',
+                                  draggedItemPath &&
+                                    draggedItemPath !== node.path &&
+                                    !node.children?.includes(draggedItemPath) &&
+                                    !MENU_ITEMS.find((i) => i.path === draggedItemPath)?.isFolder
+                                    ? 'border-slate-200 hover:border-blue-400 hover:bg-blue-50/50'
+                                    : 'hidden',
+                                )}
+                              >
+                                <span className="text-xs text-slate-400 font-medium">
+                                  Mover para cá
+                                </span>
+                              </SidebarMenuSubItem>
+                            </SidebarMenuSub>
+                          </CollapsibleContent>
+                        </SidebarMenuItem>
+                      </Collapsible>
+                    )
+                  }
+
                   const isActive = location.pathname === item.path
                   return (
                     <SidebarMenuItem
-                      key={item.path}
+                      key={node.path}
                       draggable
-                      onDragStart={(e) => handleDragStart(e, item.path)}
+                      onDragStart={(e) => handleDragStart(e, node.path)}
                       onDragOver={handleDragOver}
-                      onDrop={(e) => handleDrop(e, item.path, sortedItems)}
-                      className={cn(draggedItemPath === item.path && 'opacity-50')}
+                      onDrop={(e) => handleDrop(e, node.path, 'before')}
+                      className={cn(draggedItemPath === node.path && 'opacity-50')}
                     >
                       <SidebarMenuButton
                         asChild
