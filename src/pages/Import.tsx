@@ -61,7 +61,7 @@ const IMPORT_TYPES = {
     id: 'COMPANIES',
     label: 'Empresas (Edge Function)',
     required: ['NOME'],
-    optional: ['CNPJ', 'CPF', 'EMAIL', 'TELEFONE', 'ENDERECO', 'OBSERVACOES'],
+    optional: ['CNPJ', 'CPF', 'EMAIL', 'TELEFONE', 'ENDERECO', 'OBSERVACOES', 'STATUS'],
   },
   DEPARTMENTS: {
     id: 'DEPARTMENTS',
@@ -81,6 +81,7 @@ const IMPORT_TYPES = {
       'OBSERVACOES',
       'DEPARTAMENTO_CODIGO',
       'PERFIL',
+      'STATUS',
     ],
   },
   FINANCIAL_ENTRIES: {
@@ -95,7 +96,7 @@ const IMPORT_TYPES = {
       'CONTA_DEBITO',
       'CONTA_CREDITO',
     ],
-    optional: ['TIPO_MOVIMENTO'],
+    optional: ['TIPO_MOVIMENTO', 'STATUS', 'CONTA_BANCARIA'],
   },
   BANK_ACCOUNTS: {
     id: 'BANK_ACCOUNTS',
@@ -109,19 +110,30 @@ const IMPORT_TYPES = {
       'NROCONTA',
       'CLASSIFICACAO',
       'DIGITOCONTA',
+      'TIPO_CONTA',
     ],
   },
   COST_CENTERS: {
     id: 'COST_CENTERS',
     label: 'Centros de Custo (Edge Function)',
     required: ['EMPRESA', 'COD', 'DESCRICAO'],
-    optional: ['TIPO_TGA', 'FIXO_OU_VARIAVEL', 'CLASSIFICACAO', 'OPERACIONAL'],
+    optional: [
+      'TIPO_TGA',
+      'FIXO_OU_VARIAVEL',
+      'CLASSIFICACAO',
+      'OPERACIONAL',
+      'TIPO_LCTO',
+      'CONTABILIZA',
+      'OBSERVACOES',
+      'TIPO',
+      'PARENT_CODE',
+    ],
   },
   CHART_ACCOUNTS: {
     id: 'CHART_ACCOUNTS',
     label: 'Plano de Contas (Edge Function)',
     required: ['EMPRESA', 'CODIGO_CONTA', 'NOME_CONTA', 'TIPO_CONTA'],
-    optional: [],
+    optional: ['STATUS', 'OBSERVACOES'],
   },
   MAPPINGS: {
     id: 'MAPPINGS',

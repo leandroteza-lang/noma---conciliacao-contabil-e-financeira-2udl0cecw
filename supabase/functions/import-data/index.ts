@@ -409,15 +409,49 @@ Deno.serve(async (req: Request) => {
           continue
         }
 
+        let tipoTgaId = null
+        const strTipoTga = String(row['TIPO_TGA'] || '').trim()
+        if (strTipoTga && orgId) {
+          const { data: tgaData } = await supabase
+            .from('tipo_conta_tga')
+            .select('id')
+            .eq('organization_id', orgId)
+            .ilike('nome', strTipoTga)
+            .is('deleted_at', null)
+            .maybeSingle()
+
+          if (tgaData) {
+            tipoTgaId = tgaData.id
+          } else {
+            const { data: tgaDataCode } = await supabase
+              .from('tipo_conta_tga')
+              .select('id')
+              .eq('organization_id', orgId)
+              .eq('codigo', strTipoTga)
+              .is('deleted_at', null)
+              .maybeSingle()
+            if (tgaDataCode) {
+              tipoTgaId = tgaDataCode.id
+            } else if (!allowIncomplete) {
+              addError(rowNum, `Tipo TGA "${strTipoTga}" não encontrado.`, row)
+              continue
+            }
+          }
+        }
+
         const { error: insertError } = await supabase.from('cost_centers').insert({
           organization_id: orgId,
           code: strCode,
           description: String(description || ''),
           parent_id: parentId || null,
-          type_tga: String(row['TIPO_TGA'] || ''),
+          type_tga: String(row['TIPO'] || ''),
+          tipo_tga_id: tipoTgaId,
           fixed_variable: String(row['FIXO_OU_VARIAVEL'] || ''),
           classification: String(row['CLASSIFICACAO'] || ''),
           operational: String(row['OPERACIONAL'] || ''),
+          tipo_lcto: String(row['TIPO_LCTO'] || ''),
+          contabiliza: String(row['CONTABILIZA'] || ''),
+          observacoes: String(row['OBSERVACOES'] || ''),
         } as any)
 
         if (insertError) {

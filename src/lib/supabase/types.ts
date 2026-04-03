@@ -358,6 +358,7 @@ export type Database = {
         Row: {
           classification: string | null
           code: string | null
+          contabiliza: string | null
           created_at: string | null
           deleted_at: string | null
           deleted_by: string | null
@@ -366,6 +367,7 @@ export type Database = {
           description: string | null
           fixed_variable: string | null
           id: string
+          observacoes: string | null
           operational: string | null
           organization_id: string | null
           parent_id: string | null
@@ -377,6 +379,7 @@ export type Database = {
         Insert: {
           classification?: string | null
           code?: string | null
+          contabiliza?: string | null
           created_at?: string | null
           deleted_at?: string | null
           deleted_by?: string | null
@@ -385,6 +388,7 @@ export type Database = {
           description?: string | null
           fixed_variable?: string | null
           id?: string
+          observacoes?: string | null
           operational?: string | null
           organization_id?: string | null
           parent_id?: string | null
@@ -396,6 +400,7 @@ export type Database = {
         Update: {
           classification?: string | null
           code?: string | null
+          contabiliza?: string | null
           created_at?: string | null
           deleted_at?: string | null
           deleted_by?: string | null
@@ -404,6 +409,7 @@ export type Database = {
           description?: string | null
           fixed_variable?: string | null
           id?: string
+          observacoes?: string | null
           operational?: string | null
           organization_id?: string | null
           parent_id?: string | null
@@ -917,6 +923,8 @@ export const Constants = {
 //   deleted_by: uuid (nullable)
 //   tipo_lcto: character varying (nullable)
 //   tipo_tga_id: uuid (nullable)
+//   contabiliza: character varying (nullable)
+//   observacoes: text (nullable)
 // Table: departments
 //   id: uuid (not null, default: gen_random_uuid())
 //   user_id: uuid (not null)
