@@ -23,6 +23,7 @@ import {
   Lock,
   Unlock,
   Eye,
+  EyeOff,
   Search,
   ArrowUpDown,
   Bell,
@@ -377,20 +378,35 @@ export default function SharedQueriesList() {
                         </div>
                       </TableCell>
                       <TableCell>
-                        {query.is_protected ? (
-                          <Badge
-                            variant="outline"
-                            className="bg-primary/10 text-primary border-primary/20"
-                          >
-                            <Lock className="w-3 h-3 mr-1" />
-                            Com senha
-                          </Badge>
-                        ) : (
-                          <Badge variant="outline" className="bg-muted">
-                            <Unlock className="w-3 h-3 mr-1" />
-                            Aberto
-                          </Badge>
-                        )}
+                        <div className="flex flex-col gap-1.5 items-start">
+                          {query.is_protected ? (
+                            <Badge
+                              variant="outline"
+                              className="bg-primary/10 text-primary border-primary/20"
+                            >
+                              <Lock className="w-3 h-3 mr-1" />
+                              Com senha
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="bg-muted">
+                              <Unlock className="w-3 h-3 mr-1" />
+                              Aberto
+                            </Badge>
+                          )}
+                          {query.single_view && (
+                            <Badge
+                              variant="outline"
+                              className={
+                                query.access_count > 0
+                                  ? 'bg-destructive/10 text-destructive border-destructive/20'
+                                  : 'bg-amber-500/10 text-amber-600 border-amber-500/20'
+                              }
+                            >
+                              <EyeOff className="w-3 h-3 mr-1" />
+                              Visualização Única {query.access_count > 0 ? '(Expirado)' : ''}
+                            </Badge>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell>
                         <Button
