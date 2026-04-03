@@ -11,11 +11,10 @@ import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/hooks/use-toast'
 import { supabase } from '@/lib/supabase/client'
 import { useAuth } from '@/hooks/use-auth'
-import { Bell, Lock, Link as LinkIcon, Check, Copy } from 'lucide-react'
+import { Bell, Check, Copy } from 'lucide-react'
 
 export function ShareQueryModal() {
   const [open, setOpen] = useState(false)
@@ -24,8 +23,8 @@ export function ShareQueryModal() {
   const [content, setContent] = useState('')
   const [notifyFirstAccess, setNotifyFirstAccess] = useState(true)
   const [isProtected, setIsProtected] = useState(false)
-  const [password, setPassword] = useState('')
   const [generatedId, setGeneratedId] = useState<string | null>(null)
+  const [generatedPassword, setGeneratedPassword] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
 
   const { user } = useAuth()
@@ -33,12 +32,12 @@ export function ShareQueryModal() {
 
   useEffect(() => {
     const handleOpen = (e: CustomEvent) => {
-      setPrompt(e.detail?.prompt || '')
-      setContent(e.detail?.content || '')
+      setPrompt(e.detail?.prompt || 'Consulta Compartilhada')
+      setContent(e.detail?.content || 'Conteúdo da consulta...')
       setNotifyFirstAccess(true)
       setIsProtected(false)
-      setPassword('')
       setGeneratedId(null)
+      setGeneratedPassword(null)
       setCopied(false)
       setOpen(true)
     }
@@ -49,16 +48,10 @@ export function ShareQueryModal() {
 
   const handleGenerate = async () => {
     if (!user) return
-    if (!prompt || !content) {
-      toast({
-        title: 'Aviso',
-        description: 'A consulta não pode estar vazia.',
-        variant: 'destructive',
-      })
-      return
-    }
-
     setLoading(true)
+
+    const newPassword = isProtected ? Math.random().toString(36).slice(-8) : null
+
     const { data, error } = await supabase
       .from('shared_queries')
       .insert({
@@ -67,7 +60,7 @@ export function ShareQueryModal() {
         content,
         notify_first_access: notifyFirstAccess,
         is_protected: isProtected,
-        password: isProtected ? password : null,
+        password: newPassword,
       })
       .select('id')
       .single()
@@ -78,6 +71,7 @@ export function ShareQueryModal() {
       toast({ title: 'Erro', description: error.message, variant: 'destructive' })
     } else if (data) {
       setGeneratedId(data.id)
+      setGeneratedPassword(newPassword)
       toast({ title: 'Sucesso', description: 'Link gerado com sucesso!' })
     }
   }
@@ -96,7 +90,10 @@ export function ShareQueryModal() {
       if (data?.name) userName = data.name.toUpperCase()
     }
 
-    const message = `*Gestão de Contas - Consulta Compartilhada* 🔒\n\nOlá! *${userName}* compartilhou um documento seguro com você.\n\n📄 *Assunto:* ${prompt}\n🔗 *Acessar agora:* ${url}\n\n_Aviso: Este é um link de acesso restrito._`
+    let message = `*Gestão de Contas - Consulta Compartilhada* 🔒\n\nOlá! *${userName}* compartilhou um documento seguro com você.\n\n🔗 *Acessar agora:* ${url}`
+    if (generatedPassword) {
+      message += `\n🔑 *Senha de acesso:* ${generatedPassword}`
+    }
 
     navigator.clipboard.writeText(message)
     setCopied(true)
@@ -108,77 +105,35 @@ export function ShareQueryModal() {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <LinkIcon className="w-5 h-5 text-primary" />
-            Gerar Link de Compartilhamento
-          </DialogTitle>
+          <DialogTitle>Compartilhar Consulta</DialogTitle>
           <DialogDescription>
-            Configure as opções de segurança e notificação antes de gerar o link.
+            Gere um link para compartilhar o resultado desta consulta com outras pessoas.
           </DialogDescription>
         </DialogHeader>
 
         {!generatedId ? (
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label>Título / Prompt da Consulta</Label>
-              <Input
-                value={prompt}
-                onChange={(e) => setPrompt(e.target.value)}
-                placeholder="Ex: Relatório de Receitas..."
-              />
+          <div className="space-y-6 py-6">
+            <div className="flex items-center justify-between">
+              <Label htmlFor="protect-switch" className="font-medium cursor-pointer text-sm">
+                Proteger com senha gerada automaticamente
+              </Label>
+              <Switch id="protect-switch" checked={isProtected} onCheckedChange={setIsProtected} />
             </div>
 
-            <div className="space-y-2">
-              <Label>Conteúdo</Label>
-              <Textarea
-                value={content}
-                onChange={(e) => setContent(e.target.value)}
-                className="h-24 resize-none"
-                placeholder="Insira o conteúdo a ser compartilhado..."
-              />
-            </div>
-
-            <div className="flex items-center justify-between p-3 border rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors">
-              <div className="space-y-0.5">
-                <Label className="flex items-center gap-2 cursor-pointer" htmlFor="notify-switch">
-                  <Bell className="w-4 h-4 text-amber-500" />
-                  Sino de Alerta (Notificações)
-                </Label>
-                <p className="text-xs text-muted-foreground">
-                  Ativar notificações em tempo real no primeiro acesso.
-                </p>
-              </div>
+            <div className="flex items-center justify-between">
+              <Label
+                htmlFor="notify-switch"
+                className="flex items-center gap-2 font-medium cursor-pointer text-sm"
+              >
+                Ativar notificações em tempo real
+                <Bell className="w-4 h-4 text-amber-500" />
+              </Label>
               <Switch
                 id="notify-switch"
                 checked={notifyFirstAccess}
                 onCheckedChange={setNotifyFirstAccess}
               />
             </div>
-
-            <div className="flex items-center justify-between p-3 border rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors">
-              <div className="space-y-0.5">
-                <Label className="flex items-center gap-2 cursor-pointer" htmlFor="protect-switch">
-                  <Lock className="w-4 h-4 text-primary" />
-                  Proteger com Senha
-                </Label>
-                <p className="text-xs text-muted-foreground">
-                  Exija uma senha para visualizar o conteúdo.
-                </p>
-              </div>
-              <Switch id="protect-switch" checked={isProtected} onCheckedChange={setIsProtected} />
-            </div>
-
-            {isProtected && (
-              <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-200">
-                <Label>Senha de Acesso</Label>
-                <Input
-                  type="text"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Digite uma senha forte..."
-                />
-              </div>
-            )}
           </div>
         ) : (
           <div className="space-y-4 py-6 flex flex-col items-center justify-center text-center animate-in zoom-in-95 duration-300">
@@ -186,6 +141,13 @@ export function ShareQueryModal() {
               <Check className="w-6 h-6" />
             </div>
             <h3 className="text-lg font-medium">Link Gerado com Sucesso!</h3>
+
+            {generatedPassword && (
+              <div className="bg-amber-500/10 text-amber-600 px-4 py-2 rounded-md font-medium text-sm mb-2 w-full text-center">
+                Senha gerada: <span className="font-bold tracking-wider">{generatedPassword}</span>
+              </div>
+            )}
+
             <p className="text-sm text-muted-foreground mb-4">
               Seu link está pronto e configurado.
             </p>
@@ -207,14 +169,14 @@ export function ShareQueryModal() {
           </div>
         )}
 
-        <DialogFooter>
+        <DialogFooter className="sm:justify-end gap-2">
           {!generatedId ? (
             <>
-              <Button variant="ghost" onClick={() => setOpen(false)}>
+              <Button variant="outline" onClick={() => setOpen(false)}>
                 Cancelar
               </Button>
-              <Button onClick={handleGenerate} disabled={loading || !prompt || !content}>
-                {loading ? 'Gerando...' : 'Gerar Link Seguro'}
+              <Button onClick={handleGenerate} disabled={loading} variant="destructive">
+                {loading ? 'Gerando...' : 'Gerar Link'}
               </Button>
             </>
           ) : (
