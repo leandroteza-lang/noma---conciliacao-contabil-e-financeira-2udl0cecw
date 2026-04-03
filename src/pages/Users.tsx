@@ -100,7 +100,7 @@ const schema = z.object({
   department_id: z.string().optional().nullable().or(z.literal('')),
   status: z.boolean().default(true),
   companies: z.array(z.string()).default([]),
-  permissions: z.array(z.string()).default(['all']),
+  permissions: z.array(z.string()).default([]),
   role: z.enum(['admin', 'supervisor', 'collaborator', 'client_user']).default('collaborator'),
 })
 type FormData = z.infer<typeof schema>
@@ -309,10 +309,7 @@ export default function UsersPage() {
         status: data.status,
         role: data.role,
         permissions:
-          Array.isArray(data.permissions) && data.permissions.length > 0
-            ? data.permissions
-            : ['all'],
-        user_id: user.id,
+          Array.isArray(data.permissions) && data.permissions.length > 0 ? data.permissions : [],
         avatar_url: uploadedUrl,
       } as any
 
@@ -333,7 +330,6 @@ export default function UsersPage() {
           .from('cadastro_usuarios')
           .update(payload)
           .eq('id', editingId)
-          .eq('user_id', user.id)
         if (error) throw error
       } else {
         if (data.cpf) {
@@ -426,7 +422,7 @@ export default function UsersPage() {
               permissions:
                 Array.isArray(data.permissions) && data.permissions.length > 0
                   ? data.permissions
-                  : ['all'],
+                  : [],
               avatar_url: uploadedUrl,
             })
             .eq('id', empId)
@@ -482,7 +478,6 @@ export default function UsersPage() {
           deletion_requested_by: user?.id,
         })
         .eq('id', id)
-        .eq('user_id', user?.id)
       if (error) throw error
       toast({
         title: 'Enviado para Aprovação',
@@ -506,7 +501,6 @@ export default function UsersPage() {
         deletion_requested_by: user?.id,
       })
       .in('id', selectedIds)
-      .eq('user_id', user?.id)
 
     if (error) {
       toast({ title: 'Erro', description: error.message, variant: 'destructive' })
