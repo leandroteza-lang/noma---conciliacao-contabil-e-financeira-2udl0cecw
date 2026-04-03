@@ -96,7 +96,7 @@ export function ShareQueryModal() {
       if (data?.name) userName = data.name.toUpperCase()
     }
 
-    const message = `Olá! **${userName}** compartilhou um acesso seguro com você. Acesse pelo link: ${url}`
+    const message = `*Gestão de Contas - Consulta Compartilhada* 🔒\n\nOlá! *${userName}* compartilhou um documento seguro com você.\n\n📄 *Assunto:* ${prompt}\n🔗 *Acessar agora:* ${url}\n\n_Aviso: Este é um link de acesso restrito._`
 
     navigator.clipboard.writeText(message)
     setCopied(true)

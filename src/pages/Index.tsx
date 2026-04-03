@@ -40,6 +40,8 @@ export default function Index() {
     bank_code: '',
     agency: '',
     account_number: '',
+    check_digit: '',
+    account_type: '',
     classification: '',
   })
 
@@ -59,6 +61,8 @@ export default function Index() {
         banco: a.bank_code,
         agencia: a.agency,
         numeroConta: a.account_number,
+        digitoConta: a.check_digit,
+        tipoConta: a.account_type,
         classificacao: a.classification,
       }))
       setAccounts(mapped)
@@ -105,6 +109,8 @@ export default function Index() {
         bank_code: '',
         agency: '',
         account_number: '',
+        check_digit: '',
+        account_type: '',
         classification: '',
       })
       fetchData()
@@ -114,7 +120,12 @@ export default function Index() {
   const filteredData = accounts.filter(
     (a) =>
       (a.descricao?.toLowerCase() || '').includes(search.toLowerCase()) ||
-      (a.contaContabil?.toLowerCase() || '').includes(search.toLowerCase()),
+      (a.contaContabil?.toLowerCase() || '').includes(search.toLowerCase()) ||
+      (a.banco?.toLowerCase() || '').includes(search.toLowerCase()) ||
+      (a.agencia?.toLowerCase() || '').includes(search.toLowerCase()) ||
+      (a.numeroConta?.toLowerCase() || '').includes(search.toLowerCase()) ||
+      (a.tipoConta?.toLowerCase() || '').includes(search.toLowerCase()) ||
+      (a.classificacao?.toLowerCase() || '').includes(search.toLowerCase()),
   )
 
   return (
@@ -174,9 +185,13 @@ export default function Index() {
                           ? 'agency'
                           : field === 'numeroConta'
                             ? 'account_number'
-                            : field === 'classificacao'
-                              ? 'classification'
-                              : field
+                            : field === 'digitoConta'
+                              ? 'check_digit'
+                              : field === 'tipoConta'
+                                ? 'account_type'
+                                : field === 'classificacao'
+                                  ? 'classification'
+                                  : field
                 const { error } = await supabase
                   .from('bank_accounts')
                   .update({ [dbField]: val })
@@ -247,12 +262,37 @@ export default function Index() {
                 />
               </div>
             </div>
-            <div className="space-y-2">
-              <Label>Número da Conta</Label>
-              <Input
-                value={newAccount.account_number}
-                onChange={(e) => setNewAccount({ ...newAccount, account_number: e.target.value })}
-              />
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Número da Conta</Label>
+                <Input
+                  value={newAccount.account_number}
+                  onChange={(e) => setNewAccount({ ...newAccount, account_number: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Dígito</Label>
+                <Input
+                  value={newAccount.check_digit}
+                  onChange={(e) => setNewAccount({ ...newAccount, check_digit: e.target.value })}
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Tipo de Conta</Label>
+                <Input
+                  value={newAccount.account_type}
+                  onChange={(e) => setNewAccount({ ...newAccount, account_type: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Classificação</Label>
+                <Input
+                  value={newAccount.classification}
+                  onChange={(e) => setNewAccount({ ...newAccount, classification: e.target.value })}
+                />
+              </div>
             </div>
           </div>
           <DialogFooter>

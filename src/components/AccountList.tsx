@@ -35,10 +35,10 @@ import { useToast } from '@/hooks/use-toast'
 import { supabase } from '@/lib/supabase/client'
 
 interface Props {
-  accounts: Account[]
+  accounts: any[]
   organizations: Organization[]
   onDelete: (id: string) => void
-  onUpdateInline?: (id: string, field: keyof Account, value: string) => Promise<boolean>
+  onUpdateInline?: (id: string, field: string, value: string) => Promise<boolean>
 }
 
 const getTheme = (name: string | null | undefined) => {
@@ -162,17 +162,17 @@ function EditableCell({
 }
 
 export function AccountList({ accounts, organizations, onDelete, onUpdateInline }: Props) {
-  const [editing, setEditing] = useState<{ id: string; field: keyof Account } | null>(null)
+  const [editing, setEditing] = useState<{ id: string; field: string } | null>(null)
   const [selectedIds, setSelectedIds] = useState<string[]>([])
-  const [editModalAccount, setEditModalAccount] = useState<Account | null>(null)
+  const [editModalAccount, setEditModalAccount] = useState<any | null>(null)
   const [isSaving, setIsSaving] = useState(false)
   const [sortConfig, setSortConfig] = useState<{
-    key: keyof Account
+    key: string
     direction: 'asc' | 'desc'
   } | null>(null)
   const { toast } = useToast()
 
-  const handleSort = (key: keyof Account) => {
+  const handleSort = (key: string) => {
     let direction: 'asc' | 'desc' = 'asc'
     if (sortConfig && sortConfig.key === key && sortConfig.direction === 'asc') direction = 'desc'
     setSortConfig({ key, direction })
@@ -182,16 +182,18 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
     let sortable = [...accounts]
     if (sortConfig !== null) {
       sortable.sort((a, b) => {
-        let aVal = a[sortConfig.key] as string
-        let bVal = b[sortConfig.key] as string
+        let aVal = a[sortConfig.key]
+        let bVal = b[sortConfig.key]
 
         if (sortConfig.key === 'organization_id') {
           aVal = organizations.find((o: any) => o.id === a.organization_id)?.name || ''
           bVal = organizations.find((o: any) => o.id === b.organization_id)?.name || ''
         }
 
-        if (!aVal) aVal = ''
-        if (!bVal) bVal = ''
+        if (aVal === undefined || aVal === null) aVal = ''
+        if (bVal === undefined || bVal === null) bVal = ''
+        aVal = String(aVal)
+        bVal = String(bVal)
 
         if (aVal.toLowerCase() < bVal.toLowerCase()) return sortConfig.direction === 'asc' ? -1 : 1
         if (aVal.toLowerCase() > bVal.toLowerCase()) return sortConfig.direction === 'asc' ? 1 : -1
@@ -245,6 +247,8 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
           Banco: acc.banco || '-',
           Agência: acc.agencia || '-',
           Número: acc.numeroConta || '-',
+          Dígito: acc.digitoConta || '-',
+          'Tipo Conta': acc.tipoConta || '-',
           Classificação: acc.classificacao || '-',
         })),
       }
@@ -295,7 +299,7 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
     }
   }
 
-  const handleEditCommit = async (id: string, field: keyof Account, val: string) => {
+  const handleEditCommit = async (id: string, field: string, val: string) => {
     if (!val && field !== 'organization_id') {
       // Optional: add validation here if needed, but proceeding with empty string if intended
     }
@@ -320,6 +324,8 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
           bank_code: editModalAccount.banco,
           agency: editModalAccount.agencia,
           account_number: editModalAccount.numeroConta,
+          check_digit: editModalAccount.digitoConta,
+          account_type: editModalAccount.tipoConta,
           classification: editModalAccount.classificacao,
         })
         .eq('id', editModalAccount.id)
@@ -341,6 +347,9 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
           <Building className="h-8 w-8 text-muted-foreground/70" />
         </div>
         <p className="text-lg font-semibold text-foreground">Nenhuma conta encontrada</p>
+        <p className="text-sm text-muted-foreground mt-1">
+          Cadastre uma nova conta ou ajuste os filtros.
+        </p>
       </div>
     )
   }
@@ -446,7 +455,23 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
                 onClick={() => handleSort('numeroConta')}
               >
                 <div className="flex items-center gap-2">
-                  Número Conta <ArrowUpDown className="h-3 w-3 text-muted-foreground" />
+                  Conta <ArrowUpDown className="h-3 w-3 text-muted-foreground" />
+                </div>
+              </TableHead>
+              <TableHead
+                className="cursor-pointer hover:bg-muted"
+                onClick={() => handleSort('digitoConta')}
+              >
+                <div className="flex items-center gap-2">
+                  Dígito <ArrowUpDown className="h-3 w-3 text-muted-foreground" />
+                </div>
+              </TableHead>
+              <TableHead
+                className="cursor-pointer hover:bg-muted"
+                onClick={() => handleSort('tipoConta')}
+              >
+                <div className="flex items-center gap-2">
+                  Tipo <ArrowUpDown className="h-3 w-3 text-muted-foreground" />
                 </div>
               </TableHead>
               <TableHead
@@ -480,6 +505,8 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
                     'banco',
                     'agencia',
                     'numeroConta',
+                    'digitoConta',
+                    'tipoConta',
                     'classificacao',
                   ] as const
                 ).map((field) => (
@@ -647,23 +674,45 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
                     }
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label>Número da Conta</Label>
-                  <Input
-                    value={editModalAccount.numeroConta || ''}
-                    onChange={(e) =>
-                      setEditModalAccount({ ...editModalAccount, numeroConta: e.target.value })
-                    }
-                  />
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Número da Conta</Label>
+                    <Input
+                      value={editModalAccount.numeroConta || ''}
+                      onChange={(e) =>
+                        setEditModalAccount({ ...editModalAccount, numeroConta: e.target.value })
+                      }
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Dígito</Label>
+                    <Input
+                      value={editModalAccount.digitoConta || ''}
+                      onChange={(e) =>
+                        setEditModalAccount({ ...editModalAccount, digitoConta: e.target.value })
+                      }
+                    />
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <Label>Classificação</Label>
-                  <Input
-                    value={editModalAccount.classificacao || ''}
-                    onChange={(e) =>
-                      setEditModalAccount({ ...editModalAccount, classificacao: e.target.value })
-                    }
-                  />
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Tipo Conta</Label>
+                    <Input
+                      value={editModalAccount.tipoConta || ''}
+                      onChange={(e) =>
+                        setEditModalAccount({ ...editModalAccount, tipoConta: e.target.value })
+                      }
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Classificação</Label>
+                    <Input
+                      value={editModalAccount.classificacao || ''}
+                      onChange={(e) =>
+                        setEditModalAccount({ ...editModalAccount, classificacao: e.target.value })
+                      }
+                    />
+                  </div>
                 </div>
               </div>
               <div className="flex justify-end gap-3 pt-4 border-t border-border mt-4">

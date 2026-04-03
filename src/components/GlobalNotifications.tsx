@@ -1,11 +1,10 @@
 import { useEffect, useRef } from 'react'
 import { useAuth } from '@/hooks/use-auth'
 import { supabase } from '@/lib/supabase/client'
-import { useToast } from '@/hooks/use-toast'
+import { toast } from 'sonner'
 
 export function GlobalNotifications() {
   const { user } = useAuth()
-  const { toast } = useToast()
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const notifiedQueriesRef = useRef<Set<string>>(new Set())
 
@@ -59,10 +58,10 @@ export function GlobalNotifications() {
               audioRef.current.play().catch((e) => console.error('Audio play failed:', e))
             }
 
-            toast({
-              title: '🔔 Novo Acesso!',
+            toast.success('Novo Acesso!', {
               description: `O link "${newRecord.prompt}" foi acessado pela primeira vez.`,
               duration: 10000,
+              icon: '🔔',
             })
           }
         },
@@ -72,7 +71,7 @@ export function GlobalNotifications() {
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [user, toast])
+  }, [user])
 
   return null
 }
