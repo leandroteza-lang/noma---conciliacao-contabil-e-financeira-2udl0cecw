@@ -504,10 +504,10 @@ export default function Layout() {
         <SidebarHeader className="border-b border-sidebar-border px-4 py-4 h-16 flex justify-center">
           <div className="flex items-center gap-3 overflow-hidden w-full">
             <div className="bg-primary p-1.5 rounded-lg text-primary-foreground shadow-sm flex items-center justify-center shrink-0">
-              <Wallet className="size-5" />
+              <Building2 className="size-5" />
             </div>
             <span className="font-bold text-sidebar-foreground tracking-tight truncate group-data-[collapsible=offcanvas]:hidden">
-              Gestão de Contas
+              Auditoria NOMA
             </span>
           </div>
         </SidebarHeader>
@@ -703,10 +703,10 @@ export default function Layout() {
             <SidebarTrigger className="-ml-2 text-muted-foreground" />
             <div className="flex items-center gap-3 md:hidden ml-2">
               <div className="bg-primary p-1.5 rounded-lg text-primary-foreground shadow-sm flex items-center justify-center">
-                <Wallet className="size-5" />
+                <Building2 className="size-5" />
               </div>
               <span className="font-bold text-foreground tracking-tight truncate">
-                Gestão de Contas
+                Auditoria NOMA
               </span>
             </div>
           </div>

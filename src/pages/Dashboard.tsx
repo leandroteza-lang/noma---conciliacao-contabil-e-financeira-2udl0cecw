@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import {
   Select,
   SelectContent,
@@ -38,10 +39,10 @@ import {
   Pie,
   Cell,
 } from 'recharts'
-import { Download, FileText, Loader2 } from 'lucide-react'
+import { Download, FileText, Loader2, AlertTriangle } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 
-const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#ffc658']
+const COLORS = ['#e30613', '#111827', '#4b5563', '#9ca3af', '#6b7280', '#374151']
 
 export default function Dashboard() {
   const { user } = useAuth()
@@ -201,31 +202,65 @@ export default function Dashboard() {
   if (loading)
     return (
       <div className="flex justify-center p-8">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     )
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Dashboard Gerencial</h1>
-        <p className="text-slate-500 mt-2">Visão consolidada da saúde financeira e mapeamentos.</p>
+        <h1 className="text-3xl font-bold text-foreground tracking-tight">
+          Painel de Auditoria e Conciliação ERP
+        </h1>
+        <p className="text-muted-foreground mt-2">
+          Visão consolidada da saúde financeira, processamento de dados do ERP e detecção de
+          divergências.
+        </p>
       </div>
 
-      <div className="flex flex-col sm:flex-row gap-4 bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+      <Alert
+        variant="destructive"
+        className="bg-destructive/5 border-destructive/30 text-destructive"
+      >
+        <AlertTriangle className="h-5 w-5" />
+        <AlertTitle className="text-lg font-bold flex items-center gap-2">
+          Detecção de Divergências ERP
+          <span className="bg-destructive text-destructive-foreground text-xs px-2 py-0.5 rounded-full font-bold">
+            ALERTA
+          </span>
+        </AlertTitle>
+        <AlertDescription className="mt-2 text-sm leading-relaxed text-destructive/90">
+          O processamento analítico detectou possíveis{' '}
+          <strong>inconsistências de conciliação</strong> entre os lançamentos contábeis extraídos e
+          os movimentos financeiros atuais. Verifique a listagem detalhada de Lançamentos para
+          auditar os valores dos Centros de Custo Industriais.
+        </AlertDescription>
+      </Alert>
+
+      <div className="flex flex-col sm:flex-row gap-4 bg-card p-4 rounded-xl border border-border shadow-sm">
         <div className="flex gap-2 items-center">
-          <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
-          <span className="text-slate-500 text-sm">até</span>
-          <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+          <Input
+            type="date"
+            value={startDate}
+            onChange={(e) => setStartDate(e.target.value)}
+            className="bg-background text-foreground"
+          />
+          <span className="text-muted-foreground text-sm">até</span>
+          <Input
+            type="date"
+            value={endDate}
+            onChange={(e) => setEndDate(e.target.value)}
+            className="bg-background text-foreground"
+          />
         </div>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-[180px]">
+          <SelectTrigger className="w-[180px] bg-background text-foreground">
             <SelectValue placeholder="Status" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Todos</SelectItem>
-            <SelectItem value="Concluído">Concluído</SelectItem>
-            <SelectItem value="Pendente">Pendente</SelectItem>
+            <SelectItem value="all">Todos Registros</SelectItem>
+            <SelectItem value="Concluído">Conciliado</SelectItem>
+            <SelectItem value="Pendente">Divergente (Pendente)</SelectItem>
           </SelectContent>
         </Select>
         <div className="flex-1" />
@@ -241,21 +276,21 @@ export default function Dashboard() {
           variant="default"
           onClick={() => handleExport('pdf')}
           disabled={exporting}
-          className="bg-blue-600 hover:bg-blue-700"
+          className="font-semibold"
         >
           {exporting ? (
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
           ) : (
             <Download className="mr-2 h-4 w-4" />
           )}{' '}
-          PDF
+          PDF Gerencial
         </Button>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Card>
+        <Card className="bg-card border-border shadow-sm">
           <CardHeader>
-            <CardTitle>Saldo por Conta Bancária</CardTitle>
+            <CardTitle>Saldo por Conta ERP</CardTitle>
           </CardHeader>
           <CardContent className="h-[300px]">
             {bankData.length ? (
@@ -278,104 +313,126 @@ export default function Dashboard() {
                 </PieChart>
               </ChartContainer>
             ) : (
-              <div className="h-full flex items-center justify-center text-slate-500">
-                Sem dados
+              <div className="h-full flex items-center justify-center text-muted-foreground">
+                Sem dados de extração
               </div>
             )}
           </CardContent>
         </Card>
 
-        <Card className="lg:col-span-2">
+        <Card className="lg:col-span-2 bg-card border-border shadow-sm">
           <CardHeader>
-            <CardTitle>Lançamentos por Centro de Custo</CardTitle>
+            <CardTitle>Processamento por Centro de Custo</CardTitle>
           </CardHeader>
           <CardContent className="h-[300px]">
             {costCenterData.length ? (
-              <ChartContainer config={{ value: { label: 'Valor', color: '#0088FE' } }}>
+              <ChartContainer config={{ value: { label: 'Valor', color: 'hsl(var(--primary))' } }}>
                 <BarChart
                   data={costCenterData}
                   margin={{ top: 10, right: 10, left: 10, bottom: 20 }}
                 >
-                  <CartesianGrid vertical={false} strokeDasharray="3 3" />
-                  <XAxis dataKey="name" tick={{ fontSize: 12 }} />
-                  <YAxis tick={{ fontSize: 12 }} />
+                  <CartesianGrid
+                    vertical={false}
+                    strokeDasharray="3 3"
+                    stroke="hsl(var(--border))"
+                  />
+                  <XAxis
+                    dataKey="name"
+                    tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
+                  />
+                  <YAxis tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }} />
                   <ChartTooltip content={<ChartTooltipContent />} />
                   <Bar dataKey="value" fill="var(--color-value)" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ChartContainer>
             ) : (
-              <div className="h-full flex items-center justify-center text-slate-500">
-                Sem dados
+              <div className="h-full flex items-center justify-center text-muted-foreground">
+                Sem dados de processamento
               </div>
             )}
           </CardContent>
         </Card>
 
-        <Card className="lg:col-span-3">
+        <Card className="lg:col-span-3 bg-card border-border shadow-sm">
           <CardHeader>
-            <CardTitle>Fluxo de Caixa Mensal</CardTitle>
+            <CardTitle>Auditoria de Fluxo Mensal</CardTitle>
           </CardHeader>
           <CardContent className="h-[300px]">
             {cashFlowData.length ? (
-              <ChartContainer config={{ value: { label: 'Fluxo', color: '#00C49F' } }}>
+              <ChartContainer
+                config={{ value: { label: 'Fluxo Auditado', color: 'hsl(var(--primary))' } }}
+              >
                 <LineChart
                   data={cashFlowData}
                   margin={{ top: 10, right: 10, left: 10, bottom: 20 }}
                 >
-                  <CartesianGrid vertical={false} strokeDasharray="3 3" />
-                  <XAxis dataKey="month" tick={{ fontSize: 12 }} />
-                  <YAxis tick={{ fontSize: 12 }} />
+                  <CartesianGrid
+                    vertical={false}
+                    strokeDasharray="3 3"
+                    stroke="hsl(var(--border))"
+                  />
+                  <XAxis
+                    dataKey="month"
+                    tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
+                  />
+                  <YAxis tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }} />
                   <ChartTooltip content={<ChartTooltipContent />} />
                   <Line
                     type="monotone"
                     dataKey="value"
                     stroke="var(--color-value)"
                     strokeWidth={3}
-                    dot={{ r: 4 }}
+                    dot={{ r: 4, fill: 'hsl(var(--background))', strokeWidth: 2 }}
                   />
                 </LineChart>
               </ChartContainer>
             ) : (
-              <div className="h-full flex items-center justify-center text-slate-500">
-                Sem dados
+              <div className="h-full flex items-center justify-center text-muted-foreground">
+                Sem dados processados
               </div>
             )}
           </CardContent>
         </Card>
       </div>
 
-      <Card>
+      <Card className="bg-card border-border shadow-sm">
         <CardHeader>
-          <CardTitle>Mapeamentos DE/PARA</CardTitle>
-          <CardDescription>Regras de contabilidade ativas.</CardDescription>
+          <CardTitle>Regras de Processamento Ativas (DE/PARA)</CardTitle>
+          <CardDescription>
+            Mapeamentos estruturados vinculando operação ao contábil.
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="rounded-md border overflow-hidden">
+          <div className="rounded-md border border-border overflow-hidden">
             <Table>
               <TableHeader>
-                <TableRow>
-                  <TableHead>Centro de Custo</TableHead>
-                  <TableHead>Conta Contábil</TableHead>
-                  <TableHead>Tipo</TableHead>
+                <TableRow className="bg-muted/50 hover:bg-muted/50">
+                  <TableHead>Centro de Custo (Fábrica/Logística)</TableHead>
+                  <TableHead>Conta Contábil (ERP)</TableHead>
+                  <TableHead>Mapeamento</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {mappings.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={3} className="text-center py-4 text-slate-500">
-                      Nenhum mapeamento.
+                    <TableCell colSpan={3} className="text-center py-6 text-muted-foreground">
+                      Nenhuma regra de extração ativa.
                     </TableCell>
                   </TableRow>
                 ) : (
                   mappings.map((m) => (
-                    <TableRow key={m.id}>
-                      <TableCell>
+                    <TableRow key={m.id} className="hover:bg-muted/30 transition-colors">
+                      <TableCell className="font-medium text-foreground">
                         {m.cost_center?.code} - {m.cost_center?.description}
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="text-muted-foreground">
                         {m.chart_account?.account_code} - {m.chart_account?.account_name}
                       </TableCell>
-                      <TableCell>{m.mapping_type}</TableCell>
+                      <TableCell>
+                        <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-primary/10 text-primary border border-primary/20">
+                          {m.mapping_type}
+                        </span>
+                      </TableCell>
                     </TableRow>
                   ))
                 )}

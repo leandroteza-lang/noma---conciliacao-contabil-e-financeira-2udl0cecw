@@ -1,4 +1,4 @@
-import { CheckCircle2, Shield, Lock, FileCode, Users, Quote, Star } from 'lucide-react'
+import { CheckCircle2, ShieldAlert, Lock, Database, Users, Quote, Factory } from 'lucide-react'
 
 export function LandingTrust() {
   return (
@@ -10,25 +10,25 @@ export function LandingTrust() {
               <div className="absolute inset-0 bg-gradient-to-r from-primary/20 to-transparent blur-3xl" />
               <div className="relative rounded-2xl border border-border bg-card p-6 shadow-2xl">
                 <h4 className="text-xl font-bold mb-6 text-foreground border-b border-border pb-4">
-                  Comparativo de Eficiência
+                  Eficiência na Auditoria Industrial
                 </h4>
                 <div className="space-y-6">
                   <div className="space-y-2">
                     <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Antes: Planilhas Manuais</span>
-                      <span className="text-foreground font-bold">12 Horas</span>
+                      <span className="text-muted-foreground">Conferência Manual (Anterior)</span>
+                      <span className="text-foreground font-bold">Dias</span>
                     </div>
                     <div className="h-3 rounded-full bg-muted overflow-hidden">
-                      <div className="h-full bg-destructive/80 w-full" />
+                      <div className="h-full bg-gray-500 w-[90%]" />
                     </div>
                   </div>
                   <div className="space-y-2">
                     <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Depois: App com VBAs IA</span>
-                      <span className="text-primary font-bold">15 Minutos</span>
+                      <span className="text-muted-foreground">Sistema NOMA Conciliação</span>
+                      <span className="text-primary font-bold">Minutos</span>
                     </div>
                     <div className="h-3 rounded-full bg-muted overflow-hidden">
-                      <div className="h-full bg-primary w-[5%]" />
+                      <div className="h-full bg-primary w-[15%]" />
                     </div>
                   </div>
                 </div>
@@ -36,21 +36,19 @@ export function LandingTrust() {
             </div>
             <div className="flex-1 space-y-6">
               <h2 className="text-3xl md:text-4xl font-bold">
-                De Planilhas Manuais para Automação VBA Inteligente
+                O Motor que Mantém a Gestão no Caminho Certo
               </h2>
               <p className="text-muted-foreground text-lg">
-                Imagine seu time fechando o mês sem noites em claro — VBAs migrados para ação
-                instantânea com integrações seguras.
+                Projetado para lidar com o volume e a complexidade de uma fabricante líder,
+                garantindo que nenhum centavo fique sem rastreabilidade.
               </p>
               <ul className="space-y-4 pt-4">
                 <li className="flex items-start gap-3">
                   <CheckCircle2 className="w-6 h-6 text-primary shrink-0 mt-1" />
                   <div>
-                    <strong className="block text-foreground">
-                      VBAs Testados com IA para Previsões
-                    </strong>
+                    <strong className="block text-foreground">Rastreio Preciso do ERP</strong>
                     <span className="text-muted-foreground text-sm">
-                      Seus scripts evoluídos com aprendizado de máquina contínuo.
+                      Conexão sólida com os lançamentos originais da operação.
                     </span>
                   </div>
                 </li>
@@ -58,10 +56,10 @@ export function LandingTrust() {
                   <CheckCircle2 className="w-6 h-6 text-primary shrink-0 mt-1" />
                   <div>
                     <strong className="block text-foreground">
-                      Integrações Seguras sem API Complexa
+                      Análise de Múltiplos Centros de Custo
                     </strong>
                     <span className="text-muted-foreground text-sm">
-                      Conecte bancos e sistemas fiscais com poucos cliques.
+                      Trata a complexidade desde a produção até a logística.
                     </span>
                   </div>
                 </li>
@@ -69,10 +67,10 @@ export function LandingTrust() {
                   <CheckCircle2 className="w-6 h-6 text-primary shrink-0 mt-1" />
                   <div>
                     <strong className="block text-foreground">
-                      Customização para Relatórios Gerenciais
+                      Resolução Rápida de Divergências
                     </strong>
                     <span className="text-muted-foreground text-sm">
-                      Dashboard desenhado para as necessidades exatas da diretoria.
+                      Foca a atenção da equipe exatamente onde o ajuste é necessário.
                     </span>
                   </div>
                 </li>
@@ -84,49 +82,46 @@ export function LandingTrust() {
 
       <section id="benefits" className="py-20 bg-muted/30 border-y border-border">
         <div className="container mx-auto px-4 text-center">
-          <h2 className="text-3xl md:text-4xl font-bold mb-4">
-            Seguro e Simples para Seu Escritório
-          </h2>
+          <h2 className="text-3xl md:text-4xl font-bold mb-4">Feito para a Rotina da Molas Noma</h2>
           <p className="text-muted-foreground text-lg max-w-2xl mx-auto mb-16">
-            Sem interrupções no seu fluxo — testamos VBAs para o seu escritório e garantimos total
-            conformidade fiscal.
+            Uma plataforma de auditoria que respeita a confidencialidade e a escala do seu negócio.
           </p>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
             <div className="flex flex-col items-center text-center space-y-4">
               <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
-                <FileCode className="w-8 h-8 text-primary" />
+                <Database className="w-8 h-8 text-primary" />
               </div>
-              <h3 className="text-xl font-bold">Migração Fácil</h3>
+              <h3 className="text-xl font-bold">Base Integrada</h3>
               <p className="text-muted-foreground text-sm">
-                Importe códigos da planilha atual em 1 clique, sem perda de inteligência.
+                Importação unificada dos dados gerenciais para uma única fonte da verdade.
               </p>
             </div>
             <div className="flex flex-col items-center text-center space-y-4">
-              <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
-                <Shield className="w-8 h-8 text-primary" />
+              <div className="w-16 h-16 rounded-full bg-destructive/10 flex items-center justify-center border border-destructive/20">
+                <ShieldAlert className="w-8 h-8 text-destructive" />
               </div>
-              <h3 className="text-xl font-bold">Zero Erros Garantidos</h3>
+              <h3 className="text-xl font-bold">Foco no Erro</h3>
               <p className="text-muted-foreground text-sm">
-                Validações IA nos VBAs e backups automáticos para segurança total.
+                Interface orientada a destacar discrepâncias antes do fechamento do mês.
               </p>
             </div>
             <div className="flex flex-col items-center text-center space-y-4">
               <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
                 <Users className="w-8 h-8 text-primary" />
               </div>
-              <h3 className="text-xl font-bold">Suporte Interno</h3>
+              <h3 className="text-xl font-bold">Gestão de Equipe</h3>
               <p className="text-muted-foreground text-sm">
-                Treinamento rápido de 15 minutos para o time, totalmente compatível.
+                Níveis de acesso específicos para analistas, supervisores e diretoria.
               </p>
             </div>
             <div className="flex flex-col items-center text-center space-y-4">
               <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
                 <Lock className="w-8 h-8 text-primary" />
               </div>
-              <h3 className="text-xl font-bold">Conformidade Total</h3>
+              <h3 className="text-xl font-bold">Segurança Total</h3>
               <p className="text-muted-foreground text-sm">
-                Atualizações fiscais automáticas mantendo os scripts otimizados.
+                Ambiente fechado e protegido para a análise dos dados mais sensíveis da empresa.
               </p>
             </div>
           </div>
@@ -135,32 +130,30 @@ export function LandingTrust() {
 
       <section className="py-20 relative">
         <div className="container mx-auto px-4">
-          <h2 className="text-3xl md:text-4xl font-bold mb-16 text-center">O Que Nosso Time Diz</h2>
+          <h2 className="text-3xl md:text-4xl font-bold mb-16 text-center">Impacto Interno</h2>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {[
               {
-                name: 'João Carlos',
-                role: 'Contador Sênior',
-                text: 'Migrei meus VBAs de conciliação em 10 minutos e eliminei os erros manuais. Agora meu foco é 100% na análise estratégica dos clientes.',
+                name: 'Gestão Contábil',
+                role: 'Molas Noma',
+                text: 'A etapa de detecção de divergências mudou o nosso fechamento. O que antes exigia conferência linha a linha, agora nos é entregue processado e destacado em tela.',
               },
               {
-                name: 'Maria Fernanda',
-                role: 'Analista Financeira',
-                text: 'Os dashboards gerados em tempo real a partir das nossas antigas macros mudaram completamente a forma como tomamos decisões.',
+                name: 'Diretoria Financeira',
+                role: 'NOMA Truck Parts',
+                text: 'Ter um painel gerencial que espelha exatamente a realidade da nossa fábrica e aponta onde os números do ERP destoam do financeiro é fundamental.',
               },
               {
-                name: 'Equipe de Fechamento',
-                role: 'Operações Internas',
-                text: 'As integrações automáticas nos salvaram dezenas de horas todo mês. O fechamento que levava dias agora é resolvido em poucos cliques.',
+                name: 'Operações Internas',
+                role: 'Equipe de Análise',
+                text: 'O mapeamento DE/PARA simplificou a tradução de centros de custo da produção para a linguagem contábil. A precisão aumentou drasticamente.',
               },
             ].map((item, i) => (
               <div key={i} className="p-8 rounded-2xl bg-card border border-border relative">
                 <Quote className="absolute top-6 right-6 w-8 h-8 text-primary/20" />
                 <div className="flex items-center gap-1 mb-6">
-                  {[1, 2, 3, 4, 5].map((star) => (
-                    <Star key={star} className="w-4 h-4 text-primary fill-primary" />
-                  ))}
+                  <Factory className="w-5 h-5 text-primary" />
                 </div>
                 <p className="text-muted-foreground mb-8 relative z-10 italic">"{item.text}"</p>
                 <div className="flex items-center gap-4">

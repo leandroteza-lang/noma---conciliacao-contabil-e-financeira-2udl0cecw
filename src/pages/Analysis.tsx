@@ -65,7 +65,11 @@ export default function Analysis() {
         if (movError) throw movError
         setMovements(movData || [])
       } catch (error: any) {
-        toast({ title: 'Erro ao buscar dados', description: error.message, variant: 'destructive' })
+        toast({
+          title: 'Erro ao extrair dados',
+          description: error.message,
+          variant: 'destructive',
+        })
       } finally {
         setLoading(false)
       }
@@ -121,7 +125,7 @@ export default function Analysis() {
     })
 
     const ccMap = filtered.reduce((acc: any, curr: any) => {
-      const name = curr.cost_center?.description || 'Sem Centro'
+      const name = curr.cost_center?.description || 'Desconhecido'
       acc[name] = (acc[name] || 0) + Number(curr.amount || 0)
       return acc
     }, {})
@@ -173,15 +177,15 @@ export default function Analysis() {
       const a = document.createElement('a')
       if (format === 'excel' && data.csv) {
         a.href = URL.createObjectURL(new Blob([data.csv], { type: 'text/csv' }))
-        a.download = 'analises.csv'
+        a.download = 'analises_processadas.csv'
       } else if (format === 'pdf' && data.pdf) {
         a.href = data.pdf
-        a.download = 'analises.pdf'
+        a.download = 'analises_processadas.pdf'
       }
       a.click()
-      toast({ title: 'Sucesso', description: 'Arquivo gerado com sucesso.' })
+      toast({ title: 'Sucesso', description: 'Auditoria gerada com sucesso.' })
     } catch (e: any) {
-      toast({ title: 'Erro', description: e.message, variant: 'destructive' })
+      toast({ title: 'Falha no processamento', description: e.message, variant: 'destructive' })
     } finally {
       setExporting(false)
     }
@@ -190,7 +194,7 @@ export default function Analysis() {
   if (loading) {
     return (
       <div className="flex justify-center p-8">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     )
   }
@@ -198,32 +202,46 @@ export default function Analysis() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Análises Gerenciais</h1>
-        <p className="text-slate-500 mt-2">Indicadores financeiros e desempenho por área.</p>
+        <h1 className="text-3xl font-bold text-foreground tracking-tight">
+          Processamento e Análise Gerencial
+        </h1>
+        <p className="text-muted-foreground mt-2">
+          Cruzamento de indicadores operacionais e desempenho por área industrial.
+        </p>
       </div>
 
-      <div className="flex flex-col sm:flex-row flex-wrap gap-4 bg-white p-4 rounded-xl border border-slate-200 shadow-sm items-center">
+      <div className="flex flex-col sm:flex-row flex-wrap gap-4 bg-card p-4 rounded-xl border border-border shadow-sm items-center">
         <div className="flex gap-2 items-center">
-          <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
-          <span className="text-slate-500 text-sm">até</span>
-          <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+          <Input
+            type="date"
+            value={startDate}
+            onChange={(e) => setStartDate(e.target.value)}
+            className="bg-background"
+          />
+          <span className="text-muted-foreground text-sm">até</span>
+          <Input
+            type="date"
+            value={endDate}
+            onChange={(e) => setEndDate(e.target.value)}
+            className="bg-background"
+          />
         </div>
         <Select value={movementType} onValueChange={setMovementType}>
-          <SelectTrigger className="w-[160px]">
-            <SelectValue placeholder="Tipo" />
+          <SelectTrigger className="w-[160px] bg-background">
+            <SelectValue placeholder="Classificação" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Todos Tipos</SelectItem>
-            <SelectItem value="revenue">Receitas</SelectItem>
-            <SelectItem value="expense">Despesas</SelectItem>
+            <SelectItem value="all">Todas</SelectItem>
+            <SelectItem value="revenue">Entradas</SelectItem>
+            <SelectItem value="expense">Saídas</SelectItem>
           </SelectContent>
         </Select>
         <Select value={selectedCostCenter} onValueChange={setSelectedCostCenter}>
-          <SelectTrigger className="w-[200px]">
-            <SelectValue placeholder="Centro de Custo" />
+          <SelectTrigger className="w-[200px] bg-background">
+            <SelectValue placeholder="Filtrar Centro Custo" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Todos Centros</SelectItem>
+            <SelectItem value="all">Fábrica Completa</SelectItem>
             {costCenters.map((cc) => (
               <SelectItem key={cc.id} value={cc.id}>
                 {cc.description}
@@ -238,120 +256,158 @@ export default function Analysis() {
           ) : (
             <FileText className="mr-2 h-4 w-4" />
           )}{' '}
-          CSV
+          Exportar CSV
         </Button>
-        <Button
-          onClick={() => handleExport('pdf')}
-          disabled={exporting}
-          className="bg-blue-600 hover:bg-blue-700"
-        >
+        <Button onClick={() => handleExport('pdf')} disabled={exporting} className="font-semibold">
           {exporting ? (
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
           ) : (
             <Download className="mr-2 h-4 w-4" />
           )}{' '}
-          PDF
+          Gerar PDF
         </Button>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
+        <Card className="bg-card border-border shadow-sm">
           <CardHeader>
-            <CardTitle>Saldo por Centro de Custo</CardTitle>
+            <CardTitle>Alocação por Setor Produtivo</CardTitle>
           </CardHeader>
           <CardContent className="h-[300px]">
             {processedData.costCenterData.length ? (
-              <ChartContainer config={{ value: { label: 'Valor', color: '#0088FE' } }}>
+              <ChartContainer config={{ value: { label: 'Valor', color: 'hsl(var(--primary))' } }}>
                 <BarChart
                   data={processedData.costCenterData}
                   layout="vertical"
                   margin={{ left: 20 }}
                 >
-                  <CartesianGrid horizontal={false} strokeDasharray="3 3" />
-                  <XAxis type="number" tick={{ fontSize: 12 }} />
-                  <YAxis dataKey="name" type="category" tick={{ fontSize: 12 }} width={100} />
+                  <CartesianGrid
+                    horizontal={false}
+                    strokeDasharray="3 3"
+                    stroke="hsl(var(--border))"
+                  />
+                  <XAxis
+                    type="number"
+                    tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
+                  />
+                  <YAxis
+                    dataKey="name"
+                    type="category"
+                    tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
+                    width={100}
+                  />
                   <ChartTooltip content={<ChartTooltipContent />} />
                   <Bar dataKey="value" fill="var(--color-value)" radius={[0, 4, 4, 0]} />
                 </BarChart>
               </ChartContainer>
             ) : (
-              <div className="h-full flex items-center justify-center text-slate-500">
-                Sem dados
+              <div className="h-full flex items-center justify-center text-muted-foreground">
+                Dados insuficientes para análise
               </div>
             )}
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="bg-card border-border shadow-sm">
           <CardHeader>
-            <CardTitle>Comparativo Receitas vs Despesas</CardTitle>
+            <CardTitle>Auditoria Comparativa (Entradas/Saídas)</CardTitle>
           </CardHeader>
           <CardContent className="h-[300px]">
             {processedData.revExpData.length ? (
               <ChartContainer
                 config={{
-                  receita: { label: 'Receitas', color: '#10b981' },
-                  despesa: { label: 'Despesas', color: '#ef4444' },
+                  receita: { label: 'Entradas', color: 'hsl(var(--primary))' },
+                  despesa: { label: 'Saídas (Custos)', color: 'hsl(var(--muted-foreground))' },
                 }}
               >
                 <BarChart data={processedData.revExpData}>
-                  <CartesianGrid vertical={false} strokeDasharray="3 3" />
-                  <XAxis dataKey="month" tick={{ fontSize: 12 }} />
-                  <YAxis tick={{ fontSize: 12 }} />
+                  <CartesianGrid
+                    vertical={false}
+                    strokeDasharray="3 3"
+                    stroke="hsl(var(--border))"
+                  />
+                  <XAxis
+                    dataKey="month"
+                    tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
+                  />
+                  <YAxis tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }} />
                   <ChartTooltip content={<ChartTooltipContent />} />
                   <ChartLegend content={<ChartLegendContent />} />
                   <Bar dataKey="receita" fill="var(--color-receita)" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="despesa" fill="var(--color-despesa)" radius={[4, 4, 0, 0]} />
+                  <Bar
+                    dataKey="despesa"
+                    fill="var(--color-despesa)"
+                    radius={[4, 4, 0, 0]}
+                    opacity={0.6}
+                  />
                 </BarChart>
               </ChartContainer>
             ) : (
-              <div className="h-full flex items-center justify-center text-slate-500">
-                Sem dados
+              <div className="h-full flex items-center justify-center text-muted-foreground">
+                Dados insuficientes para análise
               </div>
             )}
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="bg-card border-border shadow-sm">
           <CardHeader>
-            <CardTitle>Fluxo de Caixa Mensal</CardTitle>
+            <CardTitle>Extrato Dinâmico Mensal</CardTitle>
           </CardHeader>
           <CardContent className="h-[300px]">
             {processedData.cashFlowData.length ? (
-              <ChartContainer config={{ value: { label: 'Fluxo', color: '#3b82f6' } }}>
+              <ChartContainer
+                config={{ value: { label: 'Total Processado', color: 'hsl(var(--primary))' } }}
+              >
                 <LineChart data={processedData.cashFlowData}>
-                  <CartesianGrid vertical={false} strokeDasharray="3 3" />
-                  <XAxis dataKey="month" tick={{ fontSize: 12 }} />
-                  <YAxis tick={{ fontSize: 12 }} />
+                  <CartesianGrid
+                    vertical={false}
+                    strokeDasharray="3 3"
+                    stroke="hsl(var(--border))"
+                  />
+                  <XAxis
+                    dataKey="month"
+                    tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
+                  />
+                  <YAxis tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }} />
                   <ChartTooltip content={<ChartTooltipContent />} />
                   <Line
                     type="monotone"
                     dataKey="value"
                     stroke="var(--color-value)"
                     strokeWidth={3}
-                    dot={{ r: 4 }}
+                    dot={{ r: 4, fill: 'hsl(var(--background))', strokeWidth: 2 }}
                   />
                 </LineChart>
               </ChartContainer>
             ) : (
-              <div className="h-full flex items-center justify-center text-slate-500">
-                Sem dados
+              <div className="h-full flex items-center justify-center text-muted-foreground">
+                Dados insuficientes para análise
               </div>
             )}
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="bg-card border-border shadow-sm">
           <CardHeader>
-            <CardTitle>Movimentações por Período</CardTitle>
+            <CardTitle>Volume de Lançamentos Diários</CardTitle>
           </CardHeader>
           <CardContent className="h-[300px]">
             {processedData.periodData.length ? (
-              <ChartContainer config={{ value: { label: 'Valor', color: '#8b5cf6' } }}>
+              <ChartContainer
+                config={{ value: { label: 'Volume Detectado', color: 'hsl(var(--primary))' } }}
+              >
                 <LineChart data={processedData.periodData}>
-                  <CartesianGrid vertical={false} strokeDasharray="3 3" />
-                  <XAxis dataKey="date" tick={{ fontSize: 12 }} />
-                  <YAxis tick={{ fontSize: 12 }} />
+                  <CartesianGrid
+                    vertical={false}
+                    strokeDasharray="3 3"
+                    stroke="hsl(var(--border))"
+                  />
+                  <XAxis
+                    dataKey="date"
+                    tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
+                  />
+                  <YAxis tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }} />
                   <ChartTooltip content={<ChartTooltipContent />} />
                   <Line
                     type="step"
@@ -363,8 +419,8 @@ export default function Analysis() {
                 </LineChart>
               </ChartContainer>
             ) : (
-              <div className="h-full flex items-center justify-center text-slate-500">
-                Sem dados
+              <div className="h-full flex items-center justify-center text-muted-foreground">
+                Dados insuficientes para análise
               </div>
             )}
           </CardContent>
