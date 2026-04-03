@@ -21,6 +21,7 @@ import {
   Link2,
   Copy,
   MessageSquare,
+  ChevronDown,
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
 import { useAuth } from '@/hooks/use-auth'
@@ -62,6 +63,7 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { format } from 'date-fns'
 import { MENU_ITEMS } from '@/components/Layout'
 
@@ -105,6 +107,24 @@ const schema = z.object({
 })
 type FormData = z.infer<typeof schema>
 
+const bulkSchema = z.object({
+  name: z.string().optional(),
+  cpf: z
+    .string()
+    .optional()
+    .refine((val) => !val || isValidCPF(val), 'CPF inválido'),
+  email: z.string().email('Email inválido').optional().or(z.literal('')),
+  phone: z.string().optional(),
+  address: z.string().optional(),
+  observations: z.string().optional(),
+  department_id: z.string().optional().nullable().or(z.literal('')),
+  status: z.boolean().default(true),
+  companies: z.array(z.string()).default([]),
+  permissions: z.array(z.string()).default([]),
+  role: z.enum(['admin', 'supervisor', 'collaborator', 'client_user']).default('collaborator'),
+})
+type BulkFormData = z.infer<typeof bulkSchema>
+
 export default function UsersPage() {
   const [users, setUsers] = useState<any[]>([])
   const [departments, setDepartments] = useState<any[]>([])
@@ -133,6 +153,22 @@ export default function UsersPage() {
     name: string
     phone: string | null
   } | null>(null)
+
+  const [isBulkEditModalOpen, setIsBulkEditModalOpen] = useState(false)
+  const [updateFields, setUpdateFields] = useState<Record<keyof BulkFormData, boolean>>({
+    name: false,
+    cpf: false,
+    email: false,
+    phone: false,
+    address: false,
+    observations: false,
+    department_id: false,
+    status: false,
+    companies: false,
+    permissions: false,
+    role: false,
+  })
+
   const { user, role: currentUserRole, permissions } = useAuth()
   const { toast } = useToast()
 
@@ -157,6 +193,18 @@ export default function UsersPage() {
     defaultValues: { status: true, companies: [], permissions: ['all'], role: 'collaborator' },
   })
   const statusValue = watch('status')
+
+  const {
+    register: registerBulk,
+    handleSubmit: handleBulkSubmit,
+    formState: { errors: bulkErrors },
+    reset: resetBulk,
+    setValue: setValueBulk,
+    watch: watchBulk,
+  } = useForm<BulkFormData>({
+    resolver: zodResolver(bulkSchema),
+    defaultValues: { status: true, companies: [], permissions: ['all'], role: 'collaborator' },
+  })
 
   const fetchData = async () => {
     if (!user) return
@@ -278,6 +326,36 @@ export default function UsersPage() {
       })
     }
     setIsModalOpen(true)
+  }
+
+  const openBulkEditModal = () => {
+    resetBulk({
+      name: '',
+      cpf: '',
+      email: '',
+      phone: '',
+      address: '',
+      observations: '',
+      department_id: '',
+      status: true,
+      role: 'collaborator',
+      permissions: ['all'],
+      companies: [],
+    })
+    setUpdateFields({
+      name: false,
+      cpf: false,
+      email: false,
+      phone: false,
+      address: false,
+      observations: false,
+      department_id: false,
+      status: false,
+      companies: false,
+      permissions: false,
+      role: false,
+    })
+    setIsBulkEditModalOpen(true)
   }
 
   const onSubmit = async (data: FormData) => {
@@ -462,6 +540,66 @@ export default function UsersPage() {
       }
     } catch (e: any) {
       toast({ title: 'Erro ao salvar', description: e.message, variant: 'destructive' })
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const onSubmitBulk = async (data: BulkFormData) => {
+    if (!user || selectedIds.length === 0) return
+    setIsSubmitting(true)
+    try {
+      const payload: any = {}
+      if (updateFields.name) payload.name = data.name
+      if (updateFields.cpf) payload.cpf = data.cpf || null
+      if (updateFields.email) payload.email = data.email || null
+      if (updateFields.phone) payload.phone = data.phone || null
+      if (updateFields.address) payload.address = data.address || null
+      if (updateFields.observations) payload.observations = data.observations || null
+      if (updateFields.department_id) payload.department_id = data.department_id || null
+      if (updateFields.status) payload.status = data.status
+      if (updateFields.role) payload.role = data.role
+      if (updateFields.permissions)
+        payload.permissions =
+          Array.isArray(data.permissions) && data.permissions.length > 0 ? data.permissions : []
+
+      if (Object.keys(payload).length > 0) {
+        const { error } = await supabase
+          .from('cadastro_usuarios')
+          .update(payload)
+          .in('id', selectedIds)
+        if (error) throw error
+      }
+
+      if (updateFields.companies) {
+        await supabase.from('cadastro_usuarios_companies').delete().in('usuario_id', selectedIds)
+        if (data.companies.length > 0) {
+          const links = []
+          for (const uid of selectedIds) {
+            for (const oid of data.companies) {
+              links.push({ usuario_id: uid, organization_id: oid })
+            }
+          }
+          const { error: linkErr } = await supabase
+            .from('cadastro_usuarios_companies')
+            .insert(links)
+          if (linkErr) throw linkErr
+        }
+      }
+
+      toast({
+        title: 'Sucesso',
+        description: `${selectedIds.length} usuário(s) atualizado(s) com sucesso.`,
+      })
+      setIsBulkEditModalOpen(false)
+      setSelectedIds([])
+      fetchData()
+    } catch (e: any) {
+      toast({
+        title: 'Erro na atualização em lote',
+        description: e.message,
+        variant: 'destructive',
+      })
     } finally {
       setIsSubmitting(false)
     }
@@ -748,14 +886,23 @@ export default function UsersPage() {
         </CardContent>
       </Card>
 
-      {selectedIds.length > 0 && canDelete && (
+      {selectedIds.length > 0 && (canEdit || canDelete) && (
         <div className="bg-muted/50 border border-border rounded-md p-3 flex items-center justify-between animate-in fade-in slide-in-from-top-2">
           <span className="text-sm font-medium text-foreground">
             {selectedIds.length} item(ns) selecionado(s)
           </span>
-          <Button variant="destructive" size="sm" onClick={handleBulkDelete} className="gap-2">
-            <Trash2 className="h-4 w-4" /> Excluir Selecionados
-          </Button>
+          <div className="flex items-center gap-2">
+            {canEdit && (
+              <Button variant="outline" size="sm" onClick={openBulkEditModal} className="gap-2">
+                <Edit className="h-4 w-4" /> Editar Lote
+              </Button>
+            )}
+            {canDelete && (
+              <Button variant="destructive" size="sm" onClick={handleBulkDelete} className="gap-2">
+                <Trash2 className="h-4 w-4" /> Excluir Selecionados
+              </Button>
+            )}
+          </div>
         </div>
       )}
 
@@ -775,7 +922,7 @@ export default function UsersPage() {
               <Table>
                 <TableHeader className="bg-muted/40">
                   <TableRow>
-                    {canDelete && (
+                    {(canEdit || canDelete) && (
                       <TableHead className="w-12 text-center">
                         <Checkbox
                           checked={paginated.length > 0 && selectedIds.length === paginated.length}
@@ -825,7 +972,7 @@ export default function UsersPage() {
                 <TableBody>
                   {paginated.map((e) => (
                     <TableRow key={e.id} className="hover:bg-muted/40 transition-colors">
-                      {canDelete && (
+                      {(canEdit || canDelete) && (
                         <TableCell className="py-2 px-4 text-center">
                           <Checkbox
                             checked={selectedIds.includes(e.id)}
@@ -1223,6 +1370,302 @@ export default function UsersPage() {
               <Button type="submit" disabled={isSubmitting} className="min-w-[120px]">
                 {isSubmitting && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
                 {editingId ? 'Salvar' : 'Cadastrar'}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isBulkEditModalOpen} onOpenChange={setIsBulkEditModalOpen}>
+        <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Editar {selectedIds.length} Usuários em Lote</DialogTitle>
+            <DialogDescription>
+              Selecione os campos que deseja alterar. Os campos marcados substituirão os dados
+              atuais de todos os usuários selecionados.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleBulkSubmit(onSubmitBulk)} className="space-y-4 mt-4">
+            <div className="space-y-4">
+              <div className="flex items-start gap-4 p-3 border rounded-md">
+                <Checkbox
+                  checked={updateFields.department_id}
+                  onCheckedChange={(c) => setUpdateFields((p) => ({ ...p, department_id: !!c }))}
+                />
+                <div className="flex-1 space-y-2">
+                  <Label>Departamento</Label>
+                  <Select
+                    disabled={!updateFields.department_id}
+                    value={watchBulk('department_id') || 'none'}
+                    onValueChange={(v) => setValueBulk('department_id', v === 'none' ? '' : v)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Nenhum</SelectItem>
+                      {departments.map((d) => (
+                        <SelectItem key={d.id} value={d.id}>
+                          {d.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-4 p-3 border rounded-md">
+                <Checkbox
+                  checked={updateFields.role}
+                  onCheckedChange={(c) => setUpdateFields((p) => ({ ...p, role: !!c }))}
+                />
+                <div className="flex-1 space-y-2">
+                  <Label>Perfil de Acesso</Label>
+                  <Select
+                    disabled={!updateFields.role}
+                    value={watchBulk('role')}
+                    onValueChange={(v) => setValueBulk('role', v as any)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="admin">Administrador</SelectItem>
+                      <SelectItem value="supervisor">Supervisor</SelectItem>
+                      <SelectItem value="collaborator">Colaborador</SelectItem>
+                      <SelectItem value="client_user">Usuário Cliente</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-4 p-3 border rounded-md">
+                <Checkbox
+                  checked={updateFields.status}
+                  onCheckedChange={(c) => setUpdateFields((p) => ({ ...p, status: !!c }))}
+                />
+                <div className="flex-1 flex items-center justify-between">
+                  <div>
+                    <Label>Status</Label>
+                    <p className="text-xs text-muted-foreground">
+                      Defina se os usuários ficarão ativos ou inativos.
+                    </p>
+                  </div>
+                  <Switch
+                    disabled={!updateFields.status}
+                    checked={watchBulk('status')}
+                    onCheckedChange={(v) => setValueBulk('status', v)}
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-start gap-4 p-3 border rounded-md">
+                <Checkbox
+                  checked={updateFields.companies}
+                  onCheckedChange={(c) => setUpdateFields((p) => ({ ...p, companies: !!c }))}
+                />
+                <div className="flex-1 space-y-2">
+                  <Label>Empresas Vinculadas</Label>
+                  <div
+                    className={`grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2 max-h-[160px] overflow-y-auto p-1 ${!updateFields.companies ? 'opacity-50 pointer-events-none' : ''}`}
+                  >
+                    {organizations.map((org) => (
+                      <div
+                        key={org.id}
+                        className="flex items-center space-x-2 bg-muted/30 p-2.5 rounded border border-border/50"
+                      >
+                        <Checkbox
+                          id={`bulk-org-${org.id}`}
+                          checked={
+                            Array.isArray(watchBulk('companies'))
+                              ? watchBulk('companies').includes(org.id)
+                              : false
+                          }
+                          onCheckedChange={(checked) => {
+                            const cur = Array.isArray(watchBulk('companies'))
+                              ? watchBulk('companies')
+                              : []
+                            setValueBulk(
+                              'companies',
+                              checked ? [...cur, org.id] : cur.filter((id) => id !== org.id),
+                            )
+                          }}
+                        />
+                        <label
+                          htmlFor={`bulk-org-${org.id}`}
+                          className="text-sm cursor-pointer truncate flex-1 leading-none text-foreground"
+                        >
+                          {org.name}
+                        </label>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-4 p-3 border rounded-md">
+                <Checkbox
+                  checked={updateFields.permissions}
+                  onCheckedChange={(c) => setUpdateFields((p) => ({ ...p, permissions: !!c }))}
+                />
+                <div className="flex-1 space-y-2">
+                  <Label>Permissões de Rotina</Label>
+                  <div
+                    className={`grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2 max-h-[160px] overflow-y-auto p-1 ${!updateFields.permissions ? 'opacity-50 pointer-events-none' : ''}`}
+                  >
+                    {ROUTINES.map((routine) => (
+                      <div
+                        key={routine.id}
+                        className="flex items-center space-x-2 bg-muted/30 p-2.5 rounded border border-border/50"
+                      >
+                        <Checkbox
+                          id={`bulk-perm-${routine.id}`}
+                          checked={
+                            Array.isArray(watchBulk('permissions'))
+                              ? watchBulk('permissions').includes(routine.id)
+                              : false
+                          }
+                          onCheckedChange={(checked) => {
+                            const cur = Array.isArray(watchBulk('permissions'))
+                              ? watchBulk('permissions')
+                              : []
+                            if (routine.id === 'all') {
+                              setValueBulk('permissions', checked ? ['all'] : [])
+                            } else {
+                              let next = checked
+                                ? [...cur, routine.id]
+                                : cur.filter((id) => id !== routine.id)
+                              if (checked) next = next.filter((id) => id !== 'all')
+                              setValueBulk('permissions', next)
+                            }
+                          }}
+                        />
+                        <label
+                          htmlFor={`bulk-perm-${routine.id}`}
+                          className="text-sm cursor-pointer flex-1 leading-none font-medium text-foreground"
+                        >
+                          {routine.label}
+                        </label>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <Collapsible>
+                <CollapsibleTrigger asChild>
+                  <Button type="button" variant="ghost" className="w-full justify-between">
+                    Ver mais campos (Nome, E-mail, Telefone, etc...)
+                    <ChevronDown className="h-4 w-4" />
+                  </Button>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="space-y-4 pt-4">
+                  <div className="flex items-start gap-4 p-3 border rounded-md">
+                    <Checkbox
+                      checked={updateFields.name}
+                      onCheckedChange={(c) => setUpdateFields((p) => ({ ...p, name: !!c }))}
+                    />
+                    <div className="flex-1 space-y-2">
+                      <Label>Nome</Label>
+                      <Input
+                        disabled={!updateFields.name}
+                        {...registerBulk('name')}
+                        placeholder="Novo nome para os selecionados"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-4 p-3 border rounded-md">
+                    <Checkbox
+                      checked={updateFields.cpf}
+                      onCheckedChange={(c) => setUpdateFields((p) => ({ ...p, cpf: !!c }))}
+                    />
+                    <div className="flex-1 space-y-2">
+                      <Label>CPF</Label>
+                      <Input
+                        disabled={!updateFields.cpf}
+                        {...registerBulk('cpf')}
+                        placeholder="000.000.000-00"
+                      />
+                      {bulkErrors.cpf && (
+                        <span className="text-xs text-red-500">{bulkErrors.cpf.message}</span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-4 p-3 border rounded-md">
+                    <Checkbox
+                      checked={updateFields.email}
+                      onCheckedChange={(c) => setUpdateFields((p) => ({ ...p, email: !!c }))}
+                    />
+                    <div className="flex-1 space-y-2">
+                      <Label>E-mail</Label>
+                      <Input
+                        disabled={!updateFields.email}
+                        type="email"
+                        {...registerBulk('email')}
+                        placeholder="exemplo@empresa.com"
+                      />
+                      {bulkErrors.email && (
+                        <span className="text-xs text-red-500">{bulkErrors.email.message}</span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-4 p-3 border rounded-md">
+                    <Checkbox
+                      checked={updateFields.phone}
+                      onCheckedChange={(c) => setUpdateFields((p) => ({ ...p, phone: !!c }))}
+                    />
+                    <div className="flex-1 space-y-2">
+                      <Label>Telefone</Label>
+                      <Input
+                        disabled={!updateFields.phone}
+                        {...registerBulk('phone')}
+                        placeholder="(00) 00000-0000"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-4 p-3 border rounded-md">
+                    <Checkbox
+                      checked={updateFields.address}
+                      onCheckedChange={(c) => setUpdateFields((p) => ({ ...p, address: !!c }))}
+                    />
+                    <div className="flex-1 space-y-2">
+                      <Label>Endereço</Label>
+                      <Input
+                        disabled={!updateFields.address}
+                        {...registerBulk('address')}
+                        placeholder="Endereço completo"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-4 p-3 border rounded-md">
+                    <Checkbox
+                      checked={updateFields.observations}
+                      onCheckedChange={(c) => setUpdateFields((p) => ({ ...p, observations: !!c }))}
+                    />
+                    <div className="flex-1 space-y-2">
+                      <Label>Observações</Label>
+                      <Input
+                        disabled={!updateFields.observations}
+                        {...registerBulk('observations')}
+                        placeholder="Observações adicionais"
+                      />
+                    </div>
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
+            </div>
+
+            <div className="flex justify-end gap-3 pt-4 border-t mt-6">
+              <Button type="button" variant="outline" onClick={() => setIsBulkEditModalOpen(false)}>
+                Cancelar
+              </Button>
+              <Button
+                type="submit"
+                disabled={isSubmitting || !Object.values(updateFields).some((v) => v)}
+                className="min-w-[120px]"
+              >
+                {isSubmitting && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+                Aplicar Alterações
               </Button>
             </div>
           </form>
