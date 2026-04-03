@@ -33,13 +33,14 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { useAuth } from '@/hooks/use-auth'
 import { cn } from '@/lib/utils'
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { useTheme } from '@/components/ThemeProvider'
 import { supabase } from '@/lib/supabase/client'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { Chatbot } from '@/components/Chatbot'
+import { useToast } from '@/hooks/use-toast'
 import {
   Sidebar,
   SidebarContent,
@@ -176,6 +177,8 @@ export default function Layout() {
   const { setMode, setColorTheme } = useTheme()
   const navigate = useNavigate()
   const location = useLocation()
+  const { toast } = useToast()
+  const notifiedSet = useRef<Set<string>>(new Set())
 
   useEffect(() => {
     if (profile) {
@@ -265,6 +268,88 @@ export default function Layout() {
     if (!currentMenuItem) return true
     return allowedItems.some((item) => item.id === currentMenuItem.id)
   }, [location.pathname, allowedItems])
+
+  useEffect(() => {
+    if (!user) return
+
+    const fetchNotified = async () => {
+      const { data } = await supabase
+        .from('shared_queries')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('first_access_notified', true)
+      if (data) {
+        data.forEach((q) => notifiedSet.current.add(q.id))
+      }
+    }
+    fetchNotified()
+
+    const channel = supabase
+      .channel('global_shared_queries_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'shared_queries',
+          filter: `user_id=eq.${user.id}`,
+        },
+        (payload) => {
+          const newRecord = payload.new as any
+
+          if (newRecord.first_access_notified === false) {
+            notifiedSet.current.delete(newRecord.id)
+          }
+
+          if (
+            newRecord.notify_first_access &&
+            newRecord.first_access_notified &&
+            !notifiedSet.current.has(newRecord.id)
+          ) {
+            notifiedSet.current.add(newRecord.id)
+
+            try {
+              const AudioContext = window.AudioContext || (window as any).webkitAudioContext
+              if (AudioContext) {
+                const ctx = new AudioContext()
+                if (ctx.state === 'suspended') {
+                  ctx.resume()
+                }
+                const osc = ctx.createOscillator()
+                const gainNode = ctx.createGain()
+
+                osc.type = 'sine'
+                osc.frequency.setValueAtTime(880, ctx.currentTime)
+                osc.frequency.setValueAtTime(1108.73, ctx.currentTime + 0.1)
+
+                gainNode.gain.setValueAtTime(0, ctx.currentTime)
+                gainNode.gain.linearRampToValueAtTime(0.15, ctx.currentTime + 0.02)
+                gainNode.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4)
+
+                osc.connect(gainNode)
+                gainNode.connect(ctx.destination)
+
+                osc.start()
+                osc.stop(ctx.currentTime + 0.4)
+              }
+            } catch (e) {
+              console.error('Audio play failed', e)
+            }
+
+            toast({
+              title: '🔔 Novo Acesso!',
+              description: `O link para a consulta "${newRecord.prompt}" foi acessado!`,
+              duration: 8000,
+            })
+          }
+        },
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [user, toast])
 
   useEffect(() => {
     const hasAprovacoesAccess =

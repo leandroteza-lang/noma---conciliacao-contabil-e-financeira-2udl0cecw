@@ -702,8 +702,10 @@ export type Database = {
           access_count: number
           content: string
           created_at: string
+          first_access_notified: boolean | null
           id: string
           is_protected: boolean | null
+          notify_first_access: boolean | null
           password: string | null
           prompt: string
           user_id: string | null
@@ -712,8 +714,10 @@ export type Database = {
           access_count?: number
           content: string
           created_at?: string
+          first_access_notified?: boolean | null
           id?: string
           is_protected?: boolean | null
+          notify_first_access?: boolean | null
           password?: string | null
           prompt: string
           user_id?: string | null
@@ -722,8 +726,10 @@ export type Database = {
           access_count?: number
           content?: string
           created_at?: string
+          first_access_notified?: boolean | null
           id?: string
           is_protected?: boolean | null
+          notify_first_access?: boolean | null
           password?: string | null
           prompt?: string
           user_id?: string | null
@@ -1099,6 +1105,8 @@ export const Constants = {
 //   is_protected: boolean (nullable, default: false)
 //   password: text (nullable)
 //   access_count: integer (not null, default: 0)
+//   notify_first_access: boolean (nullable, default: false)
+//   first_access_notified: boolean (nullable, default: false)
 // Table: tipo_conta_tga
 //   id: uuid (not null, default: gen_random_uuid())
 //   organization_id: uuid (nullable)
@@ -1397,7 +1405,12 @@ export const Constants = {
 //   AS $function$
 //   BEGIN
 //     UPDATE public.shared_queries
-//     SET access_count = access_count + 1
+//     SET
+//       access_count = access_count + 1,
+//       first_access_notified = CASE
+//         WHEN notify_first_access = true AND first_access_notified = false THEN true
+//         ELSE first_access_notified
+//       END
 //     WHERE id = query_id;
 //   END;
 //   $function$

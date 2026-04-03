@@ -56,12 +56,6 @@ export default function SharedQueriesList() {
   const [isProtected, setIsProtected] = useState(false)
   const [updating, setUpdating] = useState(false)
 
-  const queriesRef = useRef(queries)
-
-  useEffect(() => {
-    queriesRef.current = queries
-  }, [queries])
-
   const fetchQueries = async () => {
     if (!user) return
     const { data } = await supabase.from('shared_queries').select('*').eq('user_id', user.id)
@@ -77,7 +71,7 @@ export default function SharedQueriesList() {
     if (!user) return
 
     const channel = supabase
-      .channel('shared_queries_changes')
+      .channel('shared_queries_changes_list')
       .on(
         'postgres_changes',
         {
@@ -88,23 +82,9 @@ export default function SharedQueriesList() {
         },
         (payload) => {
           const newRecord = payload.new as any
-          const existing = queriesRef.current.find((q) => q.id === newRecord.id)
-
-          if (existing) {
-            if (
-              newRecord.notify_first_access &&
-              newRecord.first_access_notified &&
-              !existing.first_access_notified
-            ) {
-              toast({
-                title: '🔔 Novo Acesso!',
-                description: `O link para a consulta "${newRecord.prompt}" foi acessado!`,
-              })
-            }
-            setQueries((prev) =>
-              prev.map((q) => (q.id === newRecord.id ? { ...q, ...newRecord } : q)),
-            )
-          }
+          setQueries((prev) =>
+            prev.map((q) => (q.id === newRecord.id ? { ...q, ...newRecord } : q)),
+          )
         },
       )
       .subscribe()
@@ -112,7 +92,7 @@ export default function SharedQueriesList() {
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [user, toast])
+  }, [user])
 
   const copyToClipboard = (id: string) => {
     navigator.clipboard.writeText(`${window.location.origin}/consulta/${id}`)
