@@ -288,8 +288,11 @@ export function Chatbot() {
       } else if (ext === 'pdf') {
         const reader = new FileReader()
         reader.onload = (ev) => {
-          const base64 = (ev.target?.result as string).split(',')[1]
-          setAttachedFile({ name: file.name, type: ext, content: base64 })
+          const result = ev.target?.result
+          if (typeof result === 'string') {
+            const base64 = result.split(',')[1]
+            setAttachedFile({ name: file.name, type: ext, content: base64 })
+          }
         }
         reader.readAsDataURL(file)
         return // FileReader is async, return early
