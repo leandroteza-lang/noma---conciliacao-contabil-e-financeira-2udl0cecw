@@ -20,6 +20,7 @@ import Signup from './pages/Signup'
 import ForgotPassword from './pages/ForgotPassword'
 import ResetPassword from './pages/ResetPassword'
 import NotFound from './pages/NotFound'
+import SharedQuery from './pages/SharedQuery'
 import Layout from './components/Layout'
 import Landing from './pages/Landing'
 import { AuthProvider } from './hooks/use-auth'
@@ -38,6 +39,7 @@ const App = () => (
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/" element={<Landing />} />
+            <Route path="/consulta/:id" element={<SharedQuery />} />
             <Route element={<Layout />}>
               <Route path="/app" element={<Index />} />
               <Route path="/empresas" element={<Companies />} />

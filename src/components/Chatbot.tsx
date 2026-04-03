@@ -5,22 +5,31 @@ import {
   Send,
   Bot,
   User as UserIcon,
-  ThumbsUp,
-  ThumbsDown,
   Copy,
   Check,
   Download,
   Paperclip,
   FileText,
+  Plus,
+  Link as LinkIcon,
 } from 'lucide-react'
-import { Link } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card'
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { supabase } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
 import * as XLSX from 'xlsx'
+import { renderMarkdown } from '@/lib/markdown'
+import { useAuth } from '@/hooks/use-auth'
+import { useToast } from '@/hooks/use-toast'
 
 type Message = {
   id: string
@@ -30,135 +39,11 @@ type Message = {
   attachedFileName?: string
 }
 
-const processInline = (text: string) => {
-  const parts = text.split(/(\[.*?\]\(.*?\))/g)
-  return parts.map((part, i) => {
-    const linkMatch = part.match(/\[(.*?)\]\((.*?)\)/)
-    if (linkMatch) {
-      const label = linkMatch[1].replace(/\*\*/g, '').replace(/\*/g, '')
-      const url = linkMatch[2]
-      if (url.startsWith('/')) {
-        return (
-          <Link
-            key={i}
-            to={url}
-            className="inline-flex items-center justify-center gap-1.5 bg-primary text-primary-foreground hover:bg-primary/90 px-3 py-1.5 rounded-md no-underline font-medium transition-colors my-1.5 shadow-sm text-sm w-fit"
-          >
-            {label}
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="14"
-              height="14"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M5 12h14" />
-              <path d="m12 5 7 7-7 7" />
-            </svg>
-          </Link>
-        )
-      }
-      return (
-        <a
-          key={i}
-          href={url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="underline text-primary hover:text-primary/80 transition-colors"
-        >
-          {label}
-        </a>
-      )
-    }
-
-    const subParts = part.split(/(\*\*.*?\*\*|\*.*?\*)/g)
-    return subParts.map((subPart, j) => {
-      if (subPart.startsWith('**') && subPart.endsWith('**')) {
-        return (
-          <strong key={j} className="font-semibold">
-            {subPart.slice(2, -2)}
-          </strong>
-        )
-      }
-      if (subPart.startsWith('*') && subPart.endsWith('*')) {
-        return <em key={j}>{subPart.slice(1, -1)}</em>
-      }
-      return <span key={j}>{subPart}</span>
-    })
-  })
-}
-
-const renderMarkdown = (text: string) => {
-  const lines = text.split('\n')
-  return (
-    <div className="flex flex-col gap-1 text-[13px] leading-relaxed">
-      {lines.map((line, i) => {
-        if (line.trim() === '') {
-          return <div key={i} className="h-2"></div>
-        }
-        if (line.startsWith('### ')) {
-          return (
-            <h3 key={i} className="font-semibold text-[15px] mt-2 mb-1">
-              {processInline(line.slice(4))}
-            </h3>
-          )
-        }
-        if (line.startsWith('## ')) {
-          return (
-            <h2 key={i} className="font-bold text-base mt-3 mb-1">
-              {processInline(line.slice(3))}
-            </h2>
-          )
-        }
-        if (line.startsWith('# ')) {
-          return (
-            <h1 key={i} className="font-bold text-lg mt-4 mb-2">
-              {processInline(line.slice(2))}
-            </h1>
-          )
-        }
-        if (line.match(/^[-*]\s/)) {
-          return (
-            <div key={i} className="ml-3 flex gap-2">
-              <span className="select-none text-muted-foreground">•</span>
-              <span className="flex-1">{processInline(line.slice(2))}</span>
-            </div>
-          )
-        }
-        const numberedListMatch = line.match(/^(\d+\.\s)(.*)/)
-        if (numberedListMatch) {
-          return (
-            <div key={i} className="ml-3 flex gap-2">
-              <span className="select-none min-w-[1.2rem] text-muted-foreground">
-                {numberedListMatch[1].trim()}
-              </span>
-              <span className="flex-1">{processInline(numberedListMatch[2])}</span>
-            </div>
-          )
-        }
-
-        return (
-          <div key={i} className="min-h-[1.25rem]">
-            {processInline(line)}
-          </div>
-        )
-      })}
-    </div>
-  )
-}
-
 const TypingEffect = ({ content, onComplete }: { content: string; onComplete?: () => void }) => {
   const [displayedContent, setDisplayedContent] = useState('')
-
   useEffect(() => {
     let i = 0
     const chunkSize = Math.max(1, Math.floor(content.length / 50))
-    const speed = 20
-
     const timer = setInterval(() => {
       i += chunkSize
       if (i >= content.length) {
@@ -168,8 +53,7 @@ const TypingEffect = ({ content, onComplete }: { content: string; onComplete?: (
       } else {
         setDisplayedContent(content.slice(0, i))
       }
-    }, speed)
-
+    }, 20)
     return () => clearInterval(timer)
   }, [content, onComplete])
 
@@ -183,9 +67,10 @@ const TypingEffect = ({ content, onComplete }: { content: string; onComplete?: (
   )
 }
 
-const BotMessageActions = ({ content }: { content: string }) => {
+const BotMessageActions = ({ content, prevPrompt }: { content: string; prevPrompt?: string }) => {
   const [copied, setCopied] = useState(false)
-  const [feedback, setFeedback] = useState<'up' | 'down' | null>(null)
+  const { toast } = useToast()
+  const { user } = useAuth()
 
   const handleCopy = () => {
     navigator.clipboard.writeText(content)
@@ -193,46 +78,110 @@ const BotMessageActions = ({ content }: { content: string }) => {
     setTimeout(() => setCopied(false), 2000)
   }
 
-  const handleDownloadExcel = () => {
-    const rows = content
+  const getRows = () =>
+    content
       .split('\n')
       .map((line) => {
         if (line.includes('|')) {
-          const cells = line.split('|').map((cell) => cell.trim())
-          if (cells.every((c) => c === '' || c.match(/^[-:]+$/))) {
-            return null
-          }
-          return cells.filter((cell) => cell !== '')
+          const cells = line.split('|').map((c) => c.trim())
+          if (cells.every((c) => c === '' || c.match(/^[-:]+$/))) return null
+          return cells.filter((c) => c !== '')
         }
         return [line.replace(/[*#`]/g, '').trim()]
       })
-      .filter((row) => row !== null && row.length > 0 && row[0] !== '')
+      .filter((r) => r !== null && r.length > 0 && r[0] !== '') as string[][]
 
-    const ws = XLSX.utils.aoa_to_sheet(rows as any[][])
+  const handleDownloadExcel = () => {
+    const ws = XLSX.utils.aoa_to_sheet(getRows())
     const wb = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(wb, ws, 'Resposta')
-    XLSX.writeFile(wb, 'resposta_assistente.xlsx')
+    XLSX.writeFile(wb, 'consulta_assistente.xlsx')
+  }
+
+  const handleDownloadCSV = () => {
+    const csv = getRows()
+      .map((r) => r.join(';'))
+      .join('\n')
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'consulta.csv'
+    a.click()
+  }
+
+  const handleDownloadTXT = () => {
+    const blob = new Blob([content], { type: 'text/plain;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'consulta.txt'
+    a.click()
+  }
+
+  const handleDownloadPDF = () => {
+    const win = window.open('', '', 'width=800,height=600')
+    if (win) {
+      win.document.write(
+        `<html><head><title>Consulta</title><style>body{font-family:sans-serif;padding:20px;line-height:1.6;}table{border-collapse:collapse;width:100%;}td,th{border:1px solid #ddd;padding:8px;text-align:left;}</style></head><body><pre style="white-space:pre-wrap;font-family:inherit;">${content.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</pre><script>window.onload=function(){window.print();window.close();}</script></body></html>`,
+      )
+      win.document.close()
+    }
+  }
+
+  const handleShare = async () => {
+    if (!user) return
+    const { data, error } = await supabase
+      .from('shared_queries')
+      .insert({
+        user_id: user.id,
+        prompt: prevPrompt || 'Consulta ao Assistente',
+        content,
+      })
+      .select('id')
+      .single()
+
+    if (data && !error) {
+      const url = `${window.location.origin}/consulta/${data.id}`
+      navigator.clipboard.writeText(url)
+      toast({
+        title: 'Link Copiado!',
+        description:
+          'O link de compartilhamento foi gerado e copiado para sua área de transferência.',
+      })
+    } else {
+      toast({ title: 'Erro', description: 'Falha ao gerar link.', variant: 'destructive' })
+    }
   }
 
   return (
     <div className="flex items-center gap-1 mt-3 pt-2 border-t border-border/40 text-muted-foreground">
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6 hover:bg-background/50"
+            title="Exportar"
+          >
+            <Download className="w-3.5 h-3.5" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start">
+          <DropdownMenuItem onClick={handleDownloadExcel}>Excel (.xlsx)</DropdownMenuItem>
+          <DropdownMenuItem onClick={handleDownloadCSV}>CSV (.csv)</DropdownMenuItem>
+          <DropdownMenuItem onClick={handleDownloadTXT}>Texto (.txt)</DropdownMenuItem>
+          <DropdownMenuItem onClick={handleDownloadPDF}>PDF (.pdf)</DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
       <Button
         variant="ghost"
         size="icon"
         className="h-6 w-6 hover:bg-background/50"
-        onClick={() => setFeedback(feedback === 'up' ? null : 'up')}
+        onClick={handleShare}
+        title="Compartilhar Link"
       >
-        <ThumbsUp className={cn('w-3.5 h-3.5', feedback === 'up' && 'fill-primary text-primary')} />
-      </Button>
-      <Button
-        variant="ghost"
-        size="icon"
-        className="h-6 w-6 hover:bg-background/50"
-        onClick={() => setFeedback(feedback === 'down' ? null : 'down')}
-      >
-        <ThumbsDown
-          className={cn('w-3.5 h-3.5', feedback === 'down' && 'fill-destructive text-destructive')}
-        />
+        <LinkIcon className="w-3.5 h-3.5" />
       </Button>
       <div className="flex-1" />
       <Button
@@ -240,7 +189,7 @@ const BotMessageActions = ({ content }: { content: string }) => {
         size="icon"
         className="h-6 w-6 hover:bg-background/50"
         onClick={handleCopy}
-        title="Copiar"
+        title="Copiar texto"
       >
         {copied ? (
           <Check className="w-3.5 h-3.5 text-green-500" />
@@ -248,28 +197,21 @@ const BotMessageActions = ({ content }: { content: string }) => {
           <Copy className="w-3.5 h-3.5" />
         )}
       </Button>
-      <Button
-        variant="ghost"
-        size="icon"
-        className="h-6 w-6 hover:bg-background/50"
-        onClick={handleDownloadExcel}
-        title="Exportar para Excel (.xlsx)"
-      >
-        <Download className="w-3.5 h-3.5" />
-      </Button>
     </div>
   )
 }
 
 export function Chatbot() {
+  const { user } = useAuth()
   const [isOpen, setIsOpen] = useState(false)
+  const [activeTab, setActiveTab] = useState('chat')
+  const [sessions, setSessions] = useState<any[]>([])
+  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null)
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
       role: 'assistant',
-      content:
-        'Olá! Sou o assistente virtual da Molas Noma. Como posso ajudar com suas análises e conciliações hoje?',
-      isTyping: false,
+      content: 'Olá! Sou o assistente virtual. Como posso ajudar com suas análises hoje?',
     },
   ])
   const [input, setInput] = useState('')
@@ -285,50 +227,84 @@ export function Chatbot() {
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages, isOpen, isLoading])
+  }, [messages, isOpen, isLoading, activeTab])
+
+  const fetchHistory = async () => {
+    if (!user) return
+    const { data } = await supabase
+      .from('chat_sessions')
+      .select('id, title, created_at')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+    if (data) setSessions(data)
+  }
+
+  useEffect(() => {
+    if (isOpen && activeTab === 'history') fetchHistory()
+  }, [isOpen, activeTab, user])
+
+  const startNewChat = () => {
+    setCurrentSessionId(null)
+    setMessages([
+      {
+        id: Date.now().toString(),
+        role: 'assistant',
+        content: 'Olá! Nova consulta iniciada. Como posso ajudar?',
+      },
+    ])
+    setActiveTab('chat')
+  }
+
+  const loadSession = async (sessionId: string) => {
+    setCurrentSessionId(sessionId)
+    const { data } = await supabase
+      .from('chat_messages')
+      .select('*')
+      .eq('session_id', sessionId)
+      .order('created_at', { ascending: true })
+    if (data)
+      setMessages(
+        data.map((m) => ({
+          id: m.id,
+          role: m.role as any,
+          content: m.content,
+          attachedFileName: m.attached_file_name,
+        })),
+      )
+    setActiveTab('chat')
+  }
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
-
     let content = ''
     const ext = file.name.split('.').pop()?.toLowerCase() || ''
-
     try {
-      if (ext === 'txt' || ext === 'csv') {
-        content = await file.text()
-        setAttachedFile({ name: file.name, type: ext, content })
-      } else if (ext === 'xlsx') {
+      if (ext === 'xlsx') {
         const buffer = await file.arrayBuffer()
-        const wb = XLSX.read(buffer)
-        const ws = wb.Sheets[wb.SheetNames[0]]
+        const ws = XLSX.read(buffer).Sheets[XLSX.read(buffer).SheetNames[0]]
         content = XLSX.utils.sheet_to_csv(ws)
         setAttachedFile({ name: file.name, type: ext, content })
       } else if (ext === 'pdf') {
         const reader = new FileReader()
         reader.onload = (ev) => {
-          const result = ev.target?.result
-          if (typeof result === 'string') {
-            const base64 = result.split(',')[1]
-            setAttachedFile({ name: file.name, type: ext, content: base64 })
-          }
+          const res = ev.target?.result as string
+          if (res) setAttachedFile({ name: file.name, type: ext, content: res.split(',')[1] })
         }
         reader.readAsDataURL(file)
-        return // FileReader is async, return early
+        return
       } else {
         content = await file.text()
         setAttachedFile({ name: file.name, type: ext, content })
       }
     } catch (err) {
-      console.error('Error reading file', err)
+      console.error(err)
     }
-
     if (fileInputRef.current) fileInputRef.current.value = ''
   }
 
   const handleSend = async () => {
     if (!input.trim() && !attachedFile) return
-
     const userContent = input.trim() || 'Arquivo em anexo.'
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -340,9 +316,30 @@ export function Chatbot() {
     setMessages((prev) => [...prev, userMessage])
     setInput('')
     setIsLoading(true)
-
     const currentFile = attachedFile
     setAttachedFile(null)
+
+    let sId = currentSessionId
+    if (!sId && user) {
+      const { data: sData } = await supabase
+        .from('chat_sessions')
+        .insert({ user_id: user.id, title: userContent.slice(0, 35) || 'Consulta' })
+        .select('id')
+        .single()
+      if (sData) {
+        sId = sData.id
+        setCurrentSessionId(sId)
+      }
+    }
+    if (sId && user)
+      await supabase
+        .from('chat_messages')
+        .insert({
+          session_id: sId,
+          role: 'user',
+          content: userContent,
+          attached_file_name: userMessage.attachedFileName,
+        })
 
     try {
       const { data, error } = await supabase.functions.invoke('chat', {
@@ -353,38 +350,23 @@ export function Chatbot() {
           file: currentFile,
         },
       })
-
       if (error) throw error
-
-      if (data && data.reply) {
-        setMessages((prev) => [
-          ...prev,
-          { id: Date.now().toString(), role: 'assistant', content: data.reply, isTyping: true },
-        ])
-      } else if (data && data.error) {
-        setMessages((prev) => [
-          ...prev,
-          { id: Date.now().toString(), role: 'assistant', content: `Erro: ${data.error}` },
-        ])
-      } else {
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: Date.now().toString(),
-            role: 'assistant',
-            content: 'Desculpe, ocorreu um erro ao processar sua solicitação.',
-          },
-        ])
-      }
+      const reply = data?.reply || (data?.error ? `Erro: ${data.error}` : 'Erro desconhecido.')
+      setMessages((prev) => [
+        ...prev,
+        { id: Date.now().toString(), role: 'assistant', content: reply, isTyping: true },
+      ])
+      if (sId && user)
+        await supabase
+          .from('chat_messages')
+          .insert({ session_id: sId, role: 'assistant', content: reply })
     } catch (error) {
-      console.error('Chat error:', error)
       setMessages((prev) => [
         ...prev,
         {
           id: Date.now().toString(),
           role: 'assistant',
-          content:
-            'Desculpe, ocorreu um erro de conexão. Verifique se a API Key da OpenAI está configurada nos Secrets do Supabase.',
+          content: 'Erro de conexão ou API Key inválida.',
         },
       ])
     } finally {
@@ -396,169 +378,225 @@ export function Chatbot() {
     <div className="fixed bottom-6 right-6 z-[100] flex flex-col items-end">
       {isOpen && (
         <Card className="w-[350px] sm:w-[400px] h-[580px] mb-4 flex flex-col shadow-2xl border-primary/20 animate-in slide-in-from-bottom-5">
-          <CardHeader className="bg-primary text-primary-foreground p-4 rounded-t-lg flex flex-row items-center justify-between">
+          <CardHeader className="bg-primary text-primary-foreground p-3 rounded-t-lg flex flex-row items-center justify-between">
             <div className="flex items-center gap-2">
               <Bot className="w-5 h-5" />
-              <CardTitle className="text-base font-medium">Assistente Operacional</CardTitle>
+              <CardTitle className="text-base font-medium">Assistente</CardTitle>
             </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 text-primary-foreground hover:bg-primary/90 hover:text-white"
-              onClick={() => setIsOpen(false)}
-            >
-              <X className="w-4 h-4" />
-            </Button>
+            <div className="flex gap-1">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 text-primary-foreground hover:bg-primary/90"
+                onClick={startNewChat}
+                title="Nova Consulta"
+              >
+                <Plus className="w-4 h-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 text-primary-foreground hover:bg-primary/90"
+                onClick={() => setIsOpen(false)}
+              >
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
           </CardHeader>
-          <CardContent className="flex-1 p-0 overflow-hidden relative">
-            <ScrollArea className="h-full p-4">
-              <div className="flex flex-col gap-5 pb-4">
-                {messages.map((msg, idx) => (
-                  <div
-                    key={msg.id}
-                    className={cn(
-                      'flex gap-2 max-w-[88%]',
-                      msg.role === 'user' ? 'ml-auto flex-row-reverse' : '',
-                    )}
-                  >
+
+          <Tabs
+            value={activeTab}
+            onValueChange={setActiveTab}
+            className="flex-1 flex flex-col overflow-hidden"
+          >
+            <div className="px-3 pt-2 border-b bg-muted/20">
+              <TabsList className="w-full grid grid-cols-2">
+                <TabsTrigger value="chat">Chat</TabsTrigger>
+                <TabsTrigger value="history">Histórico</TabsTrigger>
+              </TabsList>
+            </div>
+
+            <TabsContent
+              value="chat"
+              className="flex-1 overflow-hidden m-0 p-0 flex flex-col relative"
+            >
+              <ScrollArea className="flex-1 p-4">
+                <div className="flex flex-col gap-5 pb-4">
+                  {messages.map((msg, idx) => (
                     <div
+                      key={msg.id}
                       className={cn(
-                        'w-8 h-8 rounded-full flex items-center justify-center shrink-0 mt-1',
-                        msg.role === 'user'
-                          ? 'bg-primary text-primary-foreground'
-                          : 'bg-muted text-muted-foreground',
+                        'flex gap-2 max-w-[88%]',
+                        msg.role === 'user' ? 'ml-auto flex-row-reverse' : '',
                       )}
                     >
-                      {msg.role === 'user' ? (
-                        <UserIcon className="w-4 h-4" />
-                      ) : (
-                        <Bot className="w-4 h-4" />
-                      )}
+                      <div
+                        className={cn(
+                          'w-8 h-8 rounded-full flex items-center justify-center shrink-0 mt-1',
+                          msg.role === 'user'
+                            ? 'bg-primary text-primary-foreground'
+                            : 'bg-muted text-muted-foreground',
+                        )}
+                      >
+                        {msg.role === 'user' ? (
+                          <UserIcon className="w-4 h-4" />
+                        ) : (
+                          <Bot className="w-4 h-4" />
+                        )}
+                      </div>
+                      <div
+                        className={cn(
+                          'p-3 rounded-xl text-sm shadow-sm flex flex-col',
+                          msg.role === 'user'
+                            ? 'bg-primary text-primary-foreground rounded-tr-none'
+                            : 'bg-muted text-foreground rounded-tl-none',
+                        )}
+                      >
+                        {msg.role === 'user' ? (
+                          <div className="whitespace-pre-wrap flex flex-col gap-1">
+                            {msg.content}
+                            {msg.attachedFileName && (
+                              <div className="flex items-center gap-1 mt-1 text-[11px] opacity-90 bg-primary-foreground/15 px-2 py-1 rounded-md w-fit">
+                                <Paperclip className="w-3 h-3" />
+                                <span className="truncate max-w-[180px]">
+                                  {msg.attachedFileName}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <>
+                            {msg.isTyping ? (
+                              <TypingEffect
+                                content={msg.content}
+                                onComplete={() =>
+                                  setMessages((prev) =>
+                                    prev.map((m) =>
+                                      m.id === msg.id ? { ...m, isTyping: false } : m,
+                                    ),
+                                  )
+                                }
+                              />
+                            ) : (
+                              renderMarkdown(msg.content)
+                            )}
+                            {!msg.isTyping && idx > 0 && (
+                              <BotMessageActions
+                                content={msg.content}
+                                prevPrompt={messages[idx - 1]?.content}
+                              />
+                            )}
+                          </>
+                        )}
+                      </div>
                     </div>
-                    <div
-                      className={cn(
-                        'p-3 rounded-xl text-sm shadow-sm flex flex-col',
-                        msg.role === 'user'
-                          ? 'bg-primary text-primary-foreground rounded-tr-none'
-                          : 'bg-muted text-foreground rounded-tl-none',
-                      )}
-                    >
-                      {msg.role === 'user' ? (
-                        <div className="whitespace-pre-wrap flex flex-col gap-1">
-                          {msg.content}
-                          {msg.attachedFileName && (
-                            <div className="flex items-center gap-1 mt-1 text-[11px] opacity-90 bg-primary-foreground/15 px-2 py-1 rounded-md w-fit">
-                              <Paperclip className="w-3 h-3" />
-                              <span className="truncate max-w-[180px]">{msg.attachedFileName}</span>
-                            </div>
-                          )}
-                        </div>
-                      ) : (
-                        <>
-                          {msg.isTyping ? (
-                            <TypingEffect
-                              content={msg.content}
-                              onComplete={() => {
-                                setMessages((prev) =>
-                                  prev.map((m) =>
-                                    m.id === msg.id ? { ...m, isTyping: false } : m,
-                                  ),
-                                )
-                              }}
-                            />
-                          ) : (
-                            renderMarkdown(msg.content)
-                          )}
-                          {!msg.isTyping && idx > 0 && <BotMessageActions content={msg.content} />}
-                        </>
-                      )}
+                  ))}
+                  {isLoading && (
+                    <div className="flex gap-2 max-w-[85%]">
+                      <div className="w-8 h-8 rounded-full bg-muted text-muted-foreground flex items-center justify-center shrink-0 mt-1">
+                        <Bot className="w-4 h-4" />
+                      </div>
+                      <div className="p-3 rounded-xl text-sm bg-muted text-foreground rounded-tl-none flex items-center gap-2 shadow-sm h-10">
+                        <span className="flex gap-1 items-center h-full">
+                          <span className="w-1.5 h-1.5 bg-foreground/40 rounded-full animate-bounce [animation-delay:-0.3s]" />
+                          <span className="w-1.5 h-1.5 bg-foreground/40 rounded-full animate-bounce [animation-delay:-0.15s]" />
+                          <span className="w-1.5 h-1.5 bg-foreground/40 rounded-full animate-bounce" />
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                  <div ref={messagesEndRef} />
+                </div>
+              </ScrollArea>
+              <CardFooter className="p-3 border-t bg-card/50 backdrop-blur-sm shrink-0">
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault()
+                    handleSend()
+                  }}
+                  className="flex w-full gap-2 items-end"
+                >
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleFileChange}
+                    className="hidden"
+                    accept=".txt,.csv,.xlsx,.pdf"
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="shrink-0 rounded-full h-10 w-10 text-muted-foreground"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isLoading}
+                  >
+                    <Paperclip className="w-4 h-4" />
+                  </Button>
+                  <div className="flex-1 flex flex-col bg-background border rounded-2xl overflow-hidden focus-within:ring-1 focus-within:ring-ring">
+                    {attachedFile && (
+                      <div className="flex items-center gap-2 px-3 py-1.5 bg-muted/40 border-b text-xs">
+                        <FileText className="w-3.5 h-3.5 text-primary" />
+                        <span className="flex-1 truncate font-medium">{attachedFile.name}</span>
+                        <button
+                          type="button"
+                          onClick={() => setAttachedFile(null)}
+                          className="hover:text-destructive"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    )}
+                    <Input
+                      placeholder="Pergunte ou anexe um arquivo..."
+                      value={input}
+                      onChange={(e) => setInput(e.target.value)}
+                      disabled={isLoading}
+                      className="border-0 focus-visible:ring-0 shadow-none rounded-none h-10 px-3 bg-transparent"
+                      autoFocus
+                    />
+                  </div>
+                  <Button
+                    type="submit"
+                    size="icon"
+                    className="rounded-full shrink-0 h-10 w-10"
+                    disabled={isLoading || (!input.trim() && !attachedFile)}
+                  >
+                    <Send className="w-4 h-4" />
+                  </Button>
+                </form>
+              </CardFooter>
+            </TabsContent>
+
+            <TabsContent value="history" className="flex-1 overflow-hidden m-0 p-0">
+              <ScrollArea className="h-full p-4">
+                {sessions.map((s) => (
+                  <div
+                    key={s.id}
+                    onClick={() => loadSession(s.id)}
+                    className="p-3 border rounded-lg mb-3 cursor-pointer hover:bg-muted/80 transition-colors shadow-sm"
+                  >
+                    <div className="font-medium text-[13px] truncate">{s.title}</div>
+                    <div className="text-[11px] text-muted-foreground mt-1.5">
+                      {new Date(s.created_at).toLocaleString()}
                     </div>
                   </div>
                 ))}
-                {isLoading && (
-                  <div className="flex gap-2 max-w-[85%]">
-                    <div className="w-8 h-8 rounded-full bg-muted text-muted-foreground flex items-center justify-center shrink-0 mt-1">
-                      <Bot className="w-4 h-4" />
-                    </div>
-                    <div className="p-3 rounded-xl text-sm bg-muted text-foreground rounded-tl-none flex items-center gap-2 shadow-sm h-10">
-                      <span className="flex gap-1 items-center h-full">
-                        <span className="w-1.5 h-1.5 bg-foreground/40 rounded-full animate-bounce [animation-delay:-0.3s]" />
-                        <span className="w-1.5 h-1.5 bg-foreground/40 rounded-full animate-bounce [animation-delay:-0.15s]" />
-                        <span className="w-1.5 h-1.5 bg-foreground/40 rounded-full animate-bounce" />
-                      </span>
-                    </div>
+                {sessions.length === 0 && (
+                  <div className="text-center text-sm text-muted-foreground py-8">
+                    Nenhum histórico encontrado.
                   </div>
                 )}
-                <div ref={messagesEndRef} />
-              </div>
-            </ScrollArea>
-          </CardContent>
-          <CardFooter className="p-3 border-t bg-card/50 backdrop-blur-sm">
-            <form
-              onSubmit={(e) => {
-                e.preventDefault()
-                handleSend()
-              }}
-              className="flex w-full gap-2 items-end"
-            >
-              <input
-                type="file"
-                ref={fileInputRef}
-                onChange={handleFileChange}
-                className="hidden"
-                accept=".txt,.csv,.xlsx,.pdf"
-              />
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="shrink-0 rounded-full h-10 w-10 text-muted-foreground hover:text-foreground"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={isLoading}
-                title="Anexar arquivo"
-              >
-                <Paperclip className="w-4 h-4" />
-              </Button>
-              <div className="flex-1 flex flex-col bg-background border rounded-2xl overflow-hidden focus-within:ring-1 focus-within:ring-ring">
-                {attachedFile && (
-                  <div className="flex items-center gap-2 px-3 py-1.5 bg-muted/40 border-b text-xs animate-in fade-in zoom-in duration-200">
-                    <FileText className="w-3.5 h-3.5 text-primary" />
-                    <span className="flex-1 truncate font-medium">{attachedFile.name}</span>
-                    <button
-                      type="button"
-                      onClick={() => setAttachedFile(null)}
-                      className="hover:text-destructive hover:bg-destructive/10 p-0.5 rounded-full transition-colors"
-                    >
-                      <X className="w-3 h-3" />
-                    </button>
-                  </div>
-                )}
-                <Input
-                  placeholder="Pergunte ou anexe um arquivo..."
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  disabled={isLoading}
-                  className="border-0 focus-visible:ring-0 shadow-none rounded-none h-10 px-3 bg-transparent"
-                  autoFocus
-                />
-              </div>
-              <Button
-                type="submit"
-                size="icon"
-                className="rounded-full shrink-0 h-10 w-10"
-                disabled={isLoading || (!input.trim() && !attachedFile)}
-              >
-                <Send className="w-4 h-4" />
-              </Button>
-            </form>
-          </CardFooter>
+              </ScrollArea>
+            </TabsContent>
+          </Tabs>
         </Card>
       )}
 
       {!isOpen && (
         <Button
           onClick={() => setIsOpen(true)}
-          className="w-14 h-14 rounded-full shadow-xl hover:shadow-2xl transition-all duration-300 bg-primary hover:bg-primary/90 text-primary-foreground flex items-center justify-center animate-in zoom-in-50"
+          className="w-14 h-14 rounded-full shadow-xl hover:shadow-2xl transition-all duration-300 bg-primary text-primary-foreground flex items-center justify-center animate-in zoom-in-50"
         >
           <MessageCircle className="w-6 h-6" />
         </Button>
