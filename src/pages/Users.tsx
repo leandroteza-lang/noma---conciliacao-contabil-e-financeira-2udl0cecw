@@ -773,7 +773,7 @@ export default function UsersPage() {
           ) : (
             <div className="rounded-md border-0 overflow-x-auto">
               <Table>
-                <TableHeader className="bg-muted/50">
+                <TableHeader className="bg-muted/40">
                   <TableRow>
                     {canDelete && (
                       <TableHead className="w-12 text-center">
@@ -824,7 +824,7 @@ export default function UsersPage() {
                 </TableHeader>
                 <TableBody>
                   {paginated.map((e) => (
-                    <TableRow key={e.id} className="hover:bg-muted/50">
+                    <TableRow key={e.id} className="hover:bg-muted/40 transition-colors">
                       {canDelete && (
                         <TableCell className="py-2 px-4 text-center">
                           <Checkbox

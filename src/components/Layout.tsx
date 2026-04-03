@@ -697,8 +697,8 @@ export default function Layout() {
         <SidebarRail />
       </Sidebar>
 
-      <SidebarInset className="bg-muted/30 min-w-0">
-        <header className="flex h-16 shrink-0 items-center gap-2 border-b border-border bg-background px-4 sticky top-0 z-30 shadow-sm justify-between">
+      <SidebarInset className="bg-background min-w-0">
+        <header className="flex h-16 shrink-0 items-center gap-2 border-b border-border/50 bg-card/80 backdrop-blur-md px-4 sticky top-0 z-30 shadow-sm justify-between">
           <div className="flex items-center gap-2">
             <SidebarTrigger className="-ml-2 text-muted-foreground" />
             <div className="flex items-center gap-3 md:hidden ml-2">
