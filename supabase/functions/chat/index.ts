@@ -30,17 +30,25 @@ Deno.serve(async (req: Request) => {
       )
     }
 
-    const supabase = createClient(supabaseUrl, supabaseKey, {
-      global: { headers: { Authorization: authHeader } },
+    const userResponse = await fetch(`${supabaseUrl}/auth/v1/user`, {
+      headers: {
+        Authorization: authHeader,
+        apikey: supabaseKey,
+      },
     })
 
-    const token = authHeader.replace(/^Bearer\s+/i, '').trim()
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser(token)
-    if (userError || !user)
-      throw new Error(`Usuário não autenticado: ${userError?.message || 'Token inválido'}`)
+    if (!userResponse.ok) {
+      const err = await userResponse.json().catch(() => ({}))
+      throw new Error(`Usuário não autenticado: ${err.msg || err.message || 'Token inválido'}`)
+    }
+
+    const user = await userResponse.json()
+    if (!user || !user.id) throw new Error('Usuário não autenticado: Token inválido')
+
+    const supabase = createClient(supabaseUrl, supabaseKey, {
+      global: { headers: { Authorization: authHeader } },
+      auth: { persistSession: false },
+    })
 
     const { messages, file } = await req.json()
 

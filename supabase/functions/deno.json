@@ -1,7 +1,7 @@
 {
   "_versions": {
-    "import-data": 17,
-    "generate-entries": 5,
+    "import-data": 18,
+    "generate-entries": 6,
     "export-dashboard": 4,
     "export-analysis": 4,
     "export-companies": 5,
@@ -12,6 +12,6 @@
     "export-bank-accounts": 3,
     "export-chart-accounts": 3,
     "export-tga-accounts": 3,
-    "chat": 12
+    "chat": 13
   }
 }
