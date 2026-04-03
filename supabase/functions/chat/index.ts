@@ -273,16 +273,20 @@ Exemplo:
 - **Email:** joao@exemplo.com
 Se não houver informações disponíveis no retorno das funções, informe que os dados não foram encontrados nas tabelas correspondentes.
 
-ATALHOS E LINKS: Sempre que mencionar áreas ou funcionalidades do sistema, forneça um link rápido em markdown. 
-Exemplos de rotas válidas no sistema:
-- Dashboard: [Dashboard Financeiro](/dashboard)
-- Lançamentos: [Lançamentos Financeiros](/lancamentos)
-- Análises: [Análises Gerenciais](/analises)
-- Empresas: [Gestão de Empresas](/empresas)
-- Departamentos: [Departamentos](/departamentos)
-- Usuários: [Usuários](/usuarios)
-- Centros de Custo: [Centros de Custo](/centros-de-custo)
-- Plano de Contas: [Plano de Contas](/plano-de-contas)`,
+MUITO IMPORTANTE (ATALHOS E LINKS): SEMPRE que você listar ou consultar registros de uma entidade (como empresas, usuários, departamentos, centros de custo, lançamentos, plano de contas, etc), você DEVE OBRIGATORIAMENTE incluir no final da sua resposta um link direto para a página correspondente no sistema em formato Markdown.
+Exemplos de rotas OBRIGATÓRIAS:
+- Ao listar Empresas/Organizações: inclua [Acessar Gestão de Empresas](/empresas)
+- Ao listar Departamentos: inclua [Acessar Departamentos](/departamentos)
+- Ao listar Usuários/Funcionários: inclua [Acessar Usuários](/usuarios)
+- Ao listar Lançamentos Financeiros ou Contábeis: inclua [Acessar Lançamentos](/lancamentos)
+- Ao listar Centros de Custo: inclua [Acessar Centros de Custo](/centros-de-custo)
+- Ao listar Plano de Contas: inclua [Acessar Plano de Contas](/plano-de-contas)
+- Ao falar de Dashboard: inclua [Acessar Dashboard](/dashboard)
+- Ao falar de Análises: inclua [Acessar Análises](/analises)
+- Ao falar de Contas TGA: inclua [Acessar Tipos de Conta TGA](/tipo-conta-tga)
+- Ao falar de Mapeamentos: inclua [Acessar Mapeamentos](/mapeamento)
+
+Sempre termine a sua resposta com o link sugerido em uma nova linha. Não pergunte se o usuário quer o link, apenas forneça-o automaticamente ao apresentar os dados.`,
     }
 
     const response = await openai.chat.completions.create({
