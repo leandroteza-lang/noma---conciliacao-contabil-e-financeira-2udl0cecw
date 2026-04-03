@@ -377,7 +377,7 @@ export default function TgaAccountTypes() {
         <Table>
           <TableHeader>
             <TableRow className="bg-slate-50 hover:bg-slate-50">
-              <TableHead className="w-[50px] p-3">
+              <TableHead className="w-[50px] py-1.5 px-2 h-8">
                 <Checkbox
                   checked={filteredData.length > 0 && selectedIds.length === filteredData.length}
                   onCheckedChange={(c) => {
@@ -387,30 +387,30 @@ export default function TgaAccountTypes() {
                 />
               </TableHead>
               <TableHead
-                className="cursor-pointer hover:bg-slate-100 p-3"
+                className="cursor-pointer hover:bg-slate-100 py-1.5 px-2 h-8"
                 onClick={() => handleSort('organization_id')}
               >
                 Empresa <ArrowUpDown className="inline w-3 h-3 ml-1" />
               </TableHead>
               <TableHead
-                className="cursor-pointer hover:bg-slate-100 p-3"
+                className="cursor-pointer hover:bg-slate-100 py-1.5 px-2 h-8"
                 onClick={() => handleSort('codigo')}
               >
                 Código <ArrowUpDown className="inline w-3 h-3 ml-1" />
               </TableHead>
               <TableHead
-                className="cursor-pointer hover:bg-slate-100 p-3"
+                className="cursor-pointer hover:bg-slate-100 py-1.5 px-2 h-8"
                 onClick={() => handleSort('nome')}
               >
                 Nome <ArrowUpDown className="inline w-3 h-3 ml-1" />
               </TableHead>
               <TableHead
-                className="cursor-pointer hover:bg-slate-100 p-3"
+                className="cursor-pointer hover:bg-slate-100 py-1.5 px-2 h-8"
                 onClick={() => handleSort('abreviacao')}
               >
                 Abrev. <ArrowUpDown className="inline w-3 h-3 ml-1" />
               </TableHead>
-              <TableHead className="p-3">Ações</TableHead>
+              <TableHead className="py-1.5 px-2 h-8">Ações</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -420,10 +420,10 @@ export default function TgaAccountTypes() {
                 className={
                   index % 2 === 0
                     ? 'bg-white hover:bg-blue-50/60'
-                    : 'bg-blue-50/40 hover:bg-blue-100/50'
+                    : 'bg-blue-100 hover:bg-blue-200/80'
                 }
               >
-                <TableCell className="p-3">
+                <TableCell className="py-1 px-2">
                   <Checkbox
                     checked={selectedIds.includes(item.id)}
                     onCheckedChange={(c) => {
@@ -432,29 +432,29 @@ export default function TgaAccountTypes() {
                     }}
                   />
                 </TableCell>
-                <TableCell className="p-3 font-medium text-slate-700">
+                <TableCell className="py-1 px-2 font-medium text-slate-700">
                   {item.organizations?.name || '-'}
                 </TableCell>
-                <TableCell className="p-3">{item.codigo}</TableCell>
-                <TableCell className="p-3">{item.nome}</TableCell>
-                <TableCell className="p-3">{item.abreviacao}</TableCell>
-                <TableCell className="p-3">
+                <TableCell className="py-1 px-2">{item.codigo}</TableCell>
+                <TableCell className="py-1 px-2">{item.nome}</TableCell>
+                <TableCell className="py-1 px-2">{item.abreviacao}</TableCell>
+                <TableCell className="py-1 px-2">
                   <div className="flex items-center gap-1">
                     <Button
                       variant="ghost"
                       size="icon"
                       onClick={() => openModal(item)}
-                      className="h-8 w-8"
+                      className="h-6 w-6"
                     >
-                      <Edit2 className="w-4 h-4 text-blue-600" />
+                      <Edit2 className="w-3.5 h-3.5 text-blue-600" />
                     </Button>
                     <Button
                       variant="ghost"
                       size="icon"
                       onClick={() => handleDelete(item.id)}
-                      className="h-8 w-8"
+                      className="h-6 w-6"
                     >
-                      <Trash2 className="w-4 h-4 text-red-600" />
+                      <Trash2 className="w-3.5 h-3.5 text-red-600" />
                     </Button>
                   </div>
                 </TableCell>
