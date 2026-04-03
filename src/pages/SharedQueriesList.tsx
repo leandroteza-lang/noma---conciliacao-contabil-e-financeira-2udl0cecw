@@ -55,6 +55,7 @@ export default function SharedQueriesList() {
   const [newPassword, setNewPassword] = useState('')
   const [isProtected, setIsProtected] = useState(false)
   const [updating, setUpdating] = useState(false)
+  const [userName, setUserName] = useState('')
 
   const fetchQueries = async () => {
     if (!user) return
@@ -65,6 +66,19 @@ export default function SharedQueriesList() {
 
   useEffect(() => {
     fetchQueries()
+
+    const fetchUser = async () => {
+      if (!user) return
+      const { data } = await supabase
+        .from('cadastro_usuarios')
+        .select('name')
+        .eq('user_id', user.id)
+        .maybeSingle()
+      if (data?.name) {
+        setUserName(data.name)
+      }
+    }
+    fetchUser()
   }, [user])
 
   useEffect(() => {
@@ -95,11 +109,15 @@ export default function SharedQueriesList() {
   }, [user])
 
   const copyToClipboard = (id: string) => {
-    navigator.clipboard.writeText(`${window.location.origin}/consulta/${id}`)
+    const url = `${window.location.origin}/consulta/${id}`
+    const senderName = userName ? userName.toUpperCase() : 'UM CONSULTOR'
+    const message = `Olá! **${senderName}** compartilhou um acesso seguro com você. Acesse pelo link: ${url}`
+
+    navigator.clipboard.writeText(message)
     setCopiedId(id)
     toast({
       title: 'Link copiado!',
-      description: 'O link foi copiado para a área de transferência.',
+      description: 'A mensagem com o link foi copiada para a área de transferência.',
     })
     setTimeout(() => setCopiedId(null), 2000)
   }
