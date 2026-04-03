@@ -69,6 +69,7 @@ const TypingEffect = ({ content, onComplete }: { content: string; onComplete?: (
 
 const BotMessageActions = ({ content, prevPrompt }: { content: string; prevPrompt?: string }) => {
   const [copied, setCopied] = useState(false)
+  const [shared, setShared] = useState(false)
   const { toast } = useToast()
   const { user } = useAuth()
 
@@ -169,8 +170,10 @@ const BotMessageActions = ({ content, prevPrompt }: { content: string; prevPromp
         try {
           if (navigator.clipboard && window.isSecureContext) {
             await navigator.clipboard.writeText(url)
+            setShared(true)
+            setTimeout(() => setShared(false), 2000)
             toast({
-              title: 'Link Copiado!',
+              title: 'Link copiado com sucesso!',
               description:
                 'O link de compartilhamento foi gerado e copiado para sua área de transferência.',
             })
@@ -224,7 +227,11 @@ const BotMessageActions = ({ content, prevPrompt }: { content: string; prevPromp
         onClick={handleShare}
         title="Compartilhar Link"
       >
-        <LinkIcon className="w-3.5 h-3.5" />
+        {shared ? (
+          <Check className="w-3.5 h-3.5 text-green-500" />
+        ) : (
+          <LinkIcon className="w-3.5 h-3.5" />
+        )}
       </Button>
       <div className="flex-1" />
       <Button
