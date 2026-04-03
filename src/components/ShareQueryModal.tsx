@@ -97,6 +97,9 @@ export function ShareQueryModal() {
     if (generatedPassword) {
       message += `\n🔑 *Senha de acesso:* ${generatedPassword}`
     }
+    if (isSingleView) {
+      message += `\n⚠️ *Atenção:* Este link é de visualização única e expirará após o primeiro acesso.`
+    }
 
     navigator.clipboard.writeText(message)
     setCopied(true)
@@ -138,23 +141,13 @@ export function ShareQueryModal() {
               />
             </div>
 
-            <div className="flex items-center justify-between bg-primary/5 p-4 rounded-xl border-2 border-primary/20 relative overflow-hidden transition-all duration-300 hover:bg-primary/10">
-              <div className="absolute top-0 left-0 w-1.5 h-full bg-blue-500"></div>
+            <div className="flex items-center justify-between">
               <Label
                 htmlFor="single-view-switch"
-                className="flex flex-col gap-1.5 font-medium cursor-pointer text-sm pl-2"
+                className="flex items-center gap-2 font-medium cursor-pointer text-sm"
               >
-                <span className="flex items-center gap-2">
-                  Visualização Única
-                  <EyeOff className="w-4 h-4 text-blue-500" />
-                  <span className="bg-blue-500 text-white text-[10px] px-1.5 py-0.5 rounded-sm uppercase tracking-wider font-bold animate-pulse">
-                    Novo
-                  </span>
-                </span>
-                <span className="text-xs text-muted-foreground font-normal">
-                  O link expirará automaticamente após ser acessado pela primeira vez. Ideal para
-                  dados sensíveis.
-                </span>
+                Visualização Única (expira após o 1º acesso)
+                <EyeOff className="w-4 h-4 text-blue-500" />
               </Label>
               <Switch
                 id="single-view-switch"
@@ -173,6 +166,13 @@ export function ShareQueryModal() {
             {generatedPassword && (
               <div className="bg-amber-500/10 text-amber-600 px-4 py-2 rounded-md font-medium text-sm mb-2 w-full text-center">
                 Senha gerada: <span className="font-bold tracking-wider">{generatedPassword}</span>
+              </div>
+            )}
+
+            {isSingleView && (
+              <div className="bg-blue-500/10 text-blue-600 px-4 py-2 rounded-md font-medium text-sm mb-2 w-full text-center flex items-center justify-center gap-2">
+                <EyeOff className="w-4 h-4" />
+                Visualização Única Ativada
               </div>
             )}
 
