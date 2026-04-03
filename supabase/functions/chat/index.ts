@@ -34,11 +34,13 @@ Deno.serve(async (req: Request) => {
       global: { headers: { Authorization: authHeader } },
     })
 
+    const token = authHeader.replace(/^Bearer\s+/i, '').trim()
     const {
       data: { user },
       error: userError,
-    } = await supabase.auth.getUser()
-    if (userError || !user) throw new Error('Usuário não autenticado')
+    } = await supabase.auth.getUser(token)
+    if (userError || !user)
+      throw new Error(`Usuário não autenticado: ${userError?.message || 'Token inválido'}`)
 
     const { messages, file } = await req.json()
 
