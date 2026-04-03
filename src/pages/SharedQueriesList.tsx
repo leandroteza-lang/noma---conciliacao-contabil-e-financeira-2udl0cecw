@@ -371,6 +371,7 @@ export default function SharedQueriesList() {
                         Alerta <ArrowUpDown className="h-3 w-3" />
                       </Button>
                     </TableHead>
+                    <TableHead className="text-center font-medium">Controle de Acesso</TableHead>
                     <TableHead className="text-right font-medium">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -474,8 +475,8 @@ export default function SharedQueriesList() {
                           {query.notify_first_access ? 'Ativo' : 'Inativo'}
                         </Button>
                       </TableCell>
-                      <TableCell className="text-right whitespace-nowrap">
-                        <div className="flex items-center justify-end gap-2">
+                      <TableCell className="whitespace-nowrap">
+                        <div className="flex items-center justify-center gap-2">
                           {!query.is_revoked && (
                             <>
                               <Button
@@ -514,15 +515,18 @@ export default function SharedQueriesList() {
                           >
                             <Key className="w-4 h-4" />
                           </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleDelete(query.id)}
-                            className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
                         </div>
+                      </TableCell>
+                      <TableCell className="text-right whitespace-nowrap">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleDelete(query.id)}
+                          className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                          title="Excluir"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
                       </TableCell>
                     </TableRow>
                   ))}
