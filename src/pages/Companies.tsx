@@ -16,6 +16,7 @@ import {
   Loader2,
   ArrowUpDown,
   Upload,
+  Share2,
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { supabase } from '@/lib/supabase/client'
@@ -488,6 +489,23 @@ export default function Companies() {
     fetchOrganizations()
   }
 
+  const handleShare = () => {
+    const content = sortedOrgs
+      .map(
+        (org) =>
+          `Empresa: ${org.name}\nCNPJ: ${org.cnpj ? formatCNPJ(org.cnpj) : 'N/A'}\nCPF: ${org.cpf ? formatCPF(org.cpf) : 'N/A'}\nEmail: ${org.email || 'N/A'}\nTelefone: ${org.phone || 'N/A'}\nEndereço: ${org.address || 'N/A'}\nStatus: ${org.status ? 'Ativo' : 'Inativo'}\nCriado em: ${org.created_at ? format(new Date(org.created_at), 'dd/MM/yyyy') : 'N/A'}`,
+      )
+      .join('\n\n----------------------------------------\n\n')
+
+    const event = new CustomEvent('open-share-modal', {
+      detail: {
+        prompt: `Relatório de Empresas (${sortedOrgs.length} registros)`,
+        content: content || 'Nenhuma empresa encontrada com os filtros atuais.',
+      },
+    })
+    window.dispatchEvent(event)
+  }
+
   const handleExport = async (formatType: 'pdf' | 'excel' | 'browser') => {
     try {
       toast({ title: 'Aguarde', description: 'Gerando relatório...' })
@@ -570,7 +588,14 @@ export default function Companies() {
           <h1 className="text-3xl font-bold tracking-tight text-slate-900">Gestão de Empresas</h1>
           <p className="text-slate-500 mt-1">Cadastre e gerencie as organizações do sistema.</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            variant="outline"
+            className="gap-2 text-indigo-600 border-indigo-200 hover:bg-indigo-50"
+            onClick={handleShare}
+          >
+            <Share2 className="h-4 w-4" /> Compartilhar
+          </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" className="gap-2">
