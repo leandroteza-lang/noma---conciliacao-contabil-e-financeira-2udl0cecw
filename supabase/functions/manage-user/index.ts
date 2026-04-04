@@ -33,6 +33,7 @@ Deno.serve(async (req: Request) => {
       observations,
       permissions,
       companies,
+      avatar_url,
     } = await req.json()
 
     if (action === 'resend_email') {
@@ -186,6 +187,7 @@ Deno.serve(async (req: Request) => {
               address: address || null,
               observations: observations || null,
               permissions: permissions && permissions.length > 0 ? permissions : ['all'],
+              avatar_url: avatar_url || null,
             })
             .eq('id', profile.id)
 

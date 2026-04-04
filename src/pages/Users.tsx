@@ -43,7 +43,9 @@ import {
   ArrowUp,
   ArrowDown,
   Edit,
+  Camera,
 } from 'lucide-react'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 
 export default function Users() {
   const [users, setUsers] = useState<any[]>([])
@@ -76,7 +78,10 @@ export default function Users() {
     observations: '',
     permissions: ['all'] as string[],
     companies: [] as string[],
+    avatar_url: '',
   })
+  const [avatarFile, setAvatarFile] = useState<File | null>(null)
+  const [avatarPreview, setAvatarPreview] = useState<string>('')
 
   const { toast } = useToast()
 
@@ -153,6 +158,8 @@ export default function Users() {
 
   const openNewUserModal = () => {
     setEditingUser(null)
+    setAvatarFile(null)
+    setAvatarPreview('')
     setFormData({
       name: '',
       email: '',
@@ -165,12 +172,15 @@ export default function Users() {
       observations: '',
       permissions: ['all'],
       companies: [],
+      avatar_url: '',
     })
     setIsUserModalOpen(true)
   }
 
   const openEditUserModal = (user: any) => {
     setEditingUser(user)
+    setAvatarFile(null)
+    setAvatarPreview(user.avatar_url || '')
     setFormData({
       name: user.name || '',
       email: user.email || '',
@@ -183,8 +193,17 @@ export default function Users() {
       observations: user.observations || '',
       permissions: user.permissions || ['all'],
       companies: user.cadastro_usuarios_companies?.map((c: any) => c.organization_id) || [],
+      avatar_url: user.avatar_url || '',
     })
     setIsUserModalOpen(true)
+  }
+
+  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0]
+      setAvatarFile(file)
+      setAvatarPreview(URL.createObjectURL(file))
+    }
   }
 
   const handleSaveUser = async () => {
@@ -199,6 +218,27 @@ export default function Users() {
 
     setBatchLoading(true)
 
+    let uploadedAvatarUrl = formData.avatar_url
+    if (avatarFile) {
+      const fileExt = avatarFile.name.split('.').pop()
+      const fileName = `${Math.random().toString(36).substring(2, 15)}.${fileExt}`
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(fileName, avatarFile)
+
+      if (uploadError) {
+        toast({
+          title: 'Erro',
+          description: 'Erro ao fazer upload da foto de perfil.',
+          variant: 'destructive',
+        })
+        setBatchLoading(false)
+        return
+      }
+      const { data: publicUrlData } = supabase.storage.from('avatars').getPublicUrl(fileName)
+      uploadedAvatarUrl = publicUrlData.publicUrl
+    }
+
     if (editingUser) {
       const { error } = await supabase
         .from('cadastro_usuarios')
@@ -212,6 +252,7 @@ export default function Users() {
           address: formData.address || null,
           observations: formData.observations || null,
           permissions: formData.permissions.length > 0 ? formData.permissions : ['all'],
+          avatar_url: uploadedAvatarUrl || null,
         })
         .eq('id', editingUser.id)
 
@@ -257,6 +298,7 @@ export default function Users() {
             observations: formData.observations,
             permissions: formData.permissions.length > 0 ? formData.permissions : ['all'],
             companies: formData.companies,
+            avatar_url: uploadedAvatarUrl,
           }),
         })
 
@@ -476,7 +518,15 @@ export default function Users() {
                       onCheckedChange={(c) => handleSelect(user.id, c as boolean)}
                     />
                   </TableCell>
-                  <TableCell className="font-medium">{user.name}</TableCell>
+                  <TableCell className="font-medium">
+                    <div className="flex items-center gap-3">
+                      <Avatar className="h-8 w-8 border">
+                        <AvatarImage src={user.avatar_url || ''} className="object-cover" />
+                        <AvatarFallback>{user.name.charAt(0).toUpperCase()}</AvatarFallback>
+                      </Avatar>
+                      {user.name}
+                    </div>
+                  </TableCell>
                   <TableCell className="text-muted-foreground">{user.email}</TableCell>
                   <TableCell>
                     <span
@@ -544,6 +594,34 @@ export default function Users() {
           </DialogHeader>
 
           <ScrollArea className="flex-1 px-1 -mx-1">
+            <div className="flex justify-center mb-6 pt-2">
+              <div className="relative group">
+                <Avatar className="w-24 h-24 border-2 border-muted shadow-sm">
+                  <AvatarImage src={avatarPreview} className="object-cover" />
+                  <AvatarFallback className="text-2xl bg-muted/50">
+                    {formData.name ? (
+                      formData.name.charAt(0).toUpperCase()
+                    ) : (
+                      <UsersIcon className="w-8 h-8 opacity-50" />
+                    )}
+                  </AvatarFallback>
+                </Avatar>
+                <Label
+                  htmlFor="avatar-upload"
+                  className="absolute inset-0 flex items-center justify-center bg-black/50 text-white opacity-0 group-hover:opacity-100 rounded-full cursor-pointer transition-opacity"
+                >
+                  <Camera className="w-6 h-6" />
+                </Label>
+                <Input
+                  id="avatar-upload"
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleAvatarChange}
+                />
+              </div>
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4 px-1">
               <div className="space-y-2">
                 <Label>Nome Completo *</Label>
