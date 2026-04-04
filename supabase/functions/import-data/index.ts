@@ -222,33 +222,11 @@ Deno.serve(async (req: Request) => {
           continue
         }
 
-        // Validate duplicates via Admin RPC
-        const { data: existingUserId } = await supabaseAdmin.rpc('get_auth_user_by_email', {
-          p_email: email,
-        })
-        if (existingUserId) {
-          addError(rowNum, `E-mail "${email}" já está em uso no sistema.`, row)
-          continue
-        }
-
         const rawCpf = String(row['CPF'] || '').trim()
         let cpf = rawCpf
         const cpfDigits = rawCpf.replace(/\D/g, '')
         if (cpfDigits.length === 11) {
           cpf = cpfDigits.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4')
-        }
-
-        if (cpf) {
-          const { data: existingUserCpf } = await supabaseAdmin
-            .from('cadastro_usuarios')
-            .select('id')
-            .eq('cpf', cpf)
-            .is('deleted_at', null)
-            .maybeSingle()
-          if (existingUserCpf) {
-            addError(rowNum, `CPF "${cpf}" já está em uso por outro usuário ativo.`, row)
-            continue
-          }
         }
 
         let depId = null
@@ -268,9 +246,74 @@ Deno.serve(async (req: Request) => {
           }
         }
 
+        const action = row['_action'] || 'insert'
+        const existingId = row['_existingId']
+
         const perfil = String(row['PERFIL'] || 'collaborator').toLowerCase()
         const validRoles = ['admin', 'supervisor', 'collaborator', 'client_user']
         const roleToInsert = validRoles.includes(perfil) ? perfil : 'collaborator'
+
+        // Handle Restore or Approve existing users
+        if (action === 'restore' || action === 'approve') {
+          if (!existingId) {
+            addError(rowNum, `ID do usuário não encontrado para atualização.`, row)
+            continue
+          }
+
+          const updatePayload: any = {
+            name: String(nome),
+            department_id: depId || null,
+            role: roleToInsert,
+            cpf: cpf || null,
+            pending_deletion: false,
+            deletion_requested_at: null,
+            deletion_requested_by: null,
+            approval_status: 'approved',
+            status: true,
+            deleted_at: null,
+          }
+
+          if (row['TELEFONE'] !== undefined)
+            updatePayload.phone = String(row['TELEFONE']).trim() || null
+          if (row['ENDERECO'] !== undefined)
+            updatePayload.address = String(row['ENDERECO']).trim() || null
+          if (row['OBSERVACOES'] !== undefined)
+            updatePayload.observations = String(row['OBSERVACOES']).trim() || null
+
+          const { error: updateError } = await supabaseAdmin
+            .from('cadastro_usuarios')
+            .update(updatePayload)
+            .eq('id', existingId)
+
+          if (updateError) {
+            addError(rowNum, `Erro ao atualizar usuário existente: ${updateError.message}`, row)
+          } else {
+            inserted++
+          }
+          continue
+        }
+
+        // Validate duplicates for completely new inserts
+        const { data: existingUserId } = await supabaseAdmin.rpc('get_auth_user_by_email', {
+          p_email: email,
+        })
+        if (existingUserId) {
+          addError(rowNum, `E-mail "${email}" já está em uso no sistema.`, row)
+          continue
+        }
+
+        if (cpf) {
+          const { data: existingUserCpf } = await supabaseAdmin
+            .from('cadastro_usuarios')
+            .select('id')
+            .eq('cpf', cpf)
+            .is('deleted_at', null)
+            .maybeSingle()
+          if (existingUserCpf) {
+            addError(rowNum, `CPF "${cpf}" já está em uso por outro usuário ativo.`, row)
+            continue
+          }
+        }
 
         const { data: inviteData, error: inviteError } =
           await supabaseAdmin.auth.admin.generateLink({

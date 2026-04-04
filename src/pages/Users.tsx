@@ -142,39 +142,35 @@ export default function Users() {
           .map((r: any) => String(r['EMAIL'] || '').trim())
           .filter(Boolean)
 
-        let existingCpfs = new Set()
-        let existingEmails = new Set()
+        let uniqueMatches: any[] = []
 
         if (cpfsToFetch.length > 0 || emailsToFetch.length > 0) {
           const [cpfRes, emailRes] = await Promise.all([
             cpfsToFetch.length > 0
               ? supabase
                   .from('cadastro_usuarios')
-                  .select('cpf')
+                  .select('id, user_id, email, cpf, approval_status, pending_deletion, status')
                   .in('cpf', cpfsToFetch)
-                  .is('deleted_at', null)
               : Promise.resolve({ data: [] }),
             emailsToFetch.length > 0
               ? supabase
                   .from('cadastro_usuarios')
-                  .select('email')
+                  .select('id, user_id, email, cpf, approval_status, pending_deletion, status')
                   .in('email', emailsToFetch)
-                  .is('deleted_at', null)
               : Promise.resolve({ data: [] }),
           ])
 
-          existingCpfs = new Set(cpfRes.data?.map((u: any) => u.cpf).filter(Boolean) || [])
-          existingEmails = new Set(emailRes.data?.map((u: any) => u.email).filter(Boolean) || [])
+          const allMatches = [...(cpfRes.data || []), ...(emailRes.data || [])]
+          uniqueMatches = Array.from(new Map(allMatches.map((item) => [item.id, item])).values())
         }
 
         const previewData = jsonData.map((row: any, index: number) => {
-          const errors = []
+          const errors: string[] = []
           const nome = row['NOME']
           if (!nome || String(nome).trim() === '') errors.push('Nome vazio')
 
           const email = String(row['EMAIL'] || '').trim()
           if (!email) errors.push('E-mail vazio')
-          else if (existingEmails.has(email)) errors.push('E-mail já cadastrado')
 
           const rawCpf = String(row['CPF'] || '').trim()
           const digits = rawCpf.replace(/\D/g, '')
@@ -182,8 +178,33 @@ export default function Users() {
           if (digits.length === 11) {
             formattedCpf = digits.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4')
           }
-          if (formattedCpf && existingCpfs.has(formattedCpf)) {
-            errors.push('CPF já cadastrado')
+
+          const match = uniqueMatches.find(
+            (m) => m.email === email || (formattedCpf && m.cpf === formattedCpf),
+          )
+
+          let status = 'new'
+          let action = 'insert'
+          let existingId = null
+          let userId = null
+
+          if (match) {
+            existingId = match.id
+            userId = match.user_id
+
+            if (match.pending_deletion) {
+              status = 'pending_deletion'
+              action = 'restore'
+            } else if (match.approval_status === 'pending') {
+              status = 'pending_approval'
+              action = 'discard'
+            } else {
+              status = 'active'
+              action = 'error'
+              if (match.email === email) errors.push('E-mail já cadastrado (Ativo)')
+              if (formattedCpf && match.cpf === formattedCpf)
+                errors.push('CPF já cadastrado (Ativo)')
+            }
           }
 
           return {
@@ -194,6 +215,10 @@ export default function Users() {
             _cpf: formattedCpf,
             _perfil: row['PERFIL'] || 'collaborator',
             _departamento: row['DEPARTAMENTO_CODIGO'] || '-',
+            _status: status,
+            _action: action,
+            _existingId: existingId,
+            _userId: userId,
             _errors: errors,
           }
         })
@@ -211,13 +236,42 @@ export default function Users() {
     reader.readAsArrayBuffer(file)
   }
 
+  const updatePreviewAction = (index: number, newAction: string) => {
+    setImportPreview((prev) => {
+      if (!prev) return prev
+      const next = [...prev]
+      next[index] = { ...next[index], _action: newAction }
+      return next
+    })
+  }
+
   const processImport = async () => {
     if (!importFile || !importPreview) return
     setImportLoading(true)
     setImportResult(null)
 
     try {
-      const jsonData = importPreview.map((p) => p._original)
+      const validRecords = importPreview.filter(
+        (p) => p._errors.length === 0 && p._action !== 'discard' && p._action !== 'error',
+      )
+
+      if (validRecords.length === 0) {
+        toast({
+          title: 'Atenção',
+          description: 'Nenhum registro válido ou selecionado para importar.',
+          variant: 'destructive',
+        })
+        setImportLoading(false)
+        return
+      }
+
+      const payloadRecords = validRecords.map((p) => ({
+        ...p._original,
+        _action: p._action,
+        _existingId: p._existingId,
+        _userId: p._userId,
+      }))
+
       const {
         data: { session },
       } = await supabase.auth.getSession()
@@ -232,7 +286,7 @@ export default function Users() {
           },
           body: JSON.stringify({
             type: 'EMPLOYEES',
-            records: jsonData,
+            records: payloadRecords,
             fileName: importFile.name,
             allowIncomplete: false,
           }),
@@ -791,7 +845,7 @@ export default function Users() {
         <div className="flex flex-wrap items-center justify-end gap-2 w-full md:w-auto h-auto md:h-10">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="shadow-sm">
+              <Button className="bg-red-600 hover:bg-red-700 text-white font-bold shadow-sm border-none">
                 <FileDown className="w-4 h-4 mr-2" />
                 Exportar Relatório
               </Button>
@@ -818,9 +872,9 @@ export default function Users() {
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="shadow-sm">
+              <Button className="bg-red-600 hover:bg-red-700 text-white font-bold shadow-sm border-none">
                 <FileUp className="w-4 h-4 mr-2" />
-                Importar
+                Importar em Lote
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
@@ -1373,7 +1427,7 @@ export default function Users() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <FileUp className="w-5 h-5 text-primary" />
-              Importar Usuários
+              Importar Usuários em Lote
             </DialogTitle>
             <DialogDescription>
               Faça o upload do arquivo XLSX preenchido com base no modelo.
@@ -1423,12 +1477,17 @@ export default function Users() {
                   </Button>
                 </div>
 
-                {importPreview.some((p) => p._errors.length > 0) && (
-                  <Alert variant="destructive" className="py-2 px-3 h-auto">
+                {importPreview.some(
+                  (p) =>
+                    p._errors.length > 0 ||
+                    p._status === 'pending_approval' ||
+                    p._status === 'pending_deletion',
+                ) && (
+                  <Alert className="py-2 px-3 h-auto">
                     <AlertTitle className="text-sm mb-1 font-bold">Atenção</AlertTitle>
                     <AlertDescription className="text-xs">
-                      Encontramos registros com erros ou duplicidades. Eles não serão importados ou
-                      poderão gerar falha.
+                      Revise a coluna de "Ação". Existem registros com pendências ou erros. Você
+                      pode escolher descartar ou recuperar usuários específicos antes da importação.
                     </AlertDescription>
                   </Alert>
                 )}
@@ -1442,7 +1501,7 @@ export default function Users() {
                         <TableHead>E-mail</TableHead>
                         <TableHead>CPF</TableHead>
                         <TableHead>Departamento</TableHead>
-                        <TableHead>Status / Avisos</TableHead>
+                        <TableHead>Ação</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -1464,15 +1523,39 @@ export default function Users() {
                                 {row._errors.map((e: string, j: number) => (
                                   <span
                                     key={j}
-                                    className="text-xs font-semibold text-red-600 bg-red-100 px-2 py-0.5 rounded-sm inline-block w-fit whitespace-nowrap"
+                                    className="text-xs font-semibold text-red-700 bg-red-100 border border-red-200 px-2 py-1 rounded-md inline-block w-fit whitespace-nowrap"
                                   >
                                     {e}
                                   </span>
                                 ))}
                               </div>
+                            ) : row._status === 'pending_approval' ? (
+                              <Select
+                                value={row._action}
+                                onValueChange={(val) => updatePreviewAction(i, val)}
+                              >
+                                <SelectTrigger
+                                  className={cn(
+                                    'h-8 text-xs w-44 font-semibold',
+                                    row._action === 'approve'
+                                      ? 'bg-green-100 text-green-700 border-green-200'
+                                      : 'bg-slate-100 text-slate-700 border-slate-200',
+                                  )}
+                                >
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="approve">Aprovar e Atualizar</SelectItem>
+                                  <SelectItem value="discard">Descartar (Ignorar)</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            ) : row._status === 'pending_deletion' ? (
+                              <span className="text-xs font-semibold text-blue-700 bg-blue-100 border border-blue-200 px-2 py-1 rounded-md whitespace-nowrap">
+                                Recuperar (Exclusão Pendente)
+                              </span>
                             ) : (
-                              <span className="text-xs font-semibold text-green-600 bg-green-100 px-2 py-0.5 rounded-sm">
-                                Pronto
+                              <span className="text-xs font-semibold text-green-700 bg-green-100 border border-green-200 px-2 py-1 rounded-md whitespace-nowrap">
+                                Inserir Novo
                               </span>
                             )}
                           </TableCell>
@@ -1522,7 +1605,7 @@ export default function Users() {
               <Button
                 onClick={processImport}
                 disabled={!importFile || importLoading}
-                className="shadow-sm"
+                className="shadow-sm bg-red-600 hover:bg-red-700 text-white font-bold"
               >
                 {importLoading ? (
                   <>
