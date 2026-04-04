@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/hooks/use-toast'
 import { supabase } from '@/lib/supabase/client'
 import { useAuth } from '@/hooks/use-auth'
@@ -27,20 +28,23 @@ export function ShareQueryModal() {
   const [generatedId, setGeneratedId] = useState<string | null>(null)
   const [generatedPassword, setGeneratedPassword] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
+  const [isManual, setIsManual] = useState(false)
 
   const { user } = useAuth()
   const { toast } = useToast()
 
   useEffect(() => {
     const handleOpen = (e: CustomEvent) => {
-      setPrompt(e.detail?.prompt || 'Consulta Compartilhada')
-      setContent(e.detail?.content || 'Conteúdo da consulta...')
+      const manual = e.detail?.isManual || false
+      setPrompt(e.detail?.prompt || (manual ? '' : 'Consulta Compartilhada'))
+      setContent(e.detail?.content || (manual ? '' : 'Conteúdo da consulta...'))
       setNotifyFirstAccess(true)
       setIsProtected(false)
       setIsSingleView(false)
       setGeneratedId(null)
       setGeneratedPassword(null)
       setCopied(false)
+      setIsManual(manual)
       setOpen(true)
     }
 
@@ -76,6 +80,7 @@ export function ShareQueryModal() {
       setGeneratedId(data.id)
       setGeneratedPassword(newPassword)
       toast({ title: 'Sucesso', description: 'Link gerado com sucesso!' })
+      window.dispatchEvent(new CustomEvent('share-created'))
     }
   }
 
@@ -119,6 +124,30 @@ export function ShareQueryModal() {
 
         {!generatedId ? (
           <div className="space-y-6 py-6">
+            {isManual && (
+              <div className="space-y-4 pb-4 border-b border-border/50">
+                <div className="space-y-2">
+                  <Label htmlFor="manual-prompt">Tópico / Título da Consulta</Label>
+                  <Input
+                    id="manual-prompt"
+                    value={prompt}
+                    onChange={(e) => setPrompt(e.target.value)}
+                    placeholder="Ex: Relatório Financeiro Q3"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="manual-content">Conteúdo a Compartilhar</Label>
+                  <Textarea
+                    id="manual-content"
+                    value={content}
+                    onChange={(e) => setContent(e.target.value)}
+                    placeholder="Cole os dados, textos ou tabelas aqui..."
+                    className="min-h-[120px] resize-y"
+                  />
+                </div>
+              </div>
+            )}
+
             <div className="flex items-center justify-between">
               <Label htmlFor="protect-switch" className="font-medium cursor-pointer text-sm">
                 Proteger com senha gerada automaticamente
@@ -203,7 +232,10 @@ export function ShareQueryModal() {
               <Button variant="outline" onClick={() => setOpen(false)}>
                 Cancelar
               </Button>
-              <Button onClick={handleGenerate} disabled={loading} variant="destructive">
+              <Button
+                onClick={handleGenerate}
+                disabled={loading || (isManual && (!prompt.trim() || !content.trim()))}
+              >
                 {loading ? 'Gerando...' : 'Gerar Link'}
               </Button>
             </>

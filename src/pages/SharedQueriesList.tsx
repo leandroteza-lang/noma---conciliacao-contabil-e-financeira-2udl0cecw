@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Trash2, Search, Filter } from 'lucide-react'
+import { Trash2, Search, Filter, Plus } from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
 import { useAuth } from '@/hooks/use-auth'
 import {
@@ -46,6 +46,10 @@ export default function SharedQueriesList() {
 
   useEffect(() => {
     fetchQueries()
+
+    const handleRefresh = () => fetchQueries()
+    window.addEventListener('share-created', handleRefresh)
+    return () => window.removeEventListener('share-created', handleRefresh)
   }, [user])
 
   const fetchQueries = async () => {
@@ -208,7 +212,7 @@ export default function SharedQueriesList() {
             </Select>
           </div>
 
-          <div className="flex items-center justify-end">
+          <div className="flex items-center justify-end gap-2">
             {selectedIds.length > 0 && (
               <AlertDialog>
                 <AlertDialogTrigger asChild>
@@ -243,6 +247,18 @@ export default function SharedQueriesList() {
                 </AlertDialogContent>
               </AlertDialog>
             )}
+            <Button
+              size="sm"
+              className="h-9 font-medium shadow-sm"
+              onClick={() =>
+                window.dispatchEvent(
+                  new CustomEvent('open-share-modal', { detail: { isManual: true } }),
+                )
+              }
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Novo
+            </Button>
           </div>
         </CardHeader>
         <CardContent className="p-0">
