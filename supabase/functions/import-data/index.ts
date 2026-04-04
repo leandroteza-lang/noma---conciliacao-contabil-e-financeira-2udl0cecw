@@ -193,14 +193,56 @@ Deno.serve(async (req: Request) => {
         }
       }
     } else if (type === 'EMPLOYEES') {
+      const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+      const supabaseAdmin = supabaseServiceKey
+        ? createClient(supabaseUrl, supabaseServiceKey)
+        : null
+
+      if (!supabaseAdmin) {
+        throw new Error('Configuração de servidor incompleta (Service Role Key ausente).')
+      }
+
+      const resendApiKey = Deno.env.get('RESEND_API_KEY')
+      const origin = req.headers.get('origin') || 'https://gestao-de-contas-f8bf6.goskip.app'
+      const redirectTo = `${origin}/reset-password`
+
       for (let i = 0; i < records.length; i++) {
         const row = records[i]
         const rowNum = i + 1
 
         const nome = row['NOME']
         if (!allowIncomplete && (!nome || String(nome).trim() === '')) {
-          addError(rowNum, 'A coluna NOME está vazia.', row)
+          addError(rowNum, 'A coluna NOME é obrigatória.', row)
           continue
+        }
+
+        const email = String(row['EMAIL'] || '').trim()
+        if (!email) {
+          addError(rowNum, 'A coluna EMAIL é obrigatória para importação de usuários.', row)
+          continue
+        }
+
+        // Validate duplicates via Admin RPC
+        const { data: existingUserId } = await supabaseAdmin.rpc('get_auth_user_by_email', {
+          p_email: email,
+        })
+        if (existingUserId) {
+          addError(rowNum, `E-mail "${email}" já está em uso no sistema.`, row)
+          continue
+        }
+
+        const cpf = String(row['CPF'] || '').trim()
+        if (cpf) {
+          const { data: existingUserCpf } = await supabaseAdmin
+            .from('cadastro_usuarios')
+            .select('id')
+            .eq('cpf', cpf)
+            .is('deleted_at', null)
+            .maybeSingle()
+          if (existingUserCpf) {
+            addError(rowNum, `CPF "${cpf}" já está em uso por outro usuário ativo.`, row)
+            continue
+          }
         }
 
         let depId = null
@@ -215,25 +257,7 @@ Deno.serve(async (req: Request) => {
           if (dep) {
             depId = dep.id
           } else if (!allowIncomplete) {
-            addError(
-              rowNum,
-              `Departamento com código "${depCode}" não encontrado ou excluído.`,
-              row,
-            )
-            continue
-          }
-        }
-
-        const email = String(row['EMAIL'] || '').trim()
-        if (email) {
-          const { data: existingUser } = await supabase
-            .from('cadastro_usuarios')
-            .select('id')
-            .eq('email', email)
-            .is('deleted_at', null)
-            .maybeSingle()
-          if (existingUser) {
-            addError(rowNum, `E-mail "${email}" já está em uso por outro funcionário.`, row)
+            addError(rowNum, `Departamento "${depCode}" não encontrado.`, row)
             continue
           }
         }
@@ -242,25 +266,78 @@ Deno.serve(async (req: Request) => {
         const validRoles = ['admin', 'supervisor', 'collaborator', 'client_user']
         const roleToInsert = validRoles.includes(perfil) ? perfil : 'collaborator'
 
-        const { error: insertError } = await supabase.from('cadastro_usuarios').insert({
-          user_id: user.id,
-          name: String(nome || `Usuário ${rowNum}`),
-          cpf: String(row['CPF'] || '') || null,
-          email: email || null,
-          phone: String(row['TELEFONE'] || '') || null,
-          address: String(row['ENDERECO'] || '') || null,
-          observations: String(row['OBSERVACOES'] || '') || null,
-          role: roleToInsert,
-          permissions: ['all'],
-          department_id: depId || null,
-          status: true,
-        })
+        const { data: inviteData, error: inviteError } =
+          await supabaseAdmin.auth.admin.generateLink({
+            type: 'invite',
+            email: email,
+            options: { redirectTo },
+            data: {
+              name: String(nome),
+              role: roleToInsert,
+              cpf: cpf || null,
+              phone: String(row['TELEFONE'] || '') || null,
+              department_id: depId || null,
+              admin_id: user.id,
+            },
+          })
 
-        if (insertError) {
-          addError(rowNum, `Erro ao inserir - ${insertError.message}`, row)
-        } else {
-          inserted++
+        if (inviteError) {
+          addError(rowNum, `Erro ao convidar: ${inviteError.message}`, row)
+          continue
         }
+
+        if (inviteData.user) {
+          const { data: profile } = await supabaseAdmin
+            .from('cadastro_usuarios')
+            .select('id')
+            .eq('user_id', inviteData.user.id)
+            .maybeSingle()
+          if (profile) {
+            await supabaseAdmin
+              .from('cadastro_usuarios')
+              .update({
+                address: String(row['ENDERECO'] || '') || null,
+                observations: String(row['OBSERVACOES'] || '') || null,
+              })
+              .eq('id', profile.id)
+          }
+
+          const actionLink = inviteData.properties?.action_link
+          if (actionLink && resendApiKey) {
+            const subject = 'Convite de Acesso - Gestão de Contas'
+            const htmlBody = `
+              <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 8px;">
+                <div style="text-align: center; margin-bottom: 20px;">
+                  <h1 style="color: #0f172a; margin: 0;">Gestão de Contas</h1>
+                </div>
+                <h2 style="color: #0f172a; text-align: center;">Bem-vindo(a)!</h2>
+                <p style="color: #334155; font-size: 16px;">Olá <strong>${nome}</strong>,</p>
+                <p style="color: #334155; font-size: 16px;">Você foi convidado(a) para acessar o sistema.</p>
+                <p style="color: #334155; font-size: 16px;">Para aceitar o convite e configurar sua senha, clique no botão abaixo:</p>
+                <div style="text-align: center; margin: 30px 0;">
+                  <a href="${actionLink}" style="background-color: #2563eb; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 16px; display: inline-block;">Aceitar Convite</a>
+                </div>
+                <p style="color: #64748b; font-size: 14px; text-align: center;">Se o botão não funcionar, copie e cole este link no seu navegador:<br><br><a href="${actionLink}" style="color: #2563eb; word-break: break-all;">${actionLink}</a></p>
+                <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
+                <p style="color: #94a3b8; font-size: 12px; text-align: center;">Este é um e-mail automático, por favor não responda.</p>
+              </div>
+            `
+            await fetch('https://api.resend.com/emails', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${resendApiKey}`,
+              },
+              body: JSON.stringify({
+                from: 'Gestão de Contas <onboarding@resend.dev>',
+                to: [email],
+                subject: subject,
+                html: htmlBody,
+              }),
+            }).catch((e) => console.error('Erro ao enviar email', e))
+          }
+        }
+        inserted++
       }
     } else if (type === 'BANK_ACCOUNTS') {
       for (let i = 0; i < records.length; i++) {

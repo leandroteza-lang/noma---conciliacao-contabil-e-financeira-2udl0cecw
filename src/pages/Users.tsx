@@ -56,8 +56,11 @@ import {
   FileText,
   FileSpreadsheet,
   File as FileIcon,
+  FileUp,
+  UploadCloud,
 } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import * as XLSX from 'xlsx'
 
 export default function Users() {
   const [users, setUsers] = useState<any[]>([])
@@ -74,6 +77,92 @@ export default function Users() {
   const [batchField, setBatchField] = useState<string>('')
   const [batchValue, setBatchValue] = useState<string>('')
   const [batchLoading, setBatchLoading] = useState(false)
+
+  // Import modal
+  const [importModalOpen, setImportModalOpen] = useState(false)
+  const [importFile, setImportFile] = useState<File | null>(null)
+  const [importLoading, setImportLoading] = useState(false)
+  const [importResult, setImportResult] = useState<{
+    inserted: number
+    rejected: number
+    errors: any[]
+  } | null>(null)
+
+  const handleDownloadTemplate = () => {
+    const ws = XLSX.utils.json_to_sheet([
+      {
+        NOME: 'João Silva',
+        EMAIL: 'joao.silva@empresa.com',
+        CPF: '111.222.333-44',
+        TELEFONE: '(11) 99999-9999',
+        DEPARTAMENTO_CODIGO: 'DEP-123',
+        PERFIL: 'collaborator',
+        ENDERECO: 'Rua Fictícia, 123',
+        OBSERVACOES: 'Usuário importado',
+      },
+    ])
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, 'Modelo Usuários')
+    XLSX.writeFile(wb, 'modelo_importacao_usuarios.xlsx')
+  }
+
+  const processImport = async () => {
+    if (!importFile) return
+    setImportLoading(true)
+    setImportResult(null)
+
+    try {
+      const reader = new FileReader()
+      reader.onload = async (e) => {
+        try {
+          const data = new Uint8Array(e.target?.result as ArrayBuffer)
+          const workbook = XLSX.read(data, { type: 'array' })
+          const firstSheetName = workbook.SheetNames[0]
+          const worksheet = workbook.Sheets[firstSheetName]
+          const jsonData = XLSX.utils.sheet_to_json(worksheet)
+
+          const {
+            data: { session },
+          } = await supabase.auth.getSession()
+
+          const response = await fetch(
+            `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/import-data`,
+            {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${session?.access_token}`,
+              },
+              body: JSON.stringify({
+                type: 'EMPLOYEES',
+                records: jsonData,
+                fileName: importFile.name,
+                allowIncomplete: false,
+              }),
+            },
+          )
+
+          const result = await response.json()
+          if (!response.ok) throw new Error(result.error || 'Erro na importação')
+
+          setImportResult(result)
+          fetchData()
+        } catch (error: any) {
+          toast({
+            title: 'Erro ao processar arquivo',
+            description: error.message,
+            variant: 'destructive',
+          })
+        } finally {
+          setImportLoading(false)
+        }
+      }
+      reader.readAsArrayBuffer(importFile)
+    } catch (err: any) {
+      toast({ title: 'Erro na leitura', description: err.message, variant: 'destructive' })
+      setImportLoading(false)
+    }
+  }
 
   // User form modal
   const [isUserModalOpen, setIsUserModalOpen] = useState(false)
@@ -613,7 +702,7 @@ export default function Users() {
             <DropdownMenuTrigger asChild>
               <Button variant="outline" className="shadow-sm">
                 <FileDown className="w-4 h-4 mr-2" />
-                Exportar
+                Exportar Relatório
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
@@ -632,6 +721,31 @@ export default function Users() {
               <DropdownMenuItem onClick={() => handleExport('txt')}>
                 <FileIcon className="w-4 h-4 mr-2 text-slate-500" />
                 Exportar em TXT
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="shadow-sm">
+                <FileUp className="w-4 h-4 mr-2" />
+                Importar
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={handleDownloadTemplate}>
+                <FileSpreadsheet className="w-4 h-4 mr-2 text-green-600" />
+                Baixar Modelo (XLSX)
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => {
+                  setImportResult(null)
+                  setImportFile(null)
+                  setImportModalOpen(true)
+                }}
+              >
+                <UploadCloud className="w-4 h-4 mr-2 text-blue-600" />
+                Importar Dados (XLSX)
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -1143,6 +1257,95 @@ export default function Users() {
               {batchLoading ? 'Salvando...' : 'Salvar'}
             </Button>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Import Modal */}
+      <Dialog open={importModalOpen} onOpenChange={setImportModalOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileUp className="w-5 h-5 text-primary" />
+              Importar Usuários
+            </DialogTitle>
+            <DialogDescription>
+              Faça o upload do arquivo XLSX preenchido com base no modelo.
+            </DialogDescription>
+          </DialogHeader>
+
+          {!importResult ? (
+            <div className="space-y-4 py-4">
+              <div className="flex flex-col items-center justify-center p-8 border-2 border-dashed border-muted-foreground/25 rounded-lg bg-muted/10 hover:bg-muted/20 transition-colors">
+                <UploadCloud className="w-10 h-10 text-muted-foreground mb-4" />
+                <Label
+                  htmlFor="file-upload"
+                  className="cursor-pointer text-primary hover:underline font-medium"
+                >
+                  Clique para selecionar o arquivo
+                </Label>
+                <Input
+                  id="file-upload"
+                  type="file"
+                  accept=".xlsx"
+                  className="hidden"
+                  onChange={(e) => setImportFile(e.target.files?.[0] || null)}
+                />
+                {importFile && (
+                  <p className="mt-4 text-sm text-center font-medium">
+                    Arquivo: <span className="text-primary">{importFile.name}</span>
+                  </p>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-4 py-4">
+              <div className="bg-muted/30 p-4 rounded-lg space-y-2 border">
+                <p className="font-semibold text-green-600 flex items-center gap-2">
+                  <Activity className="w-4 h-4" /> {importResult.inserted} registros importados com
+                  sucesso
+                </p>
+                {importResult.rejected > 0 && (
+                  <p className="font-semibold text-red-500 flex items-center gap-2">
+                    <Activity className="w-4 h-4" /> {importResult.rejected} registros com erro ou
+                    duplicados
+                  </p>
+                )}
+              </div>
+              {importResult.errors && importResult.errors.length > 0 && (
+                <ScrollArea className="h-40 border rounded-md p-3 bg-card text-sm">
+                  {importResult.errors.map((err: any, i: number) => (
+                    <div
+                      key={i}
+                      className="text-red-500 mb-2 border-b border-red-500/10 pb-2 last:border-0 last:mb-0 last:pb-0"
+                    >
+                      <strong className="font-bold">Linha {err.row}:</strong> {err.error}
+                    </div>
+                  ))}
+                </ScrollArea>
+              )}
+            </div>
+          )}
+
+          <DialogFooter className="sm:justify-between">
+            <Button variant="ghost" onClick={() => setImportModalOpen(false)}>
+              {importResult ? 'Fechar' : 'Cancelar'}
+            </Button>
+            {!importResult && (
+              <Button
+                onClick={processImport}
+                disabled={!importFile || importLoading}
+                className="shadow-sm"
+              >
+                {importLoading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Importando...
+                  </>
+                ) : (
+                  'Confirmar Importação'
+                )}
+              </Button>
+            )}
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
