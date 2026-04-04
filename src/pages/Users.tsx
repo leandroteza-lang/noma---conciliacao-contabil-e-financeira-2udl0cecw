@@ -44,6 +44,7 @@ import {
   ArrowDown,
   Edit,
   Camera,
+  Loader2,
 } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 
@@ -66,6 +67,7 @@ export default function Users() {
   // User form modal
   const [isUserModalOpen, setIsUserModalOpen] = useState(false)
   const [cpfError, setCpfError] = useState<string>('')
+  const [isCheckingCpf, setIsCheckingCpf] = useState(false)
   const [editingUser, setEditingUser] = useState<any>(null)
   const [formData, setFormData] = useState({
     name: '',
@@ -221,11 +223,71 @@ export default function Users() {
     return rest(10) === cpfDigits[9] && rest(11) === cpfDigits[10]
   }
 
+  useEffect(() => {
+    let isMounted = true
+    const checkCpfUniqueness = async () => {
+      if (formData.cpf.length === 14) {
+        if (!validateCPF(formData.cpf)) {
+          if (isMounted) setCpfError('CPF inválido')
+          return
+        }
+
+        if (isMounted) {
+          setIsCheckingCpf(true)
+          setCpfError('')
+        }
+
+        let query = supabase
+          .from('cadastro_usuarios')
+          .select('id')
+          .eq('cpf', formData.cpf)
+          .is('deleted_at', null)
+
+        if (editingUser?.id) {
+          query = query.neq('id', editingUser.id)
+        }
+
+        const { data, error } = await query.maybeSingle()
+
+        if (isMounted) {
+          setIsCheckingCpf(false)
+          if (error) {
+            console.error('Erro ao verificar CPF:', error)
+          } else if (data) {
+            setCpfError('CPF já cadastrado no sistema')
+          } else {
+            setCpfError('')
+          }
+        }
+      } else {
+        if (isMounted) setCpfError('')
+      }
+    }
+
+    const timeoutId = setTimeout(() => {
+      checkCpfUniqueness()
+    }, 400)
+
+    return () => {
+      isMounted = false
+      clearTimeout(timeoutId)
+    }
+  }, [formData.cpf, editingUser])
+
   const handleSaveUser = async () => {
     if (!formData.name || !formData.email) {
       toast({
         title: 'Atenção',
         description: 'Nome e E-mail são obrigatórios.',
+        variant: 'destructive',
+      })
+      return
+    }
+
+    if (cpfError || isCheckingCpf) {
+      toast({
+        title: 'Atenção',
+        description: cpfError || 'Aguarde a verificação do CPF.',
         variant: 'destructive',
       })
       return
@@ -681,22 +743,19 @@ export default function Users() {
                     }
                     const formatted = formatCPF(e.target.value)
                     setFormData({ ...formData, cpf: formatted })
-
-                    if (formatted.length === 14) {
-                      if (!validateCPF(formatted)) {
-                        setCpfError('CPF inválido')
-                      } else {
-                        setCpfError('')
-                      }
-                    } else {
-                      setCpfError('')
-                    }
                   }}
                   placeholder="Ex: 000.000.000-00"
                   maxLength={14}
                   className={cpfError ? 'border-red-500 focus-visible:ring-red-500' : ''}
                 />
-                {cpfError && <p className="text-xs text-red-500 font-medium">{cpfError}</p>}
+                {isCheckingCpf && (
+                  <p className="text-xs text-muted-foreground font-medium flex items-center gap-1">
+                    <Loader2 className="w-3 h-3 animate-spin" /> Verificando CPF...
+                  </p>
+                )}
+                {cpfError && !isCheckingCpf && (
+                  <p className="text-xs text-red-500 font-medium">{cpfError}</p>
+                )}
               </div>
               <div className="space-y-2">
                 <Label>Telefone</Label>
