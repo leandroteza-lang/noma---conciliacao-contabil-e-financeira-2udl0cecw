@@ -31,6 +31,12 @@ import { Textarea } from '@/components/ui/textarea'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { useToast } from '@/hooks/use-toast'
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import {
   Search,
   Trash2,
   Edit3,
@@ -45,6 +51,11 @@ import {
   Edit,
   Camera,
   Loader2,
+  Clock,
+  FileDown,
+  FileText,
+  FileSpreadsheet,
+  File as FileIcon,
 } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 
@@ -411,6 +422,22 @@ export default function Users() {
     setBatchLoading(false)
   }
 
+  const handleDeleteUser = async (id: string) => {
+    if (!confirm('Deseja realmente excluir este usuário?')) return
+
+    const { error } = await supabase
+      .from('cadastro_usuarios')
+      .update({ deleted_at: new Date().toISOString() })
+      .eq('id', id)
+
+    if (error) {
+      toast({ title: 'Erro', description: error.message, variant: 'destructive' })
+    } else {
+      toast({ title: 'Sucesso', description: 'Usuário excluído com sucesso.' })
+      fetchData()
+    }
+  }
+
   const handleBatchDelete = async () => {
     if (!confirm(`Deseja realmente excluir ${selected.length} usuários?`)) return
 
@@ -425,6 +452,76 @@ export default function Users() {
       toast({ title: 'Sucesso', description: `${selected.length} usuários excluídos em lote.` })
       setSelected([])
       fetchData()
+    }
+  }
+
+  const handleExport = async (format: 'pdf' | 'excel' | 'csv' | 'txt') => {
+    if (sortedUsers.length === 0) {
+      toast({
+        title: 'Atenção',
+        description: 'Não há dados para exportar.',
+        variant: 'destructive',
+      })
+      return
+    }
+
+    const dataToExport = sortedUsers.map((u) => ({
+      name: u.name,
+      email: u.email,
+      cpf: u.cpf,
+      phone: u.phone,
+      address: u.address,
+      department: u.departments?.name,
+      role: u.role,
+      status: u.status,
+      approval_status: u.approval_status,
+      created_at: new Date(u.created_at).toLocaleDateString('pt-BR'),
+    }))
+
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession()
+
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/export-users`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session?.access_token}`,
+        },
+        body: JSON.stringify({ format, data: dataToExport }),
+      })
+
+      if (!res.ok) throw new Error('Falha ao exportar')
+      const result = await res.json()
+
+      if (format === 'excel' && result.excel) {
+        const link = document.createElement('a')
+        link.href = `data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,${result.excel}`
+        link.download = `usuarios_${new Date().getTime()}.xlsx`
+        link.click()
+      } else if (format === 'pdf' && result.pdf) {
+        const link = document.createElement('a')
+        link.href = result.pdf
+        link.download = `usuarios_${new Date().getTime()}.pdf`
+        link.click()
+      } else if (format === 'csv' && result.csv) {
+        const blob = new Blob([result.csv], { type: 'text/csv;charset=utf-8;' })
+        const link = document.createElement('a')
+        link.href = URL.createObjectURL(blob)
+        link.download = `usuarios_${new Date().getTime()}.csv`
+        link.click()
+      } else if (format === 'txt' && result.txt) {
+        const blob = new Blob([result.txt], { type: 'text/plain;charset=utf-8;' })
+        const link = document.createElement('a')
+        link.href = URL.createObjectURL(blob)
+        link.download = `usuarios_${new Date().getTime()}.txt`
+        link.click()
+      } else {
+        throw new Error('Formato não retornado ou erro na exportação')
+      }
+    } catch (error: any) {
+      toast({ title: 'Erro na exportação', description: error.message, variant: 'destructive' })
     }
   }
 
@@ -502,7 +599,34 @@ export default function Users() {
           />
         </div>
 
-        <div className="flex items-center gap-2 w-full md:w-auto h-10">
+        <div className="flex flex-wrap items-center justify-end gap-2 w-full md:w-auto h-auto md:h-10">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="shadow-sm">
+                <FileDown className="w-4 h-4 mr-2" />
+                Exportar
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => handleExport('pdf')}>
+                <FileText className="w-4 h-4 mr-2 text-red-500" />
+                Exportar em PDF
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleExport('excel')}>
+                <FileSpreadsheet className="w-4 h-4 mr-2 text-green-500" />
+                Exportar em XLSX
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleExport('csv')}>
+                <FileSpreadsheet className="w-4 h-4 mr-2 text-green-600" />
+                Exportar em CSV
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleExport('txt')}>
+                <FileIcon className="w-4 h-4 mr-2 text-slate-500" />
+                Exportar em TXT
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
           {selected.length > 0 && (
             <div className="flex items-center gap-2 animate-in fade-in slide-in-from-right-4 duration-300">
               <span className="text-sm font-bold bg-primary/10 text-primary px-3 py-2 rounded-lg">
@@ -577,7 +701,7 @@ export default function Users() {
                   Status <SortIcon columnKey="status" />
                 </div>
               </TableHead>
-              <TableHead className="w-16 text-right font-bold">Ações</TableHead>
+              <TableHead className="w-20 text-right font-bold">Ações</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -647,22 +771,41 @@ export default function Users() {
                     {user.departments?.name || 'Não atribuído'}
                   </TableCell>
                   <TableCell className="text-center">
-                    <span
-                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold ${user.status ? 'bg-green-500/10 text-green-600' : 'bg-red-500/10 text-red-600'}`}
-                    >
-                      <Activity className="w-3.5 h-3.5" />
-                      {user.status ? 'Ativo' : 'Inativo'}
-                    </span>
+                    {user.approval_status === 'pending' ? (
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-yellow-500/10 text-yellow-600">
+                        <Clock className="w-3.5 h-3.5" />
+                        Em Aprovação
+                      </span>
+                    ) : (
+                      <span
+                        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold ${user.status ? 'bg-green-500/10 text-green-600' : 'bg-red-500/10 text-red-600'}`}
+                      >
+                        <Activity className="w-3.5 h-3.5" />
+                        {user.status ? 'Ativo' : 'Inativo'}
+                      </span>
+                    )}
                   </TableCell>
                   <TableCell className="text-right">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => openEditUserModal(user)}
-                      className="h-8 w-8 text-muted-foreground hover:text-primary"
-                    >
-                      <Edit className="w-4 h-4" />
-                    </Button>
+                    <div className="flex items-center justify-end gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => openEditUserModal(user)}
+                        className="h-8 w-8 text-muted-foreground hover:text-primary"
+                        title="Editar"
+                      >
+                        <Edit className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleDeleteUser(user.id)}
+                        className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                        title="Excluir"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))

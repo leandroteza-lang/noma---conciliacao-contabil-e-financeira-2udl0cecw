@@ -35,7 +35,7 @@ Deno.serve(async (req: Request) => {
                 : r.role === 'client_user'
                   ? 'Usuário Cliente'
                   : 'Colaborador',
-          Status: r.status ? 'Ativo' : 'Inativo',
+          Status: r.approval_status === 'pending' ? 'Em Aprovação' : r.status ? 'Ativo' : 'Inativo',
           'Data Criação': r.created_at || '',
         })),
       )
@@ -64,7 +64,7 @@ Deno.serve(async (req: Request) => {
               ? 'Usuário Cliente'
               : 'Colaborador',
         r.department || '-',
-        r.status ? 'Ativo' : 'Inativo',
+        r.approval_status === 'pending' ? 'Em Aprovação' : r.status ? 'Ativo' : 'Inativo',
       ])
 
       autoTable(doc, {
@@ -82,7 +82,55 @@ Deno.serve(async (req: Request) => {
       })
     }
 
-    throw new Error('Formato inválido. Use "excel" ou "pdf".')
+    if (format === 'csv') {
+      let csvContent = 'Nome;CPF;Email;Telefone;Endereço;Departamento;Perfil;Status;Data Criação\n'
+      data.forEach((r: any) => {
+        const perfil =
+          r.role === 'admin'
+            ? 'Administrador'
+            : r.role === 'supervisor'
+              ? 'Supervisor'
+              : r.role === 'client_user'
+                ? 'Usuário Cliente'
+                : 'Colaborador'
+        const status =
+          r.approval_status === 'pending' ? 'Em Aprovação' : r.status ? 'Ativo' : 'Inativo'
+        csvContent += `"${r.name || ''}";"${r.cpf || ''}";"${r.email || ''}";"${r.phone || ''}";"${r.address || ''}";"${r.department || ''}";"${perfil}";"${status}";"${r.created_at || ''}"\n`
+      })
+      return new Response(JSON.stringify({ csv: csvContent }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+
+    if (format === 'txt') {
+      let txtContent = 'RELATÓRIO DE USUÁRIOS\n=========================================\n\n'
+      data.forEach((r: any) => {
+        const perfil =
+          r.role === 'admin'
+            ? 'Administrador'
+            : r.role === 'supervisor'
+              ? 'Supervisor'
+              : r.role === 'client_user'
+                ? 'Usuário Cliente'
+                : 'Colaborador'
+        const status =
+          r.approval_status === 'pending' ? 'Em Aprovação' : r.status ? 'Ativo' : 'Inativo'
+        txtContent += `Nome: ${r.name || '-'}\n`
+        txtContent += `CPF: ${r.cpf || '-'}\n`
+        txtContent += `Email: ${r.email || '-'}\n`
+        txtContent += `Telefone: ${r.phone || '-'}\n`
+        txtContent += `Departamento: ${r.department || '-'}\n`
+        txtContent += `Perfil: ${perfil}\n`
+        txtContent += `Status: ${status}\n`
+        txtContent += `Data Criação: ${r.created_at || '-'}\n`
+        txtContent += '-----------------------------------------\n'
+      })
+      return new Response(JSON.stringify({ txt: txtContent }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+
+    throw new Error('Formato inválido. Use "excel", "pdf", "csv" ou "txt".')
   } catch (err: any) {
     return new Response(JSON.stringify({ error: err.message }), {
       status: 400,
