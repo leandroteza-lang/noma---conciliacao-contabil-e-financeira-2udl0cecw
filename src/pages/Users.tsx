@@ -535,18 +535,40 @@ function ImportUsersModal({
         .from('cadastro_usuarios')
         .select('id, email, cpf, pending_deletion, approval_status, deleted_at')
 
+      const isValidCPF = (cpfValue: string) => {
+        const cleanCpf = cpfValue.replace(/\D/g, '')
+        if (cleanCpf.length !== 11 || /^(\d)\1{10}$/.test(cleanCpf)) return false
+        let sum = 0
+        let remainder
+        for (let i = 1; i <= 9; i++) sum += parseInt(cleanCpf.substring(i - 1, i)) * (11 - i)
+        remainder = (sum * 10) % 11
+        if (remainder === 10 || remainder === 11) remainder = 0
+        if (remainder !== parseInt(cleanCpf.substring(9, 10))) return false
+        sum = 0
+        for (let i = 1; i <= 10; i++) sum += parseInt(cleanCpf.substring(i - 1, i)) * (12 - i)
+        remainder = (sum * 10) % 11
+        if (remainder === 10 || remainder === 11) remainder = 0
+        if (remainder !== parseInt(cleanCpf.substring(10, 11))) return false
+        return true
+      }
+
       const processedRows = rows.map((row: any, index) => {
         const email = String(row['EMAIL'] || '')
           .trim()
           .toLowerCase()
         const cpfRaw = String(row['CPF'] || '').trim()
-        const cpf = cpfRaw.replace(/\D/g, '').replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4')
+        const cleanCpf = cpfRaw.replace(/\D/g, '')
+        const cpf =
+          cleanCpf.length === 11
+            ? cleanCpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4')
+            : cpfRaw
 
         const existing = existingUsers?.find(
           (u) => (u.email && u.email.toLowerCase() === email) || (u.cpf && u.cpf === cpf),
         )
 
         let isPending = false
+        let isActive = false
         let existingId = null
         if (existing) {
           existingId = existing.id
@@ -556,7 +578,17 @@ function ImportUsersModal({
             existing.deleted_at
           ) {
             isPending = true
+          } else {
+            isActive = true
           }
+        }
+
+        const cpfValid = cpfRaw ? isValidCPF(cpfRaw) : true
+        const emailValid = email ? email.includes('@') && email.includes('.') : false
+
+        let action = isPending ? 'restore' : 'insert'
+        if (isActive || (!cpfValid && cpfRaw) || !emailValid) {
+          action = 'ignore'
         }
 
         return {
@@ -567,8 +599,11 @@ function ImportUsersModal({
           cpf: row['CPF'] || cpf,
           departamento: row['DEPARTAMENTO_CODIGO'] || '-',
           isPending,
+          isActive,
+          cpfValid,
+          emailValid,
           existingId,
-          action: isPending ? 'restore' : 'insert',
+          action,
         }
       })
 
@@ -684,14 +719,15 @@ function ImportUsersModal({
                 </Button>
               </div>
 
-              {hasPending && (
+              {(hasPending ||
+                previewData.some((r) => r.isActive || (!r.cpfValid && r.cpf) || !r.emailValid)) && (
                 <Alert className="bg-amber-50 border-amber-200 text-amber-800 dark:bg-amber-950/30 dark:border-amber-900/50 dark:text-amber-200 shadow-sm">
                   <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400" />
                   <AlertDescription className="ml-2">
                     <span className="font-bold text-base block mb-1">Atenção</span>
-                    Revise a coluna de "Ação". Existem registros com pendências de exclusão ou de
-                    aprovação. Você pode escolher importar/recuperar ou descartar esses usuários
-                    específicos antes da importação.
+                    Revise a coluna de "Ação" e os status. Registros já ativos, com CPF ou e-mail
+                    inválidos foram marcados para descarte por padrão para evitar sobrescritas ou
+                    erros. Existem registros com pendências que podem ser recuperados.
                   </AlertDescription>
                 </Alert>
               )}
@@ -715,29 +751,59 @@ function ImportUsersModal({
                           {row._index}
                         </TableCell>
                         <TableCell className="font-medium">{row.nome || '-'}</TableCell>
-                        <TableCell className="text-muted-foreground">{row.email || '-'}</TableCell>
-                        <TableCell className="text-muted-foreground">{row.cpf || '-'}</TableCell>
+                        <TableCell>
+                          <div className="flex flex-col">
+                            <span className="text-muted-foreground">{row.email || '-'}</span>
+                            {!row.emailValid && row.email && (
+                              <span className="text-[10px] text-red-500 font-semibold mt-0.5">
+                                E-mail Inválido
+                              </span>
+                            )}
+                            {!row.email && (
+                              <span className="text-[10px] text-red-500 font-semibold mt-0.5">
+                                E-mail Obrigatório
+                              </span>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex flex-col">
+                            <span className="text-muted-foreground">{row.cpf || '-'}</span>
+                            {!row.cpfValid && row.cpf && (
+                              <span className="text-[10px] text-red-500 font-semibold mt-0.5">
+                                CPF Inválido
+                              </span>
+                            )}
+                          </div>
+                        </TableCell>
                         <TableCell className="text-muted-foreground">
                           {row.departamento || '-'}
                         </TableCell>
                         <TableCell>
-                          <Select
-                            value={row.action}
-                            onValueChange={(val) => handleActionChange(row._index, val)}
-                          >
-                            <SelectTrigger className="w-full bg-blue-50 border-blue-200 text-blue-700 dark:bg-blue-950/30 dark:border-blue-900/50 dark:text-blue-300">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {row.isPending && (
-                                <SelectItem value="restore">
-                                  Importar e Reativar da Central de Aprovações
-                                </SelectItem>
-                              )}
-                              <SelectItem value="insert">Importar e Ativar da Planilha</SelectItem>
-                              <SelectItem value="ignore">Descartar</SelectItem>
-                            </SelectContent>
-                          </Select>
+                          <div className="flex flex-col gap-1 py-1">
+                            <Select
+                              value={row.action}
+                              onValueChange={(val) => handleActionChange(row._index, val)}
+                            >
+                              <SelectTrigger className="w-full bg-blue-50 border-blue-200 text-blue-700 dark:bg-blue-950/30 dark:border-blue-900/50 dark:text-blue-300 h-8 text-xs">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {row.isPending && (
+                                  <SelectItem value="restore">Importar e Reativar</SelectItem>
+                                )}
+                                <SelectItem value="insert">Importar / Atualizar</SelectItem>
+                                <SelectItem value="ignore">Descartar</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            {row.isActive && (
+                              <span className="text-[10px] text-amber-600 font-semibold leading-tight">
+                                Registro já ativo.
+                                <br />
+                                Risco de sobrescrita!
+                              </span>
+                            )}
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}
