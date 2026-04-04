@@ -429,7 +429,6 @@ export default function Users() {
   }
 
   const PERMISSIONS_LIST = [
-    { id: 'all', label: 'Acesso Total' },
     { id: 'view_dashboard', label: 'Dashboard' },
     { id: 'view_companies', label: 'Empresas' },
     { id: 'view_departments', label: 'Departamentos' },
@@ -834,9 +833,11 @@ export default function Users() {
               <div className="space-y-3 md:col-span-2 mt-2">
                 <Label className="text-base font-semibold">Acessos e Permissões</Label>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <Label className="text-sm text-muted-foreground">Empresas Permitidas</Label>
-                    <div className="border rounded-md bg-card p-1">
+                  <div className="space-y-0 rounded-md border overflow-hidden shadow-sm">
+                    <div className="bg-red-600 px-3 py-2">
+                      <h3 className="text-black font-bold text-sm">Empresas Permitidas</h3>
+                    </div>
+                    <div className="bg-card p-1">
                       <div className="max-h-48 overflow-y-auto p-2 space-y-2">
                         {organizations.length > 0 && (
                           <div className="flex items-start space-x-3 py-1 border-b border-border pb-2 mb-2">
@@ -876,14 +877,14 @@ export default function Users() {
                             />
                             <Label
                               htmlFor={`org-${org.id}`}
-                              className="text-sm font-medium cursor-pointer leading-tight"
+                              className="text-sm font-bold cursor-pointer leading-tight"
                             >
                               {org.name}
                             </Label>
                           </div>
                         ))}
                         {organizations.length === 0 && (
-                          <div className="text-sm text-muted-foreground py-4 text-center">
+                          <div className="text-sm text-muted-foreground py-4 text-center font-bold">
                             Nenhuma empresa cadastrada
                           </div>
                         )}
@@ -891,43 +892,71 @@ export default function Users() {
                     </div>
                   </div>
 
-                  <div className="space-y-2">
-                    <Label className="text-sm text-muted-foreground">Permissões de Rotinas</Label>
-                    <div className="border rounded-md bg-card p-1">
+                  <div className="space-y-0 rounded-md border overflow-hidden shadow-sm">
+                    <div className="bg-red-600 px-3 py-2">
+                      <h3 className="text-black font-bold text-sm">Permissões de Rotinas</h3>
+                    </div>
+                    <div className="bg-card p-1">
                       <div className="max-h-48 overflow-y-auto p-2 space-y-2">
-                        {PERMISSIONS_LIST.map((perm) => (
-                          <div key={perm.id} className="flex items-start space-x-3 py-1">
-                            <Checkbox
-                              id={`perm-${perm.id}`}
-                              checked={formData.permissions.includes(perm.id)}
-                              onCheckedChange={(checked) => {
-                                if (perm.id === 'all') {
-                                  setFormData((prev) => ({
-                                    ...prev,
-                                    permissions: checked ? ['all'] : [],
-                                  }))
-                                } else {
+                        <div className="flex items-start space-x-3 py-1 border-b border-border pb-2 mb-2">
+                          <Checkbox
+                            id="perm-all"
+                            checked={
+                              formData.permissions.includes('all') ||
+                              formData.permissions.length === PERMISSIONS_LIST.length
+                            }
+                            onCheckedChange={(checked) => {
+                              setFormData((prev) => ({
+                                ...prev,
+                                permissions: checked ? ['all'] : [],
+                              }))
+                            }}
+                            className="mt-0.5"
+                          />
+                          <Label
+                            htmlFor="perm-all"
+                            className="text-sm font-bold cursor-pointer leading-tight"
+                          >
+                            Acesso Total
+                          </Label>
+                        </div>
+                        {PERMISSIONS_LIST.map((perm) => {
+                          const isAllSelected =
+                            formData.permissions.includes('all') ||
+                            formData.permissions.length === PERMISSIONS_LIST.length
+                          const isChecked = isAllSelected || formData.permissions.includes(perm.id)
+
+                          return (
+                            <div key={perm.id} className="flex items-start space-x-3 py-1">
+                              <Checkbox
+                                id={`perm-${perm.id}`}
+                                checked={isChecked}
+                                onCheckedChange={(checked) => {
                                   setFormData((prev) => {
+                                    let currentPerms = prev.permissions.includes('all')
+                                      ? PERMISSIONS_LIST.map((p) => p.id)
+                                      : prev.permissions
                                     let newPerms = checked
-                                      ? [...prev.permissions.filter((p) => p !== 'all'), perm.id]
-                                      : prev.permissions.filter((p) => p !== perm.id && p !== 'all')
-                                    if (newPerms.length === PERMISSIONS_LIST.length - 1) {
+                                      ? [...currentPerms, perm.id]
+                                      : currentPerms.filter((p) => p !== perm.id)
+
+                                    if (newPerms.length === PERMISSIONS_LIST.length) {
                                       newPerms = ['all']
                                     }
                                     return { ...prev, permissions: newPerms }
                                   })
-                                }
-                              }}
-                              className="mt-0.5"
-                            />
-                            <Label
-                              htmlFor={`perm-${perm.id}`}
-                              className="text-sm font-medium cursor-pointer leading-tight"
-                            >
-                              {perm.label}
-                            </Label>
-                          </div>
-                        ))}
+                                }}
+                                className="mt-0.5"
+                              />
+                              <Label
+                                htmlFor={`perm-${perm.id}`}
+                                className="text-sm font-bold cursor-pointer leading-tight"
+                              >
+                                {perm.label}
+                              </Label>
+                            </div>
+                          )
+                        })}
                       </div>
                     </div>
                   </div>
