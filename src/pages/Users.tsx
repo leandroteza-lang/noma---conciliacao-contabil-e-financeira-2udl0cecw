@@ -65,6 +65,7 @@ export default function Users() {
 
   // User form modal
   const [isUserModalOpen, setIsUserModalOpen] = useState(false)
+  const [cpfError, setCpfError] = useState<string>('')
   const [editingUser, setEditingUser] = useState<any>(null)
   const [formData, setFormData] = useState({
     name: '',
@@ -160,6 +161,7 @@ export default function Users() {
     setEditingUser(null)
     setAvatarFile(null)
     setAvatarPreview('')
+    setCpfError('')
     setFormData({
       name: '',
       email: '',
@@ -181,6 +183,7 @@ export default function Users() {
     setEditingUser(user)
     setAvatarFile(null)
     setAvatarPreview(user.avatar_url || '')
+    setCpfError('')
     setFormData({
       name: user.name || '',
       email: user.email || '',
@@ -676,11 +679,24 @@ export default function Users() {
                         .replace(/(\d{3})(\d{1,2})/, '$1-$2')
                         .replace(/(-\d{2})\d+?$/, '$1')
                     }
-                    setFormData({ ...formData, cpf: formatCPF(e.target.value) })
+                    const formatted = formatCPF(e.target.value)
+                    setFormData({ ...formData, cpf: formatted })
+
+                    if (formatted.length === 14) {
+                      if (!validateCPF(formatted)) {
+                        setCpfError('CPF inválido')
+                      } else {
+                        setCpfError('')
+                      }
+                    } else {
+                      setCpfError('')
+                    }
                   }}
                   placeholder="Ex: 000.000.000-00"
                   maxLength={14}
+                  className={cpfError ? 'border-red-500 focus-visible:ring-red-500' : ''}
                 />
+                {cpfError && <p className="text-xs text-red-500 font-medium">{cpfError}</p>}
               </div>
               <div className="space-y-2">
                 <Label>Telefone</Label>

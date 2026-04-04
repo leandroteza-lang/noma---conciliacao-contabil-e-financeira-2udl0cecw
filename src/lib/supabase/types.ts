@@ -1136,9 +1136,9 @@ export const Constants = {
 //   FOREIGN KEY account_mapping_organization_id_fkey: FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE
 //   PRIMARY KEY account_mapping_pkey: PRIMARY KEY (id)
 // Table: accounting_entries
-//   FOREIGN KEY accounting_entries_cost_center_id_fkey: FOREIGN KEY (cost_center_id) REFERENCES cost_centers(id) ON DELETE SET NULL
-//   FOREIGN KEY accounting_entries_credit_account_id_fkey: FOREIGN KEY (credit_account_id) REFERENCES chart_of_accounts(id) ON DELETE SET NULL
-//   FOREIGN KEY accounting_entries_debit_account_id_fkey: FOREIGN KEY (debit_account_id) REFERENCES chart_of_accounts(id) ON DELETE SET NULL
+//   FOREIGN KEY accounting_entries_cost_center_id_fkey: FOREIGN KEY (cost_center_id) REFERENCES cost_centers(id) ON DELETE RESTRICT
+//   FOREIGN KEY accounting_entries_credit_account_id_fkey: FOREIGN KEY (credit_account_id) REFERENCES chart_of_accounts(id) ON DELETE RESTRICT
+//   FOREIGN KEY accounting_entries_debit_account_id_fkey: FOREIGN KEY (debit_account_id) REFERENCES chart_of_accounts(id) ON DELETE RESTRICT
 //   FOREIGN KEY accounting_entries_organization_id_fkey: FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE
 //   PRIMARY KEY accounting_entries_pkey: PRIMARY KEY (id)
 // Table: bank_accounts
@@ -1149,7 +1149,7 @@ export const Constants = {
 // Table: cadastro_usuarios
 //   FOREIGN KEY employees_deleted_by_fkey: FOREIGN KEY (deleted_by) REFERENCES auth.users(id) ON DELETE SET NULL
 //   FOREIGN KEY employees_deletion_requested_by_fkey: FOREIGN KEY (deletion_requested_by) REFERENCES auth.users(id) ON DELETE SET NULL
-//   FOREIGN KEY employees_department_id_fkey: FOREIGN KEY (department_id) REFERENCES departments(id) ON DELETE SET NULL
+//   FOREIGN KEY employees_department_id_fkey: FOREIGN KEY (department_id) REFERENCES departments(id) ON DELETE RESTRICT
 //   PRIMARY KEY employees_pkey: PRIMARY KEY (id)
 //   FOREIGN KEY employees_user_id_fkey: FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE
 // Table: cadastro_usuarios_companies
@@ -1173,15 +1173,15 @@ export const Constants = {
 //   FOREIGN KEY cost_centers_organization_id_fkey: FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE
 //   FOREIGN KEY cost_centers_parent_id_fkey: FOREIGN KEY (parent_id) REFERENCES cost_centers(id) ON DELETE CASCADE
 //   PRIMARY KEY cost_centers_pkey: PRIMARY KEY (id)
-//   FOREIGN KEY cost_centers_tipo_tga_id_fkey: FOREIGN KEY (tipo_tga_id) REFERENCES tipo_conta_tga(id) ON DELETE SET NULL
+//   FOREIGN KEY cost_centers_tipo_tga_id_fkey: FOREIGN KEY (tipo_tga_id) REFERENCES tipo_conta_tga(id) ON DELETE RESTRICT
 // Table: departments
 //   FOREIGN KEY departments_deleted_by_fkey: FOREIGN KEY (deleted_by) REFERENCES auth.users(id) ON DELETE SET NULL
 //   FOREIGN KEY departments_deletion_requested_by_fkey: FOREIGN KEY (deletion_requested_by) REFERENCES auth.users(id) ON DELETE SET NULL
 //   PRIMARY KEY departments_pkey: PRIMARY KEY (id)
 //   FOREIGN KEY departments_user_id_fkey: FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE
 // Table: financial_movements
-//   FOREIGN KEY financial_movements_bank_account_id_fkey: FOREIGN KEY (bank_account_id) REFERENCES bank_accounts(id) ON DELETE SET NULL
-//   FOREIGN KEY financial_movements_cost_center_id_fkey: FOREIGN KEY (cost_center_id) REFERENCES cost_centers(id) ON DELETE SET NULL
+//   FOREIGN KEY financial_movements_bank_account_id_fkey: FOREIGN KEY (bank_account_id) REFERENCES bank_accounts(id) ON DELETE RESTRICT
+//   FOREIGN KEY financial_movements_cost_center_id_fkey: FOREIGN KEY (cost_center_id) REFERENCES cost_centers(id) ON DELETE RESTRICT
 //   FOREIGN KEY financial_movements_organization_id_fkey: FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE
 //   PRIMARY KEY financial_movements_pkey: PRIMARY KEY (id)
 // Table: import_history
@@ -1334,6 +1334,99 @@ export const Constants = {
 //     USING: ((organization_id IN ( SELECT organizations.id    FROM organizations   WHERE (organizations.user_id = auth.uid()))) OR (organization_id IN ( SELECT cuc.organization_id    FROM (cadastro_usuarios_companies cuc      JOIN cadastro_usuarios cu ON ((cuc.usuario_id = cu.id)))   WHERE ((cu.email)::text = (auth.jwt() ->> 'email'::text)))))
 
 // --- DATABASE FUNCTIONS ---
+// FUNCTION check_bank_account_soft_delete()
+//   CREATE OR REPLACE FUNCTION public.check_bank_account_soft_delete()
+//    RETURNS trigger
+//    LANGUAGE plpgsql
+//   AS $function$
+//   BEGIN
+//     IF NEW.deleted_at IS NOT NULL AND OLD.deleted_at IS NULL THEN
+//       IF EXISTS (SELECT 1 FROM public.financial_movements WHERE bank_account_id = OLD.id) THEN
+//         RAISE EXCEPTION 'Não é possível excluir a conta bancária pois existem movimentações vinculadas a ela.';
+//       END IF;
+//     END IF;
+//     RETURN NEW;
+//   END;
+//   $function$
+//
+// FUNCTION check_chart_account_soft_delete()
+//   CREATE OR REPLACE FUNCTION public.check_chart_account_soft_delete()
+//    RETURNS trigger
+//    LANGUAGE plpgsql
+//   AS $function$
+//   BEGIN
+//     IF NEW.deleted_at IS NOT NULL AND OLD.deleted_at IS NULL THEN
+//       IF EXISTS (SELECT 1 FROM public.accounting_entries WHERE debit_account_id = OLD.id OR credit_account_id = OLD.id) OR
+//          EXISTS (SELECT 1 FROM public.account_mapping WHERE chart_account_id = OLD.id) THEN
+//         RAISE EXCEPTION 'Não é possível excluir a conta contábil pois existem lançamentos ou mapeamentos vinculados a ela.';
+//       END IF;
+//     END IF;
+//     RETURN NEW;
+//   END;
+//   $function$
+//
+// FUNCTION check_cost_center_soft_delete()
+//   CREATE OR REPLACE FUNCTION public.check_cost_center_soft_delete()
+//    RETURNS trigger
+//    LANGUAGE plpgsql
+//   AS $function$
+//   BEGIN
+//     IF NEW.deleted_at IS NOT NULL AND OLD.deleted_at IS NULL THEN
+//       IF EXISTS (SELECT 1 FROM public.financial_movements WHERE cost_center_id = OLD.id) OR
+//          EXISTS (SELECT 1 FROM public.accounting_entries WHERE cost_center_id = OLD.id) OR
+//          EXISTS (SELECT 1 FROM public.account_mapping WHERE cost_center_id = OLD.id) THEN
+//         RAISE EXCEPTION 'Não é possível excluir o centro de custo pois existem movimentações, lançamentos ou mapeamentos vinculados a ele.';
+//       END IF;
+//     END IF;
+//     RETURN NEW;
+//   END;
+//   $function$
+//
+// FUNCTION check_department_soft_delete()
+//   CREATE OR REPLACE FUNCTION public.check_department_soft_delete()
+//    RETURNS trigger
+//    LANGUAGE plpgsql
+//   AS $function$
+//   BEGIN
+//     IF NEW.deleted_at IS NOT NULL AND OLD.deleted_at IS NULL THEN
+//       IF EXISTS (SELECT 1 FROM public.cadastro_usuarios WHERE department_id = OLD.id AND deleted_at IS NULL) THEN
+//         RAISE EXCEPTION 'Não é possível excluir o departamento pois existem usuários vinculados a ele.';
+//       END IF;
+//     END IF;
+//     RETURN NEW;
+//   END;
+//   $function$
+//
+// FUNCTION check_organization_soft_delete()
+//   CREATE OR REPLACE FUNCTION public.check_organization_soft_delete()
+//    RETURNS trigger
+//    LANGUAGE plpgsql
+//   AS $function$
+//   BEGIN
+//     IF NEW.deleted_at IS NOT NULL AND OLD.deleted_at IS NULL THEN
+//       IF EXISTS (SELECT 1 FROM public.cadastro_usuarios_companies WHERE organization_id = OLD.id) THEN
+//         RAISE EXCEPTION 'Não é possível excluir a empresa pois existem usuários vinculados a ela.';
+//       END IF;
+//     END IF;
+//     RETURN NEW;
+//   END;
+//   $function$
+//
+// FUNCTION check_tga_account_soft_delete()
+//   CREATE OR REPLACE FUNCTION public.check_tga_account_soft_delete()
+//    RETURNS trigger
+//    LANGUAGE plpgsql
+//   AS $function$
+//   BEGIN
+//     IF NEW.deleted_at IS NOT NULL AND OLD.deleted_at IS NULL THEN
+//       IF EXISTS (SELECT 1 FROM public.cost_centers WHERE tipo_tga_id = OLD.id AND deleted_at IS NULL) THEN
+//         RAISE EXCEPTION 'Não é possível excluir o tipo de conta TGA pois existem centros de custo vinculados a ele.';
+//       END IF;
+//     END IF;
+//     RETURN NEW;
+//   END;
+//   $function$
+//
 // FUNCTION get_auth_user_by_email(text)
 //   CREATE OR REPLACE FUNCTION public.get_auth_user_by_email(p_email text)
 //    RETURNS uuid
@@ -1424,6 +1517,20 @@ export const Constants = {
 //   END;
 //   $function$
 //
+
+// --- TRIGGERS ---
+// Table: bank_accounts
+//   trg_check_bank_account_soft_delete: CREATE TRIGGER trg_check_bank_account_soft_delete BEFORE UPDATE ON public.bank_accounts FOR EACH ROW EXECUTE FUNCTION check_bank_account_soft_delete()
+// Table: chart_of_accounts
+//   trg_check_chart_account_soft_delete: CREATE TRIGGER trg_check_chart_account_soft_delete BEFORE UPDATE ON public.chart_of_accounts FOR EACH ROW EXECUTE FUNCTION check_chart_account_soft_delete()
+// Table: cost_centers
+//   trg_check_cost_center_soft_delete: CREATE TRIGGER trg_check_cost_center_soft_delete BEFORE UPDATE ON public.cost_centers FOR EACH ROW EXECUTE FUNCTION check_cost_center_soft_delete()
+// Table: departments
+//   trg_check_department_soft_delete: CREATE TRIGGER trg_check_department_soft_delete BEFORE UPDATE ON public.departments FOR EACH ROW EXECUTE FUNCTION check_department_soft_delete()
+// Table: organizations
+//   trg_check_organization_soft_delete: CREATE TRIGGER trg_check_organization_soft_delete BEFORE UPDATE ON public.organizations FOR EACH ROW EXECUTE FUNCTION check_organization_soft_delete()
+// Table: tipo_conta_tga
+//   trg_check_tga_account_soft_delete: CREATE TRIGGER trg_check_tga_account_soft_delete BEFORE UPDATE ON public.tipo_conta_tga FOR EACH ROW EXECUTE FUNCTION check_tga_account_soft_delete()
 
 // --- INDEXES ---
 // Table: cadastro_usuarios
