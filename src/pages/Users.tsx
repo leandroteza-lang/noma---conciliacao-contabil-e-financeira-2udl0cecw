@@ -838,6 +838,27 @@ export default function Users() {
                     <Label className="text-sm text-muted-foreground">Empresas Permitidas</Label>
                     <div className="border rounded-md bg-card p-1">
                       <div className="max-h-48 overflow-y-auto p-2 space-y-2">
+                        {organizations.length > 0 && (
+                          <div className="flex items-start space-x-3 py-1 border-b border-border pb-2 mb-2">
+                            <Checkbox
+                              id="org-all"
+                              checked={formData.companies.length === organizations.length}
+                              onCheckedChange={(checked) => {
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  companies: checked ? organizations.map((o) => o.id) : [],
+                                }))
+                              }}
+                              className="mt-0.5"
+                            />
+                            <Label
+                              htmlFor="org-all"
+                              className="text-sm font-bold cursor-pointer leading-tight"
+                            >
+                              Acesso Total
+                            </Label>
+                          </div>
+                        )}
                         {organizations.map((org) => (
                           <div key={org.id} className="flex items-start space-x-3 py-1">
                             <Checkbox
