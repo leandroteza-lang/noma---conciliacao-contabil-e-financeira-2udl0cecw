@@ -739,7 +739,7 @@ export default function Layout() {
                                       className={cn(
                                         'transition-all duration-200 group relative my-0.5 overflow-hidden',
                                         isChildActive
-                                          ? 'bg-primary/10 text-primary shadow-sm hover:bg-primary/15 hover:text-primary font-semibold'
+                                          ? 'bg-primary text-primary-foreground shadow-sm hover:bg-primary/90 hover:text-primary-foreground font-semibold'
                                           : 'text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
                                       )}
                                     >
@@ -747,15 +747,12 @@ export default function Layout() {
                                         to={childItem.path}
                                         className="flex items-center justify-between w-full"
                                       >
-                                        {isChildActive && (
-                                          <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary" />
-                                        )}
                                         <div className="flex items-center gap-2">
                                           <childItem.icon
                                             className={cn(
                                               'size-4 shrink-0',
                                               isChildActive
-                                                ? 'text-primary'
+                                                ? 'text-primary-foreground'
                                                 : 'text-sidebar-foreground/50',
                                             )}
                                           />
@@ -814,7 +811,7 @@ export default function Layout() {
                         className={cn(
                           'transition-all duration-200 group relative overflow-hidden',
                           isActive
-                            ? 'bg-primary/10 text-primary shadow-sm hover:bg-primary/15 hover:text-primary font-semibold'
+                            ? 'bg-primary text-primary-foreground shadow-sm hover:bg-primary/90 hover:text-primary-foreground font-semibold'
                             : 'text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
                         )}
                       >
@@ -822,14 +819,11 @@ export default function Layout() {
                           to={item.path}
                           className="flex items-center justify-between w-full"
                         >
-                          {isActive && (
-                            <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary" />
-                          )}
                           <div className="flex items-center gap-2">
                             <item.icon
                               className={cn(
                                 'size-4 shrink-0',
-                                isActive ? 'text-primary' : 'text-sidebar-foreground/50',
+                                isActive ? 'text-primary-foreground' : 'text-sidebar-foreground/50',
                               )}
                             />
                             <span className="font-medium">{item.title}</span>
@@ -874,18 +868,23 @@ export default function Layout() {
           <div className="flex items-center gap-2">
             <SidebarTrigger className="-ml-2 text-muted-foreground" />
             <Separator orientation="vertical" className="mr-2 h-4 hidden md:block" />
-            <Breadcrumb className="hidden md:flex">
-              <BreadcrumbList>
+            <Breadcrumb className="hidden md:flex bg-primary px-3 py-1.5 rounded-md shadow-sm">
+              <BreadcrumbList className="text-primary-foreground/80 sm:gap-2">
                 <BreadcrumbItem>
-                  <BreadcrumbLink asChild>
-                    <Link to="/app">Início</Link>
+                  <BreadcrumbLink
+                    asChild
+                    className="text-primary-foreground hover:text-white font-medium"
+                  >
+                    <Link to="/dashboard">Dashboard</Link>
                   </BreadcrumbLink>
                 </BreadcrumbItem>
-                {currentMenuItem && currentMenuItem.path !== '/app' && (
+                {currentMenuItem && currentMenuItem.path !== '/dashboard' && (
                   <>
-                    <BreadcrumbSeparator />
+                    <BreadcrumbSeparator className="text-primary-foreground/60" />
                     <BreadcrumbItem>
-                      <BreadcrumbPage>{currentMenuItem.title}</BreadcrumbPage>
+                      <BreadcrumbPage className="text-white font-bold">
+                        {currentMenuItem.title}
+                      </BreadcrumbPage>
                     </BreadcrumbItem>
                   </>
                 )}
