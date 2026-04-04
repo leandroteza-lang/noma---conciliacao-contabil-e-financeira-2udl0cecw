@@ -19,8 +19,21 @@ Deno.serve(async (req: Request) => {
 
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey)
 
-    const { action, email, name, role, cpf, phone, department_id, admin_id, user_id } =
-      await req.json()
+    const {
+      action,
+      email,
+      name,
+      role,
+      cpf,
+      phone,
+      department_id,
+      admin_id,
+      user_id,
+      address,
+      observations,
+      permissions,
+      companies,
+    } = await req.json()
 
     if (action === 'resend_email') {
       if (!user_id || !email) throw new Error('user_id and email are required')
@@ -160,6 +173,31 @@ Deno.serve(async (req: Request) => {
       }
 
       if (actionLink && actionUser) {
+        // UPDATE CUSTOM FIELDS
+        const { data: profile } = await supabaseAdmin
+          .from('cadastro_usuarios')
+          .select('id')
+          .eq('user_id', actionUser.id)
+          .maybeSingle()
+        if (profile) {
+          await supabaseAdmin
+            .from('cadastro_usuarios')
+            .update({
+              address: address || null,
+              observations: observations || null,
+              permissions: permissions && permissions.length > 0 ? permissions : ['all'],
+            })
+            .eq('id', profile.id)
+
+          if (companies && Array.isArray(companies) && companies.length > 0) {
+            const companyInserts = companies.map((orgId: string) => ({
+              usuario_id: profile.id,
+              organization_id: orgId,
+            }))
+            await supabaseAdmin.from('cadastro_usuarios_companies').insert(companyInserts)
+          }
+        }
+
         const resendApiKey = Deno.env.get('RESEND_API_KEY')
         const subject = 'Convite de Acesso - Gestão de Contas'
         const htmlBody = `

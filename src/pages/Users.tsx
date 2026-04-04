@@ -27,6 +27,8 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
+import { ScrollArea } from '@/components/ui/scroll-area'
 import { useToast } from '@/hooks/use-toast'
 import {
   Search,
@@ -46,6 +48,7 @@ import {
 export default function Users() {
   const [users, setUsers] = useState<any[]>([])
   const [departments, setDepartments] = useState<any[]>([])
+  const [organizations, setOrganizations] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [selected, setSelected] = useState<string[]>([])
@@ -69,22 +72,28 @@ export default function Users() {
     role: 'collaborator',
     department_id: 'none',
     status: true,
+    address: '',
+    observations: '',
+    permissions: ['all'] as string[],
+    companies: [] as string[],
   })
 
   const { toast } = useToast()
 
   const fetchData = async () => {
     setLoading(true)
-    const [usersRes, deptsRes] = await Promise.all([
+    const [usersRes, deptsRes, orgsRes] = await Promise.all([
       supabase
         .from('cadastro_usuarios')
-        .select('*, departments(name)')
+        .select('*, departments(name), cadastro_usuarios_companies(organization_id)')
         .is('deleted_at', null)
         .order('name'),
       supabase.from('departments').select('*').is('deleted_at', null).order('name'),
+      supabase.from('organizations').select('*').is('deleted_at', null).order('name'),
     ])
     if (usersRes.data) setUsers(usersRes.data)
     if (deptsRes.data) setDepartments(deptsRes.data)
+    if (orgsRes.data) setOrganizations(orgsRes.data)
     setLoading(false)
   }
 
@@ -152,6 +161,10 @@ export default function Users() {
       role: 'collaborator',
       department_id: 'none',
       status: true,
+      address: '',
+      observations: '',
+      permissions: ['all'],
+      companies: [],
     })
     setIsUserModalOpen(true)
   }
@@ -166,6 +179,10 @@ export default function Users() {
       role: user.role || 'collaborator',
       department_id: user.department_id || 'none',
       status: user.status ?? true,
+      address: user.address || '',
+      observations: user.observations || '',
+      permissions: user.permissions || ['all'],
+      companies: user.cadastro_usuarios_companies?.map((c: any) => c.organization_id) || [],
     })
     setIsUserModalOpen(true)
   }
@@ -192,12 +209,25 @@ export default function Users() {
           role: formData.role,
           department_id: formData.department_id === 'none' ? null : formData.department_id,
           status: formData.status,
+          address: formData.address || null,
+          observations: formData.observations || null,
+          permissions: formData.permissions.length > 0 ? formData.permissions : ['all'],
         })
         .eq('id', editingUser.id)
 
       if (error) {
         toast({ title: 'Erro ao atualizar', description: error.message, variant: 'destructive' })
       } else {
+        await supabase.from('cadastro_usuarios_companies').delete().eq('usuario_id', editingUser.id)
+
+        if (formData.companies.length > 0) {
+          const inserts = formData.companies.map((orgId) => ({
+            usuario_id: editingUser.id,
+            organization_id: orgId,
+          }))
+          await supabase.from('cadastro_usuarios_companies').insert(inserts)
+        }
+
         toast({ title: 'Sucesso', description: 'Usuário atualizado com sucesso.' })
         setIsUserModalOpen(false)
         fetchData()
@@ -223,6 +253,10 @@ export default function Users() {
             phone: formData.phone,
             department_id: formData.department_id === 'none' ? null : formData.department_id,
             admin_id: session?.user?.id,
+            address: formData.address,
+            observations: formData.observations,
+            permissions: formData.permissions.length > 0 ? formData.permissions : ['all'],
+            companies: formData.companies,
           }),
         })
 
@@ -263,6 +297,21 @@ export default function Users() {
       fetchData()
     }
   }
+
+  const PERMISSIONS_LIST = [
+    { id: 'all', label: 'Acesso Total' },
+    { id: 'view_dashboard', label: 'Dashboard' },
+    { id: 'view_companies', label: 'Empresas' },
+    { id: 'view_departments', label: 'Departamentos' },
+    { id: 'view_users', label: 'Usuários' },
+    { id: 'view_chart_accounts', label: 'Plano de Contas' },
+    { id: 'view_cost_centers', label: 'Centros de Custo' },
+    { id: 'view_bank_accounts', label: 'Contas Bancárias' },
+    { id: 'view_mappings', label: 'Mapeamentos' },
+    { id: 'view_entries', label: 'Lançamentos' },
+    { id: 'view_analysis', label: 'Análises' },
+    { id: 'view_tga_accounts', label: 'Tipos de Conta TGA' },
+  ]
 
   const handleBatchEdit = async () => {
     if (!batchField || !batchValue) return
@@ -481,7 +530,7 @@ export default function Users() {
 
       {/* User Form Modal */}
       <Dialog open={isUserModalOpen} onOpenChange={setIsUserModalOpen}>
-        <DialogContent className="sm:max-w-md md:max-w-2xl">
+        <DialogContent className="sm:max-w-md md:max-w-4xl h-[90vh] md:h-auto overflow-hidden flex flex-col">
           <DialogHeader>
             <DialogTitle className="text-xl flex items-center gap-2">
               <UsersIcon className="w-5 h-5 text-primary" />
@@ -494,96 +543,193 @@ export default function Users() {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4">
-            <div className="space-y-2">
-              <Label>Nome Completo *</Label>
-              <Input
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                placeholder="Ex: João da Silva"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>E-mail *</Label>
-              <Input
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                placeholder="Ex: joao@empresa.com"
-                disabled={!!editingUser}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>CPF</Label>
-              <Input
-                value={formData.cpf}
-                onChange={(e) => setFormData({ ...formData, cpf: e.target.value })}
-                placeholder="Ex: 000.000.000-00"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Telefone</Label>
-              <Input
-                value={formData.phone}
-                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                placeholder="Ex: (00) 00000-0000"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Perfil de Acesso</Label>
-              <Select
-                value={formData.role}
-                onValueChange={(val) => setFormData({ ...formData, role: val })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione..." />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="admin">Administrador</SelectItem>
-                  <SelectItem value="supervisor">Supervisor</SelectItem>
-                  <SelectItem value="collaborator">Colaborador</SelectItem>
-                  <SelectItem value="client_user">Usuário Cliente</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Departamento</Label>
-              <Select
-                value={formData.department_id}
-                onValueChange={(val) => setFormData({ ...formData, department_id: val })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione..." />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Nenhum</SelectItem>
-                  {departments.map((d) => (
-                    <SelectItem key={d.id} value={d.id}>
-                      {d.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            {editingUser && (
-              <div className="space-y-2 md:col-span-2">
-                <Label>Status</Label>
+          <ScrollArea className="flex-1 px-1 -mx-1">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4 px-1">
+              <div className="space-y-2">
+                <Label>Nome Completo *</Label>
+                <Input
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  placeholder="Ex: João da Silva"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>E-mail *</Label>
+                <Input
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  placeholder="Ex: joao@empresa.com"
+                  disabled={!!editingUser}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>CPF</Label>
+                <Input
+                  value={formData.cpf}
+                  onChange={(e) => setFormData({ ...formData, cpf: e.target.value })}
+                  placeholder="Ex: 000.000.000-00"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Telefone</Label>
+                <Input
+                  value={formData.phone}
+                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                  placeholder="Ex: (00) 00000-0000"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Perfil de Acesso</Label>
                 <Select
-                  value={formData.status ? 'true' : 'false'}
-                  onValueChange={(val) => setFormData({ ...formData, status: val === 'true' })}
+                  value={formData.role}
+                  onValueChange={(val) => setFormData({ ...formData, role: val })}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Selecione..." />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="true">Ativo</SelectItem>
-                    <SelectItem value="false">Inativo</SelectItem>
+                    <SelectItem value="admin">Administrador</SelectItem>
+                    <SelectItem value="supervisor">Supervisor</SelectItem>
+                    <SelectItem value="collaborator">Colaborador</SelectItem>
+                    <SelectItem value="client_user">Usuário Cliente</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
-            )}
-          </div>
+              <div className="space-y-2">
+                <Label>Departamento</Label>
+                <Select
+                  value={formData.department_id}
+                  onValueChange={(val) => setFormData({ ...formData, department_id: val })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Nenhum</SelectItem>
+                    {departments.map((d) => (
+                      <SelectItem key={d.id} value={d.id}>
+                        {d.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
-          <DialogFooter className="gap-2 pt-2 border-t sm:gap-0">
+              <div className="space-y-2 md:col-span-2">
+                <Label>Endereço</Label>
+                <Input
+                  value={formData.address}
+                  onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                  placeholder="Rua, número, bairro..."
+                />
+              </div>
+
+              <div className="space-y-2 md:col-span-2">
+                <Label>Observações</Label>
+                <Textarea
+                  value={formData.observations}
+                  onChange={(e) => setFormData({ ...formData, observations: e.target.value })}
+                  placeholder="Informações adicionais sobre o usuário..."
+                  rows={2}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Empresas Permitidas</Label>
+                <div className="border rounded-md overflow-hidden bg-card">
+                  <ScrollArea className="h-40 p-3">
+                    {organizations.map((org) => (
+                      <div key={org.id} className="flex items-center space-x-2 py-1.5">
+                        <Checkbox
+                          id={`org-${org.id}`}
+                          checked={formData.companies.includes(org.id)}
+                          onCheckedChange={(checked) => {
+                            setFormData((prev) => ({
+                              ...prev,
+                              companies: checked
+                                ? [...prev.companies, org.id]
+                                : prev.companies.filter((id) => id !== org.id),
+                            }))
+                          }}
+                        />
+                        <Label
+                          htmlFor={`org-${org.id}`}
+                          className="text-sm font-normal cursor-pointer leading-none"
+                        >
+                          {org.name}
+                        </Label>
+                      </div>
+                    ))}
+                    {organizations.length === 0 && (
+                      <div className="text-sm text-muted-foreground py-2 text-center">
+                        Nenhuma empresa cadastrada
+                      </div>
+                    )}
+                  </ScrollArea>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Permissões de Rotinas</Label>
+                <div className="border rounded-md overflow-hidden bg-card">
+                  <ScrollArea className="h-40 p-3">
+                    {PERMISSIONS_LIST.map((perm) => (
+                      <div key={perm.id} className="flex items-center space-x-2 py-1.5">
+                        <Checkbox
+                          id={`perm-${perm.id}`}
+                          checked={formData.permissions.includes(perm.id)}
+                          onCheckedChange={(checked) => {
+                            if (perm.id === 'all') {
+                              setFormData((prev) => ({
+                                ...prev,
+                                permissions: checked ? ['all'] : [],
+                              }))
+                            } else {
+                              setFormData((prev) => {
+                                let newPerms = checked
+                                  ? [...prev.permissions.filter((p) => p !== 'all'), perm.id]
+                                  : prev.permissions.filter((p) => p !== perm.id && p !== 'all')
+                                if (newPerms.length === PERMISSIONS_LIST.length - 1) {
+                                  newPerms = ['all']
+                                }
+                                return { ...prev, permissions: newPerms }
+                              })
+                            }
+                          }}
+                        />
+                        <Label
+                          htmlFor={`perm-${perm.id}`}
+                          className="text-sm font-normal cursor-pointer leading-none"
+                        >
+                          {perm.label}
+                        </Label>
+                      </div>
+                    ))}
+                  </ScrollArea>
+                </div>
+              </div>
+
+              {editingUser && (
+                <div className="space-y-2 md:col-span-2">
+                  <Label>Status</Label>
+                  <Select
+                    value={formData.status ? 'true' : 'false'}
+                    onValueChange={(val) => setFormData({ ...formData, status: val === 'true' })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="true">Ativo</SelectItem>
+                      <SelectItem value="false">Inativo</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+            </div>
+          </ScrollArea>
+
+          <DialogFooter className="gap-2 pt-4 border-t sm:gap-0 mt-auto">
             <Button variant="ghost" onClick={() => setIsUserModalOpen(false)}>
               Cancelar
             </Button>
