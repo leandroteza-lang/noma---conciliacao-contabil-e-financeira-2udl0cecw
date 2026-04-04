@@ -25,6 +25,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
 import { useToast } from '@/hooks/use-toast'
@@ -52,6 +58,8 @@ export default function Users() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [isImportModalOpen, setIsImportModalOpen] = useState(false)
+  const [isNewUserModalOpen, setIsNewUserModalOpen] = useState(false)
+  const [isBulkEditModalOpen, setIsBulkEditModalOpen] = useState(false)
   const [sortField, setSortField] = useState<SortField>('name')
   const [sortDesc, setSortDesc] = useState(false)
   const [selectedUsers, setSelectedUsers] = useState<string[]>([])
@@ -120,17 +128,38 @@ export default function Users() {
     return 0
   })
 
-  const handleExport = async () => {
+  const handleExport = async (formatType: 'excel' | 'pdf' | 'csv' | 'txt') => {
     try {
       const { data, error } = await supabase.functions.invoke('export-users', {
-        body: { format: 'excel', data: sortedUsers },
+        body: { format: formatType, data: sortedUsers },
       })
       if (error) throw error
 
+      let linkUrl = ''
+      let downloadName = `Usuarios_${format(new Date(), 'ddMMyyyy')}`
+
+      if (formatType === 'excel') {
+        linkUrl = `data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,${data.excel}`
+        downloadName += '.xlsx'
+      } else if (formatType === 'pdf') {
+        linkUrl = data.pdf
+        downloadName += '.pdf'
+      } else if (formatType === 'csv') {
+        const blob = new Blob([data.csv], { type: 'text/csv;charset=utf-8;' })
+        linkUrl = URL.createObjectURL(blob)
+        downloadName += '.csv'
+      } else if (formatType === 'txt') {
+        const blob = new Blob([data.txt], { type: 'text/plain;charset=utf-8;' })
+        linkUrl = URL.createObjectURL(blob)
+        downloadName += '.txt'
+      }
+
       const link = document.createElement('a')
-      link.href = `data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,${data.excel}`
-      link.download = `Usuarios_${format(new Date(), 'ddMMyyyy')}.xlsx`
+      link.href = linkUrl
+      link.download = downloadName
+      document.body.appendChild(link)
       link.click()
+      document.body.removeChild(link)
     } catch (err: any) {
       toast({ variant: 'destructive', title: 'Erro ao exportar', description: err.message })
     }
@@ -191,13 +220,25 @@ export default function Users() {
           <p className="text-muted-foreground">Gerencie os acessos e perfis do sistema.</p>
         </div>
         <div className="flex gap-2 flex-wrap">
-          <Button variant="outline" onClick={handleExport}>
-            <Download className="w-4 h-4 mr-2" /> Exportar
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline">
+                <Download className="w-4 h-4 mr-2" /> Exportar
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuItem onClick={() => handleExport('excel')}>
+                XLSX (Excel)
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleExport('csv')}>CSV</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleExport('pdf')}>PDF</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleExport('txt')}>TXT</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           <Button variant="outline" onClick={() => setIsImportModalOpen(true)}>
             <Upload className="w-4 h-4 mr-2" /> Importar em Lote
           </Button>
-          <Button>
+          <Button onClick={() => setIsNewUserModalOpen(true)}>
             <Plus className="w-4 h-4 mr-2" /> Novo Usuário
           </Button>
         </div>
@@ -214,9 +255,14 @@ export default function Users() {
           />
         </div>
         {selectedUsers.length > 0 && (
-          <Button variant="destructive" onClick={handleBulkDelete}>
-            <Trash className="w-4 h-4 mr-2" /> Excluir Selecionados ({selectedUsers.length})
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" onClick={() => setIsBulkEditModalOpen(true)}>
+              <Edit className="w-4 h-4 mr-2" /> Alterar em Lote
+            </Button>
+            <Button variant="destructive" onClick={handleBulkDelete}>
+              <Trash className="w-4 h-4 mr-2" /> Excluir Selecionados ({selectedUsers.length})
+            </Button>
+          </div>
         )}
       </div>
 
@@ -323,7 +369,7 @@ export default function Users() {
                         variant="secondary"
                         className="bg-amber-100 text-amber-800 hover:bg-amber-100 dark:bg-amber-900/30 dark:text-amber-300"
                       >
-                        Pendente
+                        Pendente de Aprovação
                       </Badge>
                     ) : user.status ? (
                       <Badge
@@ -373,6 +419,22 @@ export default function Users() {
         isOpen={isImportModalOpen}
         onClose={() => setIsImportModalOpen(false)}
         onImported={loadUsers}
+      />
+
+      <NewUserModal
+        isOpen={isNewUserModalOpen}
+        onClose={() => setIsNewUserModalOpen(false)}
+        onSaved={loadUsers}
+      />
+
+      <BulkEditModal
+        isOpen={isBulkEditModalOpen}
+        onClose={() => setIsBulkEditModalOpen(false)}
+        selectedUsers={selectedUsers}
+        onSaved={() => {
+          setSelectedUsers([])
+          loadUsers()
+        }}
       />
     </div>
   )
@@ -641,6 +703,185 @@ function ImportUsersModal({
             className="bg-[#e11d48] hover:bg-[#b91c3c] text-white"
           >
             {loading ? 'Processando...' : 'Confirmar Importação'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function NewUserModal({
+  isOpen,
+  onClose,
+  onSaved,
+}: {
+  isOpen: boolean
+  onClose: () => void
+  onSaved: () => void
+}) {
+  const [name, setName] = useState('')
+  const [email, setEmail] = useState('')
+  const [loading, setLoading] = useState(false)
+  const { toast } = useToast()
+
+  const handleSave = async () => {
+    if (!name || !email) return
+    setLoading(true)
+    try {
+      const { data, error } = await supabase.functions.invoke('manage-user', {
+        body: { action: 'invite', name, email, role: 'collaborator' },
+      })
+      if (error) throw error
+      if (data?.error) throw new Error(data.error)
+
+      toast({ title: 'Sucesso', description: 'Usuário convidado com sucesso.' })
+      onSaved()
+      onClose()
+      setName('')
+      setEmail('')
+    } catch (err: any) {
+      toast({ variant: 'destructive', title: 'Erro', description: err.message })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Novo Usuário</DialogTitle>
+          <DialogDescription>
+            Preencha os dados básicos para convidar um novo usuário.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4 py-4">
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Nome</label>
+            <Input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Nome completo"
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-medium">E-mail</label>
+            <Input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="email@exemplo.com"
+            />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>
+            Cancelar
+          </Button>
+          <Button onClick={handleSave} disabled={loading || !name || !email}>
+            {loading ? 'Salvando...' : 'Salvar'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function BulkEditModal({
+  isOpen,
+  onClose,
+  selectedUsers,
+  onSaved,
+}: {
+  isOpen: boolean
+  onClose: () => void
+  selectedUsers: string[]
+  onSaved: () => void
+}) {
+  const [role, setRole] = useState<string>('no_change')
+  const [status, setStatus] = useState<string>('no_change')
+  const [loading, setLoading] = useState(false)
+  const { toast } = useToast()
+
+  const handleSave = async () => {
+    if (role === 'no_change' && status === 'no_change') {
+      onClose()
+      return
+    }
+
+    setLoading(true)
+    try {
+      const updates: any = {}
+      if (role !== 'no_change') updates.role = role
+      if (status !== 'no_change') updates.status = status === 'true'
+
+      const { error } = await supabase
+        .from('cadastro_usuarios')
+        .update(updates)
+        .in('id', selectedUsers)
+
+      if (error) throw error
+
+      toast({ title: 'Sucesso', description: `${selectedUsers.length} usuários atualizados.` })
+      onSaved()
+      onClose()
+      setRole('no_change')
+      setStatus('no_change')
+    } catch (err: any) {
+      toast({ variant: 'destructive', title: 'Erro', description: err.message })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Alteração em Lote</DialogTitle>
+          <DialogDescription>
+            Aplicar alterações para {selectedUsers.length} usuários selecionados.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4 py-4">
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Perfil</label>
+            <Select value={role} onValueChange={setRole}>
+              <SelectTrigger>
+                <SelectValue placeholder="Manter atual" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="no_change">Manter atual</SelectItem>
+                <SelectItem value="admin">Administrador</SelectItem>
+                <SelectItem value="supervisor">Supervisor</SelectItem>
+                <SelectItem value="collaborator">Colaborador</SelectItem>
+                <SelectItem value="client_user">Usuário Cliente</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Status</label>
+            <Select value={status} onValueChange={setStatus}>
+              <SelectTrigger>
+                <SelectValue placeholder="Manter atual" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="no_change">Manter atual</SelectItem>
+                <SelectItem value="true">Ativo</SelectItem>
+                <SelectItem value="false">Inativo</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>
+            Cancelar
+          </Button>
+          <Button
+            onClick={handleSave}
+            disabled={loading || (role === 'no_change' && status === 'no_change')}
+          >
+            {loading ? 'Salvando...' : 'Salvar Alterações'}
           </Button>
         </DialogFooter>
       </DialogContent>
