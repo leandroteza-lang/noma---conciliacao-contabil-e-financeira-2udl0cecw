@@ -1423,9 +1423,30 @@ function BulkEditModal({
   const [role, setRole] = useState<string>('no_change')
   const [status, setStatus] = useState<string>('no_change')
   const [departmentId, setDepartmentId] = useState<string>('no_change')
+  const [updateCompanies, setUpdateCompanies] = useState(false)
+  const [companies, setCompanies] = useState<string[]>([])
+  const [updatePermissions, setUpdatePermissions] = useState(false)
+  const [permissions, setPermissions] = useState<string[]>(['all'])
   const [loading, setLoading] = useState(false)
   const [departments, setDepartments] = useState<any[]>([])
+  const [organizations, setOrganizations] = useState<any[]>([])
   const { toast } = useToast()
+
+  const AVAILABLE_PERMISSIONS = [
+    { id: 'dashboard', label: 'Dashboard' },
+    { id: 'analises', label: 'Análises' },
+    { id: 'empresas', label: 'Empresas' },
+    { id: 'departamentos', label: 'Departamentos' },
+    { id: 'usuarios', label: 'Usuários' },
+    { id: 'centros-de-custo', label: 'Centros de Custo' },
+    { id: 'plano-de-contas', label: 'Plano de Contas' },
+    { id: 'tipo-conta-tga', label: 'Tipos de Conta TGA' },
+    { id: 'mapeamento', label: 'Mapeamentos' },
+    { id: 'lancamentos', label: 'Lançamentos' },
+    { id: 'import', label: 'Importações' },
+    { id: 'aprovacoes', label: 'Aprovações' },
+    { id: 'compartilhamentos', label: 'Compartilhamentos' },
+  ]
 
   useEffect(() => {
     if (isOpen) {
@@ -1434,15 +1455,31 @@ function BulkEditModal({
         .select('id, name')
         .is('deleted_at', null)
         .then(({ data }) => setDepartments(data || []))
+
+      supabase
+        .from('organizations')
+        .select('id, name')
+        .is('deleted_at', null)
+        .then(({ data }) => setOrganizations(data || []))
     } else {
       setRole('no_change')
       setStatus('no_change')
       setDepartmentId('no_change')
+      setUpdateCompanies(false)
+      setCompanies([])
+      setUpdatePermissions(false)
+      setPermissions(['all'])
     }
   }, [isOpen])
 
   const handleSave = async () => {
-    if (role === 'no_change' && status === 'no_change' && departmentId === 'no_change') {
+    if (
+      role === 'no_change' &&
+      status === 'no_change' &&
+      departmentId === 'no_change' &&
+      !updateCompanies &&
+      !updatePermissions
+    ) {
       onClose()
       return
     }
@@ -1455,13 +1492,31 @@ function BulkEditModal({
       if (departmentId !== 'no_change') {
         updates.department_id = departmentId === 'none' ? null : departmentId
       }
+      if (updatePermissions) {
+        updates.permissions = permissions.length > 0 ? permissions : ['all']
+      }
 
-      const { error } = await supabase
-        .from('cadastro_usuarios')
-        .update(updates)
-        .in('id', selectedUsers)
+      if (Object.keys(updates).length > 0) {
+        const { error } = await supabase
+          .from('cadastro_usuarios')
+          .update(updates)
+          .in('id', selectedUsers)
+        if (error) throw error
+      }
 
-      if (error) throw error
+      if (updateCompanies) {
+        await supabase.from('cadastro_usuarios_companies').delete().in('usuario_id', selectedUsers)
+
+        if (companies.length > 0) {
+          const companyInserts = selectedUsers.flatMap((userId) =>
+            companies.map((orgId) => ({
+              usuario_id: userId,
+              organization_id: orgId,
+            })),
+          )
+          await supabase.from('cadastro_usuarios_companies').insert(companyInserts)
+        }
+      }
 
       toast({ title: 'Sucesso', description: `${selectedUsers.length} usuários atualizados.` })
       onSaved()
@@ -1475,7 +1530,7 @@ function BulkEditModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Alteração em Lote</DialogTitle>
           <DialogDescription>
@@ -1483,50 +1538,175 @@ function BulkEditModal({
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-4">
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Perfil</label>
-            <Select value={role} onValueChange={setRole}>
-              <SelectTrigger>
-                <SelectValue placeholder="Manter atual" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="no_change">Manter atual</SelectItem>
-                <SelectItem value="admin">Administrador</SelectItem>
-                <SelectItem value="supervisor">Supervisor</SelectItem>
-                <SelectItem value="collaborator">Colaborador</SelectItem>
-                <SelectItem value="client_user">Usuário Cliente</SelectItem>
-              </SelectContent>
-            </Select>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Perfil</label>
+              <Select value={role} onValueChange={setRole}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Manter atual" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="no_change">Manter atual</SelectItem>
+                  <SelectItem value="admin">Administrador</SelectItem>
+                  <SelectItem value="supervisor">Supervisor</SelectItem>
+                  <SelectItem value="collaborator">Colaborador</SelectItem>
+                  <SelectItem value="client_user">Usuário Cliente</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Departamento</label>
+              <Select value={departmentId} onValueChange={setDepartmentId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Manter atual" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="no_change">Manter atual</SelectItem>
+                  <SelectItem value="none">Remover Departamento</SelectItem>
+                  {departments.map((d) => (
+                    <SelectItem key={d.id} value={d.id}>
+                      {d.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2 sm:col-span-2">
+              <label className="text-sm font-medium">Status</label>
+              <Select value={status} onValueChange={setStatus}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Manter atual" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="no_change">Manter atual</SelectItem>
+                  <SelectItem value="true">Ativo</SelectItem>
+                  <SelectItem value="false">Inativo</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Departamento</label>
-            <Select value={departmentId} onValueChange={setDepartmentId}>
-              <SelectTrigger>
-                <SelectValue placeholder="Manter atual" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="no_change">Manter atual</SelectItem>
-                <SelectItem value="none">Remover Departamento</SelectItem>
-                {departments.map((d) => (
-                  <SelectItem key={d.id} value={d.id}>
-                    {d.name}
-                  </SelectItem>
+
+          <div className="space-y-2 pt-2 border-t">
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="update-companies"
+                checked={updateCompanies}
+                onCheckedChange={(checked) => setUpdateCompanies(!!checked)}
+              />
+              <label htmlFor="update-companies" className="text-sm font-medium cursor-pointer">
+                Alterar Empresas Permitidas
+              </label>
+            </div>
+            {updateCompanies && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 border p-3 rounded-md max-h-40 overflow-y-auto bg-muted/20 mt-2">
+                {organizations.length > 0 && (
+                  <div className="flex items-center space-x-2 col-span-1 sm:col-span-2 pb-2 mb-2 border-b bg-red-600 text-white p-2 rounded-md">
+                    <Checkbox
+                      id="comp-all-bulk"
+                      checked={companies.length === organizations.length}
+                      onCheckedChange={(checked) => {
+                        if (checked) setCompanies(organizations.map((o) => o.id))
+                        else setCompanies([])
+                      }}
+                      className="border-white data-[state=checked]:bg-white data-[state=checked]:text-red-600"
+                    />
+                    <label htmlFor="comp-all-bulk" className="text-sm font-bold cursor-pointer">
+                      Acesso Total
+                    </label>
+                  </div>
+                )}
+                {organizations.map((org) => (
+                  <div key={org.id} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={`org-bulk-${org.id}`}
+                      checked={companies.includes(org.id)}
+                      onCheckedChange={(checked) => {
+                        if (checked) setCompanies([...companies, org.id])
+                        else setCompanies(companies.filter((id) => id !== org.id))
+                      }}
+                    />
+                    <label
+                      htmlFor={`org-bulk-${org.id}`}
+                      className="text-sm cursor-pointer truncate font-normal"
+                    >
+                      {org.name}
+                    </label>
+                  </div>
                 ))}
-              </SelectContent>
-            </Select>
+                {organizations.length === 0 && (
+                  <p className="text-sm text-muted-foreground col-span-full">
+                    Nenhuma empresa cadastrada.
+                  </p>
+                )}
+              </div>
+            )}
           </div>
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Status</label>
-            <Select value={status} onValueChange={setStatus}>
-              <SelectTrigger>
-                <SelectValue placeholder="Manter atual" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="no_change">Manter atual</SelectItem>
-                <SelectItem value="true">Ativo</SelectItem>
-                <SelectItem value="false">Inativo</SelectItem>
-              </SelectContent>
-            </Select>
+
+          <div className="space-y-2 pt-2 border-t">
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="update-permissions"
+                checked={updatePermissions}
+                onCheckedChange={(checked) => setUpdatePermissions(!!checked)}
+              />
+              <label htmlFor="update-permissions" className="text-sm font-medium cursor-pointer">
+                Alterar Funcionalidades Permitidas
+              </label>
+            </div>
+            {updatePermissions && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 border p-3 rounded-md max-h-40 overflow-y-auto bg-muted/20 mt-2">
+                <div className="flex items-center space-x-2 col-span-1 sm:col-span-2 pb-2 mb-2 border-b bg-red-600 text-white p-2 rounded-md">
+                  <Checkbox
+                    id="perm-all-bulk"
+                    checked={permissions.includes('all')}
+                    onCheckedChange={(checked) => {
+                      if (checked) setPermissions(['all'])
+                      else setPermissions([])
+                    }}
+                    className="border-white data-[state=checked]:bg-white data-[state=checked]:text-red-600"
+                  />
+                  <label htmlFor="perm-all-bulk" className="text-sm font-bold cursor-pointer">
+                    Acesso Total
+                  </label>
+                </div>
+                {AVAILABLE_PERMISSIONS.map((perm) => {
+                  const isAllPermissions = permissions.includes('all')
+                  const isChecked = isAllPermissions || permissions.includes(perm.id)
+                  return (
+                    <div key={perm.id} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`perm-bulk-${perm.id}`}
+                        checked={isChecked}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            const newPerms = isAllPermissions
+                              ? AVAILABLE_PERMISSIONS.map((p) => p.id)
+                              : permissions
+                            const updated = [...newPerms, perm.id]
+                            if (updated.length === AVAILABLE_PERMISSIONS.length) {
+                              setPermissions(['all'])
+                            } else {
+                              setPermissions(updated.filter((p) => p !== 'all'))
+                            }
+                          } else {
+                            const newPerms = isAllPermissions
+                              ? AVAILABLE_PERMISSIONS.map((p) => p.id)
+                              : permissions
+                            setPermissions(newPerms.filter((id) => id !== perm.id && id !== 'all'))
+                          }
+                        }}
+                      />
+                      <label
+                        htmlFor={`perm-bulk-${perm.id}`}
+                        className="text-sm cursor-pointer truncate font-normal"
+                      >
+                        {perm.label}
+                      </label>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
           </div>
         </div>
         <DialogFooter>
@@ -1537,7 +1717,11 @@ function BulkEditModal({
             onClick={handleSave}
             disabled={
               loading ||
-              (role === 'no_change' && status === 'no_change' && departmentId === 'no_change')
+              (role === 'no_change' &&
+                status === 'no_change' &&
+                departmentId === 'no_change' &&
+                !updateCompanies &&
+                !updatePermissions)
             }
           >
             {loading ? 'Salvando...' : 'Salvar Alterações'}
