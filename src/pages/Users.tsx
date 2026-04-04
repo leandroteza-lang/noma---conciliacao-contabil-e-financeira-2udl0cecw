@@ -751,9 +751,28 @@ function NewUserModal({
   const [phone, setPhone] = useState('')
   const [role, setRole] = useState('collaborator')
   const [departmentId, setDepartmentId] = useState('none')
+  const [permissions, setPermissions] = useState<string[]>(['all'])
+  const [companies, setCompanies] = useState<string[]>([])
+  const [organizations, setOrganizations] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
   const [departments, setDepartments] = useState<any[]>([])
   const { toast } = useToast()
+
+  const AVAILABLE_PERMISSIONS = [
+    { id: 'dashboard', label: 'Dashboard' },
+    { id: 'analises', label: 'Análises' },
+    { id: 'empresas', label: 'Empresas' },
+    { id: 'departamentos', label: 'Departamentos' },
+    { id: 'usuarios', label: 'Usuários' },
+    { id: 'centros-de-custo', label: 'Centros de Custo' },
+    { id: 'plano-de-contas', label: 'Plano de Contas' },
+    { id: 'tipo-conta-tga', label: 'Tipos de Conta TGA' },
+    { id: 'mapeamento', label: 'Mapeamentos' },
+    { id: 'lancamentos', label: 'Lançamentos' },
+    { id: 'import', label: 'Importações' },
+    { id: 'aprovacoes', label: 'Aprovações' },
+    { id: 'compartilhamentos', label: 'Compartilhamentos' },
+  ]
 
   useEffect(() => {
     if (isOpen) {
@@ -762,6 +781,11 @@ function NewUserModal({
         .select('id, name')
         .is('deleted_at', null)
         .then(({ data }) => setDepartments(data || []))
+      supabase
+        .from('organizations')
+        .select('id, name')
+        .is('deleted_at', null)
+        .then(({ data }) => setOrganizations(data || []))
     } else {
       setName('')
       setEmail('')
@@ -769,6 +793,8 @@ function NewUserModal({
       setPhone('')
       setRole('collaborator')
       setDepartmentId('none')
+      setPermissions(['all'])
+      setCompanies([])
     }
   }, [isOpen])
 
@@ -785,6 +811,8 @@ function NewUserModal({
           cpf: cpf || null,
           phone: phone || null,
           department_id: departmentId === 'none' ? null : departmentId,
+          permissions: permissions.length > 0 ? permissions : ['all'],
+          companies,
         },
       })
       if (error) throw error
@@ -873,6 +901,68 @@ function NewUserModal({
               </SelectContent>
             </Select>
           </div>
+          <div className="space-y-2 sm:col-span-2">
+            <label className="text-sm font-medium">Empresas Permitidas</label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 border p-3 rounded-md max-h-40 overflow-y-auto bg-muted/20">
+              {organizations.map((org) => (
+                <div key={org.id} className="flex items-center space-x-2">
+                  <Checkbox
+                    id={`org-new-${org.id}`}
+                    checked={companies.includes(org.id)}
+                    onCheckedChange={(checked) => {
+                      if (checked) setCompanies([...companies, org.id])
+                      else setCompanies(companies.filter((id) => id !== org.id))
+                    }}
+                  />
+                  <label htmlFor={`org-new-${org.id}`} className="text-sm cursor-pointer truncate">
+                    {org.name}
+                  </label>
+                </div>
+              ))}
+              {organizations.length === 0 && (
+                <p className="text-sm text-muted-foreground col-span-full">
+                  Nenhuma empresa cadastrada.
+                </p>
+              )}
+            </div>
+          </div>
+          <div className="space-y-2 sm:col-span-2">
+            <label className="text-sm font-medium">Funcionalidades Permitidas</label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 border p-3 rounded-md max-h-40 overflow-y-auto bg-muted/20">
+              <div className="flex items-center space-x-2 col-span-1 sm:col-span-2 pb-2 mb-2 border-b">
+                <Checkbox
+                  id="perm-all-new"
+                  checked={permissions.includes('all')}
+                  onCheckedChange={(checked) => {
+                    if (checked) setPermissions(['all'])
+                    else setPermissions([])
+                  }}
+                />
+                <label htmlFor="perm-all-new" className="text-sm font-semibold cursor-pointer">
+                  Acesso Total
+                </label>
+              </div>
+              {!permissions.includes('all') &&
+                AVAILABLE_PERMISSIONS.map((perm) => (
+                  <div key={perm.id} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={`perm-new-${perm.id}`}
+                      checked={permissions.includes(perm.id)}
+                      onCheckedChange={(checked) => {
+                        if (checked) setPermissions([...permissions, perm.id])
+                        else setPermissions(permissions.filter((id) => id !== perm.id))
+                      }}
+                    />
+                    <label
+                      htmlFor={`perm-new-${perm.id}`}
+                      className="text-sm cursor-pointer truncate"
+                    >
+                      {perm.label}
+                    </label>
+                  </div>
+                ))}
+            </div>
+          </div>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>
@@ -904,9 +994,28 @@ function EditUserModal({
   const [role, setRole] = useState('collaborator')
   const [departmentId, setDepartmentId] = useState('none')
   const [status, setStatus] = useState('true')
+  const [permissions, setPermissions] = useState<string[]>(['all'])
+  const [companies, setCompanies] = useState<string[]>([])
+  const [organizations, setOrganizations] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
   const [departments, setDepartments] = useState<any[]>([])
   const { toast } = useToast()
+
+  const AVAILABLE_PERMISSIONS = [
+    { id: 'dashboard', label: 'Dashboard' },
+    { id: 'analises', label: 'Análises' },
+    { id: 'empresas', label: 'Empresas' },
+    { id: 'departamentos', label: 'Departamentos' },
+    { id: 'usuarios', label: 'Usuários' },
+    { id: 'centros-de-custo', label: 'Centros de Custo' },
+    { id: 'plano-de-contas', label: 'Plano de Contas' },
+    { id: 'tipo-conta-tga', label: 'Tipos de Conta TGA' },
+    { id: 'mapeamento', label: 'Mapeamentos' },
+    { id: 'lancamentos', label: 'Lançamentos' },
+    { id: 'import', label: 'Importações' },
+    { id: 'aprovacoes', label: 'Aprovações' },
+    { id: 'compartilhamentos', label: 'Compartilhamentos' },
+  ]
 
   useEffect(() => {
     if (isOpen && user) {
@@ -916,12 +1025,30 @@ function EditUserModal({
       setRole(user.role || 'collaborator')
       setDepartmentId(user.department_id || 'none')
       setStatus(user.status ? 'true' : 'false')
+      setPermissions(user.permissions || ['all'])
 
       supabase
         .from('departments')
         .select('id, name')
         .is('deleted_at', null)
         .then(({ data }) => setDepartments(data || []))
+
+      supabase
+        .from('organizations')
+        .select('id, name')
+        .is('deleted_at', null)
+        .then(({ data }) => setOrganizations(data || []))
+
+      supabase
+        .from('cadastro_usuarios_companies')
+        .select('organization_id')
+        .eq('usuario_id', user.id)
+        .then(({ data }) => {
+          if (data) setCompanies(data.map((d) => d.organization_id))
+        })
+    } else {
+      setPermissions(['all'])
+      setCompanies([])
     }
   }, [isOpen, user])
 
@@ -936,11 +1063,20 @@ function EditUserModal({
         role,
         department_id: departmentId === 'none' ? null : departmentId,
         status: status === 'true',
+        permissions: permissions.length > 0 ? permissions : ['all'],
       }
 
       const { error } = await supabase.from('cadastro_usuarios').update(updates).eq('id', user.id)
-
       if (error) throw error
+
+      await supabase.from('cadastro_usuarios_companies').delete().eq('usuario_id', user.id)
+      if (companies.length > 0) {
+        const companyInserts = companies.map((orgId: string) => ({
+          usuario_id: user.id,
+          organization_id: orgId,
+        }))
+        await supabase.from('cadastro_usuarios_companies').insert(companyInserts)
+      }
 
       toast({ title: 'Sucesso', description: 'Usuário atualizado com sucesso.' })
       onSaved()
@@ -1025,6 +1161,68 @@ function EditUserModal({
                 <SelectItem value="false">Inativo</SelectItem>
               </SelectContent>
             </Select>
+          </div>
+          <div className="space-y-2 sm:col-span-2">
+            <label className="text-sm font-medium">Empresas Permitidas</label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 border p-3 rounded-md max-h-40 overflow-y-auto bg-muted/20">
+              {organizations.map((org) => (
+                <div key={org.id} className="flex items-center space-x-2">
+                  <Checkbox
+                    id={`org-edit-${org.id}`}
+                    checked={companies.includes(org.id)}
+                    onCheckedChange={(checked) => {
+                      if (checked) setCompanies([...companies, org.id])
+                      else setCompanies(companies.filter((id) => id !== org.id))
+                    }}
+                  />
+                  <label htmlFor={`org-edit-${org.id}`} className="text-sm cursor-pointer truncate">
+                    {org.name}
+                  </label>
+                </div>
+              ))}
+              {organizations.length === 0 && (
+                <p className="text-sm text-muted-foreground col-span-full">
+                  Nenhuma empresa cadastrada.
+                </p>
+              )}
+            </div>
+          </div>
+          <div className="space-y-2 sm:col-span-2">
+            <label className="text-sm font-medium">Funcionalidades Permitidas</label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 border p-3 rounded-md max-h-40 overflow-y-auto bg-muted/20">
+              <div className="flex items-center space-x-2 col-span-1 sm:col-span-2 pb-2 mb-2 border-b">
+                <Checkbox
+                  id="perm-all-edit"
+                  checked={permissions.includes('all')}
+                  onCheckedChange={(checked) => {
+                    if (checked) setPermissions(['all'])
+                    else setPermissions([])
+                  }}
+                />
+                <label htmlFor="perm-all-edit" className="text-sm font-semibold cursor-pointer">
+                  Acesso Total
+                </label>
+              </div>
+              {!permissions.includes('all') &&
+                AVAILABLE_PERMISSIONS.map((perm) => (
+                  <div key={perm.id} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={`perm-edit-${perm.id}`}
+                      checked={permissions.includes(perm.id)}
+                      onCheckedChange={(checked) => {
+                        if (checked) setPermissions([...permissions, perm.id])
+                        else setPermissions(permissions.filter((id) => id !== perm.id))
+                      }}
+                    />
+                    <label
+                      htmlFor={`perm-edit-${perm.id}`}
+                      className="text-sm cursor-pointer truncate"
+                    >
+                      {perm.label}
+                    </label>
+                  </div>
+                ))}
+            </div>
           </div>
         </div>
         <DialogFooter>
