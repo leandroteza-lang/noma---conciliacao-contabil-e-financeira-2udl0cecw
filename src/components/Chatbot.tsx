@@ -144,7 +144,10 @@ const renderMessageContent = (text: string) => {
                     className="hover:bg-muted/50 data-[state=selected]:bg-muted border-b border-border transition-colors"
                   >
                     {row.map((cell, j) => (
-                      <TableCell key={j} className="p-3 align-middle whitespace-nowrap">
+                      <TableCell
+                        key={j}
+                        className="p-3 align-middle min-w-[120px] max-w-[300px] whitespace-normal break-words"
+                      >
                         {processInline(cell)}
                       </TableCell>
                     ))}
@@ -921,7 +924,7 @@ export function Chatbot() {
                     <div
                       key={msg.id}
                       className={cn(
-                        'flex gap-2 w-full',
+                        'flex gap-2 w-full min-w-0',
                         msg.role === 'user'
                           ? 'ml-auto flex-row-reverse max-w-[88%]'
                           : 'max-w-[98%]',
@@ -943,7 +946,7 @@ export function Chatbot() {
                       </div>
                       <div
                         className={cn(
-                          'p-3 rounded-xl text-sm shadow-sm flex flex-col w-full min-w-0',
+                          'p-3 rounded-xl text-sm shadow-sm flex flex-col w-full min-w-0 overflow-x-auto',
                           msg.role === 'user'
                             ? 'bg-primary text-primary-foreground rounded-tr-none'
                             : 'bg-muted text-foreground rounded-tl-none',

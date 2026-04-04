@@ -98,7 +98,10 @@ export const renderMarkdown = (text: string) => {
                     className="hover:bg-muted/50 data-[state=selected]:bg-muted border-b border-border transition-colors"
                   >
                     {row.map((cell, j) => (
-                      <td key={j} className="p-3 align-middle whitespace-nowrap">
+                      <td
+                        key={j}
+                        className="p-3 align-middle min-w-[120px] max-w-[300px] whitespace-normal break-words"
+                      >
                         {processInline(cell)}
                       </td>
                     ))}
