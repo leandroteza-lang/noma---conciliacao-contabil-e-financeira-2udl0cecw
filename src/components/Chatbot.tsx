@@ -192,7 +192,7 @@ const BotMessageActions = ({ content, prevPrompt }: { content: string; prevPromp
           password: password,
           notify_first_access: notifyFirstAccess,
           single_view: isSingleView,
-        } as any)
+        })
         .select('id')
         .single()
 
