@@ -51,18 +51,55 @@ const MarkdownTable = ({
   processInline: (text: string) => React.ReactNode
 }) => {
   const [currentPage, setCurrentPage] = useState(1)
-  const totalRows = rows.length
-  const rowsPerPage = 10
-  const totalPages = Math.ceil(totalRows / rowsPerPage)
+  const [searchTerm, setSearchTerm] = useState('')
 
-  const currentRows = rows.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage)
+  const totalRows = rows.length
+
+  const filteredRows =
+    totalRows > 50 && searchTerm.trim() !== ''
+      ? rows.filter((row) =>
+          row.some((cell) => cell.toLowerCase().includes(searchTerm.toLowerCase())),
+        )
+      : rows
+
+  const displayTotalRows = filteredRows.length
+
+  let rowsPerPage = displayTotalRows
+  if (totalRows > 15 && totalRows <= 50) {
+    rowsPerPage = 5
+  } else if (totalRows > 50) {
+    rowsPerPage = 10
+  }
+
+  const totalPages = Math.ceil(displayTotalRows / rowsPerPage) || 1
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(1)
+    }
+  }, [displayTotalRows, totalPages, currentPage])
+
+  const currentRows = filteredRows.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage)
 
   const handlePrev = () => setCurrentPage((p) => Math.max(1, p - 1))
   const handleNext = () => setCurrentPage((p) => Math.min(totalPages, p + 1))
 
   return (
     <div className="my-4 w-full flex flex-col gap-3">
-      <div className="flex flex-col gap-3 w-full overflow-y-auto max-h-[500px] custom-scrollbar pr-2">
+      {totalRows > 50 && (
+        <div className="w-full shrink-0">
+          <Input
+            placeholder="Buscar nos resultados..."
+            value={searchTerm}
+            onChange={(e) => {
+              setSearchTerm(e.target.value)
+              setCurrentPage(1)
+            }}
+            className="h-9 text-sm w-full bg-background"
+          />
+        </div>
+      )}
+      <div className="flex flex-col gap-3 w-full overflow-y-auto max-h-[400px] custom-scrollbar pr-2">
         {currentRows.map((row, i) => (
           <div
             key={i}
@@ -92,11 +129,16 @@ const MarkdownTable = ({
             </div>
           </div>
         ))}
+        {currentRows.length === 0 && (
+          <div className="text-muted-foreground text-sm text-center py-4">
+            Nenhum resultado encontrado.
+          </div>
+        )}
       </div>
 
-      {totalPages > 1 && (
+      {totalRows > 15 && (
         <div className="flex items-center justify-between px-1 py-2 text-xs text-muted-foreground shrink-0 w-full border-t border-border/40 mt-1">
-          <div>Total: {totalRows} registros</div>
+          <div>Total: {displayTotalRows} registros</div>
           <div className="flex items-center gap-2">
             <Button
               type="button"
