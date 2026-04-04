@@ -917,9 +917,7 @@ export function Chatbot() {
                       key={msg.id}
                       className={cn(
                         'flex gap-2 w-full min-w-0',
-                        msg.role === 'user'
-                          ? 'ml-auto flex-row-reverse max-w-[88%]'
-                          : 'max-w-[98%]',
+                        msg.role === 'user' ? 'ml-auto flex-row-reverse max-w-[88%]' : 'w-full',
                       )}
                     >
                       <div
