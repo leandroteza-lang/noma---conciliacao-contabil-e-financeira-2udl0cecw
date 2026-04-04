@@ -54,8 +54,8 @@ Deno.serve(async (req: Request) => {
       doc.text('Relatório de Usuários', 14, 20)
 
       const body = data.map((r: any) => [
-        r.name,
-        r.email || '-',
+        String(r.name || '-'),
+        String(r.email || '-'),
         r.role === 'admin'
           ? 'Administrador'
           : r.role === 'supervisor'
@@ -63,7 +63,7 @@ Deno.serve(async (req: Request) => {
             : r.role === 'client_user'
               ? 'Usuário Cliente'
               : 'Colaborador',
-        r.department || '-',
+        String(r.department || '-'),
         r.approval_status === 'pending' ? 'Em Aprovação' : r.status ? 'Ativo' : 'Inativo',
       ])
 

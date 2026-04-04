@@ -6,7 +6,7 @@
     "export-analysis": 8,
     "export-companies": 9,
     "export-departments": 8,
-    "export-users": 9,
+    "export-users": 10,
     "manage-user": 15,
     "send-email": 8,
     "export-bank-accounts": 7,
