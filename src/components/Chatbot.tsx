@@ -85,9 +85,9 @@ const MarkdownTable = ({
   const handleNext = () => setCurrentPage((p) => Math.min(totalPages, p + 1))
 
   return (
-    <div className="my-4 w-full flex flex-col gap-3">
+    <div className="my-4 w-full flex flex-col gap-3 max-w-full min-w-0">
       {totalRows > 50 && (
-        <div className="w-full shrink-0">
+        <div className="w-full shrink-0 min-w-0">
           <Input
             placeholder="Buscar nos resultados..."
             value={searchTerm}
@@ -95,32 +95,32 @@ const MarkdownTable = ({
               setSearchTerm(e.target.value)
               setCurrentPage(1)
             }}
-            className="h-9 text-sm w-full bg-background"
+            className="h-9 text-sm w-full bg-background min-w-0"
           />
         </div>
       )}
-      <div className="flex flex-col gap-3 w-full overflow-y-auto max-h-[400px] custom-scrollbar pr-2">
+      <div className="flex flex-col gap-3 w-full overflow-y-auto overflow-x-hidden max-h-[400px] custom-scrollbar pr-2 min-w-0">
         {currentRows.map((row, i) => (
           <div
             key={i}
-            className="flex flex-col gap-1.5 p-3.5 rounded-lg bg-card border shadow-sm text-sm break-words w-full"
+            className="flex flex-col gap-1.5 p-3.5 rounded-lg bg-card border shadow-sm text-sm break-words w-full min-w-0 max-w-full"
           >
             <div className="font-bold text-primary mb-2 flex items-center gap-2">
               📄 Registro {(currentPage - 1) * rowsPerPage + i + 1}
             </div>
-            <div className="flex flex-col gap-2 w-full">
+            <div className="flex flex-col gap-2 w-full min-w-0">
               {headers.map((h, j) => {
                 const val = row[j] || ''
                 if (!val.trim() || val.trim() === '-') return null
                 return (
                   <div
                     key={j}
-                    className="flex flex-col sm:flex-row sm:gap-2 items-start break-words w-full"
+                    className="flex flex-col sm:flex-row sm:gap-2 items-start break-words w-full min-w-0"
                   >
                     <span className="font-semibold text-muted-foreground shrink-0 flex items-center gap-1.5">
                       🔹 {processInline(h)}:
                     </span>
-                    <span className="text-foreground break-words flex-1 w-full">
+                    <span className="text-foreground break-words flex-1 min-w-0 w-full">
                       {processInline(val)}
                     </span>
                   </div>
@@ -343,7 +343,11 @@ const renderMessageContent = (text: string) => {
   }
 
   flushTable()
-  return <div className="text-sm w-full min-w-0 break-words">{elements}</div>
+  return (
+    <div className="text-sm w-full min-w-0 max-w-full break-words overflow-x-hidden">
+      {elements}
+    </div>
+  )
 }
 import { useToast } from '@/hooks/use-toast'
 
@@ -964,7 +968,7 @@ export function Chatbot() {
     <div className="fixed bottom-6 right-6 z-[100] flex flex-col items-end">
       {isOpen && (
         <Card
-          className="w-[380px] sm:w-[450px] h-[600px] mb-4 flex flex-col shadow-2xl border-primary/20 animate-in slide-in-from-bottom-5"
+          className="w-[380px] sm:w-[450px] max-w-[calc(100vw-2rem)] h-[600px] max-h-[calc(100vh-6rem)] mb-4 flex flex-col shadow-2xl border-primary/20 animate-in slide-in-from-bottom-5 overflow-hidden"
           style={{ transform: `translate(${position.x}px, ${position.y}px)` }}
         >
           <CardHeader
@@ -1010,15 +1014,15 @@ export function Chatbot() {
 
             <TabsContent
               value="chat"
-              className="flex-1 overflow-x-auto m-0 p-0 flex flex-col relative"
+              className="flex-1 overflow-hidden m-0 p-0 flex flex-col relative"
             >
-              <ScrollArea className="flex-1 p-4">
-                <div className="flex flex-col gap-5 pb-4">
+              <ScrollArea className="flex-1 p-4 w-full max-w-full">
+                <div className="flex flex-col gap-5 pb-4 w-full max-w-full min-w-0">
                   {messages.map((msg, idx) => (
                     <div
                       key={msg.id}
                       className={cn(
-                        'flex gap-2 w-full min-w-0 break-words',
+                        'flex gap-2 w-full min-w-0 max-w-full break-words',
                         msg.role === 'user' ? 'ml-auto flex-row-reverse w-full' : 'w-full',
                       )}
                     >
@@ -1038,7 +1042,7 @@ export function Chatbot() {
                       </div>
                       <div
                         className={cn(
-                          'p-3 rounded-xl text-sm shadow-sm flex flex-col w-full min-w-0',
+                          'p-3 rounded-xl text-sm shadow-sm flex flex-col w-full min-w-0 max-w-full overflow-x-hidden',
                           msg.role === 'user'
                             ? 'bg-primary text-primary-foreground rounded-tr-none'
                             : 'bg-muted text-foreground rounded-tl-none',
