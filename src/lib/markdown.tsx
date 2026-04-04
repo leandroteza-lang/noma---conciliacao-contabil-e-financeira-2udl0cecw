@@ -63,6 +63,116 @@ export const processInline = (text: string) => {
   })
 }
 
+import { useState } from 'react'
+import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
+
+const MarkdownTable = ({
+  headers,
+  rows,
+  processInline,
+}: {
+  headers: string[]
+  rows: string[][]
+  processInline: (text: string) => React.ReactNode
+}) => {
+  const [currentPage, setCurrentPage] = useState(1)
+  const totalRows = rows.length
+
+  const isSmall = totalRows <= 15
+  const isMedium = totalRows > 15 && totalRows <= 50
+  const isLarge = totalRows > 50
+
+  const rowsPerPage = 10
+  const totalPages = Math.ceil(totalRows / rowsPerPage)
+
+  const currentRows = isLarge
+    ? rows.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage)
+    : rows
+
+  const handlePrev = () => setCurrentPage((p) => Math.max(1, p - 1))
+  const handleNext = () => setCurrentPage((p) => Math.min(totalPages, p + 1))
+
+  const containerClass = cn(
+    'my-3 w-full rounded-md border border-border bg-background shadow-sm flex flex-col',
+    isSmall && 'max-h-96',
+    isMedium && 'max-h-[500px]',
+  )
+
+  return (
+    <div className={containerClass}>
+      <div
+        className={cn(
+          'w-full overflow-x-auto custom-scrollbar flex-1',
+          (isSmall || isMedium) && 'overflow-y-auto',
+        )}
+      >
+        <table className="w-full min-w-max caption-bottom text-sm text-left border-collapse m-0">
+          <thead className="bg-muted/50 border-b border-border sticky top-0 z-10">
+            <tr className="hover:bg-transparent">
+              {headers.map((h, i) => (
+                <th
+                  key={i}
+                  className="h-9 px-3 py-2 align-middle font-semibold text-muted-foreground border-r last:border-r-0 border-border/50 text-xs uppercase tracking-wider bg-muted"
+                >
+                  {processInline(h)}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {currentRows.map((row, i) => (
+              <tr
+                key={i}
+                className="hover:bg-muted/50 border-b border-border transition-colors last:border-0"
+              >
+                {row.map((cell, j) => (
+                  <td
+                    key={j}
+                    className="p-2 px-3 align-middle whitespace-normal break-words border-r last:border-r-0 border-border/50"
+                  >
+                    {processInline(cell)}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {isLarge && (
+        <div className="flex items-center justify-between px-3 py-2 border-t border-border bg-muted/20 text-xs text-muted-foreground shrink-0">
+          <div>Total: {totalRows} registros</div>
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-7 px-2 text-xs"
+              onClick={handlePrev}
+              disabled={currentPage === 1}
+            >
+              Anterior
+            </Button>
+            <span>
+              Página {currentPage} de {totalPages}
+            </span>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-7 px-2 text-xs"
+              onClick={handleNext}
+              disabled={currentPage === totalPages}
+            >
+              Próxima
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export const renderMarkdown = (text: string) => {
   const lines = text.split('\n')
   const elements: React.ReactNode[] = []
@@ -74,42 +184,12 @@ export const renderMarkdown = (text: string) => {
     if (inTable) {
       if (tableHeaders.length > 0) {
         elements.push(
-          <div
+          <MarkdownTable
             key={`table-${elements.length}`}
-            className="my-3 w-full overflow-x-auto rounded-md border border-border bg-background shadow-sm custom-scrollbar"
-          >
-            <table className="w-full min-w-max caption-bottom text-sm text-left border-collapse">
-              <thead className="bg-muted/50 border-b border-border">
-                <tr className="hover:bg-transparent">
-                  {tableHeaders.map((h, i) => (
-                    <th
-                      key={i}
-                      className="h-9 px-3 py-2 align-middle font-semibold text-muted-foreground border-r last:border-r-0 border-border/50 text-xs uppercase tracking-wider"
-                    >
-                      {processInline(h)}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {tableRows.map((row, i) => (
-                  <tr
-                    key={i}
-                    className="hover:bg-muted/50 border-b border-border transition-colors last:border-0"
-                  >
-                    {row.map((cell, j) => (
-                      <td
-                        key={j}
-                        className="p-2 px-3 align-middle whitespace-normal break-words border-r last:border-r-0 border-border/50"
-                      >
-                        {processInline(cell)}
-                      </td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>,
+            headers={tableHeaders}
+            rows={tableRows}
+            processInline={processInline}
+          />,
         )
       }
       inTable = false
