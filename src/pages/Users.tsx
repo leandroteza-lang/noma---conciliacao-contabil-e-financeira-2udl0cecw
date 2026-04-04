@@ -275,10 +275,10 @@ export default function Users() {
   }, [formData.cpf, editingUser])
 
   const handleSaveUser = async () => {
-    if (!formData.name || !formData.email) {
+    if (!formData.name || !formData.email || !formData.cpf || formData.cpf.length < 14) {
       toast({
         title: 'Atenção',
-        description: 'Nome e E-mail são obrigatórios.',
+        description: 'Nome, E-mail e CPF válido são obrigatórios.',
         variant: 'destructive',
       })
       return
@@ -469,15 +469,10 @@ export default function Users() {
     }
   }
 
-  const filledFieldsCount = [
+  const mandatoryFilledCount = [
     formData.name?.trim() !== '',
     formData.email?.trim() !== '',
-    formData.cpf?.trim() !== '',
-    formData.phone?.trim() !== '',
-    formData.role?.trim() !== '',
-    formData.department_id !== 'none',
-    formData.address?.trim() !== '',
-    formData.observations?.trim() !== '',
+    formData.cpf?.trim() !== '' && formData.cpf.length === 14,
   ].filter(Boolean).length
 
   return (
@@ -693,8 +688,8 @@ export default function Users() {
           </DialogHeader>
 
           <div className="flex-1 overflow-y-auto max-h-[80vh] px-6 py-4">
-            <div className="text-center text-sm text-muted-foreground mb-4">
-              ↓ {filledFieldsCount} de 8 campos
+            <div className="bg-primary text-primary-foreground rounded-lg p-3 mb-6 font-semibold text-center shadow-sm">
+              ✓ {mandatoryFilledCount} de 3 campos obrigatórios
             </div>
 
             <div className="flex justify-center mb-6 pt-2">
@@ -744,7 +739,7 @@ export default function Users() {
                 />
               </div>
               <div className="space-y-2">
-                <Label>CPF</Label>
+                <Label>CPF *</Label>
                 <Input
                   value={formData.cpf}
                   onChange={(e) => {
