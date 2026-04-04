@@ -580,8 +580,8 @@ export default function Users() {
 
       {/* User Form Modal */}
       <Dialog open={isUserModalOpen} onOpenChange={setIsUserModalOpen}>
-        <DialogContent className="sm:max-w-md md:max-w-4xl h-[90vh] md:h-auto max-h-[90vh] overflow-hidden flex flex-col p-0">
-          <DialogHeader className="px-6 pt-6 pb-2">
+        <DialogContent className="sm:max-w-md md:max-w-4xl h-[90vh] md:max-h-[90vh] overflow-hidden flex flex-col p-0">
+          <DialogHeader className="px-6 pt-6 pb-2 border-b">
             <DialogTitle className="text-xl flex items-center gap-2">
               <UsersIcon className="w-5 h-5 text-primary" />
               {editingUser ? 'Editar Usuário' : 'Novo Usuário'}
@@ -593,7 +593,7 @@ export default function Users() {
             </DialogDescription>
           </DialogHeader>
 
-          <ScrollArea className="flex-1 px-6">
+          <div className="flex-1 overflow-y-auto px-6 py-4">
             <div className="flex justify-center mb-6 pt-2">
               <div className="relative group">
                 <Avatar className="w-24 h-24 border-2 border-muted shadow-sm">
@@ -712,84 +712,91 @@ export default function Users() {
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label>Empresas Permitidas</Label>
-                <div className="border rounded-md bg-card">
-                  <div className="h-40 p-3 overflow-y-auto">
-                    {organizations.map((org) => (
-                      <div key={org.id} className="flex items-center space-x-2 py-1.5">
-                        <Checkbox
-                          id={`org-${org.id}`}
-                          checked={formData.companies.includes(org.id)}
-                          onCheckedChange={(checked) => {
-                            setFormData((prev) => ({
-                              ...prev,
-                              companies: checked
-                                ? [...prev.companies, org.id]
-                                : prev.companies.filter((id) => id !== org.id),
-                            }))
-                          }}
-                        />
-                        <Label
-                          htmlFor={`org-${org.id}`}
-                          className="text-sm font-normal cursor-pointer leading-none"
-                        >
-                          {org.name}
-                        </Label>
+              <div className="space-y-3 md:col-span-2 mt-2">
+                <Label className="text-base font-semibold">Acessos e Permissões</Label>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <Label className="text-sm text-muted-foreground">Empresas Permitidas</Label>
+                    <div className="border rounded-md bg-card p-1">
+                      <div className="max-h-48 overflow-y-auto p-2 space-y-2">
+                        {organizations.map((org) => (
+                          <div key={org.id} className="flex items-start space-x-3 py-1">
+                            <Checkbox
+                              id={`org-${org.id}`}
+                              checked={formData.companies.includes(org.id)}
+                              onCheckedChange={(checked) => {
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  companies: checked
+                                    ? [...prev.companies, org.id]
+                                    : prev.companies.filter((id) => id !== org.id),
+                                }))
+                              }}
+                              className="mt-0.5"
+                            />
+                            <Label
+                              htmlFor={`org-${org.id}`}
+                              className="text-sm font-medium cursor-pointer leading-tight"
+                            >
+                              {org.name}
+                            </Label>
+                          </div>
+                        ))}
+                        {organizations.length === 0 && (
+                          <div className="text-sm text-muted-foreground py-4 text-center">
+                            Nenhuma empresa cadastrada
+                          </div>
+                        )}
                       </div>
-                    ))}
-                    {organizations.length === 0 && (
-                      <div className="text-sm text-muted-foreground py-2 text-center">
-                        Nenhuma empresa cadastrada
-                      </div>
-                    )}
+                    </div>
                   </div>
-                </div>
-              </div>
 
-              <div className="space-y-2">
-                <Label>Permissões de Rotinas</Label>
-                <div className="border rounded-md bg-card">
-                  <div className="h-40 p-3 overflow-y-auto">
-                    {PERMISSIONS_LIST.map((perm) => (
-                      <div key={perm.id} className="flex items-center space-x-2 py-1.5">
-                        <Checkbox
-                          id={`perm-${perm.id}`}
-                          checked={formData.permissions.includes(perm.id)}
-                          onCheckedChange={(checked) => {
-                            if (perm.id === 'all') {
-                              setFormData((prev) => ({
-                                ...prev,
-                                permissions: checked ? ['all'] : [],
-                              }))
-                            } else {
-                              setFormData((prev) => {
-                                let newPerms = checked
-                                  ? [...prev.permissions.filter((p) => p !== 'all'), perm.id]
-                                  : prev.permissions.filter((p) => p !== perm.id && p !== 'all')
-                                if (newPerms.length === PERMISSIONS_LIST.length - 1) {
-                                  newPerms = ['all']
+                  <div className="space-y-2">
+                    <Label className="text-sm text-muted-foreground">Permissões de Rotinas</Label>
+                    <div className="border rounded-md bg-card p-1">
+                      <div className="max-h-48 overflow-y-auto p-2 space-y-2">
+                        {PERMISSIONS_LIST.map((perm) => (
+                          <div key={perm.id} className="flex items-start space-x-3 py-1">
+                            <Checkbox
+                              id={`perm-${perm.id}`}
+                              checked={formData.permissions.includes(perm.id)}
+                              onCheckedChange={(checked) => {
+                                if (perm.id === 'all') {
+                                  setFormData((prev) => ({
+                                    ...prev,
+                                    permissions: checked ? ['all'] : [],
+                                  }))
+                                } else {
+                                  setFormData((prev) => {
+                                    let newPerms = checked
+                                      ? [...prev.permissions.filter((p) => p !== 'all'), perm.id]
+                                      : prev.permissions.filter((p) => p !== perm.id && p !== 'all')
+                                    if (newPerms.length === PERMISSIONS_LIST.length - 1) {
+                                      newPerms = ['all']
+                                    }
+                                    return { ...prev, permissions: newPerms }
+                                  })
                                 }
-                                return { ...prev, permissions: newPerms }
-                              })
-                            }
-                          }}
-                        />
-                        <Label
-                          htmlFor={`perm-${perm.id}`}
-                          className="text-sm font-normal cursor-pointer leading-none"
-                        >
-                          {perm.label}
-                        </Label>
+                              }}
+                              className="mt-0.5"
+                            />
+                            <Label
+                              htmlFor={`perm-${perm.id}`}
+                              className="text-sm font-medium cursor-pointer leading-tight"
+                            >
+                              {perm.label}
+                            </Label>
+                          </div>
+                        ))}
                       </div>
-                    ))}
+                    </div>
                   </div>
                 </div>
               </div>
 
               {editingUser && (
-                <div className="space-y-2 md:col-span-2">
-                  <Label>Status</Label>
+                <div className="space-y-2 md:col-span-2 mt-4">
+                  <Label>Status da Conta</Label>
                   <Select
                     value={formData.status ? 'true' : 'false'}
                     onValueChange={(val) => setFormData({ ...formData, status: val === 'true' })}
@@ -798,14 +805,14 @@ export default function Users() {
                       <SelectValue placeholder="Selecione..." />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="true">Ativo</SelectItem>
-                      <SelectItem value="false">Inativo</SelectItem>
+                      <SelectItem value="true">Ativo (Permitir acesso)</SelectItem>
+                      <SelectItem value="false">Inativo (Bloquear acesso)</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
               )}
             </div>
-          </ScrollArea>
+          </div>
 
           <DialogFooter className="gap-2 px-6 py-4 border-t sm:gap-0 mt-auto bg-muted/20">
             <Button variant="ghost" onClick={() => setIsUserModalOpen(false)}>
