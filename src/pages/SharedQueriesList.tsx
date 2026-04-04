@@ -153,10 +153,32 @@ export default function SharedQueriesList() {
 
   const handleCopyLink = async (id: string) => {
     try {
-      await navigator.clipboard.writeText(`${window.location.origin}/consulta/${id}`)
+      const query = queries.find((q) => q.id === id)
+      const url = `${window.location.origin}/consulta/${id}`
+
+      let userName = 'UM CONSULTOR'
+      if (user) {
+        userName = user.user_metadata?.name || user.email || 'UM CONSULTOR'
+        const { data } = await supabase
+          .from('cadastro_usuarios')
+          .select('name')
+          .eq('user_id', user.id)
+          .maybeSingle()
+        if (data?.name) userName = data.name.toUpperCase()
+      }
+
+      let message = `*Gestão de Contas - Consulta Compartilhada* 🔒\n\nOlá! *${userName}* compartilhou um documento seguro com você.\n\n🔗 *Acessar agora:* ${url}`
+      if (query?.is_protected && query.password) {
+        message += `\n🔑 *Senha de acesso:* ${query.password}`
+      }
+      if (query?.single_view) {
+        message += `\n⚠️ *Atenção:* Este link é de visualização única e expirará após o primeiro acesso.`
+      }
+
+      await navigator.clipboard.writeText(message)
       toast({
         title: 'Link Copiado',
-        description: 'O link foi copiado para sua área de transferência.',
+        description: 'O link e os detalhes de acesso foram copiados.',
       })
     } catch (err) {
       toast({

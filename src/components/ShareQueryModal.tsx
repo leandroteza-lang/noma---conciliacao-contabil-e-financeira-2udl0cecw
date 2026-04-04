@@ -56,7 +56,13 @@ export function ShareQueryModal() {
     if (!user) return
     setLoading(true)
 
-    const newPassword = isProtected ? Math.random().toString(36).slice(-8) : null
+    let newPassword = null
+    if (isProtected) {
+      const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
+      newPassword = Array.from(crypto.getRandomValues(new Uint8Array(8)))
+        .map((x) => chars[x % chars.length])
+        .join('')
+    }
 
     const { data, error } = await supabase
       .from('shared_queries')
@@ -90,6 +96,7 @@ export function ShareQueryModal() {
 
     let userName = 'UM CONSULTOR'
     if (user) {
+      userName = (user.user_metadata?.name || user.email || 'UM CONSULTOR').toUpperCase()
       const { data } = await supabase
         .from('cadastro_usuarios')
         .select('name')
