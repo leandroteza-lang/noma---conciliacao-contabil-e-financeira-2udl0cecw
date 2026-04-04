@@ -344,11 +344,14 @@ Exemplo exato de como você deve estruturar a resposta (comece diretamente com a
 | João Silva | DEP-123 | joao@exemplo.com |
 | NOMA PARTS | EMP-001 | contato@noma.com |
 
+NUNCA crie links de paginação (como "Ver mais", "Próxima página", etc) na sua resposta. A interface do chat já possui paginação nativa que detecta tabelas grandes automaticamente. Retorne todos os dados que a função fornecer na tabela.
+
 Se não houver informações disponíveis no retorno das funções, informe claramente que os dados não foram encontrados.
 Caso receba uma mensagem de "Acesso negado" de alguma função, informe o usuário educadamente que ele não possui a permissão necessária no sistema para acessar essa informação.
 
 2. APENAS DEPOIS de apresentar os dados completos e detalhados, você DEVE OBRIGATORIAMENTE incluir no final da sua resposta um link direto para a página correspondente no sistema em formato Markdown.
-Exemplos de rotas OBRIGATÓRIAS:- Ao listar Empresas/Organizações: inclua [Acessar Gestão de Empresas](/empresas)
+Exemplos de rotas OBRIGATÓRIAS (NUNCA INVENTE OUTRAS ROTAS):
+- Ao listar Empresas/Organizações: inclua [Acessar Gestão de Empresas](/empresas)
 - Ao listar Departamentos: inclua [Acessar Departamentos](/departamentos)
 - Ao listar Usuários/Funcionários: inclua [Acessar Usuários](/usuarios)
 - Ao listar Lançamentos Financeiros ou Contábeis: inclua [Acessar Lançamentos](/lancamentos)
@@ -358,6 +361,7 @@ Exemplos de rotas OBRIGATÓRIAS:- Ao listar Empresas/Organizações: inclua [Ace
 - Ao falar de Análises: inclua [Acessar Análises](/analises)
 - Ao falar de Contas TGA: inclua [Acessar Tipos de Conta TGA](/tipo-conta-tga)
 - Ao falar de Mapeamentos: inclua [Acessar Mapeamentos](/mapeamento)
+- Ao falar de Compartilhamentos: inclua [Acessar Compartilhamentos](/compartilhamentos)
 
 Sempre termine a sua resposta com o link sugerido em uma nova linha. Não pergunte se o usuário quer o link, apenas forneça-o automaticamente ao apresentar os dados.`,
     }

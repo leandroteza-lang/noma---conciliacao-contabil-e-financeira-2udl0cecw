@@ -41,6 +41,7 @@ export default function SharedQueriesList() {
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [selectedIds, setSelectedIds] = useState<string[]>([])
+  const [currentPage, setCurrentPage] = useState(1)
   const { user } = useAuth()
   const { toast } = useToast()
 
@@ -108,6 +109,27 @@ export default function SharedQueriesList() {
       statusFilter === 'all' ? true : statusFilter === 'active' ? !q.is_revoked : q.is_revoked
     return matchSearch && matchStatus
   })
+
+  const totalRows = filteredQueries.length
+  let rowsPerPage = totalRows
+  if (totalRows > 15 && totalRows <= 50) {
+    rowsPerPage = 5
+  } else if (totalRows > 50) {
+    rowsPerPage = 10
+  }
+
+  const totalPages = Math.ceil(totalRows / rowsPerPage) || 1
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(1)
+    }
+  }, [totalRows, totalPages, currentPage])
+
+  const currentQueries = filteredQueries.slice(
+    (currentPage - 1) * rowsPerPage,
+    currentPage * rowsPerPage,
+  )
 
   const handleRevoke = async (id: string) => {
     try {
@@ -215,7 +237,13 @@ export default function SharedQueriesList() {
                 type="text"
                 placeholder="Buscar por tópico ou usuário..."
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                onChange={(e) => {
+                  setSearch(e.target.value)
+                  setCurrentPage(1)
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') e.preventDefault()
+                }}
                 className="pl-9 h-9 bg-background w-full"
               />
             </div>
@@ -328,7 +356,7 @@ export default function SharedQueriesList() {
                       </div>
                     </TableCell>
                   </TableRow>
-                ) : filteredQueries.length === 0 ? (
+                ) : currentQueries.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={8} className="text-center py-16 text-muted-foreground">
                       <div className="flex flex-col items-center justify-center gap-2">
@@ -343,7 +371,7 @@ export default function SharedQueriesList() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredQueries.map((q) => (
+                  currentQueries.map((q) => (
                     <SharedQueriesRow
                       key={q.id}
                       q={q}
@@ -360,6 +388,36 @@ export default function SharedQueriesList() {
               </TableBody>
             </Table>
           </div>
+          {totalRows > 15 && (
+            <div className="flex items-center justify-between px-4 py-3 border-t border-border/50 bg-muted/10">
+              <div className="text-sm text-muted-foreground">
+                Total: {totalRows} {totalRows === 1 ? 'registro' : 'registros'}
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 px-3"
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                >
+                  Anterior
+                </Button>
+                <span className="text-sm font-medium mx-2">
+                  Página {currentPage} de {totalPages}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 px-3"
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                >
+                  Próxima
+                </Button>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
