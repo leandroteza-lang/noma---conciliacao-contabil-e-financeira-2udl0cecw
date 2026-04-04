@@ -170,7 +170,7 @@ const MarkdownTable = ({
   )
 }
 
-const renderMessageContent = (text: string) => {
+const renderMessageContent = (text: string, onLinkClick?: () => void) => {
   if (!text) return null
   const lines = text.split('\n')
   const elements: React.ReactNode[] = []
@@ -199,6 +199,7 @@ const renderMessageContent = (text: string) => {
               <Link
                 key={i}
                 to={url}
+                onClick={onLinkClick}
                 className="inline-flex items-center justify-center gap-1.5 bg-primary text-primary-foreground hover:bg-primary/90 px-3 py-1.5 rounded-md no-underline font-medium transition-colors my-1.5 shadow-sm text-sm w-fit"
               >
                 {label}
@@ -359,7 +360,15 @@ type Message = {
   attachedFileName?: string
 }
 
-const TypingEffect = ({ content, onComplete }: { content: string; onComplete?: () => void }) => {
+const TypingEffect = ({
+  content,
+  onComplete,
+  onLinkClick,
+}: {
+  content: string
+  onComplete?: () => void
+  onLinkClick?: () => void
+}) => {
   const [displayedContent, setDisplayedContent] = useState('')
   useEffect(() => {
     let i = 0
@@ -379,7 +388,7 @@ const TypingEffect = ({ content, onComplete }: { content: string; onComplete?: (
 
   return (
     <div className="relative w-full min-w-0 break-words">
-      {renderMessageContent(displayedContent)}
+      {renderMessageContent(displayedContent, onLinkClick)}
       {displayedContent.length < content.length && (
         <span className="inline-block w-1.5 h-3 ml-1 bg-primary animate-pulse align-baseline mt-1" />
       )}
@@ -1071,9 +1080,10 @@ export function Chatbot() {
                                     ),
                                   )
                                 }
+                                onLinkClick={() => setIsOpen(false)}
                               />
                             ) : (
-                              renderMessageContent(msg.content)
+                              renderMessageContent(msg.content, () => setIsOpen(false))
                             )}
                             {!msg.isTyping && idx > 0 && (
                               <BotMessageActions
