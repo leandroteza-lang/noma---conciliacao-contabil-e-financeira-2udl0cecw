@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import { Link } from 'react-router-dom'
 import {
   MessageCircle,
   X,
@@ -70,15 +71,43 @@ const renderMessageContent = (text: string) => {
         const textMatch = part.match(/\[(.*?)\]/)
         const urlMatch = part.match(/\((.*?)\)/)
         if (textMatch && urlMatch) {
+          const label = textMatch[1]
+          const url = urlMatch[1]
+          if (url.startsWith('/')) {
+            return (
+              <Link
+                key={i}
+                to={url}
+                className="inline-flex items-center justify-center gap-1.5 bg-primary text-primary-foreground hover:bg-primary/90 px-3 py-1.5 rounded-md no-underline font-medium transition-colors my-1.5 shadow-sm text-sm w-fit"
+              >
+                {label}
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="shrink-0"
+                >
+                  <path d="M5 12h14" />
+                  <path d="m12 5 7 7-7 7" />
+                </svg>
+              </Link>
+            )
+          }
           return (
             <a
               key={i}
-              href={urlMatch[1]}
+              href={url}
               className="text-primary hover:underline font-medium break-all"
               target="_blank"
               rel="noopener noreferrer"
             >
-              {textMatch[1]}
+              {label}
             </a>
           )
         }
@@ -88,106 +117,127 @@ const renderMessageContent = (text: string) => {
   }
 
   const flushTable = () => {
-    if (inTable && tableHeaders.length > 0) {
-      elements.push(
-        <div
-          key={`table-${elements.length}`}
-          className="my-4 w-full overflow-x-auto rounded-md border border-border bg-background/50 shadow-sm"
-        >
-          <Table className="text-xs sm:text-sm">
-            <TableHeader className="bg-muted/50">
-              <TableRow className="border-border/50 hover:bg-transparent">
-                {tableHeaders.map((h, i) => (
-                  <TableHead
-                    key={i}
-                    className="font-semibold text-foreground h-9 px-3 whitespace-nowrap"
-                  >
-                    {processInline(h)}
-                  </TableHead>
-                ))}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {tableRows.map((row, i) => (
-                <TableRow key={i} className="border-border/50 hover:bg-muted/30">
-                  {row.map((cell, j) => (
-                    <TableCell key={j} className="py-2 px-3">
-                      {processInline(cell)}
-                    </TableCell>
+    if (inTable) {
+      if (tableHeaders.length > 0) {
+        elements.push(
+          <div
+            key={`table-${elements.length}`}
+            className="my-4 w-full overflow-x-auto rounded-md border border-border bg-background/50 shadow-sm"
+          >
+            <Table className="text-xs sm:text-sm">
+              <TableHeader className="bg-muted/50">
+                <TableRow className="border-border/50 hover:bg-transparent">
+                  {tableHeaders.map((h, i) => (
+                    <TableHead
+                      key={i}
+                      className="font-semibold text-foreground h-9 px-3 whitespace-nowrap"
+                    >
+                      {processInline(h)}
+                    </TableHead>
                   ))}
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>,
-      )
+              </TableHeader>
+              <TableBody>
+                {tableRows.map((row, i) => (
+                  <TableRow key={i} className="border-border/50 hover:bg-muted/30">
+                    {row.map((cell, j) => (
+                      <TableCell key={j} className="py-2 px-3">
+                        {processInline(cell)}
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>,
+        )
+      }
+      inTable = false
+      tableHeaders = []
+      tableRows = []
     }
-    inTable = false
-    tableHeaders = []
-    tableRows = []
   }
 
-  lines.forEach((line, index) => {
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i]
     const trimLine = line.trim()
 
-    if (trimLine.startsWith('|') && trimLine.endsWith('|')) {
-      if (trimLine.replace(/[|\-\s:]/g, '').length === 0) {
+    if (!trimLine) {
+      flushTable()
+      elements.push(<div key={`br-${i}`} className="h-2" />)
+      continue
+    }
+
+    const isTableLine = trimLine.includes('|')
+    const isSeparator = isTableLine && trimLine.replace(/[|\-\s:]/g, '').length === 0
+
+    if (isTableLine) {
+      let cleaned = trimLine
+      if (cleaned.startsWith('|')) cleaned = cleaned.slice(1)
+      if (cleaned.endsWith('|')) cleaned = cleaned.slice(0, -1)
+      const cells = cleaned.split('|').map((c) => c.trim())
+
+      if (isSeparator) {
         inTable = true
-        return
+        continue
       }
-      const cells = trimLine
-        .slice(1, -1)
-        .split('|')
-        .map((c) => c.trim())
 
       if (!inTable) {
-        inTable = true
-        tableHeaders = cells
-      } else {
-        tableRows.push(cells)
-      }
-    } else {
-      flushTable()
-      if (trimLine !== '') {
-        if (trimLine.startsWith('### ')) {
-          elements.push(
-            <h3 key={`h3-${index}`} className="text-sm font-bold mt-4 mb-2 text-foreground">
-              {processInline(trimLine.slice(4))}
-            </h3>,
-          )
-        } else if (trimLine.startsWith('## ')) {
-          elements.push(
-            <h2 key={`h2-${index}`} className="text-base font-bold mt-5 mb-2 text-foreground">
-              {processInline(trimLine.slice(3))}
-            </h2>,
-          )
-        } else if (trimLine.startsWith('# ')) {
-          elements.push(
-            <h1 key={`h1-${index}`} className="text-lg font-bold mt-5 mb-3 text-foreground">
-              {processInline(trimLine.slice(2))}
-            </h1>,
-          )
-        } else if (trimLine.startsWith('- ')) {
-          elements.push(
-            <div key={`li-${index}`} className="flex items-start gap-2 mb-1.5 pl-1">
-              <div className="w-1.5 h-1.5 rounded-full bg-primary/70 mt-1.5 shrink-0" />
-              <div className="leading-relaxed text-foreground/90">
-                {processInline(trimLine.slice(2))}
-              </div>
-            </div>,
-          )
+        const nextLine = lines[i + 1]?.trim() || ''
+        const nextIsSeparator =
+          nextLine.includes('|') && nextLine.replace(/[|\-\s:]/g, '').length === 0
+
+        if (nextIsSeparator) {
+          inTable = true
+          tableHeaders = cells
         } else {
           elements.push(
-            <div key={`text-${index}`} className="mb-1.5 leading-relaxed text-foreground/90">
+            <div key={`text-${i}`} className="mb-1.5 leading-relaxed text-foreground/90">
               {processInline(trimLine)}
             </div>,
           )
         }
       } else {
-        elements.push(<div key={`br-${index}`} className="h-2" />)
+        tableRows.push(cells)
+      }
+    } else {
+      flushTable()
+      if (trimLine.startsWith('### ')) {
+        elements.push(
+          <h3 key={`h3-${i}`} className="text-sm font-bold mt-4 mb-2 text-foreground">
+            {processInline(trimLine.slice(4))}
+          </h3>,
+        )
+      } else if (trimLine.startsWith('## ')) {
+        elements.push(
+          <h2 key={`h2-${i}`} className="text-base font-bold mt-5 mb-2 text-foreground">
+            {processInline(trimLine.slice(3))}
+          </h2>,
+        )
+      } else if (trimLine.startsWith('# ')) {
+        elements.push(
+          <h1 key={`h1-${i}`} className="text-lg font-bold mt-5 mb-3 text-foreground">
+            {processInline(trimLine.slice(2))}
+          </h1>,
+        )
+      } else if (trimLine.startsWith('- ')) {
+        elements.push(
+          <div key={`li-${i}`} className="flex items-start gap-2 mb-1.5 pl-1">
+            <div className="w-1.5 h-1.5 rounded-full bg-primary/70 mt-1.5 shrink-0" />
+            <div className="leading-relaxed text-foreground/90">
+              {processInline(trimLine.slice(2))}
+            </div>
+          </div>,
+        )
+      } else {
+        elements.push(
+          <div key={`text-${i}`} className="mb-1.5 leading-relaxed text-foreground/90">
+            {processInline(trimLine)}
+          </div>,
+        )
       }
     }
-  })
+  }
 
   flushTable()
   return <div className="text-sm">{elements}</div>

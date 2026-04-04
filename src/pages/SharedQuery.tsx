@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { useParams, Link } from 'react-router-dom'
 import { supabase } from '@/lib/supabase/client'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -42,15 +42,43 @@ const renderMarkdownAsCards = (text: string) => {
         const textMatch = part.match(/\[(.*?)\]/)
         const urlMatch = part.match(/\((.*?)\)/)
         if (textMatch && urlMatch) {
+          const label = textMatch[1]
+          const url = urlMatch[1]
+          if (url.startsWith('/')) {
+            return (
+              <Link
+                key={i}
+                to={url}
+                className="inline-flex items-center justify-center gap-1.5 bg-primary text-primary-foreground hover:bg-primary/90 px-3 py-1.5 rounded-md no-underline font-medium transition-colors my-1.5 shadow-sm text-sm w-fit print:hidden"
+              >
+                {label}
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="shrink-0"
+                >
+                  <path d="M5 12h14" />
+                  <path d="m12 5 7 7-7 7" />
+                </svg>
+              </Link>
+            )
+          }
           return (
             <a
               key={i}
-              href={urlMatch[1]}
+              href={url}
               className="text-primary hover:underline font-medium break-all print:text-blue-600 print:underline"
               target="_blank"
               rel="noopener noreferrer"
             >
-              {textMatch[1]}
+              {label}
             </a>
           )
         }
@@ -138,142 +166,169 @@ const renderMarkdownAsCards = (text: string) => {
   }
 
   const flushTable = () => {
-    if (inTable && tableHeaders.length > 0) {
-      elements.push(
-        <div
-          key={`table-${elements.length}`}
-          className="my-6 w-full overflow-x-auto rounded-md border border-border print:border-gray-300 print:overflow-visible break-inside-avoid"
-        >
-          <Table className="w-full text-sm">
-            <TableHeader className="bg-muted/50 print:bg-transparent">
-              <TableRow className="print:border-gray-400 border-border/50">
-                {tableHeaders.map((h, i) => (
-                  <TableHead
-                    key={i}
-                    className="font-semibold text-foreground print:text-black print:border-b-2 print:border-gray-400 h-10"
-                  >
-                    {h}
-                  </TableHead>
-                ))}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {tableRows.map((row, i) => (
-                <TableRow key={i} className="print:border-gray-300 border-border/50">
-                  {row.map((cell, j) => (
-                    <TableCell key={j} className="text-foreground print:text-black print:py-2 py-2">
-                      {cell}
-                    </TableCell>
+    if (inTable) {
+      if (tableHeaders.length > 0) {
+        elements.push(
+          <div
+            key={`table-${elements.length}`}
+            className="my-6 w-full overflow-x-auto rounded-md border border-border print:border-gray-300 print:overflow-visible break-inside-avoid"
+          >
+            <Table className="w-full text-sm">
+              <TableHeader className="bg-muted/50 print:bg-transparent">
+                <TableRow className="print:border-gray-400 border-border/50">
+                  {tableHeaders.map((h, i) => (
+                    <TableHead
+                      key={i}
+                      className="font-semibold text-foreground print:text-black print:border-b-2 print:border-gray-400 h-10"
+                    >
+                      {h}
+                    </TableHead>
                   ))}
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>,
-      )
-    }
-    inTable = false
-    tableHeaders = []
-    tableRows = []
-  }
-
-  lines.forEach((line, index) => {
-    const trimLine = line.trim()
-
-    if (trimLine.startsWith('|') && trimLine.endsWith('|')) {
-      flushCardsGrid()
-
-      if (trimLine.replace(/[|\-\s:]/g, '').length === 0) {
-        inTable = true
-        return
-      }
-
-      const cells = trimLine
-        .slice(1, -1)
-        .split('|')
-        .map((c) => processInline(c.trim()))
-
-      if (!inTable) {
-        inTable = true
-        tableHeaders = cells
-      } else {
-        tableRows.push(cells)
-      }
-      return
-    } else {
-      flushTable()
-    }
-
-    if (trimLine.startsWith('- ')) {
-      const contentStr = trimLine.slice(2)
-      const match = contentStr.match(/^\*\*(.*?)\*\*(.*)/)
-
-      if (match) {
-        let key = match[1].trim()
-        if (key.endsWith(':')) key = key.slice(0, -1)
-
-        let val = match[2].trim()
-        if (val.startsWith(':')) val = val.slice(1).trim()
-
-        currentList.push({
-          key: processInline(key),
-          val: processInline(val),
-        })
-      } else {
-        flushCardsGrid()
-        elements.push(
-          <div key={`bullet-${index}`} className="flex items-start gap-2 mb-2 break-inside-avoid">
-            <div className="w-1.5 h-1.5 rounded-full bg-primary mt-2 flex-shrink-0 print:bg-black" />
-            <div className="text-foreground/90 leading-relaxed print:text-black">
-              {processInline(contentStr)}
-            </div>
+              </TableHeader>
+              <TableBody>
+                {tableRows.map((row, i) => (
+                  <TableRow key={i} className="print:border-gray-300 border-border/50">
+                    {row.map((cell, j) => (
+                      <TableCell
+                        key={j}
+                        className="text-foreground print:text-black print:py-2 py-2"
+                      >
+                        {cell}
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           </div>,
         )
       }
-    } else if (trimLine === '') {
-      flushListAsCard()
-    } else {
-      flushCardsGrid()
+      inTable = false
+      tableHeaders = []
+      tableRows = []
+    }
+  }
 
-      if (trimLine.startsWith('### ')) {
-        elements.push(
-          <h3
-            key={index}
-            className="text-lg font-bold mt-6 mb-3 text-foreground print:text-black break-after-avoid"
-          >
-            {processInline(trimLine.slice(4))}
-          </h3>,
-        )
-      } else if (trimLine.startsWith('## ')) {
-        elements.push(
-          <h2
-            key={index}
-            className="text-xl font-bold mt-8 mb-4 text-foreground border-b pb-2 border-border print:text-black print:border-gray-300 break-after-avoid"
-          >
-            {processInline(trimLine.slice(3))}
-          </h2>,
-        )
-      } else if (trimLine.startsWith('# ')) {
-        elements.push(
-          <h1
-            key={index}
-            className="text-2xl font-extrabold mt-8 mb-4 text-foreground print:text-black break-after-avoid"
-          >
-            {processInline(trimLine.slice(2))}
-          </h1>,
-        )
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i]
+    const trimLine = line.trim()
+
+    if (!trimLine) {
+      flushListAsCard()
+      flushCardsGrid()
+      elements.push(<div key={`br-${i}`} className="h-2" />)
+      continue
+    }
+
+    const isTableLine = trimLine.includes('|')
+    const isSeparator = isTableLine && trimLine.replace(/[|\-\s:]/g, '').length === 0
+
+    if (isTableLine) {
+      flushCardsGrid()
+      let cleaned = trimLine
+      if (cleaned.startsWith('|')) cleaned = cleaned.slice(1)
+      if (cleaned.endsWith('|')) cleaned = cleaned.slice(0, -1)
+      const cells = cleaned.split('|').map((c) => processInline(c.trim()))
+
+      if (isSeparator) {
+        inTable = true
+        continue
+      }
+
+      if (!inTable) {
+        const nextLine = lines[i + 1]?.trim() || ''
+        const nextIsSeparator =
+          nextLine.includes('|') && nextLine.replace(/[|\-\s:]/g, '').length === 0
+
+        if (nextIsSeparator) {
+          inTable = true
+          tableHeaders = cells
+        } else {
+          elements.push(
+            <p
+              key={i}
+              className="mb-2 text-foreground/90 leading-relaxed print:text-black break-inside-avoid"
+            >
+              {processInline(trimLine)}
+            </p>,
+          )
+        }
       } else {
-        elements.push(
-          <p
-            key={index}
-            className="mb-2 text-foreground/90 leading-relaxed print:text-black break-inside-avoid"
-          >
-            {processInline(trimLine)}
-          </p>,
-        )
+        tableRows.push(cells)
+      }
+    } else {
+      flushTable()
+
+      if (trimLine.startsWith('- ')) {
+        const contentStr = trimLine.slice(2)
+        const match = contentStr.match(/^\*\*(.*?)\*\*(.*)/)
+
+        if (match) {
+          let key = match[1].trim()
+          if (key.endsWith(':')) key = key.slice(0, -1)
+
+          let val = match[2].trim()
+          if (val.startsWith(':')) val = val.slice(1).trim()
+
+          currentList.push({
+            key: processInline(key),
+            val: processInline(val),
+          })
+        } else {
+          flushCardsGrid()
+          elements.push(
+            <div key={`bullet-${i}`} className="flex items-start gap-2 mb-2 break-inside-avoid">
+              <div className="w-1.5 h-1.5 rounded-full bg-primary mt-2 flex-shrink-0 print:bg-black" />
+              <div className="text-foreground/90 leading-relaxed print:text-black">
+                {processInline(contentStr)}
+              </div>
+            </div>,
+          )
+        }
+      } else {
+        flushCardsGrid()
+
+        if (trimLine.startsWith('### ')) {
+          elements.push(
+            <h3
+              key={i}
+              className="text-lg font-bold mt-6 mb-3 text-foreground print:text-black break-after-avoid"
+            >
+              {processInline(trimLine.slice(4))}
+            </h3>,
+          )
+        } else if (trimLine.startsWith('## ')) {
+          elements.push(
+            <h2
+              key={i}
+              className="text-xl font-bold mt-8 mb-4 text-foreground border-b pb-2 border-border print:text-black print:border-gray-300 break-after-avoid"
+            >
+              {processInline(trimLine.slice(3))}
+            </h2>,
+          )
+        } else if (trimLine.startsWith('# ')) {
+          elements.push(
+            <h1
+              key={i}
+              className="text-2xl font-extrabold mt-8 mb-4 text-foreground print:text-black break-after-avoid"
+            >
+              {processInline(trimLine.slice(2))}
+            </h1>,
+          )
+        } else {
+          elements.push(
+            <p
+              key={i}
+              className="mb-2 text-foreground/90 leading-relaxed print:text-black break-inside-avoid"
+            >
+              {processInline(trimLine)}
+            </p>,
+          )
+        }
       }
     }
-  })
+  }
 
   flushTable()
   flushCardsGrid()
