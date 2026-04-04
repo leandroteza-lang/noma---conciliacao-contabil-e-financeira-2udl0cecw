@@ -1,5 +1,6 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts'
 import { jsPDF } from 'npm:jspdf@2.5.1'
+import autoTable from 'npm:jspdf-autotable@3.8.2'
 import * as XLSX from 'npm:xlsx@0.18.5'
 
 const corsHeaders = {
@@ -39,33 +40,25 @@ Deno.serve(async (req: Request) => {
     }
 
     if (format === 'pdf') {
-      const doc = new jsPDF()
+      const doc = new jsPDF('landscape')
       doc.setFontSize(16)
-      doc.text('Relatorio de Empresas', 14, 20)
+      doc.text('Relatório de Empresas', 14, 20)
 
-      doc.setFontSize(10)
-      let y = 35
+      const body = data.map((r: any) => [
+        r.name,
+        r.cnpj || r.cpf || '-',
+        r.email || '-',
+        r.phone || '-',
+        r.status ? 'Ativa' : 'Inativa',
+      ])
 
-      const checkPage = () => {
-        if (y > 280) {
-          doc.addPage()
-          y = 20
-        }
-      }
-
-      data.forEach((r: any) => {
-        doc.text(`Nome: ${r.name} | Status: ${r.status ? 'Ativo' : 'Inativo'}`, 14, y)
-        y += 6
-        checkPage()
-        doc.text(`CNPJ: ${r.cnpj || 'N/A'} | CPF: ${r.cpf || 'N/A'}`, 14, y)
-        y += 6
-        checkPage()
-        doc.text(`Tel: ${r.phone || 'N/A'} | Email: ${r.email || 'N/A'}`, 14, y)
-        y += 6
-        checkPage()
-        doc.text(`Endereço: ${r.address || 'N/A'}`, 14, y)
-        y += 8
-        checkPage()
+      autoTable(doc, {
+        startY: 25,
+        head: [['Nome', 'CNPJ/CPF', 'Email', 'Telefone', 'Status']],
+        body: body,
+        theme: 'grid',
+        headStyles: { fillColor: [220, 38, 38] },
+        styles: { fontSize: 9 },
       })
 
       const pdf = doc.output('datauristring')

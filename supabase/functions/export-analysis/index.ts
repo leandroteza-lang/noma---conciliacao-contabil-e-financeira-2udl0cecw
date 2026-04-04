@@ -1,5 +1,6 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts'
 import { jsPDF } from 'npm:jspdf@2.5.1'
+import autoTable from 'npm:jspdf-autotable@3.8.2'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -38,51 +39,40 @@ Deno.serve(async (req: Request) => {
     if (format === 'pdf') {
       const doc = new jsPDF()
       doc.setFontSize(16)
-      doc.text('Relatorio de Analises Gerenciais', 14, 20)
+      doc.text('Relatório de Análises Gerenciais', 14, 20)
+
+      let currentY = 30
 
       doc.setFontSize(12)
-      let y = 35
-
-      const checkPage = () => {
-        if (y > 280) {
-          doc.addPage()
-          y = 20
-        }
-      }
-
-      doc.text('Saldo por Centro de Custo:', 14, y)
-      y += 10
-      checkPage()
-      costCenterData.forEach((r: any) => {
-        doc.text(`${r.name}: R$ ${r.value.toFixed(2)}`, 14, y)
-        y += 8
-        checkPage()
+      doc.text('Saldo por Centro de Custo', 14, currentY)
+      autoTable(doc, {
+        startY: currentY + 5,
+        head: [['Centro de Custo', 'Saldo (R$)']],
+        body: costCenterData.map((r: any) => [r.name, r.value.toFixed(2)]),
+        theme: 'grid',
+        headStyles: { fillColor: [220, 38, 38] },
+        margin: { bottom: 10 },
       })
+      currentY = (doc as any).lastAutoTable.finalY + 15
 
-      y += 5
-      checkPage()
-      doc.text('Fluxo de Caixa Mensal:', 14, y)
-      y += 10
-      checkPage()
-      cashFlowData.forEach((r: any) => {
-        doc.text(`${r.month}: R$ ${r.value.toFixed(2)}`, 14, y)
-        y += 8
-        checkPage()
+      doc.text('Fluxo de Caixa Mensal', 14, currentY)
+      autoTable(doc, {
+        startY: currentY + 5,
+        head: [['Mês', 'Valor (R$)']],
+        body: cashFlowData.map((r: any) => [r.month, r.value.toFixed(2)]),
+        theme: 'grid',
+        headStyles: { fillColor: [220, 38, 38] },
+        margin: { bottom: 10 },
       })
+      currentY = (doc as any).lastAutoTable.finalY + 15
 
-      y += 5
-      checkPage()
-      doc.text('Receitas vs Despesas:', 14, y)
-      y += 10
-      checkPage()
-      revExpData.forEach((r: any) => {
-        doc.text(
-          `${r.month} - Rec: R$ ${r.receita.toFixed(2)} | Desp: R$ ${r.despesa.toFixed(2)}`,
-          14,
-          y,
-        )
-        y += 8
-        checkPage()
+      doc.text('Receitas vs Despesas', 14, currentY)
+      autoTable(doc, {
+        startY: currentY + 5,
+        head: [['Mês', 'Receita (R$)', 'Despesa (R$)']],
+        body: revExpData.map((r: any) => [r.month, r.receita.toFixed(2), r.despesa.toFixed(2)]),
+        theme: 'grid',
+        headStyles: { fillColor: [220, 38, 38] },
       })
 
       const pdf = doc.output('datauristring')

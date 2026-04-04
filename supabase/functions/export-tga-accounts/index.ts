@@ -1,5 +1,6 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts'
 import { jsPDF } from 'npm:jspdf@2.5.1'
+import autoTable from 'npm:jspdf-autotable@3.8.2'
 import * as XLSX from 'npm:xlsx@0.18.5'
 
 const corsHeaders = {
@@ -41,30 +42,20 @@ Deno.serve(async (req: Request) => {
       doc.setFontSize(16)
       doc.text('Relatório de Tipos de Conta TGA', 14, 20)
 
-      doc.setFontSize(10)
-      let y = 35
+      const body = data.map((r: any) => [
+        r.codigo || '-',
+        r.nome || '-',
+        r.abreviacao || '-',
+        r.empresa || 'Geral',
+      ])
 
-      const checkPage = () => {
-        if (y > 280) {
-          doc.addPage()
-          y = 20
-        }
-      }
-
-      data.forEach((r: any) => {
-        doc.text(`Cód: ${r.codigo} | Nome: ${r.nome} | Abrev: ${r.abreviacao || '-'}`, 14, y)
-        y += 6
-        checkPage()
-        doc.text(`Empresa: ${r.empresa || 'Geral'}`, 14, y)
-        y += 6
-        checkPage()
-        if (r.observacoes) {
-          doc.text(`Obs: ${r.observacoes}`, 14, y)
-          y += 6
-          checkPage()
-        }
-        y += 4
-        checkPage()
+      autoTable(doc, {
+        startY: 25,
+        head: [['Código', 'Nome', 'Abreviação', 'Empresa']],
+        body: body,
+        theme: 'grid',
+        headStyles: { fillColor: [220, 38, 38] },
+        styles: { fontSize: 10 },
       })
 
       const pdf = doc.output('datauristring')

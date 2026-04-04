@@ -1,6 +1,7 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts'
 import { createClient } from 'jsr:@supabase/supabase-js@2'
 import { jsPDF } from 'npm:jspdf@2.5.1'
+import autoTable from 'npm:jspdf-autotable@3.8.2'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -33,31 +34,40 @@ Deno.serve(async (req: Request) => {
     if (format === 'pdf') {
       const doc = new jsPDF()
       doc.setFontSize(16)
-      doc.text('Relatorio de Dashboard', 14, 20)
+      doc.text('Relatório de Dashboard', 14, 20)
+
+      let currentY = 30
 
       doc.setFontSize(12)
-      let y = 35
-      doc.text('Saldo por Conta Bancaria:', 14, y)
-      y += 10
-      bankData.forEach((r: any) => {
-        doc.text(`${r.name}: R$ ${r.value.toFixed(2)}`, 14, y)
-        y += 8
+      doc.text('Saldo por Conta Bancária', 14, currentY)
+      autoTable(doc, {
+        startY: currentY + 5,
+        head: [['Conta', 'Saldo (R$)']],
+        body: bankData.map((r: any) => [r.name, r.value.toFixed(2)]),
+        theme: 'grid',
+        headStyles: { fillColor: [220, 38, 38] },
+        margin: { bottom: 10 },
       })
+      currentY = (doc as any).lastAutoTable.finalY + 15
 
-      y += 5
-      doc.text('Lancamentos por Centro de Custo:', 14, y)
-      y += 10
-      costCenterData.forEach((r: any) => {
-        doc.text(`${r.name}: R$ ${r.value.toFixed(2)}`, 14, y)
-        y += 8
+      doc.text('Lançamentos por Centro de Custo', 14, currentY)
+      autoTable(doc, {
+        startY: currentY + 5,
+        head: [['Centro de Custo', 'Valor (R$)']],
+        body: costCenterData.map((r: any) => [r.name, r.value.toFixed(2)]),
+        theme: 'grid',
+        headStyles: { fillColor: [220, 38, 38] },
+        margin: { bottom: 10 },
       })
+      currentY = (doc as any).lastAutoTable.finalY + 15
 
-      y += 5
-      doc.text('Fluxo de Caixa Mensal:', 14, y)
-      y += 10
-      cashFlowData.forEach((r: any) => {
-        doc.text(`${r.month}: R$ ${r.value.toFixed(2)}`, 14, y)
-        y += 8
+      doc.text('Fluxo de Caixa Mensal', 14, currentY)
+      autoTable(doc, {
+        startY: currentY + 5,
+        head: [['Mês', 'Valor (R$)']],
+        body: cashFlowData.map((r: any) => [r.month, r.value.toFixed(2)]),
+        theme: 'grid',
+        headStyles: { fillColor: [220, 38, 38] },
       })
 
       const pdf = doc.output('datauristring')

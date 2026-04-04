@@ -1,5 +1,6 @@
 {
   "imports": {
-    "npm:jspdf@2.5.1": "npm:jspdf@2.5.1"
+    "npm:jspdf@2.5.1": "npm:jspdf@2.5.1",
+    "npm:jspdf-autotable@3.8.2": "npm:jspdf-autotable@3.8.2"
   }
 }

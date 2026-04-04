@@ -1,5 +1,6 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts'
 import { jsPDF } from 'npm:jspdf@2.5.1'
+import autoTable from 'npm:jspdf-autotable@3.8.2'
 import * as XLSX from 'npm:xlsx@0.18.5'
 
 const corsHeaders = {
@@ -48,37 +49,31 @@ Deno.serve(async (req: Request) => {
     }
 
     if (format === 'pdf') {
-      const doc = new jsPDF()
+      const doc = new jsPDF('landscape')
       doc.setFontSize(16)
       doc.text('Relatório de Usuários', 14, 20)
 
-      doc.setFontSize(10)
-      let y = 35
+      const body = data.map((r: any) => [
+        r.name,
+        r.email || '-',
+        r.role === 'admin'
+          ? 'Administrador'
+          : r.role === 'supervisor'
+            ? 'Supervisor'
+            : r.role === 'client_user'
+              ? 'Usuário Cliente'
+              : 'Colaborador',
+        r.department || '-',
+        r.status ? 'Ativo' : 'Inativo',
+      ])
 
-      const checkPage = () => {
-        if (y > 280) {
-          doc.addPage()
-          y = 20
-        }
-      }
-
-      data.forEach((r: any) => {
-        doc.text(
-          `Nome: ${r.name} | CPF: ${r.cpf || '-'} | Status: ${r.status ? 'Ativo' : 'Inativo'}`,
-          14,
-          y,
-        )
-        y += 6
-        checkPage()
-        doc.text(`Email: ${r.email || '-'} | Telefone: ${r.phone || '-'}`, 14, y)
-        y += 6
-        checkPage()
-        doc.text(`Endereço: ${r.address || '-'}`, 14, y)
-        y += 6
-        checkPage()
-        doc.text(`Departamento: ${r.department || '-'} | Perfil: ${r.role || '-'}`, 14, y)
-        y += 10
-        checkPage()
+      autoTable(doc, {
+        startY: 25,
+        head: [['Nome', 'Email', 'Perfil', 'Departamento', 'Status']],
+        body: body,
+        theme: 'grid',
+        headStyles: { fillColor: [220, 38, 38] },
+        styles: { fontSize: 9 },
       })
 
       const pdf = doc.output('datauristring')

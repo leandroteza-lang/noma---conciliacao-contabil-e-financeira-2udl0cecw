@@ -2,16 +2,16 @@
   "_versions": {
     "import-data": 18,
     "generate-entries": 6,
-    "export-dashboard": 4,
-    "export-analysis": 4,
-    "export-companies": 5,
-    "export-departments": 4,
-    "export-users": 4,
+    "export-dashboard": 5,
+    "export-analysis": 5,
+    "export-companies": 6,
+    "export-departments": 5,
+    "export-users": 5,
     "manage-user": 9,
     "send-email": 5,
-    "export-bank-accounts": 3,
-    "export-chart-accounts": 3,
-    "export-tga-accounts": 3,
-    "chat": 14
+    "export-bank-accounts": 4,
+    "export-chart-accounts": 4,
+    "export-tga-accounts": 4,
+    "chat": 15
   }
 }

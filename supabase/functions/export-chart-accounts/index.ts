@@ -1,5 +1,6 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts'
 import { jsPDF } from 'npm:jspdf@2.5.1'
+import autoTable from 'npm:jspdf-autotable@3.8.2'
 import * as XLSX from 'npm:xlsx@0.18.5'
 
 const corsHeaders = {
@@ -32,22 +33,20 @@ Deno.serve(async (req: Request) => {
       doc.setFontSize(16)
       doc.text('Relatório de Plano de Contas', 14, 20)
 
-      doc.setFontSize(10)
-      let y = 35
-      const checkPage = () => {
-        if (y > 280) {
-          doc.addPage()
-          y = 20
-        }
-      }
+      const body = data.map((r: any) => [
+        r['Código'] || '-',
+        r['Nome'] || '-',
+        r['Tipo'] || '-',
+        r['Empresa'] || '-',
+      ])
 
-      data.forEach((r: any) => {
-        doc.text(`Código: ${r['Código']} | Nome: ${r['Nome']}`, 14, y)
-        y += 6
-        checkPage()
-        doc.text(`Tipo: ${r['Tipo']} | Empresa: ${r['Empresa']}`, 14, y)
-        y += 10
-        checkPage()
+      autoTable(doc, {
+        startY: 25,
+        head: [['Código', 'Nome', 'Tipo', 'Empresa']],
+        body: body,
+        theme: 'grid',
+        headStyles: { fillColor: [220, 38, 38] },
+        styles: { fontSize: 9 },
       })
 
       const pdf = doc.output('datauristring')

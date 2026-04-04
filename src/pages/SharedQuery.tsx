@@ -6,64 +6,27 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Lock, Ban, EyeOff, Printer } from 'lucide-react'
 
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+
 const renderMarkdownAsCards = (text: string) => {
   if (!text) return null
 
   const lines = text.split('\n')
   const elements: React.ReactNode[] = []
 
-  let currentCard: { title: React.ReactNode; details: React.ReactNode[] } | null = null
+  let currentList: { key: React.ReactNode; val: React.ReactNode }[] = []
   const cards: React.ReactNode[] = []
 
-  const flushCards = () => {
-    if (currentCard) {
-      if (currentCard.details.length > 0) {
-        cards.push(
-          <Card
-            key={`card-${cards.length}`}
-            className="shadow-sm print:shadow-none print:border print:border-gray-300 break-inside-avoid"
-          >
-            <CardHeader className="py-3 px-4 bg-muted/30 border-b print:bg-transparent print:border-gray-300">
-              <CardTitle className="text-base text-foreground print:text-black">
-                {currentCard.title}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-4">
-              <dl className="space-y-2 text-sm">{currentCard.details}</dl>
-            </CardContent>
-          </Card>,
-        )
-      } else {
-        cards.push(
-          <div
-            key={`simple-item-${cards.length}`}
-            className="flex items-center gap-2 p-3 bg-muted/10 border rounded-md print:bg-transparent print:border-gray-300 break-inside-avoid"
-          >
-            <div className="w-1.5 h-1.5 rounded-full bg-primary print:bg-black" />
-            <span className="font-medium text-foreground print:text-black">
-              {currentCard.title}
-            </span>
-          </div>,
-        )
-      }
-      currentCard = null
-    }
-  }
-
-  const flushCardsGrid = () => {
-    flushCards()
-    if (cards.length > 0) {
-      elements.push(
-        <div
-          key={`cards-grid-${elements.length}`}
-          className="grid grid-cols-1 md:grid-cols-2 gap-4 my-6 print:grid-cols-2 print:gap-4"
-        >
-          {[...cards]}
-        </div>,
-      )
-      cards.length = 0
-    }
-  }
+  let inTable = false
+  let tableHeaders: React.ReactNode[] = []
+  let tableRows: React.ReactNode[][] = []
 
   const processInline = (line: string) => {
     const parts = line.split(/(\*\*.*?\*\*|\[.*?\]\(.*?\))/g)
@@ -100,52 +63,184 @@ const renderMarkdownAsCards = (text: string) => {
     })
   }
 
+  const flushCardsGrid = () => {
+    flushListAsCard()
+    if (cards.length > 0) {
+      elements.push(
+        <div
+          key={`cards-grid-${elements.length}`}
+          className="grid grid-cols-1 md:grid-cols-2 gap-4 my-6 print:grid-cols-2 print:gap-4 break-inside-avoid"
+        >
+          {[...cards]}
+        </div>,
+      )
+      cards.length = 0
+    }
+  }
+
+  const flushListAsCard = () => {
+    if (currentList.length > 0) {
+      const titleItemIndex = currentList.findIndex((item) => {
+        const keyStr = typeof item.key === 'string' ? item.key.toLowerCase() : ''
+        const keySpanStr = item.key?.props?.children
+          ? String(item.key.props.children).toLowerCase()
+          : ''
+        return (
+          keyStr.includes('nome') ||
+          keyStr.includes('código') ||
+          keyStr.includes('empresa') ||
+          keySpanStr.includes('nome') ||
+          keySpanStr.includes('código') ||
+          keySpanStr.includes('empresa')
+        )
+      })
+
+      const titleIndex = titleItemIndex >= 0 ? titleItemIndex : 0
+      const titleItem = currentList[titleIndex]
+      const otherItems = currentList.filter((_, i) => i !== titleIndex)
+
+      cards.push(
+        <Card
+          key={`card-${cards.length}`}
+          className="shadow-sm print:shadow-none print:border print:border-gray-300 break-inside-avoid h-full"
+        >
+          <CardHeader className="py-3 px-4 bg-muted/30 border-b print:bg-transparent print:border-gray-300">
+            <CardTitle className="text-base text-foreground print:text-black flex justify-between items-center gap-2">
+              <span className="text-muted-foreground font-normal text-sm">{titleItem.key}</span>
+              <span className="text-right truncate" title={String(titleItem.val)}>
+                {titleItem.val || '-'}
+              </span>
+            </CardTitle>
+          </CardHeader>
+          {otherItems.length > 0 && (
+            <CardContent className="p-4">
+              <dl className="grid grid-cols-1 gap-x-4 gap-y-3 text-sm">
+                {otherItems.map((item, i) => (
+                  <div
+                    key={i}
+                    className="flex flex-col sm:flex-row sm:justify-between border-b pb-1.5 last:border-0 border-border/50 print:border-gray-200"
+                  >
+                    <dt className="font-medium text-muted-foreground print:text-gray-600">
+                      {item.key}
+                    </dt>
+                    <dd className="text-foreground sm:text-right font-medium print:text-black mt-0.5 sm:mt-0">
+                      {item.val || '-'}
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+            </CardContent>
+          )}
+        </Card>,
+      )
+      currentList = []
+    }
+  }
+
+  const flushTable = () => {
+    if (inTable && tableHeaders.length > 0) {
+      elements.push(
+        <div
+          key={`table-${elements.length}`}
+          className="my-6 w-full overflow-x-auto rounded-md border border-border print:border-gray-300 print:overflow-visible break-inside-avoid"
+        >
+          <Table className="w-full text-sm">
+            <TableHeader className="bg-muted/50 print:bg-transparent">
+              <TableRow className="print:border-gray-400 border-border/50">
+                {tableHeaders.map((h, i) => (
+                  <TableHead
+                    key={i}
+                    className="font-semibold text-foreground print:text-black print:border-b-2 print:border-gray-400 h-10"
+                  >
+                    {h}
+                  </TableHead>
+                ))}
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {tableRows.map((row, i) => (
+                <TableRow key={i} className="print:border-gray-300 border-border/50">
+                  {row.map((cell, j) => (
+                    <TableCell key={j} className="text-foreground print:text-black print:py-2 py-2">
+                      {cell}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>,
+      )
+    }
+    inTable = false
+    tableHeaders = []
+    tableRows = []
+  }
+
   lines.forEach((line, index) => {
     const trimLine = line.trim()
-    const leadingSpaces = line.length - line.trimStart().length
 
-    if (trimLine.startsWith('- ') && leadingSpaces === 0) {
-      flushCards()
-      const titleContent = processInline(
-        trimLine
-          .slice(2)
-          .replace(/^\*\*Nome:\*\*\s*/i, '')
-          .replace(/^\*\*Código:\*\*\s*/i, ''),
-      )
-      currentCard = { title: titleContent, details: [] }
-    } else if (trimLine.startsWith('- ') && leadingSpaces > 0 && currentCard) {
-      const contentStr = trimLine.slice(2)
-      const colonIndex = contentStr.indexOf(':')
-      if (colonIndex > -1 && contentStr.startsWith('**')) {
-        const key = contentStr.slice(0, colonIndex + 1).replace(/\*\*/g, '')
-        const val = contentStr.slice(colonIndex + 1).trim()
-        currentCard.details.push(
-          <div
-            key={index}
-            className="flex flex-col sm:flex-row sm:justify-between py-1.5 border-b last:border-0 border-border/50 print:border-gray-200"
-          >
-            <dt className="font-medium text-muted-foreground print:text-gray-600">{key}</dt>
-            <dd className="text-foreground sm:text-right font-medium print:text-black">
-              {processInline(val) || '-'}
-            </dd>
-          </div>,
-        )
+    if (trimLine.startsWith('|') && trimLine.endsWith('|')) {
+      flushCardsGrid()
+
+      if (trimLine.replace(/[|\-\s:]/g, '').length === 0) {
+        inTable = true
+        return
+      }
+
+      const cells = trimLine
+        .slice(1, -1)
+        .split('|')
+        .map((c) => processInline(c.trim()))
+
+      if (!inTable) {
+        inTable = true
+        tableHeaders = cells
       } else {
-        currentCard.details.push(
-          <div
-            key={index}
-            className="py-1.5 border-b last:border-0 border-border/50 print:border-gray-200"
-          >
-            <dd className="text-foreground print:text-black">{processInline(contentStr)}</dd>
+        tableRows.push(cells)
+      }
+      return
+    } else {
+      flushTable()
+    }
+
+    if (trimLine.startsWith('- ')) {
+      const contentStr = trimLine.slice(2)
+      const match = contentStr.match(/^\*\*(.*?)\*\*(.*)/)
+
+      if (match) {
+        let key = match[1].trim()
+        if (key.endsWith(':')) key = key.slice(0, -1)
+
+        let val = match[2].trim()
+        if (val.startsWith(':')) val = val.slice(1).trim()
+
+        currentList.push({
+          key: processInline(key),
+          val: processInline(val),
+        })
+      } else {
+        flushCardsGrid()
+        elements.push(
+          <div key={`bullet-${index}`} className="flex items-start gap-2 mb-2 break-inside-avoid">
+            <div className="w-1.5 h-1.5 rounded-full bg-primary mt-2 flex-shrink-0 print:bg-black" />
+            <div className="text-foreground/90 leading-relaxed print:text-black">
+              {processInline(contentStr)}
+            </div>
           </div>,
         )
       }
+    } else if (trimLine === '') {
+      flushListAsCard()
     } else {
       flushCardsGrid()
 
       if (trimLine.startsWith('### ')) {
         elements.push(
-          <h3 key={index} className="text-lg font-bold mt-6 mb-3 text-foreground print:text-black">
+          <h3
+            key={index}
+            className="text-lg font-bold mt-6 mb-3 text-foreground print:text-black break-after-avoid"
+          >
             {processInline(trimLine.slice(4))}
           </h3>,
         )
@@ -153,7 +248,7 @@ const renderMarkdownAsCards = (text: string) => {
         elements.push(
           <h2
             key={index}
-            className="text-xl font-bold mt-8 mb-4 text-foreground border-b pb-2 border-border print:text-black print:border-black"
+            className="text-xl font-bold mt-8 mb-4 text-foreground border-b pb-2 border-border print:text-black print:border-gray-300 break-after-avoid"
           >
             {processInline(trimLine.slice(3))}
           </h2>,
@@ -162,16 +257,17 @@ const renderMarkdownAsCards = (text: string) => {
         elements.push(
           <h1
             key={index}
-            className="text-2xl font-extrabold mt-8 mb-4 text-foreground print:text-black"
+            className="text-2xl font-extrabold mt-8 mb-4 text-foreground print:text-black break-after-avoid"
           >
             {processInline(trimLine.slice(2))}
           </h1>,
         )
-      } else if (trimLine === '') {
-        elements.push(<div key={index} className="h-2" />)
       } else {
         elements.push(
-          <p key={index} className="mb-2 text-foreground/90 leading-relaxed print:text-black">
+          <p
+            key={index}
+            className="mb-2 text-foreground/90 leading-relaxed print:text-black break-inside-avoid"
+          >
             {processInline(trimLine)}
           </p>,
         )
@@ -179,9 +275,10 @@ const renderMarkdownAsCards = (text: string) => {
     }
   })
 
+  flushTable()
   flushCardsGrid()
 
-  return <div className="text-base print:text-sm">{elements}</div>
+  return <div className="text-base print:text-[13px]">{elements}</div>
 }
 
 export default function SharedQuery() {
