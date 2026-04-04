@@ -40,14 +40,6 @@ import { supabase } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
 import * as XLSX from 'xlsx'
 import { useAuth } from '@/hooks/use-auth'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
 
 const renderMessageContent = (text: string) => {
   if (!text) return null
@@ -122,39 +114,39 @@ const renderMessageContent = (text: string) => {
         elements.push(
           <div
             key={`table-${elements.length}`}
-            className="my-4 w-full overflow-x-auto rounded-md border border-border bg-card shadow-sm custom-scrollbar"
+            className="my-3 w-full max-w-full overflow-x-auto rounded-md border border-border bg-background shadow-sm custom-scrollbar"
           >
-            <Table className="text-sm w-full caption-bottom">
-              <TableHeader className="bg-muted/50 border-b border-border">
-                <TableRow className="hover:bg-transparent">
+            <table className="text-sm w-full caption-bottom text-left border-collapse">
+              <thead className="bg-muted/50 border-b border-border">
+                <tr>
                   {tableHeaders.map((h, i) => (
-                    <TableHead
+                    <th
                       key={i}
-                      className="h-10 px-3 text-left align-middle font-medium text-muted-foreground whitespace-nowrap"
+                      className="h-9 px-3 align-middle font-medium text-muted-foreground whitespace-nowrap border-r last:border-r-0 border-border/50"
                     >
                       {processInline(h)}
-                    </TableHead>
+                    </th>
                   ))}
-                </TableRow>
-              </TableHeader>
-              <TableBody>
+                </tr>
+              </thead>
+              <tbody>
                 {tableRows.map((row, i) => (
-                  <TableRow
+                  <tr
                     key={i}
-                    className="hover:bg-muted/50 data-[state=selected]:bg-muted border-b border-border transition-colors"
+                    className="hover:bg-muted/50 border-b border-border last:border-0 transition-colors"
                   >
                     {row.map((cell, j) => (
-                      <TableCell
+                      <td
                         key={j}
-                        className="p-3 align-middle min-w-[120px] max-w-[300px] whitespace-normal break-words"
+                        className="p-2.5 px-3 align-middle whitespace-normal break-words min-w-[120px] border-r last:border-r-0 border-border/50"
                       >
                         {processInline(cell)}
-                      </TableCell>
+                      </td>
                     ))}
-                  </TableRow>
+                  </tr>
                 ))}
-              </TableBody>
-            </Table>
+              </tbody>
+            </table>
           </div>,
         )
       }
@@ -946,7 +938,7 @@ export function Chatbot() {
                       </div>
                       <div
                         className={cn(
-                          'p-3 rounded-xl text-sm shadow-sm flex flex-col w-full min-w-0 overflow-x-auto',
+                          'p-3 rounded-xl text-sm shadow-sm flex flex-col w-full min-w-0 overflow-hidden',
                           msg.role === 'user'
                             ? 'bg-primary text-primary-foreground rounded-tr-none'
                             : 'bg-muted text-foreground rounded-tl-none',

@@ -76,15 +76,15 @@ export const renderMarkdown = (text: string) => {
         elements.push(
           <div
             key={`table-${elements.length}`}
-            className="my-4 w-full overflow-x-auto rounded-md border border-border bg-card shadow-sm custom-scrollbar"
+            className="my-3 w-full max-w-full overflow-x-auto rounded-md border border-border bg-background shadow-sm custom-scrollbar"
           >
-            <table className="w-full caption-bottom text-sm">
+            <table className="w-full caption-bottom text-sm text-left border-collapse">
               <thead className="bg-muted/50 border-b border-border">
                 <tr className="hover:bg-transparent">
                   {tableHeaders.map((h, i) => (
                     <th
                       key={i}
-                      className="h-10 px-3 text-left align-middle font-medium text-muted-foreground whitespace-nowrap"
+                      className="h-9 px-3 align-middle font-medium text-muted-foreground whitespace-nowrap border-r last:border-r-0 border-border/50"
                     >
                       {processInline(h)}
                     </th>
@@ -95,12 +95,12 @@ export const renderMarkdown = (text: string) => {
                 {tableRows.map((row, i) => (
                   <tr
                     key={i}
-                    className="hover:bg-muted/50 data-[state=selected]:bg-muted border-b border-border transition-colors"
+                    className="hover:bg-muted/50 border-b border-border transition-colors last:border-0"
                   >
                     {row.map((cell, j) => (
                       <td
                         key={j}
-                        className="p-3 align-middle min-w-[120px] max-w-[300px] whitespace-normal break-words"
+                        className="p-2.5 px-3 align-middle min-w-[120px] whitespace-normal break-words border-r last:border-r-0 border-border/50"
                       >
                         {processInline(cell)}
                       </td>
