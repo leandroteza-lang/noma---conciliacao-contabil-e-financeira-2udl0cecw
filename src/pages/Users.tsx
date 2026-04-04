@@ -904,6 +904,22 @@ function NewUserModal({
           <div className="space-y-2 sm:col-span-2">
             <label className="text-sm font-medium">Empresas Permitidas</label>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 border p-3 rounded-md max-h-40 overflow-y-auto bg-muted/20">
+              {organizations.length > 0 && (
+                <div className="flex items-center space-x-2 col-span-1 sm:col-span-2 pb-2 mb-2 border-b bg-red-600 text-white p-2 rounded-md">
+                  <Checkbox
+                    id="comp-all-new"
+                    checked={companies.length === organizations.length}
+                    onCheckedChange={(checked) => {
+                      if (checked) setCompanies(organizations.map((o) => o.id))
+                      else setCompanies([])
+                    }}
+                    className="border-white data-[state=checked]:bg-white data-[state=checked]:text-red-600"
+                  />
+                  <label htmlFor="comp-all-new" className="text-sm font-bold cursor-pointer">
+                    Acesso Total
+                  </label>
+                </div>
+              )}
               {organizations.map((org) => (
                 <div key={org.id} className="flex items-center space-x-2">
                   <Checkbox
@@ -914,7 +930,10 @@ function NewUserModal({
                       else setCompanies(companies.filter((id) => id !== org.id))
                     }}
                   />
-                  <label htmlFor={`org-new-${org.id}`} className="text-sm cursor-pointer truncate">
+                  <label
+                    htmlFor={`org-new-${org.id}`}
+                    className="text-sm cursor-pointer truncate font-normal"
+                  >
                     {org.name}
                   </label>
                 </div>
@@ -929,7 +948,7 @@ function NewUserModal({
           <div className="space-y-2 sm:col-span-2">
             <label className="text-sm font-medium">Funcionalidades Permitidas</label>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 border p-3 rounded-md max-h-40 overflow-y-auto bg-muted/20">
-              <div className="flex items-center space-x-2 col-span-1 sm:col-span-2 pb-2 mb-2 border-b">
+              <div className="flex items-center space-x-2 col-span-1 sm:col-span-2 pb-2 mb-2 border-b bg-red-600 text-white p-2 rounded-md">
                 <Checkbox
                   id="perm-all-new"
                   checked={permissions.includes('all')}
@@ -937,30 +956,48 @@ function NewUserModal({
                     if (checked) setPermissions(['all'])
                     else setPermissions([])
                   }}
+                  className="border-white data-[state=checked]:bg-white data-[state=checked]:text-red-600"
                 />
-                <label htmlFor="perm-all-new" className="text-sm font-semibold cursor-pointer">
+                <label htmlFor="perm-all-new" className="text-sm font-bold cursor-pointer">
                   Acesso Total
                 </label>
               </div>
-              {!permissions.includes('all') &&
-                AVAILABLE_PERMISSIONS.map((perm) => (
+              {AVAILABLE_PERMISSIONS.map((perm) => {
+                const isAllPermissions = permissions.includes('all')
+                const isChecked = isAllPermissions || permissions.includes(perm.id)
+                return (
                   <div key={perm.id} className="flex items-center space-x-2">
                     <Checkbox
                       id={`perm-new-${perm.id}`}
-                      checked={permissions.includes(perm.id)}
+                      checked={isChecked}
                       onCheckedChange={(checked) => {
-                        if (checked) setPermissions([...permissions, perm.id])
-                        else setPermissions(permissions.filter((id) => id !== perm.id))
+                        if (checked) {
+                          const newPerms = isAllPermissions
+                            ? AVAILABLE_PERMISSIONS.map((p) => p.id)
+                            : permissions
+                          const updated = [...newPerms, perm.id]
+                          if (updated.length === AVAILABLE_PERMISSIONS.length) {
+                            setPermissions(['all'])
+                          } else {
+                            setPermissions(updated.filter((p) => p !== 'all'))
+                          }
+                        } else {
+                          const newPerms = isAllPermissions
+                            ? AVAILABLE_PERMISSIONS.map((p) => p.id)
+                            : permissions
+                          setPermissions(newPerms.filter((id) => id !== perm.id && id !== 'all'))
+                        }
                       }}
                     />
                     <label
                       htmlFor={`perm-new-${perm.id}`}
-                      className="text-sm cursor-pointer truncate"
+                      className="text-sm cursor-pointer truncate font-normal"
                     >
                       {perm.label}
                     </label>
                   </div>
-                ))}
+                )
+              })}
             </div>
           </div>
         </div>
@@ -1165,6 +1202,22 @@ function EditUserModal({
           <div className="space-y-2 sm:col-span-2">
             <label className="text-sm font-medium">Empresas Permitidas</label>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 border p-3 rounded-md max-h-40 overflow-y-auto bg-muted/20">
+              {organizations.length > 0 && (
+                <div className="flex items-center space-x-2 col-span-1 sm:col-span-2 pb-2 mb-2 border-b bg-red-600 text-white p-2 rounded-md">
+                  <Checkbox
+                    id="comp-all-edit"
+                    checked={companies.length === organizations.length}
+                    onCheckedChange={(checked) => {
+                      if (checked) setCompanies(organizations.map((o) => o.id))
+                      else setCompanies([])
+                    }}
+                    className="border-white data-[state=checked]:bg-white data-[state=checked]:text-red-600"
+                  />
+                  <label htmlFor="comp-all-edit" className="text-sm font-bold cursor-pointer">
+                    Acesso Total
+                  </label>
+                </div>
+              )}
               {organizations.map((org) => (
                 <div key={org.id} className="flex items-center space-x-2">
                   <Checkbox
@@ -1175,7 +1228,10 @@ function EditUserModal({
                       else setCompanies(companies.filter((id) => id !== org.id))
                     }}
                   />
-                  <label htmlFor={`org-edit-${org.id}`} className="text-sm cursor-pointer truncate">
+                  <label
+                    htmlFor={`org-edit-${org.id}`}
+                    className="text-sm cursor-pointer truncate font-normal"
+                  >
                     {org.name}
                   </label>
                 </div>
@@ -1190,7 +1246,7 @@ function EditUserModal({
           <div className="space-y-2 sm:col-span-2">
             <label className="text-sm font-medium">Funcionalidades Permitidas</label>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 border p-3 rounded-md max-h-40 overflow-y-auto bg-muted/20">
-              <div className="flex items-center space-x-2 col-span-1 sm:col-span-2 pb-2 mb-2 border-b">
+              <div className="flex items-center space-x-2 col-span-1 sm:col-span-2 pb-2 mb-2 border-b bg-red-600 text-white p-2 rounded-md">
                 <Checkbox
                   id="perm-all-edit"
                   checked={permissions.includes('all')}
@@ -1198,30 +1254,48 @@ function EditUserModal({
                     if (checked) setPermissions(['all'])
                     else setPermissions([])
                   }}
+                  className="border-white data-[state=checked]:bg-white data-[state=checked]:text-red-600"
                 />
-                <label htmlFor="perm-all-edit" className="text-sm font-semibold cursor-pointer">
+                <label htmlFor="perm-all-edit" className="text-sm font-bold cursor-pointer">
                   Acesso Total
                 </label>
               </div>
-              {!permissions.includes('all') &&
-                AVAILABLE_PERMISSIONS.map((perm) => (
+              {AVAILABLE_PERMISSIONS.map((perm) => {
+                const isAllPermissions = permissions.includes('all')
+                const isChecked = isAllPermissions || permissions.includes(perm.id)
+                return (
                   <div key={perm.id} className="flex items-center space-x-2">
                     <Checkbox
                       id={`perm-edit-${perm.id}`}
-                      checked={permissions.includes(perm.id)}
+                      checked={isChecked}
                       onCheckedChange={(checked) => {
-                        if (checked) setPermissions([...permissions, perm.id])
-                        else setPermissions(permissions.filter((id) => id !== perm.id))
+                        if (checked) {
+                          const newPerms = isAllPermissions
+                            ? AVAILABLE_PERMISSIONS.map((p) => p.id)
+                            : permissions
+                          const updated = [...newPerms, perm.id]
+                          if (updated.length === AVAILABLE_PERMISSIONS.length) {
+                            setPermissions(['all'])
+                          } else {
+                            setPermissions(updated.filter((p) => p !== 'all'))
+                          }
+                        } else {
+                          const newPerms = isAllPermissions
+                            ? AVAILABLE_PERMISSIONS.map((p) => p.id)
+                            : permissions
+                          setPermissions(newPerms.filter((id) => id !== perm.id && id !== 'all'))
+                        }
                       }}
                     />
                     <label
                       htmlFor={`perm-edit-${perm.id}`}
-                      className="text-sm cursor-pointer truncate"
+                      className="text-sm cursor-pointer truncate font-normal"
                     >
                       {perm.label}
                     </label>
                   </div>
-                ))}
+                )
+              })}
             </div>
           </div>
         </div>
