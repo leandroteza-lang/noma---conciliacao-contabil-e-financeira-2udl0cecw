@@ -149,13 +149,17 @@ export default function Users() {
             cpfsToFetch.length > 0
               ? supabase
                   .from('cadastro_usuarios')
-                  .select('id, user_id, email, cpf, approval_status, pending_deletion, status')
+                  .select(
+                    'id, user_id, email, cpf, approval_status, pending_deletion, status, deleted_at',
+                  )
                   .in('cpf', cpfsToFetch)
               : Promise.resolve({ data: [] }),
             emailsToFetch.length > 0
               ? supabase
                   .from('cadastro_usuarios')
-                  .select('id, user_id, email, cpf, approval_status, pending_deletion, status')
+                  .select(
+                    'id, user_id, email, cpf, approval_status, pending_deletion, status, deleted_at',
+                  )
                   .in('email', emailsToFetch)
               : Promise.resolve({ data: [] }),
           ])
@@ -192,7 +196,7 @@ export default function Users() {
             existingId = match.id
             userId = match.user_id
 
-            if (match.pending_deletion) {
+            if (match.deleted_at || match.pending_deletion) {
               status = 'pending_deletion'
               action = 'restore'
             } else if (match.approval_status === 'pending') {
@@ -1486,8 +1490,9 @@ export default function Users() {
                   <Alert className="py-2 px-3 h-auto">
                     <AlertTitle className="text-sm mb-1 font-bold">Atenção</AlertTitle>
                     <AlertDescription className="text-xs">
-                      Revise a coluna de "Ação". Existem registros com pendências ou erros. Você
-                      pode escolher descartar ou recuperar usuários específicos antes da importação.
+                      Revise a coluna de "Ação". Existem registros com pendências de exclusão ou de
+                      aprovação. Você pode escolher importar/recuperar ou descartar esses usuários
+                      específicos antes da importação.
                     </AlertDescription>
                   </Alert>
                 )}
@@ -1550,9 +1555,25 @@ export default function Users() {
                                 </SelectContent>
                               </Select>
                             ) : row._status === 'pending_deletion' ? (
-                              <span className="text-xs font-semibold text-blue-700 bg-blue-100 border border-blue-200 px-2 py-1 rounded-md whitespace-nowrap">
-                                Recuperar (Exclusão Pendente)
-                              </span>
+                              <Select
+                                value={row._action}
+                                onValueChange={(val) => updatePreviewAction(i, val)}
+                              >
+                                <SelectTrigger
+                                  className={cn(
+                                    'h-8 text-xs w-44 font-semibold',
+                                    row._action === 'restore'
+                                      ? 'bg-blue-100 text-blue-700 border-blue-200'
+                                      : 'bg-slate-100 text-slate-700 border-slate-200',
+                                  )}
+                                >
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="restore">Recuperar e Atualizar</SelectItem>
+                                  <SelectItem value="discard">Descartar (Ignorar)</SelectItem>
+                                </SelectContent>
+                              </Select>
                             ) : (
                               <span className="text-xs font-semibold text-green-700 bg-green-100 border border-green-200 px-2 py-1 rounded-md whitespace-nowrap">
                                 Inserir Novo
