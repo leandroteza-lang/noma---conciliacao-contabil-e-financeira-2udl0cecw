@@ -47,6 +47,10 @@ import {
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
+  FileSpreadsheet,
+  FileText,
+  File as FileIcon,
+  FileType,
 } from 'lucide-react'
 import * as XLSX from 'xlsx'
 import { format } from 'date-fns'
@@ -60,6 +64,8 @@ export default function Users() {
   const [isImportModalOpen, setIsImportModalOpen] = useState(false)
   const [isNewUserModalOpen, setIsNewUserModalOpen] = useState(false)
   const [isBulkEditModalOpen, setIsBulkEditModalOpen] = useState(false)
+  const [isEditUserModalOpen, setIsEditUserModalOpen] = useState(false)
+  const [userToEdit, setUserToEdit] = useState<any>(null)
   const [sortField, setSortField] = useState<SortField>('name')
   const [sortDesc, setSortDesc] = useState(false)
   const [selectedUsers, setSelectedUsers] = useState<string[]>([])
@@ -228,11 +234,17 @@ export default function Users() {
             </DropdownMenuTrigger>
             <DropdownMenuContent>
               <DropdownMenuItem onClick={() => handleExport('excel')}>
-                XLSX (Excel)
+                <FileSpreadsheet className="w-4 h-4 mr-2 text-green-600" /> XLSX (Excel)
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleExport('csv')}>CSV</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleExport('pdf')}>PDF</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleExport('txt')}>TXT</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleExport('csv')}>
+                <FileType className="w-4 h-4 mr-2 text-blue-600" /> CSV
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleExport('pdf')}>
+                <FileIcon className="w-4 h-4 mr-2 text-red-600" /> PDF
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleExport('txt')}>
+                <FileText className="w-4 h-4 mr-2 text-gray-600" /> TXT
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
           <Button variant="outline" onClick={() => setIsImportModalOpen(true)}>
@@ -394,6 +406,10 @@ export default function Users() {
                         size="icon"
                         className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/20"
                         title="Editar"
+                        onClick={() => {
+                          setUserToEdit(user)
+                          setIsEditUserModalOpen(true)
+                        }}
                       >
                         <Edit className="h-4 w-4" />
                       </Button>
@@ -424,6 +440,16 @@ export default function Users() {
       <NewUserModal
         isOpen={isNewUserModalOpen}
         onClose={() => setIsNewUserModalOpen(false)}
+        onSaved={loadUsers}
+      />
+
+      <EditUserModal
+        isOpen={isEditUserModalOpen}
+        onClose={() => {
+          setIsEditUserModalOpen(false)
+          setUserToEdit(null)
+        }}
+        user={userToEdit}
         onSaved={loadUsers}
       />
 
@@ -721,15 +747,45 @@ function NewUserModal({
 }) {
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
+  const [cpf, setCpf] = useState('')
+  const [phone, setPhone] = useState('')
+  const [role, setRole] = useState('collaborator')
+  const [departmentId, setDepartmentId] = useState('none')
   const [loading, setLoading] = useState(false)
+  const [departments, setDepartments] = useState<any[]>([])
   const { toast } = useToast()
+
+  useEffect(() => {
+    if (isOpen) {
+      supabase
+        .from('departments')
+        .select('id, name')
+        .is('deleted_at', null)
+        .then(({ data }) => setDepartments(data || []))
+    } else {
+      setName('')
+      setEmail('')
+      setCpf('')
+      setPhone('')
+      setRole('collaborator')
+      setDepartmentId('none')
+    }
+  }, [isOpen])
 
   const handleSave = async () => {
     if (!name || !email) return
     setLoading(true)
     try {
       const { data, error } = await supabase.functions.invoke('manage-user', {
-        body: { action: 'invite', name, email, role: 'collaborator' },
+        body: {
+          action: 'invite',
+          name,
+          email,
+          role,
+          cpf: cpf || null,
+          phone: phone || null,
+          department_id: departmentId === 'none' ? null : departmentId,
+        },
       })
       if (error) throw error
       if (data?.error) throw new Error(data.error)
@@ -737,8 +793,6 @@ function NewUserModal({
       toast({ title: 'Sucesso', description: 'Usuário convidado com sucesso.' })
       onSaved()
       onClose()
-      setName('')
-      setEmail('')
     } catch (err: any) {
       toast({ variant: 'destructive', title: 'Erro', description: err.message })
     } finally {
@@ -748,15 +802,15 @@ function NewUserModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent>
+      <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>Novo Usuário</DialogTitle>
           <DialogDescription>
-            Preencha os dados básicos para convidar um novo usuário.
+            Preencha os dados completos para convidar um novo usuário.
           </DialogDescription>
         </DialogHeader>
-        <div className="space-y-4 py-4">
-          <div className="space-y-2">
+        <div className="grid grid-cols-1 gap-4 py-4 sm:grid-cols-2">
+          <div className="space-y-2 sm:col-span-2">
             <label className="text-sm font-medium">Nome</label>
             <Input
               value={name}
@@ -764,7 +818,7 @@ function NewUserModal({
               placeholder="Nome completo"
             />
           </div>
-          <div className="space-y-2">
+          <div className="space-y-2 sm:col-span-2">
             <label className="text-sm font-medium">E-mail</label>
             <Input
               type="email"
@@ -773,6 +827,52 @@ function NewUserModal({
               placeholder="email@exemplo.com"
             />
           </div>
+          <div className="space-y-2">
+            <label className="text-sm font-medium">CPF</label>
+            <Input
+              value={cpf}
+              onChange={(e) => setCpf(e.target.value)}
+              placeholder="000.000.000-00"
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Telefone</label>
+            <Input
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="(00) 00000-0000"
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Perfil</label>
+            <Select value={role} onValueChange={setRole}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="admin">Administrador</SelectItem>
+                <SelectItem value="supervisor">Supervisor</SelectItem>
+                <SelectItem value="collaborator">Colaborador</SelectItem>
+                <SelectItem value="client_user">Usuário Cliente</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Departamento</label>
+            <Select value={departmentId} onValueChange={setDepartmentId}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Nenhum</SelectItem>
+                {departments.map((d) => (
+                  <SelectItem key={d.id} value={d.id}>
+                    {d.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>
@@ -780,6 +880,159 @@ function NewUserModal({
           </Button>
           <Button onClick={handleSave} disabled={loading || !name || !email}>
             {loading ? 'Salvando...' : 'Salvar'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function EditUserModal({
+  isOpen,
+  onClose,
+  user,
+  onSaved,
+}: {
+  isOpen: boolean
+  onClose: () => void
+  user: any
+  onSaved: () => void
+}) {
+  const [name, setName] = useState('')
+  const [cpf, setCpf] = useState('')
+  const [phone, setPhone] = useState('')
+  const [role, setRole] = useState('collaborator')
+  const [departmentId, setDepartmentId] = useState('none')
+  const [status, setStatus] = useState('true')
+  const [loading, setLoading] = useState(false)
+  const [departments, setDepartments] = useState<any[]>([])
+  const { toast } = useToast()
+
+  useEffect(() => {
+    if (isOpen && user) {
+      setName(user.name || '')
+      setCpf(user.cpf || '')
+      setPhone(user.phone || '')
+      setRole(user.role || 'collaborator')
+      setDepartmentId(user.department_id || 'none')
+      setStatus(user.status ? 'true' : 'false')
+
+      supabase
+        .from('departments')
+        .select('id, name')
+        .is('deleted_at', null)
+        .then(({ data }) => setDepartments(data || []))
+    }
+  }, [isOpen, user])
+
+  const handleSave = async () => {
+    if (!name) return
+    setLoading(true)
+    try {
+      const updates: any = {
+        name,
+        cpf: cpf || null,
+        phone: phone || null,
+        role,
+        department_id: departmentId === 'none' ? null : departmentId,
+        status: status === 'true',
+      }
+
+      const { error } = await supabase.from('cadastro_usuarios').update(updates).eq('id', user.id)
+
+      if (error) throw error
+
+      toast({ title: 'Sucesso', description: 'Usuário atualizado com sucesso.' })
+      onSaved()
+      onClose()
+    } catch (err: any) {
+      toast({ variant: 'destructive', title: 'Erro', description: err.message })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Editar Usuário</DialogTitle>
+          <DialogDescription>Atualize as informações do usuário.</DialogDescription>
+        </DialogHeader>
+        <div className="grid grid-cols-1 gap-4 py-4 sm:grid-cols-2">
+          <div className="space-y-2 sm:col-span-2">
+            <label className="text-sm font-medium">Nome</label>
+            <Input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Nome completo"
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-medium">CPF</label>
+            <Input
+              value={cpf}
+              onChange={(e) => setCpf(e.target.value)}
+              placeholder="000.000.000-00"
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Telefone</label>
+            <Input
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="(00) 00000-0000"
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Perfil</label>
+            <Select value={role} onValueChange={setRole}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="admin">Administrador</SelectItem>
+                <SelectItem value="supervisor">Supervisor</SelectItem>
+                <SelectItem value="collaborator">Colaborador</SelectItem>
+                <SelectItem value="client_user">Usuário Cliente</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Departamento</label>
+            <Select value={departmentId} onValueChange={setDepartmentId}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Nenhum</SelectItem>
+                {departments.map((d) => (
+                  <SelectItem key={d.id} value={d.id}>
+                    {d.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2 sm:col-span-2">
+            <label className="text-sm font-medium">Status</label>
+            <Select value={status} onValueChange={setStatus}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="true">Ativo</SelectItem>
+                <SelectItem value="false">Inativo</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>
+            Cancelar
+          </Button>
+          <Button onClick={handleSave} disabled={loading || !name}>
+            {loading ? 'Salvando...' : 'Salvar Alterações'}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -800,11 +1053,27 @@ function BulkEditModal({
 }) {
   const [role, setRole] = useState<string>('no_change')
   const [status, setStatus] = useState<string>('no_change')
+  const [departmentId, setDepartmentId] = useState<string>('no_change')
   const [loading, setLoading] = useState(false)
+  const [departments, setDepartments] = useState<any[]>([])
   const { toast } = useToast()
 
+  useEffect(() => {
+    if (isOpen) {
+      supabase
+        .from('departments')
+        .select('id, name')
+        .is('deleted_at', null)
+        .then(({ data }) => setDepartments(data || []))
+    } else {
+      setRole('no_change')
+      setStatus('no_change')
+      setDepartmentId('no_change')
+    }
+  }, [isOpen])
+
   const handleSave = async () => {
-    if (role === 'no_change' && status === 'no_change') {
+    if (role === 'no_change' && status === 'no_change' && departmentId === 'no_change') {
       onClose()
       return
     }
@@ -814,6 +1083,9 @@ function BulkEditModal({
       const updates: any = {}
       if (role !== 'no_change') updates.role = role
       if (status !== 'no_change') updates.status = status === 'true'
+      if (departmentId !== 'no_change') {
+        updates.department_id = departmentId === 'none' ? null : departmentId
+      }
 
       const { error } = await supabase
         .from('cadastro_usuarios')
@@ -825,8 +1097,6 @@ function BulkEditModal({
       toast({ title: 'Sucesso', description: `${selectedUsers.length} usuários atualizados.` })
       onSaved()
       onClose()
-      setRole('no_change')
-      setStatus('no_change')
     } catch (err: any) {
       toast({ variant: 'destructive', title: 'Erro', description: err.message })
     } finally {
@@ -860,6 +1130,23 @@ function BulkEditModal({
             </Select>
           </div>
           <div className="space-y-2">
+            <label className="text-sm font-medium">Departamento</label>
+            <Select value={departmentId} onValueChange={setDepartmentId}>
+              <SelectTrigger>
+                <SelectValue placeholder="Manter atual" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="no_change">Manter atual</SelectItem>
+                <SelectItem value="none">Remover Departamento</SelectItem>
+                {departments.map((d) => (
+                  <SelectItem key={d.id} value={d.id}>
+                    {d.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
             <label className="text-sm font-medium">Status</label>
             <Select value={status} onValueChange={setStatus}>
               <SelectTrigger>
@@ -879,7 +1166,10 @@ function BulkEditModal({
           </Button>
           <Button
             onClick={handleSave}
-            disabled={loading || (role === 'no_change' && status === 'no_change')}
+            disabled={
+              loading ||
+              (role === 'no_change' && status === 'no_change' && departmentId === 'no_change')
+            }
           >
             {loading ? 'Salvando...' : 'Salvar Alterações'}
           </Button>
