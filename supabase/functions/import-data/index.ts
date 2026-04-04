@@ -231,7 +231,13 @@ Deno.serve(async (req: Request) => {
           continue
         }
 
-        const cpf = String(row['CPF'] || '').trim()
+        const rawCpf = String(row['CPF'] || '').trim()
+        let cpf = rawCpf
+        const cpfDigits = rawCpf.replace(/\D/g, '')
+        if (cpfDigits.length === 11) {
+          cpf = cpfDigits.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4')
+        }
+
         if (cpf) {
           const { data: existingUserCpf } = await supabaseAdmin
             .from('cadastro_usuarios')

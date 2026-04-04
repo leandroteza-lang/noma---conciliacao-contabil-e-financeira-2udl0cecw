@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert'
 import { Input } from '@/components/ui/input'
 import {
   Table,
@@ -81,6 +83,7 @@ export default function Users() {
   // Import modal
   const [importModalOpen, setImportModalOpen] = useState(false)
   const [importFile, setImportFile] = useState<File | null>(null)
+  const [importPreview, setImportPreview] = useState<any[] | null>(null)
   const [importLoading, setImportLoading] = useState(false)
   const [importResult, setImportResult] = useState<{
     inserted: number
@@ -106,60 +109,148 @@ export default function Users() {
     XLSX.writeFile(wb, 'modelo_importacao_usuarios.xlsx')
   }
 
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] || null
+    setImportFile(file)
+    setImportResult(null)
+    if (!file) {
+      setImportPreview(null)
+      return
+    }
+
+    const reader = new FileReader()
+    reader.onload = async (event) => {
+      try {
+        const data = new Uint8Array(event.target?.result as ArrayBuffer)
+        const workbook = XLSX.read(data, { type: 'array' })
+        const firstSheetName = workbook.SheetNames[0]
+        const worksheet = workbook.Sheets[firstSheetName]
+        const jsonData = XLSX.utils.sheet_to_json(worksheet)
+
+        const cpfsToFetch = jsonData
+          .map((r: any) => {
+            const rawCpf = String(r['CPF'] || '').trim()
+            const digits = rawCpf.replace(/\D/g, '')
+            if (digits.length === 11) {
+              return digits.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4')
+            }
+            return rawCpf
+          })
+          .filter(Boolean)
+
+        const emailsToFetch = jsonData
+          .map((r: any) => String(r['EMAIL'] || '').trim())
+          .filter(Boolean)
+
+        let existingCpfs = new Set()
+        let existingEmails = new Set()
+
+        if (cpfsToFetch.length > 0 || emailsToFetch.length > 0) {
+          const [cpfRes, emailRes] = await Promise.all([
+            cpfsToFetch.length > 0
+              ? supabase
+                  .from('cadastro_usuarios')
+                  .select('cpf')
+                  .in('cpf', cpfsToFetch)
+                  .is('deleted_at', null)
+              : Promise.resolve({ data: [] }),
+            emailsToFetch.length > 0
+              ? supabase
+                  .from('cadastro_usuarios')
+                  .select('email')
+                  .in('email', emailsToFetch)
+                  .is('deleted_at', null)
+              : Promise.resolve({ data: [] }),
+          ])
+
+          existingCpfs = new Set(cpfRes.data?.map((u: any) => u.cpf).filter(Boolean) || [])
+          existingEmails = new Set(emailRes.data?.map((u: any) => u.email).filter(Boolean) || [])
+        }
+
+        const previewData = jsonData.map((row: any, index: number) => {
+          const errors = []
+          const nome = row['NOME']
+          if (!nome || String(nome).trim() === '') errors.push('Nome vazio')
+
+          const email = String(row['EMAIL'] || '').trim()
+          if (!email) errors.push('E-mail vazio')
+          else if (existingEmails.has(email)) errors.push('E-mail já cadastrado')
+
+          const rawCpf = String(row['CPF'] || '').trim()
+          const digits = rawCpf.replace(/\D/g, '')
+          let formattedCpf = rawCpf
+          if (digits.length === 11) {
+            formattedCpf = digits.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4')
+          }
+          if (formattedCpf && existingCpfs.has(formattedCpf)) {
+            errors.push('CPF já cadastrado')
+          }
+
+          return {
+            _original: row,
+            _rowNum: index + 1,
+            _nome: nome,
+            _email: email,
+            _cpf: formattedCpf,
+            _perfil: row['PERFIL'] || 'collaborator',
+            _departamento: row['DEPARTAMENTO_CODIGO'] || '-',
+            _errors: errors,
+          }
+        })
+
+        setImportPreview(previewData)
+      } catch (error) {
+        toast({
+          title: 'Erro ao ler arquivo',
+          description: 'Formato de planilha inválido',
+          variant: 'destructive',
+        })
+        setImportFile(null)
+      }
+    }
+    reader.readAsArrayBuffer(file)
+  }
+
   const processImport = async () => {
-    if (!importFile) return
+    if (!importFile || !importPreview) return
     setImportLoading(true)
     setImportResult(null)
 
     try {
-      const reader = new FileReader()
-      reader.onload = async (e) => {
-        try {
-          const data = new Uint8Array(e.target?.result as ArrayBuffer)
-          const workbook = XLSX.read(data, { type: 'array' })
-          const firstSheetName = workbook.SheetNames[0]
-          const worksheet = workbook.Sheets[firstSheetName]
-          const jsonData = XLSX.utils.sheet_to_json(worksheet)
+      const jsonData = importPreview.map((p) => p._original)
+      const {
+        data: { session },
+      } = await supabase.auth.getSession()
 
-          const {
-            data: { session },
-          } = await supabase.auth.getSession()
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/import-data`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${session?.access_token}`,
+          },
+          body: JSON.stringify({
+            type: 'EMPLOYEES',
+            records: jsonData,
+            fileName: importFile.name,
+            allowIncomplete: false,
+          }),
+        },
+      )
 
-          const response = await fetch(
-            `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/import-data`,
-            {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                Authorization: `Bearer ${session?.access_token}`,
-              },
-              body: JSON.stringify({
-                type: 'EMPLOYEES',
-                records: jsonData,
-                fileName: importFile.name,
-                allowIncomplete: false,
-              }),
-            },
-          )
+      const result = await response.json()
+      if (!response.ok) throw new Error(result.error || 'Erro na importação')
 
-          const result = await response.json()
-          if (!response.ok) throw new Error(result.error || 'Erro na importação')
-
-          setImportResult(result)
-          fetchData()
-        } catch (error: any) {
-          toast({
-            title: 'Erro ao processar arquivo',
-            description: error.message,
-            variant: 'destructive',
-          })
-        } finally {
-          setImportLoading(false)
-        }
-      }
-      reader.readAsArrayBuffer(importFile)
-    } catch (err: any) {
-      toast({ title: 'Erro na leitura', description: err.message, variant: 'destructive' })
+      setImportResult(result)
+      fetchData()
+    } catch (error: any) {
+      toast({
+        title: 'Erro ao processar arquivo',
+        description: error.message,
+        variant: 'destructive',
+      })
+    } finally {
       setImportLoading(false)
     }
   }
@@ -740,6 +831,7 @@ export default function Users() {
               <DropdownMenuItem
                 onClick={() => {
                   setImportResult(null)
+                  setImportPreview(null)
                   setImportFile(null)
                   setImportModalOpen(true)
                 }}
@@ -1261,8 +1353,23 @@ export default function Users() {
       </Dialog>
 
       {/* Import Modal */}
-      <Dialog open={importModalOpen} onOpenChange={setImportModalOpen}>
-        <DialogContent className="sm:max-w-md">
+      <Dialog
+        open={importModalOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            setImportFile(null)
+            setImportPreview(null)
+            setImportResult(null)
+          }
+          setImportModalOpen(open)
+        }}
+      >
+        <DialogContent
+          className={cn(
+            'flex flex-col h-[90vh] md:max-h-[90vh]',
+            importPreview ? 'sm:max-w-5xl' : 'sm:max-w-md',
+          )}
+        >
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <FileUp className="w-5 h-5 text-primary" />
@@ -1273,64 +1380,145 @@ export default function Users() {
             </DialogDescription>
           </DialogHeader>
 
-          {!importResult ? (
-            <div className="space-y-4 py-4">
-              <div className="flex flex-col items-center justify-center p-8 border-2 border-dashed border-muted-foreground/25 rounded-lg bg-muted/10 hover:bg-muted/20 transition-colors">
-                <UploadCloud className="w-10 h-10 text-muted-foreground mb-4" />
-                <Label
-                  htmlFor="file-upload"
-                  className="cursor-pointer text-primary hover:underline font-medium"
-                >
-                  Clique para selecionar o arquivo
-                </Label>
-                <Input
-                  id="file-upload"
-                  type="file"
-                  accept=".xlsx"
-                  className="hidden"
-                  onChange={(e) => setImportFile(e.target.files?.[0] || null)}
-                />
-                {importFile && (
-                  <p className="mt-4 text-sm text-center font-medium">
-                    Arquivo: <span className="text-primary">{importFile.name}</span>
-                  </p>
-                )}
+          <div className="flex-1 overflow-y-auto min-h-0 px-1">
+            {!importPreview && !importResult ? (
+              <div className="space-y-4 py-4">
+                <div className="flex flex-col items-center justify-center p-8 border-2 border-dashed border-muted-foreground/25 rounded-lg bg-muted/10 hover:bg-muted/20 transition-colors">
+                  <UploadCloud className="w-10 h-10 text-muted-foreground mb-4" />
+                  <Label
+                    htmlFor="file-upload"
+                    className="cursor-pointer text-primary hover:underline font-medium"
+                  >
+                    Clique para selecionar o arquivo
+                  </Label>
+                  <Input
+                    id="file-upload"
+                    type="file"
+                    accept=".xlsx"
+                    className="hidden"
+                    onChange={handleFileChange}
+                  />
+                  {importFile && (
+                    <p className="mt-4 text-sm text-center font-medium">
+                      Arquivo: <span className="text-primary">{importFile.name}</span>
+                    </p>
+                  )}
+                </div>
               </div>
-            </div>
-          ) : (
-            <div className="space-y-4 py-4">
-              <div className="bg-muted/30 p-4 rounded-lg space-y-2 border">
-                <p className="font-semibold text-green-600 flex items-center gap-2">
-                  <Activity className="w-4 h-4" /> {importResult.inserted} registros importados com
-                  sucesso
-                </p>
-                {importResult.rejected > 0 && (
-                  <p className="font-semibold text-red-500 flex items-center gap-2">
-                    <Activity className="w-4 h-4" /> {importResult.rejected} registros com erro ou
-                    duplicados
+            ) : importPreview && !importResult ? (
+              <div className="space-y-4 py-2">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-medium">
+                    Pré-visualização dos dados ({importPreview.length} registros)
                   </p>
-                )}
-              </div>
-              {importResult.errors && importResult.errors.length > 0 && (
-                <ScrollArea className="h-40 border rounded-md p-3 bg-card text-sm">
-                  {importResult.errors.map((err: any, i: number) => (
-                    <div
-                      key={i}
-                      className="text-red-500 mb-2 border-b border-red-500/10 pb-2 last:border-0 last:mb-0 last:pb-0"
-                    >
-                      <strong className="font-bold">Linha {err.row}:</strong> {err.error}
-                    </div>
-                  ))}
-                </ScrollArea>
-              )}
-            </div>
-          )}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setImportPreview(null)
+                      setImportFile(null)
+                    }}
+                  >
+                    Trocar Arquivo
+                  </Button>
+                </div>
 
-          <DialogFooter className="sm:justify-between">
+                {importPreview.some((p) => p._errors.length > 0) && (
+                  <Alert variant="destructive" className="py-2 px-3 h-auto">
+                    <AlertTitle className="text-sm mb-1 font-bold">Atenção</AlertTitle>
+                    <AlertDescription className="text-xs">
+                      Encontramos registros com erros ou duplicidades. Eles não serão importados ou
+                      poderão gerar falha.
+                    </AlertDescription>
+                  </Alert>
+                )}
+
+                <div className="border rounded-md shadow-sm overflow-hidden">
+                  <Table>
+                    <TableHeader className="bg-muted/50">
+                      <TableRow>
+                        <TableHead className="w-12 text-center">Linha</TableHead>
+                        <TableHead>Nome</TableHead>
+                        <TableHead>E-mail</TableHead>
+                        <TableHead>CPF</TableHead>
+                        <TableHead>Departamento</TableHead>
+                        <TableHead>Status / Avisos</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {importPreview.map((row, i) => (
+                        <TableRow
+                          key={i}
+                          className={
+                            row._errors.length > 0 ? 'bg-red-50/50 hover:bg-red-50/80' : ''
+                          }
+                        >
+                          <TableCell className="text-center font-medium">{row._rowNum}</TableCell>
+                          <TableCell>{row._nome}</TableCell>
+                          <TableCell>{row._email}</TableCell>
+                          <TableCell>{row._cpf}</TableCell>
+                          <TableCell>{row._departamento}</TableCell>
+                          <TableCell>
+                            {row._errors.length > 0 ? (
+                              <div className="flex flex-col gap-1">
+                                {row._errors.map((e: string, j: number) => (
+                                  <span
+                                    key={j}
+                                    className="text-xs font-semibold text-red-600 bg-red-100 px-2 py-0.5 rounded-sm inline-block w-fit whitespace-nowrap"
+                                  >
+                                    {e}
+                                  </span>
+                                ))}
+                              </div>
+                            ) : (
+                              <span className="text-xs font-semibold text-green-600 bg-green-100 px-2 py-0.5 rounded-sm">
+                                Pronto
+                              </span>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4 py-4">
+                <div className="bg-muted/30 p-4 rounded-lg space-y-2 border">
+                  <p className="font-semibold text-green-600 flex items-center gap-2">
+                    <Activity className="w-4 h-4" /> {importResult?.inserted} registros importados
+                    com sucesso
+                  </p>
+                  {importResult?.rejected
+                    ? importResult.rejected > 0 && (
+                        <p className="font-semibold text-red-500 flex items-center gap-2">
+                          <Activity className="w-4 h-4" /> {importResult.rejected} registros com
+                          erro ou duplicados
+                        </p>
+                      )
+                    : null}
+                </div>
+                {importResult?.errors && importResult.errors.length > 0 && (
+                  <ScrollArea className="h-40 border rounded-md p-3 bg-card text-sm">
+                    {importResult.errors.map((err: any, i: number) => (
+                      <div
+                        key={i}
+                        className="text-red-500 mb-2 border-b border-red-500/10 pb-2 last:border-0 last:mb-0 last:pb-0"
+                      >
+                        <strong className="font-bold">Linha {err.row}:</strong> {err.error}
+                      </div>
+                    ))}
+                  </ScrollArea>
+                )}
+              </div>
+            )}
+          </div>
+
+          <DialogFooter className="sm:justify-between pt-4 border-t mt-4">
             <Button variant="ghost" onClick={() => setImportModalOpen(false)}>
               {importResult ? 'Fechar' : 'Cancelar'}
             </Button>
-            {!importResult && (
+            {!importResult && importPreview && (
               <Button
                 onClick={processImport}
                 disabled={!importFile || importLoading}
