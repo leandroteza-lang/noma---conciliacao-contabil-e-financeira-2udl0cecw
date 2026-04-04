@@ -41,6 +41,15 @@ import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { Chatbot } from '@/components/Chatbot'
 import { useToast } from '@/hooks/use-toast'
+import { Separator } from '@/components/ui/separator'
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from '@/components/ui/breadcrumb'
 import {
   Sidebar,
   SidebarContent,
@@ -173,6 +182,44 @@ export const MENU_ITEMS: MenuItem[] = [
   },
 ]
 
+function TopProgressBar() {
+  const location = useLocation()
+  const [progress, setProgress] = useState(0)
+  const [visible, setVisible] = useState(false)
+
+  useEffect(() => {
+    setVisible(true)
+    setProgress(10)
+
+    const timer1 = setTimeout(() => setProgress(40), 50)
+    const timer2 = setTimeout(() => setProgress(80), 150)
+    const timer3 = setTimeout(() => {
+      setProgress(100)
+      setTimeout(() => {
+        setVisible(false)
+        setTimeout(() => setProgress(0), 200)
+      }, 200)
+    }, 300)
+
+    return () => {
+      clearTimeout(timer1)
+      clearTimeout(timer2)
+      clearTimeout(timer3)
+    }
+  }, [location.pathname])
+
+  if (!visible) return null
+
+  return (
+    <div className="fixed top-0 left-0 right-0 z-[100] h-[3px] pointer-events-none">
+      <div
+        className="h-full bg-primary transition-all duration-200 ease-out shadow-[0_0_10px_rgba(220,38,38,0.5)]"
+        style={{ width: `${progress}%` }}
+      />
+    </div>
+  )
+}
+
 const SidebarNavLink = ({ to, children, className, onClick, ...props }: any) => {
   const { isMobile, setOpenMobile } = useSidebar()
   return (
@@ -277,15 +324,18 @@ export default function Layout() {
     return '/app'
   }, [normalizedOrder])
 
-  const hasAccessToCurrentRoute = useMemo(() => {
-    const currentMenuItem = MENU_ITEMS.find(
+  const currentMenuItem = useMemo(() => {
+    return MENU_ITEMS.find(
       (item) =>
         location.pathname === item.path ||
         (!item.isFolder && location.pathname.startsWith(item.path + '/')),
     )
+  }, [location.pathname])
+
+  const hasAccessToCurrentRoute = useMemo(() => {
     if (!currentMenuItem) return true
     return allowedItems.some((item) => item.id === currentMenuItem.id)
-  }, [location.pathname, allowedItems])
+  }, [currentMenuItem, allowedItems])
 
   useEffect(() => {
     if (!user) return
@@ -612,6 +662,7 @@ export default function Layout() {
 
   return (
     <SidebarProvider>
+      <TopProgressBar />
       <Sidebar collapsible="offcanvas" className="z-50">
         <SidebarHeader className="border-b border-sidebar-border px-4 py-4 h-16 flex justify-center">
           <div className="flex items-center gap-3 overflow-hidden w-full">
@@ -686,9 +737,9 @@ export default function Layout() {
                                       asChild
                                       isActive={isChildActive}
                                       className={cn(
-                                        'transition-all duration-200 group relative my-0.5',
+                                        'transition-all duration-200 group relative my-0.5 overflow-hidden',
                                         isChildActive
-                                          ? 'bg-primary/10 text-primary shadow-sm hover:bg-primary/15 hover:text-primary'
+                                          ? 'bg-primary/10 text-primary shadow-sm hover:bg-primary/15 hover:text-primary font-semibold'
                                           : 'text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
                                       )}
                                     >
@@ -696,6 +747,9 @@ export default function Layout() {
                                         to={childItem.path}
                                         className="flex items-center justify-between w-full"
                                       >
+                                        {isChildActive && (
+                                          <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary" />
+                                        )}
                                         <div className="flex items-center gap-2">
                                           <childItem.icon
                                             className={cn(
@@ -758,9 +812,9 @@ export default function Layout() {
                         tooltip={item.title}
                         size="lg"
                         className={cn(
-                          'transition-all duration-200 group relative',
+                          'transition-all duration-200 group relative overflow-hidden',
                           isActive
-                            ? 'bg-primary/10 text-primary shadow-sm hover:bg-primary/15 hover:text-primary'
+                            ? 'bg-primary/10 text-primary shadow-sm hover:bg-primary/15 hover:text-primary font-semibold'
                             : 'text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
                         )}
                       >
@@ -768,6 +822,9 @@ export default function Layout() {
                           to={item.path}
                           className="flex items-center justify-between w-full"
                         >
+                          {isActive && (
+                            <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary" />
+                          )}
                           <div className="flex items-center gap-2">
                             <item.icon
                               className={cn(
@@ -816,6 +873,24 @@ export default function Layout() {
         <header className="flex h-16 shrink-0 items-center gap-2 border-b border-border/50 bg-card/80 backdrop-blur-md px-4 sticky top-0 z-40 shadow-sm justify-between">
           <div className="flex items-center gap-2">
             <SidebarTrigger className="-ml-2 text-muted-foreground" />
+            <Separator orientation="vertical" className="mr-2 h-4 hidden md:block" />
+            <Breadcrumb className="hidden md:flex">
+              <BreadcrumbList>
+                <BreadcrumbItem>
+                  <BreadcrumbLink asChild>
+                    <Link to="/app">Início</Link>
+                  </BreadcrumbLink>
+                </BreadcrumbItem>
+                {currentMenuItem && currentMenuItem.path !== '/app' && (
+                  <>
+                    <BreadcrumbSeparator />
+                    <BreadcrumbItem>
+                      <BreadcrumbPage>{currentMenuItem.title}</BreadcrumbPage>
+                    </BreadcrumbItem>
+                  </>
+                )}
+              </BreadcrumbList>
+            </Breadcrumb>
             <div className="flex items-center gap-3 md:hidden ml-2">
               <div className="bg-primary p-1.5 rounded-lg text-primary-foreground shadow-sm flex items-center justify-center">
                 <Building2 className="size-5" />
@@ -862,8 +937,8 @@ export default function Layout() {
           </div>
         </header>
 
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 animate-fade-in w-full overflow-x-hidden">
-          <div className="mx-auto max-w-[1400px]">
+        <main className="flex-1 p-4 sm:p-6 lg:p-8 w-full overflow-x-hidden">
+          <div key={location.pathname} className="mx-auto max-w-[1400px] animate-fade-in">
             <ErrorBoundary>
               <Outlet />
             </ErrorBoundary>
