@@ -558,6 +558,25 @@ function ImportUsersModal({
     )
   }
 
+  const handleDownloadTemplate = () => {
+    const templateData = [
+      {
+        NOME: 'João da Silva',
+        EMAIL: 'joao@email.com',
+        CPF: '123.456.789-00',
+        DEPARTAMENTO_CODIGO: 'DEP-123',
+        PERFIL: 'collaborator',
+        TELEFONE: '(11) 99999-9999',
+        ENDERECO: 'Rua Exemplo, 123',
+        OBSERVACOES: 'Perfis validos: admin, supervisor, collaborator, client_user',
+      },
+    ]
+    const ws = XLSX.utils.json_to_sheet(templateData)
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, 'Modelo')
+    XLSX.writeFile(wb, 'Modelo_Importacao_Usuarios.xlsx')
+  }
+
   const handleImport = async () => {
     setLoading(true)
     try {
@@ -615,6 +634,9 @@ function ImportUsersModal({
             <DialogTitle className="flex items-center gap-2 text-xl">
               <FileUp className="w-5 h-5 text-red-600" /> Importar Usuários em Lote
             </DialogTitle>
+            <Button variant="outline" size="sm" onClick={handleDownloadTemplate}>
+              <Download className="w-4 h-4 mr-2" /> Exportar Modelo Padrão
+            </Button>
           </div>
           <DialogDescription>
             Faça o upload do arquivo XLSX preenchido com base no modelo.
