@@ -908,7 +908,7 @@ export function Chatbot() {
 
             <TabsContent
               value="chat"
-              className="flex-1 overflow-hidden m-0 p-0 flex flex-col relative"
+              className="flex-1 overflow-x-auto m-0 p-0 flex flex-col relative"
             >
               <ScrollArea className="flex-1 p-4">
                 <div className="flex flex-col gap-5 pb-4">
