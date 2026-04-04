@@ -78,89 +78,70 @@ const MarkdownTable = ({
 }) => {
   const [currentPage, setCurrentPage] = useState(1)
   const totalRows = rows.length
-
-  const isSmall = totalRows <= 15
-  const isMedium = totalRows > 15 && totalRows <= 50
-  const isLarge = totalRows > 50
-
   const rowsPerPage = 10
   const totalPages = Math.ceil(totalRows / rowsPerPage)
 
-  const currentRows = isLarge
-    ? rows.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage)
-    : rows
+  const currentRows = rows.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage)
 
   const handlePrev = () => setCurrentPage((p) => Math.max(1, p - 1))
   const handleNext = () => setCurrentPage((p) => Math.min(totalPages, p + 1))
 
-  const containerClass = cn(
-    'my-3 w-full rounded-md border border-border bg-background shadow-sm flex flex-col',
-    isSmall && 'max-h-96',
-    isMedium && 'max-h-[500px]',
-  )
-
   return (
-    <div className={containerClass}>
-      <div
-        className={cn(
-          'w-full overflow-x-auto custom-scrollbar flex-1',
-          (isSmall || isMedium) && 'overflow-y-auto',
-        )}
-      >
-        <table className="w-full min-w-max caption-bottom text-sm text-left border-collapse m-0">
-          <thead className="bg-muted/50 border-b border-border sticky top-0 z-10">
-            <tr className="hover:bg-transparent">
-              {headers.map((h, i) => (
-                <th
-                  key={i}
-                  className="h-9 px-3 py-2 align-middle font-semibold text-muted-foreground border-r last:border-r-0 border-border/50 text-xs uppercase tracking-wider bg-muted"
-                >
-                  {processInline(h)}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {currentRows.map((row, i) => (
-              <tr
-                key={i}
-                className="hover:bg-muted/50 border-b border-border transition-colors last:border-0"
-              >
-                {row.map((cell, j) => (
-                  <td
+    <div className="my-4 w-full flex flex-col gap-3">
+      <div className="flex flex-col gap-3 w-full overflow-y-auto max-h-[500px] custom-scrollbar pr-2">
+        {currentRows.map((row, i) => (
+          <div
+            key={i}
+            className="flex flex-col gap-1.5 p-3.5 rounded-lg bg-card border shadow-sm text-sm break-words w-full"
+          >
+            <div className="font-bold text-primary mb-2 flex items-center gap-2">
+              📄 Registro {(currentPage - 1) * rowsPerPage + i + 1}
+            </div>
+            <div className="flex flex-col gap-2 w-full">
+              {headers.map((h, j) => {
+                const val = row[j] || ''
+                if (!val.trim() || val.trim() === '-') return null
+                return (
+                  <div
                     key={j}
-                    className="p-2 px-3 align-middle whitespace-normal break-words border-r last:border-r-0 border-border/50"
+                    className="flex flex-col sm:flex-row sm:gap-2 items-start break-words w-full"
                   >
-                    {processInline(cell)}
-                  </td>
-                ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                    <span className="font-semibold text-muted-foreground shrink-0 flex items-center gap-1.5">
+                      🔹 {processInline(h)}:
+                    </span>
+                    <span className="text-foreground break-words flex-1 w-full">
+                      {processInline(val)}
+                    </span>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        ))}
       </div>
-      {isLarge && (
-        <div className="flex items-center justify-between px-3 py-2 border-t border-border bg-muted/20 text-xs text-muted-foreground shrink-0">
+
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between px-1 py-2 text-xs text-muted-foreground shrink-0 w-full border-t border-border/40 mt-1">
           <div>Total: {totalRows} registros</div>
           <div className="flex items-center gap-2">
             <Button
               type="button"
               variant="outline"
               size="sm"
-              className="h-7 px-2 text-xs"
+              className="h-7 px-3 text-xs rounded-full"
               onClick={handlePrev}
               disabled={currentPage === 1}
             >
               Anterior
             </Button>
-            <span>
+            <span className="font-medium">
               Página {currentPage} de {totalPages}
             </span>
             <Button
               type="button"
               variant="outline"
               size="sm"
-              className="h-7 px-2 text-xs"
+              className="h-7 px-3 text-xs rounded-full"
               onClick={handleNext}
               disabled={currentPage === totalPages}
             >
