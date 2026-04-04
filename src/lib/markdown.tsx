@@ -76,15 +76,15 @@ export const renderMarkdown = (text: string) => {
         elements.push(
           <div
             key={`table-${elements.length}`}
-            className="my-3 w-full max-w-full overflow-x-auto rounded-md border border-border bg-background shadow-sm custom-scrollbar"
+            className="my-3 w-full overflow-x-auto rounded-md border border-border bg-background shadow-sm custom-scrollbar"
           >
-            <table className="w-full caption-bottom text-sm text-left border-collapse">
+            <table className="w-full min-w-max caption-bottom text-sm text-left border-collapse">
               <thead className="bg-muted/50 border-b border-border">
                 <tr className="hover:bg-transparent">
                   {tableHeaders.map((h, i) => (
                     <th
                       key={i}
-                      className="h-9 px-3 align-middle font-medium text-muted-foreground whitespace-nowrap border-r last:border-r-0 border-border/50"
+                      className="h-9 px-3 py-2 align-middle font-semibold text-muted-foreground border-r last:border-r-0 border-border/50 text-xs uppercase tracking-wider"
                     >
                       {processInline(h)}
                     </th>
@@ -100,7 +100,7 @@ export const renderMarkdown = (text: string) => {
                     {row.map((cell, j) => (
                       <td
                         key={j}
-                        className="p-2.5 px-3 align-middle min-w-[120px] whitespace-normal break-words border-r last:border-r-0 border-border/50"
+                        className="p-2 px-3 align-middle whitespace-normal break-words border-r last:border-r-0 border-border/50"
                       >
                         {processInline(cell)}
                       </td>
@@ -212,6 +212,8 @@ export const renderMarkdown = (text: string) => {
   flushTable()
 
   return (
-    <div className="flex flex-col gap-1 text-[13px] leading-relaxed break-words">{elements}</div>
+    <div className="flex flex-col gap-1 text-[13px] leading-relaxed break-words w-full min-w-0">
+      {elements}
+    </div>
   )
 }

@@ -114,15 +114,15 @@ const renderMessageContent = (text: string) => {
         elements.push(
           <div
             key={`table-${elements.length}`}
-            className="my-3 w-full max-w-full overflow-x-auto rounded-md border border-border bg-background shadow-sm custom-scrollbar"
+            className="my-3 w-full overflow-x-auto rounded-md border border-border bg-background shadow-sm custom-scrollbar"
           >
-            <table className="text-sm w-full caption-bottom text-left border-collapse">
+            <table className="text-sm w-full min-w-max caption-bottom text-left border-collapse">
               <thead className="bg-muted/50 border-b border-border">
                 <tr>
                   {tableHeaders.map((h, i) => (
                     <th
                       key={i}
-                      className="h-9 px-3 align-middle font-medium text-muted-foreground whitespace-nowrap border-r last:border-r-0 border-border/50"
+                      className="h-9 px-3 py-2 align-middle font-semibold text-muted-foreground border-r last:border-r-0 border-border/50 text-xs uppercase tracking-wider"
                     >
                       {processInline(h)}
                     </th>
@@ -138,7 +138,7 @@ const renderMessageContent = (text: string) => {
                     {row.map((cell, j) => (
                       <td
                         key={j}
-                        className="p-2.5 px-3 align-middle whitespace-normal break-words min-w-[120px] border-r last:border-r-0 border-border/50"
+                        className="p-2 px-3 align-middle whitespace-normal break-words border-r last:border-r-0 border-border/50"
                       >
                         {processInline(cell)}
                       </td>
@@ -241,7 +241,7 @@ const renderMessageContent = (text: string) => {
   }
 
   flushTable()
-  return <div className="text-sm">{elements}</div>
+  return <div className="text-sm w-full min-w-0">{elements}</div>
 }
 import { useToast } from '@/hooks/use-toast'
 
@@ -272,7 +272,7 @@ const TypingEffect = ({ content, onComplete }: { content: string; onComplete?: (
   }, [content, onComplete])
 
   return (
-    <div className="relative">
+    <div className="relative w-full min-w-0">
       {renderMessageContent(displayedContent)}
       {displayedContent.length < content.length && (
         <span className="inline-block w-1.5 h-3 ml-1 bg-primary animate-pulse align-baseline mt-1" />
@@ -938,11 +938,12 @@ export function Chatbot() {
                       </div>
                       <div
                         className={cn(
-                          'p-3 rounded-xl text-sm shadow-sm flex flex-col w-full min-w-0 overflow-hidden',
+                          'p-3 rounded-xl text-sm shadow-sm flex flex-col w-full min-w-0 overflow-x-auto',
                           msg.role === 'user'
                             ? 'bg-primary text-primary-foreground rounded-tr-none'
                             : 'bg-muted text-foreground rounded-tl-none',
                         )}
+                        style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }}
                       >
                         {msg.role === 'user' ? (
                           <div className="whitespace-pre-wrap flex flex-col gap-1">
