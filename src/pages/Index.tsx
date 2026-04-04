@@ -1,192 +1,225 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { supabase } from '@/lib/supabase/client'
-import { Button } from '@/components/ui/button'
-import { Textarea } from '@/components/ui/textarea'
-import { Bot, User as UserIcon, Send, Loader2, Share2, Sparkles } from 'lucide-react'
-import { renderMarkdown } from '@/lib/markdown'
+import { useAuth } from '@/hooks/use-auth'
 import { useToast } from '@/hooks/use-toast'
-
-interface Message {
-  role: 'user' | 'assistant'
-  content: string
-}
+import {
+  Plus,
+  Search,
+  Building2,
+  Download,
+  Filter,
+  FileText,
+  Table as TableIcon,
+} from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import { BankAccountsTable } from '@/components/BankAccountsTable'
+import { BankAccountModal } from '@/components/BankAccountModal'
+import { DeleteAccountModal } from '@/components/DeleteAccountModal'
 
 export default function Index() {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      role: 'assistant',
-      content:
-        'Olá! Sou a inteligência artificial da Molas Noma. Como posso ajudar na gestão financeira e contábil hoje?',
-    },
-  ])
-  const [input, setInput] = useState('')
-  const [loading, setLoading] = useState(false)
-  const messagesEndRef = useRef<HTMLDivElement>(null)
   const { toast } = useToast()
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }
+  const [accounts, setAccounts] = useState<any[]>([])
+  const [organizations, setOrganizations] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+
+  const [search, setSearch] = useState('')
+  const [orgFilter, setOrgFilter] = useState('all')
+  const [typeFilter, setTypeFilter] = useState('all')
+
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 10
+
+  const [modalState, setModalState] = useState<{
+    isOpen: boolean
+    type: 'add' | 'edit'
+    account?: any
+  }>({ isOpen: false, type: 'add' })
+  const [deleteModalState, setDeleteModalState] = useState<{ isOpen: boolean; account?: any }>({
+    isOpen: false,
+  })
 
   useEffect(() => {
-    scrollToBottom()
-  }, [messages])
+    fetchData()
+    const channel = supabase
+      .channel('bank_accounts_changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'bank_accounts' }, fetchData)
+      .subscribe()
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [])
 
-  const handleSend = async () => {
-    if (!input.trim() || loading) return
-
-    const userMsg: Message = { role: 'user', content: input.trim() }
-    const newMessages = [...messages, userMsg]
-    setMessages(newMessages)
-    setInput('')
+  const fetchData = async () => {
     setLoading(true)
+    const [{ data: orgs }, { data: accs }] = await Promise.all([
+      supabase.from('organizations').select('*').is('deleted_at', null),
+      supabase.from('bank_accounts').select('*, organizations(name)').is('deleted_at', null),
+    ])
+    if (orgs) setOrganizations(orgs)
+    if (accs) setAccounts(accs)
+    setLoading(false)
+  }
 
+  const filteredAccounts = useMemo(() => {
+    return accounts.filter((acc) => {
+      const q = search.toLowerCase()
+      const matchesSearch =
+        (acc.description || '').toLowerCase().includes(q) ||
+        (acc.account_number || '').toLowerCase().includes(q) ||
+        (acc.bank_code || '').toLowerCase().includes(q)
+      const matchesOrg = orgFilter === 'all' || acc.organization_id === orgFilter
+      const matchesType = typeFilter === 'all' || acc.account_type === typeFilter
+      return matchesSearch && matchesOrg && matchesType
+    })
+  }, [accounts, search, orgFilter, typeFilter])
+
+  const paginatedAccounts = useMemo(() => {
+    return filteredAccounts.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+  }, [filteredAccounts, currentPage])
+
+  useEffect(() => setCurrentPage(1), [search, orgFilter, typeFilter])
+
+  const handleExport = async (format: 'pdf' | 'excel') => {
     try {
-      const { data, error } = await supabase.functions.invoke('chat', {
-        body: { messages: newMessages },
+      const { data, error } = await supabase.functions.invoke('export-bank-accounts', {
+        body: {
+          format,
+          data: filteredAccounts.map((a) => ({
+            Empresa: a.organizations?.name || a.company_name || '-',
+            'Conta Contábil': a.account_code || '-',
+            Descrição: a.description || '-',
+            Banco: a.bank_code || '-',
+            Agência: a.agency || '-',
+            Número: a.account_number || '-',
+            Dígito: a.check_digit || '-',
+            Tipo: a.account_type || '-',
+            Classificação: a.classification || '-',
+          })),
+        },
       })
-
       if (error) throw error
-
-      if (data?.reply) {
-        setMessages([...newMessages, { role: 'assistant', content: data.reply }])
-      } else {
-        throw new Error('Resposta inválida do servidor')
+      const link = document.createElement('a')
+      if (format === 'excel' && data.excel) {
+        link.href = `data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,${data.excel}`
+        link.download = `Contas_${new Date().toISOString().split('T')[0]}.xlsx`
+      } else if (format === 'pdf' && data.pdf) {
+        link.href = data.pdf
+        link.download = `Contas_${new Date().toISOString().split('T')[0]}.pdf`
       }
+      link.click()
     } catch (err: any) {
-      toast({
-        title: 'Erro ao comunicar com o assistente',
-        description: err.message,
-        variant: 'destructive',
-      })
-      setMessages(newMessages)
-    } finally {
-      setLoading(false)
+      toast({ title: 'Erro na exportação', description: err.message, variant: 'destructive' })
     }
-  }
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault()
-      handleSend()
-    }
-  }
-
-  const openShareModal = (content: string, index: number) => {
-    let prompt = 'Consulta Gerada'
-    for (let i = index - 1; i >= 0; i--) {
-      if (messages[i].role === 'user') {
-        prompt = messages[i].content
-        break
-      }
-    }
-    const event = new CustomEvent('open-share-modal', { detail: { prompt, content } })
-    window.dispatchEvent(event)
   }
 
   return (
-    <div className="flex flex-col h-[calc(100vh-4rem)] max-w-5xl mx-auto bg-background/50">
-      <div className="p-6 pb-4 border-b bg-card flex items-center gap-4 shadow-sm z-10 relative">
-        <div className="w-12 h-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
-          <Sparkles className="w-6 h-6" />
-        </div>
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Assistente Noma</h1>
-          <p className="text-sm text-muted-foreground font-medium">
-            Inteligência Contábil e Financeira
+          <h1 className="text-3xl font-bold text-foreground tracking-tight">Listagem de Contas</h1>
+          <p className="text-muted-foreground mt-1">
+            Gerencie as contas bancárias e de caixa da sua organização.
           </p>
         </div>
-      </div>
-
-      <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-8 scroll-smooth">
-        {messages.map((msg, idx) => (
-          <div
-            key={idx}
-            className={`flex gap-4 ${msg.role === 'user' ? 'flex-row-reverse' : ''} animate-in fade-in slide-in-from-bottom-4 duration-500`}
-          >
-            <div
-              className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 shadow-sm ${
-                msg.role === 'user'
-                  ? 'bg-primary text-primary-foreground'
-                  : 'bg-primary/10 text-primary border border-primary/20'
-              }`}
-            >
-              {msg.role === 'user' ? <UserIcon className="w-5 h-5" /> : <Bot className="w-5 h-5" />}
-            </div>
-
-            <div
-              className={`relative flex flex-col max-w-[90%] md:max-w-[75%] ${msg.role === 'user' ? 'items-end' : 'items-start'}`}
-            >
-              <div
-                className={`p-4 md:p-5 rounded-2xl shadow-sm ${
-                  msg.role === 'user'
-                    ? 'bg-primary text-primary-foreground rounded-tr-none'
-                    : 'bg-card border border-primary/10 rounded-tl-none'
-                }`}
-              >
-                {msg.role === 'user' ? (
-                  <p className="whitespace-pre-wrap leading-relaxed text-sm md:text-base font-medium">
-                    {msg.content}
-                  </p>
-                ) : (
-                  <div className="prose prose-sm md:prose-base dark:prose-invert max-w-none prose-p:leading-relaxed prose-headings:font-bold">
-                    {renderMarkdown(msg.content)}
-                  </div>
-                )}
-              </div>
-
-              {msg.role === 'assistant' && idx > 0 && (
-                <div className="mt-3 flex">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-9 text-xs font-medium text-muted-foreground hover:text-primary hover:bg-primary/5 hover:border-primary/20 transition-all gap-2 bg-background shadow-sm rounded-lg"
-                    onClick={() => openShareModal(msg.content, idx)}
-                  >
-                    <Share2 className="w-4 h-4" />
-                    Compartilhar Resultado
-                  </Button>
-                </div>
-              )}
-            </div>
-          </div>
-        ))}
-
-        {loading && (
-          <div className="flex gap-4 animate-in fade-in zoom-in-95 duration-300">
-            <div className="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0 border border-primary/20">
-              <Bot className="w-5 h-5" />
-            </div>
-            <div className="bg-card border border-primary/10 shadow-sm p-4 rounded-2xl rounded-tl-none flex items-center gap-3">
-              <Loader2 className="w-5 h-5 animate-spin text-primary" />
-              <span className="text-sm font-medium text-muted-foreground">
-                Analisando dados e estruturando resposta...
-              </span>
-            </div>
-          </div>
-        )}
-        <div ref={messagesEndRef} className="h-4" />
-      </div>
-
-      <div className="p-4 md:p-6 bg-card border-t shadow-[0_-4px_24px_rgba(0,0,0,0.02)] z-10 relative">
-        <div className="relative flex items-end gap-3 max-w-4xl mx-auto">
-          <Textarea
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Faça uma pergunta sobre seus dados, centro de custo ou movimentações..."
-            className="min-h-[64px] max-h-[200px] resize-none pr-16 py-4 rounded-2xl shadow-sm bg-background border-primary/20 focus-visible:ring-primary text-base font-medium leading-relaxed"
-          />
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="flex-1 sm:flex-none">
+                <Download className="w-4 h-4 mr-2" /> Exportar
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => handleExport('excel')}>
+                <TableIcon className="w-4 h-4 mr-2 text-green-600" /> Excel
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleExport('pdf')}>
+                <FileText className="w-4 h-4 mr-2 text-red-600" /> PDF
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           <Button
-            size="icon"
-            className="absolute right-3 bottom-3 w-10 h-10 rounded-xl shadow-md transition-transform hover:scale-105 active:scale-95"
-            disabled={!input.trim() || loading}
-            onClick={handleSend}
+            onClick={() => setModalState({ isOpen: true, type: 'add' })}
+            className="flex-1 sm:flex-none"
           >
-            <Send className="w-4 h-4 ml-0.5" />
+            <Plus className="w-4 h-4 mr-2" /> Nova Conta
           </Button>
         </div>
       </div>
+
+      <div className="bg-card border border-border rounded-xl p-4 shadow-sm flex flex-col sm:flex-row gap-4 animate-in fade-in slide-in-from-bottom-2 duration-500">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Buscar por descrição, número ou banco..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+        <Select value={orgFilter} onValueChange={setOrgFilter}>
+          <SelectTrigger className="w-full sm:w-[250px]">
+            <Building2 className="w-4 h-4 mr-2 text-muted-foreground" />
+            <SelectValue placeholder="Filtrar por Empresa" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todas as Empresas</SelectItem>
+            {organizations.map((o) => (
+              <SelectItem key={o.id} value={o.id}>
+                {o.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select value={typeFilter} onValueChange={setTypeFilter}>
+          <SelectTrigger className="w-full sm:w-[200px]">
+            <Filter className="w-4 h-4 mr-2 text-muted-foreground" />
+            <SelectValue placeholder="Tipo de Conta" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos os Tipos</SelectItem>
+            <SelectItem value="Conta Corrente">Conta Corrente</SelectItem>
+            <SelectItem value="Conta Poupança">Conta Poupança</SelectItem>
+            <SelectItem value="Caixa">Caixa</SelectItem>
+            <SelectItem value="Aplicação">Aplicação</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      <BankAccountsTable
+        accounts={paginatedAccounts}
+        loading={loading}
+        onEdit={(account: any) => setModalState({ isOpen: true, type: 'edit', account })}
+        onDelete={(account: any) => setDeleteModalState({ isOpen: true, account })}
+        currentPage={currentPage}
+        totalPages={Math.ceil(filteredAccounts.length / itemsPerPage)}
+        onPageChange={setCurrentPage}
+      />
+
+      <BankAccountModal
+        {...modalState}
+        onClose={() => setModalState({ isOpen: false, type: 'add' })}
+        organizations={organizations}
+      />
+
+      <DeleteAccountModal
+        {...deleteModalState}
+        onClose={() => setDeleteModalState({ isOpen: false })}
+      />
     </div>
   )
 }
