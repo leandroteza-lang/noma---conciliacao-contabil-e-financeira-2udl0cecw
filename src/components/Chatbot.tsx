@@ -122,15 +122,15 @@ const renderMessageContent = (text: string) => {
         elements.push(
           <div
             key={`table-${elements.length}`}
-            className="my-4 w-full overflow-x-auto rounded-md border border-border bg-background/50 shadow-sm"
+            className="my-4 w-full overflow-x-auto rounded-md border border-border bg-card shadow-sm"
           >
-            <Table className="text-xs sm:text-sm">
-              <TableHeader className="bg-muted/50">
-                <TableRow className="border-border/50 hover:bg-transparent">
+            <Table className="text-sm w-full caption-bottom">
+              <TableHeader className="bg-muted/50 border-b border-border">
+                <TableRow className="hover:bg-transparent">
                   {tableHeaders.map((h, i) => (
                     <TableHead
                       key={i}
-                      className="font-semibold text-foreground h-9 px-3 whitespace-nowrap"
+                      className="h-10 px-4 text-left align-middle font-medium text-muted-foreground whitespace-nowrap"
                     >
                       {processInline(h)}
                     </TableHead>
@@ -139,9 +139,12 @@ const renderMessageContent = (text: string) => {
               </TableHeader>
               <TableBody>
                 {tableRows.map((row, i) => (
-                  <TableRow key={i} className="border-border/50 hover:bg-muted/30">
+                  <TableRow
+                    key={i}
+                    className="hover:bg-muted/50 data-[state=selected]:bg-muted border-b border-border transition-colors"
+                  >
                     {row.map((cell, j) => (
-                      <TableCell key={j} className="py-2 px-3">
+                      <TableCell key={j} className="p-4 align-middle">
                         {processInline(cell)}
                       </TableCell>
                     ))}
@@ -915,8 +918,10 @@ export function Chatbot() {
                     <div
                       key={msg.id}
                       className={cn(
-                        'flex gap-2 max-w-[88%]',
-                        msg.role === 'user' ? 'ml-auto flex-row-reverse' : '',
+                        'flex gap-2',
+                        msg.role === 'user'
+                          ? 'ml-auto flex-row-reverse max-w-[88%]'
+                          : 'max-w-[95%]',
                       )}
                     >
                       <div
@@ -935,7 +940,7 @@ export function Chatbot() {
                       </div>
                       <div
                         className={cn(
-                          'p-3 rounded-xl text-sm shadow-sm flex flex-col',
+                          'p-3 rounded-xl text-sm shadow-sm flex flex-col w-full overflow-hidden',
                           msg.role === 'user'
                             ? 'bg-primary text-primary-foreground rounded-tr-none'
                             : 'bg-muted text-foreground rounded-tl-none',
