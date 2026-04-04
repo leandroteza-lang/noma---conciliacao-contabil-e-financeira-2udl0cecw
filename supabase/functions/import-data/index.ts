@@ -253,44 +253,65 @@ Deno.serve(async (req: Request) => {
         const validRoles = ['admin', 'supervisor', 'collaborator', 'client_user']
         const roleToInsert = validRoles.includes(perfil) ? perfil : 'collaborator'
 
-        // Handle Restore or Approve existing users
-        if (action === 'restore' || action === 'approve') {
-          if (!existingId) {
-            addError(rowNum, `ID do usuário não encontrado para atualização.`, row)
+        if (existingId) {
+          if (action === 'restore') {
+            const updatePayload: any = {
+              approval_status: 'approved',
+              pending_deletion: false,
+              deletion_requested_at: null,
+              deletion_requested_by: null,
+              status: true,
+              deleted_at: null,
+            }
+
+            const { error: updateError } = await supabaseAdmin
+              .from('cadastro_usuarios')
+              .update(updatePayload)
+              .eq('id', existingId)
+
+            if (updateError) {
+              addError(rowNum, `Erro ao reativar usuário: ${updateError.message}`, row)
+            } else {
+              inserted++
+            }
+            continue
+          } else if (action === 'insert' || action === 'approve') {
+            const updatePayload: any = {
+              name: String(nome),
+              department_id: depId || null,
+              role: roleToInsert,
+              cpf: cpf || null,
+              approval_status: 'approved',
+              pending_deletion: false,
+              deletion_requested_at: null,
+              deletion_requested_by: null,
+              status: true,
+              deleted_at: null,
+            }
+
+            if (row['TELEFONE'] !== undefined)
+              updatePayload.phone = String(row['TELEFONE']).trim() || null
+            if (row['ENDERECO'] !== undefined)
+              updatePayload.address = String(row['ENDERECO']).trim() || null
+            if (row['OBSERVACOES'] !== undefined)
+              updatePayload.observations = String(row['OBSERVACOES']).trim() || null
+
+            const { error: updateError } = await supabaseAdmin
+              .from('cadastro_usuarios')
+              .update(updatePayload)
+              .eq('id', existingId)
+
+            if (updateError) {
+              addError(
+                rowNum,
+                `Erro ao atualizar usuário pela planilha: ${updateError.message}`,
+                row,
+              )
+            } else {
+              inserted++
+            }
             continue
           }
-
-          const updatePayload: any = {
-            name: String(nome),
-            department_id: depId || null,
-            role: roleToInsert,
-            cpf: cpf || null,
-            pending_deletion: false,
-            deletion_requested_at: null,
-            deletion_requested_by: null,
-            approval_status: 'approved',
-            status: true,
-            deleted_at: null,
-          }
-
-          if (row['TELEFONE'] !== undefined)
-            updatePayload.phone = String(row['TELEFONE']).trim() || null
-          if (row['ENDERECO'] !== undefined)
-            updatePayload.address = String(row['ENDERECO']).trim() || null
-          if (row['OBSERVACOES'] !== undefined)
-            updatePayload.observations = String(row['OBSERVACOES']).trim() || null
-
-          const { error: updateError } = await supabaseAdmin
-            .from('cadastro_usuarios')
-            .update(updatePayload)
-            .eq('id', existingId)
-
-          if (updateError) {
-            addError(rowNum, `Erro ao atualizar usuário existente: ${updateError.message}`, row)
-          } else {
-            inserted++
-          }
-          continue
         }
 
         // Validate duplicates for completely new inserts

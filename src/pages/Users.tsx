@@ -26,6 +26,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
+import { Checkbox } from '@/components/ui/checkbox'
 import { useToast } from '@/hooks/use-toast'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import {
@@ -35,24 +36,25 @@ import {
   Download,
   AlertCircle,
   FileUp,
-  MoreHorizontal,
   Edit,
   Trash,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
 } from 'lucide-react'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
 import * as XLSX from 'xlsx'
 import { format } from 'date-fns'
+
+type SortField = 'name' | 'email' | 'cpf' | 'role' | 'department' | 'status'
 
 export default function Users() {
   const [users, setUsers] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [isImportModalOpen, setIsImportModalOpen] = useState(false)
+  const [sortField, setSortField] = useState<SortField>('name')
+  const [sortDesc, setSortDesc] = useState(false)
+  const [selectedUsers, setSelectedUsers] = useState<string[]>([])
   const { toast } = useToast()
 
   const loadUsers = async () => {
@@ -82,10 +84,46 @@ export default function Users() {
       u.cpf?.includes(search),
   )
 
+  const sortedUsers = [...filteredUsers].sort((a, b) => {
+    let valA = ''
+    let valB = ''
+
+    switch (sortField) {
+      case 'name':
+        valA = a.name || ''
+        valB = b.name || ''
+        break
+      case 'email':
+        valA = a.email || ''
+        valB = b.email || ''
+        break
+      case 'cpf':
+        valA = a.cpf || ''
+        valB = b.cpf || ''
+        break
+      case 'role':
+        valA = a.role || ''
+        valB = b.role || ''
+        break
+      case 'department':
+        valA = a.departments?.name || ''
+        valB = b.departments?.name || ''
+        break
+      case 'status':
+        valA = a.approval_status === 'pending' ? '2' : a.status ? '1' : '0'
+        valB = b.approval_status === 'pending' ? '2' : b.status ? '1' : '0'
+        break
+    }
+
+    if (valA < valB) return sortDesc ? 1 : -1
+    if (valA > valB) return sortDesc ? -1 : 1
+    return 0
+  })
+
   const handleExport = async () => {
     try {
       const { data, error } = await supabase.functions.invoke('export-users', {
-        body: { format: 'excel', data: filteredUsers },
+        body: { format: 'excel', data: sortedUsers },
       })
       if (error) throw error
 
@@ -107,10 +145,42 @@ export default function Users() {
         .eq('id', id)
       if (error) throw error
       toast({ title: 'Sucesso', description: 'Usuário excluído.' })
+      setSelectedUsers((prev) => prev.filter((uid) => uid !== id))
       loadUsers()
     } catch (err: any) {
       toast({ variant: 'destructive', title: 'Erro', description: err.message })
     }
+  }
+
+  const handleBulkDelete = async () => {
+    if (!confirm(`Deseja realmente excluir ${selectedUsers.length} usuários?`)) return
+    try {
+      const { error } = await supabase
+        .from('cadastro_usuarios')
+        .update({ deleted_at: new Date().toISOString() })
+        .in('id', selectedUsers)
+      if (error) throw error
+      toast({ title: 'Sucesso', description: `${selectedUsers.length} usuários excluídos.` })
+      setSelectedUsers([])
+      loadUsers()
+    } catch (err: any) {
+      toast({ variant: 'destructive', title: 'Erro', description: err.message })
+    }
+  }
+
+  const toggleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortDesc(!sortDesc)
+    } else {
+      setSortField(field)
+      setSortDesc(false)
+    }
+  }
+
+  const SortIcon = ({ field }: { field: SortField }) => {
+    if (sortField !== field)
+      return <ArrowUpDown className="ml-2 h-4 w-4 text-muted-foreground/30" />
+    return sortDesc ? <ArrowDown className="ml-2 h-4 w-4" /> : <ArrowUp className="ml-2 h-4 w-4" />
   }
 
   return (
@@ -133,7 +203,7 @@ export default function Users() {
         </div>
       </div>
 
-      <div className="flex items-center">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="relative w-full max-w-sm">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
@@ -143,37 +213,93 @@ export default function Users() {
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
+        {selectedUsers.length > 0 && (
+          <Button variant="destructive" onClick={handleBulkDelete}>
+            <Trash className="w-4 h-4 mr-2" /> Excluir Selecionados ({selectedUsers.length})
+          </Button>
+        )}
       </div>
 
       <div className="border rounded-md bg-card/20">
         <Table>
           <TableHeader className="bg-muted/50">
             <TableRow>
-              <TableHead>Nome</TableHead>
-              <TableHead>E-mail</TableHead>
-              <TableHead>CPF</TableHead>
-              <TableHead>Perfil</TableHead>
-              <TableHead>Departamento</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="w-[50px]"></TableHead>
+              <TableHead className="w-[40px] text-center">
+                <Checkbox
+                  checked={selectedUsers.length === sortedUsers.length && sortedUsers.length > 0}
+                  onCheckedChange={(checked) => {
+                    if (checked) setSelectedUsers(sortedUsers.map((u) => u.id))
+                    else setSelectedUsers([])
+                  }}
+                />
+              </TableHead>
+              <TableHead className="cursor-pointer select-none" onClick={() => toggleSort('name')}>
+                <div className="flex items-center">
+                  Nome <SortIcon field="name" />
+                </div>
+              </TableHead>
+              <TableHead className="cursor-pointer select-none" onClick={() => toggleSort('email')}>
+                <div className="flex items-center">
+                  E-mail <SortIcon field="email" />
+                </div>
+              </TableHead>
+              <TableHead className="cursor-pointer select-none" onClick={() => toggleSort('cpf')}>
+                <div className="flex items-center">
+                  CPF <SortIcon field="cpf" />
+                </div>
+              </TableHead>
+              <TableHead className="cursor-pointer select-none" onClick={() => toggleSort('role')}>
+                <div className="flex items-center">
+                  Perfil <SortIcon field="role" />
+                </div>
+              </TableHead>
+              <TableHead
+                className="cursor-pointer select-none"
+                onClick={() => toggleSort('department')}
+              >
+                <div className="flex items-center">
+                  Departamento <SortIcon field="department" />
+                </div>
+              </TableHead>
+              <TableHead
+                className="cursor-pointer select-none"
+                onClick={() => toggleSort('status')}
+              >
+                <div className="flex items-center">
+                  Status <SortIcon field="status" />
+                </div>
+              </TableHead>
+              <TableHead className="w-[100px] text-right">Ações</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center h-32">
+                <TableCell colSpan={8} className="text-center h-32">
                   Carregando usuários...
                 </TableCell>
               </TableRow>
-            ) : filteredUsers.length === 0 ? (
+            ) : sortedUsers.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center h-32 text-muted-foreground">
+                <TableCell colSpan={8} className="text-center h-32 text-muted-foreground">
                   Nenhum usuário encontrado.
                 </TableCell>
               </TableRow>
             ) : (
-              filteredUsers.map((user) => (
-                <TableRow key={user.id}>
+              sortedUsers.map((user) => (
+                <TableRow
+                  key={user.id}
+                  className={selectedUsers.includes(user.id) ? 'bg-muted/50' : ''}
+                >
+                  <TableCell className="text-center">
+                    <Checkbox
+                      checked={selectedUsers.includes(user.id)}
+                      onCheckedChange={(checked) => {
+                        if (checked) setSelectedUsers([...selectedUsers, user.id])
+                        else setSelectedUsers(selectedUsers.filter((id) => id !== user.id))
+                      }}
+                    />
+                  </TableCell>
                   <TableCell className="font-medium">{user.name}</TableCell>
                   <TableCell className="text-muted-foreground">{user.email}</TableCell>
                   <TableCell className="text-muted-foreground">{user.cpf || '-'}</TableCell>
@@ -215,25 +341,26 @@ export default function Users() {
                       </Badge>
                     )}
                   </TableCell>
-                  <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem>
-                          <Edit className="h-4 w-4 mr-2" /> Editar
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          className="text-red-600"
-                          onClick={() => handleDelete(user.id)}
-                        >
-                          <Trash className="h-4 w-4 mr-2" /> Excluir
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                  <TableCell className="text-right">
+                    <div className="flex items-center justify-end gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/20"
+                        title="Editar"
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
+                        onClick={() => handleDelete(user.id)}
+                        title="Excluir"
+                      >
+                        <Trash className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))
@@ -489,7 +616,7 @@ function ImportUsersModal({
                                 </SelectItem>
                               )}
                               <SelectItem value="insert">Importar e Ativar da Planilha</SelectItem>
-                              <SelectItem value="ignore">Descartar (Ignorar)</SelectItem>
+                              <SelectItem value="ignore">Descartar</SelectItem>
                             </SelectContent>
                           </Select>
                         </TableCell>
