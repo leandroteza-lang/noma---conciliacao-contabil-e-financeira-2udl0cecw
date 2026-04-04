@@ -196,12 +196,12 @@ export default function Users() {
             existingId = match.id
             userId = match.user_id
 
-            if (match.deleted_at || match.pending_deletion) {
+            if (match.pending_deletion) {
               status = 'pending_deletion'
               action = 'restore'
-            } else if (match.approval_status === 'pending') {
+            } else if (match.deleted_at || match.approval_status === 'pending') {
               status = 'pending_approval'
-              action = 'discard'
+              action = 'approve'
             } else {
               status = 'active'
               action = 'error'
