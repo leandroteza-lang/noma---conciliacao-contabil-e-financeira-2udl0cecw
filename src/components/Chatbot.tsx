@@ -225,14 +225,17 @@ const renderMessageContent = (text: string) => {
         elements.push(
           <div key={`li-${i}`} className="flex items-start gap-2 mb-1.5 pl-1">
             <div className="w-1.5 h-1.5 rounded-full bg-primary/70 mt-1.5 shrink-0" />
-            <div className="leading-relaxed text-foreground/90">
+            <div className="leading-relaxed text-foreground/90 w-full break-words">
               {processInline(trimLine.slice(2))}
             </div>
           </div>,
         )
       } else {
         elements.push(
-          <div key={`text-${i}`} className="mb-1.5 leading-relaxed text-foreground/90 break-words">
+          <div
+            key={`text-${i}`}
+            className="mb-1.5 leading-relaxed text-foreground/90 w-full break-words"
+          >
             {processInline(trimLine)}
           </div>,
         )
@@ -241,7 +244,7 @@ const renderMessageContent = (text: string) => {
   }
 
   flushTable()
-  return <div className="text-sm w-full min-w-0">{elements}</div>
+  return <div className="text-sm w-full min-w-0 break-words">{elements}</div>
 }
 import { useToast } from '@/hooks/use-toast'
 
@@ -272,7 +275,7 @@ const TypingEffect = ({ content, onComplete }: { content: string; onComplete?: (
   }, [content, onComplete])
 
   return (
-    <div className="relative w-full min-w-0">
+    <div className="relative w-full min-w-0 break-words">
       {renderMessageContent(displayedContent)}
       {displayedContent.length < content.length && (
         <span className="inline-block w-1.5 h-3 ml-1 bg-primary animate-pulse align-baseline mt-1" />
@@ -897,7 +900,7 @@ export function Chatbot() {
           <Tabs
             value={activeTab}
             onValueChange={setActiveTab}
-            className="flex-1 flex flex-col overflow-hidden"
+            className="flex-1 flex flex-col w-full"
           >
             <div className="px-3 pt-2 border-b bg-muted/20">
               <TabsList className="w-full grid grid-cols-2">
@@ -916,8 +919,8 @@ export function Chatbot() {
                     <div
                       key={msg.id}
                       className={cn(
-                        'flex gap-2 w-full min-w-0',
-                        msg.role === 'user' ? 'ml-auto flex-row-reverse max-w-[88%]' : 'w-full',
+                        'flex gap-2 w-full min-w-0 break-words',
+                        msg.role === 'user' ? 'ml-auto flex-row-reverse w-full' : 'w-full',
                       )}
                     >
                       <div
@@ -947,11 +950,9 @@ export function Chatbot() {
                           <div className="whitespace-pre-wrap flex flex-col gap-1">
                             {msg.content}
                             {msg.attachedFileName && (
-                              <div className="flex items-center gap-1 mt-1 text-[11px] opacity-90 bg-primary-foreground/15 px-2 py-1 rounded-md w-fit">
+                              <div className="flex items-center gap-1 mt-1 text-[11px] opacity-90 bg-primary-foreground/15 px-2 py-1 rounded-md w-full break-words">
                                 <Paperclip className="w-3 h-3" />
-                                <span className="truncate max-w-[180px]">
-                                  {msg.attachedFileName}
-                                </span>
+                                <span className="w-full break-words">{msg.attachedFileName}</span>
                               </div>
                             )}
                           </div>
@@ -983,7 +984,7 @@ export function Chatbot() {
                     </div>
                   ))}
                   {isLoading && (
-                    <div className="flex gap-2 max-w-[85%]">
+                    <div className="flex gap-2 w-full break-words">
                       <div className="w-8 h-8 rounded-full bg-muted text-muted-foreground flex items-center justify-center shrink-0 mt-1">
                         <Bot className="w-4 h-4" />
                       </div>
@@ -1024,11 +1025,13 @@ export function Chatbot() {
                   >
                     <Paperclip className="w-4 h-4" />
                   </Button>
-                  <div className="flex-1 flex flex-col bg-background border rounded-2xl overflow-hidden focus-within:ring-1 focus-within:ring-ring">
+                  <div className="flex-1 flex flex-col bg-background border rounded-2xl w-full focus-within:ring-1 focus-within:ring-ring">
                     {attachedFile && (
-                      <div className="flex items-center gap-2 px-3 py-1.5 bg-muted/40 border-b text-xs">
+                      <div className="flex items-center gap-2 px-3 py-1.5 bg-muted/40 border-b text-xs w-full break-words">
                         <FileText className="w-3.5 h-3.5 text-primary" />
-                        <span className="flex-1 truncate font-medium">{attachedFile.name}</span>
+                        <span className="flex-1 w-full break-words font-medium">
+                          {attachedFile.name}
+                        </span>
                         <button
                           type="button"
                           onClick={() => setAttachedFile(null)}
@@ -1059,15 +1062,15 @@ export function Chatbot() {
               </CardFooter>
             </TabsContent>
 
-            <TabsContent value="history" className="flex-1 overflow-hidden m-0 p-0">
-              <ScrollArea className="h-full p-4">
+            <TabsContent value="history" className="flex-1 m-0 p-0 w-full">
+              <ScrollArea className="h-full p-4 w-full">
                 {sessions.map((s) => (
                   <div
                     key={s.id}
                     onClick={() => loadSession(s.id)}
-                    className="p-3 border rounded-lg mb-3 cursor-pointer hover:bg-muted/80 transition-colors shadow-sm"
+                    className="p-3 border rounded-lg mb-3 cursor-pointer hover:bg-muted/80 transition-colors shadow-sm w-full break-words"
                   >
-                    <div className="font-medium text-[13px] truncate">{s.title}</div>
+                    <div className="font-medium text-[13px] w-full break-words">{s.title}</div>
                     <div className="text-[11px] text-muted-foreground mt-1.5">
                       {new Date(s.created_at).toLocaleString()}
                     </div>
