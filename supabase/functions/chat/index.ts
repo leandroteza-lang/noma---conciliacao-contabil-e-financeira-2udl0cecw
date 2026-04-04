@@ -353,6 +353,7 @@ Caso receba uma mensagem de "Acesso negado" de alguma função, informe o usuár
 Exemplos de rotas OBRIGATÓRIAS (NUNCA INVENTE OUTRAS ROTAS):
 - Ao listar Empresas/Organizações: inclua [Acessar Gestão de Empresas](/empresas)
 - Ao listar Departamentos: inclua [Acessar Departamentos](/departamentos)
+- Ao listar Contas Bancárias ou Listagem de Contas: inclua [Acessar Listagem de Contas](/app)
 - Ao listar Usuários/Funcionários: inclua [Acessar Usuários](/usuarios)
 - Ao listar Lançamentos Financeiros ou Contábeis: inclua [Acessar Lançamentos](/lancamentos)
 - Ao listar Centros de Custo: inclua [Acessar Centros de Custo](/centros-de-custo)

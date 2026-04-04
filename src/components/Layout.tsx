@@ -172,6 +172,23 @@ export const MENU_ITEMS: MenuItem[] = [
   },
 ]
 
+const SidebarNavLink = ({ to, children, className, onClick, ...props }: any) => {
+  const { isMobile, setOpenMobile } = useSidebar()
+  return (
+    <Link
+      to={to}
+      className={className}
+      onClick={(e) => {
+        if (isMobile) setOpenMobile(false)
+        onClick?.(e)
+      }}
+      {...props}
+    >
+      {children}
+    </Link>
+  )
+}
+
 export default function Layout() {
   const { user, loading, signOut, role, permissions, menuOrder, setMenuOrder, profile } = useAuth()
   const { setMode, setColorTheme } = useTheme()
@@ -594,7 +611,7 @@ export default function Layout() {
 
   return (
     <SidebarProvider>
-      <Sidebar collapsible="offcanvas" className="z-20">
+      <Sidebar collapsible="offcanvas" className="z-50">
         <SidebarHeader className="border-b border-sidebar-border px-4 py-4 h-16 flex justify-center">
           <div className="flex items-center gap-3 overflow-hidden w-full">
             <div className="bg-primary p-1.5 rounded-lg text-primary-foreground shadow-sm flex items-center justify-center shrink-0">
@@ -674,7 +691,7 @@ export default function Layout() {
                                           : 'text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
                                       )}
                                     >
-                                      <Link
+                                      <SidebarNavLink
                                         to={childItem.path}
                                         className="flex items-center justify-between w-full"
                                       >
@@ -694,7 +711,7 @@ export default function Layout() {
                                             </span>
                                           )}
                                         </div>
-                                      </Link>
+                                      </SidebarNavLink>
                                     </SidebarMenuSubButton>
                                   </SidebarMenuSubItem>
                                 )
@@ -746,7 +763,10 @@ export default function Layout() {
                             : 'text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
                         )}
                       >
-                        <Link to={item.path} className="flex items-center justify-between w-full">
+                        <SidebarNavLink
+                          to={item.path}
+                          className="flex items-center justify-between w-full"
+                        >
                           <div className="flex items-center gap-2">
                             <item.icon
                               className={cn(
@@ -764,7 +784,7 @@ export default function Layout() {
                           <div className="hidden group-hover:flex items-center opacity-40 hover:opacity-100 cursor-grab active:cursor-grabbing">
                             <GripVertical className="size-4" />
                           </div>
-                        </Link>
+                        </SidebarNavLink>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                   )
@@ -792,7 +812,7 @@ export default function Layout() {
       </Sidebar>
 
       <SidebarInset className="bg-background min-w-0">
-        <header className="flex h-16 shrink-0 items-center gap-2 border-b border-border/50 bg-card/80 backdrop-blur-md px-4 sticky top-0 z-30 shadow-sm justify-between">
+        <header className="flex h-16 shrink-0 items-center gap-2 border-b border-border/50 bg-card/80 backdrop-blur-md px-4 sticky top-0 z-40 shadow-sm justify-between">
           <div className="flex items-center gap-2">
             <SidebarTrigger className="-ml-2 text-muted-foreground" />
             <div className="flex items-center gap-3 md:hidden ml-2">
