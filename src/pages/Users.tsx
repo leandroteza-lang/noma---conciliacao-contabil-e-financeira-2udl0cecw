@@ -835,7 +835,7 @@ export default function Users() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-0 rounded-md border overflow-hidden shadow-sm">
                     <div className="bg-red-600 px-3 py-2">
-                      <h3 className="text-black font-bold text-sm">Empresas Permitidas</h3>
+                      <h3 className="text-white font-bold text-sm">Empresas Permitidas</h3>
                     </div>
                     <div className="bg-card p-1">
                       <div className="max-h-48 overflow-y-auto p-2 space-y-2">
@@ -877,7 +877,7 @@ export default function Users() {
                             />
                             <Label
                               htmlFor={`org-${org.id}`}
-                              className="text-sm font-bold cursor-pointer leading-tight"
+                              className="text-sm font-normal cursor-pointer leading-tight"
                             >
                               {org.name}
                             </Label>
@@ -894,7 +894,7 @@ export default function Users() {
 
                   <div className="space-y-0 rounded-md border overflow-hidden shadow-sm">
                     <div className="bg-red-600 px-3 py-2">
-                      <h3 className="text-black font-bold text-sm">Permissões de Rotinas</h3>
+                      <h3 className="text-white font-bold text-sm">Permissões de Rotinas</h3>
                     </div>
                     <div className="bg-card p-1">
                       <div className="max-h-48 overflow-y-auto p-2 space-y-2">
@@ -950,7 +950,7 @@ export default function Users() {
                               />
                               <Label
                                 htmlFor={`perm-${perm.id}`}
-                                className="text-sm font-bold cursor-pointer leading-tight"
+                                className="text-sm font-normal cursor-pointer leading-tight"
                               >
                                 {perm.label}
                               </Label>
