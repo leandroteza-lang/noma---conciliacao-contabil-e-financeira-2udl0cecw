@@ -122,7 +122,7 @@ const renderMessageContent = (text: string) => {
         elements.push(
           <div
             key={`table-${elements.length}`}
-            className="my-4 w-full overflow-x-auto rounded-md border border-border bg-card shadow-sm"
+            className="my-4 w-full overflow-x-auto rounded-md border border-border bg-card shadow-sm custom-scrollbar"
           >
             <Table className="text-sm w-full caption-bottom">
               <TableHeader className="bg-muted/50 border-b border-border">
@@ -130,7 +130,7 @@ const renderMessageContent = (text: string) => {
                   {tableHeaders.map((h, i) => (
                     <TableHead
                       key={i}
-                      className="h-10 px-4 text-left align-middle font-medium text-muted-foreground whitespace-nowrap"
+                      className="h-10 px-3 text-left align-middle font-medium text-muted-foreground whitespace-nowrap"
                     >
                       {processInline(h)}
                     </TableHead>
@@ -144,7 +144,7 @@ const renderMessageContent = (text: string) => {
                     className="hover:bg-muted/50 data-[state=selected]:bg-muted border-b border-border transition-colors"
                   >
                     {row.map((cell, j) => (
-                      <TableCell key={j} className="p-4 align-middle">
+                      <TableCell key={j} className="p-3 align-middle whitespace-nowrap">
                         {processInline(cell)}
                       </TableCell>
                     ))}
@@ -195,7 +195,10 @@ const renderMessageContent = (text: string) => {
           tableHeaders = cells
         } else {
           elements.push(
-            <div key={`text-${i}`} className="mb-1.5 leading-relaxed text-foreground/90">
+            <div
+              key={`text-${i}`}
+              className="mb-1.5 leading-relaxed text-foreground/90 break-words"
+            >
               {processInline(trimLine)}
             </div>,
           )
@@ -234,7 +237,7 @@ const renderMessageContent = (text: string) => {
         )
       } else {
         elements.push(
-          <div key={`text-${i}`} className="mb-1.5 leading-relaxed text-foreground/90">
+          <div key={`text-${i}`} className="mb-1.5 leading-relaxed text-foreground/90 break-words">
             {processInline(trimLine)}
           </div>,
         )
@@ -277,7 +280,7 @@ const TypingEffect = ({ content, onComplete }: { content: string; onComplete?: (
     <div className="relative">
       {renderMessageContent(displayedContent)}
       {displayedContent.length < content.length && (
-        <span className="inline-block w-1.5 h-3 ml-1 bg-primary animate-pulse align-baseline" />
+        <span className="inline-block w-1.5 h-3 ml-1 bg-primary animate-pulse align-baseline mt-1" />
       )}
     </div>
   )
@@ -864,7 +867,7 @@ export function Chatbot() {
     <div className="fixed bottom-6 right-6 z-[100] flex flex-col items-end">
       {isOpen && (
         <Card
-          className="w-[350px] sm:w-[400px] h-[580px] mb-4 flex flex-col shadow-2xl border-primary/20 animate-in slide-in-from-bottom-5"
+          className="w-[380px] sm:w-[450px] h-[600px] mb-4 flex flex-col shadow-2xl border-primary/20 animate-in slide-in-from-bottom-5"
           style={{ transform: `translate(${position.x}px, ${position.y}px)` }}
         >
           <CardHeader
@@ -918,10 +921,10 @@ export function Chatbot() {
                     <div
                       key={msg.id}
                       className={cn(
-                        'flex gap-2',
+                        'flex gap-2 w-full',
                         msg.role === 'user'
                           ? 'ml-auto flex-row-reverse max-w-[88%]'
-                          : 'max-w-[95%]',
+                          : 'max-w-[98%]',
                       )}
                     >
                       <div
@@ -940,7 +943,7 @@ export function Chatbot() {
                       </div>
                       <div
                         className={cn(
-                          'p-3 rounded-xl text-sm shadow-sm flex flex-col w-full overflow-hidden',
+                          'p-3 rounded-xl text-sm shadow-sm flex flex-col w-full min-w-0',
                           msg.role === 'user'
                             ? 'bg-primary text-primary-foreground rounded-tr-none'
                             : 'bg-muted text-foreground rounded-tl-none',

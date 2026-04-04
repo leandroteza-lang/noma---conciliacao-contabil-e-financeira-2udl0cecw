@@ -76,7 +76,7 @@ export const renderMarkdown = (text: string) => {
         elements.push(
           <div
             key={`table-${elements.length}`}
-            className="my-4 w-full overflow-x-auto rounded-md border border-border bg-card shadow-sm"
+            className="my-4 w-full overflow-x-auto rounded-md border border-border bg-card shadow-sm custom-scrollbar"
           >
             <table className="w-full caption-bottom text-sm">
               <thead className="bg-muted/50 border-b border-border">
@@ -84,7 +84,7 @@ export const renderMarkdown = (text: string) => {
                   {tableHeaders.map((h, i) => (
                     <th
                       key={i}
-                      className="h-10 px-4 text-left align-middle font-medium text-muted-foreground whitespace-nowrap"
+                      className="h-10 px-3 text-left align-middle font-medium text-muted-foreground whitespace-nowrap"
                     >
                       {processInline(h)}
                     </th>
@@ -98,7 +98,7 @@ export const renderMarkdown = (text: string) => {
                     className="hover:bg-muted/50 data-[state=selected]:bg-muted border-b border-border transition-colors"
                   >
                     {row.map((cell, j) => (
-                      <td key={j} className="p-4 align-middle">
+                      <td key={j} className="p-3 align-middle whitespace-nowrap">
                         {processInline(cell)}
                       </td>
                     ))}
@@ -149,7 +149,7 @@ export const renderMarkdown = (text: string) => {
           tableHeaders = cells
         } else {
           elements.push(
-            <div key={`text-${i}`} className="min-h-[1.25rem]">
+            <div key={`text-${i}`} className="min-h-[1.25rem] break-words">
               {processInline(trimLine)}
             </div>,
           )
@@ -197,7 +197,7 @@ export const renderMarkdown = (text: string) => {
           )
         } else {
           elements.push(
-            <div key={`text-${i}`} className="min-h-[1.25rem]">
+            <div key={`text-${i}`} className="min-h-[1.25rem] break-words">
               {processInline(trimLine)}
             </div>,
           )
@@ -208,5 +208,7 @@ export const renderMarkdown = (text: string) => {
 
   flushTable()
 
-  return <div className="flex flex-col gap-1 text-[13px] leading-relaxed">{elements}</div>
+  return (
+    <div className="flex flex-col gap-1 text-[13px] leading-relaxed break-words">{elements}</div>
+  )
 }
