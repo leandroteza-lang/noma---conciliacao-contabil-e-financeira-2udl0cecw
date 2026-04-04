@@ -58,6 +58,7 @@ import {
   SidebarProvider,
   SidebarRail,
   SidebarTrigger,
+  useSidebar,
 } from '@/components/ui/sidebar'
 
 export type MenuItem = {
