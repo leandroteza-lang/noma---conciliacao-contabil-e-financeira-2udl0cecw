@@ -1541,7 +1541,7 @@ export default function Users() {
                               >
                                 <SelectTrigger
                                   className={cn(
-                                    'h-8 text-xs w-44 font-semibold',
+                                    'h-8 text-xs w-[320px] font-semibold',
                                     row._action === 'approve'
                                       ? 'bg-green-100 text-green-700 border-green-200'
                                       : 'bg-slate-100 text-slate-700 border-slate-200',
@@ -1550,7 +1550,9 @@ export default function Users() {
                                   <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  <SelectItem value="approve">Aprovar e Atualizar</SelectItem>
+                                  <SelectItem value="approve">
+                                    Importar e Aprovar da Planilha de Importação
+                                  </SelectItem>
                                   <SelectItem value="discard">Descartar (Ignorar)</SelectItem>
                                 </SelectContent>
                               </Select>
@@ -1561,7 +1563,7 @@ export default function Users() {
                               >
                                 <SelectTrigger
                                   className={cn(
-                                    'h-8 text-xs w-44 font-semibold',
+                                    'h-8 text-xs w-[320px] font-semibold',
                                     row._action === 'restore'
                                       ? 'bg-blue-100 text-blue-700 border-blue-200'
                                       : 'bg-slate-100 text-slate-700 border-slate-200',
@@ -1570,7 +1572,9 @@ export default function Users() {
                                   <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  <SelectItem value="restore">Recuperar e Atualizar</SelectItem>
+                                  <SelectItem value="restore">
+                                    Importar e Reativar da Central de Aprovações
+                                  </SelectItem>
                                   <SelectItem value="discard">Descartar (Ignorar)</SelectItem>
                                 </SelectContent>
                               </Select>
