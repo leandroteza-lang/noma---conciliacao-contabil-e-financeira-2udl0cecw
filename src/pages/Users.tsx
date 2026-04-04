@@ -1579,9 +1579,27 @@ export default function Users() {
                                 </SelectContent>
                               </Select>
                             ) : (
-                              <span className="text-xs font-semibold text-green-700 bg-green-100 border border-green-200 px-2 py-1 rounded-md whitespace-nowrap">
-                                Inserir Novo
-                              </span>
+                              <Select
+                                value={row._action}
+                                onValueChange={(val) => updatePreviewAction(i, val)}
+                              >
+                                <SelectTrigger
+                                  className={cn(
+                                    'h-8 text-xs w-[320px] font-semibold',
+                                    row._action === 'insert'
+                                      ? 'bg-green-100 text-green-700 border-green-200'
+                                      : 'bg-slate-100 text-slate-700 border-slate-200',
+                                  )}
+                                >
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="insert">
+                                    Importar e Aprovar da Planilha de Importação
+                                  </SelectItem>
+                                  <SelectItem value="discard">Descartar (Ignorar)</SelectItem>
+                                </SelectContent>
+                              </Select>
                             )}
                           </TableCell>
                         </TableRow>
