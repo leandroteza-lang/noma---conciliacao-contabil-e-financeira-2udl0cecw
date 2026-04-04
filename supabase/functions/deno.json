@@ -1,17 +1,17 @@
 {
   "_versions": {
-    "import-data": 18,
-    "generate-entries": 6,
-    "export-dashboard": 5,
-    "export-analysis": 5,
-    "export-companies": 6,
-    "export-departments": 5,
-    "export-users": 5,
-    "manage-user": 9,
-    "send-email": 5,
-    "export-bank-accounts": 4,
-    "export-chart-accounts": 4,
-    "export-tga-accounts": 4,
-    "chat": 15
+    "import-data": 20,
+    "generate-entries": 8,
+    "export-dashboard": 7,
+    "export-analysis": 7,
+    "export-companies": 8,
+    "export-departments": 7,
+    "export-users": 7,
+    "manage-user": 11,
+    "send-email": 7,
+    "export-bank-accounts": 6,
+    "export-chart-accounts": 6,
+    "export-tga-accounts": 6,
+    "chat": 17
   }
 }
