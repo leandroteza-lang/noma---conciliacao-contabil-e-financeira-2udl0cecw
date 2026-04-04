@@ -469,6 +469,17 @@ export default function Users() {
     }
   }
 
+  const filledFieldsCount = [
+    formData.name?.trim() !== '',
+    formData.email?.trim() !== '',
+    formData.cpf?.trim() !== '',
+    formData.phone?.trim() !== '',
+    formData.role?.trim() !== '',
+    formData.department_id !== 'none',
+    formData.address?.trim() !== '',
+    formData.observations?.trim() !== '',
+  ].filter(Boolean).length
+
   return (
     <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-8">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -681,7 +692,11 @@ export default function Users() {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="flex-1 overflow-y-auto px-6 py-4">
+          <div className="flex-1 overflow-y-auto max-h-[80vh] px-6 py-4">
+            <div className="text-center text-sm text-muted-foreground mb-4">
+              ↓ {filledFieldsCount} de 8 campos
+            </div>
+
             <div className="flex justify-center mb-6 pt-2">
               <div className="relative group">
                 <Avatar className="w-24 h-24 border-2 border-muted shadow-sm">
@@ -923,14 +938,14 @@ export default function Users() {
             </div>
           </div>
 
-          <DialogFooter className="gap-2 px-6 py-4 border-t sm:gap-0 mt-auto bg-muted/20">
+          <div className="border-t border-border bg-background p-4 flex gap-2 justify-end mt-auto z-10">
             <Button variant="ghost" onClick={() => setIsUserModalOpen(false)}>
               Cancelar
             </Button>
             <Button onClick={handleSaveUser} disabled={batchLoading}>
               {batchLoading ? 'Salvando...' : 'Salvar'}
             </Button>
-          </DialogFooter>
+          </div>
         </DialogContent>
       </Dialog>
 
