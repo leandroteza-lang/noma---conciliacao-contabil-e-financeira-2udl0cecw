@@ -1376,7 +1376,8 @@ export const Constants = {
 //     END;
 //
 //     IF req_cpf IS NOT NULL AND req_cpf != '' THEN
-//       IF EXISTS (SELECT 1 FROM public.cadastro_usuarios WHERE cpf = req_cpf) THEN
+//       -- Ignore users that are soft-deleted when checking for duplicates
+//       IF EXISTS (SELECT 1 FROM public.cadastro_usuarios WHERE cpf = req_cpf AND deleted_at IS NULL) THEN
 //         RAISE EXCEPTION 'CPF_DUPLICATE';
 //       END IF;
 //     END IF;
@@ -1426,4 +1427,4 @@ export const Constants = {
 
 // --- INDEXES ---
 // Table: cadastro_usuarios
-//   CREATE UNIQUE INDEX cadastro_usuarios_cpf_idx ON public.cadastro_usuarios USING btree (cpf) WHERE ((cpf IS NOT NULL) AND ((cpf)::text <> ''::text))
+//   CREATE UNIQUE INDEX cadastro_usuarios_cpf_idx ON public.cadastro_usuarios USING btree (cpf) WHERE ((cpf IS NOT NULL) AND ((cpf)::text <> ''::text) AND (deleted_at IS NULL))

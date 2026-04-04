@@ -206,6 +206,18 @@ export default function Users() {
     }
   }
 
+  const validateCPF = (cpf: string) => {
+    cpf = cpf.replace(/[^\d]+/g, '')
+    if (cpf.length !== 11 || !!cpf.match(/(\d)\1{10}/)) return false
+    const cpfDigits = cpf.split('').map((el) => +el)
+    const rest = (count: number) =>
+      ((cpfDigits.slice(0, count - 12).reduce((soma, el, index) => soma + el * (count - index), 0) *
+        10) %
+        11) %
+      10
+    return rest(10) === cpfDigits[9] && rest(11) === cpfDigits[10]
+  }
+
   const handleSaveUser = async () => {
     if (!formData.name || !formData.email) {
       toast({
@@ -214,6 +226,17 @@ export default function Users() {
         variant: 'destructive',
       })
       return
+    }
+
+    if (formData.cpf && formData.cpf.trim() !== '') {
+      if (!validateCPF(formData.cpf)) {
+        toast({
+          title: 'Atenção',
+          description: 'O CPF informado é inválido.',
+          variant: 'destructive',
+        })
+        return
+      }
     }
 
     setBatchLoading(true)
@@ -644,8 +667,19 @@ export default function Users() {
                 <Label>CPF</Label>
                 <Input
                   value={formData.cpf}
-                  onChange={(e) => setFormData({ ...formData, cpf: e.target.value })}
+                  onChange={(e) => {
+                    const formatCPF = (value: string) => {
+                      return value
+                        .replace(/\D/g, '')
+                        .replace(/(\d{3})(\d)/, '$1.$2')
+                        .replace(/(\d{3})(\d)/, '$1.$2')
+                        .replace(/(\d{3})(\d{1,2})/, '$1-$2')
+                        .replace(/(-\d{2})\d+?$/, '$1')
+                    }
+                    setFormData({ ...formData, cpf: formatCPF(e.target.value) })
+                  }}
                   placeholder="Ex: 000.000.000-00"
+                  maxLength={14}
                 />
               </div>
               <div className="space-y-2">
