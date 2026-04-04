@@ -213,7 +213,7 @@ function TopProgressBar() {
   return (
     <div className="fixed top-0 left-0 right-0 z-[100] h-[3px] pointer-events-none">
       <div
-        className="h-full bg-primary transition-all duration-200 ease-out shadow-[0_0_10px_rgba(220,38,38,0.5)]"
+        className="h-full bg-red-600 transition-all duration-200 ease-out shadow-[0_0_10px_rgba(220,38,38,0.5)]"
         style={{ width: `${progress}%` }}
       />
     </div>
@@ -585,7 +585,7 @@ export default function Layout() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <Loader2 className="h-8 w-8 animate-spin text-red-600" />
       </div>
     )
   }
@@ -598,7 +598,7 @@ export default function Layout() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background p-4">
         <div className="max-w-md w-full bg-card rounded-xl shadow-sm border border-border p-8 text-center animate-in fade-in zoom-in duration-500">
-          <div className="mx-auto w-16 h-16 bg-primary/10 text-primary rounded-full flex items-center justify-center mb-6">
+          <div className="mx-auto w-16 h-16 bg-red-600/10 text-red-600 rounded-full flex items-center justify-center mb-6">
             <Users className="w-8 h-8" />
           </div>
           <h1 className="text-2xl font-bold text-foreground mb-2">Acesso em Análise</h1>
@@ -666,7 +666,7 @@ export default function Layout() {
       <Sidebar collapsible="offcanvas" className="z-50">
         <SidebarHeader className="border-b border-sidebar-border px-4 py-4 h-16 flex justify-center">
           <div className="flex items-center gap-3 overflow-hidden w-full">
-            <div className="bg-primary p-1.5 rounded-lg text-primary-foreground shadow-sm flex items-center justify-center shrink-0">
+            <div className="bg-red-600 p-1.5 rounded-lg text-white shadow-sm flex items-center justify-center shrink-0">
               <Building2 className="size-5" />
             </div>
             <span className="font-bold text-sidebar-foreground tracking-tight truncate group-data-[collapsible=offcanvas]:hidden">
@@ -711,7 +711,7 @@ export default function Layout() {
                               className="flex items-center justify-between w-full cursor-pointer text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                             >
                               <div className="flex items-center gap-2">
-                                <item.icon className="size-4 shrink-0 text-sidebar-foreground/50 group-data-[state=open]/collapsible:text-primary" />
+                                <item.icon className="size-4 shrink-0 text-sidebar-foreground/50 group-data-[state=open]/collapsible:text-red-600" />
                                 <span className="font-medium">{item.title}</span>
                               </div>
                               <ChevronRight className="size-4 text-sidebar-foreground/50 transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
@@ -739,7 +739,7 @@ export default function Layout() {
                                       className={cn(
                                         'transition-all duration-200 group relative my-0.5 overflow-hidden',
                                         isChildActive
-                                          ? 'bg-primary text-primary-foreground shadow-sm hover:bg-primary/90 hover:text-primary-foreground font-semibold'
+                                          ? 'bg-red-600 text-white shadow-sm hover:bg-red-700 hover:text-white font-semibold data-[active=true]:bg-red-600 data-[active=true]:text-white'
                                           : 'text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
                                       )}
                                     >
@@ -752,7 +752,7 @@ export default function Layout() {
                                             className={cn(
                                               'size-4 shrink-0',
                                               isChildActive
-                                                ? 'text-primary-foreground'
+                                                ? 'text-white'
                                                 : 'text-sidebar-foreground/50',
                                             )}
                                           />
@@ -778,7 +778,7 @@ export default function Layout() {
                                     draggedItemPath !== node.path &&
                                     !node.children?.includes(draggedItemPath) &&
                                     !MENU_ITEMS.find((i) => i.path === draggedItemPath)?.isFolder
-                                    ? 'border-sidebar-border hover:border-primary/50 hover:bg-primary/5'
+                                    ? 'border-sidebar-border hover:border-red-600/50 hover:bg-red-600/5'
                                     : 'hidden',
                                 )}
                               >
@@ -811,7 +811,7 @@ export default function Layout() {
                         className={cn(
                           'transition-all duration-200 group relative overflow-hidden',
                           isActive
-                            ? 'bg-primary text-primary-foreground shadow-sm hover:bg-primary/90 hover:text-primary-foreground font-semibold'
+                            ? 'bg-red-600 text-white shadow-sm hover:bg-red-700 hover:text-white font-semibold data-[active=true]:bg-red-600 data-[active=true]:text-white'
                             : 'text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
                         )}
                       >
@@ -823,7 +823,7 @@ export default function Layout() {
                             <item.icon
                               className={cn(
                                 'size-4 shrink-0',
-                                isActive ? 'text-primary-foreground' : 'text-sidebar-foreground/50',
+                                isActive ? 'text-white' : 'text-sidebar-foreground/50',
                               )}
                             />
                             <span className="font-medium">{item.title}</span>
@@ -868,19 +868,16 @@ export default function Layout() {
           <div className="flex items-center gap-2">
             <SidebarTrigger className="-ml-2 text-muted-foreground" />
             <Separator orientation="vertical" className="mr-2 h-4 hidden md:block" />
-            <Breadcrumb className="hidden md:flex bg-primary px-3 py-1.5 rounded-md shadow-sm">
-              <BreadcrumbList className="text-primary-foreground/80 sm:gap-2">
+            <Breadcrumb className="hidden md:flex bg-red-600 px-3 py-1.5 rounded-md shadow-sm">
+              <BreadcrumbList className="text-white/80 sm:gap-2">
                 <BreadcrumbItem>
-                  <BreadcrumbLink
-                    asChild
-                    className="text-primary-foreground hover:text-white font-medium"
-                  >
+                  <BreadcrumbLink asChild className="text-white hover:text-white/90 font-medium">
                     <Link to="/dashboard">Dashboard</Link>
                   </BreadcrumbLink>
                 </BreadcrumbItem>
                 {currentMenuItem && currentMenuItem.path !== '/dashboard' && (
                   <>
-                    <BreadcrumbSeparator className="text-primary-foreground/60" />
+                    <BreadcrumbSeparator className="text-white/60" />
                     <BreadcrumbItem>
                       <BreadcrumbPage className="text-white font-bold">
                         {currentMenuItem.title}
@@ -891,7 +888,7 @@ export default function Layout() {
               </BreadcrumbList>
             </Breadcrumb>
             <div className="flex items-center gap-3 md:hidden ml-2">
-              <div className="bg-primary p-1.5 rounded-lg text-primary-foreground shadow-sm flex items-center justify-center">
+              <div className="bg-red-600 p-1.5 rounded-lg text-white shadow-sm flex items-center justify-center">
                 <Building2 className="size-5" />
               </div>
               <span className="font-bold text-foreground tracking-tight truncate">
@@ -906,9 +903,9 @@ export default function Layout() {
                 <span className="text-sm font-medium text-foreground hidden sm:block">
                   {profile?.name || user.email}
                 </span>
-                <Avatar className="h-9 w-9 border border-border shadow-sm cursor-pointer hover:ring-2 hover:ring-primary/20 transition-all">
+                <Avatar className="h-9 w-9 border border-border shadow-sm cursor-pointer hover:ring-2 hover:ring-red-600/20 transition-all">
                   <AvatarImage src={profile?.avatar_url || ''} className="object-cover" />
-                  <AvatarFallback className="bg-primary/10 text-primary font-semibold">
+                  <AvatarFallback className="bg-red-600/10 text-red-600 font-semibold">
                     {(profile?.name || user.email || 'U').substring(0, 2).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
