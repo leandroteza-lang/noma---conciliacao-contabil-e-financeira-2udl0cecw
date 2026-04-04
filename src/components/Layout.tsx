@@ -20,6 +20,8 @@ import {
   Folder,
   ChevronRight,
   Share2,
+  Shield,
+  FileText,
 } from 'lucide-react'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { ChangePasswordModal } from '@/components/ChangePasswordModal'
@@ -179,6 +181,21 @@ export const MENU_ITEMS: MenuItem[] = [
     icon: Folder,
     roles: ['admin', 'supervisor', 'collaborator'],
     isFolder: true,
+  },
+  {
+    id: 'auditoria',
+    title: 'Central de Auditoria',
+    path: '#auditoria',
+    icon: Shield,
+    roles: ['admin'],
+    isFolder: true,
+  },
+  {
+    id: 'auditoria-usuarios',
+    title: 'Auditoria de Usuários',
+    path: '/auditoria/usuarios',
+    icon: FileText,
+    roles: ['admin'],
   },
 ]
 
