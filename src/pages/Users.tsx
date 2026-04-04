@@ -580,8 +580,8 @@ export default function Users() {
 
       {/* User Form Modal */}
       <Dialog open={isUserModalOpen} onOpenChange={setIsUserModalOpen}>
-        <DialogContent className="sm:max-w-md md:max-w-4xl h-[90vh] md:h-auto overflow-hidden flex flex-col">
-          <DialogHeader>
+        <DialogContent className="sm:max-w-md md:max-w-4xl h-[90vh] md:h-auto max-h-[90vh] overflow-hidden flex flex-col p-0">
+          <DialogHeader className="px-6 pt-6 pb-2">
             <DialogTitle className="text-xl flex items-center gap-2">
               <UsersIcon className="w-5 h-5 text-primary" />
               {editingUser ? 'Editar Usuário' : 'Novo Usuário'}
@@ -593,7 +593,7 @@ export default function Users() {
             </DialogDescription>
           </DialogHeader>
 
-          <ScrollArea className="flex-1 px-1 -mx-1">
+          <ScrollArea className="flex-1 px-6">
             <div className="flex justify-center mb-6 pt-2">
               <div className="relative group">
                 <Avatar className="w-24 h-24 border-2 border-muted shadow-sm">
@@ -714,8 +714,8 @@ export default function Users() {
 
               <div className="space-y-2">
                 <Label>Empresas Permitidas</Label>
-                <div className="border rounded-md overflow-hidden bg-card">
-                  <ScrollArea className="h-40 p-3">
+                <div className="border rounded-md bg-card">
+                  <div className="h-40 p-3 overflow-y-auto">
                     {organizations.map((org) => (
                       <div key={org.id} className="flex items-center space-x-2 py-1.5">
                         <Checkbox
@@ -743,14 +743,14 @@ export default function Users() {
                         Nenhuma empresa cadastrada
                       </div>
                     )}
-                  </ScrollArea>
+                  </div>
                 </div>
               </div>
 
               <div className="space-y-2">
                 <Label>Permissões de Rotinas</Label>
-                <div className="border rounded-md overflow-hidden bg-card">
-                  <ScrollArea className="h-40 p-3">
+                <div className="border rounded-md bg-card">
+                  <div className="h-40 p-3 overflow-y-auto">
                     {PERMISSIONS_LIST.map((perm) => (
                       <div key={perm.id} className="flex items-center space-x-2 py-1.5">
                         <Checkbox
@@ -783,7 +783,7 @@ export default function Users() {
                         </Label>
                       </div>
                     ))}
-                  </ScrollArea>
+                  </div>
                 </div>
               </div>
 
@@ -807,7 +807,7 @@ export default function Users() {
             </div>
           </ScrollArea>
 
-          <DialogFooter className="gap-2 pt-4 border-t sm:gap-0 mt-auto">
+          <DialogFooter className="gap-2 px-6 py-4 border-t sm:gap-0 mt-auto bg-muted/20">
             <Button variant="ghost" onClick={() => setIsUserModalOpen(false)}>
               Cancelar
             </Button>
@@ -820,8 +820,8 @@ export default function Users() {
 
       {/* Batch Edit Modal */}
       <Dialog open={batchEditOpen} onOpenChange={setBatchEditOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
+        <DialogContent className="sm:max-w-md overflow-hidden flex flex-col p-0">
+          <DialogHeader className="px-6 pt-6 pb-2">
             <DialogTitle className="text-xl">Edição em Lote</DialogTitle>
             <DialogDescription className="text-sm">
               Você está prestes a editar <strong>{selected.length}</strong> usuário(s)
@@ -829,86 +829,88 @@ export default function Users() {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-6 py-4">
-            <div className="space-y-3">
-              <Label className="text-sm font-semibold">Campo a ser alterado</Label>
-              <Select
-                value={batchField}
-                onValueChange={(val) => {
-                  setBatchField(val)
-                  setBatchValue('')
-                }}
-              >
-                <SelectTrigger className="h-12">
-                  <SelectValue placeholder="Escolha um campo para atualizar..." />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="role">Perfil de Acesso</SelectItem>
-                  <SelectItem value="department_id">Departamento</SelectItem>
-                  <SelectItem value="status">Status da Conta</SelectItem>
-                </SelectContent>
-              </Select>
+          <ScrollArea className="px-6 py-4 max-h-[70vh]">
+            <div className="space-y-6">
+              <div className="space-y-3">
+                <Label className="text-sm font-semibold">Campo a ser alterado</Label>
+                <Select
+                  value={batchField}
+                  onValueChange={(val) => {
+                    setBatchField(val)
+                    setBatchValue('')
+                  }}
+                >
+                  <SelectTrigger className="h-12">
+                    <SelectValue placeholder="Escolha um campo para atualizar..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="role">Perfil de Acesso</SelectItem>
+                    <SelectItem value="department_id">Departamento</SelectItem>
+                    <SelectItem value="status">Status da Conta</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {batchField === 'role' && (
+                <div className="space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">
+                  <Label className="flex items-center gap-2 text-sm font-semibold">
+                    <Shield className="w-4 h-4 text-blue-500" /> Novo Perfil
+                  </Label>
+                  <Select value={batchValue} onValueChange={setBatchValue}>
+                    <SelectTrigger className="h-12">
+                      <SelectValue placeholder="Selecione o novo perfil..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="admin">Administrador</SelectItem>
+                      <SelectItem value="supervisor">Supervisor</SelectItem>
+                      <SelectItem value="collaborator">Colaborador</SelectItem>
+                      <SelectItem value="client_user">Usuário Cliente</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {batchField === 'department_id' && (
+                <div className="space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">
+                  <Label className="flex items-center gap-2 text-sm font-semibold">
+                    <Building2 className="w-4 h-4 text-purple-500" /> Novo Departamento
+                  </Label>
+                  <Select value={batchValue} onValueChange={setBatchValue}>
+                    <SelectTrigger className="h-12">
+                      <SelectValue placeholder="Selecione o departamento..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Remover Departamento (Nenhum)</SelectItem>
+                      {departments.map((d) => (
+                        <SelectItem key={d.id} value={d.id}>
+                          {d.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {batchField === 'status' && (
+                <div className="space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">
+                  <Label className="flex items-center gap-2 text-sm font-semibold">
+                    <Activity className="w-4 h-4 text-green-500" /> Novo Status
+                  </Label>
+                  <Select value={batchValue} onValueChange={setBatchValue}>
+                    <SelectTrigger className="h-12">
+                      <SelectValue placeholder="Selecione o status..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="true">Ativo (Permitir acesso)</SelectItem>
+                      <SelectItem value="false">Inativo (Bloquear acesso)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
             </div>
+          </ScrollArea>
 
-            {batchField === 'role' && (
-              <div className="space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">
-                <Label className="flex items-center gap-2 text-sm font-semibold">
-                  <Shield className="w-4 h-4 text-blue-500" /> Novo Perfil
-                </Label>
-                <Select value={batchValue} onValueChange={setBatchValue}>
-                  <SelectTrigger className="h-12">
-                    <SelectValue placeholder="Selecione o novo perfil..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="admin">Administrador</SelectItem>
-                    <SelectItem value="supervisor">Supervisor</SelectItem>
-                    <SelectItem value="collaborator">Colaborador</SelectItem>
-                    <SelectItem value="client_user">Usuário Cliente</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-
-            {batchField === 'department_id' && (
-              <div className="space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">
-                <Label className="flex items-center gap-2 text-sm font-semibold">
-                  <Building2 className="w-4 h-4 text-purple-500" /> Novo Departamento
-                </Label>
-                <Select value={batchValue} onValueChange={setBatchValue}>
-                  <SelectTrigger className="h-12">
-                    <SelectValue placeholder="Selecione o departamento..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">Remover Departamento (Nenhum)</SelectItem>
-                    {departments.map((d) => (
-                      <SelectItem key={d.id} value={d.id}>
-                        {d.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-
-            {batchField === 'status' && (
-              <div className="space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">
-                <Label className="flex items-center gap-2 text-sm font-semibold">
-                  <Activity className="w-4 h-4 text-green-500" /> Novo Status
-                </Label>
-                <Select value={batchValue} onValueChange={setBatchValue}>
-                  <SelectTrigger className="h-12">
-                    <SelectValue placeholder="Selecione o status..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="true">Ativo (Permitir acesso)</SelectItem>
-                    <SelectItem value="false">Inativo (Bloquear acesso)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-          </div>
-
-          <DialogFooter className="gap-2 sm:gap-0 pt-2 border-t">
+          <DialogFooter className="gap-2 px-6 py-4 border-t sm:gap-0 bg-muted/20">
             <Button variant="ghost" onClick={() => setBatchEditOpen(false)}>
               Cancelar
             </Button>
