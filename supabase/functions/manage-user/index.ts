@@ -107,6 +107,29 @@ Deno.serve(async (req: Request) => {
       const origin = req.headers.get('origin') || 'https://gestao-de-contas-f8bf6.goskip.app'
       const redirectTo = `${origin}/reset-password`
 
+      // Pre-flight check for CPF duplication to avoid opaque database errors
+      if (cpf && String(cpf).trim() !== '') {
+        const { data: existingCpf } = await supabaseAdmin
+          .from('cadastro_usuarios')
+          .select('id')
+          .eq('cpf', String(cpf).trim())
+          .is('deleted_at', null)
+          .maybeSingle()
+
+        if (existingCpf) {
+          return new Response(
+            JSON.stringify({
+              success: false,
+              error: 'O CPF informado já está cadastrado para outro usuário ativo.',
+            }),
+            {
+              status: 200,
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            },
+          )
+        }
+      }
+
       let actionLink = ''
       let actionUser = null
 
@@ -164,7 +187,12 @@ Deno.serve(async (req: Request) => {
           }
         }
       } else if (error) {
-        return new Response(JSON.stringify({ success: false, error: error.message }), {
+        let errorMessage = error.message
+        if (errorMessage === 'Database error saving new user') {
+          errorMessage =
+            'Erro no banco de dados ao salvar o usuário. Verifique se os dados inseridos estão corretos ou se há instabilidade.'
+        }
+        return new Response(JSON.stringify({ success: false, error: errorMessage }), {
           status: 200,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         })
