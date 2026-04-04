@@ -1,7 +1,17 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts'
 import { jsPDF } from 'npm:jspdf@2.5.1'
-import autoTable from 'npm:jspdf-autotable@3.8.2'
+import autoTablePkg from 'npm:jspdf-autotable@3.8.2'
 import * as XLSX from 'npm:xlsx@0.18.5'
+
+const autoTable =
+  typeof autoTablePkg === 'function' ? autoTablePkg : (autoTablePkg as any).default || autoTablePkg
+
+if (typeof globalThis.window === 'undefined') {
+  ;(globalThis as any).window = globalThis
+}
+if (typeof globalThis.document === 'undefined') {
+  ;(globalThis as any).document = { createElement: () => ({}) }
+}
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -49,7 +59,7 @@ Deno.serve(async (req: Request) => {
     }
 
     if (format === 'pdf') {
-      const doc = new jsPDF('landscape')
+      const doc = new jsPDF({ orientation: 'landscape' })
       doc.setFontSize(16)
       doc.text('Relatório de Usuários', 14, 20)
 

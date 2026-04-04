@@ -492,7 +492,16 @@ export default function Users() {
         body: JSON.stringify({ format, data: dataToExport }),
       })
 
-      if (!res.ok) throw new Error('Falha ao exportar')
+      if (!res.ok) {
+        let errMessage = 'Falha ao exportar'
+        try {
+          const errData = await res.json()
+          if (errData && errData.error) errMessage = errData.error
+        } catch (e) {
+          // ignore
+        }
+        throw new Error(errMessage)
+      }
       const result = await res.json()
 
       if (format === 'excel' && result.excel) {
