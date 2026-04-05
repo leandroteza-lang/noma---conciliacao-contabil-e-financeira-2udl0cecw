@@ -60,10 +60,9 @@ export default function Approvals() {
       if (finalEntityType === 'chart_account') finalEntityType = 'conta_contabil'
       if (finalEntityType === 'bank_account') finalEntityType = 'conta_bancaria'
 
-      let changes = customChanges
+      let changes = customChanges ? { ...customChanges } : {}
 
-      if (actionType === 'DELETE' && !changes) {
-        changes = {}
+      if (actionType === 'DELETE' && !customChanges) {
         if (item.originalData) {
           Object.keys(item.originalData).forEach((k) => {
             if (item.originalData[k] !== null && typeof item.originalData[k] !== 'object') {
@@ -71,6 +70,12 @@ export default function Approvals() {
             }
           })
         }
+      }
+
+      // Salva o snapshot do registro para histórico, mesmo se for excluído definitivamente
+      changes._snapshot = {
+        name: item.name || item.originalData?.name || 'Desconhecido',
+        email: item.originalData?.email || 'N/A',
       }
 
       const { data: auditLog, error } = await supabase
@@ -86,12 +91,14 @@ export default function Approvals() {
         .single()
 
       if (!error && auditLog && changes) {
-        const details = Object.entries(changes).map(([field, vals]: [string, any]) => ({
-          audit_log_id: auditLog.id,
-          field_name: field,
-          old_value: vals.old !== undefined ? String(vals.old) : null,
-          new_value: vals.new !== undefined ? String(vals.new) : null,
-        }))
+        const details = Object.entries(changes)
+          .filter(([field]) => field !== '_snapshot')
+          .map(([field, vals]: [string, any]) => ({
+            audit_log_id: auditLog.id,
+            field_name: field,
+            old_value: vals.old !== undefined ? String(vals.old) : null,
+            new_value: vals.new !== undefined ? String(vals.new) : null,
+          }))
         if (details.length > 0) {
           await supabase.from('audit_details').insert(details)
         }

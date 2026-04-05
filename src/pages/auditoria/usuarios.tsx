@@ -322,7 +322,11 @@ export default function AuditoriaUsuarios() {
           return {
             ...log,
             performed_by_user: { email: userMap[log.performed_by] || 'Sistema' },
-            affected_record: entityMap[log.entity_id] || { name: 'Desconhecido', email: 'N/A' },
+            affected_record:
+              entityMap[log.entity_id] ||
+              (log.changes?._snapshot
+                ? { name: log.changes._snapshot.name, email: log.changes._snapshot.email }
+                : { name: 'Desconhecido', email: 'N/A' }),
             audit_details: translatedDetails,
           }
         })

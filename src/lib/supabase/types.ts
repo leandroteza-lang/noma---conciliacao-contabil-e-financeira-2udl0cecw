@@ -1377,11 +1377,15 @@ export const Constants = {
 //   Policy "Allow service role to update audit config" (UPDATE, PERMISSIVE) roles={public}
 //     USING: true
 // Table: audit_details
+//   Policy "Allow authenticated users to delete audit details" (DELETE, PERMISSIVE) roles={authenticated}
+//     USING: true
 //   Policy "Allow authenticated users to view audit details" (SELECT, PERMISSIVE) roles={public}
 //     USING: (auth.role() = 'authenticated'::text)
 //   Policy "Allow service role to insert audit details" (INSERT, PERMISSIVE) roles={public}
 //     WITH CHECK: true
 // Table: audit_logs
+//   Policy "Allow authenticated users to delete audit logs" (DELETE, PERMISSIVE) roles={authenticated}
+//     USING: true
 //   Policy "Allow authenticated users to view audit logs" (SELECT, PERMISSIVE) roles={public}
 //     USING: (auth.role() = 'authenticated'::text)
 //   Policy "Allow service role to insert audit logs" (INSERT, PERMISSIVE) roles={public}

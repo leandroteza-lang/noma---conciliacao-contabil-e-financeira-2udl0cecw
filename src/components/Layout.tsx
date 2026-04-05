@@ -510,7 +510,7 @@ export default function Layout() {
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [role, permissions, location.pathname])
+  }, [role, permissions])
 
   const handleDragStart = (e: React.DragEvent, path: string) => {
     e.stopPropagation()
