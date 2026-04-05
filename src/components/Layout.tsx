@@ -532,23 +532,10 @@ export default function Layout() {
         setPendingCount((prev) => {
           if (total > prev && !initialPendingFetch.current) {
             try {
-              const AudioContext = window.AudioContext || (window as any).webkitAudioContext
-              if (AudioContext) {
-                const ctx = new AudioContext()
-                if (ctx.state === 'suspended') ctx.resume()
-                const osc = ctx.createOscillator()
-                const gainNode = ctx.createGain()
-                osc.type = 'sine'
-                osc.frequency.setValueAtTime(440, ctx.currentTime)
-                osc.frequency.setValueAtTime(523.25, ctx.currentTime + 0.1)
-                gainNode.gain.setValueAtTime(0, ctx.currentTime)
-                gainNode.gain.linearRampToValueAtTime(0.1, ctx.currentTime + 0.05)
-                gainNode.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3)
-                osc.connect(gainNode)
-                gainNode.connect(ctx.destination)
-                osc.start()
-                osc.stop(ctx.currentTime + 0.3)
-              }
+              const audio = new Audio(
+                'https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3',
+              )
+              audio.play().catch((e) => console.error('Audio play failed', e))
             } catch (e) {
               console.error('Audio play failed', e)
             }
@@ -571,15 +558,18 @@ export default function Layout() {
               }
             }
           }
-          initialPendingFetch.current = false
           return total
         })
+        initialPendingFetch.current = false
       } catch (error) {
         console.error('Erro ao buscar pendências:', error)
       }
     }
 
     fetchPending()
+
+    const handleRefresh = () => fetchPending()
+    window.addEventListener('refresh-approvals-badge', handleRefresh)
 
     const channel = supabase
       .channel('approvals-badge-changes')
@@ -607,6 +597,7 @@ export default function Layout() {
       .subscribe()
 
     return () => {
+      window.removeEventListener('refresh-approvals-badge', handleRefresh)
       supabase.removeChannel(channel)
     }
   }, [role, permissions])

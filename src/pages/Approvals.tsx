@@ -358,6 +358,7 @@ export default function Approvals() {
       setProgress(100)
       toast({ title: 'Aprovado', description: 'O acesso do usuário foi liberado e notificado.' })
       fetchPendingItems()
+      window.dispatchEvent(new CustomEvent('refresh-approvals-badge'))
     } catch (e: any) {
       toast({ title: 'Erro', description: e.message, variant: 'destructive' })
     } finally {
@@ -393,6 +394,7 @@ export default function Approvals() {
       setProgress(100)
       toast({ title: 'Rejeitado', description: 'O cadastro foi removido.' })
       fetchPendingItems()
+      window.dispatchEvent(new CustomEvent('refresh-approvals-badge'))
     } catch (e: any) {
       toast({ title: 'Erro', description: e.message, variant: 'destructive' })
     } finally {
@@ -428,6 +430,7 @@ export default function Approvals() {
       setProgress(100)
       toast({ title: 'Aprovado', description: 'Registro movido para a lixeira.' })
       fetchPendingItems()
+      window.dispatchEvent(new CustomEvent('refresh-approvals-badge'))
     } catch (e: any) {
       toast({ title: 'Erro', description: e.message, variant: 'destructive' })
     } finally {
@@ -462,6 +465,7 @@ export default function Approvals() {
       setProgress(100)
       toast({ title: 'Restaurado', description: 'O registro voltou a ficar ativo no sistema.' })
       fetchPendingItems()
+      window.dispatchEvent(new CustomEvent('refresh-approvals-badge'))
     } catch (e: any) {
       toast({ title: 'Erro', description: e.message, variant: 'destructive' })
     } finally {
@@ -491,6 +495,7 @@ export default function Approvals() {
       setProgress(100)
       toast({ title: 'Excluído', description: 'Registro removido permanentemente.' })
       fetchPendingItems()
+      window.dispatchEvent(new CustomEvent('refresh-approvals-badge'))
     } catch (e: any) {
       toast({ title: 'Erro na exclusão', description: e.message, variant: 'destructive' })
     } finally {
@@ -563,6 +568,7 @@ export default function Approvals() {
       })
       setSelectedIds([])
       fetchPendingItems()
+      window.dispatchEvent(new CustomEvent('refresh-approvals-badge'))
     } catch (e: any) {
       toast({ title: 'Erro na ação em lote', description: e.message, variant: 'destructive' })
     } finally {
