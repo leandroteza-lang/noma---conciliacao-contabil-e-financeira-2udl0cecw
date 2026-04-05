@@ -1,6 +1,5 @@
 import { useAuth } from '@/hooks/use-auth'
 import { supabase } from '@/lib/supabase/client'
-import { v4 as uuidv4 } from 'uuid'
 
 export const useAuditLog = () => {
   const { user } = useAuth()
@@ -12,10 +11,15 @@ export const useAuditLog = () => {
     changes?: Record<string, { old: any; new: any }>,
   ) => {
     try {
-      let sessionId = localStorage.getItem('audit_session_id')
-      if (!sessionId) {
-        sessionId = uuidv4()
-        localStorage.setItem('audit_session_id', sessionId)
+      let sessionId = 'unknown'
+      try {
+        sessionId = localStorage.getItem('audit_session_id') || ''
+        if (!sessionId) {
+          sessionId = crypto.randomUUID()
+          localStorage.setItem('audit_session_id', sessionId)
+        }
+      } catch (e) {
+        sessionId = crypto.randomUUID()
       }
 
       const deviceType = getDeviceType()
@@ -55,22 +59,45 @@ export const useAuditLog = () => {
 }
 
 function getDeviceType(): string {
+  if (typeof navigator === 'undefined') return 'desktop'
   const ua = navigator.userAgent
-  if (/mobile/i.test(ua)) return 'mobile'
-  if (/tablet/i.test(ua)) return 'tablet'
+  if (/(tablet|ipad|playbook|silk)|(android(?!.*mobi))/i.test(ua)) {
+    return 'tablet'
+  }
+  if (
+    /Mobile|Android|iP(hone|od)|IEMobile|BlackBerry|Kindle|Silk-Accelerated|(hpw|web)OS|Opera M(obi|ini)/.test(
+      ua,
+    )
+  ) {
+    return 'mobile'
+  }
   return 'desktop'
 }
 
 async function getGeoLocation() {
   try {
-    const response = await fetch('https://ipapi.co/json/')
+    const response = await fetch('https://ipwho.is/')
+    if (!response.ok) throw new Error('API failed')
     const data = await response.json()
-    return {
-      ip: data.ip || 'unknown',
-      country: data.country_name || 'unknown',
-      city: data.city || 'unknown',
+    if (data.success) {
+      return {
+        ip: data.ip || 'N/A',
+        country: data.country || 'N/A',
+        city: data.city || 'N/A',
+      }
     }
+    throw new Error('Invalid data')
   } catch {
-    return { ip: 'unknown', country: 'unknown', city: 'unknown' }
+    try {
+      const fallbackResponse = await fetch('https://freeipapi.com/api/json/')
+      const fallbackData = await fallbackResponse.json()
+      return {
+        ip: fallbackData.ipAddress || 'N/A',
+        country: fallbackData.countryName || 'N/A',
+        city: fallbackData.cityName || 'N/A',
+      }
+    } catch {
+      return { ip: 'N/A', country: 'N/A', city: 'N/A' }
+    }
   }
 }
