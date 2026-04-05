@@ -116,32 +116,46 @@ export default function Approvals() {
         supabase
           .from('organizations')
           .select('*')
-          .or('pending_deletion.eq.true,deleted_at.not.is.null'),
+          .or('pending_deletion.eq.true,deleted_at.not.is.null')
+          .then((res) => (res.error ? { data: [] } : res))
+          .catch(() => ({ data: [] })),
         supabase
           .from('departments')
           .select('*')
-          .or('pending_deletion.eq.true,deleted_at.not.is.null'),
+          .or('pending_deletion.eq.true,deleted_at.not.is.null')
+          .then((res) => (res.error ? { data: [] } : res))
+          .catch(() => ({ data: [] })),
         supabase
           .from('cadastro_usuarios')
           .select('*')
-          .or('pending_deletion.eq.true,deleted_at.not.is.null'),
+          .or('pending_deletion.eq.true,deleted_at.not.is.null')
+          .then((res) => (res.error ? { data: [] } : res))
+          .catch(() => ({ data: [] })),
         supabase
           .from('cadastro_usuarios')
           .select('*')
           .eq('approval_status', 'pending')
-          .is('deleted_at', null),
+          .is('deleted_at', null)
+          .then((res) => (res.error ? { data: [] } : res))
+          .catch(() => ({ data: [] })),
         supabase
           .from('cost_centers')
           .select('*')
-          .or('pending_deletion.eq.true,deleted_at.not.is.null'),
+          .or('pending_deletion.eq.true,deleted_at.not.is.null')
+          .then((res) => (res.error ? { data: [] } : res))
+          .catch(() => ({ data: [] })),
         supabase
           .from('chart_of_accounts')
           .select('*')
-          .or('pending_deletion.eq.true,deleted_at.not.is.null'),
+          .or('pending_deletion.eq.true,deleted_at.not.is.null')
+          .then((res) => (res.error ? { data: [] } : res))
+          .catch(() => ({ data: [] })),
         supabase
           .from('bank_accounts')
           .select('*')
-          .or('pending_deletion.eq.true,deleted_at.not.is.null'),
+          .or('pending_deletion.eq.true,deleted_at.not.is.null')
+          .then((res) => (res.error ? { data: [] } : res))
+          .catch(() => ({ data: [] })),
       ])
 
       const unified: PendingItem[] = [

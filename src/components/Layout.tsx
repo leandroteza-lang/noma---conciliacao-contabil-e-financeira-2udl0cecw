@@ -355,6 +355,12 @@ export default function Layout() {
   }, [currentMenuItem, allowedItems])
 
   useEffect(() => {
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission()
+    }
+  }, [])
+
+  useEffect(() => {
     if (!user) return
 
     const fetchNotified = async () => {
@@ -465,6 +471,15 @@ export default function Layout() {
             .catch(() => 0),
         )
 
+        const trashPromises = tables.map((table) =>
+          supabase
+            .from(table)
+            .select('id', { count: 'exact', head: true })
+            .not('deleted_at', 'is', null)
+            .then((res) => (!res.error && res.count ? res.count : 0))
+            .catch(() => 0),
+        )
+
         const userDeletionPromise = supabase
           .from('cadastro_usuarios')
           .select('id', { count: 'exact', head: true })
@@ -481,14 +496,67 @@ export default function Layout() {
           .then((res) => (!res.error && res.count ? res.count : 0))
           .catch(() => 0)
 
+        const userTrashPromise = supabase
+          .from('cadastro_usuarios')
+          .select('id', { count: 'exact', head: true })
+          .not('deleted_at', 'is', null)
+          .then((res) => (!res.error && res.count ? res.count : 0))
+          .catch(() => 0)
+
         const results = await Promise.all([
           ...deletionPromises,
+          ...trashPromises,
           userDeletionPromise,
           userApprovalPromise,
+          userTrashPromise,
         ])
 
         const total = results.reduce((acc, count) => acc + count, 0)
-        setPendingCount(total)
+
+        setPendingCount((prev) => {
+          if (total > prev && prev !== 0) {
+            try {
+              const AudioContext = window.AudioContext || (window as any).webkitAudioContext
+              if (AudioContext) {
+                const ctx = new AudioContext()
+                if (ctx.state === 'suspended') ctx.resume()
+                const osc = ctx.createOscillator()
+                const gainNode = ctx.createGain()
+                osc.type = 'sine'
+                osc.frequency.setValueAtTime(440, ctx.currentTime)
+                osc.frequency.setValueAtTime(523.25, ctx.currentTime + 0.1)
+                gainNode.gain.setValueAtTime(0, ctx.currentTime)
+                gainNode.gain.linearRampToValueAtTime(0.1, ctx.currentTime + 0.05)
+                gainNode.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3)
+                osc.connect(gainNode)
+                gainNode.connect(ctx.destination)
+                osc.start()
+                osc.stop(ctx.currentTime + 0.3)
+              }
+            } catch (e) {
+              console.error('Audio play failed', e)
+            }
+
+            if ('Notification' in window) {
+              if (Notification.permission === 'granted') {
+                new Notification('Nova Pendência', {
+                  body: 'Você tem novos itens aguardando aprovação ou na lixeira.',
+                  icon: '/favicon.ico',
+                })
+              } else if (Notification.permission !== 'denied') {
+                Notification.requestPermission().then((permission) => {
+                  if (permission === 'granted') {
+                    new Notification('Nova Pendência', {
+                      body: 'Você tem novos itens aguardando aprovação ou na lixeira.',
+                      icon: '/favicon.ico',
+                    })
+                  }
+                })
+              }
+            }
+          }
+          return total
+        })
       } catch (error) {
         console.error('Erro ao buscar pendências:', error)
       }
