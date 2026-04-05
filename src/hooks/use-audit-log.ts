@@ -1,7 +1,10 @@
 import { useCallback } from 'react'
 import { supabase } from '@/lib/supabase/client'
+import { useAuth } from '@/hooks/use-auth'
 
 export function useAuditLog() {
+  const { user, session } = useAuth()
+
   const logAction = useCallback(
     async (
       entityType: string,
@@ -9,27 +12,32 @@ export function useAuditLog() {
       action: string,
       changes?: Record<string, { old?: any; new?: any }>,
     ) => {
-      try {
-        const {
-          data: { session },
-        } = await supabase.auth.getSession()
-        if (!session?.user) return
+      if (!user) return
 
-        await supabase.functions.invoke('audit-log', {
+      try {
+        const { error } = await supabase.functions.invoke('audit-log', {
           body: {
             entityType,
             entityId,
             action,
-            performedBy: session.user.id,
+            performedBy: user.id,
             changes,
             userAgent: navigator.userAgent,
+            deviceType: /Mobile|Android|iPhone/i.test(navigator.userAgent) ? 'mobile' : 'desktop',
+          },
+          headers: {
+            Authorization: `Bearer ${session?.access_token}`,
           },
         })
-      } catch (error) {
-        console.error('Failed to log action:', error)
+
+        if (error) {
+          console.error('Failed to log audit action:', error)
+        }
+      } catch (err) {
+        console.error('Error calling audit log function:', err)
       }
     },
-    [],
+    [user, session],
   )
 
   return { logAction }
