@@ -281,7 +281,7 @@ Deno.serve(async (req: Request) => {
                 id: auditId,
                 entity_type: 'usuario',
                 entity_id: existingId,
-                action: 'REATIVACAO_VIA_IMPORTACAO',
+                action: 'UPDATE',
                 performed_by: user.id,
                 changes: { status: { old: false, new: true } },
               })
@@ -336,7 +336,7 @@ Deno.serve(async (req: Request) => {
                 id: auditId,
                 entity_type: 'usuario',
                 entity_id: existingId,
-                action: 'EDICAO_VIA_IMPORTACAO',
+                action: 'UPDATE',
                 performed_by: user.id,
                 changes,
               })
@@ -395,11 +395,20 @@ Deno.serve(async (req: Request) => {
         }
 
         if (inviteData.user) {
-          const { data: profile } = await supabaseAdmin
-            .from('cadastro_usuarios')
-            .select('id')
-            .eq('user_id', inviteData.user.id)
-            .maybeSingle()
+          let profile = null
+          for (let retries = 0; retries < 3; retries++) {
+            const { data } = await supabaseAdmin
+              .from('cadastro_usuarios')
+              .select('id')
+              .eq('user_id', inviteData.user.id)
+              .maybeSingle()
+            if (data) {
+              profile = data
+              break
+            }
+            await new Promise((r) => setTimeout(r, 500))
+          }
+
           if (profile) {
             await supabaseAdmin
               .from('cadastro_usuarios')
@@ -421,7 +430,7 @@ Deno.serve(async (req: Request) => {
               id: auditId,
               entity_type: 'usuario',
               entity_id: profile.id,
-              action: 'CRIACAO_VIA_IMPORTACAO',
+              action: 'CREATE',
               performed_by: user.id,
               changes,
             })
@@ -432,6 +441,8 @@ Deno.serve(async (req: Request) => {
                 new_value: newVal !== null ? String(newVal) : null,
               })
             })
+          } else {
+            console.error('Profile not found after retries for user:', inviteData.user.id)
           }
 
           const actionLink = inviteData.properties?.action_link
@@ -473,12 +484,17 @@ Deno.serve(async (req: Request) => {
       }
 
       if (auditLogsToInsert.length > 0) {
-        await supabaseAdmin.from('audit_logs').insert(auditLogsToInsert)
+        const { error: logsError } = await supabaseAdmin
+          .from('audit_logs')
+          .insert(auditLogsToInsert)
+        if (logsError) console.error('Error inserting audit logs:', logsError)
+
         if (auditDetailsToInsert.length > 0) {
           for (let i = 0; i < auditDetailsToInsert.length; i += 1000) {
-            await supabaseAdmin
+            const { error: detailsError } = await supabaseAdmin
               .from('audit_details')
               .insert(auditDetailsToInsert.slice(i, i + 1000))
+            if (detailsError) console.error('Error inserting audit details:', detailsError)
           }
         }
       }

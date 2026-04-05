@@ -240,7 +240,7 @@ Deno.serve(async (req: Request) => {
             id: auditId,
             entity_type: 'usuario',
             entity_id: profile.id,
-            action: 'CRIACAO',
+            action: 'CREATE',
             performed_by: admin_id,
             changes: changes,
           })
