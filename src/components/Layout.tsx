@@ -446,51 +446,48 @@ export default function Layout() {
 
     const fetchPending = async () => {
       try {
-        const queries = [
-          supabase
-            .from('organizations')
-            .select('id', { count: 'exact', head: true })
-            .eq('pending_deletion', true),
-          supabase
-            .from('departments')
-            .select('id', { count: 'exact', head: true })
-            .eq('pending_deletion', true),
-          supabase
-            .from('cadastro_usuarios')
-            .select('id', { count: 'exact', head: true })
-            .eq('pending_deletion', true),
-          supabase
-            .from('cadastro_usuarios')
-            .select('id', { count: 'exact', head: true })
-            .eq('approval_status', 'pending')
-            .is('deleted_at', null),
-          supabase
-            .from('cost_centers')
-            .select('id', { count: 'exact', head: true })
-            .eq('pending_deletion', true),
-          supabase
-            .from('chart_of_accounts')
-            .select('id', { count: 'exact', head: true })
-            .eq('pending_deletion', true),
-          supabase
-            .from('bank_accounts')
-            .select('id', { count: 'exact', head: true })
-            .eq('pending_deletion', true),
-          supabase
-            .from('tipo_conta_tga')
-            .select('id', { count: 'exact', head: true })
-            .eq('pending_deletion', true),
-        ]
+        const tables = [
+          'organizations',
+          'departments',
+          'cost_centers',
+          'chart_of_accounts',
+          'bank_accounts',
+          'tipo_conta_tga',
+        ] as const
 
-        const results = await Promise.all(queries)
+        const deletionPromises = tables.map((table) =>
+          supabase
+            .from(table)
+            .select('id', { count: 'exact', head: true })
+            .eq('pending_deletion', true)
+            .is('deleted_at', null)
+            .then((res) => (!res.error && res.count ? res.count : 0))
+            .catch(() => 0),
+        )
 
-        const total = results.reduce((acc, result) => {
-          if (!result.error && typeof result.count === 'number') {
-            return acc + result.count
-          }
-          return acc
-        }, 0)
+        const userDeletionPromise = supabase
+          .from('cadastro_usuarios')
+          .select('id', { count: 'exact', head: true })
+          .eq('pending_deletion', true)
+          .is('deleted_at', null)
+          .then((res) => (!res.error && res.count ? res.count : 0))
+          .catch(() => 0)
 
+        const userApprovalPromise = supabase
+          .from('cadastro_usuarios')
+          .select('id', { count: 'exact', head: true })
+          .eq('approval_status', 'pending')
+          .is('deleted_at', null)
+          .then((res) => (!res.error && res.count ? res.count : 0))
+          .catch(() => 0)
+
+        const results = await Promise.all([
+          ...deletionPromises,
+          userDeletionPromise,
+          userApprovalPromise,
+        ])
+
+        const total = results.reduce((acc, count) => acc + count, 0)
         setPendingCount(total)
       } catch (error) {
         console.error('Erro ao buscar pendências:', error)
@@ -501,32 +498,26 @@ export default function Layout() {
 
     const channel = supabase
       .channel('approvals-badge-changes')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'organizations' },
-        fetchPending,
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'organizations' }, () =>
+        fetchPending(),
       )
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'departments' }, fetchPending)
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'cadastro_usuarios' },
-        fetchPending,
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'departments' }, () =>
+        fetchPending(),
       )
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'cost_centers' }, fetchPending)
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'chart_of_accounts' },
-        fetchPending,
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'cadastro_usuarios' }, () =>
+        fetchPending(),
       )
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'bank_accounts' },
-        fetchPending,
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'cost_centers' }, () =>
+        fetchPending(),
       )
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'tipo_conta_tga' },
-        fetchPending,
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'chart_of_accounts' }, () =>
+        fetchPending(),
+      )
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'bank_accounts' }, () =>
+        fetchPending(),
+      )
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'tipo_conta_tga' }, () =>
+        fetchPending(),
       )
       .subscribe()
 
