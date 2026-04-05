@@ -238,7 +238,7 @@ Deno.serve(async (req: Request) => {
           }
           await supabaseAdmin.from('audit_logs').insert({
             id: auditId,
-            entity_type: 'USUARIOS',
+            entity_type: 'usuario',
             entity_id: profile.id,
             action: 'CRIACAO',
             performed_by: admin_id,

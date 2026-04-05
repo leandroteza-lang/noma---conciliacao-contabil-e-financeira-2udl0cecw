@@ -279,7 +279,7 @@ Deno.serve(async (req: Request) => {
               const auditId = crypto.randomUUID()
               auditLogsToInsert.push({
                 id: auditId,
-                entity_type: 'USUARIOS',
+                entity_type: 'usuario',
                 entity_id: existingId,
                 action: 'REATIVACAO_VIA_IMPORTACAO',
                 performed_by: user.id,
@@ -334,7 +334,7 @@ Deno.serve(async (req: Request) => {
               })
               auditLogsToInsert.push({
                 id: auditId,
-                entity_type: 'USUARIOS',
+                entity_type: 'usuario',
                 entity_id: existingId,
                 action: 'EDICAO_VIA_IMPORTACAO',
                 performed_by: user.id,
@@ -419,7 +419,7 @@ Deno.serve(async (req: Request) => {
             }
             auditLogsToInsert.push({
               id: auditId,
-              entity_type: 'USUARIOS',
+              entity_type: 'usuario',
               entity_id: profile.id,
               action: 'CRIACAO_VIA_IMPORTACAO',
               performed_by: user.id,

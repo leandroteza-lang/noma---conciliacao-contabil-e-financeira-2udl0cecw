@@ -22,7 +22,7 @@ export const useAuditLog = () => {
       const geoData = await getGeoLocation()
 
       const payload = {
-        entityType,
+        entityType: entityType.toLowerCase() === 'usuarios' ? 'usuario' : entityType,
         entityId,
         action,
         performedBy: user?.id,
