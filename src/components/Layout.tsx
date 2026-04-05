@@ -441,48 +441,66 @@ export default function Layout() {
       role === 'admin' ||
       (Array.isArray(permissions) &&
         (permissions.includes('all') || permissions.includes('aprovacoes')))
+
     if (!hasAprovacoesAccess) return
+
     const fetchPending = async () => {
-      const [orgs, depts, emps, newUsers, costs, charts, banks] = await Promise.all([
-        supabase
-          .from('organizations')
-          .select('id', { count: 'exact' })
-          .eq('pending_deletion', true),
-        supabase.from('departments').select('id', { count: 'exact' }).eq('pending_deletion', true),
-        supabase
-          .from('cadastro_usuarios')
-          .select('id', { count: 'exact' })
-          .eq('pending_deletion', true),
-        supabase
-          .from('cadastro_usuarios')
-          .select('id', { count: 'exact' })
-          .eq('approval_status', 'pending')
-          .is('deleted_at', null),
-        supabase.from('cost_centers').select('id', { count: 'exact' }).eq('pending_deletion', true),
-        supabase
-          .from('chart_of_accounts')
-          .select('id', { count: 'exact' })
-          .eq('pending_deletion', true),
-        supabase
-          .from('bank_accounts')
-          .select('id', { count: 'exact' })
-          .eq('pending_deletion', true),
-      ])
-      const total =
-        (orgs.count || 0) +
-        (depts.count || 0) +
-        (emps.count || 0) +
-        (newUsers.count || 0) +
-        (costs.count || 0) +
-        (charts.count || 0) +
-        (banks.count || 0)
-      setPendingCount(total)
+      try {
+        const queries = [
+          supabase
+            .from('organizations')
+            .select('id', { count: 'exact', head: true })
+            .eq('pending_deletion', true),
+          supabase
+            .from('departments')
+            .select('id', { count: 'exact', head: true })
+            .eq('pending_deletion', true),
+          supabase
+            .from('cadastro_usuarios')
+            .select('id', { count: 'exact', head: true })
+            .eq('pending_deletion', true),
+          supabase
+            .from('cadastro_usuarios')
+            .select('id', { count: 'exact', head: true })
+            .eq('approval_status', 'pending')
+            .is('deleted_at', null),
+          supabase
+            .from('cost_centers')
+            .select('id', { count: 'exact', head: true })
+            .eq('pending_deletion', true),
+          supabase
+            .from('chart_of_accounts')
+            .select('id', { count: 'exact', head: true })
+            .eq('pending_deletion', true),
+          supabase
+            .from('bank_accounts')
+            .select('id', { count: 'exact', head: true })
+            .eq('pending_deletion', true),
+          supabase
+            .from('tipo_conta_tga')
+            .select('id', { count: 'exact', head: true })
+            .eq('pending_deletion', true),
+        ]
+
+        const results = await Promise.all(queries)
+
+        const total = results.reduce((acc, result) => {
+          if (!result.error && typeof result.count === 'number') {
+            return acc + result.count
+          }
+          return acc
+        }, 0)
+
+        setPendingCount(total)
+      } catch (error) {
+        console.error('Erro ao buscar pendências:', error)
+      }
     }
 
     fetchPending()
 
     const channel = supabase
-      .channel('schema-db-changes-layout')
+      .channel('approvals-badge-changes')
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'organizations' },
@@ -503,6 +521,11 @@ export default function Layout() {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'bank_accounts' },
+        fetchPending,
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'tipo_conta_tga' },
         fetchPending,
       )
       .subscribe()
