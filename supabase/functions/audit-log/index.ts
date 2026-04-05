@@ -30,10 +30,13 @@ Deno.serve(async (req: Request) => {
       deviceType,
     } = await req.json()
 
+    let finalEntityType = String(entityType).toLowerCase()
+    if (finalEntityType === 'usuarios') finalEntityType = 'usuario'
+
     const { data: auditLog, error: logError } = await supabase
       .from('audit_logs')
       .insert({
-        entity_type: entityType,
+        entity_type: finalEntityType,
         entity_id: entityId,
         action,
         performed_by: performedBy,

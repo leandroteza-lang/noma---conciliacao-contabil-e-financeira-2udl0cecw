@@ -21,8 +21,11 @@ export const useAuditLog = () => {
       const deviceType = getDeviceType()
       const geoData = await getGeoLocation()
 
+      let normalizedEntity = entityType.toLowerCase()
+      if (normalizedEntity === 'usuarios') normalizedEntity = 'usuario'
+
       const payload = {
-        entityType: entityType.toLowerCase() === 'usuarios' ? 'usuario' : entityType,
+        entityType: normalizedEntity,
         entityId,
         action,
         performedBy: user?.id,

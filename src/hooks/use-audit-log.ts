@@ -15,9 +15,12 @@ export function useAuditLog() {
       if (!user) return
 
       try {
+        let normalizedEntity = entityType.toLowerCase()
+        if (normalizedEntity === 'usuarios') normalizedEntity = 'usuario'
+
         const { error } = await supabase.functions.invoke('audit-log', {
           body: {
-            entityType,
+            entityType: normalizedEntity,
             entityId,
             action,
             performedBy: user.id,

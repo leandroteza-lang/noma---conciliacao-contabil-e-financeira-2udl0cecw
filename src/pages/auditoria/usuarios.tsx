@@ -16,7 +16,7 @@ export default function AuditoriaUsuarios() {
   const [expandedLog, setExpandedLog] = useState<string | null>(null)
   const [currentFilters, setCurrentFilters] = useState<FilterState>({})
 
-  const entityType = 'usuario'
+  const entityType = 'usuario' // Padronizado para buscar sempre em minúsculas
 
   const fetchLogs = useCallback(
     async (filters: FilterState) => {
