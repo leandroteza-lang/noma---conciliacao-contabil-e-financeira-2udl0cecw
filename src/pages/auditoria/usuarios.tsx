@@ -79,15 +79,100 @@ export default function AuditoriaUsuarios() {
           }
         }
 
-        filteredData = filteredData.map((log) => ({
-          ...log,
-          performed_by_user: { email: userMap[log.performed_by] || 'Sistema' },
-        }))
+        const deptIds = new Set<string>()
+        filteredData.forEach((log) => {
+          log.audit_details?.forEach((detail: any) => {
+            if (detail.field_name === 'department_id') {
+              if (detail.old_value && detail.old_value !== 'null') deptIds.add(detail.old_value)
+              if (detail.new_value && detail.new_value !== 'null') deptIds.add(detail.new_value)
+            }
+          })
+        })
+
+        let deptMap: Record<string, string> = {}
+        if (deptIds.size > 0) {
+          const { data: deptData } = await supabase
+            .from('departments')
+            .select('id, name')
+            .in('id', Array.from(deptIds))
+
+          if (deptData) {
+            deptMap = deptData.reduce((acc: any, curr) => {
+              acc[curr.id] = curr.name
+              return acc
+            }, {})
+          }
+        }
+
+        const fieldNameMap: Record<string, string> = {
+          name: 'Nome',
+          email: 'E-mail',
+          role: 'Perfil',
+          status: 'Status',
+          phone: 'Telefone',
+          cpf: 'CPF',
+          department_id: 'Departamento',
+          address: 'Endereço',
+          observations: 'Observações',
+          approval_status: 'Status de Aprovação',
+          pending_deletion: 'Exclusão Pendente',
+          avatar_url: 'URL do Avatar',
+        }
+
+        filteredData = filteredData.map((log) => {
+          const translatedDetails = log.audit_details?.map((detail: any) => {
+            let oldVal = detail.old_value
+            let newVal = detail.new_value
+
+            if (detail.field_name === 'department_id') {
+              if (oldVal && deptMap[oldVal]) oldVal = deptMap[oldVal]
+              if (newVal && deptMap[newVal]) newVal = deptMap[newVal]
+            }
+
+            if (detail.field_name === 'status' || detail.field_name === 'pending_deletion') {
+              oldVal = oldVal === 'true' ? 'Sim' : oldVal === 'false' ? 'Não' : oldVal
+              newVal = newVal === 'true' ? 'Sim' : newVal === 'false' ? 'Não' : newVal
+            }
+
+            if (detail.field_name === 'role') {
+              const roleMap: any = {
+                admin: 'Administrador',
+                supervisor: 'Supervisor',
+                collaborator: 'Colaborador',
+                client_user: 'Usuário Cliente',
+              }
+              if (oldVal && roleMap[oldVal]) oldVal = roleMap[oldVal]
+              if (newVal && roleMap[newVal]) newVal = roleMap[newVal]
+            }
+
+            if (detail.field_name === 'approval_status') {
+              const appMap: any = { approved: 'Aprovado', pending: 'Pendente' }
+              if (oldVal && appMap[oldVal]) oldVal = appMap[oldVal]
+              if (newVal && appMap[newVal]) newVal = appMap[newVal]
+            }
+
+            return {
+              ...detail,
+              display_name: fieldNameMap[detail.field_name] || detail.field_name,
+              display_old: oldVal,
+              display_new: newVal,
+            }
+          })
+
+          return {
+            ...log,
+            performed_by_user: { email: userMap[log.performed_by] || 'Sistema' },
+            audit_details: translatedDetails,
+          }
+        })
 
         if (filters.fieldName) {
           filteredData = filteredData.filter((log) =>
-            log.audit_details?.some((detail: any) =>
-              detail.field_name.toLowerCase().includes(filters.fieldName!.toLowerCase()),
+            log.audit_details?.some(
+              (detail: any) =>
+                detail.field_name.toLowerCase().includes(filters.fieldName!.toLowerCase()) ||
+                (detail.display_name &&
+                  detail.display_name.toLowerCase().includes(filters.fieldName!.toLowerCase())),
             ),
           )
         }
@@ -223,9 +308,17 @@ export default function AuditoriaUsuarios() {
                                   {log.audit_details.map((detail: any, idx: number) => (
                                     <AuditDiff
                                       key={idx}
-                                      fieldName={detail.field_name}
-                                      oldValue={detail.old_value}
-                                      newValue={detail.new_value}
+                                      fieldName={detail.display_name || detail.field_name}
+                                      oldValue={
+                                        detail.display_old !== undefined
+                                          ? detail.display_old
+                                          : detail.old_value
+                                      }
+                                      newValue={
+                                        detail.display_new !== undefined
+                                          ? detail.display_new
+                                          : detail.new_value
+                                      }
                                     />
                                   ))}
                                 </div>
