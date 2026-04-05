@@ -261,6 +261,7 @@ export default function Layout() {
   const location = useLocation()
   const { toast } = useToast()
   const notifiedSet = useRef<Set<string>>(new Set())
+  const initialPendingFetch = useRef(true)
 
   useEffect(() => {
     if (profile) {
@@ -467,8 +468,11 @@ export default function Layout() {
             .select('id', { count: 'exact', head: true })
             .eq('pending_deletion', true)
             .is('deleted_at', null)
-            .then((res) => (!res.error && res.count ? res.count : 0))
-            .catch(() => 0),
+            .then((res) => (!res.error && typeof res.count === 'number' ? res.count : 0))
+            .catch((e) => {
+              console.error(e)
+              return 0
+            }),
         )
 
         const trashPromises = tables.map((table) =>
@@ -476,8 +480,11 @@ export default function Layout() {
             .from(table)
             .select('id', { count: 'exact', head: true })
             .not('deleted_at', 'is', null)
-            .then((res) => (!res.error && res.count ? res.count : 0))
-            .catch(() => 0),
+            .then((res) => (!res.error && typeof res.count === 'number' ? res.count : 0))
+            .catch((e) => {
+              console.error(e)
+              return 0
+            }),
         )
 
         const userDeletionPromise = supabase
@@ -485,23 +492,32 @@ export default function Layout() {
           .select('id', { count: 'exact', head: true })
           .eq('pending_deletion', true)
           .is('deleted_at', null)
-          .then((res) => (!res.error && res.count ? res.count : 0))
-          .catch(() => 0)
+          .then((res) => (!res.error && typeof res.count === 'number' ? res.count : 0))
+          .catch((e) => {
+            console.error(e)
+            return 0
+          })
 
         const userApprovalPromise = supabase
           .from('cadastro_usuarios')
           .select('id', { count: 'exact', head: true })
           .eq('approval_status', 'pending')
           .is('deleted_at', null)
-          .then((res) => (!res.error && res.count ? res.count : 0))
-          .catch(() => 0)
+          .then((res) => (!res.error && typeof res.count === 'number' ? res.count : 0))
+          .catch((e) => {
+            console.error(e)
+            return 0
+          })
 
         const userTrashPromise = supabase
           .from('cadastro_usuarios')
           .select('id', { count: 'exact', head: true })
           .not('deleted_at', 'is', null)
-          .then((res) => (!res.error && res.count ? res.count : 0))
-          .catch(() => 0)
+          .then((res) => (!res.error && typeof res.count === 'number' ? res.count : 0))
+          .catch((e) => {
+            console.error(e)
+            return 0
+          })
 
         const results = await Promise.all([
           ...deletionPromises,
@@ -514,7 +530,7 @@ export default function Layout() {
         const total = results.reduce((acc, count) => acc + count, 0)
 
         setPendingCount((prev) => {
-          if (total > prev && prev !== 0) {
+          if (total > prev && !initialPendingFetch.current) {
             try {
               const AudioContext = window.AudioContext || (window as any).webkitAudioContext
               if (AudioContext) {
@@ -555,6 +571,7 @@ export default function Layout() {
               }
             }
           }
+          initialPendingFetch.current = false
           return total
         })
       } catch (error) {
