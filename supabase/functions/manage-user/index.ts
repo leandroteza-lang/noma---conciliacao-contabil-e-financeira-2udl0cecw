@@ -226,6 +226,32 @@ Deno.serve(async (req: Request) => {
             }))
             await supabaseAdmin.from('cadastro_usuarios_companies').insert(companyInserts)
           }
+
+          const auditId = crypto.randomUUID()
+          const changes = {
+            name: { new: name },
+            email: { new: email },
+            role: { new: role },
+            cpf: { new: cpf || null },
+            phone: { new: phone || null },
+            department_id: { new: department_id || null },
+          }
+          await supabaseAdmin.from('audit_logs').insert({
+            id: auditId,
+            entity_type: 'USUARIOS',
+            entity_id: profile.id,
+            action: 'CRIACAO',
+            performed_by: admin_id,
+            changes: changes,
+          })
+          const details = Object.entries(changes).map(
+            ([field, { new: newVal }]: [string, any]) => ({
+              audit_log_id: auditId,
+              field_name: field,
+              new_value: newVal !== undefined && newVal !== null ? String(newVal) : null,
+            }),
+          )
+          await supabaseAdmin.from('audit_details').insert(details)
         }
 
         const resendApiKey = Deno.env.get('RESEND_API_KEY')

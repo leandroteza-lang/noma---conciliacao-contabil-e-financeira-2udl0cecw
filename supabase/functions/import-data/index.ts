@@ -206,6 +206,9 @@ Deno.serve(async (req: Request) => {
       const origin = req.headers.get('origin') || 'https://gestao-de-contas-f8bf6.goskip.app'
       const redirectTo = `${origin}/reset-password`
 
+      const auditLogsToInsert: any[] = []
+      const auditDetailsToInsert: any[] = []
+
       for (let i = 0; i < records.length; i++) {
         const row = records[i]
         const rowNum = i + 1
@@ -273,6 +276,21 @@ Deno.serve(async (req: Request) => {
               addError(rowNum, `Erro ao reativar usuário: ${updateError.message}`, row)
             } else {
               inserted++
+              const auditId = crypto.randomUUID()
+              auditLogsToInsert.push({
+                id: auditId,
+                entity_type: 'USUARIOS',
+                entity_id: existingId,
+                action: 'REATIVACAO_VIA_IMPORTACAO',
+                performed_by: user.id,
+                changes: { status: { old: false, new: true } },
+              })
+              auditDetailsToInsert.push({
+                audit_log_id: auditId,
+                field_name: 'status',
+                old_value: 'false',
+                new_value: 'true',
+              })
             }
             continue
           } else if (action === 'insert' || action === 'approve') {
@@ -309,6 +327,26 @@ Deno.serve(async (req: Request) => {
               )
             } else {
               inserted++
+              const auditId = crypto.randomUUID()
+              const changes: any = {}
+              Object.keys(updatePayload).forEach((k) => {
+                changes[k] = { new: updatePayload[k] }
+              })
+              auditLogsToInsert.push({
+                id: auditId,
+                entity_type: 'USUARIOS',
+                entity_id: existingId,
+                action: 'EDICAO_VIA_IMPORTACAO',
+                performed_by: user.id,
+                changes,
+              })
+              Object.entries(changes).forEach(([field, { new: newVal }]: [string, any]) => {
+                auditDetailsToInsert.push({
+                  audit_log_id: auditId,
+                  field_name: field,
+                  new_value: newVal !== null ? String(newVal) : null,
+                })
+              })
             }
             continue
           }
@@ -370,6 +408,30 @@ Deno.serve(async (req: Request) => {
                 observations: String(row['OBSERVACOES'] || '') || null,
               })
               .eq('id', profile.id)
+
+            const auditId = crypto.randomUUID()
+            const changes = {
+              name: { new: String(nome) },
+              email: { new: email },
+              role: { new: roleToInsert },
+              cpf: { new: cpf || null },
+              department_id: { new: depId || null },
+            }
+            auditLogsToInsert.push({
+              id: auditId,
+              entity_type: 'USUARIOS',
+              entity_id: profile.id,
+              action: 'CRIACAO_VIA_IMPORTACAO',
+              performed_by: user.id,
+              changes,
+            })
+            Object.entries(changes).forEach(([field, { new: newVal }]: [string, any]) => {
+              auditDetailsToInsert.push({
+                audit_log_id: auditId,
+                field_name: field,
+                new_value: newVal !== null ? String(newVal) : null,
+              })
+            })
           }
 
           const actionLink = inviteData.properties?.action_link
@@ -408,6 +470,17 @@ Deno.serve(async (req: Request) => {
           }
         }
         inserted++
+      }
+
+      if (auditLogsToInsert.length > 0) {
+        await supabaseAdmin.from('audit_logs').insert(auditLogsToInsert)
+        if (auditDetailsToInsert.length > 0) {
+          for (let i = 0; i < auditDetailsToInsert.length; i += 1000) {
+            await supabaseAdmin
+              .from('audit_details')
+              .insert(auditDetailsToInsert.slice(i, i + 1000))
+          }
+        }
       }
     } else if (type === 'BANK_ACCOUNTS') {
       for (let i = 0; i < records.length; i++) {

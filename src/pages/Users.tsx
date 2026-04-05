@@ -70,6 +70,7 @@ export default function Users() {
   const [sortDesc, setSortDesc] = useState(false)
   const [selectedUsers, setSelectedUsers] = useState<string[]>([])
   const { toast } = useToast()
+  const { logAction } = useAuditLog()
 
   const loadUsers = async () => {
     setLoading(true)
@@ -174,11 +175,19 @@ export default function Users() {
   const handleDelete = async (id: string) => {
     if (!confirm('Deseja realmente excluir este usuário?')) return
     try {
+      const userToDelete = users.find((u) => u.id === id)
       const { error } = await supabase
         .from('cadastro_usuarios')
         .update({ deleted_at: new Date().toISOString() })
         .eq('id', id)
       if (error) throw error
+
+      if (userToDelete) {
+        await logAction('USUARIOS', id, 'EXCLUSAO', {
+          status: { old: 'Ativo', new: 'Excluído' },
+        })
+      }
+
       toast({ title: 'Sucesso', description: 'Usuário excluído.' })
       setSelectedUsers((prev) => prev.filter((uid) => uid !== id))
       loadUsers()
@@ -195,6 +204,13 @@ export default function Users() {
         .update({ deleted_at: new Date().toISOString() })
         .in('id', selectedUsers)
       if (error) throw error
+
+      for (const id of selectedUsers) {
+        await logAction('USUARIOS', id, 'EXCLUSAO_EM_LOTE', {
+          status: { old: 'Ativo', new: 'Excluído' },
+        })
+      }
+
       toast({ title: 'Sucesso', description: `${selectedUsers.length} usuários excluídos.` })
       setSelectedUsers([])
       loadUsers()
@@ -482,16 +498,19 @@ export default function Users() {
         }}
         user={userToEdit}
         onSaved={loadUsers}
+        logAction={logAction}
       />
 
       <BulkEditModal
         isOpen={isBulkEditModalOpen}
         onClose={() => setIsBulkEditModalOpen(false)}
         selectedUsers={selectedUsers}
+        users={users}
         onSaved={() => {
           setSelectedUsers([])
           loadUsers()
         }}
+        logAction={logAction}
       />
     </div>
   )
@@ -1116,11 +1135,13 @@ function EditUserModal({
   onClose,
   user,
   onSaved,
+  logAction,
 }: {
   isOpen: boolean
   onClose: () => void
   user: any
   onSaved: () => void
+  logAction: (type: string, id: string, action: string, changes?: any) => Promise<void>
 }) {
   const [name, setName] = useState('')
   const [cpf, setCpf] = useState('')
@@ -1130,6 +1151,7 @@ function EditUserModal({
   const [status, setStatus] = useState('true')
   const [permissions, setPermissions] = useState<string[]>(['all'])
   const [companies, setCompanies] = useState<string[]>([])
+  const [initialCompanies, setInitialCompanies] = useState<string[]>([])
   const [organizations, setOrganizations] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
   const [departments, setDepartments] = useState<any[]>([])
@@ -1178,11 +1200,16 @@ function EditUserModal({
         .select('organization_id')
         .eq('usuario_id', user.id)
         .then(({ data }) => {
-          if (data) setCompanies(data.map((d) => d.organization_id))
+          if (data) {
+            const comps = data.map((d) => d.organization_id)
+            setCompanies(comps)
+            setInitialCompanies(comps)
+          }
         })
     } else {
       setPermissions(['all'])
       setCompanies([])
+      setInitialCompanies([])
     }
   }, [isOpen, user])
 
@@ -1200,6 +1227,24 @@ function EditUserModal({
         permissions: permissions.length > 0 ? permissions : ['all'],
       }
 
+      const changes: Record<string, { old: any; new: any }> = {}
+      if (user.name !== name) changes.name = { old: user.name, new: name }
+      if ((user.cpf || '') !== (cpf || '')) changes.cpf = { old: user.cpf, new: cpf }
+      if ((user.phone || '') !== (phone || '')) changes.phone = { old: user.phone, new: phone }
+      if (user.role !== role) changes.role = { old: user.role, new: role }
+      if ((user.department_id || 'none') !== departmentId)
+        changes.department_id = { old: user.department_id, new: departmentId }
+      if (user.status !== (status === 'true'))
+        changes.status = { old: user.status, new: status === 'true' }
+
+      const oldPerms = [...(user.permissions || ['all'])].sort().join(',')
+      const newPerms = [...(permissions.length > 0 ? permissions : ['all'])].sort().join(',')
+      if (oldPerms !== newPerms) changes.permissions = { old: user.permissions, new: permissions }
+
+      const oldComps = [...initialCompanies].sort().join(',')
+      const newComps = [...companies].sort().join(',')
+      if (oldComps !== newComps) changes.companies = { old: initialCompanies, new: companies }
+
       const { error } = await supabase.from('cadastro_usuarios').update(updates).eq('id', user.id)
       if (error) throw error
 
@@ -1210,6 +1255,10 @@ function EditUserModal({
           organization_id: orgId,
         }))
         await supabase.from('cadastro_usuarios_companies').insert(companyInserts)
+      }
+
+      if (Object.keys(changes).length > 0) {
+        await logAction('USUARIOS', user.id, 'EDICAO', changes)
       }
 
       toast({ title: 'Sucesso', description: 'Usuário atualizado com sucesso.' })
@@ -1413,12 +1462,16 @@ function BulkEditModal({
   isOpen,
   onClose,
   selectedUsers,
+  users,
   onSaved,
+  logAction,
 }: {
   isOpen: boolean
   onClose: () => void
   selectedUsers: string[]
+  users: any[]
   onSaved: () => void
+  logAction: (type: string, id: string, action: string, changes?: any) => Promise<void>
 }) {
   const [role, setRole] = useState<string>('no_change')
   const [status, setStatus] = useState<string>('no_change')
@@ -1515,6 +1568,22 @@ function BulkEditModal({
             })),
           )
           await supabase.from('cadastro_usuarios_companies').insert(companyInserts)
+        }
+      }
+
+      for (const userId of selectedUsers) {
+        const u = users.find((user: any) => user.id === userId)
+        const changes: Record<string, { old: any; new: any }> = {}
+        if (role !== 'no_change' && u?.role !== role) changes.role = { old: u?.role, new: role }
+        if (status !== 'no_change' && u?.status !== (status === 'true'))
+          changes.status = { old: u?.status, new: status === 'true' }
+        if (departmentId !== 'no_change' && (u?.department_id || 'none') !== departmentId)
+          changes.department_id = { old: u?.department_id, new: departmentId }
+        if (updatePermissions) changes.permissions = { old: u?.permissions, new: permissions }
+        if (updateCompanies) changes.companies = { old: 'Múltiplas', new: companies }
+
+        if (Object.keys(changes).length > 0) {
+          await logAction('USUARIOS', userId, 'EDICAO_EM_LOTE', changes)
         }
       }
 

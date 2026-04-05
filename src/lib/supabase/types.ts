@@ -126,6 +126,119 @@ export type Database = {
           },
         ]
       }
+      audit_config: {
+        Row: {
+          created_at: string | null
+          entity_type: string
+          id: string
+          log_level: string
+          retention_days: number
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          entity_type: string
+          id?: string
+          log_level?: string
+          retention_days?: number
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          entity_type?: string
+          id?: string
+          log_level?: string
+          retention_days?: number
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      audit_details: {
+        Row: {
+          audit_log_id: string
+          created_at: string | null
+          field_name: string
+          id: string
+          new_value: string | null
+          old_value: string | null
+        }
+        Insert: {
+          audit_log_id: string
+          created_at?: string | null
+          field_name: string
+          id?: string
+          new_value?: string | null
+          old_value?: string | null
+        }
+        Update: {
+          audit_log_id?: string
+          created_at?: string | null
+          field_name?: string
+          id?: string
+          new_value?: string | null
+          old_value?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'audit_details_audit_log_id_fkey'
+            columns: ['audit_log_id']
+            isOneToOne: false
+            referencedRelation: 'audit_logs'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      audit_logs: {
+        Row: {
+          action: string
+          changes: Json | null
+          city: string | null
+          country: string | null
+          created_at: string | null
+          device_type: string | null
+          entity_id: string
+          entity_type: string
+          id: string
+          ip_address: string | null
+          performed_at: string | null
+          performed_by: string | null
+          session_id: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          action: string
+          changes?: Json | null
+          city?: string | null
+          country?: string | null
+          created_at?: string | null
+          device_type?: string | null
+          entity_id: string
+          entity_type: string
+          id?: string
+          ip_address?: string | null
+          performed_at?: string | null
+          performed_by?: string | null
+          session_id?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          action?: string
+          changes?: Json | null
+          city?: string | null
+          country?: string | null
+          created_at?: string | null
+          device_type?: string | null
+          entity_id?: string
+          entity_type?: string
+          id?: string
+          ip_address?: string | null
+          performed_at?: string | null
+          performed_by?: string | null
+          session_id?: string | null
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
       bank_accounts: {
         Row: {
           account_code: string | null
@@ -964,6 +1077,35 @@ export const Constants = {
 //   status: character varying (nullable, default: 'Draft'::character varying)
 //   created_at: timestamp with time zone (nullable, default: now())
 //   cost_center_id: uuid (nullable)
+// Table: audit_config
+//   id: uuid (not null, default: gen_random_uuid())
+//   entity_type: character varying (not null)
+//   retention_days: integer (not null, default: 365)
+//   log_level: character varying (not null, default: 'DETAILED'::character varying)
+//   created_at: timestamp with time zone (nullable, default: now())
+//   updated_at: timestamp with time zone (nullable, default: now())
+// Table: audit_details
+//   id: uuid (not null, default: gen_random_uuid())
+//   audit_log_id: uuid (not null)
+//   field_name: character varying (not null)
+//   old_value: text (nullable)
+//   new_value: text (nullable)
+//   created_at: timestamp with time zone (nullable, default: now())
+// Table: audit_logs
+//   id: uuid (not null, default: gen_random_uuid())
+//   entity_type: character varying (not null)
+//   entity_id: uuid (not null)
+//   action: character varying (not null)
+//   performed_by: uuid (nullable)
+//   performed_at: timestamp with time zone (nullable, default: now())
+//   ip_address: character varying (nullable)
+//   user_agent: text (nullable)
+//   session_id: character varying (nullable)
+//   country: character varying (nullable)
+//   city: character varying (nullable)
+//   device_type: character varying (nullable)
+//   changes: jsonb (nullable)
+//   created_at: timestamp with time zone (nullable, default: now())
 // Table: bank_accounts
 //   id: uuid (not null, default: gen_random_uuid())
 //   organization_id: uuid (nullable)
@@ -1141,6 +1283,15 @@ export const Constants = {
 //   FOREIGN KEY accounting_entries_debit_account_id_fkey: FOREIGN KEY (debit_account_id) REFERENCES chart_of_accounts(id) ON DELETE RESTRICT
 //   FOREIGN KEY accounting_entries_organization_id_fkey: FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE
 //   PRIMARY KEY accounting_entries_pkey: PRIMARY KEY (id)
+// Table: audit_config
+//   UNIQUE audit_config_entity_type_key: UNIQUE (entity_type)
+//   PRIMARY KEY audit_config_pkey: PRIMARY KEY (id)
+// Table: audit_details
+//   FOREIGN KEY audit_details_audit_log_id_fkey: FOREIGN KEY (audit_log_id) REFERENCES audit_logs(id) ON DELETE CASCADE
+//   PRIMARY KEY audit_details_pkey: PRIMARY KEY (id)
+// Table: audit_logs
+//   FOREIGN KEY audit_logs_performed_by_fkey: FOREIGN KEY (performed_by) REFERENCES auth.users(id)
+//   PRIMARY KEY audit_logs_pkey: PRIMARY KEY (id)
 // Table: bank_accounts
 //   FOREIGN KEY bank_accounts_deleted_by_fkey: FOREIGN KEY (deleted_by) REFERENCES auth.users(id) ON DELETE SET NULL
 //   FOREIGN KEY bank_accounts_deletion_requested_by_fkey: FOREIGN KEY (deletion_requested_by) REFERENCES auth.users(id) ON DELETE SET NULL
@@ -1220,6 +1371,21 @@ export const Constants = {
 //     USING: ((organization_id IN ( SELECT organizations.id    FROM organizations   WHERE (organizations.user_id = auth.uid()))) OR (organization_id IN ( SELECT cuc.organization_id    FROM (cadastro_usuarios_companies cuc      JOIN cadastro_usuarios cu ON ((cuc.usuario_id = cu.id)))   WHERE ((cu.email)::text = (auth.jwt() ->> 'email'::text)))))
 //   Policy "org_accounting_entries_update" (UPDATE, PERMISSIVE) roles={authenticated}
 //     USING: ((organization_id IN ( SELECT organizations.id    FROM organizations   WHERE (organizations.user_id = auth.uid()))) OR (organization_id IN ( SELECT cuc.organization_id    FROM (cadastro_usuarios_companies cuc      JOIN cadastro_usuarios cu ON ((cuc.usuario_id = cu.id)))   WHERE ((cu.email)::text = (auth.jwt() ->> 'email'::text)))))
+// Table: audit_config
+//   Policy "Allow authenticated users to view audit config" (SELECT, PERMISSIVE) roles={public}
+//     USING: (auth.role() = 'authenticated'::text)
+//   Policy "Allow service role to update audit config" (UPDATE, PERMISSIVE) roles={public}
+//     USING: true
+// Table: audit_details
+//   Policy "Allow authenticated users to view audit details" (SELECT, PERMISSIVE) roles={public}
+//     USING: (auth.role() = 'authenticated'::text)
+//   Policy "Allow service role to insert audit details" (INSERT, PERMISSIVE) roles={public}
+//     WITH CHECK: true
+// Table: audit_logs
+//   Policy "Allow authenticated users to view audit logs" (SELECT, PERMISSIVE) roles={public}
+//     USING: (auth.role() = 'authenticated'::text)
+//   Policy "Allow service role to insert audit logs" (INSERT, PERMISSIVE) roles={public}
+//     WITH CHECK: true
 // Table: bank_accounts
 //   Policy "org_bank_accounts_delete" (DELETE, PERMISSIVE) roles={authenticated}
 //     USING: ((organization_id IN ( SELECT organizations.id    FROM organizations   WHERE (organizations.user_id = auth.uid()))) OR (organization_id IN ( SELECT cuc.organization_id    FROM (cadastro_usuarios_companies cuc      JOIN cadastro_usuarios cu ON ((cuc.usuario_id = cu.id)))   WHERE ((cu.email)::text = (auth.jwt() ->> 'email'::text)))))
@@ -1533,5 +1699,7 @@ export const Constants = {
 //   trg_check_tga_account_soft_delete: CREATE TRIGGER trg_check_tga_account_soft_delete BEFORE UPDATE ON public.tipo_conta_tga FOR EACH ROW EXECUTE FUNCTION check_tga_account_soft_delete()
 
 // --- INDEXES ---
+// Table: audit_config
+//   CREATE UNIQUE INDEX audit_config_entity_type_key ON public.audit_config USING btree (entity_type)
 // Table: cadastro_usuarios
 //   CREATE UNIQUE INDEX cadastro_usuarios_cpf_idx ON public.cadastro_usuarios USING btree (cpf) WHERE ((cpf IS NOT NULL) AND ((cpf)::text <> ''::text) AND (deleted_at IS NULL))
