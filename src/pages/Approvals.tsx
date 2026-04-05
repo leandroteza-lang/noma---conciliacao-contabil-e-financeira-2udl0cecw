@@ -45,6 +45,62 @@ export default function Approvals() {
   const { role } = useAuth()
   const { toast } = useToast()
 
+  const logAuditAction = async (item: any, actionType: string, customChanges: any = null) => {
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+      if (!user) return
+
+      let finalEntityType = item.type || 'unknown'
+      if (finalEntityType === 'employee') finalEntityType = 'usuario'
+      if (finalEntityType === 'organization') finalEntityType = 'empresa'
+      if (finalEntityType === 'department') finalEntityType = 'departamento'
+      if (finalEntityType === 'cost_center') finalEntityType = 'centro_custo'
+      if (finalEntityType === 'chart_account') finalEntityType = 'conta_contabil'
+      if (finalEntityType === 'bank_account') finalEntityType = 'conta_bancaria'
+
+      let changes = customChanges
+
+      if (actionType === 'DELETE' && !changes) {
+        changes = {}
+        if (item.originalData) {
+          Object.keys(item.originalData).forEach((k) => {
+            if (item.originalData[k] !== null && typeof item.originalData[k] !== 'object') {
+              changes[k] = { old: item.originalData[k], new: null }
+            }
+          })
+        }
+      }
+
+      const { data: auditLog, error } = await supabase
+        .from('audit_logs')
+        .insert({
+          entity_type: finalEntityType,
+          entity_id: item.id,
+          action: actionType,
+          performed_by: user.id,
+          changes,
+        })
+        .select()
+        .single()
+
+      if (!error && auditLog && changes) {
+        const details = Object.entries(changes).map(([field, vals]: [string, any]) => ({
+          audit_log_id: auditLog.id,
+          field_name: field,
+          old_value: vals.old !== undefined ? String(vals.old) : null,
+          new_value: vals.new !== undefined ? String(vals.new) : null,
+        }))
+        if (details.length > 0) {
+          await supabase.from('audit_details').insert(details)
+        }
+      }
+    } catch (e) {
+      console.error('Erro ao salvar log de auditoria', e)
+    }
+  }
+
   const fetchPendingItems = async () => {
     if (role !== 'admin') return
     try {
@@ -263,6 +319,11 @@ export default function Approvals() {
         .eq('id', id)
       if (error) throw error
 
+      const userFullData = newUsers.find((u) => u.id === id)
+      await logAuditAction({ type: 'employee', id, originalData: userFullData }, 'APPROVE', {
+        approval_status: { old: 'pending', new: 'approved' },
+      })
+
       if (userData?.email) {
         await supabase.functions.invoke('send-email', {
           body: {
@@ -303,6 +364,9 @@ export default function Approvals() {
         })
       }
 
+      const userFullData = newUsers.find((u) => u.id === id)
+      await logAuditAction({ type: 'employee', id, originalData: userFullData }, 'DELETE')
+
       const { error } = await supabase.from('cadastro_usuarios').delete().eq('id', id)
       if (error) throw error
       setProgress(100)
@@ -334,6 +398,12 @@ export default function Approvals() {
         } as any)
         .eq('id', item.id)
       if (error) throw error
+
+      await logAuditAction(item, 'SOFT_DELETE', {
+        pending_deletion: { old: true, new: false },
+        deleted_at: { old: null, new: new Date().toISOString() },
+      })
+
       setProgress(100)
       toast({ title: 'Aprovado', description: 'Registro movido para a lixeira.' })
       fetchPendingItems()
@@ -362,6 +432,12 @@ export default function Approvals() {
         } as any)
         .eq('id', item.id)
       if (error) throw error
+
+      await logAuditAction(item, 'RESTORE', {
+        pending_deletion: { old: item.pending, new: false },
+        deleted_at: { old: item.deletedAt, new: null },
+      })
+
       setProgress(100)
       toast({ title: 'Restaurado', description: 'O registro voltou a ficar ativo no sistema.' })
       fetchPendingItems()
@@ -386,6 +462,9 @@ export default function Approvals() {
           body: { action: 'delete', user_id: item.originalData.user_id },
         })
       }
+
+      await logAuditAction(item, 'DELETE')
+
       const { error } = await supabase.from(getTableForType(item.type)).delete().eq('id', item.id)
       if (error) throw error
       setProgress(100)
@@ -423,6 +502,7 @@ export default function Approvals() {
               body: { action: 'delete', user_id: item.originalData.user_id },
             })
           }
+          await logAuditAction(item, 'DELETE')
           await supabase.from(getTableForType(item.type)).delete().eq('id', item.id)
         } else if (action === 'approve') {
           await supabase
@@ -433,6 +513,10 @@ export default function Approvals() {
               deleted_by: user?.id,
             } as any)
             .eq('id', item.id)
+          await logAuditAction(item, 'SOFT_DELETE', {
+            pending_deletion: { old: true, new: false },
+            deleted_at: { old: null, new: new Date().toISOString() },
+          })
         } else {
           await supabase
             .from(getTableForType(item.type))
@@ -444,6 +528,10 @@ export default function Approvals() {
               deleted_by: null,
             } as any)
             .eq('id', item.id)
+          await logAuditAction(item, 'RESTORE', {
+            pending_deletion: { old: item.pending, new: false },
+            deleted_at: { old: item.deletedAt, new: null },
+          })
         }
         processed++
         setProgress((processed / itemsToProcess.length) * 100)

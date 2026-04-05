@@ -223,6 +223,22 @@ export default function AuditoriaUsuarios() {
           }
         }
 
+        const entityIds = [...new Set(filteredData.map((log) => log.entity_id).filter(Boolean))]
+        let entityMap: Record<string, { name: string; email: string }> = {}
+        if (entityIds.length > 0) {
+          const { data: entityData } = await supabase
+            .from('cadastro_usuarios')
+            .select('id, name, email')
+            .in('id', entityIds)
+
+          if (entityData) {
+            entityMap = entityData.reduce((acc: any, curr) => {
+              acc[curr.id] = { name: curr.name, email: curr.email }
+              return acc
+            }, {})
+          }
+        }
+
         const deptIds = new Set<string>()
         filteredData.forEach((log) => {
           log.audit_details?.forEach((detail: any) => {
@@ -306,6 +322,7 @@ export default function AuditoriaUsuarios() {
           return {
             ...log,
             performed_by_user: { email: userMap[log.performed_by] || 'Sistema' },
+            affected_record: entityMap[log.entity_id] || { name: 'Desconhecido', email: 'N/A' },
             audit_details: translatedDetails,
           }
         })
@@ -345,6 +362,11 @@ export default function AuditoriaUsuarios() {
         if (sortConfig.key === 'performed_by_user') {
           aVal = a.performed_by_user?.email || ''
           bVal = b.performed_by_user?.email || ''
+        }
+
+        if (sortConfig.key === 'affected_record') {
+          aVal = a.affected_record?.name || ''
+          bVal = b.affected_record?.name || ''
         }
 
         if (aVal === null || aVal === undefined) aVal = ''
@@ -388,18 +410,21 @@ export default function AuditoriaUsuarios() {
   const getActionBadge = (action: string) => {
     switch (action) {
       case 'CREATE':
+      case 'INCLUSÃO':
         return (
           <Badge className="bg-green-600 hover:bg-green-700 text-white font-bold uppercase tracking-wider">
             INCLUSÃO
           </Badge>
         )
       case 'UPDATE':
+      case 'EDIÇÃO':
         return (
           <Badge className="bg-amber-500 hover:bg-amber-600 text-black font-bold uppercase tracking-wider">
             EDIÇÃO
           </Badge>
         )
       case 'DELETE':
+      case 'EXCLUSÃO':
         return (
           <Badge className="bg-red-600 hover:bg-red-700 text-white font-bold uppercase tracking-wider">
             EXCLUSÃO
@@ -410,6 +435,24 @@ export default function AuditoriaUsuarios() {
         return (
           <Badge className="bg-blue-600 hover:bg-blue-700 text-white font-bold uppercase tracking-wider">
             IMPORTAÇÃO
+          </Badge>
+        )
+      case 'APPROVE':
+        return (
+          <Badge className="bg-teal-600 hover:bg-teal-700 text-white font-bold uppercase tracking-wider">
+            APROVAÇÃO
+          </Badge>
+        )
+      case 'SOFT_DELETE':
+        return (
+          <Badge className="bg-orange-600 hover:bg-orange-700 text-white font-bold uppercase tracking-wider">
+            LIXEIRA
+          </Badge>
+        )
+      case 'RESTORE':
+        return (
+          <Badge className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold uppercase tracking-wider">
+            RESTAURAÇÃO
           </Badge>
         )
       default:
@@ -476,6 +519,14 @@ export default function AuditoriaUsuarios() {
                 </TableHead>
                 <TableHead
                   className="cursor-pointer"
+                  onClick={() => requestSort('affected_record')}
+                >
+                  <div className="flex items-center gap-2">
+                    Registro Afetado <ArrowUpDown className="w-3 h-3 text-muted-foreground" />
+                  </div>
+                </TableHead>
+                <TableHead
+                  className="cursor-pointer"
                   onClick={() => requestSort('performed_by_user')}
                 >
                   <div className="flex items-center gap-2">
@@ -498,14 +549,14 @@ export default function AuditoriaUsuarios() {
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="py-16 text-center text-muted-foreground">
+                  <TableCell colSpan={7} className="py-16 text-center text-muted-foreground">
                     <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-primary" />
                     Buscando registros de auditoria...
                   </TableCell>
                 </TableRow>
               ) : sortedLogs.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="py-16 text-center text-muted-foreground">
+                  <TableCell colSpan={7} className="py-16 text-center text-muted-foreground">
                     <div className="bg-muted w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
                       <Shield className="w-8 h-8 opacity-50" />
                     </div>
@@ -537,6 +588,18 @@ export default function AuditoriaUsuarios() {
                       <TableCell className="whitespace-nowrap">
                         {getActionBadge(log.action)}
                       </TableCell>
+                      <TableCell className="font-medium">
+                        <div className="flex flex-col">
+                          <span className="text-foreground">
+                            {log.affected_record?.name || 'Desconhecido'}
+                          </span>
+                          <span className="text-xs text-muted-foreground font-normal">
+                            {log.affected_record?.email !== 'N/A'
+                              ? log.affected_record?.email
+                              : log.entity_id}
+                          </span>
+                        </div>
+                      </TableCell>
                       <TableCell className="font-medium">{log.performed_by_user?.email}</TableCell>
                       <TableCell className="whitespace-nowrap text-muted-foreground">
                         {new Date(log.performed_at).toLocaleString('pt-BR')}
@@ -558,7 +621,7 @@ export default function AuditoriaUsuarios() {
 
                     {expandedLog === log.id && (
                       <TableRow className="bg-muted/10 hover:bg-muted/10">
-                        <TableCell colSpan={6} className="p-0 border-b-0">
+                        <TableCell colSpan={7} className="p-0 border-b-0">
                           <div className="p-6 border-b shadow-inner animate-fade-in-down">
                             <div className="max-w-6xl mx-auto space-y-6">
                               <div className="space-y-4">
