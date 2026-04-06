@@ -420,7 +420,10 @@ export default function Departments() {
             <>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" className="gap-2">
+                  <Button
+                    variant="outline"
+                    className="gap-2 no-underline bg-[#1bc3c8] opacity-[1] shadow-[0px_0px_6px_0px_transparent] text-[#f4f4f4] not-italic inline-flex"
+                  >
                     <Upload className="h-4 w-4" /> Importar em Lote
                   </Button>
                 </DropdownMenuTrigger>
