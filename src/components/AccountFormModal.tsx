@@ -28,6 +28,8 @@ const schema = z.object({
   banco: z.string().min(1, 'Campo obrigatório'),
   agencia: z.string().min(1, 'Campo obrigatório'),
   numeroConta: z.string().min(1, 'Campo obrigatório'),
+  digitoConta: z.string().optional(),
+  tipoConta: z.string().optional(),
   classificacao: z.string().min(1, 'Campo obrigatório'),
 })
 
@@ -36,7 +38,7 @@ type FormData = z.infer<typeof schema>
 interface Props {
   isOpen: boolean
   onClose: () => void
-  onSave: (data: Omit<Account, 'id'>) => void
+  onSave: (data: any) => void
   initialData?: Account | null
   organizations: Organization[]
   defaultOrganizationId?: string
@@ -63,6 +65,8 @@ export function AccountFormModal({
       banco: '-',
       agencia: '-',
       numeroConta: '-',
+      digitoConta: '',
+      tipoConta: '',
       classificacao: 'Banco',
       organization_id: defaultOrganizationId || '',
     },
@@ -79,6 +83,8 @@ export function AccountFormModal({
           banco: '-',
           agencia: '-',
           numeroConta: '-',
+          digitoConta: '',
+          tipoConta: '',
           classificacao: 'Banco',
           contaContabil: '',
           descricao: '',
@@ -90,7 +96,7 @@ export function AccountFormModal({
   }, [isOpen, initialData, reset, defaultOrganizationId, organizations])
 
   const onSubmit = (data: FormData) => {
-    onSave(data as Omit<Account, 'id'>)
+    onSave(data as any)
   }
 
   return (
@@ -170,6 +176,14 @@ export function AccountFormModal({
                 className={errors.numeroConta ? 'border-red-500' : ''}
                 placeholder="Número da Conta"
               />
+            </div>
+            <div className="space-y-2 col-span-2 sm:col-span-1">
+              <Label>Dígito</Label>
+              <Input {...register('digitoConta')} placeholder="Ex: X" />
+            </div>
+            <div className="space-y-2 col-span-2 sm:col-span-1">
+              <Label>Tipo Conta</Label>
+              <Input {...register('tipoConta')} placeholder="Ex: Corrente, Poupança" />
             </div>
             <div className="space-y-2 col-span-2 sm:col-span-1">
               <Label>Classificação *</Label>

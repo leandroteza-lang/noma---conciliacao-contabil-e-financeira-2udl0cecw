@@ -15,6 +15,7 @@ import {
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
 import { ImportAccountModal } from '@/components/ImportAccountModal'
+import { AccountFormModal } from '@/components/AccountFormModal'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
@@ -70,6 +71,16 @@ export default function Index() {
     null,
   )
   const [isImportModalOpen, setIsImportModalOpen] = useState(false)
+  const [isFormModalOpen, setIsFormModalOpen] = useState(false)
+  const [organizations, setOrganizations] = useState<any[]>([])
+
+  useEffect(() => {
+    const fetchOrgs = async () => {
+      const { data } = await supabase.from('organizations').select('*').is('deleted_at', null)
+      if (data) setOrganizations(data)
+    }
+    fetchOrgs()
+  }, [])
 
   const fetchAccounts = async () => {
     if (!user) return
@@ -407,7 +418,10 @@ export default function Index() {
             </DropdownMenuContent>
           </DropdownMenu>
 
-          <Button className="gap-2 bg-blue-600 hover:bg-blue-700">
+          <Button
+            className="gap-2 bg-blue-600 hover:bg-blue-700"
+            onClick={() => setIsFormModalOpen(true)}
+          >
             <Plus className="h-4 w-4" /> Nova Conta
           </Button>
         </div>
@@ -625,6 +639,33 @@ export default function Index() {
         onSuccess={() => {
           fetchAccounts()
           setIsImportModalOpen(false)
+        }}
+      />
+      <AccountFormModal
+        isOpen={isFormModalOpen}
+        onClose={() => setIsFormModalOpen(false)}
+        organizations={organizations}
+        onSave={async (data: any) => {
+          try {
+            const { error } = await supabase.from('bank_accounts').insert({
+              organization_id: data.organization_id,
+              account_code: data.contaContabil,
+              description: data.descricao,
+              bank_code: data.banco,
+              agency: data.agencia,
+              account_number: data.numeroConta,
+              check_digit: data.digitoConta,
+              account_type: data.tipoConta,
+              classification: data.classificacao,
+              company_name: organizations.find((o) => o.id === data.organization_id)?.name || '',
+            })
+            if (error) throw error
+            toast({ title: 'Sucesso', description: 'Conta criada com sucesso!' })
+            setIsFormModalOpen(false)
+            fetchAccounts()
+          } catch (error: any) {
+            toast({ title: 'Erro', description: error.message, variant: 'destructive' })
+          }
         }}
       />
     </div>
