@@ -5,8 +5,7 @@ import * as XLSX from 'npm:xlsx@0.18.5'
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-  'Access-Control-Allow-Headers':
-    'authorization, x-client-info, x-supabase-client-platform, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, x-supabase-client-platform, apikey, content-type',
 }
 
 Deno.serve(async (req: Request) => {
@@ -33,18 +32,18 @@ Deno.serve(async (req: Request) => {
         apikey: supabaseKey,
       },
     })
-
+    
     if (!userResponse.ok) {
       const err = await userResponse.json().catch(() => ({}))
       throw new Error(`Usuário não autenticado: ${err.msg || err.message || 'Token inválido'}`)
     }
-
+    
     const user = await userResponse.json()
     if (!user || !user.id) throw new Error('Usuário não autenticado: Token inválido')
 
     const supabase = createClient(supabaseUrl, supabaseKey, {
       global: { headers: { Authorization: authHeader } },
-      auth: { persistSession: false },
+      auth: { persistSession: false }
     })
 
     const payload = await req.json()
@@ -55,58 +54,40 @@ Deno.serve(async (req: Request) => {
 
     if (payload.fileBase64) {
       try {
-        const binaryString = atob(payload.fileBase64)
-        const bytes = new Uint8Array(binaryString.length)
+        const binaryString = atob(payload.fileBase64);
+        const bytes = new Uint8Array(binaryString.length);
         for (let i = 0; i < binaryString.length; i++) {
-          bytes[i] = binaryString.charCodeAt(i)
+          bytes[i] = binaryString.charCodeAt(i);
         }
-        const workbook = XLSX.read(bytes, { type: 'array' })
-        const firstSheet = workbook.SheetNames[0]
-        const worksheet = workbook.Sheets[firstSheet]
-        const rawRecords: any[] = XLSX.utils.sheet_to_json(worksheet, { defval: '' })
-
+        const workbook = XLSX.read(bytes, { type: 'array' });
+        const firstSheet = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[firstSheet];
+        const rawRecords: any[] = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
+        
         records = rawRecords.map((r: any) => {
-          const normalized: any = {}
+          const normalized: any = {};
           for (const key in r) {
-            const cleanKey = key
-              .normalize('NFD')
-              .replace(/[\u0300-\u036f]/g, '')
-              .toUpperCase()
-              .trim()
-            normalized[cleanKey] = r[key]
+            const cleanKey = key.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().trim();
+            normalized[cleanKey] = r[key];
           }
-          return normalized
-        })
+          return normalized;
+        });
       } catch (err: any) {
-        throw new Error('Erro ao processar o arquivo Excel: ' + err.message)
+        throw new Error('Erro ao processar o arquivo Excel: ' + err.message);
       }
     }
 
-    const SUPPORTED_TYPES = [
-      'BANK_ACCOUNTS',
-      'COST_CENTERS',
-      'CHART_ACCOUNTS',
-      'MAPPINGS',
-      'FINANCIAL_ENTRIES',
-      'COMPANIES',
-      'DEPARTMENTS',
-      'EMPLOYEES',
-    ]
-
+    const SUPPORTED_TYPES = ['BANK_ACCOUNTS', 'COST_CENTERS', 'CHART_ACCOUNTS', 'MAPPINGS', 'FINANCIAL_ENTRIES', 'COMPANIES', 'DEPARTMENTS', 'EMPLOYEES']
+    
     if (!SUPPORTED_TYPES.includes(type)) {
-      return new Response(
-        JSON.stringify({ error: 'Tipo de importação não suportado atualmente por esta função' }),
-        {
-          status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        },
-      )
+      return new Response(JSON.stringify({ error: 'Tipo de importação não suportado atualmente por esta função' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
     }
 
     if (!Array.isArray(records) || records.length === 0) {
-      throw new Error(
-        'O formato dos dados é inválido ou a planilha está vazia. Uma lista de registros era esperada.',
-      )
+      throw new Error('O formato dos dados é inválido ou a planilha está vazia. Uma lista de registros era esperada.')
     }
 
     let inserted = 0
@@ -123,14 +104,7 @@ Deno.serve(async (req: Request) => {
       .select('id, name')
       .is('deleted_at', null)
 
-    if (
-      orgsError &&
-      (type === 'BANK_ACCOUNTS' ||
-        type === 'COST_CENTERS' ||
-        type === 'CHART_ACCOUNTS' ||
-        type === 'MAPPINGS' ||
-        type === 'FINANCIAL_ENTRIES')
-    ) {
+    if (orgsError && (type === 'BANK_ACCOUNTS' || type === 'COST_CENTERS' || type === 'CHART_ACCOUNTS' || type === 'MAPPINGS' || type === 'FINANCIAL_ENTRIES')) {
       throw new Error('Erro ao buscar organizações do usuário: ' + orgsError.message)
     }
 
@@ -156,29 +130,26 @@ Deno.serve(async (req: Request) => {
         const cpf = String(row['CPF'] || '').trim()
 
         if (cnpj) {
-          const { data: existingCnpj } = await supabase
-            .from('organizations')
-            .select('id')
-            .eq('cnpj', cnpj)
-            .is('deleted_at', null)
-            .maybeSingle()
+          const { data: existingCnpj } = await supabase.from('organizations').select('id').eq('cnpj', cnpj).is('deleted_at', null).maybeSingle()
           if (existingCnpj) {
             addError(rowNum, `CNPJ "${cnpj}" já cadastrado.`, row)
             continue
           }
         }
 
-        const { error: insertError } = await supabase.from('organizations').insert({
-          user_id: user.id,
-          name: String(nome || `Empresa ${rowNum}`),
-          cnpj: cnpj || null,
-          cpf: cpf || null,
-          email: String(row['EMAIL'] || ''),
-          phone: String(row['TELEFONE'] || ''),
-          address: String(row['ENDERECO'] || ''),
-          observations: String(row['OBSERVACOES'] || ''),
-          status: true,
-        })
+        const { error: insertError } = await supabase
+          .from('organizations')
+          .insert({
+            user_id: user.id,
+            name: String(nome || `Empresa ${rowNum}`),
+            cnpj: cnpj || null,
+            cpf: cpf || null,
+            email: String(row['EMAIL'] || ''),
+            phone: String(row['TELEFONE'] || ''),
+            address: String(row['ENDERECO'] || ''),
+            observations: String(row['OBSERVACOES'] || ''),
+            status: true
+          })
 
         if (insertError) {
           addError(rowNum, `Erro ao inserir - ${insertError.message}`, row)
@@ -198,25 +169,22 @@ Deno.serve(async (req: Request) => {
         }
 
         const codigo = String(row['CODIGO'] || '').trim()
-
+        
         if (codigo) {
-          const { data: existingCode } = await supabase
-            .from('departments')
-            .select('id')
-            .eq('code', codigo)
-            .is('deleted_at', null)
-            .maybeSingle()
+          const { data: existingCode } = await supabase.from('departments').select('id').eq('code', codigo).is('deleted_at', null).maybeSingle()
           if (existingCode) {
             addError(rowNum, `Código "${codigo}" já cadastrado.`, row)
             continue
           }
         }
 
-        const { error: insertError } = await supabase.from('departments').insert({
-          user_id: user.id,
-          name: String(nome || `Depto ${rowNum}`),
-          code: codigo || `DEP-${Math.random().toString(36).substring(2, 8).toUpperCase()}`,
-        })
+        const { error: insertError } = await supabase
+          .from('departments')
+          .insert({
+            user_id: user.id,
+            name: String(nome || `Depto ${rowNum}`),
+            code: codigo || `DEP-${Math.random().toString(36).substring(2, 8).toUpperCase()}`
+          })
 
         if (insertError) {
           addError(rowNum, `Erro ao inserir - ${insertError.message}`, row)
@@ -226,9 +194,7 @@ Deno.serve(async (req: Request) => {
       }
     } else if (type === 'EMPLOYEES') {
       const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
-      const supabaseAdmin = supabaseServiceKey
-        ? createClient(supabaseUrl, supabaseServiceKey)
-        : null
+      const supabaseAdmin = supabaseServiceKey ? createClient(supabaseUrl, supabaseServiceKey) : null
 
       if (!supabaseAdmin) {
         throw new Error('Configuração de servidor incompleta (Service Role Key ausente).')
@@ -238,8 +204,8 @@ Deno.serve(async (req: Request) => {
       const origin = req.headers.get('origin') || 'https://gestao-de-contas-f8bf6.goskip.app'
       const redirectTo = `${origin}/reset-password`
 
-      const auditLogsToInsert: any[] = []
-      const auditDetailsToInsert: any[] = []
+      const auditLogsToInsert: any[] = [];
+      const auditDetailsToInsert: any[] = [];
 
       for (let i = 0; i < records.length; i++) {
         const row = records[i]
@@ -267,12 +233,7 @@ Deno.serve(async (req: Request) => {
         let depId = null
         const depCode = String(row['DEPARTAMENTO_CODIGO'] || '').trim()
         if (depCode) {
-          const { data: dep } = await supabase
-            .from('departments')
-            .select('id')
-            .eq('code', depCode)
-            .is('deleted_at', null)
-            .maybeSingle()
+          const { data: dep } = await supabase.from('departments').select('id').eq('code', depCode).is('deleted_at', null).maybeSingle()
           if (dep) {
             depId = dep.id
           } else if (!allowIncomplete) {
@@ -289,137 +250,116 @@ Deno.serve(async (req: Request) => {
         const roleToInsert = validRoles.includes(perfil) ? perfil : 'collaborator'
 
         if (existingId) {
-          if (action === 'restore') {
-            const updatePayload: any = {
-              approval_status: 'approved',
-              pending_deletion: false,
-              deletion_requested_at: null,
-              deletion_requested_by: null,
-              status: true,
-              deleted_at: null,
+            if (action === 'restore') {
+                const updatePayload: any = {
+                    approval_status: 'approved',
+                    pending_deletion: false,
+                    deletion_requested_at: null,
+                    deletion_requested_by: null,
+                    status: true,
+                    deleted_at: null
+                }
+                
+                const { error: updateError } = await supabaseAdmin.from('cadastro_usuarios').update(updatePayload).eq('id', existingId);
+
+                if (updateError) {
+                    addError(rowNum, `Erro ao reativar usuário: ${updateError.message}`, row);
+                } else {
+                    inserted++;
+                    const auditId = crypto.randomUUID();
+                    auditLogsToInsert.push({
+                        id: auditId,
+                        entity_type: 'usuario',
+                        entity_id: existingId,
+                        action: 'UPDATE',
+                        performed_by: user.id,
+                        changes: { status: { old: false, new: true } }
+                    });
+                    auditDetailsToInsert.push({
+                        audit_log_id: auditId,
+                        field_name: 'status',
+                        old_value: 'false',
+                        new_value: 'true'
+                    });
+                }
+                continue;
+            } else if (action === 'insert' || action === 'approve') {
+                const updatePayload: any = {
+                    name: String(nome),
+                    department_id: depId || null,
+                    role: roleToInsert,
+                    cpf: cpf || null,
+                    approval_status: 'approved',
+                    pending_deletion: false,
+                    deletion_requested_at: null,
+                    deletion_requested_by: null,
+                    status: true,
+                    deleted_at: null
+                }
+                
+                if (row['TELEFONE'] !== undefined) updatePayload.phone = String(row['TELEFONE']).trim() || null;
+                if (row['ENDERECO'] !== undefined) updatePayload.address = String(row['ENDERECO']).trim() || null;
+                if (row['OBSERVACOES'] !== undefined) updatePayload.observations = String(row['OBSERVACOES']).trim() || null;
+
+                const { error: updateError } = await supabaseAdmin.from('cadastro_usuarios').update(updatePayload).eq('id', existingId);
+
+                if (updateError) {
+                    addError(rowNum, `Erro ao atualizar usuário pela planilha: ${updateError.message}`, row);
+                } else {
+                    inserted++;
+                    const auditId = crypto.randomUUID();
+                    const changes: any = {};
+                    Object.keys(updatePayload).forEach(k => {
+                        changes[k] = { new: updatePayload[k] }
+                    });
+                    auditLogsToInsert.push({
+                        id: auditId,
+                        entity_type: 'usuario',
+                        entity_id: existingId,
+                        action: 'UPDATE',
+                        performed_by: user.id,
+                        changes
+                    });
+                    Object.entries(changes).forEach(([field, { new: newVal }]: [string, any]) => {
+                        auditDetailsToInsert.push({
+                            audit_log_id: auditId,
+                            field_name: field,
+                            new_value: newVal !== null ? String(newVal) : null
+                        });
+                    });
+                }
+                continue;
             }
-
-            const { error: updateError } = await supabaseAdmin
-              .from('cadastro_usuarios')
-              .update(updatePayload)
-              .eq('id', existingId)
-
-            if (updateError) {
-              addError(rowNum, `Erro ao reativar usuário: ${updateError.message}`, row)
-            } else {
-              inserted++
-              const auditId = crypto.randomUUID()
-              auditLogsToInsert.push({
-                id: auditId,
-                entity_type: 'usuario',
-                entity_id: existingId,
-                action: 'UPDATE',
-                performed_by: user.id,
-                changes: { status: { old: false, new: true } },
-              })
-              auditDetailsToInsert.push({
-                audit_log_id: auditId,
-                field_name: 'status',
-                old_value: 'false',
-                new_value: 'true',
-              })
-            }
-            continue
-          } else if (action === 'insert' || action === 'approve') {
-            const updatePayload: any = {
-              name: String(nome),
-              department_id: depId || null,
-              role: roleToInsert,
-              cpf: cpf || null,
-              approval_status: 'approved',
-              pending_deletion: false,
-              deletion_requested_at: null,
-              deletion_requested_by: null,
-              status: true,
-              deleted_at: null,
-            }
-
-            if (row['TELEFONE'] !== undefined)
-              updatePayload.phone = String(row['TELEFONE']).trim() || null
-            if (row['ENDERECO'] !== undefined)
-              updatePayload.address = String(row['ENDERECO']).trim() || null
-            if (row['OBSERVACOES'] !== undefined)
-              updatePayload.observations = String(row['OBSERVACOES']).trim() || null
-
-            const { error: updateError } = await supabaseAdmin
-              .from('cadastro_usuarios')
-              .update(updatePayload)
-              .eq('id', existingId)
-
-            if (updateError) {
-              addError(
-                rowNum,
-                `Erro ao atualizar usuário pela planilha: ${updateError.message}`,
-                row,
-              )
-            } else {
-              inserted++
-              const auditId = crypto.randomUUID()
-              const changes: any = {}
-              Object.keys(updatePayload).forEach((k) => {
-                changes[k] = { new: updatePayload[k] }
-              })
-              auditLogsToInsert.push({
-                id: auditId,
-                entity_type: 'usuario',
-                entity_id: existingId,
-                action: 'UPDATE',
-                performed_by: user.id,
-                changes,
-              })
-              Object.entries(changes).forEach(([field, { new: newVal }]: [string, any]) => {
-                auditDetailsToInsert.push({
-                  audit_log_id: auditId,
-                  field_name: field,
-                  new_value: newVal !== null ? String(newVal) : null,
-                })
-              })
-            }
-            continue
-          }
         }
 
         // Validate duplicates for completely new inserts
-        const { data: existingUserId } = await supabaseAdmin.rpc('get_auth_user_by_email', {
-          p_email: email,
-        })
+        const { data: existingUserId } = await supabaseAdmin.rpc('get_auth_user_by_email', { p_email: email })
         if (existingUserId) {
           addError(rowNum, `E-mail "${email}" já está em uso no sistema.`, row)
           continue
         }
 
         if (cpf) {
-          const { data: existingUserCpf } = await supabaseAdmin
-            .from('cadastro_usuarios')
-            .select('id')
-            .eq('cpf', cpf)
-            .is('deleted_at', null)
-            .maybeSingle()
+          const { data: existingUserCpf } = await supabaseAdmin.from('cadastro_usuarios').select('id').eq('cpf', cpf).is('deleted_at', null).maybeSingle()
           if (existingUserCpf) {
             addError(rowNum, `CPF "${cpf}" já está em uso por outro usuário ativo.`, row)
             continue
           }
         }
 
-        const { data: inviteData, error: inviteError } =
-          await supabaseAdmin.auth.admin.generateLink({
-            type: 'invite',
-            email: email,
-            options: { redirectTo },
-            data: {
-              name: String(nome),
-              role: roleToInsert,
-              cpf: cpf || null,
-              phone: String(row['TELEFONE'] || '') || null,
-              department_id: depId || null,
-              admin_id: user.id,
-            },
-          })
+        const { data: inviteData, error: inviteError } = await supabaseAdmin.auth.admin.generateLink({
+          type: 'invite',
+          email: email,
+          options: { redirectTo },
+          data: {
+            name: String(nome),
+            role: roleToInsert,
+            cpf: cpf || null,
+            phone: String(row['TELEFONE'] || '') || null,
+            department_id: depId || null,
+            admin_id: user.id
+          }
+        })
 
         if (inviteError) {
           addError(rowNum, `Erro ao convidar: ${inviteError.message}`, row)
@@ -427,54 +367,47 @@ Deno.serve(async (req: Request) => {
         }
 
         if (inviteData.user) {
-          let profile = null
+          let profile = null;
           for (let retries = 0; retries < 3; retries++) {
-            const { data } = await supabaseAdmin
-              .from('cadastro_usuarios')
-              .select('id')
-              .eq('user_id', inviteData.user.id)
-              .maybeSingle()
+            const { data } = await supabaseAdmin.from('cadastro_usuarios').select('id').eq('user_id', inviteData.user.id).maybeSingle()
             if (data) {
-              profile = data
-              break
+              profile = data;
+              break;
             }
-            await new Promise((r) => setTimeout(r, 500))
+            await new Promise(r => setTimeout(r, 500));
           }
 
           if (profile) {
-            await supabaseAdmin
-              .from('cadastro_usuarios')
-              .update({
-                address: String(row['ENDERECO'] || '') || null,
-                observations: String(row['OBSERVACOES'] || '') || null,
-              })
-              .eq('id', profile.id)
+             await supabaseAdmin.from('cadastro_usuarios').update({
+               address: String(row['ENDERECO'] || '') || null,
+               observations: String(row['OBSERVACOES'] || '') || null,
+             }).eq('id', profile.id)
 
-            const auditId = crypto.randomUUID()
-            const changes = {
-              name: { new: String(nome) },
-              email: { new: email },
-              role: { new: roleToInsert },
-              cpf: { new: cpf || null },
-              department_id: { new: depId || null },
-            }
-            auditLogsToInsert.push({
-              id: auditId,
-              entity_type: 'usuario',
-              entity_id: profile.id,
-              action: 'CREATE',
-              performed_by: user.id,
-              changes,
-            })
-            Object.entries(changes).forEach(([field, { new: newVal }]: [string, any]) => {
-              auditDetailsToInsert.push({
-                audit_log_id: auditId,
-                field_name: field,
-                new_value: newVal !== null ? String(newVal) : null,
-              })
-            })
+             const auditId = crypto.randomUUID();
+             const changes = {
+                 name: { new: String(nome) },
+                 email: { new: email },
+                 role: { new: roleToInsert },
+                 cpf: { new: cpf || null },
+                 department_id: { new: depId || null },
+             };
+             auditLogsToInsert.push({
+                 id: auditId,
+                 entity_type: 'usuario',
+                 entity_id: profile.id,
+                 action: 'CREATE',
+                 performed_by: user.id,
+                 changes
+             });
+             Object.entries(changes).forEach(([field, { new: newVal }]: [string, any]) => {
+                 auditDetailsToInsert.push({
+                     audit_log_id: auditId,
+                     field_name: field,
+                     new_value: newVal !== null ? String(newVal) : null
+                 });
+             });
           } else {
-            console.error('Profile not found after retries for user:', inviteData.user.id)
+             console.error("Profile not found after retries for user:", inviteData.user.id);
           }
 
           const actionLink = inviteData.properties?.action_link
@@ -501,33 +434,29 @@ Deno.serve(async (req: Request) => {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
-                Authorization: `Bearer ${resendApiKey}`,
+                'Authorization': `Bearer ${resendApiKey}`
               },
               body: JSON.stringify({
                 from: 'Gestão de Contas <onboarding@resend.dev>',
                 to: [email],
                 subject: subject,
-                html: htmlBody,
-              }),
-            }).catch((e) => console.error('Erro ao enviar email', e))
+                html: htmlBody
+              })
+            }).catch(e => console.error('Erro ao enviar email', e))
           }
         }
         inserted++
       }
-
+      
       if (auditLogsToInsert.length > 0) {
-        const { error: logsError } = await supabaseAdmin
-          .from('audit_logs')
-          .insert(auditLogsToInsert)
-        if (logsError) console.error('Error inserting audit logs:', logsError)
-
+        const { error: logsError } = await supabaseAdmin.from('audit_logs').insert(auditLogsToInsert);
+        if (logsError) console.error("Error inserting audit logs:", logsError);
+        
         if (auditDetailsToInsert.length > 0) {
-          for (let i = 0; i < auditDetailsToInsert.length; i += 1000) {
-            const { error: detailsError } = await supabaseAdmin
-              .from('audit_details')
-              .insert(auditDetailsToInsert.slice(i, i + 1000))
-            if (detailsError) console.error('Error inserting audit details:', detailsError)
-          }
+           for (let i = 0; i < auditDetailsToInsert.length; i += 1000) {
+               const { error: detailsError } = await supabaseAdmin.from('audit_details').insert(auditDetailsToInsert.slice(i, i + 1000));
+               if (detailsError) console.error("Error inserting audit details:", detailsError);
+           }
         }
       }
     } else if (type === 'BANK_ACCOUNTS') {
@@ -545,11 +474,7 @@ Deno.serve(async (req: Request) => {
 
         const orgId = empresa ? orgMap.get(String(empresa).trim().toLowerCase()) : null
         if (!orgId) {
-          addError(
-            rowNum,
-            `A empresa "${empresa}" não foi encontrada na sua conta. (Obrigatório)`,
-            row,
-          )
+          addError(rowNum, `A empresa "${empresa}" não foi encontrada na sua conta. (Obrigatório)`, row)
           continue
         }
 
@@ -572,26 +497,24 @@ Deno.serve(async (req: Request) => {
         }
 
         if (existing) {
-          addError(
-            rowNum,
-            `A Conta Bancária com número "${accountNumber}" e dígito "${checkDigit}" já está cadastrada para esta empresa.`,
-            row,
-          )
+          addError(rowNum, `A Conta Bancária com número "${accountNumber}" e dígito "${checkDigit}" já está cadastrada para esta empresa.`, row)
           continue
         }
 
-        const { error: insertError } = await supabase.from('bank_accounts').insert({
-          organization_id: orgId,
-          account_code: String(contaContabil || ''),
-          account_type: String(row['CODCAIXA'] || row['TIPO DE CONTA'] || ''),
-          description: String(row['DESCRICAO'] || ''),
-          bank_code: String(row['NUMBANCO'] || row['BANCO'] || ''),
-          agency: String(row['NUMAGENCIA'] || row['AGENCIA'] || ''),
-          account_number: accountNumber,
-          classification: String(row['CLASSIFICACAO'] || ''),
-          check_digit: checkDigit,
-          company_name: String(empresa || ''),
-        })
+        const { error: insertError } = await supabase
+          .from('bank_accounts')
+          .insert({
+            organization_id: orgId,
+            account_code: String(contaContabil || ''),
+            account_type: String(row['CODCAIXA'] || row['TIPO DE CONTA'] || ''),
+            description: String(row['DESCRICAO'] || ''),
+            bank_code: String(row['NUMBANCO'] || row['BANCO'] || ''),
+            agency: String(row['NUMAGENCIA'] || row['AGENCIA'] || ''),
+            account_number: accountNumber,
+            classification: String(row['CLASSIFICACAO'] || ''),
+            check_digit: checkDigit,
+            company_name: String(empresa || '')
+          })
 
         if (insertError) {
           addError(rowNum, `Erro ao inserir no banco - ${insertError.message}`, row)
@@ -628,11 +551,7 @@ Deno.serve(async (req: Request) => {
 
         const orgId = empresa ? orgMap.get(String(empresa).trim().toLowerCase()) : null
         if (!orgId) {
-          addError(
-            rowNum,
-            `A empresa "${empresa}" não foi encontrada na sua conta. (Obrigatório)`,
-            row,
-          )
+          addError(rowNum, `A empresa "${empresa}" não foi encontrada na sua conta. (Obrigatório)`, row)
           continue
         }
 
@@ -660,11 +579,7 @@ Deno.serve(async (req: Request) => {
           if (parentData) {
             parentId = parentData.id
           } else if (!allowIncomplete) {
-            addError(
-              rowNum,
-              `Centro de custo pai "${parentCode}" não encontrado para hierarquia.`,
-              row,
-            )
+            addError(rowNum, `Centro de custo pai "${parentCode}" não encontrado para hierarquia.`, row)
             continue
           }
         }
@@ -701,36 +616,38 @@ Deno.serve(async (req: Request) => {
           if (tgaData) {
             tipoTgaId = tgaData.id
           } else {
-            const { data: tgaDataCode } = await supabase
+             const { data: tgaDataCode } = await supabase
               .from('tipo_conta_tga')
               .select('id')
               .eq('organization_id', orgId)
               .eq('codigo', strTipoTga)
               .is('deleted_at', null)
               .maybeSingle()
-            if (tgaDataCode) {
-              tipoTgaId = tgaDataCode.id
-            } else if (!allowIncomplete) {
-              addError(rowNum, `Tipo TGA "${strTipoTga}" não encontrado.`, row)
-              continue
-            }
+             if (tgaDataCode) {
+               tipoTgaId = tgaDataCode.id
+             } else if (!allowIncomplete) {
+               addError(rowNum, `Tipo TGA "${strTipoTga}" não encontrado.`, row)
+               continue
+             }
           }
         }
 
-        const { error: insertError } = await supabase.from('cost_centers').insert({
-          organization_id: orgId,
-          code: strCode,
-          description: String(description || ''),
-          parent_id: parentId || null,
-          type_tga: String(row['TIPO'] || row['TIPO TGA'] || ''),
-          tipo_tga_id: tipoTgaId,
-          fixed_variable: String(row['FIXO_OU_VARIAVEL'] || row['FIXO OU VARIAVEL'] || ''),
-          classification: String(row['CLASSIFICACAO'] || ''),
-          operational: String(row['OPERACIONAL'] || ''),
-          tipo_lcto: String(row['TIPO_LCTO'] || row['TIPO LCTO'] || ''),
-          contabiliza: String(row['CONTABILIZA'] || ''),
-          observacoes: String(row['OBSERVACOES'] || ''),
-        } as any)
+        const { error: insertError } = await supabase
+          .from('cost_centers')
+          .insert({
+            organization_id: orgId,
+            code: strCode,
+            description: String(description || ''),
+            parent_id: parentId || null,
+            type_tga: String(row['TIPO'] || row['TIPO TGA'] || ''),
+            tipo_tga_id: tipoTgaId,
+            fixed_variable: String(row['FIXO_OU_VARIAVEL'] || row['FIXO OU VARIAVEL'] || ''),
+            classification: String(row['CLASSIFICACAO'] || ''),
+            operational: String(row['OPERACIONAL'] || ''),
+            tipo_lcto: String(row['TIPO_LCTO'] || row['TIPO LCTO'] || ''),
+            contabiliza: String(row['CONTABILIZA'] || ''),
+            observacoes: String(row['OBSERVACOES'] || '')
+          } as any)
 
         if (insertError) {
           addError(rowNum, `Erro ao inserir no banco - ${insertError.message}`, row)
@@ -765,11 +682,7 @@ Deno.serve(async (req: Request) => {
 
         const orgId = empresa ? orgMap.get(String(empresa).trim().toLowerCase()) : null
         if (!orgId) {
-          addError(
-            rowNum,
-            `A empresa "${empresa}" não foi encontrada na sua conta. (Obrigatório)`,
-            row,
-          )
+          addError(rowNum, `A empresa "${empresa}" não foi encontrada na sua conta. (Obrigatório)`, row)
           continue
         }
 
@@ -789,20 +702,18 @@ Deno.serve(async (req: Request) => {
         }
 
         if (existing) {
-          addError(
-            rowNum,
-            `O código de conta "${strCode}" já está cadastrado para esta empresa.`,
-            row,
-          )
+          addError(rowNum, `O código de conta "${strCode}" já está cadastrado para esta empresa.`, row)
           continue
         }
 
-        const { error: insertError } = await supabase.from('chart_of_accounts').insert({
-          organization_id: orgId,
-          account_code: strCode,
-          account_name: String(name || ''),
-          account_type: String(accountType || ''),
-        })
+        const { error: insertError } = await supabase
+          .from('chart_of_accounts')
+          .insert({
+            organization_id: orgId,
+            account_code: strCode,
+            account_name: String(name || ''),
+            account_type: String(accountType || '')
+          })
 
         if (insertError) {
           addError(rowNum, `Erro ao inserir no banco - ${insertError.message}`, row)
@@ -837,11 +748,7 @@ Deno.serve(async (req: Request) => {
 
         const orgId = empresa ? orgMap.get(String(empresa).trim().toLowerCase()) : null
         if (!orgId) {
-          addError(
-            rowNum,
-            `A empresa "${empresa}" não foi encontrada na sua conta. (Obrigatório)`,
-            row,
-          )
+          addError(rowNum, `A empresa "${empresa}" não foi encontrada na sua conta. (Obrigatório)`, row)
           continue
         }
 
@@ -889,21 +796,19 @@ Deno.serve(async (req: Request) => {
           }
 
           if (existing) {
-            addError(
-              rowNum,
-              `O mapeamento entre "${strCentroCusto}" e "${strContaContabil}" já existe.`,
-              row,
-            )
+            addError(rowNum, `O mapeamento entre "${strCentroCusto}" e "${strContaContabil}" já existe.`, row)
             continue
           }
         }
 
-        const { error: insertError } = await supabase.from('account_mapping').insert({
-          organization_id: orgId,
-          cost_center_id: ccData?.id || null,
-          chart_account_id: caData?.id || null,
-          mapping_type: String(tipoMapeamento || 'DE/PARA'),
-        })
+        const { error: insertError } = await supabase
+          .from('account_mapping')
+          .insert({
+            organization_id: orgId,
+            cost_center_id: ccData?.id || null,
+            chart_account_id: caData?.id || null,
+            mapping_type: String(tipoMapeamento || 'DE/PARA')
+          })
 
         if (insertError) {
           addError(rowNum, `Erro ao inserir no banco - ${insertError.message}`, row)
@@ -958,11 +863,7 @@ Deno.serve(async (req: Request) => {
 
         const orgId = empresa ? orgMap.get(String(empresa).trim().toLowerCase()) : null
         if (!orgId) {
-          addError(
-            rowNum,
-            `A empresa "${empresa}" não foi encontrada na sua conta. (Obrigatório)`,
-            row,
-          )
+          addError(rowNum, `A empresa "${empresa}" não foi encontrada na sua conta. (Obrigatório)`, row)
           continue
         }
 
@@ -1036,7 +937,7 @@ Deno.serve(async (req: Request) => {
             amount: isNaN(valor) ? 0 : valor,
             description: String(descricao || ''),
             cost_center_id: ccData?.id || null,
-            status: 'Concluído',
+            status: 'Concluído'
           })
           .select()
           .single()
@@ -1046,15 +947,17 @@ Deno.serve(async (req: Request) => {
           continue
         }
 
-        const { error: aeError } = await supabase.from('accounting_entries').insert({
-          organization_id: orgId,
-          entry_date: formattedDate,
-          amount: isNaN(valor) ? 0 : valor,
-          description: String(descricao || ''),
-          debit_account_id: debitData?.id || null,
-          credit_account_id: creditData?.id || null,
-          status: 'Concluído',
-        })
+        const { error: aeError } = await supabase
+          .from('accounting_entries')
+          .insert({
+            organization_id: orgId,
+            entry_date: formattedDate,
+            amount: isNaN(valor) ? 0 : valor,
+            description: String(descricao || ''),
+            debit_account_id: debitData?.id || null,
+            credit_account_id: creditData?.id || null,
+            status: 'Concluído'
+          })
 
         if (aeError) {
           if (fm) await supabase.from('financial_movements').delete().eq('id', fm.id)
@@ -1072,16 +975,17 @@ Deno.serve(async (req: Request) => {
       total_records: records.length,
       success_count: inserted,
       error_count: rejected,
-      status: 'Completed',
+      status: 'Completed'
     })
 
     return new Response(JSON.stringify({ inserted, rejected, errors }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     })
+
   } catch (err: any) {
     return new Response(JSON.stringify({ error: err.message }), {
       status: 200,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     })
   }
 })
