@@ -171,20 +171,18 @@ export function AccountFormModal({
                 placeholder="Número da Agência"
               />
             </div>
-            <div className="space-y-2 col-span-2 sm:col-span-1">
-              <div className="flex gap-4">
-                <div className="space-y-2 flex-1">
-                  <Label>Número Conta *</Label>
-                  <Input
-                    {...register('numeroConta')}
-                    className={errors.numeroConta ? 'border-red-500' : ''}
-                    placeholder="Número da Conta"
-                  />
-                </div>
-                <div className="space-y-2 w-24">
-                  <Label>Dígito</Label>
-                  <Input {...register('digitoConta')} placeholder="Ex: X" />
-                </div>
+            <div className="grid grid-cols-[1fr_80px] gap-4 col-span-2 sm:col-span-1">
+              <div className="space-y-2">
+                <Label>Número Conta *</Label>
+                <Input
+                  {...register('numeroConta')}
+                  className={errors.numeroConta ? 'border-red-500' : ''}
+                  placeholder="Número da Conta"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Dígito</Label>
+                <Input {...register('digitoConta')} placeholder="Ex: X" />
               </div>
             </div>
             <div className="space-y-2 col-span-2 sm:col-span-1">

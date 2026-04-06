@@ -778,7 +778,7 @@ export default function Index() {
                     }
                   />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-[1fr_80px] gap-4">
                   <div className="space-y-2">
                     <Label>Número da Conta</Label>
                     <Input
@@ -801,21 +801,39 @@ export default function Index() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Tipo Conta</Label>
-                    <Input
-                      value={editingAccount.account_type || ''}
-                      onChange={(e) =>
-                        setEditingAccount({ ...editingAccount, account_type: e.target.value })
+                    <Select
+                      value={editingAccount.account_type || undefined}
+                      onValueChange={(val) =>
+                        setEditingAccount({ ...editingAccount, account_type: val })
                       }
-                    />
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Corrente">Corrente</SelectItem>
+                        <SelectItem value="Poupança">Poupança</SelectItem>
+                        <SelectItem value="Caixa">Caixa</SelectItem>
+                        <SelectItem value="Aplicações">Aplicações</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div className="space-y-2">
                     <Label>Classificação</Label>
-                    <Input
-                      value={editingAccount.classification || ''}
-                      onChange={(e) =>
-                        setEditingAccount({ ...editingAccount, classification: e.target.value })
+                    <Select
+                      value={editingAccount.classification || undefined}
+                      onValueChange={(val) =>
+                        setEditingAccount({ ...editingAccount, classification: val })
                       }
-                    />
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="B">B</SelectItem>
+                        <SelectItem value="C">C</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
               </div>
