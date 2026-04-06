@@ -330,7 +330,7 @@ export default function Users() {
         <Table>
           <TableHeader className="bg-muted/50">
             <TableRow>
-              <TableHead className="w-[40px] text-center">
+              <TableHead className="w-[40px] text-center py-2">
                 <Checkbox
                   checked={selectedUsers.length === sortedUsers.length && sortedUsers.length > 0}
                   onCheckedChange={(checked) => {
@@ -339,28 +339,40 @@ export default function Users() {
                   }}
                 />
               </TableHead>
-              <TableHead className="cursor-pointer select-none" onClick={() => toggleSort('name')}>
+              <TableHead
+                className="cursor-pointer select-none py-2"
+                onClick={() => toggleSort('name')}
+              >
                 <div className="flex items-center">
                   Nome <SortIcon field="name" />
                 </div>
               </TableHead>
-              <TableHead className="cursor-pointer select-none" onClick={() => toggleSort('email')}>
+              <TableHead
+                className="cursor-pointer select-none py-2"
+                onClick={() => toggleSort('email')}
+              >
                 <div className="flex items-center">
                   E-mail <SortIcon field="email" />
                 </div>
               </TableHead>
-              <TableHead className="cursor-pointer select-none" onClick={() => toggleSort('cpf')}>
+              <TableHead
+                className="cursor-pointer select-none py-2"
+                onClick={() => toggleSort('cpf')}
+              >
                 <div className="flex items-center">
                   CPF <SortIcon field="cpf" />
                 </div>
               </TableHead>
-              <TableHead className="cursor-pointer select-none" onClick={() => toggleSort('role')}>
+              <TableHead
+                className="cursor-pointer select-none py-2"
+                onClick={() => toggleSort('role')}
+              >
                 <div className="flex items-center">
                   Perfil <SortIcon field="role" />
                 </div>
               </TableHead>
               <TableHead
-                className="cursor-pointer select-none"
+                className="cursor-pointer select-none py-2"
                 onClick={() => toggleSort('department')}
               >
                 <div className="flex items-center">
@@ -368,14 +380,14 @@ export default function Users() {
                 </div>
               </TableHead>
               <TableHead
-                className="cursor-pointer select-none"
+                className="cursor-pointer select-none py-2"
                 onClick={() => toggleSort('status')}
               >
                 <div className="flex items-center">
                   Status <SortIcon field="status" />
                 </div>
               </TableHead>
-              <TableHead className="w-[100px] text-right">Ações</TableHead>
+              <TableHead className="w-[100px] text-right py-2">Ações</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -397,7 +409,7 @@ export default function Users() {
                   key={user.id}
                   className={selectedUsers.includes(user.id) ? 'bg-muted/50' : ''}
                 >
-                  <TableCell className="text-center">
+                  <TableCell className="text-center py-2">
                     <Checkbox
                       checked={selectedUsers.includes(user.id)}
                       onCheckedChange={(checked) => {
@@ -406,10 +418,10 @@ export default function Users() {
                       }}
                     />
                   </TableCell>
-                  <TableCell className="font-medium">{user.name}</TableCell>
-                  <TableCell className="text-muted-foreground">{user.email}</TableCell>
-                  <TableCell className="text-muted-foreground">{user.cpf || '-'}</TableCell>
-                  <TableCell>
+                  <TableCell className="font-medium py-2">{user.name}</TableCell>
+                  <TableCell className="text-muted-foreground py-2">{user.email}</TableCell>
+                  <TableCell className="text-muted-foreground py-2">{user.cpf || '-'}</TableCell>
+                  <TableCell className="py-2">
                     <Badge variant="outline" className="font-normal">
                       {user.role === 'admin'
                         ? 'Administrador'
@@ -420,10 +432,10 @@ export default function Users() {
                             : 'Colaborador'}
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-muted-foreground">
+                  <TableCell className="text-muted-foreground py-2">
                     {user.departments?.name || '-'}
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="py-2">
                     {user.approval_status === 'pending' ? (
                       <Badge
                         variant="secondary"
@@ -447,7 +459,7 @@ export default function Users() {
                       </Badge>
                     )}
                   </TableCell>
-                  <TableCell className="text-right">
+                  <TableCell className="text-right py-2">
                     <div className="flex items-center justify-end gap-1">
                       <Button
                         variant="ghost"
@@ -756,22 +768,22 @@ function ImportUsersModal({
                 <Table>
                   <TableHeader className="bg-muted/50">
                     <TableRow>
-                      <TableHead className="w-[60px] text-center">Linha</TableHead>
-                      <TableHead>Nome</TableHead>
-                      <TableHead>E-mail</TableHead>
-                      <TableHead>CPF</TableHead>
-                      <TableHead>Departamento</TableHead>
-                      <TableHead className="w-[380px]">Ação</TableHead>
+                      <TableHead className="w-[60px] text-center py-2">Linha</TableHead>
+                      <TableHead className="py-2">Nome</TableHead>
+                      <TableHead className="py-2">E-mail</TableHead>
+                      <TableHead className="py-2">CPF</TableHead>
+                      <TableHead className="py-2">Departamento</TableHead>
+                      <TableHead className="w-[380px] py-2">Ação</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {previewData.map((row) => (
                       <TableRow key={row._index}>
-                        <TableCell className="text-center font-medium text-muted-foreground">
+                        <TableCell className="text-center font-medium text-muted-foreground py-2">
                           {row._index}
                         </TableCell>
-                        <TableCell className="font-medium">{row.nome || '-'}</TableCell>
-                        <TableCell>
+                        <TableCell className="font-medium py-2">{row.nome || '-'}</TableCell>
+                        <TableCell className="py-2">
                           <div className="flex flex-col">
                             <span className="text-muted-foreground">{row.email || '-'}</span>
                             {!row.emailValid && row.email && (
@@ -786,7 +798,7 @@ function ImportUsersModal({
                             )}
                           </div>
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="py-2">
                           <div className="flex flex-col">
                             <span className="text-muted-foreground">{row.cpf || '-'}</span>
                             {!row.cpfValid && row.cpf && (
@@ -796,10 +808,10 @@ function ImportUsersModal({
                             )}
                           </div>
                         </TableCell>
-                        <TableCell className="text-muted-foreground">
+                        <TableCell className="text-muted-foreground py-2">
                           {row.departamento || '-'}
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="py-2">
                           <div className="flex flex-col gap-1 py-1">
                             <Select
                               value={row.action}
