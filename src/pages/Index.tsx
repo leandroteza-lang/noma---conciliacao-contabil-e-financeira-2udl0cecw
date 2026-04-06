@@ -130,7 +130,9 @@ export default function Index() {
       (acc.agency && acc.agency.toLowerCase().includes(term)) ||
       (acc.account_number && acc.account_number.toLowerCase().includes(term)) ||
       (acc.company_name && acc.company_name.toLowerCase().includes(term)) ||
-      (acc.organizations?.name && acc.organizations.name.toLowerCase().includes(term))
+      (acc.organizations?.name && acc.organizations.name.toLowerCase().includes(term)) ||
+      (acc.account_type && acc.account_type.toLowerCase().includes(term)) ||
+      (acc.classification && acc.classification.toLowerCase().includes(term))
     )
   })
 
@@ -562,7 +564,7 @@ export default function Index() {
             <Table>
               <TableHeader className="bg-slate-50">
                 <TableRow>
-                  <TableHead className="w-12 text-center">
+                  <TableHead className="w-12 text-center p-2">
                     <Checkbox
                       checked={
                         paginatedData.length > 0 && selectedIds.length === paginatedData.length
@@ -574,7 +576,7 @@ export default function Index() {
                     />
                   </TableHead>
                   <TableHead
-                    className="cursor-pointer hover:bg-slate-100"
+                    className="cursor-pointer hover:bg-slate-100 p-2"
                     onClick={() => handleSort('company_name')}
                   >
                     <div className="flex items-center gap-2">
@@ -582,7 +584,7 @@ export default function Index() {
                     </div>
                   </TableHead>
                   <TableHead
-                    className="cursor-pointer hover:bg-slate-100"
+                    className="cursor-pointer hover:bg-slate-100 p-2"
                     onClick={() => handleSort('description')}
                   >
                     <div className="flex items-center gap-2">
@@ -590,7 +592,7 @@ export default function Index() {
                     </div>
                   </TableHead>
                   <TableHead
-                    className="cursor-pointer hover:bg-slate-100"
+                    className="cursor-pointer hover:bg-slate-100 p-2"
                     onClick={() => handleSort('bank_code')}
                   >
                     <div className="flex items-center gap-2">
@@ -598,7 +600,7 @@ export default function Index() {
                     </div>
                   </TableHead>
                   <TableHead
-                    className="cursor-pointer hover:bg-slate-100"
+                    className="cursor-pointer hover:bg-slate-100 p-2"
                     onClick={() => handleSort('agency')}
                   >
                     <div className="flex items-center gap-2">
@@ -606,27 +608,43 @@ export default function Index() {
                     </div>
                   </TableHead>
                   <TableHead
-                    className="cursor-pointer hover:bg-slate-100"
+                    className="cursor-pointer hover:bg-slate-100 p-2"
                     onClick={() => handleSort('account_code')}
                   >
                     <div className="flex items-center gap-2">
                       Conta Contábil <ArrowUpDown className="h-3 w-3 text-slate-400" />
                     </div>
                   </TableHead>
-                  <TableHead className="text-right">Ações</TableHead>
+                  <TableHead
+                    className="cursor-pointer hover:bg-slate-100 p-2"
+                    onClick={() => handleSort('account_type')}
+                  >
+                    <div className="flex items-center gap-2">
+                      Tipo Conta <ArrowUpDown className="h-3 w-3 text-slate-400" />
+                    </div>
+                  </TableHead>
+                  <TableHead
+                    className="cursor-pointer hover:bg-slate-100 p-2"
+                    onClick={() => handleSort('classification')}
+                  >
+                    <div className="flex items-center gap-2">
+                      Classificação <ArrowUpDown className="h-3 w-3 text-slate-400" />
+                    </div>
+                  </TableHead>
+                  <TableHead className="text-right p-2">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {loading ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="h-24 text-center">
+                    <TableCell colSpan={9} className="h-24 text-center p-2">
                       <Loader2 className="h-6 w-6 animate-spin mx-auto text-slate-400" />
                     </TableCell>
                   </TableRow>
                 ) : paginatedData.length > 0 ? (
                   paginatedData.map((acc) => (
                     <TableRow key={acc.id} className="hover:bg-slate-50/50">
-                      <TableCell className="text-center">
+                      <TableCell className="text-center p-2">
                         <Checkbox
                           checked={selectedIds.includes(acc.id)}
                           onCheckedChange={(checked) => {
@@ -635,15 +653,15 @@ export default function Index() {
                           }}
                         />
                       </TableCell>
-                      <TableCell className="font-medium text-sm">
+                      <TableCell className="font-medium text-sm p-2">
                         <div className="flex items-center gap-2">
                           <Building2 className="h-4 w-4 text-slate-400" />
                           {acc.organizations?.name || acc.company_name || '-'}
                         </div>
                       </TableCell>
-                      <TableCell className="text-sm">{acc.description || '-'}</TableCell>
-                      <TableCell className="text-sm">{acc.bank_code || '-'}</TableCell>
-                      <TableCell className="text-sm">
+                      <TableCell className="text-sm p-2">{acc.description || '-'}</TableCell>
+                      <TableCell className="text-sm p-2">{acc.bank_code || '-'}</TableCell>
+                      <TableCell className="text-sm p-2">
                         <div className="flex flex-col">
                           <span>Ag: {acc.agency || '-'}</span>
                           <span className="text-muted-foreground">
@@ -652,8 +670,10 @@ export default function Index() {
                           </span>
                         </div>
                       </TableCell>
-                      <TableCell className="text-sm">{acc.account_code || '-'}</TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className="text-sm p-2">{acc.account_code || '-'}</TableCell>
+                      <TableCell className="text-sm p-2">{acc.account_type || '-'}</TableCell>
+                      <TableCell className="text-sm p-2">{acc.classification || '-'}</TableCell>
+                      <TableCell className="text-right p-2">
                         <div className="flex items-center justify-end gap-1">
                           <Button
                             variant="ghost"
@@ -677,7 +697,7 @@ export default function Index() {
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={7} className="h-24 text-center text-slate-500">
+                    <TableCell colSpan={9} className="h-24 text-center text-slate-500 p-2">
                       Nenhuma conta encontrada.
                     </TableCell>
                   </TableRow>
