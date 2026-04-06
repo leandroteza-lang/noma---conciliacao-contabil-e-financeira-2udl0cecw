@@ -11,6 +11,7 @@ import {
   ChevronRight,
   ArrowUpDown,
   Download,
+  Upload,
   FileText,
   FileSpreadsheet,
 } from 'lucide-react'
@@ -28,6 +29,7 @@ import {
 } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
+import { ImportChartAccountsModal } from '@/components/ImportChartAccountsModal'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -61,6 +63,8 @@ export default function ChartAccounts() {
   const [typeFilter, setTypeFilter] = useState('all')
   const [loading, setLoading] = useState(true)
   const [selectedIds, setSelectedIds] = useState<string[]>([])
+
+  const [isImportOpen, setIsImportOpen] = useState(false)
 
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(10)
@@ -364,6 +368,9 @@ export default function ChartAccounts() {
           <p className="text-muted-foreground">Gerencie a hierarquia contábil das suas empresas.</p>
         </div>
         <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={() => setIsImportOpen(true)} className="gap-2">
+            <Upload className="h-4 w-4" /> Importar
+          </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" className="gap-2">
@@ -613,6 +620,12 @@ export default function ChartAccounts() {
               </TableBody>
             </Table>
           </div>
+
+          <ImportChartAccountsModal
+            isOpen={isImportOpen}
+            onClose={() => setIsImportOpen(false)}
+            onSuccess={fetchAccounts}
+          />
 
           {!loading && sortedData.length > 0 && (
             <div className="flex flex-col sm:flex-row items-center justify-between p-4 border-t border-slate-100 gap-4">
