@@ -480,7 +480,7 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/50">
-              <TableHead className="w-12 text-center">
+              <TableHead className="w-12 text-center p-2">
                 <Checkbox
                   checked={
                     sortedAccounts.length > 0 && selectedIds.length === sortedAccounts.length
@@ -492,7 +492,7 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
                 />
               </TableHead>
               <TableHead
-                className="w-[180px] cursor-pointer hover:bg-muted"
+                className="w-[180px] cursor-pointer hover:bg-muted p-2"
                 onClick={() => handleSort('organization_id')}
               >
                 <div className="flex items-center gap-2">
@@ -500,7 +500,7 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
                 </div>
               </TableHead>
               <TableHead
-                className="cursor-pointer hover:bg-muted"
+                className="cursor-pointer hover:bg-muted p-2"
                 onClick={() => handleSort('contaContabil')}
               >
                 <div className="flex items-center gap-2">
@@ -508,7 +508,7 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
                 </div>
               </TableHead>
               <TableHead
-                className="cursor-pointer hover:bg-muted"
+                className="cursor-pointer hover:bg-muted p-2"
                 onClick={() => handleSort('descricao')}
               >
                 <div className="flex items-center gap-2">
@@ -516,7 +516,7 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
                 </div>
               </TableHead>
               <TableHead
-                className="cursor-pointer hover:bg-muted"
+                className="cursor-pointer hover:bg-muted p-2"
                 onClick={() => handleSort('banco')}
               >
                 <div className="flex items-center gap-2">
@@ -524,7 +524,7 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
                 </div>
               </TableHead>
               <TableHead
-                className="cursor-pointer hover:bg-muted"
+                className="cursor-pointer hover:bg-muted p-2"
                 onClick={() => handleSort('agencia')}
               >
                 <div className="flex items-center gap-2">
@@ -532,7 +532,7 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
                 </div>
               </TableHead>
               <TableHead
-                className="cursor-pointer hover:bg-muted"
+                className="cursor-pointer hover:bg-muted p-2"
                 onClick={() => handleSort('numeroConta')}
               >
                 <div className="flex items-center gap-2">
@@ -540,7 +540,7 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
                 </div>
               </TableHead>
               <TableHead
-                className="cursor-pointer hover:bg-muted"
+                className="cursor-pointer hover:bg-muted p-2"
                 onClick={() => handleSort('digitoConta')}
               >
                 <div className="flex items-center gap-2">
@@ -548,7 +548,7 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
                 </div>
               </TableHead>
               <TableHead
-                className="cursor-pointer hover:bg-muted"
+                className="cursor-pointer hover:bg-muted p-2"
                 onClick={() => handleSort('tipoConta')}
               >
                 <div className="flex items-center gap-2">
@@ -556,20 +556,20 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
                 </div>
               </TableHead>
               <TableHead
-                className="cursor-pointer hover:bg-muted"
+                className="cursor-pointer hover:bg-muted p-2"
                 onClick={() => handleSort('classificacao')}
               >
                 <div className="flex items-center gap-2">
                   Classificação <ArrowUpDown className="h-3 w-3 text-muted-foreground" />
                 </div>
               </TableHead>
-              <TableHead className="text-right">Ações</TableHead>
+              <TableHead className="text-right p-2">Ações</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {sortedAccounts.map((acc) => (
               <TableRow key={acc.id} className="group hover:bg-muted/50">
-                <TableCell className="text-center">
+                <TableCell className="text-center p-2">
                   <Checkbox
                     checked={selectedIds.includes(acc.id)}
                     onCheckedChange={(checked) => {
@@ -593,7 +593,7 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
                 ).map((field) => (
                   <TableCell
                     key={field}
-                    className={field === 'contaContabil' ? 'font-mono text-xs' : ''}
+                    className={cn('p-2', field === 'contaContabil' ? 'font-mono text-xs' : '')}
                   >
                     <EditableCell
                       value={acc[field]}
@@ -608,7 +608,7 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
                     />
                   </TableCell>
                 ))}
-                <TableCell className="text-right">
+                <TableCell className="text-right p-2">
                   <div className="flex justify-end gap-2 transition-opacity">
                     <Button
                       variant="ghost"
@@ -642,30 +642,44 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
             <Card key={acc.id} className={cn('border-l-4 shadow-sm bg-card', theme.border)}>
               <CardContent className="p-4 flex justify-between items-start">
                 <div className="space-y-3 flex-1 pr-4 text-foreground">
-                  {(['organization_id', 'descricao', 'contaContabil'] as const).map((field) => (
+                  {(
+                    [
+                      'organization_id',
+                      'descricao',
+                      'contaContabil',
+                      'tipoConta',
+                      'classificacao',
+                    ] as const
+                  ).map((field) => (
                     <div
                       key={field}
-                      className={
-                        field === 'descricao'
-                          ? 'font-bold text-lg'
-                          : field === 'contaContabil'
-                            ? 'font-mono text-xs text-muted-foreground'
-                            : ''
-                      }
+                      className={cn(
+                        'flex items-center gap-2',
+                        field === 'descricao' && 'font-bold text-lg',
+                        field === 'contaContabil' && 'font-mono text-xs text-muted-foreground',
+                        (field === 'tipoConta' || field === 'classificacao') && 'text-sm',
+                      )}
                     >
-                      <EditableCell
-                        value={acc[field]}
-                        field={field}
-                        organizations={organizations}
-                        isEditing={editing?.id === acc.id && editing?.field === field}
-                        onEditStart={() => setEditing({ id: acc.id, field })}
-                        onEditCommit={(val: string) =>
-                          val !== acc[field]
-                            ? handleEditCommit(acc.id, field, val)
-                            : setEditing(null)
-                        }
-                        onEditCancel={() => setEditing(null)}
-                      />
+                      {(field === 'tipoConta' || field === 'classificacao') && (
+                        <span className="text-muted-foreground text-xs font-medium uppercase w-24">
+                          {field === 'tipoConta' ? 'Tipo:' : 'Classificação:'}
+                        </span>
+                      )}
+                      <div className="flex-1">
+                        <EditableCell
+                          value={acc[field]}
+                          field={field}
+                          organizations={organizations}
+                          isEditing={editing?.id === acc.id && editing?.field === field}
+                          onEditStart={() => setEditing({ id: acc.id, field })}
+                          onEditCommit={(val: string) =>
+                            val !== acc[field]
+                              ? handleEditCommit(acc.id, field, val)
+                              : setEditing(null)
+                          }
+                          onEditCancel={() => setEditing(null)}
+                        />
+                      </div>
                     </div>
                   ))}
                 </div>
