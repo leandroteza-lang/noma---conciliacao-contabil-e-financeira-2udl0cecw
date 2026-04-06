@@ -406,13 +406,13 @@ export default function Departments() {
                 onClick={() => handleExport('pdf')}
                 className="cursor-pointer gap-2"
               >
-                <FileText className="h-4 w-4" /> PDF
+                <FileText className="h-4 w-4 text-red-500" /> PDF
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={() => handleExport('excel')}
                 className="cursor-pointer gap-2"
               >
-                <FileSpreadsheet className="h-4 w-4" /> Excel (XLSX)
+                <FileSpreadsheet className="h-4 w-4 text-green-500" /> Excel (XLSX)
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -429,7 +429,7 @@ export default function Departments() {
                     onClick={handleDownloadTemplate}
                     className="cursor-pointer gap-2"
                   >
-                    <Download className="h-4 w-4" /> Baixar Modelo XLSX
+                    <FileSpreadsheet className="h-4 w-4 text-green-500" /> Baixar Modelo XLSX
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     onClick={() => setIsImportModalOpen(true)}
