@@ -59,11 +59,14 @@ export function ImportChartAccountsModal({ isOpen, onClose, onSuccess }: any) {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0]
     if (!selectedFile) return
-    if (!selectedFile.name.endsWith('.xlsx')) {
+    const isValid = ['.xlsx', '.xls', '.csv'].some((ext) =>
+      selectedFile.name.toLowerCase().endsWith(ext),
+    )
+    if (!isValid) {
       toast({
         variant: 'destructive',
         title: 'Arquivo inválido',
-        description: 'Por favor, selecione um arquivo Excel (.xlsx).',
+        description: 'Por favor, selecione um arquivo Excel (.xlsx, .xls) ou CSV (.csv).',
       })
       return
     }
@@ -208,13 +211,13 @@ export function ImportChartAccountsModal({ isOpen, onClose, onSuccess }: any) {
                   <UploadCloud className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
                   <h3 className="font-semibold text-sm mb-1">Clique para selecionar o arquivo</h3>
                   <p className="text-xs text-muted-foreground">
-                    Apenas arquivos .xlsx são suportados
+                    Arquivos suportados: .xlsx, .xls, .csv
                   </p>
                   <input
                     type="file"
                     ref={fileInputRef}
                     className="hidden"
-                    accept=".xlsx, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                    accept=".xlsx, .xls, .csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel, text/csv"
                     onChange={handleFileChange}
                   />
                 </div>
