@@ -12,7 +12,10 @@ import {
   FileSpreadsheet,
   Loader2,
   Upload,
+  Edit,
 } from 'lucide-react'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Label } from '@/components/ui/label'
 import { supabase } from '@/lib/supabase/client'
 import { ImportAccountModal } from '@/components/ImportAccountModal'
 import { AccountFormModal } from '@/components/AccountFormModal'
@@ -73,6 +76,8 @@ export default function Index() {
   const [isImportModalOpen, setIsImportModalOpen] = useState(false)
   const [isFormModalOpen, setIsFormModalOpen] = useState(false)
   const [organizations, setOrganizations] = useState<any[]>([])
+  const [editingAccount, setEditingAccount] = useState<any | null>(null)
+  const [isSaving, setIsSaving] = useState(false)
 
   useEffect(() => {
     const fetchOrgs = async () => {
@@ -290,6 +295,38 @@ export default function Index() {
       })
       setSelectedIds([])
       fetchAccounts()
+    }
+  }
+
+  const handleEditSave = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!editingAccount) return
+
+    setIsSaving(true)
+    try {
+      const { error } = await supabase
+        .from('bank_accounts')
+        .update({
+          organization_id: editingAccount.organization_id,
+          account_code: editingAccount.account_code,
+          description: editingAccount.description,
+          bank_code: editingAccount.bank_code,
+          agency: editingAccount.agency,
+          account_number: editingAccount.account_number,
+          check_digit: editingAccount.check_digit,
+          account_type: editingAccount.account_type,
+          classification: editingAccount.classification,
+        })
+        .eq('id', editingAccount.id)
+
+      if (error) throw error
+      toast({ title: 'Sucesso', description: 'Conta atualizada com sucesso!' })
+      setEditingAccount(null)
+      fetchAccounts()
+    } catch (err: any) {
+      toast({ title: 'Erro ao salvar', description: err.message, variant: 'destructive' })
+    } finally {
+      setIsSaving(false)
     }
   }
 
@@ -559,6 +596,14 @@ export default function Index() {
                           <Button
                             variant="ghost"
                             size="icon"
+                            className="h-8 w-8 text-slate-500 hover:text-blue-600 hover:bg-blue-50"
+                            onClick={() => setEditingAccount(acc)}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
                             className="h-8 w-8 text-slate-500 hover:text-red-600 hover:bg-red-50"
                             onClick={() => handleDelete(acc.id)}
                           >
@@ -668,6 +713,128 @@ export default function Index() {
           }
         }}
       />
+
+      <Dialog open={!!editingAccount} onOpenChange={(open) => !open && setEditingAccount(null)}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Editar Conta</DialogTitle>
+          </DialogHeader>
+          {editingAccount && (
+            <form onSubmit={handleEditSave} className="space-y-4 mt-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2 md:col-span-2">
+                  <Label>Empresa</Label>
+                  <Select
+                    value={editingAccount.organization_id || ''}
+                    onValueChange={(val) =>
+                      setEditingAccount({ ...editingAccount, organization_id: val })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {organizations.map((org: any) => (
+                        <SelectItem key={org.id} value={org.id}>
+                          {org.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Conta Contábil</Label>
+                  <Input
+                    value={editingAccount.account_code || ''}
+                    onChange={(e) =>
+                      setEditingAccount({ ...editingAccount, account_code: e.target.value })
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Descrição</Label>
+                  <Input
+                    value={editingAccount.description || ''}
+                    onChange={(e) =>
+                      setEditingAccount({ ...editingAccount, description: e.target.value })
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Banco</Label>
+                  <Input
+                    value={editingAccount.bank_code || ''}
+                    onChange={(e) =>
+                      setEditingAccount({ ...editingAccount, bank_code: e.target.value })
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Agência</Label>
+                  <Input
+                    value={editingAccount.agency || ''}
+                    onChange={(e) =>
+                      setEditingAccount({ ...editingAccount, agency: e.target.value })
+                    }
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Número da Conta</Label>
+                    <Input
+                      value={editingAccount.account_number || ''}
+                      onChange={(e) =>
+                        setEditingAccount({ ...editingAccount, account_number: e.target.value })
+                      }
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Dígito</Label>
+                    <Input
+                      value={editingAccount.check_digit || ''}
+                      onChange={(e) =>
+                        setEditingAccount({ ...editingAccount, check_digit: e.target.value })
+                      }
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Tipo Conta</Label>
+                    <Input
+                      value={editingAccount.account_type || ''}
+                      onChange={(e) =>
+                        setEditingAccount({ ...editingAccount, account_type: e.target.value })
+                      }
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Classificação</Label>
+                    <Input
+                      value={editingAccount.classification || ''}
+                      onChange={(e) =>
+                        setEditingAccount({ ...editingAccount, classification: e.target.value })
+                      }
+                    />
+                  </div>
+                </div>
+              </div>
+              <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 mt-4">
+                <Button type="button" variant="outline" onClick={() => setEditingAccount(null)}>
+                  Cancelar
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={isSaving}
+                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                >
+                  {isSaving ? 'Salvando...' : 'Salvar Alterações'}
+                </Button>
+              </div>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
