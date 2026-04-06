@@ -55,7 +55,10 @@ export function ImportAccountModal({ isOpen, onClose, onSuccess }: any) {
       const reader = new FileReader()
       reader.onload = async (e) => {
         try {
-          const base64 = (e.target?.result as string).split(',')[1]
+          const resultStr = e.target?.result
+          if (typeof resultStr !== 'string') throw new Error('Falha ao ler o arquivo')
+
+          const base64 = resultStr.split(',')[1]
 
           const {
             data: { session },
