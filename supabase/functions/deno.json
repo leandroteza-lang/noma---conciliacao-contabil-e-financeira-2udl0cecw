@@ -13,7 +13,7 @@
     "export-chart-accounts": 7,
     "export-tga-accounts": 7,
     "chat": 21,
-    "audit-log": 2,
+    "audit-log": 3,
     "cleanup-audit-logs": 1
   }
 }
