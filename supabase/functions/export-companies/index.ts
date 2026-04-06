@@ -6,8 +6,7 @@ import * as XLSX from 'npm:xlsx@0.18.5'
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-  'Access-Control-Allow-Headers':
-    'authorization, x-client-info, x-supabase-client-platform, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, x-supabase-client-platform, apikey, content-type',
 }
 
 Deno.serve(async (req: Request) => {
@@ -17,39 +16,35 @@ Deno.serve(async (req: Request) => {
     if (!authHeader) throw new Error('Cabeçalho de autorização ausente')
 
     const { format, data } = await req.json()
-
+    
     if (format === 'excel') {
-      const worksheet = XLSX.utils.json_to_sheet(
-        data.map((r: any) => ({
-          Nome: r.name,
-          CNPJ: r.cnpj || '',
-          CPF: r.cpf || '',
-          Status: r.status ? 'Ativo' : 'Inativo',
-          Telefone: r.phone || '',
-          Email: r.email || '',
-          'Data Criacao': r.created_at,
-        })),
-      )
+      const worksheet = XLSX.utils.json_to_sheet(data.map((r: any) => ({
+        Nome: r.name,
+        CNPJ: r.cnpj || '',
+        CPF: r.cpf || '',
+        Status: r.status ? 'Ativo' : 'Inativo',
+        Telefone: r.phone || '',
+        Email: r.email || '',
+        'Data Criacao': r.created_at
+      })))
       const workbook = XLSX.utils.book_new()
-      XLSX.utils.book_append_sheet(workbook, worksheet, 'Empresas')
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Empresas")
       const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'base64' })
-
-      return new Response(JSON.stringify({ excel: excelBuffer }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      })
+      
+      return new Response(JSON.stringify({ excel: excelBuffer }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
     }
-
+    
     if (format === 'pdf') {
       const doc = new jsPDF('landscape')
       doc.setFontSize(16)
       doc.text('Relatório de Empresas', 14, 20)
-
+      
       const body = data.map((r: any) => [
         r.name,
         r.cnpj || r.cpf || '-',
         r.email || '-',
         r.phone || '-',
-        r.status ? 'Ativa' : 'Inativa',
+        r.status ? 'Ativa' : 'Inativa'
       ])
 
       autoTable(doc, {
@@ -58,20 +53,15 @@ Deno.serve(async (req: Request) => {
         body: body,
         theme: 'grid',
         headStyles: { fillColor: [220, 38, 38] },
-        styles: { fontSize: 9 },
+        styles: { fontSize: 9 }
       })
-
+      
       const pdf = doc.output('datauristring')
-      return new Response(JSON.stringify({ pdf }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      })
+      return new Response(JSON.stringify({ pdf }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
     }
-
+    
     throw new Error('Formato inválido. Use "excel" ou "pdf".')
   } catch (err: any) {
-    return new Response(JSON.stringify({ error: err.message }), {
-      status: 400,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    })
+    return new Response(JSON.stringify({ error: err.message }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
   }
 })
