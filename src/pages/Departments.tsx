@@ -421,7 +421,7 @@ export default function Departments() {
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline" className="gap-2">
-                    <Upload className="h-4 w-4" /> Importar
+                    <Upload className="h-4 w-4" /> Importar em Lote
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
