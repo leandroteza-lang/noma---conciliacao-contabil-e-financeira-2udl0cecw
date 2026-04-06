@@ -19,6 +19,7 @@ import {
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { supabase } from '@/lib/supabase/client'
+import { ImportDepartmentsModal } from '@/components/ImportDepartmentsModal'
 import { useAuth } from '@/hooks/use-auth'
 import { useToast } from '@/hooks/use-toast'
 import { Button } from '@/components/ui/button'
@@ -75,6 +76,7 @@ export default function Departments() {
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(10)
   const [selectedIds, setSelectedIds] = useState<string[]>([])
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false)
   const { user, role, permissions } = useAuth()
   const { toast } = useToast()
 
@@ -298,6 +300,20 @@ export default function Departments() {
     fetchDepartments()
   }
 
+  const handleDownloadTemplate = () => {
+    const csvContent =
+      'NOME;CODIGO\nRecursos Humanos;RH\nTecnologia da Informação;TI\nFinanceiro;FIN'
+    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.setAttribute('href', url)
+    link.setAttribute('download', 'modelo_importacao_departamentos.csv')
+    link.style.visibility = 'hidden'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  }
+
   const handleExport = async (formatType: 'pdf' | 'excel') => {
     try {
       toast({ title: 'Aguarde', description: 'Gerando relatório...' })
@@ -376,11 +392,27 @@ export default function Departments() {
           </DropdownMenu>
           {canEdit && (
             <>
-              <Button variant="outline" className="gap-2" asChild>
-                <Link to="/import">
-                  <Upload className="h-4 w-4" /> Importar
-                </Link>
-              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" className="gap-2">
+                    <Upload className="h-4 w-4" /> Importar
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem
+                    onClick={handleDownloadTemplate}
+                    className="cursor-pointer gap-2"
+                  >
+                    <Download className="h-4 w-4" /> Baixar Modelo CSV
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => setIsImportModalOpen(true)}
+                    className="cursor-pointer gap-2"
+                  >
+                    <Upload className="h-4 w-4" /> Importar Planilha
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
               <Button
                 onClick={() => openModal()}
                 className="gap-2 bg-primary hover:bg-primary/90 text-primary-foreground"
@@ -391,6 +423,12 @@ export default function Departments() {
           )}
         </div>
       </div>
+
+      <ImportDepartmentsModal
+        isOpen={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+        onSuccess={fetchDepartments}
+      />
 
       <Card>
         <CardHeader className="pb-3">
