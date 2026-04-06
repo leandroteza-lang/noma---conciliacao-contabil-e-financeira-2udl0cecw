@@ -6,7 +6,8 @@ import * as XLSX from 'npm:xlsx@0.18.5'
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, x-supabase-client-platform, apikey, content-type',
+  'Access-Control-Allow-Headers':
+    'authorization, x-client-info, x-supabase-client-platform, apikey, content-type',
 }
 
 Deno.serve(async (req: Request) => {
@@ -16,32 +17,36 @@ Deno.serve(async (req: Request) => {
     if (!authHeader) throw new Error('Cabeçalho de autorização ausente')
 
     const { format, data } = await req.json()
-    
+
     if (format === 'excel') {
-      const worksheet = XLSX.utils.json_to_sheet(data.map((r: any) => ({
-        'Empresa': r.empresa || 'Geral',
-        'Código': r.codigo || '',
-        'Nome': r.nome || '',
-        'Abreviação': r.abreviacao || '',
-        'Observações': r.observacoes || ''
-      })))
+      const worksheet = XLSX.utils.json_to_sheet(
+        data.map((r: any) => ({
+          Empresa: r.empresa || 'Geral',
+          Código: r.codigo || '',
+          Nome: r.nome || '',
+          Abreviação: r.abreviacao || '',
+          Observações: r.observacoes || '',
+        })),
+      )
       const workbook = XLSX.utils.book_new()
-      XLSX.utils.book_append_sheet(workbook, worksheet, "Tipos Conta TGA")
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Tipos Conta TGA')
       const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'base64' })
-      
-      return new Response(JSON.stringify({ excel: excelBuffer }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+
+      return new Response(JSON.stringify({ excel: excelBuffer }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
     }
-    
+
     if (format === 'pdf') {
       const doc = new jsPDF()
       doc.setFontSize(16)
       doc.text('Relatório de Tipos de Conta TGA', 14, 20)
-      
+
       const body = data.map((r: any) => [
         r.codigo || '-',
         r.nome || '-',
         r.abreviacao || '-',
-        r.empresa || 'Geral'
+        r.empresa || 'Geral',
       ])
 
       autoTable(doc, {
@@ -50,15 +55,20 @@ Deno.serve(async (req: Request) => {
         body: body,
         theme: 'grid',
         headStyles: { fillColor: [220, 38, 38] },
-        styles: { fontSize: 10 }
+        styles: { fontSize: 10 },
       })
-      
+
       const pdf = doc.output('datauristring')
-      return new Response(JSON.stringify({ pdf }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+      return new Response(JSON.stringify({ pdf }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
     }
-    
+
     throw new Error('Formato inválido. Use "excel" ou "pdf".')
   } catch (err: any) {
-    return new Response(JSON.stringify({ error: err.message }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    return new Response(JSON.stringify({ error: err.message }), {
+      status: 400,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    })
   }
 })

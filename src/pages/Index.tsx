@@ -31,6 +31,7 @@ import {
 import { BankAccountsTable } from '@/components/BankAccountsTable'
 import { BankAccountModal } from '@/components/BankAccountModal'
 import { DeleteAccountModal } from '@/components/DeleteAccountModal'
+import { ImportAccountModal } from '@/components/ImportAccountModal'
 
 export default function Index() {
   const { toast } = useToast()
@@ -54,6 +55,7 @@ export default function Index() {
   const [deleteModalState, setDeleteModalState] = useState<{ isOpen: boolean; account?: any }>({
     isOpen: false,
   })
+  const [importModalOpen, setImportModalOpen] = useState(false)
 
   useEffect(() => {
     fetchData()
@@ -208,10 +210,11 @@ export default function Index() {
               <DropdownMenuItem onClick={handleExportTemplate} className="cursor-pointer gap-2">
                 <Download className="h-4 w-4 text-blue-600" /> Exportar Modelo Padrão
               </DropdownMenuItem>
-              <DropdownMenuItem asChild className="cursor-pointer gap-2">
-                <Link to="/import">
-                  <Upload className="h-4 w-4 text-green-600" /> Importar Planilha
-                </Link>
+              <DropdownMenuItem
+                onClick={() => setImportModalOpen(true)}
+                className="cursor-pointer gap-2"
+              >
+                <Upload className="h-4 w-4 text-green-600" /> Importar Planilha
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -282,6 +285,12 @@ export default function Index() {
       <DeleteAccountModal
         {...deleteModalState}
         onClose={() => setDeleteModalState({ isOpen: false })}
+      />
+
+      <ImportAccountModal
+        isOpen={importModalOpen}
+        onClose={() => setImportModalOpen(false)}
+        onSuccess={fetchData}
       />
     </div>
   )
