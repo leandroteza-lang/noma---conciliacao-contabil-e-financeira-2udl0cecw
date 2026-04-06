@@ -67,12 +67,14 @@ export function AccountFormModal({
       numeroConta: '-',
       digitoConta: '',
       tipoConta: '',
-      classificacao: 'Banco',
+      classificacao: 'B',
       organization_id: defaultOrganizationId || '',
     },
   })
 
   const orgValue = watch('organization_id')
+  const tipoContaValue = watch('tipoConta')
+  const classificacaoValue = watch('classificacao')
 
   useEffect(() => {
     if (isOpen) {
@@ -85,7 +87,7 @@ export function AccountFormModal({
           numeroConta: '-',
           digitoConta: '',
           tipoConta: '',
-          classificacao: 'Banco',
+          classificacao: 'B',
           contaContabil: '',
           descricao: '',
           organization_id:
@@ -170,28 +172,57 @@ export function AccountFormModal({
               />
             </div>
             <div className="space-y-2 col-span-2 sm:col-span-1">
-              <Label>Número Conta *</Label>
-              <Input
-                {...register('numeroConta')}
-                className={errors.numeroConta ? 'border-red-500' : ''}
-                placeholder="Número da Conta"
-              />
-            </div>
-            <div className="space-y-2 col-span-2 sm:col-span-1">
-              <Label>Dígito</Label>
-              <Input {...register('digitoConta')} placeholder="Ex: X" />
+              <div className="flex gap-4">
+                <div className="space-y-2 flex-1">
+                  <Label>Número Conta *</Label>
+                  <Input
+                    {...register('numeroConta')}
+                    className={errors.numeroConta ? 'border-red-500' : ''}
+                    placeholder="Número da Conta"
+                  />
+                </div>
+                <div className="space-y-2 w-24">
+                  <Label>Dígito</Label>
+                  <Input {...register('digitoConta')} placeholder="Ex: X" />
+                </div>
+              </div>
             </div>
             <div className="space-y-2 col-span-2 sm:col-span-1">
               <Label>Tipo Conta</Label>
-              <Input {...register('tipoConta')} placeholder="Ex: Corrente, Poupança" />
+              <Select
+                value={tipoContaValue || undefined}
+                onValueChange={(val) => setValue('tipoConta', val)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Corrente">Corrente</SelectItem>
+                  <SelectItem value="Poupança">Poupança</SelectItem>
+                  <SelectItem value="Caixa">Caixa</SelectItem>
+                  <SelectItem value="Aplicações">Aplicações</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-2 col-span-2 sm:col-span-1">
               <Label>Classificação *</Label>
-              <Input
-                {...register('classificacao')}
-                className={errors.classificacao ? 'border-red-500' : ''}
-                placeholder="Ex: Caixa, Banco"
-              />
+              <Select
+                value={classificacaoValue || undefined}
+                onValueChange={(val) => setValue('classificacao', val)}
+              >
+                <SelectTrigger className={errors.classificacao ? 'border-red-500' : ''}>
+                  <SelectValue placeholder="Selecione..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="B">B</SelectItem>
+                  <SelectItem value="C">C</SelectItem>
+                </SelectContent>
+              </Select>
+              {errors.classificacao && (
+                <span className="text-xs text-red-500 font-medium">
+                  {errors.classificacao.message}
+                </span>
+              )}
             </div>
           </div>
           <DialogFooter className="pt-4 border-t mt-6">
