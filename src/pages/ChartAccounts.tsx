@@ -290,6 +290,57 @@ export default function ChartAccounts() {
     }
   }
 
+  const handleExportTemplate = async () => {
+    try {
+      toast({ title: 'Aguarde', description: 'Gerando modelo...' })
+
+      const session = await supabase.auth.getSession()
+      const token = session.data.session?.access_token
+
+      const payload = {
+        format: 'excel',
+        data: [
+          {
+            EMPRESA: 'Exemplo Ltda',
+            CODIGO_CONTA: '1.01.01.01',
+            NOME_CONTA: 'Caixa Geral',
+            TIPO_CONTA: 'Ativo',
+          },
+        ],
+      }
+
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/export-chart-accounts`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify(payload),
+        },
+      )
+
+      if (!res.ok) {
+        throw new Error('Falha ao exportar modelo')
+      }
+
+      const result = await res.json()
+
+      const binaryString = atob(result.excel)
+      const len = binaryString.length
+      const bytes = new Uint8Array(len)
+      for (let i = 0; i < len; i++) bytes[i] = binaryString.charCodeAt(i)
+      const blob = new Blob([bytes], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      })
+      const link = document.createElement('a')
+      link.href = URL.createObjectURL(blob)
+      link.download = 'modelo_importacao_contas.xlsx'
+      link.click()
+      toast({ title: 'Sucesso', description: 'Modelo gerado com sucesso!' })
+    } catch (error: any) {
+      toast({ title: 'Erro na exportação', description: error.message, variant: 'destructive' })
+    }
+  }
+
   const handleDelete = async (id: string) => {
     const { data: linkedMappings } = await supabase
       .from('account_mapping')
@@ -373,6 +424,9 @@ export default function ChartAccounts() {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+          <Button variant="outline" onClick={handleExportTemplate} className="gap-2">
+            <Download className="h-4 w-4" /> Baixar Modelo
+          </Button>
           <Button variant="outline" asChild>
             <Link to="/import">Importar Planilha</Link>
           </Button>
