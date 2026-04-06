@@ -11,6 +11,7 @@ import {
   FileText,
   Table as TableIcon,
 } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -127,6 +128,50 @@ export default function Index() {
     }
   }
 
+  const handleExportTemplate = async () => {
+    try {
+      toast({ title: 'Aguarde', description: 'Gerando modelo...' })
+
+      const { data, error } = await supabase.functions.invoke('export-bank-accounts', {
+        body: {
+          format: 'excel',
+          data: [
+            {
+              EMPRESA: 'Exemplo Ltda',
+              CONTA_CONTABIL: '1.01.01.01',
+              CODCAIXA: 'Conta Corrente',
+              DESCRICAO: 'Conta Principal',
+              NUMBANCO: '001',
+              NUMAGENCIA: '1234',
+              NROCONTA: '12345',
+              DIGITOCONTA: '6',
+              CLASSIFICACAO: 'Ativo',
+            },
+          ],
+        },
+      })
+
+      if (error) throw error
+
+      if (data.excel) {
+        const binaryString = atob(data.excel)
+        const len = binaryString.length
+        const bytes = new Uint8Array(len)
+        for (let i = 0; i < len; i++) bytes[i] = binaryString.charCodeAt(i)
+        const blob = new Blob([bytes], {
+          type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        })
+        const link = document.createElement('a')
+        link.href = URL.createObjectURL(blob)
+        link.download = 'modelo_importacao_contas.xlsx'
+        link.click()
+        toast({ title: 'Sucesso', description: 'Modelo gerado com sucesso!' })
+      }
+    } catch (err: any) {
+      toast({ title: 'Erro na exportação', description: err.message, variant: 'destructive' })
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -136,27 +181,37 @@ export default function Index() {
             Gerencie as contas bancárias e de caixa da sua organização.
           </p>
         </div>
-        <div className="flex items-center gap-2 w-full sm:w-auto">
+        <div className="flex items-center gap-2 w-full sm:w-auto flex-wrap sm:flex-nowrap">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="flex-1 sm:flex-none">
-                <Download className="w-4 h-4 mr-2" /> Exportar
+              <Button variant="outline" className="flex-1 sm:flex-none gap-2">
+                <Download className="w-4 h-4" /> Exportar
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => handleExport('excel')}>
-                <TableIcon className="w-4 h-4 mr-2 text-green-600" /> Excel
+              <DropdownMenuItem onClick={() => handleExport('excel')} className="gap-2">
+                <TableIcon className="w-4 h-4 text-green-600" /> Excel
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleExport('pdf')}>
-                <FileText className="w-4 h-4 mr-2 text-red-600" /> PDF
+              <DropdownMenuItem onClick={() => handleExport('pdf')} className="gap-2">
+                <FileText className="w-4 h-4 text-red-600" /> PDF
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
           <Button
-            onClick={() => setModalState({ isOpen: true, type: 'add' })}
-            className="flex-1 sm:flex-none"
+            variant="outline"
+            onClick={handleExportTemplate}
+            className="flex-1 sm:flex-none gap-2"
           >
-            <Plus className="w-4 h-4 mr-2" /> Nova Conta
+            <Download className="w-4 h-4" /> Baixar Modelo
+          </Button>
+          <Button variant="outline" asChild className="flex-1 sm:flex-none gap-2">
+            <Link to="/import">Importar Planilha</Link>
+          </Button>
+          <Button
+            onClick={() => setModalState({ isOpen: true, type: 'add' })}
+            className="flex-1 sm:flex-none gap-2"
+          >
+            <Plus className="w-4 h-4" /> Nova Conta
           </Button>
         </div>
       </div>
