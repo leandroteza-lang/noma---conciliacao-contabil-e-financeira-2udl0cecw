@@ -575,7 +575,7 @@ export default function Departments() {
                   {paginated.map((item) => (
                     <TableRow key={item.id} className="hover:bg-muted/50">
                       {canDelete && (
-                        <TableCell className="py-2 px-4 text-center">
+                        <TableCell className="p-2 text-center">
                           <Checkbox
                             checked={selectedIds.includes(item.id)}
                             onCheckedChange={(checked) => {
@@ -585,15 +585,15 @@ export default function Departments() {
                           />
                         </TableCell>
                       )}
-                      <TableCell className="py-2 px-4 font-medium text-foreground/80">
+                      <TableCell className="p-2 font-medium text-foreground/80">
                         {item.code}
                       </TableCell>
-                      <TableCell className="py-2 px-4 text-foreground">{item.name}</TableCell>
-                      <TableCell className="py-2 px-4 text-[13px] text-muted-foreground">
+                      <TableCell className="p-2 text-foreground">{item.name}</TableCell>
+                      <TableCell className="p-2 text-[13px] text-muted-foreground">
                         {item.created_at ? format(new Date(item.created_at), 'dd/MM/yyyy') : '-'}
                       </TableCell>
                       {(canEdit || canDelete) && (
-                        <TableCell className="py-2 px-4 text-right">
+                        <TableCell className="p-2 text-right">
                           <div className="flex items-center justify-end gap-1">
                             {canEdit && (
                               <Button
