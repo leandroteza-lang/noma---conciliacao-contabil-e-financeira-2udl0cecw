@@ -1,11 +1,11 @@
 {
   "_versions": {
-    "import-data": 28,
+    "import-data": 29,
     "generate-entries": 9,
     "export-dashboard": 8,
     "export-analysis": 8,
     "export-companies": 9,
-    "export-departments": 8,
+    "export-departments": 9,
     "export-users": 11,
     "manage-user": 18,
     "send-email": 8,

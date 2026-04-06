@@ -69,11 +69,24 @@ export function ImportDepartmentsModal({
     setResults(null)
 
     try {
-      const text = await file.text()
-      const records = parseCSV(text)
+      const isExcel = file.name.toLowerCase().endsWith('.xlsx')
+      let records: any[] = []
+      let fileBase64: string | undefined = undefined
 
-      if (records.length === 0) {
-        throw new Error('A planilha está vazia ou o formato é inválido.')
+      if (isExcel) {
+        const arrayBuffer = await file.arrayBuffer()
+        const bytes = new Uint8Array(arrayBuffer)
+        let binary = ''
+        for (let i = 0; i < bytes.byteLength; i++) {
+          binary += String.fromCharCode(bytes[i])
+        }
+        fileBase64 = btoa(binary)
+      } else {
+        const text = await file.text()
+        records = parseCSV(text)
+        if (records.length === 0) {
+          throw new Error('A planilha está vazia ou o formato é inválido.')
+        }
       }
 
       const session = await supabase.auth.getSession()
@@ -83,6 +96,7 @@ export function ImportDepartmentsModal({
 
       const payload = {
         records,
+        fileBase64,
         type: 'DEPARTMENTS',
         fileName: file.name,
         allowIncomplete: false,
@@ -147,10 +161,9 @@ export function ImportDepartmentsModal({
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>Importar Departamentos</DialogTitle>
+          <DialogTitle>Importar Departamentos em Lote</DialogTitle>
           <DialogDescription>
-            Faça o upload de uma planilha CSV contendo as colunas NOME e CODIGO (separadas por
-            vírgula ou ponto-e-vírgula).
+            Faça o upload de uma planilha XLSX ou CSV contendo as colunas NOME e CODIGO.
           </DialogDescription>
         </DialogHeader>
 
@@ -164,7 +177,7 @@ export function ImportDepartmentsModal({
                 type="file"
                 ref={fileInputRef}
                 className="hidden"
-                accept=".csv"
+                accept=".csv, .xlsx"
                 onChange={handleFileChange}
               />
               <UploadCloud className="h-10 w-10 text-muted-foreground mb-2" />
@@ -176,9 +189,11 @@ export function ImportDepartmentsModal({
               ) : (
                 <>
                   <p className="text-sm font-medium text-foreground">
-                    Clique para selecionar um arquivo CSV
+                    Clique para selecionar um arquivo XLSX ou CSV
                   </p>
-                  <p className="text-xs text-muted-foreground mt-1">Apenas formato .csv</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Formatos suportados: .xlsx, .csv
+                  </p>
                 </>
               )}
             </div>

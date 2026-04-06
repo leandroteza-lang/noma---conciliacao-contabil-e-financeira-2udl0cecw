@@ -300,18 +300,44 @@ export default function Departments() {
     fetchDepartments()
   }
 
-  const handleDownloadTemplate = () => {
-    const csvContent =
-      'NOME;CODIGO\nRecursos Humanos;RH\nTecnologia da Informação;TI\nFinanceiro;FIN'
-    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.setAttribute('href', url)
-    link.setAttribute('download', 'modelo_importacao_departamentos.csv')
-    link.style.visibility = 'hidden'
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
+  const handleDownloadTemplate = async () => {
+    try {
+      toast({ title: 'Aguarde', description: 'Gerando modelo...' })
+      const session = await supabase.auth.getSession()
+      const token = session.data.session?.access_token
+      const payload = {
+        format: 'excel',
+        template: true,
+        data: [
+          { NOME: 'Recursos Humanos', CODIGO: 'RH' },
+          { NOME: 'Tecnologia da Informação', CODIGO: 'TI' },
+          { NOME: 'Financeiro', CODIGO: 'FIN' },
+        ],
+      }
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/export-departments`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify(payload),
+        },
+      )
+      if (!res.ok) throw new Error('Falha ao gerar modelo')
+      const result = await res.json()
+      const binaryString = atob(result.excel)
+      const bytes = new Uint8Array(binaryString.length)
+      for (let i = 0; i < binaryString.length; i++) bytes[i] = binaryString.charCodeAt(i)
+      const blob = new Blob([bytes], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      })
+      const link = document.createElement('a')
+      link.href = URL.createObjectURL(blob)
+      link.download = 'modelo_importacao_departamentos.xlsx'
+      link.click()
+      toast({ title: 'Sucesso', description: 'Modelo baixado!' })
+    } catch (e: any) {
+      toast({ title: 'Erro', description: e.message, variant: 'destructive' })
+    }
   }
 
   const handleExport = async (formatType: 'pdf' | 'excel') => {
@@ -403,13 +429,13 @@ export default function Departments() {
                     onClick={handleDownloadTemplate}
                     className="cursor-pointer gap-2"
                   >
-                    <Download className="h-4 w-4" /> Baixar Modelo CSV
+                    <Download className="h-4 w-4" /> Baixar Modelo XLSX
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     onClick={() => setIsImportModalOpen(true)}
                     className="cursor-pointer gap-2"
                   >
-                    <Upload className="h-4 w-4" /> Importar Planilha
+                    <Upload className="h-4 w-4" /> Importar em Lote
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
