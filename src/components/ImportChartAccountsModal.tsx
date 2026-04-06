@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import {
   Dialog,
   DialogContent,
@@ -38,6 +38,22 @@ export function ImportChartAccountsModal({ isOpen, onClose, onSuccess }: any) {
   const [step, setStep] = useState<'UPLOAD' | 'SIMULATION' | 'RESULT'>('UPLOAD')
   const [simulationData, setSimulationData] = useState<any>(null)
   const [resultData, setResultData] = useState<any>(null)
+  const [organizations, setOrganizations] = useState<any[]>([])
+  const [selectedOrgId, setSelectedOrgId] = useState<string>('USE_SPREADSHEET')
+
+  useEffect(() => {
+    const fetchOrgs = async () => {
+      const { data } = await supabase
+        .from('organizations')
+        .select('id, name')
+        .is('deleted_at', null)
+        .order('name')
+      if (data) setOrganizations(data)
+    }
+    if (isOpen) {
+      fetchOrgs()
+    }
+  }, [isOpen])
 
   const reset = () => {
     setFile(null)
@@ -46,6 +62,7 @@ export function ImportChartAccountsModal({ isOpen, onClose, onSuccess }: any) {
     setIsUploading(false)
     setStep('UPLOAD')
     setMode('UPDATE')
+    setSelectedOrgId('USE_SPREADSHEET')
   }
 
   const handleClose = () => {
@@ -100,6 +117,7 @@ export function ImportChartAccountsModal({ isOpen, onClose, onSuccess }: any) {
               allowIncomplete: false,
               mode: mode,
               simulation: isSimulation,
+              organizationId: selectedOrgId === 'USE_SPREADSHEET' ? null : selectedOrgId,
             },
             headers: session ? { Authorization: `Bearer ${session.access_token}` } : undefined,
           })
@@ -178,29 +196,53 @@ export function ImportChartAccountsModal({ isOpen, onClose, onSuccess }: any) {
         <div className="space-y-4 py-4">
           {step === 'UPLOAD' && (
             <>
-              <div className="space-y-3">
-                <Label>Modo de Importação</Label>
-                <Select value={mode} onValueChange={setMode}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione o modo" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="UPDATE">Adicionar e Atualizar (Recomendado)</SelectItem>
-                    <SelectItem value="REPLACE">
-                      Substituir Tudo (Remove contas não enviadas na planilha)
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-                {mode === 'REPLACE' && (
-                  <div className="flex items-start gap-2 text-sm text-amber-600 bg-amber-50 p-3 rounded-md border border-amber-200">
-                    <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
-                    <p>
-                      <strong>Atenção:</strong> O modo "Substituir Tudo" irá deletar as contas
-                      existentes que não estiverem na planilha. Um backup automático será criado
-                      antes da operação.
-                    </p>
-                  </div>
-                )}
+              <div className="space-y-4">
+                <div className="space-y-3">
+                  <Label>Empresa de Destino</Label>
+                  <Select value={selectedOrgId} onValueChange={setSelectedOrgId}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione a empresa de destino" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="USE_SPREADSHEET">
+                        Utilizar coluna 'EMPRESA' da planilha
+                      </SelectItem>
+                      {organizations.map((org) => (
+                        <SelectItem key={org.id} value={org.id}>
+                          {org.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    Se você selecionar uma empresa, a coluna EMPRESA da planilha será ignorada.
+                  </p>
+                </div>
+
+                <div className="space-y-3">
+                  <Label>Modo de Importação</Label>
+                  <Select value={mode} onValueChange={setMode}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o modo" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="UPDATE">Adicionar e Atualizar (Recomendado)</SelectItem>
+                      <SelectItem value="REPLACE">
+                        Substituir Tudo (Remove contas não enviadas na planilha)
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {mode === 'REPLACE' && (
+                    <div className="flex items-start gap-2 text-sm text-amber-600 bg-amber-50 p-3 rounded-md border border-amber-200">
+                      <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+                      <p>
+                        <strong>Atenção:</strong> O modo "Substituir Tudo" irá deletar as contas
+                        existentes que não estiverem na planilha. Um backup automático será criado
+                        antes da operação.
+                      </p>
+                    </div>
+                  )}
+                </div>
               </div>
 
               {!file ? (
