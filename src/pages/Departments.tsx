@@ -340,7 +340,7 @@ export default function Departments() {
     }
   }
 
-  const handleExport = async (formatType: 'pdf' | 'excel') => {
+  const handleExport = async (formatType: 'pdf' | 'excel' | 'csv' | 'txt') => {
     try {
       toast({ title: 'Aguarde', description: 'Gerando relatório...' })
       const session = await supabase.auth.getSession()
@@ -372,6 +372,18 @@ export default function Departments() {
         const link = document.createElement('a')
         link.href = URL.createObjectURL(blob)
         link.download = 'departamentos.xlsx'
+        link.click()
+      } else if (formatType === 'csv') {
+        const blob = new Blob([result.csv], { type: 'text/csv;charset=utf-8;' })
+        const link = document.createElement('a')
+        link.href = URL.createObjectURL(blob)
+        link.download = 'departamentos.csv'
+        link.click()
+      } else if (formatType === 'txt') {
+        const blob = new Blob([result.txt], { type: 'text/plain;charset=utf-8;' })
+        const link = document.createElement('a')
+        link.href = URL.createObjectURL(blob)
+        link.download = 'departamentos.txt'
         link.click()
       } else {
         const link = document.createElement('a')
@@ -413,6 +425,18 @@ export default function Departments() {
                 className="cursor-pointer gap-2"
               >
                 <FileSpreadsheet className="h-4 w-4 text-green-500" /> Excel (XLSX)
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => handleExport('csv')}
+                className="cursor-pointer gap-2"
+              >
+                <FileText className="h-4 w-4 text-blue-500" /> CSV
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => handleExport('txt')}
+                className="cursor-pointer gap-2"
+              >
+                <FileText className="h-4 w-4 text-gray-500" /> TXT
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
