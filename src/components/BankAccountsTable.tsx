@@ -79,9 +79,13 @@ export function BankAccountsTable({
                     <span className="text-muted-foreground block text-xs">Ag / Conta</span>
                     {acc.agency || '-'} / {acc.account_number || '-'}-{acc.check_digit || '-'}
                   </div>
-                  <div className="col-span-2">
+                  <div>
                     <span className="text-muted-foreground block text-xs">C. Contábil</span>
                     {acc.account_code || '-'}
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground block text-xs">Classificação</span>
+                    {acc.classification || '-'}
                   </div>
                 </div>
                 <div className="flex gap-2 pt-2">
@@ -113,13 +117,14 @@ export function BankAccountsTable({
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/50">
-                <TableHead>Descrição</TableHead>
-                <TableHead>Empresa</TableHead>
-                <TableHead>Tipo</TableHead>
-                <TableHead>Banco</TableHead>
-                <TableHead>Ag / Conta</TableHead>
-                <TableHead>C. Contábil</TableHead>
-                <TableHead className="text-right">Ações</TableHead>
+                <TableHead className="p-2">Empresa</TableHead>
+                <TableHead className="p-2">Descrição</TableHead>
+                <TableHead className="p-2">Banco</TableHead>
+                <TableHead className="p-2">Ag / Conta</TableHead>
+                <TableHead className="p-2">C. Contábil</TableHead>
+                <TableHead className="p-2">Tipo de Conta</TableHead>
+                <TableHead className="p-2">Classificação</TableHead>
+                <TableHead className="text-right p-2">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -128,23 +133,44 @@ export function BankAccountsTable({
                   key={acc.id}
                   className={`transition-opacity ${acc.pending_deletion ? 'opacity-50 bg-secondary/20' : 'hover:bg-muted/30'}`}
                 >
-                  <TableCell className="font-medium">{acc.description}</TableCell>
-                  <TableCell>{acc.organizations?.name || acc.company_name}</TableCell>
-                  <TableCell>
+                  <TableCell className="p-2">
+                    <div className="flex items-center gap-2">
+                      <Building2 className="h-4 w-4 text-muted-foreground" />
+                      {acc.organizations?.name || acc.company_name}
+                    </div>
+                  </TableCell>
+                  <TableCell className="p-2 font-medium">{acc.description}</TableCell>
+                  <TableCell className="p-2">{acc.bank_code || '-'}</TableCell>
+                  <TableCell className="p-2 text-sm">
+                    <div className="flex flex-col">
+                      <span className="text-muted-foreground">Ag: {acc.agency || '-'}</span>
+                      <span>
+                        Cc: {acc.account_number || '-'}
+                        {acc.check_digit ? `-${acc.check_digit}` : ''}
+                      </span>
+                    </div>
+                  </TableCell>
+                  <TableCell className="p-2 font-mono text-sm">{acc.account_code || '-'}</TableCell>
+                  <TableCell className="p-2">
                     <span className="bg-primary/10 text-primary text-xs px-2.5 py-0.5 rounded-full font-medium whitespace-nowrap">
-                      {acc.account_type || 'N/A'}
+                      {acc.account_type || '-'}
                     </span>
                   </TableCell>
-                  <TableCell>{acc.bank_code || '-'}</TableCell>
-                  <TableCell>
-                    {acc.agency || '-'} / {acc.account_number || '-'}-{acc.check_digit || '-'}
+                  <TableCell className="p-2">
+                    {acc.classification ? (
+                      <span className="bg-secondary text-secondary-foreground text-xs px-2.5 py-0.5 rounded-full font-medium whitespace-nowrap">
+                        {acc.classification}
+                      </span>
+                    ) : (
+                      '-'
+                    )}
                   </TableCell>
-                  <TableCell>{acc.account_code || '-'}</TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-2">
+                  <TableCell className="text-right p-2">
+                    <div className="flex justify-end gap-1">
                       <Button
                         variant="ghost"
                         size="icon"
+                        className="h-8 w-8"
                         onClick={() => onEdit(acc)}
                         disabled={acc.pending_deletion}
                       >
@@ -153,6 +179,7 @@ export function BankAccountsTable({
                       <Button
                         variant="ghost"
                         size="icon"
+                        className="h-8 w-8"
                         onClick={() => onDelete(acc)}
                         disabled={acc.pending_deletion}
                       >
