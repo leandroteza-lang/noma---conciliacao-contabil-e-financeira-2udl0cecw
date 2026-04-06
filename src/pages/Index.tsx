@@ -10,6 +10,7 @@ import {
   Filter,
   FileText,
   Table as TableIcon,
+  Upload,
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
@@ -137,15 +138,15 @@ export default function Index() {
           format: 'excel',
           data: [
             {
-              EMPRESA: 'Exemplo Ltda',
-              CONTA_CONTABIL: '1.01.01.01',
-              CODCAIXA: 'Conta Corrente',
-              DESCRICAO: 'Conta Principal',
-              NUMBANCO: '001',
-              NUMAGENCIA: '1234',
-              NROCONTA: '12345',
-              DIGITOCONTA: '6',
-              CLASSIFICACAO: 'Ativo',
+              Empresa: 'Exemplo Ltda',
+              'Conta Contábil': '1.01.01.01',
+              Descrição: 'Conta Principal',
+              Banco: '001',
+              Agência: '1234',
+              'Número da Conta': '12345',
+              Dígito: '6',
+              'Tipo de Conta': 'Conta Corrente',
+              Classificação: 'Ativo',
             },
           ],
         },
@@ -197,16 +198,23 @@ export default function Index() {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-          <Button
-            variant="outline"
-            onClick={handleExportTemplate}
-            className="flex-1 sm:flex-none gap-2"
-          >
-            <Download className="w-4 h-4" /> Baixar Modelo
-          </Button>
-          <Button variant="outline" asChild className="flex-1 sm:flex-none gap-2">
-            <Link to="/import">Importar Planilha</Link>
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button className="gap-2 bg-cyan-400 hover:bg-cyan-500 text-white border-none flex-1 sm:flex-none">
+                <Upload className="h-4 w-4" /> Importar em Lote
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={handleExportTemplate} className="cursor-pointer gap-2">
+                <Download className="h-4 w-4 text-blue-600" /> Exportar Modelo Padrão
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild className="cursor-pointer gap-2">
+                <Link to="/import">
+                  <Upload className="h-4 w-4 text-green-600" /> Importar Planilha
+                </Link>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           <Button
             onClick={() => setModalState({ isOpen: true, type: 'add' })}
             className="flex-1 sm:flex-none gap-2"

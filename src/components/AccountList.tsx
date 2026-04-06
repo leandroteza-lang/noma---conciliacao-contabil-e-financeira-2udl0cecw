@@ -238,13 +238,13 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
           {
             Empresa: 'Exemplo Ltda',
             'Conta Contábil': '1.01.01.01',
-            Descrição: 'Conta Corrente Principal',
-            Banco: '341',
+            Descrição: 'Conta Principal',
+            Banco: '001',
             Agência: '1234',
             'Número da Conta': '12345',
             Dígito: '6',
-            'Tipo de Conta': 'Corrente',
-            Classificação: 'Operacional',
+            'Tipo de Conta': 'Conta Corrente',
+            Classificação: 'Ativo',
           },
         ],
       }

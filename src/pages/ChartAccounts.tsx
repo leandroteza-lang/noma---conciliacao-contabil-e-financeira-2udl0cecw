@@ -13,7 +13,6 @@ import {
   Download,
   FileText,
   FileSpreadsheet,
-  Upload,
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
@@ -291,57 +290,6 @@ export default function ChartAccounts() {
     }
   }
 
-  const handleExportTemplate = async () => {
-    try {
-      toast({ title: 'Aguarde', description: 'Gerando modelo...' })
-
-      const session = await supabase.auth.getSession()
-      const token = session.data.session?.access_token
-
-      const payload = {
-        format: 'excel',
-        data: [
-          {
-            Empresa: 'Exemplo Ltda',
-            'Código da Conta': '1.01.01.01',
-            'Nome da Conta': 'Caixa Geral',
-            'Tipo de Conta': 'Ativo',
-          },
-        ],
-      }
-
-      const res = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/export-chart-accounts`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-          body: JSON.stringify(payload),
-        },
-      )
-
-      if (!res.ok) {
-        throw new Error('Falha ao exportar modelo')
-      }
-
-      const result = await res.json()
-
-      const binaryString = atob(result.excel)
-      const len = binaryString.length
-      const bytes = new Uint8Array(len)
-      for (let i = 0; i < len; i++) bytes[i] = binaryString.charCodeAt(i)
-      const blob = new Blob([bytes], {
-        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      })
-      const link = document.createElement('a')
-      link.href = URL.createObjectURL(blob)
-      link.download = 'modelo_importacao_contas.xlsx'
-      link.click()
-      toast({ title: 'Sucesso', description: 'Modelo gerado com sucesso!' })
-    } catch (error: any) {
-      toast({ title: 'Erro na exportação', description: error.message, variant: 'destructive' })
-    }
-  }
-
   const handleDelete = async (id: string) => {
     const { data: linkedMappings } = await supabase
       .from('account_mapping')
@@ -422,23 +370,6 @@ export default function ChartAccounts() {
                 className="cursor-pointer gap-2"
               >
                 <FileSpreadsheet className="h-4 w-4" /> Excel (XLSX)
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button className="gap-2 bg-cyan-400 hover:bg-cyan-500 text-white border-none">
-                <Upload className="h-4 w-4" /> Importar em Lote
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={handleExportTemplate} className="cursor-pointer gap-2">
-                <Download className="h-4 w-4 text-blue-600" /> Exportar Modelo Padrão
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild className="cursor-pointer gap-2">
-                <Link to="/import">
-                  <Upload className="h-4 w-4 text-green-600" /> Importar Planilha
-                </Link>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
