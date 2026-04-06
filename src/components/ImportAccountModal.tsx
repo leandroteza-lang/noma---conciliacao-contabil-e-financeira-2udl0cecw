@@ -13,6 +13,16 @@ import { supabase } from '@/lib/supabase/client'
 import { UploadCloud, FileSpreadsheet, Download, XCircle } from 'lucide-react'
 import { Progress } from '@/components/ui/progress'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 
 export function ImportAccountModal({ isOpen, onClose, onSuccess }: any) {
   const { toast } = useToast()
@@ -20,11 +30,13 @@ export function ImportAccountModal({ isOpen, onClose, onSuccess }: any) {
   const [file, setFile] = useState<File | null>(null)
   const [isUploading, setIsUploading] = useState(false)
   const [result, setResult] = useState<any>(null)
+  const [showConfirm, setShowConfirm] = useState(false)
 
   const reset = () => {
     setFile(null)
     setResult(null)
     setIsUploading(false)
+    setShowConfirm(false)
   }
 
   const handleClose = () => {
@@ -47,7 +59,12 @@ export function ImportAccountModal({ isOpen, onClose, onSuccess }: any) {
     setResult(null)
   }
 
-  const handleImport = async () => {
+  const handleImportClick = () => {
+    setShowConfirm(true)
+  }
+
+  const executeImport = async () => {
+    setShowConfirm(false)
     if (!file) return
     setIsUploading(true)
 
@@ -249,7 +266,7 @@ export function ImportAccountModal({ isOpen, onClose, onSuccess }: any) {
               <Button variant="outline" onClick={handleClose} disabled={isUploading}>
                 Cancelar
               </Button>
-              <Button onClick={handleImport} disabled={!file || isUploading}>
+              <Button onClick={handleImportClick} disabled={!file || isUploading}>
                 {isUploading ? 'Importando...' : 'Confirmar'}
               </Button>
             </>
@@ -260,6 +277,24 @@ export function ImportAccountModal({ isOpen, onClose, onSuccess }: any) {
           )}
         </DialogFooter>
       </DialogContent>
+
+      <AlertDialog open={showConfirm} onOpenChange={setShowConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar Importação</AlertDialogTitle>
+            <AlertDialogDescription>
+              Você está prestes a iniciar a importação dos dados da planilha{' '}
+              <strong>{file?.name}</strong>. Deseja prosseguir com esta ação?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isUploading}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={executeImport} disabled={isUploading}>
+              Sim, importar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   )
 }
