@@ -78,6 +78,9 @@ export default function Index() {
   const [organizations, setOrganizations] = useState<any[]>([])
   const [editingAccount, setEditingAccount] = useState<any | null>(null)
   const [isSaving, setIsSaving] = useState(false)
+  const [isBulkEditModalOpen, setIsBulkEditModalOpen] = useState(false)
+  const [bulkEditData, setBulkEditData] = useState({ account_type: '', classification: '' })
+  const [isBulkSaving, setIsBulkSaving] = useState(false)
 
   useEffect(() => {
     const fetchOrgs = async () => {
@@ -298,6 +301,50 @@ export default function Index() {
     }
   }
 
+  const closeBulkEditModal = () => {
+    setIsBulkEditModalOpen(false)
+    setBulkEditData({ account_type: '', classification: '' })
+  }
+
+  const handleBulkEditSave = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (selectedIds.length === 0) return
+
+    const hasAccountType = bulkEditData.account_type && bulkEditData.account_type !== 'keep'
+    const hasClassification = bulkEditData.classification && bulkEditData.classification !== 'keep'
+
+    if (!hasAccountType && !hasClassification) {
+      toast({ title: 'Aviso', description: 'Selecione pelo menos um campo para alterar.' })
+      return
+    }
+
+    setIsBulkSaving(true)
+    try {
+      const updatePayload: any = {}
+      if (hasAccountType) updatePayload.account_type = bulkEditData.account_type
+      if (hasClassification) updatePayload.classification = bulkEditData.classification
+
+      const { error } = await supabase
+        .from('bank_accounts')
+        .update(updatePayload)
+        .in('id', selectedIds)
+
+      if (error) throw error
+
+      toast({
+        title: 'Sucesso',
+        description: `${selectedIds.length} conta(s) atualizada(s) com sucesso!`,
+      })
+      closeBulkEditModal()
+      setSelectedIds([])
+      fetchAccounts()
+    } catch (err: any) {
+      toast({ title: 'Erro ao atualizar', description: err.message, variant: 'destructive' })
+    } finally {
+      setIsBulkSaving(false)
+    }
+  }
+
   const handleEditSave = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!editingAccount) return
@@ -490,9 +537,24 @@ export default function Index() {
               <span className="text-sm font-medium text-slate-700">
                 {selectedIds.length} item(ns) selecionado(s)
               </span>
-              <Button variant="destructive" size="sm" onClick={handleBulkDelete} className="gap-2">
-                <Trash2 className="h-4 w-4" /> Excluir Selecionados
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsBulkEditModalOpen(true)}
+                  className="gap-2"
+                >
+                  <Edit className="h-4 w-4" /> Editar Selecionados
+                </Button>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={handleBulkDelete}
+                  className="gap-2"
+                >
+                  <Trash2 className="h-4 w-4" /> Excluir Selecionados
+                </Button>
+              </div>
             </div>
           )}
 
@@ -851,6 +913,65 @@ export default function Index() {
               </div>
             </form>
           )}
+        </DialogContent>
+      </Dialog>
+      <Dialog open={isBulkEditModalOpen} onOpenChange={(open) => !open && closeBulkEditModal()}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle>Editar {selectedIds.length} Contas Selecionadas</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleBulkEditSave} className="space-y-4 mt-4">
+            <div className="space-y-2">
+              <Label>Tipo Conta</Label>
+              <Select
+                value={bulkEditData.account_type || undefined}
+                onValueChange={(val) => setBulkEditData({ ...bulkEditData, account_type: val })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Manter original" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="keep">Manter original</SelectItem>
+                  <SelectItem value="Corrente">Corrente</SelectItem>
+                  <SelectItem value="Poupança">Poupança</SelectItem>
+                  <SelectItem value="Caixa">Caixa</SelectItem>
+                  <SelectItem value="Aplicações">Aplicações</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Classificação</Label>
+              <Select
+                value={bulkEditData.classification || undefined}
+                onValueChange={(val) => setBulkEditData({ ...bulkEditData, classification: val })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Manter original" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="keep">Manter original</SelectItem>
+                  <SelectItem value="B">B</SelectItem>
+                  <SelectItem value="C">C</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 mt-4">
+              <Button type="button" variant="outline" onClick={closeBulkEditModal}>
+                Cancelar
+              </Button>
+              <Button
+                type="submit"
+                disabled={
+                  isBulkSaving ||
+                  (!(bulkEditData.account_type && bulkEditData.account_type !== 'keep') &&
+                    !(bulkEditData.classification && bulkEditData.classification !== 'keep'))
+                }
+                className="bg-blue-600 hover:bg-blue-700 text-white"
+              >
+                {isBulkSaving ? 'Salvando...' : 'Aplicar Alterações'}
+              </Button>
+            </div>
+          </form>
         </DialogContent>
       </Dialog>
     </div>
