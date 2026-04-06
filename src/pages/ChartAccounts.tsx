@@ -49,6 +49,7 @@ interface ChartAccount {
   account_code: string
   account_name: string
   account_type: string
+  classification?: string
   organization: { name: string } | null
 }
 
@@ -104,6 +105,7 @@ export default function ChartAccounts() {
     const matchesSearch =
       (acc.account_code && acc.account_code.toLowerCase().includes(term)) ||
       (acc.account_name && acc.account_name.toLowerCase().includes(term)) ||
+      (acc.classification && acc.classification.toLowerCase().includes(term)) ||
       (acc.organization?.name && acc.organization.name.toLowerCase().includes(term))
 
     const matchesType =
@@ -235,8 +237,12 @@ export default function ChartAccounts() {
       const payload = {
         format: formatType === 'browser' ? 'pdf' : formatType,
         data: sortedData.map((acc) => ({
-          Código: acc.account_code,
+          'Código Reduzido': acc.account_code,
+          Classificação: acc.classification || '-',
           Nome: acc.account_name,
+          'Classificação + Nome': acc.classification
+            ? `${acc.classification} - ${acc.account_name}`
+            : acc.account_name,
           Tipo: acc.account_type,
           Empresa: acc.organization?.name || '-',
         })),
@@ -481,7 +487,15 @@ export default function ChartAccounts() {
                     onClick={() => handleSort('account_code')}
                   >
                     <div className="flex items-center gap-2">
-                      Código <ArrowUpDown className="h-3 w-3 text-slate-400" />
+                      Código Reduzido <ArrowUpDown className="h-3 w-3 text-slate-400" />
+                    </div>
+                  </TableHead>
+                  <TableHead
+                    className="cursor-pointer hover:bg-slate-100"
+                    onClick={() => handleSort('classification')}
+                  >
+                    <div className="flex items-center gap-2">
+                      Classificação <ArrowUpDown className="h-3 w-3 text-slate-400" />
                     </div>
                   </TableHead>
                   <TableHead
@@ -491,6 +505,9 @@ export default function ChartAccounts() {
                     <div className="flex items-center gap-2">
                       Nome da Conta <ArrowUpDown className="h-3 w-3 text-slate-400" />
                     </div>
+                  </TableHead>
+                  <TableHead className="cursor-pointer hover:bg-slate-100">
+                    <div className="flex items-center gap-2">Classificação + Nome</div>
                   </TableHead>
                   <TableHead
                     className="cursor-pointer hover:bg-slate-100"
@@ -514,7 +531,7 @@ export default function ChartAccounts() {
               <TableBody>
                 {loading ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="h-24 text-center">
+                    <TableCell colSpan={8} className="h-24 text-center">
                       Carregando plano de contas...
                     </TableCell>
                   </TableRow>
@@ -539,7 +556,13 @@ export default function ChartAccounts() {
                           {acc.account_code}
                         </div>
                       </TableCell>
+                      <TableCell>{acc.classification || '-'}</TableCell>
                       <TableCell>{acc.account_name}</TableCell>
+                      <TableCell>
+                        {acc.classification
+                          ? `${acc.classification} - ${acc.account_name}`
+                          : acc.account_name}
+                      </TableCell>
                       <TableCell>
                         {acc.account_type && (
                           <Badge
@@ -582,7 +605,7 @@ export default function ChartAccounts() {
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={6} className="h-24 text-center">
+                    <TableCell colSpan={8} className="h-24 text-center">
                       Nenhuma conta contábil encontrada.
                     </TableCell>
                   </TableRow>

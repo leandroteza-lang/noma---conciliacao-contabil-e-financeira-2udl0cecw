@@ -1,6 +1,6 @@
 {
   "_versions": {
-    "import-data": 33,
+    "import-data": 34,
     "generate-entries": 9,
     "export-dashboard": 8,
     "export-analysis": 8,
@@ -10,7 +10,7 @@
     "manage-user": 18,
     "send-email": 8,
     "export-bank-accounts": 9,
-    "export-chart-accounts": 8,
+    "export-chart-accounts": 9,
     "export-tga-accounts": 8,
     "chat": 21,
     "audit-log": 3,
