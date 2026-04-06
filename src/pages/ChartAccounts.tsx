@@ -13,6 +13,7 @@ import {
   Download,
   FileText,
   FileSpreadsheet,
+  Upload,
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
@@ -301,10 +302,10 @@ export default function ChartAccounts() {
         format: 'excel',
         data: [
           {
-            EMPRESA: 'Exemplo Ltda',
-            CODIGO_CONTA: '1.01.01.01',
-            NOME_CONTA: 'Caixa Geral',
-            TIPO_CONTA: 'Ativo',
+            Empresa: 'Exemplo Ltda',
+            'Código da Conta': '1.01.01.01',
+            'Nome da Conta': 'Caixa Geral',
+            'Tipo de Conta': 'Ativo',
           },
         ],
       }
@@ -424,12 +425,23 @@ export default function ChartAccounts() {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-          <Button variant="outline" onClick={handleExportTemplate} className="gap-2">
-            <Download className="h-4 w-4" /> Baixar Modelo
-          </Button>
-          <Button variant="outline" asChild>
-            <Link to="/import">Importar Planilha</Link>
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button className="gap-2 bg-cyan-400 hover:bg-cyan-500 text-white border-none">
+                <Upload className="h-4 w-4" /> Importar em Lote
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={handleExportTemplate} className="cursor-pointer gap-2">
+                <Download className="h-4 w-4 text-blue-600" /> Exportar Modelo Padrão
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild className="cursor-pointer gap-2">
+                <Link to="/import">
+                  <Upload className="h-4 w-4 text-green-600" /> Importar Planilha
+                </Link>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           <Button>
             <Plus className="h-4 w-4 mr-2" />
             Nova Conta

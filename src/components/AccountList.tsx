@@ -6,8 +6,10 @@ import {
   FileText,
   FileSpreadsheet,
   Edit,
+  Upload,
 } from 'lucide-react'
 import { useState, useRef, useEffect, useMemo } from 'react'
+import { Link } from 'react-router-dom'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
 import {
@@ -223,6 +225,62 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
     }
   }
 
+  const handleExportTemplate = async () => {
+    try {
+      toast({ title: 'Aguarde', description: 'Gerando modelo...' })
+
+      const session = await supabase.auth.getSession()
+      const token = session.data.session?.access_token
+
+      const payload = {
+        format: 'excel',
+        data: [
+          {
+            Empresa: 'Exemplo Ltda',
+            'Conta Contábil': '1.01.01.01',
+            Descrição: 'Conta Corrente Principal',
+            Banco: '341',
+            Agência: '1234',
+            'Número da Conta': '12345',
+            Dígito: '6',
+            'Tipo de Conta': 'Corrente',
+            Classificação: 'Operacional',
+          },
+        ],
+      }
+
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/export-bank-accounts`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify(payload),
+        },
+      )
+
+      if (!res.ok) {
+        throw new Error('Falha ao exportar modelo')
+      }
+
+      const result = await res.json()
+
+      const binaryString = atob(result.excel)
+      const len = binaryString.length
+      const bytes = new Uint8Array(len)
+      for (let i = 0; i < len; i++) bytes[i] = binaryString.charCodeAt(i)
+      const blob = new Blob([bytes], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      })
+      const link = document.createElement('a')
+      link.href = URL.createObjectURL(blob)
+      link.download = 'modelo_importacao_contas_bancarias.xlsx'
+      link.click()
+      toast({ title: 'Sucesso', description: 'Modelo gerado com sucesso!' })
+    } catch (error: any) {
+      toast({ title: 'Erro na exportação', description: error.message, variant: 'destructive' })
+    }
+  }
+
   const handleExport = async (formatType: 'pdf' | 'excel' | 'browser') => {
     try {
       toast({ title: 'Aguarde', description: 'Gerando relatório...' })
@@ -369,30 +427,53 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
             </div>
           )}
         </div>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" className="gap-2">
-              <Download className="h-4 w-4" /> Exportar
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem
-              onClick={() => handleExport('browser')}
-              className="cursor-pointer gap-2"
-            >
-              <FileText className="h-4 w-4" /> Abrir no Browser
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => handleExport('pdf')} className="cursor-pointer gap-2">
-              <FileText className="h-4 w-4" /> PDF
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => handleExport('excel')}
-              className="cursor-pointer gap-2"
-            >
-              <FileSpreadsheet className="h-4 w-4" /> Excel (XLSX)
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <div className="flex flex-wrap items-center gap-2">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="gap-2">
+                <Download className="h-4 w-4" /> Exportar
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                onClick={() => handleExport('browser')}
+                className="cursor-pointer gap-2"
+              >
+                <FileText className="h-4 w-4" /> Abrir no Browser
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => handleExport('pdf')}
+                className="cursor-pointer gap-2"
+              >
+                <FileText className="h-4 w-4" /> PDF
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => handleExport('excel')}
+                className="cursor-pointer gap-2"
+              >
+                <FileSpreadsheet className="h-4 w-4" /> Excel (XLSX)
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button className="gap-2 bg-cyan-400 hover:bg-cyan-500 text-white border-none">
+                <Upload className="h-4 w-4" /> Importar em Lote
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={handleExportTemplate} className="cursor-pointer gap-2">
+                <Download className="h-4 w-4 text-blue-600" /> Exportar Modelo Padrão
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild className="cursor-pointer gap-2">
+                <Link to="/import">
+                  <Upload className="h-4 w-4 text-green-600" /> Importar Planilha
+                </Link>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
 
       <div className="hidden lg:block rounded-xl border border-border bg-card shadow-sm overflow-hidden">
