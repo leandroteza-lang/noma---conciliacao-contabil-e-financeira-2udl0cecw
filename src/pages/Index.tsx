@@ -11,8 +11,10 @@ import {
   FileText,
   FileSpreadsheet,
   Loader2,
+  Upload,
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
+import { ImportAccountModal } from '@/components/ImportAccountModal'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
@@ -67,6 +69,7 @@ export default function Index() {
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(
     null,
   )
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false)
 
   const fetchAccounts = async () => {
     if (!user) return
@@ -279,6 +282,62 @@ export default function Index() {
     }
   }
 
+  const handleExportTemplate = async () => {
+    try {
+      toast({ title: 'Aguarde', description: 'Gerando modelo...' })
+
+      const session = await supabase.auth.getSession()
+      const token = session.data.session?.access_token
+
+      const payload = {
+        format: 'excel',
+        data: [
+          {
+            Empresa: 'Exemplo Ltda',
+            'Conta Contábil': '1.01.01.01',
+            Descrição: 'Conta Principal',
+            Banco: '001',
+            Agência: '1234',
+            'Número da Conta': '12345',
+            Dígito: '6',
+            'Tipo de Conta': 'Conta Corrente',
+            Classificação: 'Ativo',
+          },
+        ],
+      }
+
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/export-bank-accounts`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify(payload),
+        },
+      )
+
+      if (!res.ok) {
+        throw new Error('Falha ao exportar modelo')
+      }
+
+      const result = await res.json()
+
+      const binaryString = atob(result.excel)
+      const len = binaryString.length
+      const bytes = new Uint8Array(len)
+      for (let i = 0; i < len; i++) bytes[i] = binaryString.charCodeAt(i)
+      const blob = new Blob([bytes], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      })
+      const link = document.createElement('a')
+      link.href = URL.createObjectURL(blob)
+      link.download = 'modelo_importacao_contas_bancarias.xlsx'
+      link.click()
+      toast({ title: 'Sucesso', description: 'Modelo gerado com sucesso!' })
+    } catch (error: any) {
+      toast({ title: 'Erro na exportação', description: error.message, variant: 'destructive' })
+    }
+  }
+
   return (
     <div className="container mx-auto p-4 sm:p-6 max-w-7xl space-y-6 animate-in fade-in duration-500">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -328,6 +387,26 @@ export default function Index() {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button className="gap-2 bg-cyan-500 hover:bg-cyan-600 text-white border-none">
+                <Upload className="h-4 w-4" /> Importar em Lote
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={handleExportTemplate} className="cursor-pointer gap-2">
+                <Download className="h-4 w-4 text-blue-600" /> Exportar Modelo Padrão
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => setIsImportModalOpen(true)}
+                className="cursor-pointer gap-2"
+              >
+                <Upload className="h-4 w-4 text-green-600" /> Importar Planilha
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
           <Button className="gap-2 bg-blue-600 hover:bg-blue-700">
             <Plus className="h-4 w-4" /> Nova Conta
           </Button>
@@ -539,6 +618,15 @@ export default function Index() {
           )}
         </CardContent>
       </Card>
+
+      <ImportAccountModal
+        isOpen={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+        onSuccess={() => {
+          fetchAccounts()
+          setIsImportModalOpen(false)
+        }}
+      />
     </div>
   )
 }
