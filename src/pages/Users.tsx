@@ -285,7 +285,7 @@ export default function Users() {
           </DropdownMenu>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline">
+              <Button className="bg-[#14dbe9] text-[#fbf4f4]" variant="outline">
                 <Upload className="w-4 h-4 mr-2" /> Importar em Lote
               </Button>
             </DropdownMenuTrigger>
