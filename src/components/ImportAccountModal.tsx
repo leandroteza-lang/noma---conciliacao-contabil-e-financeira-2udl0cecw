@@ -40,6 +40,9 @@ export function ImportAccountModal({ isOpen, onClose, onSuccess }: any) {
   }
 
   const handleClose = () => {
+    if (result && typeof onSuccess === 'function') {
+      onSuccess()
+    }
     reset()
     onClose()
   }
@@ -95,7 +98,6 @@ export function ImportAccountModal({ isOpen, onClose, onSuccess }: any) {
           if (data?.error) throw new Error(data.error)
 
           setResult(data)
-          onSuccess()
         } catch (err: any) {
           toast({
             variant: 'destructive',
