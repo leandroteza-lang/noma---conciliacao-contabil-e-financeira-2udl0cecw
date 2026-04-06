@@ -609,22 +609,22 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
                   </TableCell>
                 ))}
                 <TableCell className="text-right">
-                  <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="flex justify-end gap-2 transition-opacity">
                     <Button
                       variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary/10"
+                      size="sm"
+                      className="h-8 text-muted-foreground hover:text-primary hover:bg-primary/10"
                       onClick={() => setEditModalAccount(acc)}
                     >
-                      <Edit className="h-4 w-4" />
+                      <Edit className="h-4 w-4 mr-1.5" /> Editar
                     </Button>
                     <Button
                       variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                      size="sm"
+                      className="h-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
                       onClick={() => onDelete(acc.id)}
                     >
-                      <Trash2 className="h-4 w-4" />
+                      <Trash2 className="h-4 w-4 mr-1.5" /> Excluir
                     </Button>
                   </div>
                 </TableCell>
@@ -672,19 +672,19 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
                 <div className="flex flex-col gap-2">
                   <Button
                     variant="outline"
-                    size="icon"
-                    className="text-muted-foreground hover:text-primary hover:bg-primary/10 bg-background border-border"
+                    size="sm"
+                    className="text-muted-foreground hover:text-primary hover:bg-primary/10 bg-background border-border justify-start"
                     onClick={() => setEditModalAccount(acc)}
                   >
-                    <Edit className="h-3.5 w-3.5" />
+                    <Edit className="h-3.5 w-3.5 mr-2" /> Editar
                   </Button>
                   <Button
                     variant="outline"
-                    size="icon"
-                    className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 bg-background border-border"
+                    size="sm"
+                    className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 bg-background border-border justify-start"
                     onClick={() => onDelete(acc.id)}
                   >
-                    <Trash2 className="h-3.5 w-3.5" />
+                    <Trash2 className="h-3.5 w-3.5 mr-2" /> Excluir
                   </Button>
                 </div>
               </CardContent>
