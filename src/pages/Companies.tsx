@@ -506,7 +506,7 @@ export default function Companies() {
     window.dispatchEvent(event)
   }
 
-  const handleExport = async (formatType: 'pdf' | 'excel' | 'browser') => {
+  const handleExport = async (formatType: 'pdf' | 'excel' | 'browser' | 'csv' | 'txt') => {
     try {
       toast({ title: 'Aguarde', description: 'Gerando relatório...' })
 
@@ -560,6 +560,18 @@ export default function Companies() {
         const link = document.createElement('a')
         link.href = URL.createObjectURL(blob)
         link.download = 'empresas.xlsx'
+        link.click()
+      } else if (formatType === 'csv') {
+        const blob = new Blob([result.csv], { type: 'text/csv;charset=utf-8;' })
+        const link = document.createElement('a')
+        link.href = URL.createObjectURL(blob)
+        link.download = 'empresas.csv'
+        link.click()
+      } else if (formatType === 'txt') {
+        const blob = new Blob([result.txt], { type: 'text/plain;charset=utf-8;' })
+        const link = document.createElement('a')
+        link.href = URL.createObjectURL(blob)
+        link.download = 'empresas.txt'
         link.click()
       } else if (formatType === 'browser') {
         if (win) {
@@ -619,7 +631,19 @@ export default function Companies() {
                 onClick={() => handleExport('excel')}
                 className="cursor-pointer gap-2"
               >
-                <FileSpreadsheet className="h-4 w-4" /> Excel (XLSX)
+                <FileSpreadsheet className="h-4 w-4 text-green-600" /> Excel (XLSX)
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => handleExport('csv')}
+                className="cursor-pointer gap-2"
+              >
+                <FileText className="h-4 w-4 text-blue-600" /> CSV
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => handleExport('txt')}
+                className="cursor-pointer gap-2"
+              >
+                <FileText className="h-4 w-4 text-gray-600" /> TXT
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

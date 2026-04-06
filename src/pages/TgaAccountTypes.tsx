@@ -281,7 +281,7 @@ export default function TgaAccountTypes() {
     printWindow.document.close()
   }
 
-  const exportData = async (format: 'pdf' | 'excel') => {
+  const exportData = async (format: 'pdf' | 'excel' | 'csv' | 'txt') => {
     try {
       setIsExporting(true)
       const payload = filteredData.map((item) => ({
@@ -302,6 +302,18 @@ export default function TgaAccountTypes() {
         const link = document.createElement('a')
         link.href = `data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,${result.excel}`
         link.download = 'tipos_conta_tga.xlsx'
+        link.click()
+      } else if (format === 'csv' && result.csv) {
+        const blob = new Blob([result.csv], { type: 'text/csv;charset=utf-8;' })
+        const link = document.createElement('a')
+        link.href = URL.createObjectURL(blob)
+        link.download = 'tipos_conta_tga.csv'
+        link.click()
+      } else if (format === 'txt' && result.txt) {
+        const blob = new Blob([result.txt], { type: 'text/plain;charset=utf-8;' })
+        const link = document.createElement('a')
+        link.href = URL.createObjectURL(blob)
+        link.download = 'tipos_conta_tga.txt'
         link.click()
       } else if (format === 'pdf' && result.pdf) {
         const link = document.createElement('a')
@@ -351,6 +363,12 @@ export default function TgaAccountTypes() {
               <DropdownMenuItem onClick={() => exportData('excel')}>
                 <FileSpreadsheet className="w-4 h-4 mr-2 text-green-600 dark:text-green-400" />{' '}
                 Excel (XLSX)
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => exportData('csv')}>
+                <FileText className="w-4 h-4 mr-2 text-blue-600" /> CSV
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => exportData('txt')}>
+                <FileText className="w-4 h-4 mr-2 text-gray-600" /> TXT
               </DropdownMenuItem>
               <DropdownMenuItem onClick={handlePrint}>
                 <Printer className="w-4 h-4 mr-2 text-primary" /> Imprimir
