@@ -83,6 +83,7 @@ export default function ChartAccounts() {
     key: 'classification',
     direction: 'asc',
   })
+  const [refreshCounter, setRefreshCounter] = useState(0)
 
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [isBulkEditOpen, setIsBulkEditOpen] = useState(false)
@@ -186,7 +187,16 @@ export default function ChartAccounts() {
     if (!user) return
     fetchAccounts()
     fetchSummary()
-  }, [user, debouncedSearch, typeFilter, orgFilter, sortConfig, currentPage, itemsPerPage])
+  }, [
+    user,
+    debouncedSearch,
+    typeFilter,
+    orgFilter,
+    sortConfig,
+    currentPage,
+    itemsPerPage,
+    refreshCounter,
+  ])
 
   useEffect(() => {
     if (!user) return
@@ -196,16 +206,15 @@ export default function ChartAccounts() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'chart_of_accounts' }, () => {
         clearTimeout(timeoutId)
         timeoutId = setTimeout(() => {
-          fetchAccounts()
-          fetchSummary()
-        }, 1500)
+          setRefreshCounter((prev) => prev + 1)
+        }, 2000)
       })
       .subscribe()
     return () => {
       clearTimeout(timeoutId)
       supabase.removeChannel(channel)
     }
-  }, [user, debouncedSearch, typeFilter, orgFilter, sortConfig, currentPage, itemsPerPage])
+  }, [user])
 
   const getRowClassName = (acc: ChartAccount) => {
     const code = acc.classification || acc.account_code || ''
@@ -280,6 +289,11 @@ export default function ChartAccounts() {
     if (!code) return 0
     const level = (code.match(/\./g) || []).length
     return level * 1.5
+  }
+
+  const getIndentFromAcc = (acc: ChartAccount) => {
+    const code = acc.classification || acc.account_code || ''
+    return getIndent(code)
   }
 
   const handleBulkDelete = async () => {
@@ -805,7 +819,7 @@ export default function ChartAccounts() {
                       <TableCell className="font-medium whitespace-nowrap">
                         <div
                           className="flex items-center"
-                          style={{ paddingLeft: `${getIndent(acc.account_code)}rem` }}
+                          style={{ paddingLeft: `${getIndentFromAcc(acc)}rem` }}
                         >
                           <AlignLeft className="h-3 w-3 text-muted-foreground mr-2 opacity-50 shrink-0" />
                           {acc.account_code}
