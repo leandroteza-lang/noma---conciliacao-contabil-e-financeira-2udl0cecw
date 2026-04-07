@@ -190,17 +190,22 @@ export default function ChartAccounts() {
 
   useEffect(() => {
     if (!user) return
+    let timeoutId: NodeJS.Timeout
     const channel = supabase
       .channel('schema-db-changes-chart-accounts')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'chart_of_accounts' }, () => {
-        fetchAccounts()
-        fetchSummary()
+        clearTimeout(timeoutId)
+        timeoutId = setTimeout(() => {
+          fetchAccounts()
+          fetchSummary()
+        }, 1500)
       })
       .subscribe()
     return () => {
+      clearTimeout(timeoutId)
       supabase.removeChannel(channel)
     }
-  }, [user])
+  }, [user, debouncedSearch, typeFilter, orgFilter, sortConfig, currentPage, itemsPerPage])
 
   const getRowClassName = (acc: ChartAccount) => {
     const code = acc.classification || acc.account_code || ''
