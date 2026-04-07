@@ -10,7 +10,7 @@
     "manage-user": 18,
     "send-email": 8,
     "export-bank-accounts": 9,
-    "export-chart-accounts": 10,
+    "export-chart-accounts": 11,
     "export-tga-accounts": 8,
     "chat": 21,
     "audit-log": 3,
