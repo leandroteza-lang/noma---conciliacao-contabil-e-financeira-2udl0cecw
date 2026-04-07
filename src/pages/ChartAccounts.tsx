@@ -9,6 +9,8 @@ import {
   Trash2,
   ChevronLeft,
   ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
   ArrowUpDown,
   Download,
   Upload,
@@ -1125,12 +1127,20 @@ export default function ChartAccounts() {
                   <Button
                     variant="outline"
                     size="sm"
+                    onClick={() => setCurrentPage(1)}
+                    disabled={currentPage === 1}
+                  >
+                    <ChevronsLeft className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
                     onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                     disabled={currentPage === 1}
                   >
                     <ChevronLeft className="h-4 w-4" />
                   </Button>
-                  <span className="text-sm font-medium px-2">
+                  <span className="text-sm font-medium px-2 whitespace-nowrap">
                     {currentPage} / {totalPages}
                   </span>
                   <Button
@@ -1140,6 +1150,14 @@ export default function ChartAccounts() {
                     disabled={currentPage === totalPages}
                   >
                     <ChevronRight className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(totalPages)}
+                    disabled={currentPage === totalPages}
+                  >
+                    <ChevronsRight className="h-4 w-4" />
                   </Button>
                 </div>
               </div>
