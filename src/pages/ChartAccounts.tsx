@@ -96,17 +96,36 @@ export default function ChartAccounts() {
 
   const fetchAccounts = async () => {
     setLoading(true)
-    const { data, error } = await supabase
-      .from('chart_of_accounts')
-      .select('*, organization:organizations(name)')
-      .neq('pending_deletion', true)
-      .is('deleted_at', null)
-      .order('account_code', { ascending: true })
+    let allData: any[] = []
+    let from = 0
+    let step = 1000
+    let hasMore = true
 
-    if (!error && data) {
-      setAccounts(data as any)
-      setSelectedIds((prev) => prev.filter((id) => data.some((d) => d.id === id)))
+    while (hasMore) {
+      const { data, error } = await supabase
+        .from('chart_of_accounts')
+        .select('*, organization:organizations(name)')
+        .neq('pending_deletion', true)
+        .is('deleted_at', null)
+        .order('account_code', { ascending: true })
+        .range(from, from + step - 1)
+
+      if (error) {
+        console.error(error)
+        break
+      }
+
+      if (data && data.length > 0) {
+        allData = [...allData, ...data]
+        from += step
+        if (data.length < step) hasMore = false
+      } else {
+        hasMore = false
+      }
     }
+
+    setAccounts(allData)
+    setSelectedIds((prev) => prev.filter((id) => allData.some((d) => d.id === id)))
     setLoading(false)
   }
 
@@ -182,9 +201,24 @@ export default function ChartAccounts() {
 
   const handleBulkEditSave = async (data: any) => {
     if (selectedIds.length === 0) return
-    const { error } = await supabase.from('chart_of_accounts').update(data).in('id', selectedIds)
-    if (error) {
-      toast({ title: 'Erro', description: error.message, variant: 'destructive' })
+    toast({ title: 'Aguarde', description: 'Atualizando contas...' })
+
+    const chunkSize = 500
+    let hasError = false
+    let errorMessage = ''
+
+    for (let i = 0; i < selectedIds.length; i += chunkSize) {
+      const chunk = selectedIds.slice(i, i + chunkSize)
+      const { error } = await supabase.from('chart_of_accounts').update(data).in('id', chunk)
+      if (error) {
+        hasError = true
+        errorMessage = error.message
+        break
+      }
+    }
+
+    if (hasError) {
+      toast({ title: 'Erro', description: errorMessage, variant: 'destructive' })
     } else {
       toast({ title: 'Sucesso', description: `${selectedIds.length} contas atualizadas.` })
       setIsBulkEditOpen(false)
@@ -238,44 +272,52 @@ export default function ChartAccounts() {
     if (!confirm(`Deseja solicitar a exclusão de ${selectedIds.length} conta(s) contábil(eis)?`))
       return
 
-    const checkPromises = selectedIds.map(async (id) => {
-      const { data: linkedMappings } = await supabase
-        .from('account_mapping')
-        .select('id')
-        .eq('chart_account_id', id)
-        .limit(1)
-      const { data: linkedDebits } = await supabase
-        .from('accounting_entries')
-        .select('id')
-        .eq('debit_account_id', id)
-        .limit(1)
-      const { data: linkedCredits } = await supabase
-        .from('accounting_entries')
-        .select('id')
-        .eq('credit_account_id', id)
-        .limit(1)
+    toast({ title: 'Aguarde', description: 'Verificando vínculos...' })
 
-      const hasRelations =
-        (linkedMappings && linkedMappings.length > 0) ||
-        (linkedDebits && linkedDebits.length > 0) ||
-        (linkedCredits && linkedCredits.length > 0)
+    const blockedIds = new Set<string>()
+    const chunkSize = 500
 
-      return { id, hasRelations }
-    })
+    for (let i = 0; i < selectedIds.length; i += chunkSize) {
+      const chunk = selectedIds.slice(i, i + chunkSize)
+      const [{ data: mappings }, { data: debits }, { data: credits }] = await Promise.all([
+        supabase.from('account_mapping').select('chart_account_id').in('chart_account_id', chunk),
+        supabase
+          .from('accounting_entries')
+          .select('debit_account_id')
+          .in('debit_account_id', chunk),
+        supabase
+          .from('accounting_entries')
+          .select('credit_account_id')
+          .in('credit_account_id', chunk),
+      ])
 
-    const results = await Promise.all(checkPromises)
-    const toDelete = results.filter((r) => !r.hasRelations).map((r) => r.id)
-    const blocked = results.filter((r) => r.hasRelations).map((r) => r.id)
+      mappings?.forEach((m: any) => {
+        if (m.chart_account_id) blockedIds.add(m.chart_account_id)
+      })
+      debits?.forEach((d: any) => {
+        if (d.debit_account_id) blockedIds.add(d.debit_account_id)
+      })
+      credits?.forEach((c: any) => {
+        if (c.credit_account_id) blockedIds.add(c.credit_account_id)
+      })
+    }
+
+    const toDelete = selectedIds.filter((id) => !blockedIds.has(id))
+    const blocked = selectedIds.filter((id) => blockedIds.has(id))
 
     if (toDelete.length > 0) {
-      const { error } = await supabase.from('chart_of_accounts').delete().in('id', toDelete)
-
-      if (error) toast({ title: 'Erro', description: error.message, variant: 'destructive' })
-      else
-        toast({
-          title: 'Sucesso',
-          description: `${toDelete.length} conta(s) excluída(s) com sucesso.`,
-        })
+      for (let i = 0; i < toDelete.length; i += chunkSize) {
+        const chunk = toDelete.slice(i, i + chunkSize)
+        const { error } = await supabase.from('chart_of_accounts').delete().in('id', chunk)
+        if (error) {
+          toast({ title: 'Erro', description: error.message, variant: 'destructive' })
+          return
+        }
+      }
+      toast({
+        title: 'Sucesso',
+        description: `${toDelete.length} conta(s) excluída(s) com sucesso.`,
+      })
     }
 
     if (blocked.length > 0) {

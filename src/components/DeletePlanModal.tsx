@@ -18,6 +18,7 @@ import {
 } from '@/components/ui/select'
 import { useToast } from '@/hooks/use-toast'
 import { AlertTriangle } from 'lucide-react'
+import { Progress } from '@/components/ui/progress'
 
 interface Props {
   isOpen: boolean
@@ -30,6 +31,11 @@ export function DeletePlanModal({ isOpen, onClose, onSuccess, organizations }: P
   const { toast } = useToast()
   const [loading, setLoading] = useState(false)
   const [selectedOrg, setSelectedOrg] = useState<string>('')
+  const [progress, setProgress] = useState<{
+    current: number
+    total: number
+    status: string
+  } | null>(null)
 
   const handleDeletePlan = async () => {
     if (!selectedOrg) {
@@ -45,47 +51,85 @@ export function DeletePlanModal({ isOpen, onClose, onSuccess, organizations }: P
       return
 
     setLoading(true)
+    setProgress({ current: 0, total: 0, status: 'Buscando contas...' })
     try {
-      const { data: accounts } = await supabase
-        .from('chart_of_accounts')
-        .select('id')
-        .eq('organization_id', selectedOrg)
+      let allAccounts: { id: string }[] = []
+      let from = 0
+      let step = 1000
+      let hasMore = true
 
-      if (!accounts || accounts.length === 0) {
+      while (hasMore) {
+        const { data, error } = await supabase
+          .from('chart_of_accounts')
+          .select('id')
+          .eq('organization_id', selectedOrg)
+          .range(from, from + step - 1)
+
+        if (error) throw error
+
+        if (data && data.length > 0) {
+          allAccounts = [...allAccounts, ...data]
+          from += step
+          if (data.length < step) hasMore = false
+        } else {
+          hasMore = false
+        }
+      }
+
+      if (allAccounts.length === 0) {
         toast({ title: 'Aviso', description: 'Nenhuma conta encontrada para esta empresa.' })
         setLoading(false)
+        setProgress(null)
         onClose()
         return
       }
 
-      const accountIds = accounts.map((a: { id: string }) => a.id)
+      const accountIds = allAccounts.map((a) => a.id)
+      setProgress({ current: 0, total: accountIds.length, status: 'Verificando vínculos...' })
 
-      const { data: mappings } = await supabase
-        .from('account_mapping')
-        .select('chart_account_id')
-        .in('chart_account_id', accountIds)
-      const { data: debits } = await supabase
-        .from('accounting_entries')
-        .select('debit_account_id')
-        .in('debit_account_id', accountIds)
-      const { data: credits } = await supabase
-        .from('accounting_entries')
-        .select('credit_account_id')
-        .in('credit_account_id', accountIds)
+      const blockedIds = new Set<string>()
+      const chunkSize = 500
 
-      const blockedIds = new Set([
-        ...(mappings?.map((m: any) => m.chart_account_id) || []),
-        ...(debits?.map((d: any) => d.debit_account_id) || []),
-        ...(credits?.map((c: any) => c.credit_account_id) || []),
-      ])
+      for (let i = 0; i < accountIds.length; i += chunkSize) {
+        const chunk = accountIds.slice(i, i + chunkSize)
+        const [{ data: mappings }, { data: debits }, { data: credits }] = await Promise.all([
+          supabase.from('account_mapping').select('chart_account_id').in('chart_account_id', chunk),
+          supabase
+            .from('accounting_entries')
+            .select('debit_account_id')
+            .in('debit_account_id', chunk),
+          supabase
+            .from('accounting_entries')
+            .select('credit_account_id')
+            .in('credit_account_id', chunk),
+        ])
+
+        mappings?.forEach((m: any) => {
+          if (m.chart_account_id) blockedIds.add(m.chart_account_id)
+        })
+        debits?.forEach((d: any) => {
+          if (d.debit_account_id) blockedIds.add(d.debit_account_id)
+        })
+        credits?.forEach((c: any) => {
+          if (c.credit_account_id) blockedIds.add(c.credit_account_id)
+        })
+
+        setProgress((prev) =>
+          prev ? { ...prev, current: Math.min(i + chunkSize, accountIds.length) } : null,
+        )
+      }
 
       const toDelete = accountIds.filter((id: string) => !blockedIds.has(id))
 
       if (toDelete.length > 0) {
-        for (let i = 0; i < toDelete.length; i += 500) {
-          const chunk = toDelete.slice(i, i + 500)
+        setProgress({ current: 0, total: toDelete.length, status: 'Excluindo contas...' })
+        for (let i = 0; i < toDelete.length; i += chunkSize) {
+          const chunk = toDelete.slice(i, i + chunkSize)
           const { error } = await supabase.from('chart_of_accounts').delete().in('id', chunk)
           if (error) throw error
+          setProgress((prev) =>
+            prev ? { ...prev, current: Math.min(i + chunkSize, toDelete.length) } : null,
+          )
         }
       }
 
@@ -101,6 +145,7 @@ export function DeletePlanModal({ isOpen, onClose, onSuccess, organizations }: P
       toast({ title: 'Erro', description: error.message, variant: 'destructive' })
     } finally {
       setLoading(false)
+      setProgress(null)
     }
   }
 
@@ -117,8 +162,8 @@ export function DeletePlanModal({ isOpen, onClose, onSuccess, organizations }: P
             vínculos (lançamentos ou mapeamentos) não serão excluídas.
           </DialogDescription>
         </DialogHeader>
-        <div className="py-4">
-          <Select value={selectedOrg} onValueChange={setSelectedOrg}>
+        <div className="py-4 space-y-4">
+          <Select value={selectedOrg} onValueChange={setSelectedOrg} disabled={loading}>
             <SelectTrigger>
               <SelectValue placeholder="Selecione a empresa..." />
             </SelectTrigger>
@@ -130,6 +175,22 @@ export function DeletePlanModal({ isOpen, onClose, onSuccess, organizations }: P
               ))}
             </SelectContent>
           </Select>
+
+          {progress && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-sm text-slate-600">
+                <span>{progress.status}</span>
+                {progress.total > 0 && (
+                  <span>
+                    {progress.current} / {progress.total}
+                  </span>
+                )}
+              </div>
+              {progress.total > 0 && (
+                <Progress value={(progress.current / progress.total) * 100} className="h-2" />
+              )}
+            </div>
+          )}
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose} disabled={loading}>
