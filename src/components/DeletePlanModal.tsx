@@ -78,7 +78,7 @@ export function DeletePlanModal({ isOpen, onClose, onSuccess, organizations }: a
 
       let deleted = 0
       let blockedCount = 0
-      const chunkSize = 1000
+      const chunkSize = 100
 
       for (let i = 0; i < allIds.length; i += chunkSize) {
         const chunk = allIds.slice(i, i + chunkSize)

@@ -238,7 +238,7 @@ export default function ChartAccounts() {
     if (selectedIds.length === 0) return
     toast({ title: 'Aguarde', description: 'Atualizando contas...' })
 
-    const chunkSize = 500
+    const chunkSize = 100
     let hasError = false
     let errorMessage = ''
 
@@ -285,7 +285,7 @@ export default function ChartAccounts() {
     toast({ title: 'Aguarde', description: 'Verificando vínculos...' })
 
     const blockedIds = new Set<string>()
-    const chunkSize = 500
+    const chunkSize = 100
 
     for (let i = 0; i < selectedIds.length; i += chunkSize) {
       const chunk = selectedIds.slice(i, i + chunkSize)
