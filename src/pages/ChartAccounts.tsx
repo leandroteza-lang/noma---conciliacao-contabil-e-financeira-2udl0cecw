@@ -188,7 +188,7 @@ export default function ChartAccounts() {
     }
 
     if (natureFilter !== 'all') {
-      query = query.ilike('account_type', natureFilter)
+      query = query.ilike('nature', natureFilter)
     }
 
     if (orgFilter !== 'all') {
@@ -431,7 +431,7 @@ export default function ChartAccounts() {
       if (debouncedPurpose) query = query.ilike('purpose', `%${debouncedPurpose}%`)
       if (levelFilter !== 'all') query = query.eq('account_level', levelFilter)
       if (behaviorFilter !== 'all') query = query.eq('account_behavior', behaviorFilter)
-      if (natureFilter !== 'all') query = query.ilike('account_type', natureFilter)
+      if (natureFilter !== 'all') query = query.ilike('nature', natureFilter)
       if (orgFilter !== 'all') query = query.eq('organization_id', orgFilter)
 
       const sortCol = sortConfig?.key || 'classification'
@@ -713,18 +713,105 @@ export default function ChartAccounts() {
       <Card>
         <CardHeader className="pb-4">
           <div className="flex flex-col gap-4">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-              <div className="space-y-1">
-                <CardTitle>Listagem de Contas</CardTitle>
-                <CardDescription>Visualize e filtre sua estrutura contábil.</CardDescription>
-              </div>
+            <div className="space-y-1">
+              <CardTitle>Listagem de Contas</CardTitle>
+              <CardDescription>Visualize e filtre sua estrutura contábil.</CardDescription>
+            </div>
+
+            {/* Extended Filters Bar */}
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 bg-slate-50/50 p-3 rounded-lg border border-slate-100">
               <div className="flex flex-wrap items-center gap-3">
+                <div className="w-full sm:w-44">
+                  <Select
+                    value={orgFilter}
+                    onValueChange={(v) => {
+                      setOrgFilter(v)
+                      setCurrentPage(1)
+                    }}
+                  >
+                    <SelectTrigger className="bg-white">
+                      <Building2 className="h-4 w-4 mr-2 text-muted-foreground" />
+                      <SelectValue placeholder="Empresa" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todas Empresas</SelectItem>
+                      {organizationsList.map((org) => (
+                        <SelectItem key={org.id} value={org.id}>
+                          {org.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="w-full sm:w-40">
+                  <Select
+                    value={levelFilter}
+                    onValueChange={(v) => {
+                      setLevelFilter(v)
+                      setCurrentPage(1)
+                    }}
+                  >
+                    <SelectTrigger className="bg-white">
+                      <Filter className="h-4 w-4 mr-2 text-muted-foreground" />
+                      <SelectValue placeholder="Nível" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todos os Níveis</SelectItem>
+                      <SelectItem value="Sintética">Sintética</SelectItem>
+                      <SelectItem value="Analítica">Analítica</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="w-full sm:w-40">
+                  <Select
+                    value={behaviorFilter}
+                    onValueChange={(v) => {
+                      setBehaviorFilter(v)
+                      setCurrentPage(1)
+                    }}
+                  >
+                    <SelectTrigger className="bg-white">
+                      <Filter className="h-4 w-4 mr-2 text-muted-foreground" />
+                      <SelectValue placeholder="Tipo" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todos os Tipos</SelectItem>
+                      <SelectItem value="Devedora">Devedora</SelectItem>
+                      <SelectItem value="Credora">Credora</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="w-full sm:w-40">
+                  <Select
+                    value={natureFilter}
+                    onValueChange={(v) => {
+                      setNatureFilter(v)
+                      setCurrentPage(1)
+                    }}
+                  >
+                    <SelectTrigger className="bg-white">
+                      <Filter className="h-4 w-4 mr-2 text-muted-foreground" />
+                      <SelectValue placeholder="Natureza" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todas Naturezas</SelectItem>
+                      <SelectItem value="ATIVO">ATIVO</SelectItem>
+                      <SelectItem value="PASSIVO">PASSIVO</SelectItem>
+                      <SelectItem value="RECEITAS">RECEITAS</SelectItem>
+                      <SelectItem value="DESPESAS">DESPESAS</SelectItem>
+                      <SelectItem value="OUTRAS">OUTRAS</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="flex flex-col sm:flex-row items-center gap-3 w-full lg:w-auto">
                 <div className="relative w-full sm:w-[280px]">
                   <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                   <Input
                     type="search"
                     placeholder="Código, nome, classif..."
-                    className="pl-8"
+                    className="pl-8 bg-white"
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                   />
@@ -734,98 +821,11 @@ export default function ChartAccounts() {
                   <Input
                     type="search"
                     placeholder="Buscar por finalidade..."
-                    className="pl-8"
+                    className="pl-8 bg-white"
                     value={purposeSearch}
                     onChange={(e) => setPurposeSearch(e.target.value)}
                   />
                 </div>
-              </div>
-            </div>
-
-            {/* Extended Filters Bar */}
-            <div className="flex flex-wrap items-center gap-3 bg-slate-50/50 p-3 rounded-lg border border-slate-100">
-              <div className="w-full sm:w-44">
-                <Select
-                  value={orgFilter}
-                  onValueChange={(v) => {
-                    setOrgFilter(v)
-                    setCurrentPage(1)
-                  }}
-                >
-                  <SelectTrigger className="bg-white">
-                    <Building2 className="h-4 w-4 mr-2 text-muted-foreground" />
-                    <SelectValue placeholder="Empresa" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todas Empresas</SelectItem>
-                    {organizationsList.map((org) => (
-                      <SelectItem key={org.id} value={org.id}>
-                        {org.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="w-full sm:w-40">
-                <Select
-                  value={levelFilter}
-                  onValueChange={(v) => {
-                    setLevelFilter(v)
-                    setCurrentPage(1)
-                  }}
-                >
-                  <SelectTrigger className="bg-white">
-                    <Filter className="h-4 w-4 mr-2 text-muted-foreground" />
-                    <SelectValue placeholder="Nível" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todos os Níveis</SelectItem>
-                    <SelectItem value="Sintética">Sintética</SelectItem>
-                    <SelectItem value="Analítica">Analítica</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="w-full sm:w-40">
-                <Select
-                  value={behaviorFilter}
-                  onValueChange={(v) => {
-                    setBehaviorFilter(v)
-                    setCurrentPage(1)
-                  }}
-                >
-                  <SelectTrigger className="bg-white">
-                    <Filter className="h-4 w-4 mr-2 text-muted-foreground" />
-                    <SelectValue placeholder="Tipo" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todos os Tipos</SelectItem>
-                    <SelectItem value="Devedora">Devedora</SelectItem>
-                    <SelectItem value="Credora">Credora</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="w-full sm:w-48">
-                <Select
-                  value={natureFilter}
-                  onValueChange={(v) => {
-                    setNatureFilter(v)
-                    setCurrentPage(1)
-                  }}
-                >
-                  <SelectTrigger className="bg-white">
-                    <Filter className="h-4 w-4 mr-2 text-muted-foreground" />
-                    <SelectValue placeholder="Natureza" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todas Naturezas</SelectItem>
-                    <SelectItem value="Ativo">Ativo</SelectItem>
-                    <SelectItem value="Passivo">Passivo</SelectItem>
-                    <SelectItem value="Receita">Receita</SelectItem>
-                    <SelectItem value="Despesa">Despesa</SelectItem>
-                    <SelectItem value="Patrimônio Líquido">Patrimônio Líquido</SelectItem>
-                    <SelectItem value="Custos">Custos</SelectItem>
-                  </SelectContent>
-                </Select>
               </div>
             </div>
           </div>

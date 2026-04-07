@@ -183,7 +183,18 @@ export function ChartAccountFormModal({ isOpen, onClose, onSave, initialData }: 
             </div>
             <div className="space-y-2">
               <Label>Natureza</Label>
-              <Input {...register('nature')} placeholder="Ex: Ativo Circulante" />
+              <Select value={watch('nature')} onValueChange={(val) => setValue('nature', val)}>
+                <SelectTrigger className={errors.nature ? 'border-red-500' : ''}>
+                  <SelectValue placeholder="Selecione..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ATIVO">ATIVO</SelectItem>
+                  <SelectItem value="PASSIVO">PASSIVO</SelectItem>
+                  <SelectItem value="RECEITAS">RECEITAS</SelectItem>
+                  <SelectItem value="DESPESAS">DESPESAS</SelectItem>
+                  <SelectItem value="OUTRAS">OUTRAS</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-2">
               <Label>Grupo Contábil</Label>
