@@ -136,7 +136,12 @@ export default function ChartAccounts() {
   }
 
   const fetchSummary = async () => {
-    const types = ['Ativo', 'Passivo', 'Receita', 'Despesa']
+    const types = [
+      { key: 'ativo', search: '%ATIVO%' },
+      { key: 'passivo', search: '%PASSIVO%' },
+      { key: 'receita', search: '%RECEITA%' },
+      { key: 'despesa', search: '%DESPESA%' },
+    ]
     const counts = { ativo: 0, passivo: 0, receita: 0, despesa: 0 }
 
     await Promise.all(
@@ -144,16 +149,16 @@ export default function ChartAccounts() {
         let q = supabase
           .from('chart_of_accounts')
           .select('*', { count: 'exact', head: true })
-          .ilike('account_type', t)
+          .or(`nature.ilike.${t.search},account_type.ilike.${t.search}`)
           .neq('pending_deletion', true)
           .is('deleted_at', null)
         if (orgFilter !== 'all') q = q.eq('organization_id', orgFilter)
 
         const { count } = await q
-        if (t === 'Ativo') counts.ativo = count || 0
-        if (t === 'Passivo') counts.passivo = count || 0
-        if (t === 'Receita') counts.receita = count || 0
-        if (t === 'Despesa') counts.despesa = count || 0
+        if (t.key === 'ativo') counts.ativo = count || 0
+        if (t.key === 'passivo') counts.passivo = count || 0
+        if (t.key === 'receita') counts.receita = count || 0
+        if (t.key === 'despesa') counts.despesa = count || 0
       }),
     )
 
@@ -188,7 +193,13 @@ export default function ChartAccounts() {
     }
 
     if (natureFilter !== 'all') {
-      query = query.ilike('nature', natureFilter)
+      const search =
+        natureFilter === 'RECEITAS'
+          ? '%RECEITA%'
+          : natureFilter === 'DESPESAS'
+            ? '%DESPESA%'
+            : `%${natureFilter}%`
+      query = query.or(`nature.ilike.${search},account_type.ilike.${search}`)
     }
 
     if (orgFilter !== 'all') {
@@ -632,7 +643,16 @@ export default function ChartAccounts() {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-md border-0">
+        <Card
+          className={cn(
+            'bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-md border-0 cursor-pointer transition-all hover:scale-[1.02]',
+            natureFilter === 'ATIVO' && 'ring-2 ring-blue-500 ring-offset-2',
+          )}
+          onClick={() => {
+            setNatureFilter(natureFilter === 'ATIVO' ? 'all' : 'ATIVO')
+            setCurrentPage(1)
+          }}
+        >
           <CardContent className="p-5">
             <div className="flex justify-between items-start">
               <div className="space-y-1">
@@ -645,7 +665,16 @@ export default function ChartAccounts() {
             </div>
           </CardContent>
         </Card>
-        <Card className="bg-gradient-to-br from-red-500 to-red-600 text-white shadow-md border-0">
+        <Card
+          className={cn(
+            'bg-gradient-to-br from-red-500 to-red-600 text-white shadow-md border-0 cursor-pointer transition-all hover:scale-[1.02]',
+            natureFilter === 'PASSIVO' && 'ring-2 ring-red-500 ring-offset-2',
+          )}
+          onClick={() => {
+            setNatureFilter(natureFilter === 'PASSIVO' ? 'all' : 'PASSIVO')
+            setCurrentPage(1)
+          }}
+        >
           <CardContent className="p-5">
             <div className="flex justify-between items-start">
               <div className="space-y-1">
@@ -658,7 +687,16 @@ export default function ChartAccounts() {
             </div>
           </CardContent>
         </Card>
-        <Card className="bg-gradient-to-br from-emerald-500 to-emerald-600 text-white shadow-md border-0">
+        <Card
+          className={cn(
+            'bg-gradient-to-br from-emerald-500 to-emerald-600 text-white shadow-md border-0 cursor-pointer transition-all hover:scale-[1.02]',
+            natureFilter === 'RECEITAS' && 'ring-2 ring-emerald-500 ring-offset-2',
+          )}
+          onClick={() => {
+            setNatureFilter(natureFilter === 'RECEITAS' ? 'all' : 'RECEITAS')
+            setCurrentPage(1)
+          }}
+        >
           <CardContent className="p-5">
             <div className="flex justify-between items-start">
               <div className="space-y-1">
@@ -671,7 +709,16 @@ export default function ChartAccounts() {
             </div>
           </CardContent>
         </Card>
-        <Card className="bg-gradient-to-br from-orange-500 to-orange-600 text-white shadow-md border-0">
+        <Card
+          className={cn(
+            'bg-gradient-to-br from-orange-500 to-orange-600 text-white shadow-md border-0 cursor-pointer transition-all hover:scale-[1.02]',
+            natureFilter === 'DESPESAS' && 'ring-2 ring-orange-500 ring-offset-2',
+          )}
+          onClick={() => {
+            setNatureFilter(natureFilter === 'DESPESAS' ? 'all' : 'DESPESAS')
+            setCurrentPage(1)
+          }}
+        >
           <CardContent className="p-5">
             <div className="flex justify-between items-start">
               <div className="space-y-1">
