@@ -33,6 +33,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { ImportChartAccountsModal } from '@/components/ImportChartAccountsModal'
 import { ChartAccountFormModal } from '@/components/ChartAccountFormModal'
 import { ChartAccountBulkEditModal } from '@/components/ChartAccountBulkEditModal'
+import { DeletePlanModal } from '@/components/DeletePlanModal'
 import { cn } from '@/lib/utils'
 import {
   DropdownMenu,
@@ -56,6 +57,7 @@ interface ChartAccount {
   account_name: string
   account_type: string
   classification?: string
+  organization_id?: string
   organization: { name: string } | null
 }
 
@@ -79,7 +81,18 @@ export default function ChartAccounts() {
 
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [isBulkEditOpen, setIsBulkEditOpen] = useState(false)
+  const [isDeletePlanOpen, setIsDeletePlanOpen] = useState(false)
   const [editingAccount, setEditingAccount] = useState<ChartAccount | null>(null)
+
+  const organizations = useMemo(() => {
+    const orgs = new Map<string, string>()
+    accounts.forEach((acc) => {
+      if (acc.organization_id && acc.organization?.name) {
+        orgs.set(acc.organization_id, acc.organization.name)
+      }
+    })
+    return Array.from(orgs.entries()).map(([id, name]) => ({ id, name }))
+  }, [accounts])
 
   const fetchAccounts = async () => {
     setLoading(true)
@@ -255,20 +268,13 @@ export default function ChartAccounts() {
     const blocked = results.filter((r) => r.hasRelations).map((r) => r.id)
 
     if (toDelete.length > 0) {
-      const { error } = await supabase
-        .from('chart_of_accounts')
-        .update({
-          pending_deletion: true,
-          deletion_requested_at: new Date().toISOString(),
-          deletion_requested_by: user?.id,
-        })
-        .in('id', toDelete)
+      const { error } = await supabase.from('chart_of_accounts').delete().in('id', toDelete)
 
       if (error) toast({ title: 'Erro', description: error.message, variant: 'destructive' })
       else
         toast({
           title: 'Sucesso',
-          description: `${toDelete.length} conta(s) enviada(s) para aprovação.`,
+          description: `${toDelete.length} conta(s) excluída(s) com sucesso.`,
         })
     }
 
@@ -403,20 +409,13 @@ export default function ChartAccounts() {
       return
     }
 
-    if (!confirm('Deseja solicitar a exclusão desta conta?')) return
+    if (!confirm('Deseja realmente excluir esta conta?')) return
 
-    const { error } = await supabase
-      .from('chart_of_accounts')
-      .update({
-        pending_deletion: true,
-        deletion_requested_at: new Date().toISOString(),
-        deletion_requested_by: user?.id,
-      })
-      .eq('id', id)
+    const { error } = await supabase.from('chart_of_accounts').delete().eq('id', id)
 
     if (error) toast({ title: 'Erro', description: error.message, variant: 'destructive' })
     else {
-      toast({ title: 'Enviado para Aprovação', description: 'A exclusão foi solicitada.' })
+      toast({ title: 'Sucesso', description: 'Conta excluída com sucesso.' })
       fetchAccounts()
     }
   }
@@ -471,6 +470,9 @@ export default function ChartAccounts() {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+          <Button variant="destructive" onClick={() => setIsDeletePlanOpen(true)} className="gap-2">
+            <Trash2 className="h-4 w-4" /> Excluir Plano
+          </Button>
           <Button
             onClick={() => {
               setEditingAccount(null)
@@ -732,6 +734,13 @@ export default function ChartAccounts() {
             onClose={() => setIsBulkEditOpen(false)}
             onSave={handleBulkEditSave}
             count={selectedIds.length}
+          />
+
+          <DeletePlanModal
+            isOpen={isDeletePlanOpen}
+            onClose={() => setIsDeletePlanOpen(false)}
+            onSuccess={fetchAccounts}
+            organizations={organizations}
           />
 
           {!loading && sortedData.length > 0 && (
