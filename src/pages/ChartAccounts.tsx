@@ -5,6 +5,7 @@ import {
   Search,
   Building2,
   AlignLeft,
+  Pencil,
   Filter,
   Trash2,
   ChevronLeft,
@@ -30,6 +31,9 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
 import { ImportChartAccountsModal } from '@/components/ImportChartAccountsModal'
+import { ChartAccountFormModal } from '@/components/ChartAccountFormModal'
+import { ChartAccountBulkEditModal } from '@/components/ChartAccountBulkEditModal'
+import { cn } from '@/lib/utils'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -68,9 +72,14 @@ export default function ChartAccounts() {
 
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(10)
-  const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(
-    null,
-  )
+  const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>({
+    key: 'classification',
+    direction: 'asc',
+  })
+
+  const [isFormOpen, setIsFormOpen] = useState(false)
+  const [isBulkEditOpen, setIsBulkEditOpen] = useState(false)
+  const [editingAccount, setEditingAccount] = useState<ChartAccount | null>(null)
 
   const fetchAccounts = async () => {
     setLoading(true)
@@ -118,6 +127,58 @@ export default function ChartAccounts() {
 
     return matchesSearch && matchesType
   })
+
+  const isSynthetic = (acc: ChartAccount) => {
+    if (!acc.classification) return false
+    return accounts.some(
+      (a) => a.id !== acc.id && a.classification?.startsWith(acc.classification + '.'),
+    )
+  }
+
+  const getRowClassName = (acc: ChartAccount) => {
+    if (!isSynthetic(acc)) return ''
+    const level = (acc.classification || '').split('.').length
+    if (level === 1) return 'bg-slate-300/50 font-bold hover:bg-slate-300/70'
+    if (level === 2) return 'bg-slate-200/50 font-semibold hover:bg-slate-200/70'
+    if (level === 3) return 'bg-slate-100/50 font-medium hover:bg-slate-100/70'
+    return 'bg-slate-50/50 font-medium hover:bg-slate-50/70'
+  }
+
+  const handleSaveAccount = async (data: any) => {
+    if (editingAccount) {
+      const { error } = await supabase
+        .from('chart_of_accounts')
+        .update(data)
+        .eq('id', editingAccount.id)
+      if (error) toast({ title: 'Erro', description: error.message, variant: 'destructive' })
+      else {
+        toast({ title: 'Sucesso', description: 'Conta atualizada com sucesso.' })
+        setIsFormOpen(false)
+        fetchAccounts()
+      }
+    } else {
+      const { error } = await supabase.from('chart_of_accounts').insert(data)
+      if (error) toast({ title: 'Erro', description: error.message, variant: 'destructive' })
+      else {
+        toast({ title: 'Sucesso', description: 'Conta criada com sucesso.' })
+        setIsFormOpen(false)
+        fetchAccounts()
+      }
+    }
+  }
+
+  const handleBulkEditSave = async (data: any) => {
+    if (selectedIds.length === 0) return
+    const { error } = await supabase.from('chart_of_accounts').update(data).in('id', selectedIds)
+    if (error) {
+      toast({ title: 'Erro', description: error.message, variant: 'destructive' })
+    } else {
+      toast({ title: 'Sucesso', description: `${selectedIds.length} contas atualizadas.` })
+      setIsBulkEditOpen(false)
+      setSelectedIds([])
+      fetchAccounts()
+    }
+  }
 
   const handleSort = (key: string) => {
     let direction: 'asc' | 'desc' = 'asc'
@@ -410,7 +471,12 @@ export default function ChartAccounts() {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-          <Button>
+          <Button
+            onClick={() => {
+              setEditingAccount(null)
+              setIsFormOpen(true)
+            }}
+          >
             <Plus className="h-4 w-4 mr-2" />
             Nova Conta
           </Button>
@@ -422,9 +488,19 @@ export default function ChartAccounts() {
           <span className="text-sm font-medium text-slate-700">
             {selectedIds.length} item(ns) selecionado(s)
           </span>
-          <Button variant="destructive" size="sm" onClick={handleBulkDelete} className="gap-2">
-            <Trash2 className="h-4 w-4" /> Excluir Selecionados
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setIsBulkEditOpen(true)}
+              className="gap-2"
+            >
+              Editar em Lote
+            </Button>
+            <Button variant="destructive" size="sm" onClick={handleBulkDelete} className="gap-2">
+              <Trash2 className="h-4 w-4" /> Excluir Selecionados
+            </Button>
+          </div>
         </div>
       )}
 
@@ -475,10 +551,10 @@ export default function ChartAccounts() {
         </CardHeader>
         <CardContent>
           <div className="rounded-md border overflow-x-auto">
-            <Table>
+            <Table className="[&_td]:p-2 [&_th]:p-2 text-xs">
               <TableHeader className="bg-muted/50">
                 <TableRow>
-                  <TableHead className="w-12 text-center">
+                  <TableHead className="w-10 text-center">
                     <Checkbox
                       checked={
                         paginatedData.length > 0 && selectedIds.length === paginatedData.length
@@ -490,7 +566,15 @@ export default function ChartAccounts() {
                     />
                   </TableHead>
                   <TableHead
-                    className="w-[200px] cursor-pointer hover:bg-slate-100"
+                    className="w-[150px] cursor-pointer hover:bg-slate-100 whitespace-nowrap"
+                    onClick={() => handleSort('organization')}
+                  >
+                    <div className="flex items-center gap-2">
+                      Empresa <ArrowUpDown className="h-3 w-3 text-slate-400" />
+                    </div>
+                  </TableHead>
+                  <TableHead
+                    className="w-[150px] cursor-pointer hover:bg-slate-100 whitespace-nowrap"
                     onClick={() => handleSort('account_code')}
                   >
                     <div className="flex items-center gap-2">
@@ -498,7 +582,7 @@ export default function ChartAccounts() {
                     </div>
                   </TableHead>
                   <TableHead
-                    className="cursor-pointer hover:bg-slate-100"
+                    className="w-[150px] cursor-pointer hover:bg-slate-100 whitespace-nowrap"
                     onClick={() => handleSort('classification')}
                   >
                     <div className="flex items-center gap-2">
@@ -506,33 +590,25 @@ export default function ChartAccounts() {
                     </div>
                   </TableHead>
                   <TableHead
-                    className="cursor-pointer hover:bg-slate-100"
+                    className="min-w-[200px] cursor-pointer hover:bg-slate-100 whitespace-nowrap"
                     onClick={() => handleSort('account_name')}
                   >
                     <div className="flex items-center gap-2">
                       Nome da Conta <ArrowUpDown className="h-3 w-3 text-slate-400" />
                     </div>
                   </TableHead>
-                  <TableHead className="cursor-pointer hover:bg-slate-100">
+                  <TableHead className="min-w-[250px] cursor-pointer hover:bg-slate-100 whitespace-nowrap">
                     <div className="flex items-center gap-2">Classificação + Nome</div>
                   </TableHead>
                   <TableHead
-                    className="cursor-pointer hover:bg-slate-100"
+                    className="w-[120px] cursor-pointer hover:bg-slate-100 whitespace-nowrap"
                     onClick={() => handleSort('account_type')}
                   >
                     <div className="flex items-center gap-2">
                       Tipo <ArrowUpDown className="h-3 w-3 text-slate-400" />
                     </div>
                   </TableHead>
-                  <TableHead
-                    className="cursor-pointer hover:bg-slate-100"
-                    onClick={() => handleSort('organization')}
-                  >
-                    <div className="flex items-center gap-2">
-                      Empresa <ArrowUpDown className="h-3 w-3 text-slate-400" />
-                    </div>
-                  </TableHead>
-                  <TableHead className="text-right">Ações</TableHead>
+                  <TableHead className="w-[100px] text-right whitespace-nowrap">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -544,7 +620,7 @@ export default function ChartAccounts() {
                   </TableRow>
                 ) : paginatedData.length > 0 ? (
                   paginatedData.map((acc) => (
-                    <TableRow key={acc.id}>
+                    <TableRow key={acc.id} className={getRowClassName(acc)}>
                       <TableCell className="text-center">
                         <Checkbox
                           checked={selectedIds.includes(acc.id)}
@@ -554,59 +630,76 @@ export default function ChartAccounts() {
                           }}
                         />
                       </TableCell>
+                      <TableCell className="whitespace-nowrap">
+                        <div className="flex items-center gap-2">
+                          <Building2 className="h-3 w-3 text-muted-foreground shrink-0" />
+                          <span className="truncate max-w-[120px]">
+                            {acc.organization?.name || '-'}
+                          </span>
+                        </div>
+                      </TableCell>
                       <TableCell className="font-medium whitespace-nowrap">
                         <div
                           className="flex items-center"
                           style={{ paddingLeft: `${getIndent(acc.account_code)}rem` }}
                         >
-                          <AlignLeft className="h-3 w-3 text-muted-foreground mr-2 opacity-50" />
+                          <AlignLeft className="h-3 w-3 text-muted-foreground mr-2 opacity-50 shrink-0" />
                           {acc.account_code}
                         </div>
                       </TableCell>
-                      <TableCell>{acc.classification || '-'}</TableCell>
-                      <TableCell>{acc.account_name}</TableCell>
-                      <TableCell>
+                      <TableCell className="whitespace-nowrap">
+                        {acc.classification || '-'}
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap truncate max-w-[250px]">
+                        {acc.account_name}
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap truncate max-w-[300px]">
                         {acc.classification
                           ? `${acc.classification} - ${acc.account_name}`
                           : acc.account_name}
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="whitespace-nowrap">
                         {acc.account_type && (
                           <Badge
                             variant="outline"
-                            className={
-                              acc.account_type.toLowerCase() === 'ativo'
-                                ? 'bg-blue-500/10 text-blue-700 border-blue-200 dark:text-blue-400'
-                                : acc.account_type.toLowerCase() === 'passivo'
-                                  ? 'bg-red-500/10 text-red-700 border-red-200 dark:text-red-400'
-                                  : acc.account_type.toLowerCase() === 'receita'
-                                    ? 'bg-green-500/10 text-green-700 border-green-200 dark:text-green-400'
-                                    : acc.account_type.toLowerCase() === 'despesa'
-                                      ? 'bg-orange-500/10 text-orange-700 border-orange-200 dark:text-orange-400'
-                                      : ''
-                            }
+                            className={cn(
+                              'text-[10px] px-1.5 py-0',
+                              acc.account_type.toLowerCase() === 'ativo' &&
+                                'bg-blue-500/10 text-blue-700 border-blue-200 dark:text-blue-400',
+                              acc.account_type.toLowerCase() === 'passivo' &&
+                                'bg-red-500/10 text-red-700 border-red-200 dark:text-red-400',
+                              acc.account_type.toLowerCase() === 'receita' &&
+                                'bg-green-500/10 text-green-700 border-green-200 dark:text-green-400',
+                              acc.account_type.toLowerCase() === 'despesa' &&
+                                'bg-orange-500/10 text-orange-700 border-orange-200 dark:text-orange-400',
+                            )}
                           >
                             {acc.account_type}
                           </Badge>
                         )}
                       </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Building2 className="h-3 w-3 text-muted-foreground" />
-                          <span className="truncate max-w-[150px]">
-                            {acc.organization?.name || '-'}
-                          </span>
+                      <TableCell className="text-right whitespace-nowrap">
+                        <div className="flex items-center justify-end gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => {
+                              setEditingAccount(acc)
+                              setIsFormOpen(true)
+                            }}
+                            className="h-7 w-7 text-slate-500 hover:text-blue-600 hover:bg-blue-50"
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleDelete(acc.id)}
+                            className="h-7 w-7 text-slate-500 hover:text-red-600 hover:bg-red-50"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
                         </div>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleDelete(acc.id)}
-                          className="h-8 w-8 text-slate-500 hover:text-red-600 hover:bg-red-50"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
                       </TableCell>
                     </TableRow>
                   ))
@@ -625,6 +718,20 @@ export default function ChartAccounts() {
             isOpen={isImportOpen}
             onClose={() => setIsImportOpen(false)}
             onSuccess={fetchAccounts}
+          />
+
+          <ChartAccountFormModal
+            isOpen={isFormOpen}
+            onClose={() => setIsFormOpen(false)}
+            onSave={handleSaveAccount}
+            initialData={editingAccount}
+          />
+
+          <ChartAccountBulkEditModal
+            isOpen={isBulkEditOpen}
+            onClose={() => setIsBulkEditOpen(false)}
+            onSave={handleBulkEditSave}
+            count={selectedIds.length}
           />
 
           {!loading && sortedData.length > 0 && (
