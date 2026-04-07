@@ -28,6 +28,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Label } from '@/components/ui/label'
+import { Badge } from '@/components/ui/badge'
 
 export function ImportChartAccountsModal({ isOpen, onClose, onSuccess }: any) {
   const { toast } = useToast()
@@ -40,6 +41,9 @@ export function ImportChartAccountsModal({ isOpen, onClose, onSuccess }: any) {
   const [resultData, setResultData] = useState<any>(null)
   const [organizations, setOrganizations] = useState<any[]>([])
   const [selectedOrgId, setSelectedOrgId] = useState<string>('USE_SPREADSHEET')
+  const [rootMapping, setRootMapping] = useState<
+    Record<string, { nature: string; account_type: string; account_behavior: string }>
+  >({})
 
   useEffect(() => {
     const fetchOrgs = async () => {
@@ -63,6 +67,7 @@ export function ImportChartAccountsModal({ isOpen, onClose, onSuccess }: any) {
     setStep('UPLOAD')
     setMode('UPDATE')
     setSelectedOrgId('USE_SPREADSHEET')
+    setRootMapping({})
   }
 
   const handleClose = () => {
@@ -118,6 +123,7 @@ export function ImportChartAccountsModal({ isOpen, onClose, onSuccess }: any) {
               mode: mode,
               simulation: isSimulation,
               organizationId: selectedOrgId === 'USE_SPREADSHEET' ? null : selectedOrgId,
+              rootMapping: !isSimulation ? rootMapping : undefined,
             },
             headers: session ? { Authorization: `Bearer ${session.access_token}` } : undefined,
           })
@@ -352,6 +358,94 @@ export function ImportChartAccountsModal({ isOpen, onClose, onSuccess }: any) {
                   </span>
                 </div>
               </div>
+
+              {simulationData.uniqueRoots?.length > 0 && (
+                <div className="space-y-3 bg-slate-50 p-4 rounded-md border border-slate-200">
+                  <div className="space-y-1">
+                    <h4 className="font-semibold text-sm text-slate-800">
+                      Mapeamento de Contas Raiz
+                    </h4>
+                    <p className="text-xs text-slate-500">
+                      Defina a Natureza, Grupo e Tipo para cada conta raiz (Nível 1). Essa
+                      configuração será aplicada automaticamente para todas as contas filhas desta
+                      estrutura.
+                    </p>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
+                    {simulationData.uniqueRoots.map((root: string) => (
+                      <div
+                        key={root}
+                        className="flex flex-col gap-2 p-3 bg-white border border-slate-200 rounded-md shadow-sm"
+                      >
+                        <div className="flex items-center gap-2 border-b pb-2">
+                          <Badge variant="secondary" className="font-mono text-sm bg-slate-100">
+                            {root}
+                          </Badge>
+                          <span className="text-xs font-medium text-slate-600">Raiz Contábil</span>
+                        </div>
+                        <Select
+                          value={rootMapping[root]?.nature || ''}
+                          onValueChange={(v) =>
+                            setRootMapping((prev) => ({
+                              ...prev,
+                              [root]: { ...(prev[root] || {}), nature: v },
+                            }))
+                          }
+                        >
+                          <SelectTrigger className="h-8 text-xs bg-white">
+                            <SelectValue placeholder="Natureza" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="ATIVO">ATIVO</SelectItem>
+                            <SelectItem value="PASSIVO">PASSIVO</SelectItem>
+                            <SelectItem value="RECEITAS">RECEITAS</SelectItem>
+                            <SelectItem value="DESPESAS">DESPESAS</SelectItem>
+                            <SelectItem value="OUTRAS">OUTRAS</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <Select
+                          value={rootMapping[root]?.account_type || ''}
+                          onValueChange={(v) =>
+                            setRootMapping((prev) => ({
+                              ...prev,
+                              [root]: { ...(prev[root] || {}), account_type: v },
+                            }))
+                          }
+                        >
+                          <SelectTrigger className="h-8 text-xs bg-white">
+                            <SelectValue placeholder="Grupo Contábil" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="Ativo">Ativo</SelectItem>
+                            <SelectItem value="Passivo">Passivo</SelectItem>
+                            <SelectItem value="Receita">Receita</SelectItem>
+                            <SelectItem value="Despesa">Despesa</SelectItem>
+                            <SelectItem value="Patrimônio Líquido">Patrimônio Líquido</SelectItem>
+                            <SelectItem value="Custos">Custos</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <Select
+                          value={rootMapping[root]?.account_behavior || ''}
+                          onValueChange={(v) =>
+                            setRootMapping((prev) => ({
+                              ...prev,
+                              [root]: { ...(prev[root] || {}), account_behavior: v },
+                            }))
+                          }
+                        >
+                          <SelectTrigger className="h-8 text-xs bg-white">
+                            <SelectValue placeholder="Tipo (Comportamento)" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="Devedora">Devedora</SelectItem>
+                            <SelectItem value="Credora">Credora</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {simulationData.errors?.length > 0 && (
                 <div className="space-y-3">

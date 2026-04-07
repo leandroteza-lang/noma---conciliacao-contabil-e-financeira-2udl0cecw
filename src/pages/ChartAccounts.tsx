@@ -444,16 +444,13 @@ export default function ChartAccounts() {
       const payload = {
         format: formatType === 'browser' ? 'pdf' : formatType,
         data: (allExportData || []).map((acc) => ({
+          Empresa: acc.organization?.name || '-',
           'Código Reduzido': acc.account_code || '-',
           Classificação: acc.classification || '-',
           Nome: acc.account_name,
-          'Classificação + Nome': acc.classification
-            ? `${acc.classification} - ${acc.account_name}`
-            : acc.account_name,
           Nível: acc.account_level || '-',
-          Comportamento: acc.account_behavior || '-',
+          Tipo: acc.account_behavior || '-',
           Natureza: acc.nature || acc.account_type || '-',
-          Empresa: acc.organization?.name || '-',
         })),
       }
 
@@ -848,6 +845,22 @@ export default function ChartAccounts() {
                   </TableHead>
                   <TableHead
                     className="w-[120px] cursor-pointer hover:bg-slate-100 whitespace-nowrap"
+                    onClick={() => handleSort('organization')}
+                  >
+                    <div className="flex items-center gap-2">
+                      Empresa <ArrowUpDown className="h-3 w-3 text-slate-400" />
+                    </div>
+                  </TableHead>
+                  <TableHead
+                    className="w-[110px] cursor-pointer hover:bg-slate-100 whitespace-nowrap"
+                    onClick={() => handleSort('account_code')}
+                  >
+                    <div className="flex items-center gap-2">
+                      Cód. Reduzido <ArrowUpDown className="h-3 w-3 text-slate-400" />
+                    </div>
+                  </TableHead>
+                  <TableHead
+                    className="w-[120px] cursor-pointer hover:bg-slate-100 whitespace-nowrap"
                     onClick={() => handleSort('classification')}
                   >
                     <div className="flex items-center gap-2">
@@ -865,14 +878,6 @@ export default function ChartAccounts() {
                   <TableHead className="w-[90px] text-center whitespace-nowrap">Nível</TableHead>
                   <TableHead className="w-[90px] text-center whitespace-nowrap">Tipo</TableHead>
                   <TableHead className="w-[140px] whitespace-nowrap">Natureza</TableHead>
-                  <TableHead
-                    className="w-[120px] cursor-pointer hover:bg-slate-100 whitespace-nowrap"
-                    onClick={() => handleSort('organization')}
-                  >
-                    <div className="flex items-center gap-2">
-                      Empresa <ArrowUpDown className="h-3 w-3 text-slate-400" />
-                    </div>
-                  </TableHead>
                   <TableHead className="min-w-[150px] whitespace-nowrap">Finalidade</TableHead>
                   <TableHead className="w-[80px] text-right whitespace-nowrap">Ações</TableHead>
                 </TableRow>
@@ -896,6 +901,17 @@ export default function ChartAccounts() {
                           }}
                         />
                       </TableCell>
+                      <TableCell className="whitespace-nowrap">
+                        <div className="flex items-center gap-1.5 text-slate-600">
+                          <Building2 className="h-3 w-3 text-slate-400 shrink-0" />
+                          <span className="truncate max-w-[100px]">
+                            {acc.organization?.name || '-'}
+                          </span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="font-medium whitespace-nowrap text-slate-600">
+                        {acc.account_code || '-'}
+                      </TableCell>
                       <TableCell className="font-medium whitespace-nowrap text-slate-700">
                         {acc.classification || '-'}
                       </TableCell>
@@ -912,7 +928,6 @@ export default function ChartAccounts() {
                                 : 'text-slate-700',
                             )}
                           >
-                            {acc.account_code ? `[${acc.account_code}] ` : ''}
                             {acc.account_name}
                           </span>
                         </div>
@@ -949,14 +964,6 @@ export default function ChartAccounts() {
                       </TableCell>
                       <TableCell className="whitespace-nowrap truncate max-w-[140px] text-slate-600">
                         {acc.nature || acc.account_type || '-'}
-                      </TableCell>
-                      <TableCell className="whitespace-nowrap">
-                        <div className="flex items-center gap-1.5 text-slate-600">
-                          <Building2 className="h-3 w-3 text-slate-400 shrink-0" />
-                          <span className="truncate max-w-[100px]">
-                            {acc.organization?.name || '-'}
-                          </span>
-                        </div>
                       </TableCell>
                       <TableCell
                         className="truncate max-w-[150px] text-slate-500 italic"
