@@ -52,41 +52,88 @@ export function DeletePlanModal({ isOpen, onClose, onSuccess, organizations }: a
         return
       }
 
-      setProgress({ current: 0, total: count })
-
-      let deleted = 0
-      const chunkSize = 1000
+      let allIds: string[] = []
       let hasMore = true
+      let lastId = '00000000-0000-0000-0000-000000000000'
 
       while (hasMore) {
         const { data: chunk, error: fetchError } = await supabase
           .from('chart_of_accounts')
           .select('id')
           .eq('organization_id', selectedOrg)
-          .limit(chunkSize)
+          .gt('id', lastId)
+          .order('id')
+          .limit(1000)
 
         if (fetchError) throw fetchError
         if (!chunk || chunk.length === 0) {
           hasMore = false
           break
         }
-
-        const ids = chunk.map((c) => c.id)
-
-        const { error: deleteError } = await supabase
-          .from('chart_of_accounts')
-          .delete()
-          .in('id', ids)
-
-        if (deleteError) {
-          throw new Error(`Erro ao excluir bloco (talvez existam vínculos): ${deleteError.message}`)
-        }
-
-        deleted += ids.length
-        setProgress({ current: deleted, total: count })
+        allIds.push(...chunk.map((c) => c.id))
+        lastId = chunk[chunk.length - 1].id
       }
 
-      toast({ title: 'Sucesso', description: 'Plano de contas excluído com sucesso.' })
+      setProgress({ current: 0, total: allIds.length })
+
+      let deleted = 0
+      let blockedCount = 0
+      const chunkSize = 1000
+
+      for (let i = 0; i < allIds.length; i += chunkSize) {
+        const chunk = allIds.slice(i, i + chunkSize)
+
+        const [{ data: mappings }, { data: debits }, { data: credits }] = await Promise.all([
+          supabase.from('account_mapping').select('chart_account_id').in('chart_account_id', chunk),
+          supabase
+            .from('accounting_entries')
+            .select('debit_account_id')
+            .in('debit_account_id', chunk),
+          supabase
+            .from('accounting_entries')
+            .select('credit_account_id')
+            .in('credit_account_id', chunk),
+        ])
+
+        const blockedIds = new Set<string>()
+        mappings?.forEach((m: any) => {
+          if (m.chart_account_id) blockedIds.add(m.chart_account_id)
+        })
+        debits?.forEach((d: any) => {
+          if (d.debit_account_id) blockedIds.add(d.debit_account_id)
+        })
+        credits?.forEach((c: any) => {
+          if (c.credit_account_id) blockedIds.add(c.credit_account_id)
+        })
+
+        const toDelete = chunk.filter((id) => !blockedIds.has(id))
+        blockedCount += blockedIds.size
+
+        if (toDelete.length > 0) {
+          const { error: deleteError } = await supabase
+            .from('chart_of_accounts')
+            .delete()
+            .in('id', toDelete)
+
+          if (deleteError) {
+            throw new Error(`Erro ao excluir bloco: ${deleteError.message}`)
+          }
+          deleted += toDelete.length
+        }
+
+        setProgress({ current: Math.min(i + chunkSize, allIds.length), total: allIds.length })
+      }
+
+      if (blockedCount > 0) {
+        toast({
+          title: 'Ação Parcialmente Concluída',
+          description: `${deleted} conta(s) excluída(s) com sucesso. ${blockedCount} conta(s) possuem vínculos (lançamentos/mapeamentos) e não puderam ser excluídas.`,
+          variant: 'destructive',
+        })
+      } else {
+        toast({ title: 'Sucesso', description: 'Plano de contas excluído com sucesso.' })
+      }
+
       onSuccess()
       onClose()
     } catch (error: any) {
