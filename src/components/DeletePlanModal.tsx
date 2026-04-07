@@ -39,99 +39,55 @@ export function DeletePlanModal({ isOpen, onClose, onSuccess, organizations }: a
     setIsDeleting(true)
 
     try {
-      const { count, error: countError } = await supabase
-        .from('chart_of_accounts')
-        .select('*', { count: 'exact', head: true })
-        .eq('organization_id', selectedOrg)
+      const session = await supabase.auth.getSession()
+      const token = session.data.session?.access_token
 
-      if (countError) throw countError
-      if (!count || count === 0) {
+      if (!token) throw new Error('Usuário não autenticado.')
+
+      setProgress({ current: 10, total: 100 }) // Indicador de progresso inicial
+
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/delete-chart-accounts`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ organizationId: selectedOrg }),
+        },
+      )
+
+      setProgress({ current: 80, total: 100 })
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(
+          errorData.error || 'Erro desconhecido ao processar a exclusão via Edge Function.',
+        )
+      }
+
+      const { success, result, error } = await response.json()
+
+      if (!success) {
+        throw new Error(error || 'Falha ao processar a exclusão.')
+      }
+
+      setProgress({ current: 100, total: 100 })
+
+      if (result.total === 0) {
         toast({ title: 'Aviso', description: 'Nenhuma conta encontrada para esta empresa.' })
-        setIsDeleting(false)
-        onClose()
-        return
-      }
-
-      let allIds: string[] = []
-      let hasMore = true
-      let lastId = '00000000-0000-0000-0000-000000000000'
-
-      while (hasMore) {
-        const { data: chunk, error: fetchError } = await supabase
-          .from('chart_of_accounts')
-          .select('id')
-          .eq('organization_id', selectedOrg)
-          .gt('id', lastId)
-          .order('id')
-          .limit(1000)
-
-        if (fetchError) throw fetchError
-        if (!chunk || chunk.length === 0) {
-          hasMore = false
-          break
-        }
-        allIds.push(...chunk.map((c) => c.id))
-        lastId = chunk[chunk.length - 1].id
-      }
-
-      setProgress({ current: 0, total: allIds.length })
-
-      let deleted = 0
-      let blockedCount = 0
-      const chunkSize = 100
-
-      for (let i = 0; i < allIds.length; i += chunkSize) {
-        const chunk = allIds.slice(i, i + chunkSize)
-
-        const [{ data: mappings }, { data: debits }, { data: credits }] = await Promise.all([
-          supabase.from('account_mapping').select('chart_account_id').in('chart_account_id', chunk),
-          supabase
-            .from('accounting_entries')
-            .select('debit_account_id')
-            .in('debit_account_id', chunk),
-          supabase
-            .from('accounting_entries')
-            .select('credit_account_id')
-            .in('credit_account_id', chunk),
-        ])
-
-        const blockedIds = new Set<string>()
-        mappings?.forEach((m: any) => {
-          if (m.chart_account_id) blockedIds.add(m.chart_account_id)
-        })
-        debits?.forEach((d: any) => {
-          if (d.debit_account_id) blockedIds.add(d.debit_account_id)
-        })
-        credits?.forEach((c: any) => {
-          if (c.credit_account_id) blockedIds.add(c.credit_account_id)
-        })
-
-        const toDelete = chunk.filter((id) => !blockedIds.has(id))
-        blockedCount += blockedIds.size
-
-        if (toDelete.length > 0) {
-          const { error: deleteError } = await supabase
-            .from('chart_of_accounts')
-            .delete()
-            .in('id', toDelete)
-
-          if (deleteError) {
-            throw new Error(`Erro ao excluir bloco: ${deleteError.message}`)
-          }
-          deleted += toDelete.length
-        }
-
-        setProgress({ current: Math.min(i + chunkSize, allIds.length), total: allIds.length })
-      }
-
-      if (blockedCount > 0) {
+      } else if (result.blocked > 0) {
         toast({
           title: 'Ação Parcialmente Concluída',
-          description: `${deleted} conta(s) excluída(s) com sucesso. ${blockedCount} conta(s) possuem vínculos (lançamentos/mapeamentos) e não puderam ser excluídas.`,
+          description: `${result.deleted} conta(s) excluída(s) com sucesso. ${result.blocked} conta(s) possuem vínculos (lançamentos/mapeamentos) e não puderam ser excluídas.`,
           variant: 'destructive',
         })
       } else {
-        toast({ title: 'Sucesso', description: 'Plano de contas excluído com sucesso.' })
+        toast({
+          title: 'Sucesso',
+          description: `${result.deleted} conta(s) excluída(s) com sucesso.`,
+        })
       }
 
       onSuccess()
@@ -178,15 +134,10 @@ export function DeletePlanModal({ isOpen, onClose, onSuccess, organizations }: a
           {isDeleting && (
             <div className="space-y-2 pt-2 animate-fade-in">
               <div className="flex justify-between text-sm font-medium text-slate-600">
-                <span>Processando exclusão...</span>
-                <span>
-                  {progress.current} / {progress.total}
-                </span>
+                <span>Processando exclusão remotamente...</span>
+                <span>{progress.current}%</span>
               </div>
-              <Progress
-                value={progress.total ? (progress.current / progress.total) * 100 : 0}
-                className="h-2"
-              />
+              <Progress value={progress.current} className="h-2" />
             </div>
           )}
         </div>
