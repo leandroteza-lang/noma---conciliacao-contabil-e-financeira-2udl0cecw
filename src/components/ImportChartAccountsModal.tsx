@@ -233,6 +233,7 @@ export function ImportChartAccountsModal({ isOpen, onClose, onSuccess }: any) {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="UPDATE">Adicionar e Atualizar (Recomendado)</SelectItem>
+                      <SelectItem value="INSERT_ONLY">Importar Somente Novos</SelectItem>
                       <SelectItem value="REPLACE">
                         Substituir Tudo (Remove contas não enviadas na planilha)
                       </SelectItem>

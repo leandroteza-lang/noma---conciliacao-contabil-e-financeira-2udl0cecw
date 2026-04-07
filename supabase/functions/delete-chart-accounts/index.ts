@@ -4,7 +4,8 @@ import { createClient } from 'jsr:@supabase/supabase-js@2'
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, x-supabase-client-platform, apikey, content-type',
+  'Access-Control-Allow-Headers':
+    'authorization, x-client-info, x-supabase-client-platform, apikey, content-type',
 }
 
 Deno.serve(async (req: Request) => {
@@ -23,7 +24,7 @@ Deno.serve(async (req: Request) => {
 
     const supabase = createClient(supabaseUrl, supabaseKey, {
       global: { headers: { Authorization: authHeader } },
-      auth: { persistSession: false }
+      auth: { persistSession: false },
     })
 
     const userResponse = await fetch(`${supabaseUrl}/auth/v1/user`, {
@@ -32,7 +33,7 @@ Deno.serve(async (req: Request) => {
         apikey: Deno.env.get('SUPABASE_ANON_KEY') || '',
       },
     })
-    
+
     if (!userResponse.ok) {
       throw new Error('Usuário não autenticado: Token inválido')
     }
@@ -44,7 +45,7 @@ Deno.serve(async (req: Request) => {
     }
 
     const { data, error } = await supabase.rpc('delete_organization_chart_accounts', {
-      p_org_id: organizationId
+      p_org_id: organizationId,
     })
 
     if (error) {
@@ -52,13 +53,12 @@ Deno.serve(async (req: Request) => {
     }
 
     return new Response(JSON.stringify({ success: true, result: data }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
-
   } catch (err: any) {
     return new Response(JSON.stringify({ success: false, error: err.message }), {
       status: 400,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
   }
 })
