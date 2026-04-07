@@ -12,6 +12,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
 import {
   Select,
   SelectContent,
@@ -27,6 +28,10 @@ const schema = z.object({
   classification: z.string().min(1, 'Campo obrigatório'),
   account_name: z.string().min(1, 'Campo obrigatório'),
   account_type: z.string().min(1, 'Campo obrigatório'),
+  account_level: z.string().optional(),
+  account_behavior: z.string().optional(),
+  nature: z.string().optional(),
+  purpose: z.string().optional(),
 })
 
 type FormData = z.infer<typeof schema>
@@ -61,6 +66,10 @@ export function ChartAccountFormModal({ isOpen, onClose, onSave, initialData }: 
       account_name: '',
       account_type: '',
       organization_id: '',
+      account_level: '',
+      account_behavior: '',
+      nature: '',
+      purpose: '',
     },
   })
 
@@ -72,6 +81,10 @@ export function ChartAccountFormModal({ isOpen, onClose, onSave, initialData }: 
         classification: initialData.classification || '',
         account_name: initialData.account_name || '',
         account_type: initialData.account_type || '',
+        account_level: initialData.account_level || '',
+        account_behavior: initialData.account_behavior || '',
+        nature: initialData.nature || '',
+        purpose: initialData.purpose || '',
       })
     } else if (isOpen) {
       reset({
@@ -80,13 +93,17 @@ export function ChartAccountFormModal({ isOpen, onClose, onSave, initialData }: 
         classification: '',
         account_name: '',
         account_type: '',
+        account_level: '',
+        account_behavior: '',
+        nature: '',
+        purpose: '',
       })
     }
   }, [isOpen, initialData, reset])
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{initialData ? 'Editar Conta Contábil' : 'Nova Conta Contábil'}</DialogTitle>
         </DialogHeader>
@@ -99,7 +116,7 @@ export function ChartAccountFormModal({ isOpen, onClose, onSave, initialData }: 
                 onValueChange={(val) => setValue('organization_id', val)}
               >
                 <SelectTrigger className={errors.organization_id ? 'border-red-500' : ''}>
-                  <SelectValue placeholder="Selecione..." />
+                  <SelectValue placeholder="Selecione a empresa..." />
                 </SelectTrigger>
                 <SelectContent>
                   {organizations.map((org) => (
@@ -114,6 +131,7 @@ export function ChartAccountFormModal({ isOpen, onClose, onSave, initialData }: 
               <Label>Código Reduzido</Label>
               <Input
                 {...register('account_code')}
+                placeholder="Ex: 101"
                 className={errors.account_code ? 'border-red-500' : ''}
               />
             </div>
@@ -121,6 +139,7 @@ export function ChartAccountFormModal({ isOpen, onClose, onSave, initialData }: 
               <Label>Classificação</Label>
               <Input
                 {...register('classification')}
+                placeholder="Ex: 1.1.01.01"
                 className={errors.classification ? 'border-red-500' : ''}
               />
             </div>
@@ -128,11 +147,46 @@ export function ChartAccountFormModal({ isOpen, onClose, onSave, initialData }: 
               <Label>Nome da Conta</Label>
               <Input
                 {...register('account_name')}
+                placeholder="Ex: Caixa Geral"
                 className={errors.account_name ? 'border-red-500' : ''}
               />
             </div>
-            <div className="space-y-2 col-span-2">
-              <Label>Tipo</Label>
+            <div className="space-y-2">
+              <Label>Nível</Label>
+              <Select
+                value={watch('account_level')}
+                onValueChange={(val) => setValue('account_level', val)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Sintética ou Analítica" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Sintética">Sintética</SelectItem>
+                  <SelectItem value="Analítica">Analítica</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Tipo (Comportamento)</Label>
+              <Select
+                value={watch('account_behavior')}
+                onValueChange={(val) => setValue('account_behavior', val)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Devedora ou Credora" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Devedora">Devedora</SelectItem>
+                  <SelectItem value="Credora">Credora</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Natureza</Label>
+              <Input {...register('nature')} placeholder="Ex: Ativo Circulante" />
+            </div>
+            <div className="space-y-2">
+              <Label>Grupo Contábil</Label>
               <Select
                 value={watch('account_type')}
                 onValueChange={(val) => setValue('account_type', val)}
@@ -145,15 +199,25 @@ export function ChartAccountFormModal({ isOpen, onClose, onSave, initialData }: 
                   <SelectItem value="Passivo">Passivo</SelectItem>
                   <SelectItem value="Receita">Receita</SelectItem>
                   <SelectItem value="Despesa">Despesa</SelectItem>
+                  <SelectItem value="Patrimônio Líquido">Patrimônio Líquido</SelectItem>
+                  <SelectItem value="Custos">Custos</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+            <div className="space-y-2 col-span-2">
+              <Label>Finalidade / Diretrizes de Uso</Label>
+              <Textarea
+                {...register('purpose')}
+                placeholder="Descreva a finalidade desta conta e diretrizes de lançamento..."
+                className="resize-none min-h-[80px]"
+              />
             </div>
           </div>
           <DialogFooter>
             <Button type="button" variant="ghost" onClick={onClose}>
               Cancelar
             </Button>
-            <Button type="submit">Salvar</Button>
+            <Button type="submit">Salvar Conta</Button>
           </DialogFooter>
         </form>
       </DialogContent>

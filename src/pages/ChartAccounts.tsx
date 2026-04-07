@@ -1,5 +1,4 @@
-import { useEffect, useState, useMemo } from 'react'
-import { Link } from 'react-router-dom'
+import { useEffect, useState } from 'react'
 import {
   Plus,
   Search,
@@ -15,6 +14,12 @@ import {
   Upload,
   FileText,
   FileSpreadsheet,
+  TrendingUp,
+  TrendingDown,
+  Landmark,
+  Wallet,
+  RotateCcw,
+  Target,
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
@@ -35,7 +40,6 @@ import { ChartAccountFormModal } from '@/components/ChartAccountFormModal'
 import { ChartAccountBulkEditModal } from '@/components/ChartAccountBulkEditModal'
 import { DeletePlanModal } from '@/components/DeletePlanModal'
 import { UndoImportPlanModal } from '@/components/UndoImportPlanModal'
-import { TrendingUp, TrendingDown, Landmark, Wallet, RotateCcw } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
   DropdownMenu,
@@ -61,16 +65,28 @@ interface ChartAccount {
   classification?: string
   organization_id?: string
   organization: { name: string } | null
+  account_level?: string
+  account_behavior?: string
+  nature?: string
+  purpose?: string
 }
 
 export default function ChartAccounts() {
-  const { user, role } = useAuth()
+  const { user } = useAuth()
   const { toast } = useToast()
   const [accounts, setAccounts] = useState<ChartAccount[]>([])
+
+  // Filters
   const [search, setSearch] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
-  const [typeFilter, setTypeFilter] = useState('all')
+  const [purposeSearch, setPurposeSearch] = useState('')
+  const [debouncedPurpose, setDebouncedPurpose] = useState('')
+
   const [orgFilter, setOrgFilter] = useState('all')
+  const [levelFilter, setLevelFilter] = useState('all')
+  const [behaviorFilter, setBehaviorFilter] = useState('all')
+  const [natureFilter, setNatureFilter] = useState('all')
+
   const [loading, setLoading] = useState(true)
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [totalCount, setTotalCount] = useState(0)
@@ -101,6 +117,14 @@ export default function ChartAccounts() {
     }, 400)
     return () => clearTimeout(timer)
   }, [search])
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedPurpose(purposeSearch)
+      setCurrentPage(1)
+    }, 400)
+    return () => clearTimeout(timer)
+  }, [purposeSearch])
 
   const fetchOrganizations = async () => {
     const { data } = await supabase
@@ -151,8 +175,20 @@ export default function ChartAccounts() {
       )
     }
 
-    if (typeFilter !== 'all') {
-      query = query.ilike('account_type', typeFilter)
+    if (debouncedPurpose) {
+      query = query.ilike('purpose', `%${debouncedPurpose}%`)
+    }
+
+    if (levelFilter !== 'all') {
+      query = query.eq('account_level', levelFilter)
+    }
+
+    if (behaviorFilter !== 'all') {
+      query = query.eq('account_behavior', behaviorFilter)
+    }
+
+    if (natureFilter !== 'all') {
+      query = query.ilike('account_type', natureFilter)
     }
 
     if (orgFilter !== 'all') {
@@ -190,7 +226,10 @@ export default function ChartAccounts() {
   }, [
     user,
     debouncedSearch,
-    typeFilter,
+    debouncedPurpose,
+    levelFilter,
+    behaviorFilter,
+    natureFilter,
     orgFilter,
     sortConfig,
     currentPage,
@@ -219,9 +258,16 @@ export default function ChartAccounts() {
   const getRowClassName = (acc: ChartAccount) => {
     const code = acc.classification || acc.account_code || ''
     const level = (code.match(/\./g) || []).length + 1
-    if (level === 1) return 'bg-blue-100/80 font-bold text-blue-900 hover:bg-blue-200/80'
-    if (level === 2) return 'bg-blue-50/80 font-semibold text-blue-800 hover:bg-blue-100/80'
-    if (level === 3) return 'bg-slate-50 font-medium text-slate-800 hover:bg-slate-100'
+
+    if (acc.account_level === 'Sintética') {
+      if (level === 1) return 'bg-blue-100/80 font-bold text-blue-900 hover:bg-blue-200/80'
+      if (level === 2) return 'bg-blue-50/80 font-semibold text-blue-800 hover:bg-blue-100/80'
+      return 'bg-slate-100 font-medium text-slate-800 hover:bg-slate-200'
+    }
+
+    if (level === 1) return 'bg-slate-100 font-bold text-slate-900 hover:bg-slate-200'
+    if (level === 2) return 'bg-slate-50 font-semibold text-slate-800 hover:bg-slate-100'
+    if (level === 3) return 'bg-white font-medium text-slate-700 hover:bg-slate-50'
     return 'bg-white font-normal hover:bg-slate-50'
   }
 
@@ -285,15 +331,10 @@ export default function ChartAccounts() {
   const totalPages = Math.max(1, Math.ceil(totalCount / itemsPerPage))
   const paginatedData = accounts
 
-  const getIndent = (code: string) => {
-    if (!code) return 0
-    const level = (code.match(/\./g) || []).length
-    return level * 1.5
-  }
-
   const getIndentFromAcc = (acc: ChartAccount) => {
     const code = acc.classification || acc.account_code || ''
-    return getIndent(code)
+    const level = (code.match(/\./g) || []).length
+    return level * 1.5
   }
 
   const handleBulkDelete = async () => {
@@ -376,17 +417,21 @@ export default function ChartAccounts() {
       const session = await supabase.auth.getSession()
       const token = session.data.session?.access_token
 
-      // For export, we fetch all data respecting filters but ignoring pagination
       let query = supabase
         .from('chart_of_accounts')
         .select('*, organization:organizations(name)')
         .neq('pending_deletion', true)
         .is('deleted_at', null)
-      if (debouncedSearch)
+
+      if (debouncedSearch) {
         query = query.or(
           `account_code.ilike.%${debouncedSearch}%,account_name.ilike.%${debouncedSearch}%,classification.ilike.%${debouncedSearch}%`,
         )
-      if (typeFilter !== 'all') query = query.ilike('account_type', typeFilter)
+      }
+      if (debouncedPurpose) query = query.ilike('purpose', `%${debouncedPurpose}%`)
+      if (levelFilter !== 'all') query = query.eq('account_level', levelFilter)
+      if (behaviorFilter !== 'all') query = query.eq('account_behavior', behaviorFilter)
+      if (natureFilter !== 'all') query = query.ilike('account_type', natureFilter)
       if (orgFilter !== 'all') query = query.eq('organization_id', orgFilter)
 
       const sortCol = sortConfig?.key || 'classification'
@@ -399,13 +444,15 @@ export default function ChartAccounts() {
       const payload = {
         format: formatType === 'browser' ? 'pdf' : formatType,
         data: (allExportData || []).map((acc) => ({
-          'Código Reduzido': acc.account_code,
+          'Código Reduzido': acc.account_code || '-',
           Classificação: acc.classification || '-',
           Nome: acc.account_name,
           'Classificação + Nome': acc.classification
             ? `${acc.classification} - ${acc.account_name}`
             : acc.account_name,
-          Tipo: acc.account_type,
+          Nível: acc.account_level || '-',
+          Comportamento: acc.account_behavior || '-',
+          Natureza: acc.nature || acc.account_type || '-',
           Empresa: acc.organization?.name || '-',
         })),
       }
@@ -512,8 +559,8 @@ export default function ChartAccounts() {
   }
 
   return (
-    <div className="container mx-auto max-w-6xl py-8 space-y-6 animate-fade-in-up">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div className="container mx-auto max-w-[1400px] py-8 space-y-6 animate-fade-in-up">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Plano de Contas</h1>
           <p className="text-muted-foreground">Gerencie a hierarquia contábil das suas empresas.</p>
@@ -665,13 +712,39 @@ export default function ChartAccounts() {
 
       <Card>
         <CardHeader className="pb-4">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-            <div className="space-y-1">
-              <CardTitle>Listagem de Contas</CardTitle>
-              <CardDescription>Visualize e filtre sua estrutura contábil.</CardDescription>
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+              <div className="space-y-1">
+                <CardTitle>Listagem de Contas</CardTitle>
+                <CardDescription>Visualize e filtre sua estrutura contábil.</CardDescription>
+              </div>
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="relative w-full sm:w-[280px]">
+                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    type="search"
+                    placeholder="Código, nome, classif..."
+                    className="pl-8"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                  />
+                </div>
+                <div className="relative w-full sm:w-[220px]">
+                  <Target className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    type="search"
+                    placeholder="Buscar por finalidade..."
+                    className="pl-8"
+                    value={purposeSearch}
+                    onChange={(e) => setPurposeSearch(e.target.value)}
+                  />
+                </div>
+              </div>
             </div>
-            <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
-              <div className="w-full sm:w-48">
+
+            {/* Extended Filters Bar */}
+            <div className="flex flex-wrap items-center gap-3 bg-slate-50/50 p-3 rounded-lg border border-slate-100">
+              <div className="w-full sm:w-44">
                 <Select
                   value={orgFilter}
                   onValueChange={(v) => {
@@ -679,7 +752,7 @@ export default function ChartAccounts() {
                     setCurrentPage(1)
                   }}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="bg-white">
                     <Building2 className="h-4 w-4 mr-2 text-muted-foreground" />
                     <SelectValue placeholder="Empresa" />
                   </SelectTrigger>
@@ -693,36 +766,66 @@ export default function ChartAccounts() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="w-full sm:w-48">
+              <div className="w-full sm:w-40">
                 <Select
-                  value={typeFilter}
+                  value={levelFilter}
                   onValueChange={(v) => {
-                    setTypeFilter(v)
+                    setLevelFilter(v)
                     setCurrentPage(1)
                   }}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="bg-white">
+                    <Filter className="h-4 w-4 mr-2 text-muted-foreground" />
+                    <SelectValue placeholder="Nível" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos os Níveis</SelectItem>
+                    <SelectItem value="Sintética">Sintética</SelectItem>
+                    <SelectItem value="Analítica">Analítica</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="w-full sm:w-40">
+                <Select
+                  value={behaviorFilter}
+                  onValueChange={(v) => {
+                    setBehaviorFilter(v)
+                    setCurrentPage(1)
+                  }}
+                >
+                  <SelectTrigger className="bg-white">
+                    <Filter className="h-4 w-4 mr-2 text-muted-foreground" />
+                    <SelectValue placeholder="Tipo" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos os Tipos</SelectItem>
+                    <SelectItem value="Devedora">Devedora</SelectItem>
+                    <SelectItem value="Credora">Credora</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="w-full sm:w-48">
+                <Select
+                  value={natureFilter}
+                  onValueChange={(v) => {
+                    setNatureFilter(v)
+                    setCurrentPage(1)
+                  }}
+                >
+                  <SelectTrigger className="bg-white">
                     <Filter className="h-4 w-4 mr-2 text-muted-foreground" />
                     <SelectValue placeholder="Natureza" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">Todas as Naturezas</SelectItem>
+                    <SelectItem value="all">Todas Naturezas</SelectItem>
                     <SelectItem value="Ativo">Ativo</SelectItem>
                     <SelectItem value="Passivo">Passivo</SelectItem>
                     <SelectItem value="Receita">Receita</SelectItem>
                     <SelectItem value="Despesa">Despesa</SelectItem>
+                    <SelectItem value="Patrimônio Líquido">Patrimônio Líquido</SelectItem>
+                    <SelectItem value="Custos">Custos</SelectItem>
                   </SelectContent>
                 </Select>
-              </div>
-              <div className="relative w-full sm:w-64">
-                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  type="search"
-                  placeholder="Buscar conta..."
-                  className="pl-8"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                />
               </div>
             </div>
           </div>
@@ -730,7 +833,7 @@ export default function ChartAccounts() {
         <CardContent>
           <div className="rounded-md border overflow-x-auto">
             <Table className="[&_td]:p-2 [&_th]:p-2 text-xs">
-              <TableHeader className="bg-muted/50">
+              <TableHeader className="bg-slate-50/80">
                 <TableRow>
                   <TableHead className="w-10 text-center">
                     <Checkbox
@@ -744,23 +847,7 @@ export default function ChartAccounts() {
                     />
                   </TableHead>
                   <TableHead
-                    className="w-[150px] cursor-pointer hover:bg-slate-100 whitespace-nowrap"
-                    onClick={() => handleSort('organization')}
-                  >
-                    <div className="flex items-center gap-2">
-                      Empresa <ArrowUpDown className="h-3 w-3 text-slate-400" />
-                    </div>
-                  </TableHead>
-                  <TableHead
-                    className="w-[150px] cursor-pointer hover:bg-slate-100 whitespace-nowrap"
-                    onClick={() => handleSort('account_code')}
-                  >
-                    <div className="flex items-center gap-2">
-                      Código Reduzido <ArrowUpDown className="h-3 w-3 text-slate-400" />
-                    </div>
-                  </TableHead>
-                  <TableHead
-                    className="w-[150px] cursor-pointer hover:bg-slate-100 whitespace-nowrap"
+                    className="w-[120px] cursor-pointer hover:bg-slate-100 whitespace-nowrap"
                     onClick={() => handleSort('classification')}
                   >
                     <div className="flex items-center gap-2">
@@ -775,24 +862,25 @@ export default function ChartAccounts() {
                       Nome da Conta <ArrowUpDown className="h-3 w-3 text-slate-400" />
                     </div>
                   </TableHead>
-                  <TableHead className="min-w-[250px] cursor-pointer hover:bg-slate-100 whitespace-nowrap">
-                    <div className="flex items-center gap-2">Classificação + Nome</div>
-                  </TableHead>
+                  <TableHead className="w-[90px] text-center whitespace-nowrap">Nível</TableHead>
+                  <TableHead className="w-[90px] text-center whitespace-nowrap">Tipo</TableHead>
+                  <TableHead className="w-[140px] whitespace-nowrap">Natureza</TableHead>
                   <TableHead
                     className="w-[120px] cursor-pointer hover:bg-slate-100 whitespace-nowrap"
-                    onClick={() => handleSort('account_type')}
+                    onClick={() => handleSort('organization')}
                   >
                     <div className="flex items-center gap-2">
-                      Tipo <ArrowUpDown className="h-3 w-3 text-slate-400" />
+                      Empresa <ArrowUpDown className="h-3 w-3 text-slate-400" />
                     </div>
                   </TableHead>
-                  <TableHead className="w-[100px] text-right whitespace-nowrap">Ações</TableHead>
+                  <TableHead className="min-w-[150px] whitespace-nowrap">Finalidade</TableHead>
+                  <TableHead className="w-[80px] text-right whitespace-nowrap">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {loading ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="h-24 text-center">
+                    <TableCell colSpan={9} className="h-24 text-center">
                       Carregando plano de contas...
                     </TableCell>
                   </TableRow>
@@ -808,53 +896,73 @@ export default function ChartAccounts() {
                           }}
                         />
                       </TableCell>
-                      <TableCell className="whitespace-nowrap">
-                        <div className="flex items-center gap-2">
-                          <Building2 className="h-3 w-3 text-muted-foreground shrink-0" />
-                          <span className="truncate max-w-[120px]">
-                            {acc.organization?.name || '-'}
-                          </span>
-                        </div>
+                      <TableCell className="font-medium whitespace-nowrap text-slate-700">
+                        {acc.classification || '-'}
                       </TableCell>
-                      <TableCell className="font-medium whitespace-nowrap">
+                      <TableCell className="whitespace-nowrap">
                         <div
                           className="flex items-center"
                           style={{ paddingLeft: `${getIndentFromAcc(acc)}rem` }}
                         >
-                          <AlignLeft className="h-3 w-3 text-muted-foreground mr-2 opacity-50 shrink-0" />
-                          {acc.account_code}
+                          <AlignLeft className="h-3 w-3 text-muted-foreground mr-2 opacity-40 shrink-0" />
+                          <span
+                            className={cn(
+                              acc.account_level === 'Sintética'
+                                ? 'font-semibold text-slate-900'
+                                : 'text-slate-700',
+                            )}
+                          >
+                            {acc.account_code ? `[${acc.account_code}] ` : ''}
+                            {acc.account_name}
+                          </span>
                         </div>
                       </TableCell>
-                      <TableCell className="whitespace-nowrap">
-                        {acc.classification || '-'}
-                      </TableCell>
-                      <TableCell className="whitespace-nowrap truncate max-w-[250px]">
-                        {acc.account_name}
-                      </TableCell>
-                      <TableCell className="whitespace-nowrap truncate max-w-[300px]">
-                        {acc.classification
-                          ? `${acc.classification} - ${acc.account_name}`
-                          : acc.account_name}
-                      </TableCell>
-                      <TableCell className="whitespace-nowrap">
-                        {acc.account_type && (
+                      <TableCell className="text-center whitespace-nowrap">
+                        {acc.account_level && (
                           <Badge
                             variant="outline"
                             className={cn(
-                              'text-[10px] px-1.5 py-0',
-                              acc.account_type.toLowerCase() === 'ativo' &&
-                                'bg-blue-500/10 text-blue-700 border-blue-200 dark:text-blue-400',
-                              acc.account_type.toLowerCase() === 'passivo' &&
-                                'bg-red-500/10 text-red-700 border-red-200 dark:text-red-400',
-                              acc.account_type.toLowerCase() === 'receita' &&
-                                'bg-green-500/10 text-green-700 border-green-200 dark:text-green-400',
-                              acc.account_type.toLowerCase() === 'despesa' &&
-                                'bg-orange-500/10 text-orange-700 border-orange-200 dark:text-orange-400',
+                              'text-[10px] font-medium border-transparent shadow-sm',
+                              acc.account_level === 'Sintética'
+                                ? 'bg-blue-100 text-blue-800'
+                                : 'bg-emerald-100 text-emerald-800',
                             )}
                           >
-                            {acc.account_type}
+                            {acc.account_level}
                           </Badge>
                         )}
+                      </TableCell>
+                      <TableCell className="text-center whitespace-nowrap">
+                        {acc.account_behavior && (
+                          <Badge
+                            variant="outline"
+                            className={cn(
+                              'text-[10px] font-medium border-transparent shadow-sm',
+                              acc.account_behavior === 'Devedora'
+                                ? 'bg-orange-100 text-orange-800'
+                                : 'bg-purple-100 text-purple-800',
+                            )}
+                          >
+                            {acc.account_behavior}
+                          </Badge>
+                        )}
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap truncate max-w-[140px] text-slate-600">
+                        {acc.nature || acc.account_type || '-'}
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap">
+                        <div className="flex items-center gap-1.5 text-slate-600">
+                          <Building2 className="h-3 w-3 text-slate-400 shrink-0" />
+                          <span className="truncate max-w-[100px]">
+                            {acc.organization?.name || '-'}
+                          </span>
+                        </div>
+                      </TableCell>
+                      <TableCell
+                        className="truncate max-w-[150px] text-slate-500 italic"
+                        title={acc.purpose}
+                      >
+                        {acc.purpose || '-'}
                       </TableCell>
                       <TableCell className="text-right whitespace-nowrap">
                         <div className="flex items-center justify-end gap-1">
@@ -883,7 +991,7 @@ export default function ChartAccounts() {
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={8} className="h-24 text-center">
+                    <TableCell colSpan={9} className="h-24 text-center">
                       Nenhuma conta contábil encontrada.
                     </TableCell>
                   </TableRow>
