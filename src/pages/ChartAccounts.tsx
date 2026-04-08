@@ -58,6 +58,16 @@ import {
 } from '@/components/ui/select'
 import { useAuth } from '@/hooks/use-auth'
 import { useToast } from '@/hooks/use-toast'
+import { Progress } from '@/components/ui/progress'
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 
 interface ChartAccount {
   id: string
@@ -108,6 +118,11 @@ export default function ChartAccounts() {
   const [isDeletePlanOpen, setIsDeletePlanOpen] = useState(false)
   const [isUndoImportOpen, setIsUndoImportOpen] = useState(false)
   const [editingAccount, setEditingAccount] = useState<ChartAccount | null>(null)
+
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false)
+  const [accountsToDelete, setAccountsToDelete] = useState<ChartAccount[]>([])
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [deleteProgress, setDeleteProgress] = useState({ current: 0, total: 0, step: '' })
 
   const [organizationsList, setOrganizationsList] = useState<{ id: string; name: string }[]>([])
   const [summary, setSummary] = useState({ ativo: 0, passivo: 0, receita: 0, despesa: 0 })
@@ -350,69 +365,13 @@ export default function ChartAccounts() {
     return level * 1.5
   }
 
-  const handleBulkDelete = async () => {
+  const handleBulkDelete = () => {
     if (selectedIds.length === 0) return
-    if (!confirm(`Deseja solicitar a exclusão de ${selectedIds.length} conta(s) contábil(eis)?`))
-      return
-
-    toast({ title: 'Aguarde', description: 'Verificando vínculos...' })
-
-    const blockedIds = new Set<string>()
-    const chunkSize = 100
-
-    for (let i = 0; i < selectedIds.length; i += chunkSize) {
-      const chunk = selectedIds.slice(i, i + chunkSize)
-      const [{ data: mappings }, { data: debits }, { data: credits }] = await Promise.all([
-        supabase.from('account_mapping').select('chart_account_id').in('chart_account_id', chunk),
-        supabase
-          .from('accounting_entries')
-          .select('debit_account_id')
-          .in('debit_account_id', chunk),
-        supabase
-          .from('accounting_entries')
-          .select('credit_account_id')
-          .in('credit_account_id', chunk),
-      ])
-
-      mappings?.forEach((m: any) => {
-        if (m.chart_account_id) blockedIds.add(m.chart_account_id)
-      })
-      debits?.forEach((d: any) => {
-        if (d.debit_account_id) blockedIds.add(d.debit_account_id)
-      })
-      credits?.forEach((c: any) => {
-        if (c.credit_account_id) blockedIds.add(c.credit_account_id)
-      })
-    }
-
-    const toDelete = selectedIds.filter((id) => !blockedIds.has(id))
-    const blocked = selectedIds.filter((id) => blockedIds.has(id))
-
-    if (toDelete.length > 0) {
-      for (let i = 0; i < toDelete.length; i += chunkSize) {
-        const chunk = toDelete.slice(i, i + chunkSize)
-        const { error } = await supabase.from('chart_of_accounts').delete().in('id', chunk)
-        if (error) {
-          toast({ title: 'Erro', description: error.message, variant: 'destructive' })
-          return
-        }
-      }
-      toast({
-        title: 'Sucesso',
-        description: `${toDelete.length} conta(s) excluída(s) com sucesso.`,
-      })
-    }
-
-    if (blocked.length > 0) {
-      toast({
-        title: 'Ação Parcialmente Bloqueada',
-        description: `${blocked.length} conta(s) possuem vínculos (lançamentos ou mapeamentos) e não puderam ser excluídas.`,
-        variant: 'destructive',
-      })
-    }
-
-    setSelectedIds([])
-    fetchAccounts()
+    const selectedAccs = accounts.filter((a) => selectedIds.includes(a.id))
+    const missingIds = selectedIds.filter((id) => !selectedAccs.find((a) => a.id === id))
+    const allAccs = [...selectedAccs, ...missingIds.map((id) => ({ id }) as ChartAccount)]
+    setAccountsToDelete(allAccs)
+    setIsDeleteConfirmOpen(true)
   }
 
   const handleExport = async (formatType: 'pdf' | 'excel' | 'browser' | 'csv' | 'txt') => {
@@ -527,111 +486,154 @@ export default function ChartAccounts() {
     }
   }
 
-  const handleDelete = async (acc: ChartAccount) => {
-    let idsToDelete = [acc.id]
+  const handleDelete = (acc: ChartAccount) => {
+    setAccountsToDelete([acc])
+    setIsDeleteConfirmOpen(true)
+  }
 
-    if (acc.account_level === 'Sintética' && acc.classification) {
-      const confirmCascata = confirm(
-        `Esta é uma conta Sintética (${acc.classification}). Deseja excluir também todas as contas analíticas e subcontas pertencentes a este nível?`,
+  const executeDeletion = async () => {
+    setIsDeleting(true)
+    setDeleteProgress({ current: 0, total: 0, step: 'Coletando dados das contas...' })
+
+    try {
+      const idsToFetch = accountsToDelete.map((a) => a.id)
+      let fullAccountsToDelete: any[] = []
+      const chunkSize = 100
+
+      for (let i = 0; i < idsToFetch.length; i += chunkSize) {
+        const chunk = idsToFetch.slice(i, i + chunkSize)
+        const { data } = await supabase
+          .from('chart_of_accounts')
+          .select('id, account_level, classification, organization_id')
+          .in('id', chunk)
+        if (data) fullAccountsToDelete.push(...data)
+        setDeleteProgress((prev) => ({
+          ...prev,
+          current: Math.min(idsToFetch.length, i + chunkSize),
+          total: idsToFetch.length,
+        }))
+      }
+
+      let allIdsToProcess = new Set<string>(fullAccountsToDelete.map((a) => a.id))
+      const synthetics = fullAccountsToDelete.filter(
+        (a) => a.account_level === 'Sintética' && a.classification,
       )
 
-      if (confirmCascata) {
-        toast({ title: 'Aguarde', description: 'Buscando contas vinculadas...' })
+      setDeleteProgress({
+        current: 0,
+        total: synthetics.length,
+        step: 'Mapeando hierarquia de contas filhas...',
+      })
+
+      let processedSynthetics = 0
+      for (const synth of synthetics) {
         let query = supabase
           .from('chart_of_accounts')
           .select('id')
           .or(
-            `classification.like.${acc.classification}.%,classification.like.${acc.classification}-%`,
+            `classification.like.${synth.classification}.%,classification.like.${synth.classification}-%`,
           )
 
-        if (acc.organization_id) {
-          query = query.eq('organization_id', acc.organization_id)
+        if (synth.organization_id) {
+          query = query.eq('organization_id', synth.organization_id)
         } else {
           query = query.is('organization_id', null)
         }
 
         const { data: children } = await query
-
         if (children) {
-          idsToDelete = [acc.id, ...children.map((c) => c.id)]
+          children.forEach((c) => allIdsToProcess.add(c.id))
         }
-      } else {
-        const confirmSingle = confirm('Deseja excluir APENAS esta conta sintética?')
-        if (!confirmSingle) return
+        processedSynthetics++
+        setDeleteProgress((prev) => ({ ...prev, current: processedSynthetics }))
       }
-    } else {
-      if (!confirm('Deseja realmente excluir esta conta?')) return
-    }
 
-    toast({ title: 'Aguarde', description: 'Verificando vínculos...' })
-
-    const chunkSize = 100
-    const blockedIds = new Set<string>()
-
-    for (let i = 0; i < idsToDelete.length; i += chunkSize) {
-      const chunk = idsToDelete.slice(i, i + chunkSize)
-      const [{ data: mappings }, { data: debits }, { data: credits }] = await Promise.all([
-        supabase.from('account_mapping').select('chart_account_id').in('chart_account_id', chunk),
-        supabase
-          .from('accounting_entries')
-          .select('debit_account_id')
-          .in('debit_account_id', chunk),
-        supabase
-          .from('accounting_entries')
-          .select('credit_account_id')
-          .in('credit_account_id', chunk),
-      ])
-
-      mappings?.forEach((m: any) => {
-        if (m.chart_account_id) blockedIds.add(m.chart_account_id)
+      const targetIds = Array.from(allIdsToProcess)
+      setDeleteProgress({
+        current: 0,
+        total: targetIds.length,
+        step: 'Verificando vínculos contábeis...',
       })
-      debits?.forEach((d: any) => {
-        if (d.debit_account_id) blockedIds.add(d.debit_account_id)
-      })
-      credits?.forEach((c: any) => {
-        if (c.credit_account_id) blockedIds.add(c.credit_account_id)
-      })
-    }
 
-    const toDelete = idsToDelete.filter((id) => !blockedIds.has(id))
-    const blocked = idsToDelete.filter((id) => blockedIds.has(id))
+      const blockedIds = new Set<string>()
 
-    if (toDelete.length === 0) {
-      toast({
-        title: 'Ação Bloqueada',
-        description:
-          idsToDelete.length === 1
-            ? 'Esta conta possui vínculos e não pode ser excluída.'
-            : 'As contas selecionadas possuem vínculos e não podem ser excluídas.',
-        variant: 'destructive',
-      })
-      return
-    }
+      for (let i = 0; i < targetIds.length; i += chunkSize) {
+        const chunk = targetIds.slice(i, i + chunkSize)
+        const [{ data: mappings }, { data: debits }, { data: credits }] = await Promise.all([
+          supabase.from('account_mapping').select('chart_account_id').in('chart_account_id', chunk),
+          supabase
+            .from('accounting_entries')
+            .select('debit_account_id')
+            .in('debit_account_id', chunk),
+          supabase
+            .from('accounting_entries')
+            .select('credit_account_id')
+            .in('credit_account_id', chunk),
+        ])
 
-    for (let i = 0; i < toDelete.length; i += chunkSize) {
-      const chunk = toDelete.slice(i, i + chunkSize)
-      const { error } = await supabase.from('chart_of_accounts').delete().in('id', chunk)
-      if (error) {
-        toast({ title: 'Erro', description: error.message, variant: 'destructive' })
+        mappings?.forEach((m: any) => {
+          if (m.chart_account_id) blockedIds.add(m.chart_account_id)
+        })
+        debits?.forEach((d: any) => {
+          if (d.debit_account_id) blockedIds.add(d.debit_account_id)
+        })
+        credits?.forEach((c: any) => {
+          if (c.credit_account_id) blockedIds.add(c.credit_account_id)
+        })
+
+        setDeleteProgress((prev) => ({
+          ...prev,
+          current: Math.min(targetIds.length, i + chunkSize),
+        }))
+      }
+
+      const toDelete = targetIds.filter((id) => !blockedIds.has(id))
+      const blockedCount = blockedIds.size
+
+      if (toDelete.length === 0) {
+        toast({
+          title: 'Ação Bloqueada',
+          description: 'Todas as contas selecionadas possuem vínculos e não podem ser excluídas.',
+          variant: 'destructive',
+        })
+        setIsDeleting(false)
+        setIsDeleteConfirmOpen(false)
         return
       }
-    }
 
-    if (blocked.length > 0) {
-      toast({
-        title: 'Ação Parcialmente Concluída',
-        description: `${toDelete.length} conta(s) excluída(s). ${blocked.length} conta(s) possuem vínculos e não puderam ser excluídas.`,
-        variant: 'destructive',
-      })
-    } else {
-      toast({
-        title: 'Sucesso',
-        description: `${toDelete.length} conta(s) excluída(s) com sucesso.`,
-      })
-    }
+      setDeleteProgress({ current: 0, total: toDelete.length, step: 'Excluindo contas...' })
 
-    fetchAccounts()
-    fetchSummary()
+      let deletedCount = 0
+      for (let i = 0; i < toDelete.length; i += chunkSize) {
+        const chunk = toDelete.slice(i, i + chunkSize)
+        const { error } = await supabase.from('chart_of_accounts').delete().in('id', chunk)
+        if (error) throw error
+        deletedCount += chunk.length
+        setDeleteProgress((prev) => ({ ...prev, current: deletedCount }))
+      }
+
+      if (blockedCount > 0) {
+        toast({
+          title: 'Ação Parcialmente Concluída',
+          description: `${deletedCount} conta(s) excluída(s). ${blockedCount} conta(s) possuem vínculos e não puderam ser excluídas.`,
+          variant: 'destructive',
+        })
+      } else {
+        toast({
+          title: 'Sucesso',
+          description: `${deletedCount} conta(s) excluída(s) com sucesso.`,
+        })
+      }
+
+      setSelectedIds([])
+      fetchAccounts()
+      fetchSummary()
+      setIsDeleteConfirmOpen(false)
+    } catch (error: any) {
+      toast({ title: 'Erro', description: error.message, variant: 'destructive' })
+    } finally {
+      setIsDeleting(false)
+    }
   }
 
   return (
@@ -1161,6 +1163,64 @@ export default function ChartAccounts() {
             }}
             organizations={organizationsList}
           />
+
+          <AlertDialog open={isDeleteConfirmOpen} onOpenChange={setIsDeleteConfirmOpen}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
+                <AlertDialogDescription asChild>
+                  <div className="space-y-3 mt-2">
+                    {!isDeleting ? (
+                      <>
+                        <p>
+                          Você está prestes a excluir <strong>{accountsToDelete.length}</strong>{' '}
+                          conta(s) selecionada(s).
+                        </p>
+                        {accountsToDelete.some((a) => a.account_level === 'Sintética') && (
+                          <div className="bg-amber-50 text-amber-800 p-3 rounded-md text-sm border border-amber-200">
+                            <strong>Atenção:</strong> Você selecionou contas Sintéticas. Todas as
+                            contas analíticas e subcontas pertencentes a estes níveis também serão
+                            excluídas em cascata.
+                          </div>
+                        )}
+                        <p>
+                          Esta ação não pode ser desfeita. Contas com vínculos (lançamentos ou
+                          mapeamentos) não serão excluídas.
+                        </p>
+                      </>
+                    ) : (
+                      <div className="space-y-4 py-4">
+                        <div className="flex justify-between text-sm font-medium text-slate-700">
+                          <span>{deleteProgress.step}</span>
+                          {deleteProgress.total > 0 && (
+                            <span>
+                              {Math.round((deleteProgress.current / deleteProgress.total) * 100)}%
+                            </span>
+                          )}
+                        </div>
+                        <Progress
+                          value={
+                            deleteProgress.total > 0
+                              ? (deleteProgress.current / deleteProgress.total) * 100
+                              : 0
+                          }
+                          className="h-2 transition-all"
+                        />
+                      </div>
+                    )}
+                  </div>
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              {!isDeleting && (
+                <AlertDialogFooter>
+                  <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
+                  <Button variant="destructive" onClick={executeDeletion} disabled={isDeleting}>
+                    Sim, excluir
+                  </Button>
+                </AlertDialogFooter>
+              )}
+            </AlertDialogContent>
+          </AlertDialog>
 
           {!loading && totalCount > 0 && (
             <div className="flex flex-col sm:flex-row items-center justify-between p-4 border-t border-slate-100 gap-4">
