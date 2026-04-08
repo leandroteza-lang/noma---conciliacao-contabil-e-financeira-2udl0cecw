@@ -72,14 +72,35 @@ export function ReplicateChartAccountsModal({ isOpen, onClose, onSuccess, organi
 
     setStep('validate')
 
-    try {
-      const { data: sourceAccs, error: srcErr } = await supabase
-        .from('chart_of_accounts')
-        .select('id, account_code, classification')
-        .eq('organization_id', sourceOrg)
-        .is('deleted_at', null)
+    const fetchAllAccounts = async (orgId: string, selectFields: string) => {
+      let allData: any[] = []
+      let hasMore = true
+      let page = 0
+      const pageSize = 1000
 
-      if (srcErr) throw srcErr
+      while (hasMore) {
+        const { data, error } = await supabase
+          .from('chart_of_accounts')
+          .select(selectFields)
+          .eq('organization_id', orgId)
+          .is('deleted_at', null)
+          .range(page * pageSize, (page + 1) * pageSize - 1)
+
+        if (error) throw error
+
+        if (data && data.length > 0) {
+          allData = [...allData, ...data]
+          page++
+          if (data.length < pageSize) hasMore = false
+        } else {
+          hasMore = false
+        }
+      }
+      return allData
+    }
+
+    try {
+      const sourceAccs = await fetchAllAccounts(sourceOrg, 'id, account_code, classification')
 
       if (!sourceAccs || sourceAccs.length === 0) {
         toast({
@@ -91,13 +112,7 @@ export function ReplicateChartAccountsModal({ isOpen, onClose, onSuccess, organi
         return
       }
 
-      const { data: destAccs, error: destErr } = await supabase
-        .from('chart_of_accounts')
-        .select('id, account_code, classification')
-        .eq('organization_id', destOrg)
-        .is('deleted_at', null)
-
-      if (destErr) throw destErr
+      const destAccs = await fetchAllAccounts(destOrg, 'id, account_code, classification')
 
       const hasPlan = destAccs && destAccs.length > 0
       let hasLinks = false
@@ -157,13 +172,29 @@ export function ReplicateChartAccountsModal({ isOpen, onClose, onSuccess, organi
       }
 
       setProgress({ current: 30, total: 100, step: 'Buscando plano de contas da origem...' })
-      const { data: fullSourceAccounts, error: fetchErr } = await supabase
-        .from('chart_of_accounts')
-        .select('*')
-        .eq('organization_id', sourceOrg)
-        .is('deleted_at', null)
+      let fullSourceAccounts: any[] = []
+      let hasMore = true
+      let page = 0
+      const pageSize = 1000
 
-      if (fetchErr) throw fetchErr
+      while (hasMore) {
+        const { data, error: fetchErr } = await supabase
+          .from('chart_of_accounts')
+          .select('*')
+          .eq('organization_id', sourceOrg)
+          .is('deleted_at', null)
+          .range(page * pageSize, (page + 1) * pageSize - 1)
+
+        if (fetchErr) throw fetchErr
+
+        if (data && data.length > 0) {
+          fullSourceAccounts = [...fullSourceAccounts, ...data]
+          page++
+          if (data.length < pageSize) hasMore = false
+        } else {
+          hasMore = false
+        }
+      }
 
       const toInsert = fullSourceAccounts.map((acc) => {
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
