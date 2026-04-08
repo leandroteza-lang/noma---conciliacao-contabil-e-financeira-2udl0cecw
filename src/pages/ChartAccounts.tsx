@@ -714,7 +714,7 @@ export default function ChartAccounts() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         <Card
           className={cn(
-            'group relative overflow-hidden rounded-[24px] border-0 cursor-pointer transition-all duration-200 hover:scale-105 h-[220px]',
+            'group relative overflow-hidden rounded-[24px] border-0 cursor-pointer transition-all duration-200 hover:scale-105 h-[110px]',
             'bg-gradient-to-br from-[#0d5d5d] to-[#1dd1a1] text-white shadow-lg hover:shadow-xl hover:shadow-[#1dd1a1]/20',
             natureFilter === 'ATIVO' ? 'ring-4 ring-[#1dd1a1] ring-offset-2' : '',
           )}
@@ -723,25 +723,23 @@ export default function ChartAccounts() {
             setCurrentPage(1)
           }}
         >
-          <CardContent className="p-6 h-full flex flex-col justify-between relative z-10">
+          <CardContent className="p-4 h-full flex flex-col justify-between relative z-10">
             <p className="text-[12px] font-normal text-white/80 uppercase tracking-widest">
               CONTAS DE ATIVO
             </p>
             <div className="flex-1 flex items-center">
-              <p className="text-[40px] font-bold text-white leading-none">{summary.ativo}</p>
+              <p className="text-[32px] font-bold text-white leading-none">{summary.ativo}</p>
             </div>
-            <p className="text-[14px] font-normal text-white/90 leading-snug">
-              registros ativos
-              <br />
-              na base
+            <p className="text-[12px] font-normal text-white/90 leading-snug">
+              registros ativos na base
             </p>
           </CardContent>
-          <Landmark className="absolute -bottom-4 -right-4 h-40 w-40 text-white opacity-10 rotate-[-15deg] pointer-events-none transition-transform duration-500 group-hover:scale-110 group-hover:rotate-[-5deg]" />
+          <Landmark className="absolute -bottom-2 -right-2 h-24 w-24 text-white opacity-10 rotate-[-15deg] pointer-events-none transition-transform duration-500 group-hover:scale-110 group-hover:rotate-[-5deg]" />
         </Card>
 
         <Card
           className={cn(
-            'group relative overflow-hidden rounded-[24px] border-0 cursor-pointer transition-all duration-200 hover:scale-105 h-[220px]',
+            'group relative overflow-hidden rounded-[24px] border-0 cursor-pointer transition-all duration-200 hover:scale-105 h-[110px]',
             'bg-gradient-to-br from-[#6c0572] to-[#ff006e] text-white shadow-lg hover:shadow-xl hover:shadow-[#ff006e]/20',
             natureFilter === 'PASSIVO' ? 'ring-4 ring-[#ff006e] ring-offset-2' : '',
           )}
@@ -750,25 +748,23 @@ export default function ChartAccounts() {
             setCurrentPage(1)
           }}
         >
-          <CardContent className="p-6 h-full flex flex-col justify-between relative z-10">
+          <CardContent className="p-4 h-full flex flex-col justify-between relative z-10">
             <p className="text-[12px] font-normal text-white/80 uppercase tracking-widest">
               CONTAS DE PASSIVO
             </p>
             <div className="flex-1 flex items-center">
-              <p className="text-[40px] font-bold text-white leading-none">{summary.passivo}</p>
+              <p className="text-[32px] font-bold text-white leading-none">{summary.passivo}</p>
             </div>
-            <p className="text-[14px] font-normal text-white/90 leading-snug">
-              registros ativos
-              <br />
-              na base
+            <p className="text-[12px] font-normal text-white/90 leading-snug">
+              registros ativos na base
             </p>
           </CardContent>
-          <Wallet className="absolute -bottom-4 -right-4 h-40 w-40 text-white opacity-10 rotate-[-15deg] pointer-events-none transition-transform duration-500 group-hover:scale-110 group-hover:rotate-[-5deg]" />
+          <Wallet className="absolute -bottom-2 -right-2 h-24 w-24 text-white opacity-10 rotate-[-15deg] pointer-events-none transition-transform duration-500 group-hover:scale-110 group-hover:rotate-[-5deg]" />
         </Card>
 
         <Card
           className={cn(
-            'group relative overflow-hidden rounded-[24px] border-0 cursor-pointer transition-all duration-200 hover:scale-105 h-[220px]',
+            'group relative overflow-hidden rounded-[24px] border-0 cursor-pointer transition-all duration-200 hover:scale-105 h-[110px]',
             'bg-gradient-to-br from-[#003d82] to-[#0099ff] text-white shadow-lg hover:shadow-xl hover:shadow-[#0099ff]/20',
             natureFilter === 'RECEITAS' ? 'ring-4 ring-[#0099ff] ring-offset-2' : '',
           )}
@@ -777,25 +773,23 @@ export default function ChartAccounts() {
             setCurrentPage(1)
           }}
         >
-          <CardContent className="p-6 h-full flex flex-col justify-between relative z-10">
+          <CardContent className="p-4 h-full flex flex-col justify-between relative z-10">
             <p className="text-[12px] font-normal text-white/80 uppercase tracking-widest">
               CONTAS DE RECEITA
             </p>
             <div className="flex-1 flex items-center">
-              <p className="text-[40px] font-bold text-white leading-none">{summary.receita}</p>
+              <p className="text-[32px] font-bold text-white leading-none">{summary.receita}</p>
             </div>
-            <p className="text-[14px] font-normal text-white/90 leading-snug">
-              registros ativos
-              <br />
-              na base
+            <p className="text-[12px] font-normal text-white/90 leading-snug">
+              registros ativos na base
             </p>
           </CardContent>
-          <TrendingUp className="absolute -bottom-4 -right-4 h-40 w-40 text-white opacity-10 rotate-[-15deg] pointer-events-none transition-transform duration-500 group-hover:scale-110 group-hover:rotate-[-5deg]" />
+          <TrendingUp className="absolute -bottom-2 -right-2 h-24 w-24 text-white opacity-10 rotate-[-15deg] pointer-events-none transition-transform duration-500 group-hover:scale-110 group-hover:rotate-[-5deg]" />
         </Card>
 
         <Card
           className={cn(
-            'group relative overflow-hidden rounded-[24px] border-0 cursor-pointer transition-all duration-200 hover:scale-105 h-[220px]',
+            'group relative overflow-hidden rounded-[24px] border-0 cursor-pointer transition-all duration-200 hover:scale-105 h-[110px]',
             'bg-gradient-to-br from-[#8b4513] to-[#ff8c00] text-white shadow-lg hover:shadow-xl hover:shadow-[#ff8c00]/20',
             natureFilter === 'DESPESAS' ? 'ring-4 ring-[#ff8c00] ring-offset-2' : '',
           )}
@@ -804,20 +798,18 @@ export default function ChartAccounts() {
             setCurrentPage(1)
           }}
         >
-          <CardContent className="p-6 h-full flex-col justify-between relative z-10 flex">
+          <CardContent className="p-4 h-full flex-col justify-between relative z-10 flex">
             <p className="text-[12px] font-normal text-white/80 uppercase tracking-widest">
               CONTAS DE DESPESA
             </p>
             <div className="flex-1 flex items-center">
-              <p className="text-[40px] font-bold text-white leading-none">{summary.despesa}</p>
+              <p className="text-[32px] font-bold text-white leading-none">{summary.despesa}</p>
             </div>
-            <p className="text-[14px] font-normal text-white/90 leading-snug">
-              registros ativos
-              <br />
-              na base
+            <p className="text-[12px] font-normal text-white/90 leading-snug">
+              registros ativos na base
             </p>
           </CardContent>
-          <TrendingDown className="absolute -bottom-4 -right-4 h-40 w-40 text-white opacity-10 rotate-[-15deg] pointer-events-none transition-transform duration-500 group-hover:scale-110 group-hover:rotate-[-5deg]" />
+          <TrendingDown className="absolute -bottom-2 -right-2 h-24 w-24 text-white opacity-10 rotate-[-15deg] pointer-events-none transition-transform duration-500 group-hover:scale-110 group-hover:rotate-[-5deg]" />
         </Card>
       </div>
 
