@@ -288,15 +288,14 @@ export default function ChartAccounts() {
     const level = (code.match(/\./g) || []).length + 1
 
     if (acc.account_level === 'Sintética') {
-      if (level === 1) return 'bg-blue-100/80 font-bold text-blue-900 hover:bg-blue-200/80'
-      if (level === 2) return 'bg-blue-50/80 font-semibold text-blue-800 hover:bg-blue-100/80'
-      return 'bg-slate-100 font-medium text-slate-800 hover:bg-slate-200'
+      if (level === 1) return 'bg-indigo-950 font-bold text-white hover:bg-indigo-900'
+      if (level === 2) return 'bg-blue-800 font-semibold text-white hover:bg-blue-700'
+      if (level === 3) return 'bg-blue-500 font-medium text-white hover:bg-blue-400'
+      if (level === 4) return 'bg-blue-200 font-medium text-blue-950 hover:bg-blue-300'
+      return 'bg-blue-50 font-medium text-blue-900 hover:bg-blue-100'
     }
 
-    if (level === 1) return 'bg-slate-100 font-bold text-slate-900 hover:bg-slate-200'
-    if (level === 2) return 'bg-slate-50 font-semibold text-slate-800 hover:bg-slate-100'
-    if (level === 3) return 'bg-white font-medium text-slate-700 hover:bg-slate-50'
-    return 'bg-white font-normal hover:bg-slate-50'
+    return 'bg-white font-normal text-slate-700 hover:bg-slate-50'
   }
 
   const handleSaveAccount = async (data: any) => {
@@ -1007,112 +1006,130 @@ export default function ChartAccounts() {
                     </TableCell>
                   </TableRow>
                 ) : paginatedData.length > 0 ? (
-                  paginatedData.map((acc) => (
-                    <TableRow key={acc.id} className={getRowClassName(acc)}>
-                      <TableCell className="text-center">
-                        <Checkbox
-                          checked={selectedIds.includes(acc.id)}
-                          onCheckedChange={(checked) => {
-                            if (checked) setSelectedIds((prev) => [...prev, acc.id])
-                            else setSelectedIds((prev) => prev.filter((id) => id !== acc.id))
-                          }}
-                        />
-                      </TableCell>
-                      <TableCell className="whitespace-nowrap">
-                        <div className="flex items-center gap-1.5 text-slate-600">
-                          <Building2 className="h-3 w-3 text-slate-400 shrink-0" />
-                          <span className="truncate max-w-[100px]">
-                            {acc.organization?.name || '-'}
-                          </span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="font-medium whitespace-nowrap text-slate-600">
-                        {acc.account_code || '-'}
-                      </TableCell>
-                      <TableCell className="font-medium whitespace-nowrap text-slate-700">
-                        {acc.classification || '-'}
-                      </TableCell>
-                      <TableCell className="whitespace-nowrap">
-                        <div
-                          className="flex items-center"
-                          style={{ paddingLeft: `${getIndentFromAcc(acc)}rem` }}
-                        >
-                          <AlignLeft className="h-3 w-3 text-muted-foreground mr-2 opacity-40 shrink-0" />
-                          <span
-                            className={cn(
-                              acc.account_level === 'Sintética'
-                                ? 'font-semibold text-slate-900'
-                                : 'text-slate-700',
-                            )}
-                          >
-                            {acc.account_name}
-                          </span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-center whitespace-nowrap">
-                        {acc.account_level && (
-                          <Badge
-                            variant="outline"
-                            className={cn(
-                              'text-[10px] font-medium border-transparent shadow-sm',
-                              acc.account_level === 'Sintética'
-                                ? 'bg-blue-100 text-blue-800'
-                                : 'bg-emerald-100 text-emerald-800',
-                            )}
-                          >
-                            {acc.account_level}
-                          </Badge>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-center whitespace-nowrap">
-                        {acc.account_behavior && (
-                          <Badge
-                            variant="outline"
-                            className={cn(
-                              'text-[10px] font-medium border-transparent shadow-sm',
-                              acc.account_behavior === 'Devedora'
-                                ? 'bg-orange-100 text-orange-800'
-                                : 'bg-purple-100 text-purple-800',
-                            )}
-                          >
-                            {acc.account_behavior}
-                          </Badge>
-                        )}
-                      </TableCell>
-                      <TableCell className="whitespace-nowrap truncate max-w-[140px] text-slate-600">
-                        {acc.nature || acc.account_type || '-'}
-                      </TableCell>
-                      <TableCell
-                        className="truncate max-w-[150px] text-slate-500 italic"
-                        title={acc.purpose}
-                      >
-                        {acc.purpose || '-'}
-                      </TableCell>
-                      <TableCell className="text-right whitespace-nowrap">
-                        <div className="flex items-center justify-end gap-1">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => {
-                              setEditingAccount(acc)
-                              setIsFormOpen(true)
+                  paginatedData.map((acc) => {
+                    const code = acc.classification || acc.account_code || ''
+                    const level = (code.match(/\./g) || []).length + 1
+
+                    return (
+                      <TableRow key={acc.id} className={getRowClassName(acc)}>
+                        <TableCell className="text-center">
+                          <Checkbox
+                            checked={selectedIds.includes(acc.id)}
+                            onCheckedChange={(checked) => {
+                              if (checked) setSelectedIds((prev) => [...prev, acc.id])
+                              else setSelectedIds((prev) => prev.filter((id) => id !== acc.id))
                             }}
-                            className="h-7 w-7 text-slate-500 hover:text-blue-600 hover:bg-blue-50"
+                            className={cn(
+                              acc.account_level === 'Sintética' && level <= 3
+                                ? 'border-white/70 data-[state=checked]:bg-white data-[state=checked]:text-blue-900'
+                                : '',
+                            )}
+                          />
+                        </TableCell>
+                        <TableCell className="whitespace-nowrap">
+                          <div className="flex items-center gap-1.5 opacity-80">
+                            <Building2 className="h-3 w-3 opacity-60 shrink-0" />
+                            <span className="truncate max-w-[100px]">
+                              {acc.organization?.name || '-'}
+                            </span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="font-medium whitespace-nowrap opacity-80">
+                          {acc.account_code || '-'}
+                        </TableCell>
+                        <TableCell className="font-medium whitespace-nowrap opacity-90">
+                          {acc.classification || '-'}
+                        </TableCell>
+                        <TableCell className="whitespace-nowrap">
+                          <div
+                            className="flex items-center"
+                            style={{ paddingLeft: `${getIndentFromAcc(acc)}rem` }}
                           >
-                            <Pencil className="h-3.5 w-3.5" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleDelete(acc)}
-                            className="h-7 w-7 text-slate-500 hover:text-red-600 hover:bg-red-50"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))
+                            <AlignLeft className="h-3 w-3 opacity-40 shrink-0 mr-2" />
+                            <span
+                              className={cn(
+                                acc.account_level === 'Sintética' ? 'font-semibold uppercase' : '',
+                              )}
+                            >
+                              {acc.account_name}
+                            </span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-center whitespace-nowrap">
+                          {acc.account_level && (
+                            <Badge
+                              variant="outline"
+                              className={cn(
+                                'text-[10px] font-medium border-transparent shadow-sm rounded-full px-2.5',
+                                acc.account_level === 'Sintética'
+                                  ? 'bg-blue-100 text-blue-800'
+                                  : 'bg-emerald-100 text-emerald-800',
+                              )}
+                            >
+                              {acc.account_level}
+                            </Badge>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-center whitespace-nowrap">
+                          {acc.account_behavior && (
+                            <Badge
+                              variant="outline"
+                              className={cn(
+                                'text-[10px] font-medium border-transparent shadow-sm rounded-full px-2.5',
+                                acc.account_behavior === 'Devedora'
+                                  ? 'bg-orange-100 text-orange-800'
+                                  : 'bg-purple-100 text-purple-800',
+                              )}
+                            >
+                              {acc.account_behavior}
+                            </Badge>
+                          )}
+                        </TableCell>
+                        <TableCell className="whitespace-nowrap truncate max-w-[140px] opacity-80">
+                          {acc.nature || acc.account_type || '-'}
+                        </TableCell>
+                        <TableCell
+                          className="truncate max-w-[150px] opacity-60 italic"
+                          title={acc.purpose}
+                        >
+                          {acc.purpose || '-'}
+                        </TableCell>
+                        <TableCell className="text-right whitespace-nowrap">
+                          <div className="flex items-center justify-end gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => {
+                                setEditingAccount(acc)
+                                setIsFormOpen(true)
+                              }}
+                              className={cn(
+                                'h-7 w-7 opacity-70 hover:opacity-100 transition-colors',
+                                level <= 3 && acc.account_level === 'Sintética'
+                                  ? 'hover:bg-white/20 text-white'
+                                  : 'hover:bg-black/5 hover:text-blue-600 text-slate-500',
+                              )}
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleDelete(acc)}
+                              className={cn(
+                                'h-7 w-7 opacity-70 hover:opacity-100 transition-colors',
+                                level <= 3 && acc.account_level === 'Sintética'
+                                  ? 'hover:bg-white/20 text-white'
+                                  : 'hover:bg-black/5 hover:text-red-600 text-slate-500',
+                              )}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })
                 ) : (
                   <TableRow>
                     <TableCell colSpan={9} className="h-24 text-center">
