@@ -6,7 +6,8 @@ import autoTable from 'npm:jspdf-autotable@3.8.2'
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, x-supabase-client-platform, apikey, content-type',
+  'Access-Control-Allow-Headers':
+    'authorization, x-client-info, x-supabase-client-platform, apikey, content-type',
 }
 
 Deno.serve(async (req: Request) => {
@@ -16,23 +17,25 @@ Deno.serve(async (req: Request) => {
     if (!authHeader) throw new Error('Cabeçalho de autorização ausente')
 
     const { format, bankData, costCenterData, cashFlowData } = await req.json()
-    
+
     if (format === 'excel') {
       let csv = 'Relatorio de Dashboard\n\nSaldo por Conta Bancaria\nConta,Saldo\n'
-      bankData.forEach((r: any) => csv += `"${r.name}",${r.value}\n`)
+      bankData.forEach((r: any) => (csv += `"${r.name}",${r.value}\n`))
       csv += '\nLancamentos por Centro de Custo\nCentro de Custo,Valor\n'
-      costCenterData.forEach((r: any) => csv += `"${r.name}",${r.value}\n`)
+      costCenterData.forEach((r: any) => (csv += `"${r.name}",${r.value}\n`))
       csv += '\nFluxo de Caixa Mensal\nMes,Valor\n'
-      cashFlowData.forEach((r: any) => csv += `"${r.month}",${r.value}\n`)
-      
-      return new Response(JSON.stringify({ csv }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+      cashFlowData.forEach((r: any) => (csv += `"${r.month}",${r.value}\n`))
+
+      return new Response(JSON.stringify({ csv }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
     }
-    
+
     if (format === 'pdf') {
       const doc = new jsPDF()
       doc.setFontSize(16)
       doc.text('Relatório de Dashboard', 14, 20)
-      
+
       let currentY = 30
 
       doc.setFontSize(12)
@@ -43,7 +46,7 @@ Deno.serve(async (req: Request) => {
         body: bankData.map((r: any) => [r.name, r.value.toFixed(2)]),
         theme: 'grid',
         headStyles: { fillColor: [220, 38, 38] },
-        margin: { bottom: 10 }
+        margin: { bottom: 10 },
       })
       currentY = (doc as any).lastAutoTable.finalY + 15
 
@@ -54,7 +57,7 @@ Deno.serve(async (req: Request) => {
         body: costCenterData.map((r: any) => [r.name, r.value.toFixed(2)]),
         theme: 'grid',
         headStyles: { fillColor: [220, 38, 38] },
-        margin: { bottom: 10 }
+        margin: { bottom: 10 },
       })
       currentY = (doc as any).lastAutoTable.finalY + 15
 
@@ -64,15 +67,20 @@ Deno.serve(async (req: Request) => {
         head: [['Mês', 'Valor (R$)']],
         body: cashFlowData.map((r: any) => [r.month, r.value.toFixed(2)]),
         theme: 'grid',
-        headStyles: { fillColor: [220, 38, 38] }
+        headStyles: { fillColor: [220, 38, 38] },
       })
-      
+
       const pdf = doc.output('datauristring')
-      return new Response(JSON.stringify({ pdf }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+      return new Response(JSON.stringify({ pdf }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
     }
-    
+
     throw new Error('Formato inválido. Use "excel" ou "pdf".')
   } catch (err: any) {
-    return new Response(JSON.stringify({ error: err.message }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    return new Response(JSON.stringify({ error: err.message }), {
+      status: 400,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    })
   }
 })
