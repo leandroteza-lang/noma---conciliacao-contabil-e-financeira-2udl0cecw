@@ -364,12 +364,12 @@ export function ImportChartAccountsModal({ isOpen, onClose, onSuccess }: any) {
                 <div className="space-y-3 bg-slate-50 p-4 rounded-md border border-slate-200">
                   <div className="space-y-1">
                     <h4 className="font-semibold text-sm text-slate-800">
-                      Mapeamento de Contas Raiz
+                      Mapeamento de Contas Raiz (Opcional)
                     </h4>
                     <p className="text-xs text-slate-500">
-                      Defina a Natureza, Grupo e Tipo para cada conta raiz (Nível 1). Essa
-                      configuração será aplicada automaticamente para todas as contas filhas desta
-                      estrutura.
+                      Se sua planilha já possui as colunas de Natureza, Grupo e Comportamento, você
+                      pode ignorar este passo. Caso contrário, defina abaixo para aplicar
+                      automaticamente nas contas.
                     </p>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
