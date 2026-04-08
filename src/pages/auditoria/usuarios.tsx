@@ -162,6 +162,7 @@ export default function AuditoriaUsuarios() {
     null,
   )
   const [selectedLogs, setSelectedLogs] = useState<string[]>([])
+  const [activeDashboardFilter, setActiveDashboardFilter] = useState<string | null>(null)
   const { toast } = useToast()
 
   const entityType = 'usuario'
@@ -357,7 +358,18 @@ export default function AuditoriaUsuarios() {
   }, [fetchLogs, currentFilters])
 
   const sortedLogs = useMemo(() => {
-    let sortable = [...logs]
+    let filtered = logs
+    if (activeDashboardFilter) {
+      filtered = logs.filter((log) => {
+        if (activeDashboardFilter === 'CREATE') return ['CREATE', 'INCLUSÃO'].includes(log.action)
+        if (activeDashboardFilter === 'UPDATE') return ['UPDATE', 'EDIÇÃO'].includes(log.action)
+        if (activeDashboardFilter === 'DELETE')
+          return ['DELETE', 'EXCLUSÃO', 'SOFT_DELETE'].includes(log.action)
+        return true
+      })
+    }
+
+    let sortable = [...filtered]
     if (sortConfig !== null) {
       sortable.sort((a, b) => {
         let aVal = a[sortConfig.key]
@@ -489,7 +501,12 @@ export default function AuditoriaUsuarios() {
         <AuditExport logs={logs} entityType={entityType} />
       </div>
 
-      <AuditDashboard logs={logs} entityType={entityType} />
+      <AuditDashboard
+        logs={logs}
+        entityType={entityType}
+        activeFilter={activeDashboardFilter}
+        onFilterChange={setActiveDashboardFilter}
+      />
       <AuditFilter onFilter={setCurrentFilters} />
 
       <Card className="overflow-hidden border shadow-sm">
