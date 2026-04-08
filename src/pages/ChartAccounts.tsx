@@ -714,91 +714,101 @@ export default function ChartAccounts() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card
           className={cn(
-            'bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-md border-0 cursor-pointer transition-all hover:scale-[1.02]',
-            natureFilter === 'ATIVO' && 'ring-2 ring-blue-500 ring-offset-2',
+            'group relative overflow-hidden rounded-3xl border-0 cursor-pointer transition-all duration-300 hover:-translate-y-1',
+            'bg-gradient-to-br from-blue-500 via-blue-600 to-blue-700 text-white shadow-lg hover:shadow-blue-500/30',
+            natureFilter === 'ATIVO' ? 'ring-4 ring-blue-400 ring-offset-2 shadow-blue-500/50' : '',
           )}
           onClick={() => {
             setNatureFilter(natureFilter === 'ATIVO' ? 'all' : 'ATIVO')
             setCurrentPage(1)
           }}
         >
-          <CardContent className="p-5">
-            <div className="flex justify-between items-start">
-              <div className="space-y-1">
-                <p className="text-blue-100 text-sm font-medium">Contas de Ativo</p>
-                <p className="text-3xl font-bold">{summary.ativo}</p>
-              </div>
-              <div className="p-2 bg-blue-400/30 rounded-lg">
-                <Landmark className="h-5 w-5 text-white" />
-              </div>
+          <CardContent className="p-6 h-full flex flex-col justify-between min-h-[140px] relative z-10">
+            <div className="space-y-1">
+              <p className="text-blue-100 text-sm font-semibold uppercase tracking-wider">
+                Contas de Ativo
+              </p>
+              <p className="text-4xl font-bold tracking-tight">{summary.ativo}</p>
             </div>
+            <p className="text-blue-100/80 text-xs mt-4 font-medium">Total de contas cadastradas</p>
           </CardContent>
+          <Landmark className="absolute -bottom-4 -right-4 h-32 w-32 text-white opacity-10 rotate-[-15deg] pointer-events-none transition-transform duration-500 group-hover:scale-110 group-hover:rotate-[-5deg]" />
         </Card>
         <Card
           className={cn(
-            'bg-gradient-to-br from-red-500 to-red-600 text-white shadow-md border-0 cursor-pointer transition-all hover:scale-[1.02]',
-            natureFilter === 'PASSIVO' && 'ring-2 ring-red-500 ring-offset-2',
+            'group relative overflow-hidden rounded-3xl border-0 cursor-pointer transition-all duration-300 hover:-translate-y-1',
+            'bg-gradient-to-br from-rose-500 via-rose-600 to-rose-700 text-white shadow-lg hover:shadow-rose-500/30',
+            natureFilter === 'PASSIVO'
+              ? 'ring-4 ring-rose-400 ring-offset-2 shadow-rose-500/50'
+              : '',
           )}
           onClick={() => {
             setNatureFilter(natureFilter === 'PASSIVO' ? 'all' : 'PASSIVO')
             setCurrentPage(1)
           }}
         >
-          <CardContent className="p-5">
-            <div className="flex justify-between items-start">
-              <div className="space-y-1">
-                <p className="text-red-100 text-sm font-medium">Contas de Passivo</p>
-                <p className="text-3xl font-bold">{summary.passivo}</p>
-              </div>
-              <div className="p-2 bg-red-400/30 rounded-lg">
-                <Wallet className="h-5 w-5 text-white" />
-              </div>
+          <CardContent className="p-6 h-full flex flex-col justify-between min-h-[140px] relative z-10">
+            <div className="space-y-1">
+              <p className="text-rose-100 text-sm font-semibold uppercase tracking-wider">
+                Contas de Passivo
+              </p>
+              <p className="text-4xl font-bold tracking-tight">{summary.passivo}</p>
             </div>
+            <p className="text-rose-100/80 text-xs mt-4 font-medium">Total de contas cadastradas</p>
           </CardContent>
+          <Wallet className="absolute -bottom-4 -right-4 h-32 w-32 text-white opacity-10 rotate-[-15deg] pointer-events-none transition-transform duration-500 group-hover:scale-110 group-hover:rotate-[-5deg]" />
         </Card>
         <Card
           className={cn(
-            'bg-gradient-to-br from-emerald-500 to-emerald-600 text-white shadow-md border-0 cursor-pointer transition-all hover:scale-[1.02]',
-            natureFilter === 'RECEITAS' && 'ring-2 ring-emerald-500 ring-offset-2',
+            'group relative overflow-hidden rounded-3xl border-0 cursor-pointer transition-all duration-300 hover:-translate-y-1',
+            'bg-gradient-to-br from-emerald-500 via-emerald-600 to-emerald-700 text-white shadow-lg hover:shadow-emerald-500/30',
+            natureFilter === 'RECEITAS'
+              ? 'ring-4 ring-emerald-400 ring-offset-2 shadow-emerald-500/50'
+              : '',
           )}
           onClick={() => {
             setNatureFilter(natureFilter === 'RECEITAS' ? 'all' : 'RECEITAS')
             setCurrentPage(1)
           }}
         >
-          <CardContent className="p-5">
-            <div className="flex justify-between items-start">
-              <div className="space-y-1">
-                <p className="text-emerald-100 text-sm font-medium">Contas de Receita</p>
-                <p className="text-3xl font-bold">{summary.receita}</p>
-              </div>
-              <div className="p-2 bg-emerald-400/30 rounded-lg">
-                <TrendingUp className="h-5 w-5 text-white" />
-              </div>
+          <CardContent className="p-6 h-full flex flex-col justify-between min-h-[140px] relative z-10">
+            <div className="space-y-1">
+              <p className="text-emerald-100 text-sm font-semibold uppercase tracking-wider">
+                Contas de Receita
+              </p>
+              <p className="text-4xl font-bold tracking-tight">{summary.receita}</p>
             </div>
+            <p className="text-emerald-100/80 text-xs mt-4 font-medium">
+              Total de contas cadastradas
+            </p>
           </CardContent>
+          <TrendingUp className="absolute -bottom-4 -right-4 h-32 w-32 text-white opacity-10 rotate-[-15deg] pointer-events-none transition-transform duration-500 group-hover:scale-110 group-hover:rotate-[-5deg]" />
         </Card>
         <Card
           className={cn(
-            'bg-gradient-to-br from-orange-500 to-orange-600 text-white shadow-md border-0 cursor-pointer transition-all hover:scale-[1.02]',
-            natureFilter === 'DESPESAS' && 'ring-2 ring-orange-500 ring-offset-2',
+            'group relative overflow-hidden rounded-3xl border-0 cursor-pointer transition-all duration-300 hover:-translate-y-1',
+            'bg-gradient-to-br from-orange-500 via-orange-600 to-orange-700 text-white shadow-lg hover:shadow-orange-500/30',
+            natureFilter === 'DESPESAS'
+              ? 'ring-4 ring-orange-400 ring-offset-2 shadow-orange-500/50'
+              : '',
           )}
           onClick={() => {
             setNatureFilter(natureFilter === 'DESPESAS' ? 'all' : 'DESPESAS')
             setCurrentPage(1)
           }}
         >
-          <CardContent className="p-5">
-            <div className="flex justify-between items-start">
-              <div className="space-y-1">
-                <p className="text-orange-100 text-sm font-medium">Contas de Despesa</p>
-                <p className="text-3xl font-bold">{summary.despesa}</p>
-              </div>
-              <div className="p-2 bg-orange-400/30 rounded-lg">
-                <TrendingDown className="h-5 w-5 text-white" />
-              </div>
+          <CardContent className="p-6 h-full flex flex-col justify-between min-h-[140px] relative z-10">
+            <div className="space-y-1">
+              <p className="text-orange-100 text-sm font-semibold uppercase tracking-wider">
+                Contas de Despesa
+              </p>
+              <p className="text-4xl font-bold tracking-tight">{summary.despesa}</p>
             </div>
+            <p className="text-orange-100/80 text-xs mt-4 font-medium">
+              Total de contas cadastradas
+            </p>
           </CardContent>
+          <TrendingDown className="absolute -bottom-4 -right-4 h-32 w-32 text-white opacity-10 rotate-[-15deg] pointer-events-none transition-transform duration-500 group-hover:scale-110 group-hover:rotate-[-5deg]" />
         </Card>
       </div>
 
