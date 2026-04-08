@@ -79,19 +79,34 @@ export function ReplicateChartAccountsModal({ isOpen, onClose, onSuccess, organi
       const pageSize = 1000
 
       while (hasMore) {
-        const { data, error } = await supabase
-          .from('chart_of_accounts')
-          .select(selectFields)
-          .eq('organization_id', orgId)
-          .is('deleted_at', null)
-          .range(page * pageSize, (page + 1) * pageSize - 1)
+        let attempt = 0
+        let success = false
+        let fetchedData: any = null
 
-        if (error) throw error
+        while (attempt < 3 && !success) {
+          try {
+            const { data, error } = await supabase
+              .from('chart_of_accounts')
+              .select(selectFields)
+              .eq('organization_id', orgId)
+              .is('deleted_at', null)
+              .order('id')
+              .range(page * pageSize, (page + 1) * pageSize - 1)
 
-        if (data && data.length > 0) {
-          allData = [...allData, ...data]
+            if (error) throw error
+            fetchedData = data
+            success = true
+          } catch (e: any) {
+            attempt++
+            if (attempt >= 3) throw e
+            await new Promise((r) => setTimeout(r, 1000 * attempt))
+          }
+        }
+
+        if (fetchedData && fetchedData.length > 0) {
+          allData = [...allData, ...fetchedData]
           page++
-          if (data.length < pageSize) hasMore = false
+          if (fetchedData.length < pageSize) hasMore = false
         } else {
           hasMore = false
         }
@@ -165,10 +180,22 @@ export function ReplicateChartAccountsModal({ isOpen, onClose, onSuccess, organi
           total: 100,
           step: 'Limpando plano de contas atual do destino...',
         })
-        const { error: delErr } = await supabase.rpc('delete_organization_chart_accounts', {
-          p_org_id: destOrg,
-        })
-        if (delErr) throw delErr
+
+        let attempt = 0
+        let success = false
+        while (attempt < 3 && !success) {
+          try {
+            const { error: delErr } = await supabase.rpc('delete_organization_chart_accounts', {
+              p_org_id: destOrg,
+            })
+            if (delErr) throw delErr
+            success = true
+          } catch (e: any) {
+            attempt++
+            if (attempt >= 3) throw e
+            await new Promise((r) => setTimeout(r, 2000 * attempt))
+          }
+        }
       }
 
       setProgress({ current: 30, total: 100, step: 'Buscando plano de contas da origem...' })
@@ -178,19 +205,34 @@ export function ReplicateChartAccountsModal({ isOpen, onClose, onSuccess, organi
       const pageSize = 1000
 
       while (hasMore) {
-        const { data, error: fetchErr } = await supabase
-          .from('chart_of_accounts')
-          .select('*')
-          .eq('organization_id', sourceOrg)
-          .is('deleted_at', null)
-          .range(page * pageSize, (page + 1) * pageSize - 1)
+        let attempt = 0
+        let success = false
+        let fetchedData: any = null
 
-        if (fetchErr) throw fetchErr
+        while (attempt < 3 && !success) {
+          try {
+            const { data, error: fetchErr } = await supabase
+              .from('chart_of_accounts')
+              .select('*')
+              .eq('organization_id', sourceOrg)
+              .is('deleted_at', null)
+              .order('id')
+              .range(page * pageSize, (page + 1) * pageSize - 1)
 
-        if (data && data.length > 0) {
-          fullSourceAccounts = [...fullSourceAccounts, ...data]
+            if (fetchErr) throw fetchErr
+            fetchedData = data
+            success = true
+          } catch (e: any) {
+            attempt++
+            if (attempt >= 3) throw e
+            await new Promise((r) => setTimeout(r, 1000 * attempt))
+          }
+        }
+
+        if (fetchedData && fetchedData.length > 0) {
+          fullSourceAccounts = [...fullSourceAccounts, ...fetchedData]
           page++
-          if (data.length < pageSize) hasMore = false
+          if (fetchedData.length < pageSize) hasMore = false
         } else {
           hasMore = false
         }
@@ -215,18 +257,33 @@ export function ReplicateChartAccountsModal({ isOpen, onClose, onSuccess, organi
 
       setProgress({ current: 50, total: 100, step: `Inserindo contas...` })
 
-      const chunkSize = 500
+      const chunkSize = 200
       let inserted = 0
       for (let i = 0; i < toInsert.length; i += chunkSize) {
         const chunk = toInsert.slice(i, i + chunkSize)
-        const { error: insErr } = await supabase.from('chart_of_accounts').insert(chunk)
-        if (insErr) throw insErr
+
+        let attempt = 0
+        let success = false
+        while (attempt < 3 && !success) {
+          try {
+            const { error: insErr } = await supabase.from('chart_of_accounts').insert(chunk)
+            if (insErr) throw insErr
+            success = true
+          } catch (e: any) {
+            attempt++
+            if (attempt >= 3) throw e
+            await new Promise((r) => setTimeout(r, 1000 * attempt))
+          }
+        }
+
         inserted += chunk.length
         setProgress({
           current: 50 + (inserted / toInsert.length) * 50,
           total: 100,
           step: `Inserindo contas (${inserted}/${toInsert.length})...`,
         })
+
+        await new Promise((r) => setTimeout(r, 100))
       }
 
       setStep('success')
