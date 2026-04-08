@@ -22,6 +22,7 @@ import {
   Wallet,
   RotateCcw,
   Target,
+  Copy,
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
@@ -42,6 +43,7 @@ import { ChartAccountFormModal } from '@/components/ChartAccountFormModal'
 import { ChartAccountBulkEditModal } from '@/components/ChartAccountBulkEditModal'
 import { DeletePlanModal } from '@/components/DeletePlanModal'
 import { UndoImportPlanModal } from '@/components/UndoImportPlanModal'
+import { ReplicateChartAccountsModal } from '@/components/ReplicateChartAccountsModal'
 import { cn } from '@/lib/utils'
 import {
   DropdownMenu,
@@ -117,6 +119,7 @@ export default function ChartAccounts() {
   const [isBulkEditOpen, setIsBulkEditOpen] = useState(false)
   const [isDeletePlanOpen, setIsDeletePlanOpen] = useState(false)
   const [isUndoImportOpen, setIsUndoImportOpen] = useState(false)
+  const [isReplicateOpen, setIsReplicateOpen] = useState(false)
   const [editingAccount, setEditingAccount] = useState<ChartAccount | null>(null)
 
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false)
@@ -657,6 +660,13 @@ export default function ChartAccounts() {
           >
             <Upload className="h-4 w-4" /> Importar
           </Button>
+          <Button
+            variant="outline"
+            onClick={() => setIsReplicateOpen(true)}
+            className="gap-2 border-blue-200 text-blue-700 hover:bg-blue-50"
+          >
+            <Copy className="h-4 w-4" /> Replicar Plano
+          </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" className="gap-2">
@@ -1185,6 +1195,16 @@ export default function ChartAccounts() {
           <UndoImportPlanModal
             isOpen={isUndoImportOpen}
             onClose={() => setIsUndoImportOpen(false)}
+            onSuccess={() => {
+              fetchAccounts()
+              fetchSummary()
+            }}
+            organizations={organizationsList}
+          />
+
+          <ReplicateChartAccountsModal
+            isOpen={isReplicateOpen}
+            onClose={() => setIsReplicateOpen(false)}
             onSuccess={() => {
               fetchAccounts()
               fetchSummary()
