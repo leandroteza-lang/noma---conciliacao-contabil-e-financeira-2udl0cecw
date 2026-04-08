@@ -804,7 +804,7 @@ export default function ChartAccounts() {
             setCurrentPage(1)
           }}
         >
-          <CardContent className="p-6 h-full flex flex-col justify-between relative z-10">
+          <CardContent className="p-6 h-full flex-col justify-between relative z-10 flex">
             <p className="text-[12px] font-normal text-white/80 uppercase tracking-widest">
               CONTAS DE DESPESA
             </p>
