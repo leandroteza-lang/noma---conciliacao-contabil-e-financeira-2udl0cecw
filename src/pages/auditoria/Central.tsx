@@ -1,7 +1,15 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { ChevronDown, ChevronRight, Search, Filter, ShieldAlert, History } from 'lucide-react'
+import {
+  ChevronDown,
+  ChevronRight,
+  Search,
+  Filter,
+  ShieldAlert,
+  History,
+  ArrowUpDown,
+} from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
 
@@ -25,13 +33,53 @@ import {
 } from '@/components/ui/select'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Checkbox } from '@/components/ui/checkbox'
 
-function ExpandableRow({ log, userName }: { log: any; userName: string }) {
+export const getAffectedRecordInfo = (log: any) => {
+  let primary = 'Desconhecido'
+  let secondary = log.entity_id
+
+  if (log.changes) {
+    const c = log.changes as Record<string, any>
+    const getVal = (field: string) => c[field]?.new ?? c[field]?.old
+
+    switch (log.entity_type?.toLowerCase()) {
+      case 'usuario':
+        primary = getVal('name') || getVal('email') || primary
+        secondary = getVal('email') || getVal('cpf') || secondary
+        break
+      case 'empresa':
+        primary = getVal('name') || primary
+        secondary = getVal('cnpj') || getVal('email') || secondary
+        break
+      case 'departamento':
+        primary = getVal('name') || primary
+        secondary = getVal('code') || secondary
+        break
+      case 'conta_contabil':
+        primary = getVal('account_name') || primary
+        secondary = getVal('account_code') || secondary
+        break
+      case 'centro_custo':
+        primary = getVal('description') || primary
+        secondary = getVal('code') || secondary
+        break
+      case 'conta_bancaria':
+        primary = getVal('description') || getVal('account_number') || primary
+        secondary = getVal('bank_code') || getVal('agency') || secondary
+        break
+    }
+  }
+  return { primary, secondary }
+}
+
+function ExpandableRow({ log, userName, isSelected, onToggleSelect }: any) {
   const [expanded, setExpanded] = useState(false)
   const [details, setDetails] = useState<any[]>([])
   const [loadingDetails, setLoadingDetails] = useState(false)
 
-  const toggleExpand = async () => {
+  const toggleExpand = async (e: React.MouseEvent) => {
+    e.stopPropagation()
     if (!expanded && details.length === 0) {
       setLoadingDetails(true)
       const { data } = await supabase.from('audit_details').select('*').eq('audit_log_id', log.id)
@@ -43,37 +91,45 @@ function ExpandableRow({ log, userName }: { log: any; userName: string }) {
 
   const getActionBadge = (action: string) => {
     const act = action?.toUpperCase() || ''
-    if (act.includes('DELETE') || act.includes('EXCLUSÃO') || act.includes('REMOVE')) {
-      return (
-        <Badge
-          variant="destructive"
-          className="bg-red-500/10 text-red-500 hover:bg-red-500/20 border-red-500/20 shadow-none"
-        >
-          EXCLUSÃO
-        </Badge>
-      )
-    }
-    if (
+    const isDelete =
+      act.includes('DELETE') ||
+      act.includes('EXCLUSÃO') ||
+      act.includes('EXCLUSAO') ||
+      act.includes('REMOVE')
+    const isCreate =
       act.includes('CREATE') ||
       act.includes('INSERT') ||
       act.includes('CRIAÇÃO') ||
-      act.includes('ADD')
-    ) {
+      act.includes('CRIACAO') ||
+      act.includes('ADD') ||
+      act.includes('APROVAÇÃO')
+
+    if (isDelete) {
+      return (
+        <Badge
+          variant="destructive"
+          className="bg-red-600 hover:bg-red-700 text-white shadow-none px-2.5 py-0.5 text-[11px] font-bold rounded-full tracking-wide"
+        >
+          {act}
+        </Badge>
+      )
+    }
+    if (isCreate) {
       return (
         <Badge
           variant="default"
-          className="bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20 border-emerald-500/20 shadow-none"
+          className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-none px-2.5 py-0.5 text-[11px] font-bold rounded-full tracking-wide"
         >
-          CRIAÇÃO
+          {act}
         </Badge>
       )
     }
     return (
       <Badge
         variant="secondary"
-        className="bg-blue-500/10 text-blue-500 hover:bg-blue-500/20 border-blue-500/20 shadow-none"
+        className="bg-muted-foreground/20 text-foreground hover:bg-muted-foreground/30 shadow-none px-2.5 py-0.5 text-[11px] font-bold rounded-full tracking-wide"
       >
-        ATUALIZAÇÃO
+        {act}
       </Badge>
     )
   }
@@ -91,38 +147,54 @@ function ExpandableRow({ log, userName }: { log: any; userName: string }) {
     return map[entity?.toLowerCase()] || entity
   }
 
+  const info = getAffectedRecordInfo(log)
+
   return (
     <>
       <TableRow
-        className={cn(
-          'cursor-pointer hover:bg-muted/50 transition-colors group',
-          expanded && 'bg-muted/30',
-        )}
-        onClick={toggleExpand}
+        className={cn('hover:bg-muted/50 transition-colors group', expanded && 'bg-muted/30')}
       >
-        <TableCell className="w-12">
-          <Button variant="ghost" size="icon" className="h-8 w-8 p-0 group-hover:bg-muted/80">
-            {expanded ? (
-              <ChevronDown className="h-4 w-4 text-muted-foreground" />
-            ) : (
-              <ChevronRight className="h-4 w-4 text-muted-foreground" />
-            )}
-          </Button>
+        <TableCell>
+          <div className="flex items-center gap-3">
+            <Checkbox
+              checked={isSelected}
+              onCheckedChange={() => onToggleSelect(log.id)}
+              aria-label="Selecionar linha"
+            />
+            {getActionBadge(log.action)}
+          </div>
         </TableCell>
-        <TableCell className="font-medium whitespace-nowrap text-sm">
-          {log.created_at
-            ? format(new Date(log.created_at), 'dd/MM/yyyy HH:mm', { locale: ptBR })
-            : '-'}
-        </TableCell>
-        <TableCell>{getActionBadge(log.action)}</TableCell>
-        <TableCell className="capitalize font-medium text-muted-foreground text-sm">
+        <TableCell className="capitalize font-medium text-muted-foreground text-[13px]">
           {formatEntity(log.entity_type)}
         </TableCell>
-        <TableCell className="max-w-[200px] truncate text-sm" title={log.entity_id}>
-          {log.entity_id}
+        <TableCell>
+          <div className="flex flex-col max-w-[280px]">
+            <span className="font-bold text-[13px] text-foreground truncate" title={info.primary}>
+              {info.primary}
+            </span>
+            <span className="text-[12px] text-muted-foreground truncate" title={info.secondary}>
+              {info.secondary}
+            </span>
+          </div>
         </TableCell>
-        <TableCell className="text-sm">{userName}</TableCell>
-        <TableCell className="text-muted-foreground text-sm">{log.ip_address || '-'}</TableCell>
+        <TableCell className="text-[13px] font-bold text-foreground">{userName}</TableCell>
+        <TableCell className="whitespace-nowrap text-[13px] text-muted-foreground">
+          {log.created_at
+            ? format(new Date(log.created_at), 'dd/MM/yyyy, HH:mm:ss', { locale: ptBR })
+            : '-'}
+        </TableCell>
+        <TableCell className="text-muted-foreground text-[13px]">
+          {log.ip_address || 'N/A'}
+        </TableCell>
+        <TableCell className="text-right pr-4">
+          <button
+            onClick={toggleExpand}
+            className="text-[13px] font-semibold text-primary hover:text-primary/80 transition-colors flex items-center justify-end gap-1 ml-auto outline-none"
+          >
+            Detalhes{' '}
+            {expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+          </button>
+        </TableCell>
       </TableRow>
       {expanded && (
         <TableRow className="bg-muted/5 hover:bg-muted/5">
@@ -136,7 +208,6 @@ function ExpandableRow({ log, userName }: { log: any; userName: string }) {
                 <div className="space-y-2 w-full max-w-2xl">
                   <Skeleton className="h-8 w-full rounded-md" />
                   <Skeleton className="h-8 w-full rounded-md" />
-                  <Skeleton className="h-8 w-3/4 rounded-md" />
                 </div>
               ) : details.length > 0 ? (
                 <div className="rounded-md border border-border bg-background shadow-sm overflow-hidden w-full max-w-4xl">
@@ -161,9 +232,7 @@ function ExpandableRow({ log, userName }: { log: any; userName: string }) {
                             {detail.field_name}
                           </TableCell>
                           <TableCell className="text-muted-foreground text-sm">
-                            {detail.old_value !== null &&
-                            detail.old_value !== undefined &&
-                            detail.old_value !== '' ? (
+                            {detail.old_value ? (
                               <span className="line-through decoration-destructive/40">
                                 {detail.old_value}
                               </span>
@@ -174,9 +243,7 @@ function ExpandableRow({ log, userName }: { log: any; userName: string }) {
                             )}
                           </TableCell>
                           <TableCell className="text-emerald-600 dark:text-emerald-400 font-medium text-sm">
-                            {detail.new_value !== null &&
-                            detail.new_value !== undefined &&
-                            detail.new_value !== '' ? (
+                            {detail.new_value ? (
                               detail.new_value
                             ) : (
                               <span className="italic text-muted-foreground/50 text-xs uppercase tracking-wider font-normal">
@@ -194,9 +261,6 @@ function ExpandableRow({ log, userName }: { log: any; userName: string }) {
                   <p className="text-sm text-muted-foreground">
                     Nenhum detalhe de alteração registrado para esta ação.
                   </p>
-                  <p className="text-xs text-muted-foreground/60 mt-1">
-                    Pode ter sido uma ação sem mudanças diretas de campos mapeados.
-                  </p>
                 </div>
               )}
             </div>
@@ -207,17 +271,41 @@ function ExpandableRow({ log, userName }: { log: any; userName: string }) {
   )
 }
 
+const SortableHead = ({ label, sortKey, currentSort, requestSort }: any) => {
+  const isActive = currentSort?.key === sortKey
+  return (
+    <TableHead
+      className="font-semibold cursor-pointer hover:bg-muted/50 transition-colors group select-none whitespace-nowrap"
+      onClick={() => requestSort(sortKey)}
+    >
+      <div className="flex items-center gap-1 text-[13px] text-muted-foreground">
+        {label}
+        <ArrowUpDown
+          className={cn(
+            'h-3 w-3 opacity-0 group-hover:opacity-50 transition-opacity',
+            isActive && 'opacity-100 text-foreground',
+          )}
+        />
+      </div>
+    </TableHead>
+  )
+}
+
 export default function CentralAuditoria() {
   const [logs, setLogs] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [entityFilter, setEntityFilter] = useState<string>('todos')
   const [search, setSearch] = useState('')
   const [usersMap, setUsersMap] = useState<Record<string, string>>({})
+  const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>({
+    key: 'created_at',
+    direction: 'desc',
+  })
 
   useEffect(() => {
     fetchUsersMap()
   }, [])
-
   useEffect(() => {
     fetchLogs()
   }, [entityFilter])
@@ -227,9 +315,7 @@ export default function CentralAuditoria() {
     if (data) {
       const map: Record<string, string> = {}
       data.forEach((u) => {
-        if (u.user_id) {
-          map[u.user_id] = u.name || u.email || 'Usuário Desconhecido'
-        }
+        if (u.user_id) map[u.user_id] = u.email || u.name || 'Desconhecido'
       })
       setUsersMap(map)
     }
@@ -242,36 +328,94 @@ export default function CentralAuditoria() {
       .select('*')
       .order('created_at', { ascending: false })
       .limit(200)
-
-    if (entityFilter !== 'todos') {
-      query = query.eq('entity_type', entityFilter)
-    }
-
+    if (entityFilter !== 'todos') query = query.eq('entity_type', entityFilter)
     const { data, error } = await query
-    if (error) {
-      console.error(error)
-    } else {
-      setLogs(data || [])
-    }
+    if (!error) setLogs(data || [])
     setLoading(false)
+  }
+
+  const handleSort = (key: string) => {
+    let direction: 'asc' | 'desc' = 'asc'
+    if (sortConfig && sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc'
+    }
+    setSortConfig({ key, direction })
   }
 
   const filteredLogs = logs.filter((log) => {
     if (!search) return true
     const searchLower = search.toLowerCase()
     const userName = log.performed_by ? usersMap[log.performed_by] || '' : 'sistema'
+    const info = getAffectedRecordInfo(log)
 
     return (
       log.action?.toLowerCase().includes(searchLower) ||
-      log.entity_id?.toLowerCase().includes(searchLower) ||
+      info.primary?.toLowerCase().includes(searchLower) ||
+      info.secondary?.toLowerCase().includes(searchLower) ||
       log.ip_address?.toLowerCase().includes(searchLower) ||
       userName.toLowerCase().includes(searchLower) ||
       log.entity_type?.toLowerCase().includes(searchLower)
     )
   })
 
+  const sortedLogs = useMemo(() => {
+    let sortable = [...filteredLogs]
+    if (sortConfig !== null) {
+      sortable.sort((a, b) => {
+        let aValue: any = ''
+        let bValue: any = ''
+        const aInfo = getAffectedRecordInfo(a)
+        const bInfo = getAffectedRecordInfo(b)
+
+        switch (sortConfig.key) {
+          case 'action':
+            aValue = a.action || ''
+            bValue = b.action || ''
+            break
+          case 'entity_type':
+            aValue = a.entity_type || ''
+            bValue = b.entity_type || ''
+            break
+          case 'affected_record':
+            aValue = aInfo.primary || ''
+            bValue = bInfo.primary || ''
+            break
+          case 'performed_by':
+            aValue = (a.performed_by ? usersMap[a.performed_by] : '') || ''
+            bValue = (b.performed_by ? usersMap[b.performed_by] : '') || ''
+            break
+          case 'created_at':
+            aValue = new Date(a.created_at || 0).getTime()
+            bValue = new Date(b.created_at || 0).getTime()
+            break
+          case 'ip_address':
+            aValue = a.ip_address || ''
+            bValue = b.ip_address || ''
+            break
+        }
+
+        if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1
+        if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1
+        return 0
+      })
+    }
+    return sortable
+  }, [filteredLogs, sortConfig, usersMap])
+
+  const toggleAll = () => {
+    if (selected.size === sortedLogs.length && sortedLogs.length > 0) setSelected(new Set())
+    else setSelected(new Set(sortedLogs.map((l) => l.id)))
+  }
+
+  const toggleRow = (id: string) => {
+    const newSet = new Set(selected)
+    if (newSet.has(id)) newSet.delete(id)
+    else newSet.add(id)
+    setSelected(newSet)
+  }
+
   return (
-    <div className="flex flex-col gap-6 p-6 animate-fade-in mx-auto w-full max-w-7xl">
+    <div className="flex flex-col gap-6 p-6 animate-fade-in mx-auto w-full max-w-[1400px]">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Central de Auditoria</h1>
         <p className="text-muted-foreground mt-2">
@@ -289,7 +433,6 @@ export default function CentralAuditoria() {
                 Visualize as últimas atividades registradas no sistema.
               </CardDescription>
             </div>
-
             <div className="flex flex-col sm:flex-row items-center gap-3">
               <div className="relative w-full sm:w-64">
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -315,13 +458,7 @@ export default function CentralAuditoria() {
                   <SelectItem value="conta_bancaria">Contas Bancárias</SelectItem>
                 </SelectContent>
               </Select>
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={fetchLogs}
-                title="Atualizar dados"
-                disabled={loading}
-              >
+              <Button variant="outline" size="icon" onClick={fetchLogs} disabled={loading}>
                 <History className={cn('h-4 w-4', loading && 'animate-spin')} />
               </Button>
             </div>
@@ -331,14 +468,61 @@ export default function CentralAuditoria() {
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
-                <TableRow className="bg-muted/30 hover:bg-muted/30">
-                  <TableHead className="w-12"></TableHead>
-                  <TableHead className="font-semibold">Data / Hora</TableHead>
-                  <TableHead className="font-semibold">Ação</TableHead>
-                  <TableHead className="font-semibold">Entidade</TableHead>
-                  <TableHead className="font-semibold">ID do Registro</TableHead>
-                  <TableHead className="font-semibold">Responsável</TableHead>
-                  <TableHead className="font-semibold">IP</TableHead>
+                <TableRow className="bg-muted/30 hover:bg-muted/30 border-b-2">
+                  <TableHead className="w-[180px] py-3">
+                    <div className="flex items-center gap-3">
+                      <Checkbox
+                        checked={sortedLogs.length > 0 && selected.size === sortedLogs.length}
+                        onCheckedChange={toggleAll}
+                        aria-label="Selecionar todos"
+                      />
+                      <div
+                        className="flex items-center gap-1 text-[13px] text-muted-foreground font-semibold cursor-pointer hover:text-foreground transition-colors group select-none"
+                        onClick={() => handleSort('action')}
+                      >
+                        Ação{' '}
+                        <ArrowUpDown
+                          className={cn(
+                            'h-3 w-3 opacity-0 group-hover:opacity-50 transition-opacity',
+                            sortConfig?.key === 'action' && 'opacity-100 text-foreground',
+                          )}
+                        />
+                      </div>
+                    </div>
+                  </TableHead>
+                  <SortableHead
+                    label="Entidade"
+                    sortKey="entity_type"
+                    currentSort={sortConfig}
+                    requestSort={handleSort}
+                  />
+                  <SortableHead
+                    label="Registro Afetado"
+                    sortKey="affected_record"
+                    currentSort={sortConfig}
+                    requestSort={handleSort}
+                  />
+                  <SortableHead
+                    label="Responsável"
+                    sortKey="performed_by"
+                    currentSort={sortConfig}
+                    requestSort={handleSort}
+                  />
+                  <SortableHead
+                    label="Data/Hora"
+                    sortKey="created_at"
+                    currentSort={sortConfig}
+                    requestSort={handleSort}
+                  />
+                  <SortableHead
+                    label="IP Origem"
+                    sortKey="ip_address"
+                    currentSort={sortConfig}
+                    requestSort={handleSort}
+                  />
+                  <TableHead className="text-right pr-4 text-[13px] text-muted-foreground font-semibold">
+                    Ações
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -346,16 +530,16 @@ export default function CentralAuditoria() {
                   Array.from({ length: 5 }).map((_, i) => (
                     <TableRow key={`skeleton-${i}`}>
                       <TableCell>
-                        <Skeleton className="h-6 w-6 rounded-full" />
+                        <div className="flex items-center gap-3">
+                          <Skeleton className="h-4 w-4 rounded" />
+                          <Skeleton className="h-6 w-20 rounded-full" />
+                        </div>
                       </TableCell>
                       <TableCell>
                         <Skeleton className="h-5 w-24" />
                       </TableCell>
                       <TableCell>
-                        <Skeleton className="h-6 w-20 rounded-full" />
-                      </TableCell>
-                      <TableCell>
-                        <Skeleton className="h-5 w-24" />
+                        <Skeleton className="h-8 w-40" />
                       </TableCell>
                       <TableCell>
                         <Skeleton className="h-5 w-32" />
@@ -366,16 +550,21 @@ export default function CentralAuditoria() {
                       <TableCell>
                         <Skeleton className="h-5 w-20" />
                       </TableCell>
+                      <TableCell>
+                        <Skeleton className="h-5 w-16 ml-auto" />
+                      </TableCell>
                     </TableRow>
                   ))
-                ) : filteredLogs.length > 0 ? (
-                  filteredLogs.map((log) => (
+                ) : sortedLogs.length > 0 ? (
+                  sortedLogs.map((log) => (
                     <ExpandableRow
                       key={log.id}
                       log={log}
                       userName={
-                        log.performed_by ? usersMap[log.performed_by] || 'Carregando...' : 'Sistema'
+                        log.performed_by ? usersMap[log.performed_by] || 'Sistema' : 'Sistema'
                       }
+                      isSelected={selected.has(log.id)}
+                      onToggleSelect={toggleRow}
                     />
                   ))
                 ) : (
