@@ -34,6 +34,7 @@ import {
 import { Account, Organization } from '@/types'
 import { cn } from '@/lib/utils'
 import { useToast } from '@/hooks/use-toast'
+import { useAuditLog } from '@/hooks/use-audit-log'
 import { supabase } from '@/lib/supabase/client'
 
 interface Props {
@@ -173,6 +174,7 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
     direction: 'asc' | 'desc'
   } | null>(null)
   const { toast } = useToast()
+  const { logAction } = useAuditLog()
 
   const handleSort = (key: string) => {
     let direction: 'asc' | 'desc' = 'asc'
@@ -220,6 +222,11 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
     if (error) {
       toast({ title: 'Erro', description: error.message, variant: 'destructive' })
     } else {
+      for (const id of selectedIds) {
+        await logAction('BANK_ACCOUNTS', id, 'SOLICITACAO_EXCLUSAO_EM_LOTE', {
+          pending_deletion: { old: false, new: true },
+        })
+      }
       toast({ title: 'Sucesso', description: 'Exclusão solicitada com sucesso.' })
       setSelectedIds([])
     }
@@ -362,7 +369,25 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
       // Optional: add validation here if needed, but proceeding with empty string if intended
     }
     if (onUpdateInline) {
-      await onUpdateInline(id, field, val)
+      const oldAcc = accounts.find((a) => a.id === id)
+      const success = await onUpdateInline(id, field, val)
+      if (success !== false && oldAcc && String(oldAcc[field]) !== String(val)) {
+        const dbFieldMap: Record<string, string> = {
+          organization_id: 'organization_id',
+          contaContabil: 'account_code',
+          descricao: 'description',
+          banco: 'bank_code',
+          agencia: 'agency',
+          numeroConta: 'account_number',
+          digitoConta: 'check_digit',
+          tipoConta: 'account_type',
+          classificacao: 'classification',
+        }
+        const dbField = dbFieldMap[field] || field
+        await logAction('BANK_ACCOUNTS', id, 'EDICAO', {
+          [dbField]: { old: oldAcc[field], new: val },
+        })
+      }
     }
     setEditing(null)
   }
@@ -389,6 +414,40 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
         .eq('id', editModalAccount.id)
 
       if (error) throw error
+
+      const oldAcc = accounts.find((a) => a.id === editModalAccount.id)
+      if (oldAcc) {
+        const changes: any = {}
+        if (String(oldAcc.organization_id) !== String(editModalAccount.organization_id))
+          changes.organization_id = {
+            old: oldAcc.organization_id,
+            new: editModalAccount.organization_id,
+          }
+        if (String(oldAcc.contaContabil) !== String(editModalAccount.contaContabil))
+          changes.account_code = { old: oldAcc.contaContabil, new: editModalAccount.contaContabil }
+        if (String(oldAcc.descricao) !== String(editModalAccount.descricao))
+          changes.description = { old: oldAcc.descricao, new: editModalAccount.descricao }
+        if (String(oldAcc.banco) !== String(editModalAccount.banco))
+          changes.bank_code = { old: oldAcc.banco, new: editModalAccount.banco }
+        if (String(oldAcc.agencia) !== String(editModalAccount.agencia))
+          changes.agency = { old: oldAcc.agencia, new: editModalAccount.agencia }
+        if (String(oldAcc.numeroConta) !== String(editModalAccount.numeroConta))
+          changes.account_number = { old: oldAcc.numeroConta, new: editModalAccount.numeroConta }
+        if (String(oldAcc.digitoConta) !== String(editModalAccount.digitoConta))
+          changes.check_digit = { old: oldAcc.digitoConta, new: editModalAccount.digitoConta }
+        if (String(oldAcc.tipoConta) !== String(editModalAccount.tipoConta))
+          changes.account_type = { old: oldAcc.tipoConta, new: editModalAccount.tipoConta }
+        if (String(oldAcc.classificacao) !== String(editModalAccount.classificacao))
+          changes.classification = {
+            old: oldAcc.classificacao,
+            new: editModalAccount.classificacao,
+          }
+
+        if (Object.keys(changes).length > 0) {
+          await logAction('BANK_ACCOUNTS', editModalAccount.id, 'EDICAO', changes)
+        }
+      }
+
       toast({ title: 'Sucesso', description: 'Conta atualizada com sucesso!' })
       setEditModalAccount(null)
     } catch (err: any) {

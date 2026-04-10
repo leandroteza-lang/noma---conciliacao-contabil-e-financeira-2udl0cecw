@@ -91,17 +91,27 @@ export const getAffectedRecordInfo = (log: any, dict: Record<string, any>, logsH
 
       switch (entityType?.toLowerCase()) {
         case 'usuario':
+        case 'usuarios':
+        case 'cadastro_usuarios':
           return getVal('name') || getVal('email')
         case 'empresa':
+        case 'organizations':
           return getVal('name')
         case 'departamento':
+        case 'departments':
           return getVal('name')
         case 'conta_contabil':
-          return getVal('account_name')
+        case 'chart_of_accounts':
+          return getVal('account_name') || getVal('account_code')
         case 'centro_custo':
-          return getVal('description')
+        case 'cost_centers':
+          return getVal('description') || getVal('code')
         case 'conta_bancaria':
+        case 'bank_accounts':
           return getVal('description') || getVal('account_number')
+        case 'tipo_conta_tga':
+        case 'tga_account_types':
+          return getVal('nome') || getVal('codigo')
       }
       return null
     }
@@ -112,17 +122,27 @@ export const getAffectedRecordInfo = (log: any, dict: Record<string, any>, logsH
         c[field]?.new ?? c[field]?.old ?? (typeof c[field] === 'string' ? c[field] : null)
       switch (entityType?.toLowerCase()) {
         case 'usuario':
+        case 'usuarios':
+        case 'cadastro_usuarios':
           return getVal('email') || getVal('cpf')
         case 'empresa':
+        case 'organizations':
           return getVal('cnpj') || getVal('email')
         case 'departamento':
+        case 'departments':
           return getVal('code')
         case 'conta_contabil':
+        case 'chart_of_accounts':
           return getVal('account_code')
         case 'centro_custo':
+        case 'cost_centers':
           return getVal('code')
         case 'conta_bancaria':
+        case 'bank_accounts':
           return getVal('bank_code') || getVal('agency')
+        case 'tipo_conta_tga':
+        case 'tga_account_types':
+          return getVal('codigo') || getVal('abreviacao')
       }
       return null
     }
@@ -344,12 +364,22 @@ function ExpandableRow({
   const formatEntity = (entity: string) => {
     const map: Record<string, string> = {
       usuario: 'Usuário',
+      usuarios: 'Usuário',
+      cadastro_usuarios: 'Usuário',
       empresa: 'Empresa',
+      organizations: 'Empresa',
       departamento: 'Departamento',
-      conta_contabil: 'Conta Contábil',
+      departments: 'Departamento',
+      conta_contabil: 'Plano de Contas',
+      chart_of_accounts: 'Plano de Contas',
       centro_custo: 'Centro de Custo',
+      cost_centers: 'Centro de Custo',
       conta_bancaria: 'Conta Bancária',
+      bank_accounts: 'Conta Bancária',
       mapeamento: 'Mapeamento',
+      account_mapping: 'Mapeamento',
+      tipo_conta_tga: 'Tipo de Conta TGA',
+      tga_account_types: 'Tipo de Conta TGA',
     }
     return map[entity?.toLowerCase()] || entity
   }
@@ -578,6 +608,7 @@ export default function CentralAuditoria() {
       { data: costs },
       { data: charts },
       { data: banks },
+      { data: tgas },
     ] = await Promise.all([
       supabase.from('cadastro_usuarios').select('id, user_id, name, email'),
       supabase.from('organizations').select('id, name, cnpj'),
@@ -585,6 +616,7 @@ export default function CentralAuditoria() {
       supabase.from('cost_centers').select('id, description, code'),
       supabase.from('chart_of_accounts').select('id, account_name, account_code'),
       supabase.from('bank_accounts').select('id, description, account_number'),
+      supabase.from('tipo_conta_tga').select('id, nome, codigo'),
     ])
 
     users?.forEach((u) => {
@@ -610,6 +642,13 @@ export default function CentralAuditoria() {
         type: 'conta_bancaria',
       }
     })
+    tgas?.forEach((t) => {
+      dict[t.id] = {
+        name: t.nome || '',
+        sub: t.codigo || '',
+        type: 'tipo_conta_tga',
+      }
+    })
 
     setGlobalDict(dict)
   }
@@ -621,7 +660,20 @@ export default function CentralAuditoria() {
       .select('*')
       .order('created_at', { ascending: false })
       .limit(200)
-    if (entityFilter !== 'todos') query = query.eq('entity_type', entityFilter)
+
+    if (entityFilter !== 'todos') {
+      const filterMap: Record<string, string[]> = {
+        usuario: ['usuario', 'usuarios', 'cadastro_usuarios'],
+        empresa: ['empresa', 'organizations'],
+        departamento: ['departamento', 'departments'],
+        conta_contabil: ['conta_contabil', 'chart_of_accounts'],
+        centro_custo: ['centro_custo', 'cost_centers'],
+        conta_bancaria: ['conta_bancaria', 'bank_accounts'],
+        tipo_conta_tga: ['tipo_conta_tga', 'tga_account_types'],
+      }
+      query = query.in('entity_type', filterMap[entityFilter] || [entityFilter])
+    }
+
     const { data, error } = await query
     if (!error) setLogs(data || [])
     setLoading(false)
@@ -1007,6 +1059,7 @@ export default function CentralAuditoria() {
                   <SelectItem value="conta_contabil">Plano de Contas</SelectItem>
                   <SelectItem value="centro_custo">Centros de Custo</SelectItem>
                   <SelectItem value="conta_bancaria">Contas Bancárias</SelectItem>
+                  <SelectItem value="tipo_conta_tga">Tipos de Conta TGA</SelectItem>
                 </SelectContent>
               </Select>
               <Button
