@@ -44,7 +44,7 @@ export const translateAction = (action: string) => {
     case 'INSERT':
       return 'INCLUSÃO'
     case 'UPDATE':
-      return 'EDIÇÃO'
+      return 'ALTERADO'
     case 'DELETE':
       return 'EXCLUSÃO'
     case 'SOFT_DELETE':
@@ -52,9 +52,9 @@ export const translateAction = (action: string) => {
     case 'EXCLUSAO_EM_LOTE':
       return 'EXCLUSÃO EM LOTE'
     case 'EDICAO':
-      return 'EDIÇÃO'
+      return 'ALTERADO'
     case 'EDICAO_EM_LOTE':
-      return 'EDIÇÃO EM LOTE'
+      return 'ALTERADO EM LOTE'
     default:
       return act
   }
@@ -312,7 +312,13 @@ function ExpandableRow({ log, userName, isSelected, onToggleSelect, onDelete, di
               onCheckedChange={() => onToggleSelect(log.id)}
               aria-label="Selecionar linha"
             />
-            {getActionBadge(log.action)}
+            <div
+              onClick={toggleExpand}
+              className="cursor-pointer transition-opacity hover:opacity-80"
+              title="Clique para ver os detalhes"
+            >
+              {getActionBadge(log.action)}
+            </div>
           </div>
         </TableCell>
         <TableCell className="capitalize font-medium text-muted-foreground text-[13px]">
