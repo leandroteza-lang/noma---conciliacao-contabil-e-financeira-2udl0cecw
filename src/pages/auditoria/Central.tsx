@@ -321,10 +321,10 @@ function ExpandableRow({ log, userName, isSelected, onToggleSelect, onDelete, di
               aria-label="Selecionar linha"
             />
             <span className="whitespace-nowrap text-[13px] text-muted-foreground font-medium">
-              {log.created_at
+              {log.created_at && !isNaN(new Date(log.created_at).getTime())
                 ? format(new Date(log.created_at), 'dd/MM/yyyy, HH:mm:ss', { locale: ptBR })
                 : '-'}
-            </span>
+            </span>{' '}
           </div>
         </TableCell>
         <TableCell className="capitalize font-medium text-muted-foreground text-[13px]">
@@ -739,9 +739,20 @@ export default function CentralAuditoria() {
       return
     }
 
+    const safeFormatDate = (dateStr: string | null) => {
+      if (!dateStr) return '-'
+      try {
+        const d = new Date(dateStr)
+        if (isNaN(d.getTime())) return '-'
+        return format(d, 'dd/MM/yyyy HH:mm:ss')
+      } catch (e) {
+        return '-'
+      }
+    }
+
     const data = sortedLogs.map((log) => {
       const info = getAffectedRecordInfo(log, globalDict)
-      const date = log.created_at ? format(new Date(log.created_at), 'dd/MM/yyyy HH:mm:ss') : '-'
+      const date = safeFormatDate(log.created_at)
       const entity = log.entity_type || ''
       const action = translateAction(log.action)
       const primary = info.primary || ''
@@ -799,46 +810,56 @@ export default function CentralAuditoria() {
       a.download = `auditoria_central_${new Date().toISOString().split('T')[0]}.txt`
       a.click()
     } else if (exportFormat === 'pdf' || exportFormat === 'browser') {
-      const doc = new jsPDF('landscape')
-      doc.setFontSize(16)
-      doc.text('Relatório de Auditoria Central', 14, 20)
-      doc.setFontSize(10)
-      doc.text(`Gerado em: ${format(new Date(), 'dd/MM/yyyy HH:mm:ss')}`, 14, 28)
+      try {
+        const doc = new jsPDF('landscape')
+        doc.setFontSize(16)
+        doc.text('Relatório de Auditoria Central', 14, 20)
+        doc.setFontSize(10)
+        doc.text(`Gerado em: ${format(new Date(), 'dd/MM/yyyy HH:mm:ss')}`, 14, 28)
 
-      const tableData = data.map((row) => [
-        row.date,
-        row.entity,
-        row.action,
-        row.primary,
-        row.secondary,
-        row.user,
-        row.ip,
-      ])
+        const tableData = data.map((row) => [
+          row.date,
+          row.entity,
+          row.action,
+          row.primary,
+          row.secondary,
+          row.user,
+          row.ip,
+        ])
 
-      autoTable(doc, {
-        head: [
-          [
-            'Data/Hora',
-            'Entidade',
-            'Ação',
-            'Registro Afetado',
-            'ID Entidade',
-            'Responsável',
-            'IP Origem',
+        // Usa (doc as any).autoTable para evitar erros de função não definida no prototype do jsPDF
+        ;(doc as any).autoTable({
+          head: [
+            [
+              'Data/Hora',
+              'Entidade',
+              'Ação',
+              'Registro Afetado',
+              'ID Entidade',
+              'Responsável',
+              'IP Origem',
+            ],
           ],
-        ],
-        body: tableData,
-        startY: 35,
-        styles: { fontSize: 8, cellPadding: 2, overflow: 'linebreak' },
-        headStyles: { fillColor: [37, 99, 235], textColor: [255, 255, 255] },
-      })
+          body: tableData,
+          startY: 35,
+          styles: { fontSize: 8, cellPadding: 2, overflow: 'linebreak' },
+          headStyles: { fillColor: [37, 99, 235], textColor: [255, 255, 255] },
+        })
 
-      if (exportFormat === 'browser') {
-        const pdfBlob = doc.output('blob')
-        const pdfUrl = URL.createObjectURL(pdfBlob)
-        window.open(pdfUrl, '_blank')
-      } else {
-        doc.save(`auditoria_central_${new Date().toISOString().split('T')[0]}.pdf`)
+        if (exportFormat === 'browser') {
+          const pdfBlob = doc.output('blob')
+          const pdfUrl = URL.createObjectURL(pdfBlob)
+          window.open(pdfUrl, '_blank')
+        } else {
+          doc.save(`auditoria_central_${new Date().toISOString().split('T')[0]}.pdf`)
+        }
+      } catch (err: any) {
+        console.error('Erro ao gerar PDF:', err)
+        toast({
+          title: 'Erro ao gerar PDF',
+          description: err?.message || 'Ocorreu um erro inesperado durante a geração do documento.',
+          variant: 'destructive',
+        })
       }
     }
   }

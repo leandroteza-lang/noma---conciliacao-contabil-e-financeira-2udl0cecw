@@ -86,7 +86,7 @@ export const AuditExport: React.FC<ExportProps> = ({ logs, entityType }) => {
     const tableData = data.map((row) => Object.values(row))
     const tableHeaders = Object.keys(data[0] || {})
 
-    autoTable(doc, {
+    ;(doc as any).autoTable({
       head: [tableHeaders.slice(0, 9)], // Limit columns to fit in PDF horizontally
       body: tableData.map((r) => r.slice(0, 9)),
       startY: 35,
