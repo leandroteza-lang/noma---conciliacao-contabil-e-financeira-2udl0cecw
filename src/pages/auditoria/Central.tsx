@@ -9,6 +9,7 @@ import {
   ShieldAlert,
   History,
   ArrowUpDown,
+  Trash2,
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
@@ -34,6 +35,30 @@ import {
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Checkbox } from '@/components/ui/checkbox'
+import { useToast } from '@/hooks/use-toast'
+
+export const translateAction = (action: string) => {
+  const act = action?.toUpperCase() || ''
+  switch (act) {
+    case 'CREATE':
+    case 'INSERT':
+      return 'INCLUSÃO'
+    case 'UPDATE':
+      return 'EDIÇÃO'
+    case 'DELETE':
+      return 'EXCLUSÃO'
+    case 'SOFT_DELETE':
+      return 'EXCLUSÃO LÓGICA'
+    case 'EXCLUSAO_EM_LOTE':
+      return 'EXCLUSÃO EM LOTE'
+    case 'EDICAO':
+      return 'EDIÇÃO'
+    case 'EDICAO_EM_LOTE':
+      return 'EDIÇÃO EM LOTE'
+    default:
+      return act
+  }
+}
 
 export const getAffectedRecordInfo = (log: any) => {
   let primary = 'Desconhecido'
@@ -73,7 +98,7 @@ export const getAffectedRecordInfo = (log: any) => {
   return { primary, secondary }
 }
 
-function ExpandableRow({ log, userName, isSelected, onToggleSelect }: any) {
+function ExpandableRow({ log, userName, isSelected, onToggleSelect, onDelete }: any) {
   const [expanded, setExpanded] = useState(false)
   const [details, setDetails] = useState<any[]>([])
   const [loadingDetails, setLoadingDetails] = useState(false)
@@ -90,7 +115,7 @@ function ExpandableRow({ log, userName, isSelected, onToggleSelect }: any) {
   }
 
   const getActionBadge = (action: string) => {
-    const act = action?.toUpperCase() || ''
+    const act = translateAction(action)
     const isDelete =
       act.includes('DELETE') ||
       act.includes('EXCLUSÃO') ||
@@ -101,6 +126,7 @@ function ExpandableRow({ log, userName, isSelected, onToggleSelect }: any) {
       act.includes('INSERT') ||
       act.includes('CRIAÇÃO') ||
       act.includes('CRIACAO') ||
+      act.includes('INCLUSÃO') ||
       act.includes('ADD') ||
       act.includes('APROVAÇÃO')
 
@@ -108,7 +134,7 @@ function ExpandableRow({ log, userName, isSelected, onToggleSelect }: any) {
       return (
         <Badge
           variant="destructive"
-          className="bg-red-600 hover:bg-red-700 text-white shadow-none px-2.5 py-0.5 text-[11px] font-bold rounded-full tracking-wide"
+          className="bg-red-600 hover:bg-red-700 text-white shadow-none px-2.5 py-0.5 text-[11px] font-bold rounded-full tracking-wide whitespace-nowrap"
         >
           {act}
         </Badge>
@@ -118,7 +144,7 @@ function ExpandableRow({ log, userName, isSelected, onToggleSelect }: any) {
       return (
         <Badge
           variant="default"
-          className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-none px-2.5 py-0.5 text-[11px] font-bold rounded-full tracking-wide"
+          className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-none px-2.5 py-0.5 text-[11px] font-bold rounded-full tracking-wide whitespace-nowrap"
         >
           {act}
         </Badge>
@@ -127,7 +153,7 @@ function ExpandableRow({ log, userName, isSelected, onToggleSelect }: any) {
     return (
       <Badge
         variant="secondary"
-        className="bg-muted-foreground/20 text-foreground hover:bg-muted-foreground/30 shadow-none px-2.5 py-0.5 text-[11px] font-bold rounded-full tracking-wide"
+        className="bg-muted-foreground/20 text-foreground hover:bg-muted-foreground/30 shadow-none px-2.5 py-0.5 text-[11px] font-bold rounded-full tracking-wide whitespace-nowrap"
       >
         {act}
       </Badge>
@@ -187,13 +213,31 @@ function ExpandableRow({ log, userName, isSelected, onToggleSelect }: any) {
           {log.ip_address || 'N/A'}
         </TableCell>
         <TableCell className="text-right pr-4">
-          <button
-            onClick={toggleExpand}
-            className="text-[13px] font-semibold text-primary hover:text-primary/80 transition-colors flex items-center justify-end gap-1 ml-auto outline-none"
-          >
-            Detalhes{' '}
-            {expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-          </button>
+          <div className="flex items-center justify-end gap-1">
+            <button
+              onClick={toggleExpand}
+              className="text-[13px] font-semibold text-primary hover:text-primary/80 transition-colors flex items-center gap-1 outline-none"
+            >
+              Detalhes{' '}
+              {expanded ? (
+                <ChevronDown className="h-4 w-4" />
+              ) : (
+                <ChevronRight className="h-4 w-4" />
+              )}
+            </button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10 ml-2 opacity-0 group-hover:opacity-100 transition-opacity"
+              onClick={(e) => {
+                e.stopPropagation()
+                onDelete(log.id)
+              }}
+              title="Excluir Registro"
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
         </TableCell>
       </TableRow>
       {expanded && (
@@ -292,8 +336,10 @@ const SortableHead = ({ label, sortKey, currentSort, requestSort }: any) => {
 }
 
 export default function CentralAuditoria() {
+  const { toast } = useToast()
   const [logs, setLogs] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [deleting, setDeleting] = useState(false)
   const [entityFilter, setEntityFilter] = useState<string>('todos')
   const [search, setSearch] = useState('')
   const [usersMap, setUsersMap] = useState<Record<string, string>>({})
@@ -332,6 +378,7 @@ export default function CentralAuditoria() {
     const { data, error } = await query
     if (!error) setLogs(data || [])
     setLoading(false)
+    setSelected(new Set())
   }
 
   const handleSort = (key: string) => {
@@ -342,14 +389,62 @@ export default function CentralAuditoria() {
     setSortConfig({ key, direction })
   }
 
+  const handleDelete = async (id: string) => {
+    if (!confirm('Tem certeza que deseja excluir este registro de auditoria?')) return
+    setDeleting(true)
+    const { error } = await supabase.from('audit_logs').delete().eq('id', id)
+    if (error) {
+      toast({
+        title: 'Erro ao excluir',
+        description: error.message,
+        variant: 'destructive',
+      })
+    } else {
+      toast({
+        title: 'Sucesso',
+        description: 'Registro de auditoria excluído com sucesso.',
+      })
+      setLogs((prev) => prev.filter((l) => l.id !== id))
+      if (selected.has(id)) {
+        const newSet = new Set(selected)
+        newSet.delete(id)
+        setSelected(newSet)
+      }
+    }
+    setDeleting(false)
+  }
+
+  const handleBulkDelete = async () => {
+    if (!confirm(`Tem certeza que deseja excluir ${selected.size} registros de auditoria?`)) return
+    setDeleting(true)
+    const ids = Array.from(selected)
+    const { error } = await supabase.from('audit_logs').delete().in('id', ids)
+    if (error) {
+      toast({
+        title: 'Erro ao excluir',
+        description: error.message,
+        variant: 'destructive',
+      })
+    } else {
+      toast({
+        title: 'Sucesso',
+        description: `${selected.size} registros excluídos com sucesso.`,
+      })
+      setLogs((prev) => prev.filter((l) => !selected.has(l.id)))
+      setSelected(new Set())
+    }
+    setDeleting(false)
+  }
+
   const filteredLogs = logs.filter((log) => {
     if (!search) return true
     const searchLower = search.toLowerCase()
     const userName = log.performed_by ? usersMap[log.performed_by] || '' : 'sistema'
     const info = getAffectedRecordInfo(log)
+    const translatedAction = translateAction(log.action).toLowerCase()
 
     return (
-      log.action?.toLowerCase().includes(searchLower) ||
+      translatedAction.includes(searchLower) ||
       info.primary?.toLowerCase().includes(searchLower) ||
       info.secondary?.toLowerCase().includes(searchLower) ||
       log.ip_address?.toLowerCase().includes(searchLower) ||
@@ -369,8 +464,8 @@ export default function CentralAuditoria() {
 
         switch (sortConfig.key) {
           case 'action':
-            aValue = a.action || ''
-            bValue = b.action || ''
+            aValue = translateAction(a.action) || ''
+            bValue = translateAction(b.action) || ''
             break
           case 'entity_type':
             aValue = a.entity_type || ''
@@ -427,11 +522,25 @@ export default function CentralAuditoria() {
       <Card className="border-border/50 shadow-sm">
         <CardHeader className="bg-muted/20 border-b pb-4">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div>
-              <CardTitle className="text-lg">Registros de Auditoria</CardTitle>
-              <CardDescription>
-                Visualize as últimas atividades registradas no sistema.
-              </CardDescription>
+            <div className="flex items-center gap-4">
+              <div>
+                <CardTitle className="text-lg">Registros de Auditoria</CardTitle>
+                <CardDescription>
+                  Visualize as últimas atividades registradas no sistema.
+                </CardDescription>
+              </div>
+              {selected.size > 0 && (
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={handleBulkDelete}
+                  disabled={deleting}
+                  className="animate-fade-in-down"
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Excluir Selecionados ({selected.size})
+                </Button>
+              )}
             </div>
             <div className="flex flex-col sm:flex-row items-center gap-3">
               <div className="relative w-full sm:w-64">
@@ -458,8 +567,13 @@ export default function CentralAuditoria() {
                   <SelectItem value="conta_bancaria">Contas Bancárias</SelectItem>
                 </SelectContent>
               </Select>
-              <Button variant="outline" size="icon" onClick={fetchLogs} disabled={loading}>
-                <History className={cn('h-4 w-4', loading && 'animate-spin')} />
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={fetchLogs}
+                disabled={loading || deleting}
+              >
+                <History className={cn('h-4 w-4', (loading || deleting) && 'animate-spin')} />
               </Button>
             </div>
           </div>
@@ -469,7 +583,7 @@ export default function CentralAuditoria() {
             <Table>
               <TableHeader>
                 <TableRow className="bg-muted/30 hover:bg-muted/30 border-b-2">
-                  <TableHead className="w-[180px] py-3">
+                  <TableHead className="w-[200px] py-3">
                     <div className="flex items-center gap-3">
                       <Checkbox
                         checked={sortedLogs.length > 0 && selected.size === sortedLogs.length}
@@ -551,7 +665,7 @@ export default function CentralAuditoria() {
                         <Skeleton className="h-5 w-20" />
                       </TableCell>
                       <TableCell>
-                        <Skeleton className="h-5 w-16 ml-auto" />
+                        <Skeleton className="h-8 w-24 ml-auto" />
                       </TableCell>
                     </TableRow>
                   ))
@@ -565,6 +679,7 @@ export default function CentralAuditoria() {
                       }
                       isSelected={selected.has(log.id)}
                       onToggleSelect={toggleRow}
+                      onDelete={handleDelete}
                     />
                   ))
                 ) : (

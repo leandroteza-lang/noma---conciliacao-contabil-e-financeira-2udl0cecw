@@ -12,9 +12,16 @@ interface AuditDashboardProps {
 export function AuditDashboard({ logs, activeFilter, onFilterChange }: AuditDashboardProps) {
   const stats = {
     total: logs.length,
-    create: logs.filter((l) => ['CREATE', 'INCLUSÃO'].includes(l.action)).length,
-    update: logs.filter((l) => ['UPDATE', 'EDIÇÃO'].includes(l.action)).length,
-    delete: logs.filter((l) => ['DELETE', 'EXCLUSÃO', 'SOFT_DELETE'].includes(l.action)).length,
+    create: logs.filter((l) => ['CREATE', 'INSERT', 'INCLUSÃO'].includes(l.action?.toUpperCase()))
+      .length,
+    update: logs.filter((l) =>
+      ['UPDATE', 'EDIÇÃO', 'EDICAO', 'EDICAO_EM_LOTE'].includes(l.action?.toUpperCase()),
+    ).length,
+    delete: logs.filter((l) =>
+      ['DELETE', 'EXCLUSÃO', 'EXCLUSAO', 'SOFT_DELETE', 'EXCLUSAO_EM_LOTE'].includes(
+        l.action?.toUpperCase(),
+      ),
+    ).length,
   }
 
   const cards = [
