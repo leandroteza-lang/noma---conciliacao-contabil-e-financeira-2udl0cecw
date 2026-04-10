@@ -313,10 +313,12 @@ function ExpandableRow({ log, userName, isSelected, onToggleSelect, onDelete, di
               aria-label="Selecionar linha"
             />
             <span
-              className="font-mono text-xs text-muted-foreground truncate w-20 inline-block uppercase"
-              title={log.entity_id}
+              className="font-medium text-[13px] text-muted-foreground truncate max-w-[140px] inline-block"
+              title={
+                info.secondary !== log.entity_id ? info.secondary : 'Identificador não disponível'
+              }
             >
-              {log.entity_id ? log.entity_id.split('-')[0] : 'N/A'}
+              {info.secondary && info.secondary !== log.entity_id ? info.secondary : '-'}
             </span>
           </div>
         </TableCell>
@@ -336,9 +338,6 @@ function ExpandableRow({ log, userName, isSelected, onToggleSelect, onDelete, di
           <div className="flex flex-col max-w-[280px]">
             <span className="font-bold text-[13px] text-foreground truncate" title={info.primary}>
               {info.primary}
-            </span>
-            <span className="text-[12px] text-muted-foreground truncate" title={info.secondary}>
-              {info.secondary}
             </span>
           </div>
         </TableCell>
@@ -653,8 +652,8 @@ export default function CentralAuditoria() {
 
         switch (sortConfig.key) {
           case 'entity_id':
-            aValue = a.entity_id || ''
-            bValue = b.entity_id || ''
+            aValue = aInfo.secondary !== a.entity_id ? aInfo.secondary : ''
+            bValue = bInfo.secondary !== b.entity_id ? bInfo.secondary : ''
             break
           case 'action':
             aValue = translateAction(a.action) || ''
