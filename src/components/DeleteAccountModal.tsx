@@ -11,11 +11,13 @@ import { Button } from '@/components/ui/button'
 import { supabase } from '@/lib/supabase/client'
 import { useToast } from '@/hooks/use-toast'
 import { useAuth } from '@/hooks/use-auth'
+import { useAuditLog } from '@/hooks/use-audit-log'
 import { Loader2, AlertTriangle } from 'lucide-react'
 
 export function DeleteAccountModal({ isOpen, account, onClose }: any) {
   const { user } = useAuth()
   const { toast } = useToast()
+  const { logAction } = useAuditLog()
   const [saving, setSaving] = useState(false)
 
   const handleDelete = async () => {
@@ -32,6 +34,12 @@ export function DeleteAccountModal({ isOpen, account, onClose }: any) {
         .eq('id', account.id)
 
       if (error) throw error
+
+      await logAction('bank_accounts', account.id, 'EXCLUSAO', {
+        pending_deletion: { old: false, new: true },
+        description: { old: account.description, new: account.description },
+      })
+
       toast({ title: 'Sucesso', description: 'Solicitação de exclusão enviada para aprovação.' })
       onClose()
     } catch (err: any) {

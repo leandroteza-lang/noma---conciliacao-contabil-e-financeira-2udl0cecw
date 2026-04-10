@@ -363,23 +363,23 @@ function ExpandableRow({
 
   const formatEntity = (entity: string) => {
     const map: Record<string, string> = {
-      usuario: 'Usuário',
-      usuarios: 'Usuário',
-      cadastro_usuarios: 'Usuário',
-      empresa: 'Empresa',
-      organizations: 'Empresa',
-      departamento: 'Departamento',
-      departments: 'Departamento',
+      usuario: 'Cadastro de Usuários',
+      usuarios: 'Cadastro de Usuários',
+      cadastro_usuarios: 'Cadastro de Usuários',
+      empresa: 'Empresas',
+      organizations: 'Empresas',
+      departamento: 'Departamentos',
+      departments: 'Departamentos',
       conta_contabil: 'Plano de Contas',
       chart_of_accounts: 'Plano de Contas',
-      centro_custo: 'Centro de Custo',
-      cost_centers: 'Centro de Custo',
-      conta_bancaria: 'Conta Bancária',
-      bank_accounts: 'Conta Bancária',
-      mapeamento: 'Mapeamento',
-      account_mapping: 'Mapeamento',
-      tipo_conta_tga: 'Tipo de Conta TGA',
-      tga_account_types: 'Tipo de Conta TGA',
+      centro_custo: 'Centros de Custo',
+      cost_centers: 'Centros de Custo',
+      conta_bancaria: 'Listagem de Contas',
+      bank_accounts: 'Listagem de Contas',
+      mapeamento: 'Mapeamento DE/PARA',
+      account_mapping: 'Mapeamento DE/PARA',
+      tipo_conta_tga: 'Tipos de Conta TGA',
+      tga_account_types: 'Tipos de Conta TGA',
     }
     return map[entity?.toLowerCase()] || entity
   }
@@ -405,7 +405,7 @@ function ExpandableRow({
             </span>{' '}
           </div>
         </TableCell>
-        <TableCell className="capitalize font-medium text-muted-foreground text-[13px]">
+        <TableCell className="font-medium text-muted-foreground text-[13px]">
           {formatEntity(log.entity_type)}
         </TableCell>
         <TableCell>
@@ -1053,12 +1053,12 @@ export default function CentralAuditoria() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="todos">Todas Entidades</SelectItem>
-                  <SelectItem value="usuario">Usuários</SelectItem>
+                  <SelectItem value="usuario">Cadastro de Usuários</SelectItem>
                   <SelectItem value="empresa">Empresas</SelectItem>
                   <SelectItem value="departamento">Departamentos</SelectItem>
                   <SelectItem value="conta_contabil">Plano de Contas</SelectItem>
                   <SelectItem value="centro_custo">Centros de Custo</SelectItem>
-                  <SelectItem value="conta_bancaria">Contas Bancárias</SelectItem>
+                  <SelectItem value="conta_bancaria">Listagem de Contas</SelectItem>
                   <SelectItem value="tipo_conta_tga">Tipos de Conta TGA</SelectItem>
                 </SelectContent>
               </Select>
