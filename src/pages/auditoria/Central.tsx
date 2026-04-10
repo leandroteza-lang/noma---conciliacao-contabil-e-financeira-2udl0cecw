@@ -13,9 +13,13 @@ import {
   FileText,
   FileSpreadsheet,
   FileIcon,
+  ExternalLink,
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
+import { jsPDF } from 'jspdf'
+import autoTable from 'jspdf-autotable'
+import * as XLSX from 'xlsx'
 
 import {
   Table,
@@ -726,36 +730,116 @@ export default function CentralAuditoria() {
     setSelected(newSet)
   }
 
-  const handleExport = (exportFormat: 'csv' | 'pdf' | 'excel') => {
-    if (exportFormat === 'csv' || exportFormat === 'excel') {
+  const handleExport = (exportFormat: 'csv' | 'pdf' | 'excel' | 'txt' | 'browser') => {
+    if (sortedLogs.length === 0) {
+      toast({
+        title: 'Atenção',
+        description: 'Não há dados para exportar.',
+      })
+      return
+    }
+
+    const data = sortedLogs.map((log) => {
+      const info = getAffectedRecordInfo(log, globalDict)
+      const date = log.created_at ? format(new Date(log.created_at), 'dd/MM/yyyy HH:mm:ss') : '-'
+      const entity = log.entity_type || ''
+      const action = translateAction(log.action)
+      const primary = info.primary || ''
+      const secondary = info.secondary !== log.entity_id ? info.secondary : ''
+      const user = log.performed_by ? globalDict[log.performed_by]?.name || 'Sistema' : 'Sistema'
+      const ip = log.ip_address || ''
+      return { date, entity, action, primary, secondary, user, ip }
+    })
+
+    if (exportFormat === 'csv') {
       let csvContent =
         'Data/Hora;Entidade;Ação;Registro Afetado;ID Entidade;Responsável;IP Origem\n'
-      sortedLogs.forEach((log) => {
-        const info = getAffectedRecordInfo(log, globalDict)
-        const date = log.created_at ? format(new Date(log.created_at), 'dd/MM/yyyy HH:mm:ss') : '-'
-        const entity = log.entity_type || ''
-        const action = translateAction(log.action)
-        const primary = info.primary || ''
-        const secondary = info.secondary !== log.entity_id ? info.secondary : ''
-        const user = log.performed_by ? globalDict[log.performed_by]?.name || 'Sistema' : 'Sistema'
-        const ip = log.ip_address || ''
-
-        csvContent += `"${date}";"${entity}";"${action}";"${primary}";"${secondary}";"${user}";"${ip}"\n`
+      data.forEach((row) => {
+        csvContent += `"${row.date}";"${row.entity}";"${row.action}";"${row.primary}";"${row.secondary}";"${row.user}";"${row.ip}"\n`
       })
-
       const blob = new Blob([new Uint8Array([0xef, 0xbb, 0xbf]), csvContent], {
         type: 'text/csv;charset=utf-8;',
       })
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = `auditoria_central_${new Date().toISOString().split('T')[0]}.${exportFormat === 'excel' ? 'csv' : 'csv'}`
+      a.download = `auditoria_central_${new Date().toISOString().split('T')[0]}.csv`
       a.click()
-    } else {
-      toast({
-        title: 'Exportação',
-        description: 'A exportação em PDF será disponibilizada em breve.',
+    } else if (exportFormat === 'excel') {
+      const wsData = data.map((row) => ({
+        'Data/Hora': row.date,
+        Entidade: row.entity,
+        Ação: row.action,
+        'Registro Afetado': row.primary,
+        'ID Entidade': row.secondary,
+        Responsável: row.user,
+        'IP Origem': row.ip,
+      }))
+      const ws = XLSX.utils.json_to_sheet(wsData)
+      const wb = XLSX.utils.book_new()
+      XLSX.utils.book_append_sheet(wb, ws, 'Auditoria')
+      XLSX.writeFile(wb, `auditoria_central_${new Date().toISOString().split('T')[0]}.xlsx`)
+    } else if (exportFormat === 'txt') {
+      let txtContent =
+        'RELATÓRIO DE AUDITORIA CENTRAL\n=========================================\n\n'
+      data.forEach((row) => {
+        txtContent += `Data/Hora: ${row.date}\n`
+        txtContent += `Entidade: ${row.entity}\n`
+        txtContent += `Ação: ${row.action}\n`
+        txtContent += `Registro Afetado: ${row.primary}\n`
+        txtContent += `ID Entidade: ${row.secondary}\n`
+        txtContent += `Responsável: ${row.user}\n`
+        txtContent += `IP Origem: ${row.ip}\n`
+        txtContent += '-----------------------------------------\n'
       })
+      const blob = new Blob([txtContent], { type: 'text/plain;charset=utf-8;' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `auditoria_central_${new Date().toISOString().split('T')[0]}.txt`
+      a.click()
+    } else if (exportFormat === 'pdf' || exportFormat === 'browser') {
+      const doc = new jsPDF('landscape')
+      doc.setFontSize(16)
+      doc.text('Relatório de Auditoria Central', 14, 20)
+      doc.setFontSize(10)
+      doc.text(`Gerado em: ${format(new Date(), 'dd/MM/yyyy HH:mm:ss')}`, 14, 28)
+
+      const tableData = data.map((row) => [
+        row.date,
+        row.entity,
+        row.action,
+        row.primary,
+        row.secondary,
+        row.user,
+        row.ip,
+      ])
+
+      autoTable(doc, {
+        head: [
+          [
+            'Data/Hora',
+            'Entidade',
+            'Ação',
+            'Registro Afetado',
+            'ID Entidade',
+            'Responsável',
+            'IP Origem',
+          ],
+        ],
+        body: tableData,
+        startY: 35,
+        styles: { fontSize: 8, cellPadding: 2, overflow: 'linebreak' },
+        headStyles: { fillColor: [37, 99, 235], textColor: [255, 255, 255] },
+      })
+
+      if (exportFormat === 'browser') {
+        const pdfBlob = doc.output('blob')
+        const pdfUrl = URL.createObjectURL(pdfBlob)
+        window.open(pdfUrl, '_blank')
+      } else {
+        doc.save(`auditoria_central_${new Date().toISOString().split('T')[0]}.pdf`)
+      }
     }
   }
 
@@ -774,18 +858,30 @@ export default function CentralAuditoria() {
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2 self-start">
+        <div className="flex items-center gap-2 self-start flex-wrap">
           <Button variant="outline" className="bg-background" onClick={() => handleExport('csv')}>
             <FileText className="mr-2 h-4 w-4 text-emerald-600" />
             CSV
+          </Button>
+          <Button variant="outline" className="bg-background" onClick={() => handleExport('txt')}>
+            <FileText className="mr-2 h-4 w-4 text-gray-600" />
+            TXT
+          </Button>
+          <Button variant="outline" className="bg-background" onClick={() => handleExport('excel')}>
+            <FileSpreadsheet className="mr-2 h-4 w-4 text-blue-600" />
+            Excel
           </Button>
           <Button variant="outline" className="bg-background" onClick={() => handleExport('pdf')}>
             <FileIcon className="mr-2 h-4 w-4 text-red-600" />
             PDF
           </Button>
-          <Button variant="outline" className="bg-background" onClick={() => handleExport('excel')}>
-            <FileSpreadsheet className="mr-2 h-4 w-4 text-blue-600" />
-            Excel
+          <Button
+            variant="outline"
+            className="bg-background"
+            onClick={() => handleExport('browser')}
+          >
+            <ExternalLink className="mr-2 h-4 w-4 text-primary" />
+            Navegador
           </Button>
         </div>
       </div>
