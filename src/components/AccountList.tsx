@@ -369,7 +369,8 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
       // Optional: add validation here if needed, but proceeding with empty string if intended
     }
     if (onUpdateInline) {
-      const oldAcc = accounts.find((a) => a.id === id)
+      const oldAccMatch = accounts.find((a) => a.id === id)
+      const oldAcc = oldAccMatch ? { ...oldAccMatch } : null
       const success = await onUpdateInline(id, field, val)
       if (success !== false && oldAcc && String(oldAcc[field]) !== String(val)) {
         const dbFieldMap: Record<string, string> = {
@@ -398,6 +399,9 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
 
     setIsSaving(true)
     try {
+      const oldAccMatch = accounts.find((a) => a.id === editModalAccount.id)
+      const oldAcc = oldAccMatch ? { ...oldAccMatch } : null
+
       const { error } = await supabase
         .from('bank_accounts')
         .update({
@@ -415,7 +419,6 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
 
       if (error) throw error
 
-      const oldAcc = accounts.find((a) => a.id === editModalAccount.id)
       if (oldAcc) {
         const changes: any = {}
         if (String(oldAcc.organization_id) !== String(editModalAccount.organization_id))

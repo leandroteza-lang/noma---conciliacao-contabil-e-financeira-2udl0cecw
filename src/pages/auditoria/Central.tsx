@@ -171,6 +171,7 @@ export const getAffectedRecordInfo = (log: any, dict: Record<string, any>, logsH
 }
 
 const fieldTranslations: Record<string, string> = {
+  organization_id: 'Empresa',
   department_id: 'Departamento',
   permissions: 'Permissões',
   companies: 'Empresas Vinculadas',
