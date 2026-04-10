@@ -383,14 +383,23 @@ function ExpandableRow({ log, userName, isSelected, onToggleSelect, onDelete, di
                   <Table>
                     <TableHeader className="bg-muted/30">
                       <TableRow className="hover:bg-transparent">
-                        <TableHead className="w-1/3 font-semibold text-xs uppercase tracking-wider">
-                          Campo Alterado
+                        <TableHead className="w-[30%] font-semibold text-xs uppercase tracking-wider">
+                          <div className="flex items-center gap-1">
+                            Campo <ArrowUpDown className="h-3 w-3 opacity-50" />
+                          </div>
                         </TableHead>
-                        <TableHead className="w-1/3 font-semibold text-xs uppercase tracking-wider">
-                          Valor Anterior
+                        <TableHead className="w-[30%] font-semibold text-xs uppercase tracking-wider">
+                          <div className="flex items-center gap-1">
+                            Antes <ArrowUpDown className="h-3 w-3 opacity-50" />
+                          </div>
                         </TableHead>
-                        <TableHead className="w-1/3 font-semibold text-xs uppercase tracking-wider">
-                          Novo Valor
+                        <TableHead className="w-[30%] font-semibold text-xs uppercase tracking-wider">
+                          <div className="flex items-center gap-1">
+                            Depois <ArrowUpDown className="h-3 w-3 opacity-50" />
+                          </div>
+                        </TableHead>
+                        <TableHead className="w-[10%] font-semibold text-xs uppercase tracking-wider text-center">
+                          Mudança
                         </TableHead>
                       </TableRow>
                     </TableHeader>
@@ -419,6 +428,11 @@ function ExpandableRow({ log, userName, isSelected, onToggleSelect, onDelete, di
                                 Vazio
                               </span>
                             )}
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <Badge className="bg-indigo-100 hover:bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-400 shadow-none px-3 py-0.5 text-[11px] font-bold rounded-full tracking-wide whitespace-nowrap">
+                              Alterado
+                            </Badge>
                           </TableCell>
                         </TableRow>
                       ))}
