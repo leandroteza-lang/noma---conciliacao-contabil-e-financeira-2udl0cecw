@@ -886,6 +886,7 @@ function NewUserModal({
   const [loading, setLoading] = useState(false)
   const [departments, setDepartments] = useState<any[]>([])
   const { toast } = useToast()
+  const { user } = useAuth()
 
   const AVAILABLE_PERMISSIONS = [
     { id: 'dashboard', label: 'Dashboard' },
@@ -942,6 +943,7 @@ function NewUserModal({
           department_id: departmentId === 'none' ? null : departmentId,
           permissions: permissions.length > 0 ? permissions : ['all'],
           companies,
+          admin_id: user?.id,
         },
       })
       if (error) throw error

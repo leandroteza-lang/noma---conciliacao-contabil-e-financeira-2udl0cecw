@@ -32,6 +32,7 @@ import {
 import { Label } from '@/components/ui/label'
 import { useAuth } from '@/hooks/use-auth'
 import { useToast } from '@/hooks/use-toast'
+import { useAuditLog } from '@/hooks/use-audit-log'
 
 interface CostCenter {
   id: string
@@ -53,6 +54,7 @@ interface CostCenter {
 export default function CostCenters() {
   const { user, role } = useAuth()
   const { toast } = useToast()
+  const { logAction } = useAuditLog()
   const [costCenters, setCostCenters] = useState<CostCenter[]>([])
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(true)
@@ -108,25 +110,35 @@ export default function CostCenters() {
       return
     }
     setSubmitting(true)
-    const { error } = await supabase.from('cost_centers').insert([
-      {
-        organization_id: newCC.organization_id,
-        code: newCC.code,
-        description: newCC.description,
-        tipo_lcto: newCC.tipo_lcto !== 'none' ? newCC.tipo_lcto : null,
-        operational: newCC.operational !== 'none' ? newCC.operational : null,
-        tipo_tga_id: newCC.tipo_tga_id !== 'none' ? newCC.tipo_tga_id : null,
-        type_tga: newCC.type_tga || null,
-        fixed_variable: newCC.fixed_variable || null,
-        contabiliza: newCC.contabiliza !== 'none' ? newCC.contabiliza : null,
-        observacoes: newCC.observacoes || null,
-      },
-    ])
+    const payload = {
+      organization_id: newCC.organization_id,
+      code: newCC.code,
+      description: newCC.description,
+      tipo_lcto: newCC.tipo_lcto !== 'none' ? newCC.tipo_lcto : null,
+      operational: newCC.operational !== 'none' ? newCC.operational : null,
+      tipo_tga_id: newCC.tipo_tga_id !== 'none' ? newCC.tipo_tga_id : null,
+      type_tga: newCC.type_tga || null,
+      fixed_variable: newCC.fixed_variable || null,
+      contabiliza: newCC.contabiliza !== 'none' ? newCC.contabiliza : null,
+      observacoes: newCC.observacoes || null,
+    }
+    const { data: inserted, error } = await supabase
+      .from('cost_centers')
+      .insert([payload])
+      .select()
+      .single()
     setSubmitting(false)
 
     if (error) {
       toast({ title: 'Erro', description: error.message, variant: 'destructive' })
     } else {
+      if (inserted) {
+        const changes: any = {}
+        Object.keys(payload).forEach((k) => {
+          changes[k] = { new: (payload as any)[k] }
+        })
+        await logAction('COST_CENTERS', inserted.id, 'CRIACAO', changes)
+      }
       toast({ title: 'Sucesso', description: 'Centro de custo criado.' })
       setIsCreateOpen(false)
       setNewCC({
@@ -244,11 +256,17 @@ export default function CostCenters() {
         .in('id', toDelete)
 
       if (error) toast({ title: 'Erro', description: error.message, variant: 'destructive' })
-      else
+      else {
+        for (const id of toDelete) {
+          await logAction('COST_CENTERS', id, 'SOLICITACAO_EXCLUSAO_EM_LOTE', {
+            pending_deletion: { old: false, new: true },
+          })
+        }
         toast({
           title: 'Sucesso',
           description: `${toDelete.length} centro(s) de custo enviado(s) para aprovação.`,
         })
+      }
     }
 
     if (blocked.length > 0) {
@@ -307,6 +325,9 @@ export default function CostCenters() {
 
     if (error) toast({ title: 'Erro', description: error.message, variant: 'destructive' })
     else {
+      await logAction('COST_CENTERS', id, 'SOLICITACAO_EXCLUSAO', {
+        pending_deletion: { old: false, new: true },
+      })
       toast({ title: 'Enviado para Aprovação', description: 'A exclusão foi solicitada.' })
       fetchCostCenters()
     }

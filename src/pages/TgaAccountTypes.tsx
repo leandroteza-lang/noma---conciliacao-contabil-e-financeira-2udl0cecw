@@ -47,6 +47,7 @@ import {
   Loader2,
 } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
+import { useAuditLog } from '@/hooks/use-audit-log'
 
 export default function TgaAccountTypes() {
   const [data, setData] = useState<any[]>([])
@@ -64,6 +65,7 @@ export default function TgaAccountTypes() {
     observacoes: '',
   })
   const { toast } = useToast()
+  const { logAction } = useAuditLog()
 
   const fetchData = async () => {
     const [{ data: tga }, { data: orgData }] = await Promise.all([
@@ -117,18 +119,52 @@ export default function TgaAccountTypes() {
         formData.organization_id === 'none' ? null : formData.organization_id || null,
     }
 
-    const req = editingId
-      ? supabase.from('tipo_conta_tga').update(payload).eq('id', editingId)
-      : supabase.from('tipo_conta_tga').insert(payload)
-
-    const { error } = await req
-    if (error) {
-      toast({ title: 'Erro ao salvar', description: error.message, variant: 'destructive' })
+    let oldItem = null
+    let insertedId = null
+    if (editingId) {
+      oldItem = data.find((i) => i.id === editingId)
+      const { error } = await supabase.from('tipo_conta_tga').update(payload).eq('id', editingId)
+      if (error) {
+        toast({ title: 'Erro ao salvar', description: error.message, variant: 'destructive' })
+        return
+      }
     } else {
-      toast({ title: 'Sucesso', description: 'Registro salvo com sucesso.' })
-      setIsModalOpen(false)
-      fetchData()
+      const { data: inserted, error } = await supabase
+        .from('tipo_conta_tga')
+        .insert(payload)
+        .select()
+        .single()
+      if (error) {
+        toast({ title: 'Erro ao salvar', description: error.message, variant: 'destructive' })
+        return
+      }
+      insertedId = inserted?.id
     }
+
+    if (editingId && oldItem) {
+      const changes: any = {}
+      if (oldItem.organization_id !== payload.organization_id)
+        changes.organization_id = { old: oldItem.organization_id, new: payload.organization_id }
+      if (oldItem.nome !== payload.nome) changes.nome = { old: oldItem.nome, new: payload.nome }
+      if (oldItem.abreviacao !== payload.abreviacao)
+        changes.abreviacao = { old: oldItem.abreviacao, new: payload.abreviacao }
+      if (oldItem.observacoes !== payload.observacoes)
+        changes.observacoes = { old: oldItem.observacoes, new: payload.observacoes }
+
+      if (Object.keys(changes).length > 0) {
+        await logAction('TIPO_CONTA_TGA', editingId, 'EDICAO', changes)
+      }
+    } else if (insertedId) {
+      const changes: any = {}
+      Object.keys(payload).forEach((k) => {
+        changes[k] = { new: (payload as any)[k] }
+      })
+      await logAction('TIPO_CONTA_TGA', insertedId, 'CRIACAO', changes)
+    }
+
+    toast({ title: 'Sucesso', description: 'Registro salvo com sucesso.' })
+    setIsModalOpen(false)
+    fetchData()
   }
 
   const checkDependencies = async (id: string, codigo: string) => {
@@ -166,6 +202,9 @@ export default function TgaAccountTypes() {
     if (error) {
       toast({ title: 'Erro ao excluir', description: error.message, variant: 'destructive' })
     } else {
+      await logAction('TIPO_CONTA_TGA', id, 'EXCLUSAO', {
+        deleted_at: { old: null, new: new Date().toISOString() },
+      })
       toast({ title: 'Sucesso', description: 'Registro excluído com sucesso.' })
       setSelectedIds((prev) => prev.filter((selId) => selId !== id))
       fetchData()
@@ -203,6 +242,11 @@ export default function TgaAccountTypes() {
     if (error) {
       toast({ title: 'Erro ao excluir', description: error.message, variant: 'destructive' })
     } else {
+      for (const id of selectedIds) {
+        await logAction('TIPO_CONTA_TGA', id, 'EXCLUSAO_EM_LOTE', {
+          deleted_at: { old: null, new: new Date().toISOString() },
+        })
+      }
       toast({
         title: 'Sucesso',
         description: `${selectedIds.length} registros excluídos com sucesso.`,

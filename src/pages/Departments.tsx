@@ -22,6 +22,7 @@ import { supabase } from '@/lib/supabase/client'
 import { ImportDepartmentsModal } from '@/components/ImportDepartmentsModal'
 import { useAuth } from '@/hooks/use-auth'
 import { useToast } from '@/hooks/use-toast'
+import { useAuditLog } from '@/hooks/use-audit-log'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -79,6 +80,7 @@ export default function Departments() {
   const [isImportModalOpen, setIsImportModalOpen] = useState(false)
   const { user, role, permissions } = useAuth()
   const { toast } = useToast()
+  const { logAction } = useAuditLog()
 
   const safePerms = Array.isArray(permissions) ? permissions : []
   const hasFullAccess = safePerms.includes('all') || safePerms.includes('departamentos')
@@ -194,12 +196,31 @@ export default function Departments() {
           .eq('id', editingId)
           .eq('user_id', user.id)
         if (error) throw error
+
+        const oldDep = departments.find((d) => d.id === editingId)
+        const changes: any = {}
+        if (oldDep?.code !== finalCode) changes.code = { old: oldDep?.code, new: finalCode }
+        if (oldDep?.name !== data.name) changes.name = { old: oldDep?.name, new: data.name }
+        if (Object.keys(changes).length > 0) {
+          await logAction('DEPARTMENTS', editingId, 'EDICAO', changes)
+        }
+
         toast({ title: 'Sucesso', description: 'Departamento atualizado!' })
       } else {
-        const { error } = await supabase
+        const { data: inserted, error } = await supabase
           .from('departments')
           .insert([{ code: finalCode, name: data.name, user_id: user.id }])
+          .select()
+          .single()
         if (error) throw error
+
+        if (inserted) {
+          await logAction('DEPARTMENTS', inserted.id, 'CRIACAO', {
+            code: { new: finalCode },
+            name: { new: data.name },
+          })
+        }
+
         toast({ title: 'Sucesso', description: 'Departamento criado!' })
       }
       setIsModalOpen(false)
@@ -241,6 +262,11 @@ export default function Departments() {
         .eq('id', id)
         .eq('user_id', user?.id)
       if (error) throw error
+
+      await logAction('DEPARTMENTS', id, 'SOLICITACAO_EXCLUSAO', {
+        pending_deletion: { old: false, new: true },
+      })
+
       toast({
         title: 'Enviado para Aprovação',
         description: 'A exclusão foi solicitada e aguarda aprovação do administrador.',
@@ -281,11 +307,17 @@ export default function Departments() {
         .eq('user_id', user?.id)
 
       if (error) toast({ title: 'Erro', description: error.message, variant: 'destructive' })
-      else
+      else {
+        for (const id of toDelete) {
+          await logAction('DEPARTMENTS', id, 'SOLICITACAO_EXCLUSAO_EM_LOTE', {
+            pending_deletion: { old: false, new: true },
+          })
+        }
         toast({
           title: 'Sucesso',
           description: `${toDelete.length} departamento(s) enviado(s) para aprovação.`,
         })
+      }
     }
 
     if (blocked.length > 0) {

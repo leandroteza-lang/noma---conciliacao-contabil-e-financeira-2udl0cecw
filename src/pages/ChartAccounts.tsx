@@ -60,6 +60,7 @@ import {
 } from '@/components/ui/select'
 import { useAuth } from '@/hooks/use-auth'
 import { useToast } from '@/hooks/use-toast'
+import { useAuditLog } from '@/hooks/use-audit-log'
 import { Progress } from '@/components/ui/progress'
 import {
   AlertDialog,
@@ -88,6 +89,7 @@ interface ChartAccount {
 export default function ChartAccounts() {
   const { user } = useAuth()
   const { toast } = useToast()
+  const { logAction } = useAuditLog()
   const [accounts, setAccounts] = useState<ChartAccount[]>([])
 
   // Filters
@@ -309,14 +311,34 @@ export default function ChartAccounts() {
         .eq('id', editingAccount.id)
       if (error) toast({ title: 'Erro', description: error.message, variant: 'destructive' })
       else {
+        const changes: any = {}
+        Object.keys(data).forEach((k) => {
+          if ((editingAccount as any)[k] !== data[k]) {
+            changes[k] = { old: (editingAccount as any)[k], new: data[k] }
+          }
+        })
+        if (Object.keys(changes).length > 0) {
+          await logAction('CHART_OF_ACCOUNTS', editingAccount.id, 'EDICAO', changes)
+        }
         toast({ title: 'Sucesso', description: 'Conta atualizada com sucesso.' })
         setIsFormOpen(false)
         fetchAccounts()
       }
     } else {
-      const { error } = await supabase.from('chart_of_accounts').insert(data)
+      const { data: inserted, error } = await supabase
+        .from('chart_of_accounts')
+        .insert(data)
+        .select()
+        .single()
       if (error) toast({ title: 'Erro', description: error.message, variant: 'destructive' })
       else {
+        if (inserted) {
+          const changes: any = {}
+          Object.keys(data).forEach((k) => {
+            changes[k] = { new: data[k] }
+          })
+          await logAction('CHART_OF_ACCOUNTS', inserted.id, 'CRIACAO', changes)
+        }
         toast({ title: 'Sucesso', description: 'Conta criada com sucesso.' })
         setIsFormOpen(false)
         fetchAccounts()
@@ -339,6 +361,21 @@ export default function ChartAccounts() {
         hasError = true
         errorMessage = error.message
         break
+      } else {
+        for (const id of chunk) {
+          const acc = accounts.find((a) => a.id === id)
+          const changes: any = {}
+          Object.keys(data).forEach((k) => {
+            if (acc && (acc as any)[k] !== data[k]) {
+              changes[k] = { old: (acc as any)[k], new: data[k] }
+            } else if (!acc) {
+              changes[k] = { new: data[k] }
+            }
+          })
+          if (Object.keys(changes).length > 0) {
+            await logAction('CHART_OF_ACCOUNTS', id, 'EDICAO_EM_LOTE', changes)
+          }
+        }
       }
     }
 
@@ -610,6 +647,16 @@ export default function ChartAccounts() {
         const chunk = toDelete.slice(i, i + chunkSize)
         const { error } = await supabase.from('chart_of_accounts').delete().in('id', chunk)
         if (error) throw error
+
+        for (const id of chunk) {
+          await logAction(
+            'CHART_OF_ACCOUNTS',
+            id,
+            chunk.length > 1 || accountsToDelete.length > 1 ? 'EXCLUSAO_EM_LOTE' : 'EXCLUSAO',
+            { status: { old: 'Ativo', new: 'Excluído' } },
+          )
+        }
+
         deletedCount += chunk.length
         setDeleteProgress((prev) => ({ ...prev, current: deletedCount }))
       }
