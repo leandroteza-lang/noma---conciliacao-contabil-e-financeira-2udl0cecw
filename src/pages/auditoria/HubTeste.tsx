@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react'
+import React, { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase/client'
 import {
   Select,
@@ -7,7 +7,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import {
   Table,
   TableBody,
@@ -19,26 +18,19 @@ import {
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { Badge } from '@/components/ui/badge'
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-  DialogDescription,
-} from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Calendar } from '@/components/ui/calendar'
+import { cn } from '@/lib/utils'
 import {
-  Eye,
-  Loader2,
-  ShieldCheck,
-  Activity,
-  PlusCircle,
-  Edit3,
-  Trash2,
+  Filter,
   Search,
-  X,
+  ChevronDown,
+  ChevronUp,
+  FileText,
+  Loader2,
+  CalendarIcon,
 } from 'lucide-react'
 
 const ENTITIES = [
@@ -54,339 +46,411 @@ const getActionBadge = (action: string) => {
   const normalized = action.toUpperCase()
   if (['CREATE', 'INCLUSÃO'].includes(normalized))
     return (
-      <Badge className="bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20 border-emerald-500/20">
-        Criação
+      <Badge className="bg-emerald-600 text-white hover:bg-emerald-700 rounded-full px-3 py-1 font-bold text-[10px] tracking-wider border-none">
+        INCLUSÃO
       </Badge>
     )
   if (['UPDATE', 'EDIÇÃO'].includes(normalized))
     return (
-      <Badge className="bg-amber-500/10 text-amber-600 hover:bg-amber-500/20 border-amber-500/20">
-        Edição
+      <Badge className="bg-blue-600 text-white hover:bg-blue-700 rounded-full px-3 py-1 font-bold text-[10px] tracking-wider border-none">
+        EDIÇÃO
       </Badge>
     )
   if (['DELETE', 'EXCLUSÃO', 'SOFT_DELETE'].includes(normalized))
     return (
-      <Badge className="bg-rose-500/10 text-rose-600 hover:bg-rose-500/20 border-rose-500/20">
-        Exclusão
+      <Badge className="bg-destructive text-white hover:bg-destructive/90 rounded-full px-3 py-1 font-bold text-[10px] tracking-wider border-none">
+        EXCLUSÃO
       </Badge>
     )
-  return <Badge variant="outline">{action}</Badge>
+  return (
+    <Badge
+      variant="outline"
+      className="rounded-full px-3 py-1 font-bold text-[10px] tracking-wider"
+    >
+      {action}
+    </Badge>
+  )
+}
+
+const getAffectedRecord = (log: any) => {
+  const details = log.audit_details || []
+  let name = ''
+  let sub = ''
+
+  if (log.entity_type === 'usuario') {
+    const n = details.find((d: any) => d.field_name === 'name' || d.field_name === 'nome')
+    const e = details.find((d: any) => d.field_name === 'email')
+    name = n?.new_value || n?.old_value || log.entity_id
+    sub = e?.new_value || e?.old_value || ''
+  } else if (log.entity_type === 'chart_of_accounts') {
+    const n = details.find((d: any) => d.field_name === 'account_name' || d.field_name === 'nome')
+    const c = details.find((d: any) => d.field_name === 'account_code' || d.field_name === 'codigo')
+    name = n?.new_value || n?.old_value || log.entity_id
+    sub = c?.new_value || c?.old_value || ''
+  } else if (log.entity_type === 'departments') {
+    const n = details.find((d: any) => d.field_name === 'name')
+    const c = details.find((d: any) => d.field_name === 'code')
+    name = n?.new_value || n?.old_value || log.entity_id
+    sub = c?.new_value || c?.old_value || ''
+  } else {
+    const n = details.find((d: any) =>
+      ['name', 'nome', 'description', 'account_name'].includes(d.field_name),
+    )
+    const c = details.find((d: any) =>
+      ['code', 'email', 'cnpj', 'cpf', 'account_code'].includes(d.field_name),
+    )
+    name = n?.new_value || n?.old_value || log.entity_id
+    sub = c?.new_value || c?.old_value || ''
+  }
+
+  return { name, sub }
 }
 
 export default function HubTeste() {
   const [activeEntity, setActiveEntity] = useState('usuario')
   const [logs, setLogs] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
-  const [searchTerm, setSearchTerm] = useState('')
   const [actionFilter, setActionFilter] = useState<string>('ALL')
+  const [startDate, setStartDate] = useState<Date | undefined>()
+  const [endDate, setEndDate] = useState<Date | undefined>()
+  const [expandedRows, setExpandedRows] = useState<string[]>([])
+
+  const fetchLogs = async () => {
+    setLoading(true)
+    try {
+      let query = supabase
+        .from('audit_logs')
+        .select('*, audit_details (*)')
+        .eq('entity_type', activeEntity)
+        .order('created_at', { ascending: false })
+        .limit(100)
+
+      if (actionFilter !== 'ALL') {
+        if (actionFilter === 'CREATE') query = query.in('action', ['CREATE', 'INCLUSÃO'])
+        if (actionFilter === 'UPDATE') query = query.in('action', ['UPDATE', 'EDIÇÃO'])
+        if (actionFilter === 'DELETE')
+          query = query.in('action', ['DELETE', 'EXCLUSÃO', 'SOFT_DELETE'])
+      }
+
+      if (startDate) {
+        query = query.gte('created_at', startDate.toISOString())
+      }
+      if (endDate) {
+        const end = new Date(endDate)
+        end.setHours(23, 59, 59, 999)
+        query = query.lte('created_at', end.toISOString())
+      }
+
+      const { data, error } = await query
+
+      if (error) throw error
+
+      const userIds = [...new Set(data?.map((l) => l.performed_by).filter(Boolean))]
+      if (userIds.length > 0) {
+        const { data: users } = await supabase
+          .from('cadastro_usuarios')
+          .select('user_id, name, email')
+          .in('user_id', userIds)
+
+        const userMap = new Map(users?.map((u) => [u.user_id, u]))
+        data?.forEach((l) => {
+          const u = userMap.get(l.performed_by)
+          l.performed_by_name = u?.name || 'Sistema'
+          l.performed_by_email = u?.email || l.performed_by
+        })
+      }
+      setLogs(data || [])
+    } catch (error) {
+      console.error('Error fetching audit logs:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   useEffect(() => {
-    const fetchLogs = async () => {
-      setLoading(true)
-      try {
-        const { data, error } = await supabase
-          .from('audit_logs')
-          .select('*, audit_details (*)')
-          .eq('entity_type', activeEntity)
-          .order('created_at', { ascending: false })
-          .limit(200)
-
-        if (error) throw error
-
-        const userIds = [...new Set(data?.map((l) => l.performed_by).filter(Boolean))]
-        if (userIds.length > 0) {
-          const { data: users } = await supabase
-            .from('cadastro_usuarios')
-            .select('user_id, name')
-            .in('user_id', userIds)
-
-          const userMap = new Map(users?.map((u) => [u.user_id, u.name]))
-          data?.forEach((l) => {
-            l.performed_by_name = userMap.get(l.performed_by) || 'Sistema'
-          })
-        }
-        setLogs(data || [])
-      } catch (error) {
-        console.error('Error fetching audit logs:', error)
-      } finally {
-        setLoading(false)
-      }
-    }
     fetchLogs()
   }, [activeEntity])
 
-  const filteredLogs = useMemo(() => {
-    return logs.filter((log) => {
-      const matchesSearch =
-        log.performed_by_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        log.ip_address?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        log.action.toLowerCase().includes(searchTerm.toLowerCase())
+  const handleSearch = () => {
+    fetchLogs()
+  }
 
-      let matchesAction = true
-      const action = log.action.toUpperCase()
-      if (actionFilter === 'CREATE') matchesAction = ['CREATE', 'INCLUSÃO'].includes(action)
-      if (actionFilter === 'UPDATE') matchesAction = ['UPDATE', 'EDIÇÃO'].includes(action)
-      if (actionFilter === 'DELETE')
-        matchesAction = ['DELETE', 'EXCLUSÃO', 'SOFT_DELETE'].includes(action)
-
-      return matchesSearch && matchesAction
-    })
-  }, [logs, searchTerm, actionFilter])
-
-  const stats = useMemo(() => {
-    const total = filteredLogs.length
-    const creates = filteredLogs.filter((l) =>
-      ['CREATE', 'INCLUSÃO'].includes(l.action.toUpperCase()),
-    ).length
-    const updates = filteredLogs.filter((l) =>
-      ['UPDATE', 'EDIÇÃO'].includes(l.action.toUpperCase()),
-    ).length
-    const deletes = filteredLogs.filter((l) =>
-      ['DELETE', 'EXCLUSÃO', 'SOFT_DELETE'].includes(l.action.toUpperCase()),
-    ).length
-    return { total, creates, updates, deletes }
-  }, [filteredLogs])
+  const toggleRow = (id: string) => {
+    setExpandedRows((prev) => (prev.includes(id) ? prev.filter((r) => r !== id) : [...prev, id]))
+  }
 
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6 animate-in fade-in duration-500">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      <div className="flex justify-between items-center mb-2">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
-            <ShieldCheck className="w-8 h-8 text-primary" />
-            Hub de Auditoria{' '}
-            <Badge variant="secondary" className="ml-2 text-xs">
-              Beta
-            </Badge>
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            Central unificada para monitoramento e rastreabilidade de todas as entidades do sistema.
+          <h1 className="text-2xl font-bold tracking-tight">Hub de Teste - Auditoria</h1>
+          <p className="text-muted-foreground text-sm mt-1">
+            Visão centralizada e detalhada de alterações no sistema.
           </p>
         </div>
-        <div className="w-full md:w-72">
-          <Select value={activeEntity} onValueChange={setActiveEntity}>
-            <SelectTrigger className="w-full bg-background h-10 rounded-[24px]">
-              <SelectValue placeholder="Selecione o módulo" />
-            </SelectTrigger>
-            <SelectContent className="rounded-[24px]">
-              {ENTITIES.map((ent) => (
-                <SelectItem key={ent.value} value={ent.value}>
-                  {ent.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+      </div>
+
+      <div className="bg-card border rounded-2xl p-6 shadow-sm">
+        <div className="flex items-center gap-2 mb-4">
+          <Filter className="w-5 h-5 text-muted-foreground" />
+          <h2 className="text-lg font-semibold">Filtros de Auditoria</h2>
+        </div>
+
+        <div className="flex flex-col md:flex-row gap-4 items-end">
+          <div className="w-full md:w-48">
+            <Select value={activeEntity} onValueChange={setActiveEntity}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Módulo" />
+              </SelectTrigger>
+              <SelectContent>
+                {ENTITIES.map((e) => (
+                  <SelectItem key={e.value} value={e.value}>
+                    {e.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="w-full md:w-48">
+            <Select value={actionFilter} onValueChange={setActionFilter}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Todas as Ações" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">Todas as Ações</SelectItem>
+                <SelectItem value="CREATE">Inclusão</SelectItem>
+                <SelectItem value="UPDATE">Edição</SelectItem>
+                <SelectItem value="DELETE">Exclusão</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="w-full md:w-40">
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className={cn(
+                    'w-full justify-start text-left font-normal px-3',
+                    !startDate && 'text-muted-foreground',
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {startDate ? format(startDate, 'dd/MM/yyyy') : <span>dd/mm/aaaa</span>}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar mode="single" selected={startDate} onSelect={setStartDate} initialFocus />
+              </PopoverContent>
+            </Popover>
+          </div>
+          <div className="w-full md:w-40">
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className={cn(
+                    'w-full justify-start text-left font-normal px-3',
+                    !endDate && 'text-muted-foreground',
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {endDate ? format(endDate, 'dd/MM/yyyy') : <span>dd/mm/aaaa</span>}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar mode="single" selected={endDate} onSelect={setEndDate} initialFocus />
+              </PopoverContent>
+            </Popover>
+          </div>
+          <div className="w-full md:w-auto flex gap-2 flex-1 md:flex-none">
+            <Button
+              onClick={handleSearch}
+              className="bg-destructive hover:bg-destructive/90 text-white w-full md:w-32"
+            >
+              <Search className="w-4 h-4 mr-2" /> Buscar
+            </Button>
+            <Button variant="outline" size="icon" className="px-3">
+              <ChevronDown className="w-4 h-4" />
+            </Button>
+          </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card className="bg-card rounded-[24px] shadow-sm">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total de Registros</CardTitle>
-            <Activity className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.total}</div>
-          </CardContent>
-        </Card>
-        <Card className="bg-emerald-500/5 border-emerald-500/20 rounded-[24px] shadow-sm">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-emerald-600 dark:text-emerald-400">
-              Inclusões
-            </CardTitle>
-            <PlusCircle className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
-              {stats.creates}
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="bg-amber-500/5 border-amber-500/20 rounded-[24px] shadow-sm">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-amber-600 dark:text-amber-400">
-              Edições
-            </CardTitle>
-            <Edit3 className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-amber-600 dark:text-amber-400">
-              {stats.updates}
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="bg-rose-500/5 border-rose-500/20 rounded-[24px] shadow-sm">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-rose-600 dark:text-rose-400">
-              Exclusões
-            </CardTitle>
-            <Trash2 className="h-4 w-4 text-rose-600 dark:text-rose-400" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-rose-600 dark:text-rose-400">
-              {stats.deletes}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      <Card className="rounded-[24px] shadow-sm overflow-hidden">
-        <CardHeader className="pb-4 border-b bg-muted/10">
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-            <div>
-              <CardTitle>Registros de Auditoria</CardTitle>
-              <CardDescription>
-                Histórico detalhado das ações realizadas no módulo selecionado.
-              </CardDescription>
-            </div>
-            <div className="flex items-center gap-2 w-full md:w-auto">
-              <div className="relative w-full md:w-64">
-                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Buscar usuário, IP ou ação..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-8 bg-background rounded-full h-9"
-                />
-              </div>
-              <Select value={actionFilter} onValueChange={setActionFilter}>
-                <SelectTrigger className="w-[140px] bg-background rounded-full h-9">
-                  <SelectValue placeholder="Ação" />
-                </SelectTrigger>
-                <SelectContent className="rounded-xl">
-                  <SelectItem value="ALL">Todas as Ações</SelectItem>
-                  <SelectItem value="CREATE">Criações</SelectItem>
-                  <SelectItem value="UPDATE">Edições</SelectItem>
-                  <SelectItem value="DELETE">Exclusões</SelectItem>
-                </SelectContent>
-              </Select>
-              {(searchTerm || actionFilter !== 'ALL') && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => {
-                    setSearchTerm('')
-                    setActionFilter('ALL')
-                  }}
-                  title="Limpar filtros"
-                  className="rounded-full h-9 w-9"
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              )}
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="p-0">
-          {loading ? (
-            <div className="flex justify-center items-center py-20">
-              <Loader2 className="w-8 h-8 animate-spin text-primary" />
-            </div>
-          ) : filteredLogs.length === 0 ? (
-            <div className="text-center py-20 text-muted-foreground">
-              Nenhum registro encontrado para este filtro ou módulo.
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow className="hover:bg-transparent">
-                    <TableHead className="w-[180px] pl-6">Data/Hora</TableHead>
-                    <TableHead>Usuário</TableHead>
-                    <TableHead>Ação</TableHead>
-                    <TableHead>IP</TableHead>
-                    <TableHead className="text-right pr-6">Detalhes</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredLogs.map((log) => (
-                    <TableRow key={log.id} className="group">
-                      <TableCell className="font-medium text-muted-foreground whitespace-nowrap pl-6">
-                        {format(new Date(log.created_at), 'dd/MM/yyyy HH:mm:ss', { locale: ptBR })}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-3">
-                          <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold text-xs border border-primary/20">
-                            {(log.performed_by_name || 'S')[0].toUpperCase()}
-                          </div>
-                          <span className="font-medium text-sm">
-                            {log.performed_by_name || 'Sistema'}
-                          </span>
-                        </div>
-                      </TableCell>
-                      <TableCell>{getActionBadge(log.action)}</TableCell>
-                      <TableCell className="font-mono text-xs text-muted-foreground">
-                        {log.ip_address || '-'}
-                      </TableCell>
-                      <TableCell className="text-right pr-6">
-                        {log.audit_details && log.audit_details.length > 0 ? (
-                          <Dialog>
-                            <DialogTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="rounded-full hover:bg-primary/10 hover:text-primary opacity-0 group-hover:opacity-100 transition-opacity"
-                              >
-                                <Eye className="w-4 h-4 mr-2" /> Ver Detalhes
-                              </Button>
-                            </DialogTrigger>
-                            <DialogContent className="sm:max-w-[600px] rounded-[24px]">
-                              <DialogHeader>
-                                <DialogTitle>Detalhes da Alteração</DialogTitle>
-                                <DialogDescription>
-                                  Campos modificados nesta ação de {log.action.toLowerCase()}
-                                </DialogDescription>
-                              </DialogHeader>
-                              <div className="space-y-4 mt-4 max-h-[60vh] overflow-y-auto pr-2">
-                                {log.audit_details.map((detail: any) => (
-                                  <div
-                                    key={detail.id}
-                                    className="border p-4 rounded-2xl bg-muted/30 space-y-3"
-                                  >
-                                    <div className="flex items-center gap-2 border-b pb-2">
-                                      <Badge
-                                        variant="outline"
-                                        className="font-mono text-xs bg-background"
-                                      >
-                                        {detail.field_name}
-                                      </Badge>
-                                    </div>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                                      <div className="bg-rose-500/10 p-3 rounded-xl border border-rose-500/20">
-                                        <span className="text-xs font-semibold text-rose-600 dark:text-rose-400 block mb-1 flex items-center gap-1">
-                                          <Trash2 className="w-3 h-3" /> Valor Anterior
-                                        </span>
-                                        <span className="text-rose-700 dark:text-rose-300 break-words line-through opacity-80">
-                                          {detail.old_value || '-'}
-                                        </span>
-                                      </div>
-                                      <div className="bg-emerald-500/10 p-3 rounded-xl border border-emerald-500/20">
-                                        <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 block mb-1 flex items-center gap-1">
-                                          <PlusCircle className="w-3 h-3" /> Novo Valor
-                                        </span>
-                                        <span className="text-emerald-700 dark:text-emerald-300 break-words">
-                                          {detail.new_value || '-'}
-                                        </span>
-                                      </div>
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                            </DialogContent>
-                          </Dialog>
-                        ) : (
-                          <span className="text-muted-foreground text-xs italic opacity-0 group-hover:opacity-100 transition-opacity">
-                            Sem detalhes salvos
-                          </span>
+      <div className="bg-card border rounded-2xl shadow-sm overflow-hidden">
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader className="bg-muted/30">
+              <TableRow className="hover:bg-transparent">
+                <TableHead className="w-12 text-center pl-4">
+                  <Checkbox />
+                </TableHead>
+                <TableHead className="font-semibold text-muted-foreground py-4">
+                  <div className="flex items-center gap-1 cursor-pointer hover:text-foreground">
+                    Ação <ChevronUp className="w-3 h-3 opacity-50" />
+                  </div>
+                </TableHead>
+                <TableHead className="font-semibold text-muted-foreground">
+                  <div className="flex items-center gap-1 cursor-pointer hover:text-foreground">
+                    Registro Afetado <ChevronUp className="w-3 h-3 opacity-50" />
+                  </div>
+                </TableHead>
+                <TableHead className="font-semibold text-muted-foreground">
+                  <div className="flex items-center gap-1 cursor-pointer hover:text-foreground">
+                    Responsável <ChevronUp className="w-3 h-3 opacity-50" />
+                  </div>
+                </TableHead>
+                <TableHead className="font-semibold text-muted-foreground">
+                  <div className="flex items-center gap-1 cursor-pointer hover:text-foreground">
+                    Data/Hora <ChevronUp className="w-3 h-3 opacity-50" />
+                  </div>
+                </TableHead>
+                <TableHead className="font-semibold text-muted-foreground">
+                  <div className="flex items-center gap-1 cursor-pointer hover:text-foreground">
+                    IP Origem <ChevronUp className="w-3 h-3 opacity-50" />
+                  </div>
+                </TableHead>
+                <TableHead className="font-semibold text-muted-foreground text-right pr-6">
+                  Ações
+                </TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {loading ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="h-32 text-center">
+                    <Loader2 className="w-6 h-6 animate-spin text-muted-foreground mx-auto" />
+                  </TableCell>
+                </TableRow>
+              ) : logs.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="h-32 text-center text-muted-foreground">
+                    Nenhum registro encontrado.
+                  </TableCell>
+                </TableRow>
+              ) : (
+                logs.map((log) => {
+                  const isExpanded = expandedRows.includes(log.id)
+                  const affected = getAffectedRecord(log)
+                  return (
+                    <React.Fragment key={log.id}>
+                      <TableRow
+                        className={cn(
+                          'group transition-colors',
+                          isExpanded ? 'bg-muted/10 border-b-0' : 'hover:bg-muted/5',
                         )}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                      >
+                        <TableCell className="text-center pl-4 py-4">
+                          <Checkbox />
+                        </TableCell>
+                        <TableCell>{getActionBadge(log.action)}</TableCell>
+                        <TableCell>
+                          <div className="flex flex-col">
+                            <span className="font-bold text-sm uppercase">{affected.name}</span>
+                            {affected.sub && (
+                              <span className="text-xs text-muted-foreground">{affected.sub}</span>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell className="font-semibold text-sm">
+                          {log.performed_by_email || log.performed_by_name || 'Sistema'}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground text-sm">
+                          {format(new Date(log.created_at), 'dd/MM/yyyy, HH:mm:ss', {
+                            locale: ptBR,
+                          })}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground text-sm uppercase">
+                          {log.ip_address || 'N/A'}
+                        </TableCell>
+                        <TableCell className="text-right pr-6">
+                          <button
+                            onClick={() => toggleRow(log.id)}
+                            className="text-destructive hover:text-destructive/80 font-semibold text-sm flex items-center gap-1 justify-end w-full transition-colors"
+                          >
+                            {isExpanded ? 'Ocultar' : 'Detalhes'}
+                            {isExpanded ? (
+                              <ChevronUp className="w-4 h-4" />
+                            ) : (
+                              <ChevronDown className="w-4 h-4" />
+                            )}
+                          </button>
+                        </TableCell>
+                      </TableRow>
+                      {isExpanded && (
+                        <TableRow className="bg-muted/5 border-t-0">
+                          <TableCell colSpan={7} className="p-0 border-b">
+                            <div className="p-6">
+                              <div className="flex items-center gap-2 mb-4 text-sm font-bold">
+                                <FileText className="w-4 h-4 text-destructive" />
+                                Alterações Detectadas
+                              </div>
+                              <div className="rounded-xl border bg-card shadow-sm overflow-hidden">
+                                <Table>
+                                  <TableHeader className="bg-muted/30">
+                                    <TableRow className="hover:bg-transparent">
+                                      <TableHead className="font-semibold">
+                                        <div className="flex items-center gap-1">
+                                          Campo <ChevronUp className="w-3 h-3 opacity-50" />
+                                        </div>
+                                      </TableHead>
+                                      <TableHead className="font-semibold">
+                                        <div className="flex items-center gap-1">
+                                          Antes <ChevronUp className="w-3 h-3 opacity-50" />
+                                        </div>
+                                      </TableHead>
+                                      <TableHead className="font-semibold">
+                                        <div className="flex items-center gap-1">
+                                          Depois <ChevronUp className="w-3 h-3 opacity-50" />
+                                        </div>
+                                      </TableHead>
+                                      <TableHead className="font-semibold w-32">Mudança</TableHead>
+                                    </TableRow>
+                                  </TableHeader>
+                                  <TableBody>
+                                    {!log.audit_details || log.audit_details.length === 0 ? (
+                                      <TableRow>
+                                        <TableCell
+                                          colSpan={4}
+                                          className="text-center text-muted-foreground py-6"
+                                        >
+                                          Nenhum detalhe de alteração salvo.
+                                        </TableCell>
+                                      </TableRow>
+                                    ) : (
+                                      log.audit_details.map((detail: any) => (
+                                        <TableRow key={detail.id} className="hover:bg-transparent">
+                                          <TableCell className="font-bold text-sm">
+                                            {detail.field_name}
+                                          </TableCell>
+                                          <TableCell className="text-muted-foreground text-sm break-all max-w-[200px]">
+                                            {detail.old_value || 'null'}
+                                          </TableCell>
+                                          <TableCell className="font-bold text-sm break-all max-w-[200px]">
+                                            {detail.new_value || 'null'}
+                                          </TableCell>
+                                          <TableCell>
+                                            <Badge className="bg-blue-600/10 text-blue-700 dark:text-blue-400 hover:bg-blue-600/20 border-none rounded-full font-bold px-3">
+                                              Alterado
+                                            </Badge>
+                                          </TableCell>
+                                        </TableRow>
+                                      ))
+                                    )}
+                                  </TableBody>
+                                </Table>
+                              </div>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </React.Fragment>
+                  )
+                })
+              )}
+            </TableBody>
+          </Table>
+        </div>
+      </div>
     </div>
   )
 }
