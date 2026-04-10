@@ -71,7 +71,7 @@ export const translateAction = (action: string) => {
   }
 }
 
-export const getAffectedRecordInfo = (log: any, dict: Record<string, any>) => {
+export const getAffectedRecordInfo = (log: any, dict: Record<string, any>, logsHistory?: any[]) => {
   let primary = 'Desconhecido'
   let secondary = log.entity_id
 
@@ -79,37 +79,74 @@ export const getAffectedRecordInfo = (log: any, dict: Record<string, any>) => {
   if (entity) {
     primary = entity.name || primary
     secondary = entity.sub || secondary
-  } else if (log.changes) {
-    const c = log.changes as Record<string, any>
-    const getVal = (field: string) => c[field]?.new ?? c[field]?.old
+  } else {
+    // Try to find name in the current log changes
+    const extractName = (c: Record<string, any>, entityType: string) => {
+      if (!c) return null
+      const getVal = (field: string) =>
+        c[field]?.new ?? c[field]?.old ?? (typeof c[field] === 'string' ? c[field] : null)
 
-    switch (log.entity_type?.toLowerCase()) {
-      case 'usuario':
-        primary = getVal('name') || getVal('email') || primary
-        secondary = getVal('email') || getVal('cpf') || secondary
-        break
-      case 'empresa':
-        primary = getVal('name') || primary
-        secondary = getVal('cnpj') || getVal('email') || secondary
-        break
-      case 'departamento':
-        primary = getVal('name') || primary
-        secondary = getVal('code') || secondary
-        break
-      case 'conta_contabil':
-        primary = getVal('account_name') || primary
-        secondary = getVal('account_code') || secondary
-        break
-      case 'centro_custo':
-        primary = getVal('description') || primary
-        secondary = getVal('code') || secondary
-        break
-      case 'conta_bancaria':
-        primary = getVal('description') || getVal('account_number') || primary
-        secondary = getVal('bank_code') || getVal('agency') || secondary
-        break
+      const storedName = getVal('_entity_name') || getVal('entity_name')
+      if (storedName) return storedName
+
+      switch (entityType?.toLowerCase()) {
+        case 'usuario':
+          return getVal('name') || getVal('email')
+        case 'empresa':
+          return getVal('name')
+        case 'departamento':
+          return getVal('name')
+        case 'conta_contabil':
+          return getVal('account_name')
+        case 'centro_custo':
+          return getVal('description')
+        case 'conta_bancaria':
+          return getVal('description') || getVal('account_number')
+      }
+      return null
+    }
+
+    const extractSub = (c: Record<string, any>, entityType: string) => {
+      if (!c) return null
+      const getVal = (field: string) =>
+        c[field]?.new ?? c[field]?.old ?? (typeof c[field] === 'string' ? c[field] : null)
+      switch (entityType?.toLowerCase()) {
+        case 'usuario':
+          return getVal('email') || getVal('cpf')
+        case 'empresa':
+          return getVal('cnpj') || getVal('email')
+        case 'departamento':
+          return getVal('code')
+        case 'conta_contabil':
+          return getVal('account_code')
+        case 'centro_custo':
+          return getVal('code')
+        case 'conta_bancaria':
+          return getVal('bank_code') || getVal('agency')
+      }
+      return null
+    }
+
+    if (log.changes) {
+      primary = extractName(log.changes, log.entity_type) || primary
+      secondary = extractSub(log.changes, log.entity_type) || secondary
+    }
+
+    // Fallback: search in other logs from the history for the same entity
+    if (primary === 'Desconhecido' && logsHistory && Array.isArray(logsHistory)) {
+      for (const histLog of logsHistory) {
+        if (histLog.entity_id === log.entity_id && histLog.changes) {
+          const histName = extractName(histLog.changes, histLog.entity_type)
+          if (histName) {
+            primary = histName
+            secondary = extractSub(histLog.changes, histLog.entity_type) || secondary
+            break
+          }
+        }
+      }
     }
   }
+
   return { primary, secondary }
 }
 
@@ -233,7 +270,15 @@ const formatValue = (val: string | null, field: string, dict: any) => {
   return val
 }
 
-function ExpandableRow({ log, userName, isSelected, onToggleSelect, onDelete, dict }: any) {
+function ExpandableRow({
+  log,
+  userName,
+  isSelected,
+  onToggleSelect,
+  onDelete,
+  dict,
+  allLogs,
+}: any) {
   const [expanded, setExpanded] = useState(false)
   const [details, setDetails] = useState<any[]>([])
   const [loadingDetails, setLoadingDetails] = useState(false)
@@ -309,7 +354,7 @@ function ExpandableRow({ log, userName, isSelected, onToggleSelect, onDelete, di
     return map[entity?.toLowerCase()] || entity
   }
 
-  const info = getAffectedRecordInfo(log, dict)
+  const info = getAffectedRecordInfo(log, dict, allLogs)
 
   return (
     <>
@@ -660,7 +705,7 @@ export default function CentralAuditoria() {
     if (!search) return true
     const searchLower = search.toLowerCase()
     const userName = log.performed_by ? globalDict[log.performed_by]?.name || 'sistema' : 'sistema'
-    const info = getAffectedRecordInfo(log, globalDict)
+    const info = getAffectedRecordInfo(log, globalDict, logs)
     const translatedAction = translateAction(log.action).toLowerCase()
 
     return (
@@ -679,8 +724,8 @@ export default function CentralAuditoria() {
       sortable.sort((a, b) => {
         let aValue: any = ''
         let bValue: any = ''
-        const aInfo = getAffectedRecordInfo(a, globalDict)
-        const bInfo = getAffectedRecordInfo(b, globalDict)
+        const aInfo = getAffectedRecordInfo(a, globalDict, logs)
+        const bInfo = getAffectedRecordInfo(b, globalDict, logs)
 
         switch (sortConfig.key) {
           case 'entity_id':
@@ -754,7 +799,7 @@ export default function CentralAuditoria() {
     }
 
     const data = sortedLogs.map((log) => {
-      const info = getAffectedRecordInfo(log, globalDict)
+      const info = getAffectedRecordInfo(log, globalDict, logs)
       const date = safeFormatDate(log.created_at)
       const entity = log.entity_type || ''
       const action = translateAction(log.action)
@@ -1089,6 +1134,7 @@ export default function CentralAuditoria() {
                       onToggleSelect={toggleRow}
                       onDelete={handleDelete}
                       dict={globalDict}
+                      allLogs={logs}
                     />
                   ))
                 ) : (
