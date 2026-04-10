@@ -312,13 +312,21 @@ function ExpandableRow({ log, userName, isSelected, onToggleSelect, onDelete, di
               onCheckedChange={() => onToggleSelect(log.id)}
               aria-label="Selecionar linha"
             />
-            <div
-              onClick={toggleExpand}
-              className="cursor-pointer transition-opacity hover:opacity-80"
-              title="Clique para ver os detalhes"
+            <span
+              className="font-mono text-xs text-muted-foreground truncate w-20 inline-block uppercase"
+              title={log.entity_id}
             >
-              {getActionBadge(log.action)}
-            </div>
+              {log.entity_id ? log.entity_id.split('-')[0] : 'N/A'}
+            </span>
+          </div>
+        </TableCell>
+        <TableCell>
+          <div
+            onClick={toggleExpand}
+            className="cursor-pointer transition-opacity hover:opacity-80 inline-block"
+            title="Clique para ver os detalhes"
+          >
+            {getActionBadge(log.action)}
           </div>
         </TableCell>
         <TableCell className="capitalize font-medium text-muted-foreground text-[13px]">
@@ -373,7 +381,7 @@ function ExpandableRow({ log, userName, isSelected, onToggleSelect, onDelete, di
       </TableRow>
       {expanded && (
         <TableRow className="bg-muted/5 hover:bg-muted/5">
-          <TableCell colSpan={7} className="p-0 border-b-0">
+          <TableCell colSpan={8} className="p-0 border-b-0">
             <div className="px-14 py-4 border-b border-border/50 animate-fade-in-down">
               <div className="flex items-center gap-2 mb-4">
                 <ShieldAlert className="h-4 w-4 text-primary" />
@@ -644,6 +652,10 @@ export default function CentralAuditoria() {
         const bInfo = getAffectedRecordInfo(b, globalDict)
 
         switch (sortConfig.key) {
+          case 'entity_id':
+            aValue = a.entity_id || ''
+            bValue = b.entity_id || ''
+            break
           case 'action':
             aValue = translateAction(a.action) || ''
             bValue = translateAction(b.action) || ''
@@ -764,7 +776,7 @@ export default function CentralAuditoria() {
             <Table>
               <TableHeader>
                 <TableRow className="bg-muted/30 hover:bg-muted/30 border-b-2">
-                  <TableHead className="w-[200px] py-3">
+                  <TableHead className="w-[140px] py-3">
                     <div className="flex items-center gap-3">
                       <Checkbox
                         checked={sortedLogs.length > 0 && selected.size === sortedLogs.length}
@@ -773,18 +785,24 @@ export default function CentralAuditoria() {
                       />
                       <div
                         className="flex items-center gap-1 text-[13px] text-muted-foreground font-semibold cursor-pointer hover:text-foreground transition-colors group select-none"
-                        onClick={() => handleSort('action')}
+                        onClick={() => handleSort('entity_id')}
                       >
-                        Ação{' '}
+                        ID Entidade{' '}
                         <ArrowUpDown
                           className={cn(
                             'h-3 w-3 opacity-0 group-hover:opacity-50 transition-opacity',
-                            sortConfig?.key === 'action' && 'opacity-100 text-foreground',
+                            sortConfig?.key === 'entity_id' && 'opacity-100 text-foreground',
                           )}
                         />
                       </div>
                     </div>
                   </TableHead>
+                  <SortableHead
+                    label="Ação"
+                    sortKey="action"
+                    currentSort={sortConfig}
+                    requestSort={handleSort}
+                  />
                   <SortableHead
                     label="Entidade"
                     sortKey="entity_type"
@@ -827,8 +845,11 @@ export default function CentralAuditoria() {
                       <TableCell>
                         <div className="flex items-center gap-3">
                           <Skeleton className="h-4 w-4 rounded" />
-                          <Skeleton className="h-6 w-20 rounded-full" />
+                          <Skeleton className="h-5 w-16" />
                         </div>
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="h-6 w-20 rounded-full" />
                       </TableCell>
                       <TableCell>
                         <Skeleton className="h-5 w-24" />
@@ -868,7 +889,7 @@ export default function CentralAuditoria() {
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={7} className="h-32 text-center">
+                    <TableCell colSpan={8} className="h-32 text-center">
                       <div className="flex flex-col items-center justify-center text-muted-foreground">
                         <Search className="h-8 w-8 mb-2 opacity-50" />
                         <p>Nenhum registro de auditoria encontrado.</p>
