@@ -10,6 +10,9 @@ import {
   History,
   ArrowUpDown,
   Trash2,
+  FileText,
+  FileSpreadsheet,
+  FileIcon,
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
@@ -36,6 +39,7 @@ import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Checkbox } from '@/components/ui/checkbox'
 import { useToast } from '@/hooks/use-toast'
+import { AuditDashboard } from '@/components/AuditLog/AuditDashboard'
 
 export const translateAction = (action: string) => {
   const act = action?.toUpperCase() || ''
@@ -502,6 +506,7 @@ export default function CentralAuditoria() {
     key: 'created_at',
     direction: 'desc',
   })
+  const [activeFilter, setActiveFilter] = useState<string | null>(null)
 
   useEffect(() => {
     fetchDictionaries()
@@ -627,6 +632,24 @@ export default function CentralAuditoria() {
   }
 
   const filteredLogs = logs.filter((log) => {
+    let matchFilter = true
+    if (activeFilter) {
+      const originalAct = log.action?.toUpperCase() || ''
+      if (activeFilter === 'CREATE' && !['CREATE', 'INSERT', 'INCLUSÃO'].includes(originalAct))
+        matchFilter = false
+      if (
+        activeFilter === 'UPDATE' &&
+        !['UPDATE', 'EDIÇÃO', 'EDICAO', 'EDICAO_EM_LOTE'].includes(originalAct)
+      )
+        matchFilter = false
+      if (
+        activeFilter === 'DELETE' &&
+        !['DELETE', 'EXCLUSÃO', 'EXCLUSAO', 'SOFT_DELETE', 'EXCLUSAO_EM_LOTE'].includes(originalAct)
+      )
+        matchFilter = false
+    }
+    if (!matchFilter) return false
+
     if (!search) return true
     const searchLower = search.toLowerCase()
     const userName = log.performed_by ? globalDict[log.performed_by]?.name || 'sistema' : 'sistema'
@@ -703,15 +726,76 @@ export default function CentralAuditoria() {
     setSelected(newSet)
   }
 
+  const handleExport = (format: 'csv' | 'pdf' | 'excel') => {
+    if (format === 'csv' || format === 'excel') {
+      let csvContent =
+        'Data/Hora;Entidade;Ação;Registro Afetado;ID Entidade;Responsável;IP Origem\n'
+      sortedLogs.forEach((log) => {
+        const info = getAffectedRecordInfo(log, globalDict)
+        const date = log.created_at ? format(new Date(log.created_at), 'dd/MM/yyyy HH:mm:ss') : '-'
+        const entity = log.entity_type || ''
+        const action = translateAction(log.action)
+        const primary = info.primary || ''
+        const secondary = info.secondary !== log.entity_id ? info.secondary : ''
+        const user = log.performed_by ? globalDict[log.performed_by]?.name || 'Sistema' : 'Sistema'
+        const ip = log.ip_address || ''
+
+        csvContent += `"${date}";"${entity}";"${action}";"${primary}";"${secondary}";"${user}";"${ip}"\n`
+      })
+
+      const blob = new Blob([new Uint8Array([0xef, 0xbb, 0xbf]), csvContent], {
+        type: 'text/csv;charset=utf-8;',
+      })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `auditoria_central_${new Date().toISOString().split('T')[0]}.${format === 'excel' ? 'csv' : 'csv'}`
+      a.click()
+    } else {
+      toast({
+        title: 'Exportação',
+        description: 'A exportação em PDF será disponibilizada em breve.',
+      })
+    }
+  }
+
   return (
     <div className="flex flex-col gap-6 p-6 animate-fade-in mx-auto w-full max-w-[1400px]">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Central de Auditoria</h1>
-        <p className="text-muted-foreground mt-2">
-          Acompanhe e rastreie todas as ações, modificações e exclusões no sistema de forma
-          unificada.
-        </p>
+      <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="p-2.5 bg-red-100 dark:bg-red-900/20 rounded-lg">
+            <ShieldAlert className="h-6 w-6 text-red-600 dark:text-red-500" />
+          </div>
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Central de Auditoria</h1>
+            <p className="text-muted-foreground mt-1">
+              Acompanhe e rastreie todas as ações, modificações e exclusões no sistema de forma
+              unificada.
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 self-start">
+          <Button variant="outline" className="bg-background" onClick={() => handleExport('csv')}>
+            <FileText className="mr-2 h-4 w-4 text-emerald-600" />
+            CSV
+          </Button>
+          <Button variant="outline" className="bg-background" onClick={() => handleExport('pdf')}>
+            <FileIcon className="mr-2 h-4 w-4 text-red-600" />
+            PDF
+          </Button>
+          <Button variant="outline" className="bg-background" onClick={() => handleExport('excel')}>
+            <FileSpreadsheet className="mr-2 h-4 w-4 text-blue-600" />
+            Excel
+          </Button>
+        </div>
       </div>
+
+      <AuditDashboard
+        logs={logs}
+        entityType="central"
+        activeFilter={activeFilter}
+        onFilterChange={setActiveFilter}
+      />
 
       <Card className="border-border/50 shadow-sm">
         <CardHeader className="bg-muted/20 border-b pb-4">
