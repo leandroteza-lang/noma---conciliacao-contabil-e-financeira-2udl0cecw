@@ -726,8 +726,8 @@ export default function CentralAuditoria() {
     setSelected(newSet)
   }
 
-  const handleExport = (format: 'csv' | 'pdf' | 'excel') => {
-    if (format === 'csv' || format === 'excel') {
+  const handleExport = (exportFormat: 'csv' | 'pdf' | 'excel') => {
+    if (exportFormat === 'csv' || exportFormat === 'excel') {
       let csvContent =
         'Data/Hora;Entidade;Ação;Registro Afetado;ID Entidade;Responsável;IP Origem\n'
       sortedLogs.forEach((log) => {
@@ -749,7 +749,7 @@ export default function CentralAuditoria() {
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = `auditoria_central_${new Date().toISOString().split('T')[0]}.${format === 'excel' ? 'csv' : 'csv'}`
+      a.download = `auditoria_central_${new Date().toISOString().split('T')[0]}.${exportFormat === 'excel' ? 'csv' : 'csv'}`
       a.click()
     } else {
       toast({
