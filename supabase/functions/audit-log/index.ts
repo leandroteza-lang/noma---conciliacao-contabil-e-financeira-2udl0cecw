@@ -4,20 +4,21 @@ import { createClient } from 'jsr:@supabase/supabase-js@2'
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, x-supabase-client-platform, apikey, content-type',
+  'Access-Control-Allow-Headers':
+    'authorization, x-client-info, x-supabase-client-platform, apikey, content-type',
 }
 
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
 
   try {
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!
-    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     const supabase = createClient(supabaseUrl, supabaseKey)
 
-    const payload = await req.json();
-    const logs = Array.isArray(payload) ? payload : [payload];
-    const results = [];
+    const payload = await req.json()
+    const logs = Array.isArray(payload) ? payload : [payload]
+    const results = []
 
     for (const logData of logs) {
       const {
@@ -32,19 +33,114 @@ Deno.serve(async (req: Request) => {
         country,
         city,
         deviceType,
-      } = logData;
+      } = logData
 
-      let finalEntityType = String(entityType).toLowerCase();
-      if (finalEntityType === 'usuarios') finalEntityType = 'usuario';
+      let finalEntityType = String(entityType).toLowerCase()
+      if (finalEntityType === 'usuarios') finalEntityType = 'usuario'
+
+      let entityName = null
+      let tableName = ''
+      let nameCol = 'name'
+
+      if (finalEntityType === 'usuario' || finalEntityType === 'cadastro_usuarios') {
+        tableName = 'cadastro_usuarios'
+        nameCol = 'name'
+      } else if (finalEntityType === 'bank_accounts') {
+        tableName = 'bank_accounts'
+        nameCol = 'description'
+      } else if (finalEntityType === 'cost_centers') {
+        tableName = 'cost_centers'
+        nameCol = 'description'
+      } else if (finalEntityType === 'chart_of_accounts') {
+        tableName = 'chart_of_accounts'
+        nameCol = 'account_name'
+      } else if (finalEntityType === 'tipo_conta_tga') {
+        tableName = 'tipo_conta_tga'
+        nameCol = 'nome'
+      } else if (finalEntityType === 'departments') {
+        tableName = 'departments'
+        nameCol = 'name'
+      } else if (finalEntityType === 'organizations') {
+        tableName = 'organizations'
+        nameCol = 'name'
+      }
+
+      if (tableName) {
+        try {
+          const { data: record } = await supabase
+            .from(tableName)
+            .select(nameCol)
+            .eq('id', entityId)
+            .maybeSingle()
+          if (record && record[nameCol]) {
+            entityName = record[nameCol]
+          } else {
+            const { data: prevLogs } = await supabase
+              .from('audit_logs')
+              .select('changes')
+              .eq('entity_id', entityId)
+              .order('created_at', { ascending: false })
+              .limit(10)
+
+            if (prevLogs) {
+              for (const log of prevLogs) {
+                if (log.changes) {
+                  if (log.changes._entity_name) {
+                    entityName =
+                      log.changes._entity_name.new ||
+                      log.changes._entity_name.old ||
+                      log.changes._entity_name
+                    if (entityName) break
+                  }
+                  if (log.changes.entity_name) {
+                    entityName =
+                      log.changes.entity_name.new ||
+                      log.changes.entity_name.old ||
+                      log.changes.entity_name
+                    if (entityName) break
+                  }
+                  if (log.changes[nameCol]) {
+                    entityName = log.changes[nameCol].new || log.changes[nameCol].old
+                    if (entityName) break
+                  }
+                  if (log.changes.name) {
+                    entityName = log.changes.name.new || log.changes.name.old
+                    if (entityName) break
+                  }
+                  if (log.changes.description) {
+                    entityName = log.changes.description.new || log.changes.description.old
+                    if (entityName) break
+                  }
+                  if (log.changes.account_name) {
+                    entityName = log.changes.account_name.new || log.changes.account_name.old
+                    if (entityName) break
+                  }
+                }
+              }
+            }
+          }
+        } catch (e) {
+          console.error('Error fetching entity name:', e)
+        }
+      }
+
+      let finalChanges = changes ? { ...changes } : {}
+      if (entityName) {
+        finalChanges = {
+          ...finalChanges,
+          _entity_name: { old: entityName, new: entityName },
+          entity_name: { old: entityName, new: entityName },
+        }
+      }
 
       const { data: auditLog, error: logError } = await supabase
-        .from("audit_logs")
+        .from('audit_logs')
         .insert({
           entity_type: finalEntityType,
           entity_id: entityId,
           action,
           performed_by: performedBy,
-          changes,
+          changes: Object.keys(finalChanges).length > 0 ? finalChanges : null,
           ip_address: ipAddress,
           user_agent: userAgent,
           session_id: sessionId,
@@ -53,33 +149,43 @@ Deno.serve(async (req: Request) => {
           device_type: deviceType,
         })
         .select()
-        .single();
+        .single()
 
-      if (logError) throw logError;
+      if (logError) throw logError
 
-      if (changes && Object.keys(changes).length > 0) {
-        const details = Object.entries(changes).map(([field, { old, new: newVal }]: [string, any]) => ({
-          audit_log_id: auditLog.id,
-          field_name: field,
-          old_value: old !== undefined && old !== null ? String(old) : null,
-          new_value: newVal !== undefined && newVal !== null ? String(newVal) : null,
-        }));
+      if (finalChanges && Object.keys(finalChanges).length > 0) {
+        const details = Object.entries(finalChanges).map(([field, val]: [string, any]) => {
+          let oldVal = null
+          let newVal = null
+          if (val !== null && typeof val === 'object' && ('old' in val || 'new' in val)) {
+            oldVal = val.old !== undefined && val.old !== null ? String(val.old) : null
+            newVal = val.new !== undefined && val.new !== null ? String(val.new) : null
+          } else {
+            newVal = val !== undefined && val !== null ? String(val) : null
+          }
+          return {
+            audit_log_id: auditLog.id,
+            field_name: field,
+            old_value: oldVal,
+            new_value: newVal,
+          }
+        })
 
-        const { error: detailsError } = await supabase.from("audit_details").insert(details);
-        if (detailsError) throw detailsError;
+        const { error: detailsError } = await supabase.from('audit_details').insert(details)
+        if (detailsError) throw detailsError
       }
-      
-      results.push(auditLog.id);
+
+      results.push(auditLog.id)
     }
 
     return new Response(JSON.stringify({ success: true, ids: results }), {
       status: 200,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    })
   } catch (error: any) {
     return new Response(JSON.stringify({ error: error.message }), {
       status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    })
   }
-});
+})
