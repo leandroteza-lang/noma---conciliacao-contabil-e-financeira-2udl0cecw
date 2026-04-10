@@ -4,8 +4,7 @@ import { createClient } from 'jsr:@supabase/supabase-js@2'
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-  'Access-Control-Allow-Headers':
-    'authorization, x-client-info, x-supabase-client-platform, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, x-supabase-client-platform, apikey, content-type',
 }
 
 Deno.serve(async (req: Request) => {
@@ -30,18 +29,18 @@ Deno.serve(async (req: Request) => {
         apikey: supabaseKey,
       },
     })
-
+    
     if (!userResponse.ok) {
       const err = await userResponse.json().catch(() => ({}))
       throw new Error(`Usuário não autenticado: ${err.msg || err.message || 'Token inválido'}`)
     }
-
+    
     const user = await userResponse.json()
     if (!user || !user.id) throw new Error('Usuário não autenticado: Token inválido')
 
     const supabase = createClient(supabaseUrl, supabaseKey, {
       global: { headers: { Authorization: authHeader } },
-      auth: { persistSession: false },
+      auth: { persistSession: false }
     })
 
     const payload = await req.json()
@@ -52,7 +51,7 @@ Deno.serve(async (req: Request) => {
       description,
       costCenterId,
       counterpartAccountId,
-      type = 'expense',
+      type = 'expense'
     } = payload
 
     if (!baseDate || !amount || !description || !costCenterId || !counterpartAccountId) {
@@ -98,8 +97,7 @@ Deno.serve(async (req: Request) => {
         const dateObj = new Date(baseDate)
         dateObj.setUTCMonth(dateObj.getUTCMonth() + i)
         const entryDate = dateObj.toISOString().split('T')[0]
-        const entryDesc =
-          installments > 1 ? `${description} (${i + 1}/${installments})` : description
+        const entryDesc = installments > 1 ? `${description} (${i + 1}/${installments})` : description
 
         // Validate balance zero: Debits equal Credits using the single amount
         const debitAccountId = type === 'expense' ? mappedAccountId : counterpartAccountId
@@ -117,22 +115,24 @@ Deno.serve(async (req: Request) => {
             amount: amount,
             description: entryDesc,
             cost_center_id: costCenterId,
-            status: 'Concluído',
+            status: 'Concluído'
           })
           .select()
           .single()
 
         if (fmError) throw new Error(`Erro ao criar movimento: ${fmError.message}`)
 
-        const { error: aeError } = await supabase.from('accounting_entries').insert({
-          organization_id: orgId,
-          entry_date: entryDate,
-          amount: amount,
-          description: entryDesc,
-          debit_account_id: debitAccountId,
-          credit_account_id: creditAccountId,
-          status: 'Concluído',
-        })
+        const { error: aeError } = await supabase
+          .from('accounting_entries')
+          .insert({
+            organization_id: orgId,
+            entry_date: entryDate,
+            amount: amount,
+            description: entryDesc,
+            debit_account_id: debitAccountId,
+            credit_account_id: creditAccountId,
+            status: 'Concluído'
+          })
 
         if (aeError) {
           await supabase.from('financial_movements').delete().eq('id', fm.id)
@@ -146,12 +146,13 @@ Deno.serve(async (req: Request) => {
     }
 
     return new Response(JSON.stringify({ generated, errors }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     })
+
   } catch (err: any) {
     return new Response(JSON.stringify({ error: err.message }), {
       status: 400,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     })
   }
 })
