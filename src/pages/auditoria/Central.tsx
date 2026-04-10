@@ -48,7 +48,7 @@ export const translateAction = (action: string) => {
     case 'DELETE':
       return 'EXCLUSÃO'
     case 'SOFT_DELETE':
-      return 'EXCLUSÃO LÓGICA'
+      return 'REMOÇÃO'
     case 'EXCLUSAO_EM_LOTE':
       return 'EXCLUSÃO EM LOTE'
     case 'EDICAO':
@@ -60,11 +60,15 @@ export const translateAction = (action: string) => {
   }
 }
 
-export const getAffectedRecordInfo = (log: any) => {
+export const getAffectedRecordInfo = (log: any, dict: Record<string, any>) => {
   let primary = 'Desconhecido'
   let secondary = log.entity_id
 
-  if (log.changes) {
+  const entity = dict[log.entity_id]
+  if (entity) {
+    primary = entity.name || primary
+    secondary = entity.sub || secondary
+  } else if (log.changes) {
     const c = log.changes as Record<string, any>
     const getVal = (field: string) => c[field]?.new ?? c[field]?.old
 
@@ -98,7 +102,127 @@ export const getAffectedRecordInfo = (log: any) => {
   return { primary, secondary }
 }
 
-function ExpandableRow({ log, userName, isSelected, onToggleSelect, onDelete }: any) {
+const fieldTranslations: Record<string, string> = {
+  department_id: 'Departamento',
+  permissions: 'Permissões',
+  companies: 'Empresas Vinculadas',
+  name: 'Nome',
+  email: 'E-mail',
+  role: 'Perfil',
+  cpf: 'CPF',
+  phone: 'Telefone',
+  address: 'Endereço',
+  observations: 'Observações',
+  status: 'Status',
+  approval_status: 'Status de Aprovação',
+  avatar_url: 'Foto de Perfil',
+  theme_mode: 'Tema',
+  color_theme: 'Cor do Tema',
+  code: 'Código',
+  description: 'Descrição',
+  account_code: 'Código da Conta',
+  account_name: 'Nome da Conta',
+  account_type: 'Tipo de Conta',
+  classification: 'Classificação',
+  nature: 'Natureza',
+  account_behavior: 'Comportamento',
+  bank_code: 'Código do Banco',
+  agency: 'Agência',
+  account_number: 'Número da Conta',
+  check_digit: 'Dígito',
+  company_name: 'Empresa',
+  deleted_at: 'Data de Exclusão',
+  deleted_by: 'Excluído Por',
+  pending_deletion: 'Exclusão Pendente',
+  cnpj: 'CNPJ',
+  fixed_variable: 'Fixo/Variável',
+  operational: 'Operacional',
+  tipo_tga_id: 'Tipo TGA',
+  type_tga: 'Tipo TGA (Texto)',
+  parent_id: 'Centro de Custo Pai',
+  contabiliza: 'Contabiliza',
+  tipo_lcto: 'Tipo Lançamento',
+  amount: 'Valor',
+  entry_date: 'Data do Lançamento',
+  movement_date: 'Data da Movimentação',
+  debit_account_id: 'Conta Débito',
+  credit_account_id: 'Conta Crédito',
+  cost_center_id: 'Centro de Custo',
+  bank_account_id: 'Conta Bancária',
+  chart_account_id: 'Conta Contábil',
+  mapping_type: 'Tipo de Mapeamento',
+  abreviacao: 'Abreviação',
+  codigo: 'Código (TGA)',
+}
+
+const translateField = (field: string) => fieldTranslations[field] || field
+
+const formatValue = (val: string | null, field: string, dict: any) => {
+  if (val === null || val === undefined) return null
+
+  if (val === 'true') {
+    if (field === 'status') return 'Ativo'
+    return 'Sim'
+  }
+  if (val === 'false') {
+    if (field === 'status') return 'Inativo'
+    return 'Não'
+  }
+
+  try {
+    const parsed = JSON.parse(val)
+    if (Array.isArray(parsed)) {
+      if (parsed.length === 0) return 'Nenhum'
+      const mapped = parsed.map((item) => {
+        if (typeof item === 'string') {
+          if (item === 'all') return 'Todas as Permissões'
+          if (item === 'usuarios') return 'Usuários'
+          if (item === 'empresas') return 'Empresas'
+          if (item.length === 36 && item.includes('-') && dict[item]) {
+            return dict[item].name
+          }
+        }
+        return item
+      })
+      return mapped.join(', ')
+    }
+  } catch (e) {
+    // not JSON
+  }
+
+  if (val === 'all') return 'Todas as Permissões'
+  if (val === 'usuarios') return 'Usuários'
+  if (val === 'empresas') return 'Empresas'
+
+  if (typeof val === 'string') {
+    const parts = val.split(',').map((p) => p.trim())
+    let hasUuid = false
+    const mapped = parts.map((p) => {
+      if (p.length === 36 && p.split('-').length === 5) {
+        hasUuid = true
+        return dict[p]?.name || p
+      }
+      return p
+    })
+    if (hasUuid) {
+      return mapped.join(', ')
+    }
+  }
+
+  if (field === 'role') {
+    const roles: Record<string, string> = {
+      admin: 'Administrador',
+      supervisor: 'Supervisor',
+      collaborator: 'Colaborador',
+      client_user: 'Usuário Cliente',
+    }
+    return roles[val] || val
+  }
+
+  return val
+}
+
+function ExpandableRow({ log, userName, isSelected, onToggleSelect, onDelete, dict }: any) {
   const [expanded, setExpanded] = useState(false)
   const [details, setDetails] = useState<any[]>([])
   const [loadingDetails, setLoadingDetails] = useState(false)
@@ -120,6 +244,7 @@ function ExpandableRow({ log, userName, isSelected, onToggleSelect, onDelete }: 
       act.includes('DELETE') ||
       act.includes('EXCLUSÃO') ||
       act.includes('EXCLUSAO') ||
+      act.includes('REMOÇÃO') ||
       act.includes('REMOVE')
     const isCreate =
       act.includes('CREATE') ||
@@ -173,7 +298,7 @@ function ExpandableRow({ log, userName, isSelected, onToggleSelect, onDelete }: 
     return map[entity?.toLowerCase()] || entity
   }
 
-  const info = getAffectedRecordInfo(log)
+  const info = getAffectedRecordInfo(log, dict)
 
   return (
     <>
@@ -273,12 +398,12 @@ function ExpandableRow({ log, userName, isSelected, onToggleSelect, onDelete }: 
                       {details.map((detail) => (
                         <TableRow key={detail.id} className="hover:bg-muted/30">
                           <TableCell className="font-medium text-foreground text-sm">
-                            {detail.field_name}
+                            {translateField(detail.field_name)}
                           </TableCell>
                           <TableCell className="text-muted-foreground text-sm">
                             {detail.old_value ? (
                               <span className="line-through decoration-destructive/40">
-                                {detail.old_value}
+                                {formatValue(detail.old_value, detail.field_name, dict)}
                               </span>
                             ) : (
                               <span className="italic text-muted-foreground/50 text-xs uppercase tracking-wider">
@@ -288,7 +413,7 @@ function ExpandableRow({ log, userName, isSelected, onToggleSelect, onDelete }: 
                           </TableCell>
                           <TableCell className="text-emerald-600 dark:text-emerald-400 font-medium text-sm">
                             {detail.new_value ? (
-                              detail.new_value
+                              formatValue(detail.new_value, detail.field_name, dict)
                             ) : (
                               <span className="italic text-muted-foreground/50 text-xs uppercase tracking-wider font-normal">
                                 Vazio
@@ -342,7 +467,7 @@ export default function CentralAuditoria() {
   const [deleting, setDeleting] = useState(false)
   const [entityFilter, setEntityFilter] = useState<string>('todos')
   const [search, setSearch] = useState('')
-  const [usersMap, setUsersMap] = useState<Record<string, string>>({})
+  const [globalDict, setGlobalDict] = useState<Record<string, any>>({})
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>({
     key: 'created_at',
@@ -350,21 +475,57 @@ export default function CentralAuditoria() {
   })
 
   useEffect(() => {
-    fetchUsersMap()
+    fetchDictionaries()
   }, [])
+
   useEffect(() => {
     fetchLogs()
   }, [entityFilter])
 
-  const fetchUsersMap = async () => {
-    const { data } = await supabase.from('cadastro_usuarios').select('user_id, name, email')
-    if (data) {
-      const map: Record<string, string> = {}
-      data.forEach((u) => {
-        if (u.user_id) map[u.user_id] = u.email || u.name || 'Desconhecido'
-      })
-      setUsersMap(map)
-    }
+  const fetchDictionaries = async () => {
+    const dict: Record<string, { name: string; sub: string; type: string }> = {}
+
+    const [
+      { data: users },
+      { data: orgs },
+      { data: depts },
+      { data: costs },
+      { data: charts },
+      { data: banks },
+    ] = await Promise.all([
+      supabase.from('cadastro_usuarios').select('id, user_id, name, email'),
+      supabase.from('organizations').select('id, name, cnpj'),
+      supabase.from('departments').select('id, name, code'),
+      supabase.from('cost_centers').select('id, description, code'),
+      supabase.from('chart_of_accounts').select('id, account_name, account_code'),
+      supabase.from('bank_accounts').select('id, description, account_number'),
+    ])
+
+    users?.forEach((u) => {
+      dict[u.id] = { name: u.name, sub: u.email || '', type: 'usuario' }
+      if (u.user_id) dict[u.user_id] = { name: u.name, sub: u.email || '', type: 'usuario' }
+    })
+    orgs?.forEach((o) => {
+      dict[o.id] = { name: o.name || '', sub: o.cnpj || '', type: 'empresa' }
+    })
+    depts?.forEach((d) => {
+      dict[d.id] = { name: d.name, sub: d.code || '', type: 'departamento' }
+    })
+    costs?.forEach((c) => {
+      dict[c.id] = { name: c.description || '', sub: c.code || '', type: 'centro_custo' }
+    })
+    charts?.forEach((c) => {
+      dict[c.id] = { name: c.account_name || '', sub: c.account_code || '', type: 'conta_contabil' }
+    })
+    banks?.forEach((b) => {
+      dict[b.id] = {
+        name: b.description || '',
+        sub: b.account_number || '',
+        type: 'conta_bancaria',
+      }
+    })
+
+    setGlobalDict(dict)
   }
 
   const fetchLogs = async () => {
@@ -439,8 +600,8 @@ export default function CentralAuditoria() {
   const filteredLogs = logs.filter((log) => {
     if (!search) return true
     const searchLower = search.toLowerCase()
-    const userName = log.performed_by ? usersMap[log.performed_by] || '' : 'sistema'
-    const info = getAffectedRecordInfo(log)
+    const userName = log.performed_by ? globalDict[log.performed_by]?.name || 'sistema' : 'sistema'
+    const info = getAffectedRecordInfo(log, globalDict)
     const translatedAction = translateAction(log.action).toLowerCase()
 
     return (
@@ -459,8 +620,8 @@ export default function CentralAuditoria() {
       sortable.sort((a, b) => {
         let aValue: any = ''
         let bValue: any = ''
-        const aInfo = getAffectedRecordInfo(a)
-        const bInfo = getAffectedRecordInfo(b)
+        const aInfo = getAffectedRecordInfo(a, globalDict)
+        const bInfo = getAffectedRecordInfo(b, globalDict)
 
         switch (sortConfig.key) {
           case 'action':
@@ -476,8 +637,8 @@ export default function CentralAuditoria() {
             bValue = bInfo.primary || ''
             break
           case 'performed_by':
-            aValue = (a.performed_by ? usersMap[a.performed_by] : '') || ''
-            bValue = (b.performed_by ? usersMap[b.performed_by] : '') || ''
+            aValue = (a.performed_by ? globalDict[a.performed_by]?.name : '') || ''
+            bValue = (b.performed_by ? globalDict[b.performed_by]?.name : '') || ''
             break
           case 'created_at':
             aValue = new Date(a.created_at || 0).getTime()
@@ -495,7 +656,7 @@ export default function CentralAuditoria() {
       })
     }
     return sortable
-  }, [filteredLogs, sortConfig, usersMap])
+  }, [filteredLogs, sortConfig, globalDict])
 
   const toggleAll = () => {
     if (selected.size === sortedLogs.length && sortedLogs.length > 0) setSelected(new Set())
@@ -675,11 +836,14 @@ export default function CentralAuditoria() {
                       key={log.id}
                       log={log}
                       userName={
-                        log.performed_by ? usersMap[log.performed_by] || 'Sistema' : 'Sistema'
+                        log.performed_by
+                          ? globalDict[log.performed_by]?.name || 'Sistema'
+                          : 'Sistema'
                       }
                       isSelected={selected.has(log.id)}
                       onToggleSelect={toggleRow}
                       onDelete={handleDelete}
+                      dict={globalDict}
                     />
                   ))
                 ) : (
