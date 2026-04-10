@@ -312,15 +312,15 @@ function ExpandableRow({ log, userName, isSelected, onToggleSelect, onDelete, di
               onCheckedChange={() => onToggleSelect(log.id)}
               aria-label="Selecionar linha"
             />
-            <span
-              className="font-medium text-[13px] text-muted-foreground truncate max-w-[140px] inline-block"
-              title={
-                info.secondary !== log.entity_id ? info.secondary : 'Identificador não disponível'
-              }
-            >
-              {info.secondary && info.secondary !== log.entity_id ? info.secondary : '-'}
+            <span className="whitespace-nowrap text-[13px] text-muted-foreground font-medium">
+              {log.created_at
+                ? format(new Date(log.created_at), 'dd/MM/yyyy, HH:mm:ss', { locale: ptBR })
+                : '-'}
             </span>
           </div>
+        </TableCell>
+        <TableCell className="capitalize font-medium text-muted-foreground text-[13px]">
+          {formatEntity(log.entity_type)}
         </TableCell>
         <TableCell>
           <div
@@ -331,9 +331,6 @@ function ExpandableRow({ log, userName, isSelected, onToggleSelect, onDelete, di
             {getActionBadge(log.action)}
           </div>
         </TableCell>
-        <TableCell className="capitalize font-medium text-muted-foreground text-[13px]">
-          {formatEntity(log.entity_type)}
-        </TableCell>
         <TableCell>
           <div className="flex flex-col max-w-[280px]">
             <span className="font-bold text-[13px] text-foreground truncate" title={info.primary}>
@@ -341,12 +338,17 @@ function ExpandableRow({ log, userName, isSelected, onToggleSelect, onDelete, di
             </span>
           </div>
         </TableCell>
-        <TableCell className="text-[13px] font-bold text-foreground">{userName}</TableCell>
-        <TableCell className="whitespace-nowrap text-[13px] text-muted-foreground">
-          {log.created_at
-            ? format(new Date(log.created_at), 'dd/MM/yyyy, HH:mm:ss', { locale: ptBR })
-            : '-'}
+        <TableCell>
+          <span
+            className="font-medium text-[13px] text-muted-foreground truncate max-w-[140px] inline-block"
+            title={
+              info.secondary !== log.entity_id ? info.secondary : 'Identificador não disponível'
+            }
+          >
+            {info.secondary && info.secondary !== log.entity_id ? info.secondary : '-'}
+          </span>
         </TableCell>
+        <TableCell className="text-[13px] font-bold text-foreground">{userName}</TableCell>
         <TableCell className="text-muted-foreground text-[13px]">
           {log.ip_address || 'N/A'}
         </TableCell>
@@ -775,7 +777,7 @@ export default function CentralAuditoria() {
             <Table>
               <TableHeader>
                 <TableRow className="bg-muted/30 hover:bg-muted/30 border-b-2">
-                  <TableHead className="w-[140px] py-3">
+                  <TableHead className="w-[180px] py-3">
                     <div className="flex items-center gap-3">
                       <Checkbox
                         checked={sortedLogs.length > 0 && selected.size === sortedLogs.length}
@@ -784,27 +786,27 @@ export default function CentralAuditoria() {
                       />
                       <div
                         className="flex items-center gap-1 text-[13px] text-muted-foreground font-semibold cursor-pointer hover:text-foreground transition-colors group select-none"
-                        onClick={() => handleSort('entity_id')}
+                        onClick={() => handleSort('created_at')}
                       >
-                        ID Entidade{' '}
+                        Data/Hora{' '}
                         <ArrowUpDown
                           className={cn(
                             'h-3 w-3 opacity-0 group-hover:opacity-50 transition-opacity',
-                            sortConfig?.key === 'entity_id' && 'opacity-100 text-foreground',
+                            sortConfig?.key === 'created_at' && 'opacity-100 text-foreground',
                           )}
                         />
                       </div>
                     </div>
                   </TableHead>
                   <SortableHead
-                    label="Ação"
-                    sortKey="action"
+                    label="Entidade"
+                    sortKey="entity_type"
                     currentSort={sortConfig}
                     requestSort={handleSort}
                   />
                   <SortableHead
-                    label="Entidade"
-                    sortKey="entity_type"
+                    label="Ação"
+                    sortKey="action"
                     currentSort={sortConfig}
                     requestSort={handleSort}
                   />
@@ -815,14 +817,14 @@ export default function CentralAuditoria() {
                     requestSort={handleSort}
                   />
                   <SortableHead
-                    label="Responsável"
-                    sortKey="performed_by"
+                    label="ID Entidade"
+                    sortKey="entity_id"
                     currentSort={sortConfig}
                     requestSort={handleSort}
                   />
                   <SortableHead
-                    label="Data/Hora"
-                    sortKey="created_at"
+                    label="Responsável"
+                    sortKey="performed_by"
                     currentSort={sortConfig}
                     requestSort={handleSort}
                   />
@@ -844,20 +846,20 @@ export default function CentralAuditoria() {
                       <TableCell>
                         <div className="flex items-center gap-3">
                           <Skeleton className="h-4 w-4 rounded" />
-                          <Skeleton className="h-5 w-16" />
+                          <Skeleton className="h-5 w-32" />
                         </div>
-                      </TableCell>
-                      <TableCell>
-                        <Skeleton className="h-6 w-20 rounded-full" />
                       </TableCell>
                       <TableCell>
                         <Skeleton className="h-5 w-24" />
                       </TableCell>
                       <TableCell>
+                        <Skeleton className="h-6 w-20 rounded-full" />
+                      </TableCell>
+                      <TableCell>
                         <Skeleton className="h-8 w-40" />
                       </TableCell>
                       <TableCell>
-                        <Skeleton className="h-5 w-32" />
+                        <Skeleton className="h-5 w-24" />
                       </TableCell>
                       <TableCell>
                         <Skeleton className="h-5 w-32" />
