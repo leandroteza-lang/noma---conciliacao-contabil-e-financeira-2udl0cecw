@@ -18,8 +18,11 @@ import {
 import { supabase } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
 import { jsPDF } from 'jspdf'
-import autoTable from 'jspdf-autotable'
+import autoTablePkg from 'jspdf-autotable'
 import * as XLSX from 'xlsx'
+
+const autoTable =
+  typeof autoTablePkg === 'function' ? autoTablePkg : (autoTablePkg as any).default || autoTablePkg
 
 import {
   Table,
@@ -827,8 +830,7 @@ export default function CentralAuditoria() {
           row.ip,
         ])
 
-        // Usa (doc as any).autoTable para evitar erros de função não definida no prototype do jsPDF
-        ;(doc as any).autoTable({
+        autoTable(doc, {
           head: [
             [
               'Data/Hora',

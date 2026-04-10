@@ -1,8 +1,11 @@
 import React from 'react'
 import { FileText, Download, FileSpreadsheet } from 'lucide-react'
 import { jsPDF } from 'jspdf'
-import autoTable from 'jspdf-autotable'
+import autoTablePkg from 'jspdf-autotable'
 import * as XLSX from 'xlsx'
+
+const autoTable =
+  typeof autoTablePkg === 'function' ? autoTablePkg : (autoTablePkg as any).default || autoTablePkg
 import { Button } from '@/components/ui/button'
 
 interface ExportProps {
@@ -86,7 +89,7 @@ export const AuditExport: React.FC<ExportProps> = ({ logs, entityType }) => {
     const tableData = data.map((row) => Object.values(row))
     const tableHeaders = Object.keys(data[0] || {})
 
-    ;(doc as any).autoTable({
+    autoTable(doc, {
       head: [tableHeaders.slice(0, 9)], // Limit columns to fit in PDF horizontally
       body: tableData.map((r) => r.slice(0, 9)),
       startY: 35,
