@@ -92,24 +92,31 @@ export const getAffectedRecordInfo = (log: any, dict: Record<string, any>, logsH
       switch (entityType?.toLowerCase()) {
         case 'usuario':
         case 'usuarios':
+        case 'usuários':
         case 'cadastro_usuarios':
           return getVal('name') || getVal('email')
         case 'empresa':
+        case 'empresas':
         case 'organizations':
           return getVal('name')
         case 'departamento':
+        case 'departamentos':
         case 'departments':
           return getVal('name')
         case 'conta_contabil':
+        case 'plano de contas':
         case 'chart_of_accounts':
           return getVal('account_name') || getVal('account_code')
         case 'centro_custo':
+        case 'centros de custo':
         case 'cost_centers':
           return getVal('description') || getVal('code')
         case 'conta_bancaria':
+        case 'contas bancárias':
         case 'bank_accounts':
           return getVal('description') || getVal('account_number')
         case 'tipo_conta_tga':
+        case 'tipos de conta tga':
         case 'tga_account_types':
           return getVal('nome') || getVal('codigo')
       }
@@ -123,24 +130,31 @@ export const getAffectedRecordInfo = (log: any, dict: Record<string, any>, logsH
       switch (entityType?.toLowerCase()) {
         case 'usuario':
         case 'usuarios':
+        case 'usuários':
         case 'cadastro_usuarios':
           return getVal('email') || getVal('cpf')
         case 'empresa':
+        case 'empresas':
         case 'organizations':
           return getVal('cnpj') || getVal('email')
         case 'departamento':
+        case 'departamentos':
         case 'departments':
           return getVal('code')
         case 'conta_contabil':
+        case 'plano de contas':
         case 'chart_of_accounts':
           return getVal('account_code')
         case 'centro_custo':
+        case 'centros de custo':
         case 'cost_centers':
           return getVal('code')
         case 'conta_bancaria':
+        case 'contas bancárias':
         case 'bank_accounts':
           return getVal('bank_code') || getVal('agency')
         case 'tipo_conta_tga':
+        case 'tipos de conta tga':
         case 'tga_account_types':
           return getVal('codigo') || getVal('abreviacao')
       }
@@ -363,23 +377,32 @@ function ExpandableRow({
   }
 
   const formatEntity = (entity: string) => {
+    if (!entity) return ''
     const map: Record<string, string> = {
       usuario: 'Cadastro de Usuários',
       usuarios: 'Cadastro de Usuários',
+      usuários: 'Cadastro de Usuários',
       cadastro_usuarios: 'Cadastro de Usuários',
       empresa: 'Empresas',
+      empresas: 'Empresas',
       organizations: 'Empresas',
       departamento: 'Departamentos',
+      departamentos: 'Departamentos',
       departments: 'Departamentos',
       conta_contabil: 'Plano de Contas',
+      'plano de contas': 'Plano de Contas',
       chart_of_accounts: 'Plano de Contas',
       centro_custo: 'Centros de Custo',
+      'centros de custo': 'Centros de Custo',
       cost_centers: 'Centros de Custo',
       conta_bancaria: 'Listagem de Contas',
+      'contas bancárias': 'Listagem de Contas',
       bank_accounts: 'Listagem de Contas',
       mapeamento: 'Mapeamento DE/PARA',
+      'mapeamento de/para': 'Mapeamento DE/PARA',
       account_mapping: 'Mapeamento DE/PARA',
       tipo_conta_tga: 'Tipos de Conta TGA',
+      'tipos de conta tga': 'Tipos de Conta TGA',
       tga_account_types: 'Tipos de Conta TGA',
     }
     return map[entity?.toLowerCase()] || entity
@@ -664,13 +687,13 @@ export default function CentralAuditoria() {
 
     if (entityFilter !== 'todos') {
       const filterMap: Record<string, string[]> = {
-        usuario: ['usuario', 'usuarios', 'cadastro_usuarios'],
-        empresa: ['empresa', 'organizations'],
-        departamento: ['departamento', 'departments'],
-        conta_contabil: ['conta_contabil', 'chart_of_accounts'],
-        centro_custo: ['centro_custo', 'cost_centers'],
-        conta_bancaria: ['conta_bancaria', 'bank_accounts'],
-        tipo_conta_tga: ['tipo_conta_tga', 'tga_account_types'],
+        usuario: ['usuario', 'usuarios', 'cadastro_usuarios', 'Usuários'],
+        empresa: ['empresa', 'organizations', 'Empresas'],
+        departamento: ['departamento', 'departments', 'Departamentos'],
+        conta_contabil: ['conta_contabil', 'chart_of_accounts', 'Plano de Contas'],
+        centro_custo: ['centro_custo', 'cost_centers', 'Centros de Custo'],
+        conta_bancaria: ['conta_bancaria', 'bank_accounts', 'Contas Bancárias'],
+        tipo_conta_tga: ['tipo_conta_tga', 'tga_account_types', 'Tipos de Conta TGA'],
       }
       query = query.in('entity_type', filterMap[entityFilter] || [entityFilter])
     }
