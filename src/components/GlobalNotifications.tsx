@@ -78,9 +78,6 @@ export function GlobalNotifications() {
           const id = payload.new.id
           if (!notifiedDeletionsRef.current.has(id)) {
             notifiedDeletionsRef.current.add(id)
-            if (audioRef.current) {
-              audioRef.current.play().catch((e) => console.error('Audio play failed:', e))
-            }
 
             const isTrash = !!payload.new.deleted_at
             toast.success(isTrash ? 'Item na Lixeira!' : 'Exclusão Pendente!', {
@@ -113,9 +110,6 @@ export function GlobalNotifications() {
             filter: 'status=eq.pending',
           },
           (payload) => {
-            if (audioRef.current) {
-              audioRef.current.play().catch((e) => console.error('Audio play failed:', e))
-            }
             toast.success('Nova Aprovação Pendente!', {
               description: 'Uma nova alteração ou criação foi enviada para revisão.',
               duration: 10000,
@@ -129,9 +123,6 @@ export function GlobalNotifications() {
           { event: 'INSERT', schema: 'public', table: 'cadastro_usuarios' },
           (payload) => {
             if (payload.new.approval_status === 'pending') {
-              if (audioRef.current) {
-                audioRef.current.play().catch((e) => console.error('Audio play failed:', e))
-              }
               toast.success('Novo Usuário Pendente!', {
                 description: 'Um novo usuário solicitou acesso.',
                 duration: 10000,

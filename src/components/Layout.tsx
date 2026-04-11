@@ -474,7 +474,8 @@ export default function Layout() {
           supabase
             .from(table)
             .select('id', { count: 'exact', head: true })
-            .or('pending_deletion.eq.true,deleted_at.not.is.null')
+            .eq('pending_deletion', true)
+            .is('deleted_at', null)
             .then((res) => (!res.error && res.count !== null ? res.count : 0))
             .catch((e) => {
               console.error(e)
@@ -485,7 +486,8 @@ export default function Layout() {
         const userDeletionPromise = supabase
           .from('cadastro_usuarios')
           .select('id', { count: 'exact', head: true })
-          .or('pending_deletion.eq.true,deleted_at.not.is.null')
+          .eq('pending_deletion', true)
+          .is('deleted_at', null)
           .then((res) => (!res.error && res.count !== null ? res.count : 0))
           .catch((e) => {
             console.error(e)
@@ -535,14 +537,14 @@ export default function Layout() {
 
             if ('Notification' in window) {
               if (Notification.permission === 'granted') {
-                new Notification('Nova Pendência na Central', {
+                new Notification('Nova Pendência', {
                   body: 'Você tem novos itens aguardando aprovação ou na lixeira.',
                   icon: '/favicon.ico',
                 })
               } else if (Notification.permission !== 'denied') {
                 Notification.requestPermission().then((permission) => {
                   if (permission === 'granted') {
-                    new Notification('Nova Pendência na Central', {
+                    new Notification('Nova Pendência', {
                       body: 'Você tem novos itens aguardando aprovação ou na lixeira.',
                       icon: '/favicon.ico',
                     })
