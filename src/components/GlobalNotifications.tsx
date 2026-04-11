@@ -74,25 +74,22 @@ export function GlobalNotifications() {
       const handlePendingDeletion = (payload: any) => {
         window.dispatchEvent(new CustomEvent('refresh-approvals-badge'))
 
-        if (payload.new && (payload.new.pending_deletion === true || payload.new.deleted_at)) {
+        if (payload.new && payload.new.pending_deletion === true && !payload.new.deleted_at) {
           const id = payload.new.id
           if (!notifiedDeletionsRef.current.has(id)) {
             notifiedDeletionsRef.current.add(id)
             if (audioRef.current) {
               audioRef.current.play().catch((e) => console.error('Audio play failed:', e))
             }
-            toast.success(payload.new.deleted_at ? 'Item na Lixeira!' : 'Exclusão Pendente!', {
-              description: payload.new.deleted_at
-                ? 'Um item foi movido para a lixeira.'
-                : 'Uma solicitação de exclusão foi enviada para revisão.',
+            toast.success('Exclusão Pendente!', {
+              description: 'Uma solicitação de exclusão foi enviada para revisão.',
               duration: 10000,
               icon: '🗑️',
             })
           }
         } else if (
           payload.new &&
-          payload.new.pending_deletion === false &&
-          !payload.new.deleted_at
+          (payload.new.pending_deletion === false || payload.new.deleted_at)
         ) {
           if (payload.new.id) {
             notifiedDeletionsRef.current.delete(payload.new.id)

@@ -473,9 +473,10 @@ export default function Layout() {
         const deletionPromises = tables.map((table) =>
           supabase
             .from(table)
-            .select('id')
-            .or('pending_deletion.eq.true,deleted_at.not.is.null')
-            .then((res) => (!res.error && res.data ? res.data.length : 0))
+            .select('*', { count: 'exact', head: true })
+            .eq('pending_deletion', true)
+            .is('deleted_at', null)
+            .then((res) => (!res.error && res.count !== null ? res.count : 0))
             .catch((e) => {
               console.error(e)
               return 0
@@ -484,9 +485,10 @@ export default function Layout() {
 
         const userDeletionPromise = supabase
           .from('cadastro_usuarios')
-          .select('id')
-          .or('pending_deletion.eq.true,deleted_at.not.is.null')
-          .then((res) => (!res.error && res.data ? res.data.length : 0))
+          .select('*', { count: 'exact', head: true })
+          .eq('pending_deletion', true)
+          .is('deleted_at', null)
+          .then((res) => (!res.error && res.count !== null ? res.count : 0))
           .catch((e) => {
             console.error(e)
             return 0
@@ -494,10 +496,10 @@ export default function Layout() {
 
         const userApprovalPromise = supabase
           .from('cadastro_usuarios')
-          .select('id')
+          .select('*', { count: 'exact', head: true })
           .eq('approval_status', 'pending')
           .is('deleted_at', null)
-          .then((res) => (!res.error && res.data ? res.data.length : 0))
+          .then((res) => (!res.error && res.count !== null ? res.count : 0))
           .catch((e) => {
             console.error(e)
             return 0
@@ -505,9 +507,9 @@ export default function Layout() {
 
         const pendingChangesPromise = supabase
           .from('pending_changes')
-          .select('id')
+          .select('*', { count: 'exact', head: true })
           .eq('status', 'pending')
-          .then((res) => (!res.error && res.data ? res.data.length : 0))
+          .then((res) => (!res.error && res.count !== null ? res.count : 0))
           .catch((e) => {
             console.error(e)
             return 0
