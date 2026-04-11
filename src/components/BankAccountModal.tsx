@@ -89,35 +89,43 @@ export function BankAccountModal({
       const company_name = organizations.find((o) => o.id === formData.organization_id)?.name || ''
 
       if (accountToEdit) {
-        // Edit
-        const { error } = await supabase
-          .from('bank_accounts')
-          .update({
-            organization_id: formData.organization_id,
-            account_code: formData.account_code,
-            description: formData.description,
-            bank_code: formData.bank_code,
-            agency: formData.agency,
-            account_number: formData.account_number,
-            check_digit: formData.check_digit,
-            account_type: formData.account_type,
-            classification: formData.classification,
-            company_name,
-          })
-          .eq('id', accountToEdit.id)
+        // Edit - Send to pending_changes
+        const changes: Record<string, any> = {}
+        let hasChanges = false
+
+        const currentData = { ...formData, company_name }
+        Object.keys(currentData).forEach((key) => {
+          const oldVal = accountToEdit[key]
+          const newVal = (currentData as any)[key]
+          if (oldVal !== newVal && (oldVal || newVal)) {
+            changes[key] = { old: oldVal, new: newVal }
+            hasChanges = true
+          }
+        })
+
+        if (!hasChanges) {
+          toast({ title: 'Aviso', description: 'Nenhuma alteração foi feita.' })
+          onClose()
+          return
+        }
+
+        const {
+          data: { user },
+        } = await supabase.auth.getUser()
+
+        const { error } = await supabase.from('pending_changes').insert({
+          entity_type: 'bank_accounts',
+          entity_id: accountToEdit.id,
+          proposed_changes: changes,
+          status: 'pending',
+          requested_by: user?.id,
+        } as any)
 
         if (error) throw error
 
-        const changes: Record<string, any> = {}
-        Object.keys(formData).forEach((key) => {
-          const oldVal = accountToEdit[key]
-          const newVal = (formData as any)[key]
-          changes[key] = { old: oldVal, new: newVal }
-        })
+        await logAction('bank_accounts', accountToEdit.id, 'PROPOSE_UPDATE', changes)
 
-        await logAction('bank_accounts', accountToEdit.id, 'UPDATE', changes)
-
-        toast({ title: 'Sucesso', description: 'Conta atualizada com sucesso!' })
+        toast({ title: 'Sucesso', description: 'Alteração enviada para aprovação!' })
       } else {
         // Create
         const { data, error } = await supabase

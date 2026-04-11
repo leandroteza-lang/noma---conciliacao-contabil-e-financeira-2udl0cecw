@@ -29,13 +29,17 @@ import { Label } from '@/components/ui/label'
 import { format } from 'date-fns'
 import { cn } from '@/lib/utils'
 import { ItemsTable, PendingItem } from '@/components/approvals/ItemsTable'
+import { PendingEditsTable } from '@/components/approvals/PendingEditsTable'
 
 export default function Approvals() {
   const [items, setItems] = useState<PendingItem[]>([])
   const [loading, setLoading] = useState(true)
   const [processingId, setProcessingId] = useState<string | null>(null)
   const [selectedIds, setSelectedIds] = useState<string[]>([])
-  const [activeTab, setActiveTab] = useState<'pending' | 'new_users' | 'trash'>('pending')
+  const [activeTab, setActiveTab] = useState<'pending' | 'new_users' | 'trash' | 'pending_edits'>(
+    'pending',
+  )
+  const [pendingEdits, setPendingEdits] = useState<any[]>([])
   const [newUsers, setNewUsers] = useState<any[]>([])
   const [progress, setProgress] = useState(0)
   const [isProcessing, setIsProcessing] = useState(false)
@@ -113,8 +117,8 @@ export default function Approvals() {
     if (role !== 'admin') return
     try {
       setLoading(true)
-      const [orgs, depts, emps, newUsersRes, costs, charts, banks, tgaAccounts] = await Promise.all(
-        [
+      const [orgs, depts, emps, newUsersRes, costs, charts, banks, tgaAccounts, editsRes] =
+        await Promise.all([
           supabase
             .from('organizations')
             .select('*')
@@ -164,8 +168,13 @@ export default function Approvals() {
             .or('pending_deletion.eq.true,deleted_at.not.is.null')
             .then((res) => (res.error ? { data: [] } : res))
             .catch(() => ({ data: [] })),
-        ],
-      )
+          supabase
+            .from('pending_changes')
+            .select('*')
+            .eq('status', 'pending')
+            .then((res) => (res.error ? { data: [] } : res))
+            .catch(() => ({ data: [] })),
+        ])
 
       const unified: PendingItem[] = [
         ...(orgs.data || []).map((o: any) => ({
@@ -254,8 +263,14 @@ export default function Approvals() {
         })),
       ]
 
+      const fetchedEdits = editsRes.data || []
       const userIds = [
-        ...new Set(unified.flatMap((i) => [i.requestedBy, i.deletedBy]).filter(Boolean)),
+        ...new Set(
+          [
+            ...unified.flatMap((i) => [i.requestedBy, i.deletedBy]),
+            ...fetchedEdits.map((e: any) => e.requested_by),
+          ].filter(Boolean),
+        ),
       ]
       if (userIds.length > 0) {
         const { data: users } = await supabase
@@ -270,22 +285,48 @@ export default function Approvals() {
           if (i.requestedBy) i.requestedByName = userMap[i.requestedBy] || 'Usuário Desconhecido'
           if (i.deletedBy) i.deletedByName = userMap[i.deletedBy] || 'Usuário Desconhecido'
         })
+        fetchedEdits.forEach((e: any) => {
+          if (e.requested_by)
+            e.requested_by_name = userMap[e.requested_by] || 'Usuário Desconhecido'
+        })
       }
+
+      // Fetch entity names for edits
+      const bankEditIds = fetchedEdits
+        .filter((e: any) => e.entity_type === 'bank_accounts')
+        .map((e: any) => e.entity_id)
+      if (bankEditIds.length > 0) {
+        const { data: bData } = await supabase
+          .from('bank_accounts')
+          .select('id, description, bank_code, account_number')
+          .in('id', bankEditIds)
+        const bMap: Record<string, string> = {}
+        bData?.forEach(
+          (b: any) =>
+            (bMap[b.id] = `${b.bank_code || ''} - ${b.description} (${b.account_number || ''})`),
+        )
+        fetchedEdits.forEach((e: any) => {
+          if (e.entity_type === 'bank_accounts')
+            e.entity_name = bMap[e.entity_id] || 'Conta Bancária Desconhecida'
+        })
+      }
+
       unified.sort(
         (a, b) => new Date(b.requestedAt || 0).getTime() - new Date(a.requestedAt || 0).getTime(),
       )
       setItems(unified)
       const fetchedNewUsers = newUsersRes.data || []
       setNewUsers(fetchedNewUsers)
+      setPendingEdits(fetchedEdits)
       setSelectedIds((prev) => prev.filter((id) => unified.some((i) => i.id === id)))
 
-      setActiveTab((prev) =>
-        prev === 'pending' &&
-        fetchedNewUsers.length > 0 &&
-        unified.filter((i) => i.pending && !i.deletedAt).length === 0
-          ? 'new_users'
-          : prev,
-      )
+      setActiveTab((prev) => {
+        if (prev === 'pending' && unified.filter((i) => i.pending && !i.deletedAt).length === 0) {
+          if (fetchedEdits.length > 0) return 'pending_edits'
+          if (fetchedNewUsers.length > 0) return 'new_users'
+        }
+        return prev
+      })
     } catch (e: any) {
       toast({ title: 'Erro ao carregar', description: e.message, variant: 'destructive' })
     } finally {
@@ -527,6 +568,105 @@ export default function Approvals() {
     }
   }
 
+  const handleApproveEdit = async (edit: any) => {
+    setProcessingId(edit.id)
+    setIsProcessing(true)
+    setProgress(50)
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+
+      // Get the new values
+      const newValues: Record<string, any> = {}
+      Object.keys(edit.proposed_changes).forEach((key) => {
+        newValues[key] = edit.proposed_changes[key].new
+      })
+
+      // Update the actual entity
+      const tableMap: Record<string, string> = {
+        bank_accounts: 'bank_accounts',
+      }
+      const tableName = tableMap[edit.entity_type]
+      if (!tableName) throw new Error('Entidade não suportada')
+
+      const { error: updateErr } = await supabase
+        .from(tableName)
+        .update(newValues)
+        .eq('id', edit.entity_id)
+
+      if (updateErr) throw updateErr
+
+      // Update the pending_changes record
+      const { error: statusErr } = await supabase
+        .from('pending_changes')
+        .update({
+          status: 'approved',
+          reviewed_by: user?.id,
+          reviewed_at: new Date().toISOString(),
+        } as any)
+        .eq('id', edit.id)
+
+      if (statusErr) throw statusErr
+
+      await logAuditAction(
+        { id: edit.entity_id, type: edit.entity_type, name: edit.entity_name },
+        'UPDATE',
+        edit.proposed_changes,
+      )
+
+      setProgress(100)
+      toast({ title: 'Aprovado', description: 'As alterações foram aplicadas com sucesso.' })
+      fetchPendingItems()
+      window.dispatchEvent(new CustomEvent('refresh-approvals-badge'))
+    } catch (e: any) {
+      toast({ title: 'Erro', description: e.message, variant: 'destructive' })
+    } finally {
+      setProcessingId(null)
+      setIsProcessing(false)
+      setProgress(0)
+    }
+  }
+
+  const handleRejectEdit = async (edit: any) => {
+    setProcessingId(edit.id)
+    setIsProcessing(true)
+    setProgress(50)
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+
+      const { error } = await supabase
+        .from('pending_changes')
+        .update({
+          status: 'rejected',
+          reviewed_by: user?.id,
+          reviewed_at: new Date().toISOString(),
+        } as any)
+        .eq('id', edit.id)
+
+      if (error) throw error
+
+      await logAuditAction(
+        { id: edit.entity_id, type: edit.entity_type, name: edit.entity_name },
+        'REJECT_EDIT',
+        edit.proposed_changes,
+      )
+
+      setProgress(100)
+      toast({ title: 'Rejeitado', description: 'A proposta de alteração foi rejeitada.' })
+      fetchPendingItems()
+      window.dispatchEvent(new CustomEvent('refresh-approvals-badge'))
+    } catch (e: any) {
+      toast({ title: 'Erro', description: e.message, variant: 'destructive' })
+    } finally {
+      setProcessingId(null)
+      setIsProcessing(false)
+      setProgress(0)
+    }
+  }
+
   const handleBulkAction = async (action: 'approve' | 'restore' | 'hardDelete') => {
     if (selectedIds.length === 0) return
     if (
@@ -646,12 +786,10 @@ export default function Approvals() {
         </p>
       </div>
 
-      <Tabs
-        value={activeTab}
-        onValueChange={(v) => setActiveTab(v as 'pending' | 'new_users' | 'trash')}
-      >
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)}>
         <TabsList className="mb-2 w-full justify-start overflow-x-auto">
           <TabsTrigger value="pending">Pendentes de Exclusão ({pendingItems.length})</TabsTrigger>
+          <TabsTrigger value="pending_edits">Alterações ({pendingEdits.length})</TabsTrigger>
           <TabsTrigger value="new_users">Novos Usuários ({newUsers.length})</TabsTrigger>
           <TabsTrigger value="trash">Lixeira ({trashItems.length})</TabsTrigger>
         </TabsList>
@@ -859,6 +997,13 @@ export default function Approvals() {
                   </tbody>
                 </table>
               </div>
+            ) : activeTab === 'pending_edits' ? (
+              <PendingEditsTable
+                edits={pendingEdits}
+                processingId={processingId}
+                onApprove={handleApproveEdit}
+                onReject={handleRejectEdit}
+              />
             ) : (
               <ItemsTable
                 items={currentList}
