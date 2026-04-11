@@ -12,21 +12,20 @@ export const useAuditLog = () => {
       try {
         let sanitizedChanges = changes
 
-        // Proteção extra contra payloads de alterações massivas que podem derrubar a Edge Function
         if (changes) {
           try {
             const stringified = JSON.stringify(changes)
             if (stringified.length > 100000) {
               sanitizedChanges = {
                 _warning: {
-                  new: 'Objeto de mudanças muito grande, foi omitido para estabilidade.',
+                  new: 'Change object too large; omitted for stability.',
                 },
               }
             }
           } catch (e) {
             sanitizedChanges = {
               _warning: {
-                new: 'Falha ao processar as alterações (objeto não pode ser formatado).',
+                new: 'Failed to process changes (object could not be formatted).',
               },
             }
           }
@@ -36,17 +35,23 @@ export const useAuditLog = () => {
           entity_type: entityType,
           entity_id: entityId,
           action,
-          performedBy: user.id,
+          performed_by: user.id,
           changes: sanitizedChanges,
-          userAgent: navigator.userAgent,
-          timestamp: new Date().toISOString(),
+          ip_address: null,
+          user_agent: navigator.userAgent,
+          session_id: null,
+          country: null,
+          city: null,
+          device_type: null,
         }
+
+        console.log('[useAuditLog] Sending payload:', payload)
 
         await supabase.functions.invoke('audit-log', {
           body: payload,
         })
       } catch (error) {
-        console.error('Failed to log action:', error)
+        console.error('[useAuditLog] Failed to log action:', error)
       }
     },
     [user],

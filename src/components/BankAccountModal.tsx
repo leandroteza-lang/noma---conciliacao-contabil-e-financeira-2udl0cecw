@@ -91,18 +91,29 @@ export function BankAccountModal({ isOpen, type, account, onClose, organizations
         if (error) throw error
 
         const changes: any = {}
+
+        const normalizeVal = (val: any) => {
+          if (val === null || val === undefined) return ''
+          return String(val).trim()
+        }
+
         Object.keys(formData).forEach((key) => {
           const k = key as keyof typeof formData
-          const oldVal = account[k] === null || account[k] === undefined ? '' : String(account[k])
-          const newVal =
-            formData[k] === null || formData[k] === undefined ? '' : String(formData[k])
+          const oldVal = normalizeVal(account[k])
+          const newVal = normalizeVal(formData[k])
+
           if (oldVal !== newVal) {
-            changes[k] = { old: account[k] || '', new: formData[k] }
+            changes[k] = { old: oldVal, new: newVal }
           }
         })
 
+        console.log('[BankAccountModal] Detected changes for audit:', changes)
+
         if (Object.keys(changes).length > 0) {
+          console.log('[BankAccountModal] Triggering logAction for EDICAO')
           await logAction('bank_accounts', account.id, 'EDICAO', changes)
+        } else {
+          console.log('[BankAccountModal] No valid changes detected, skipping audit log')
         }
 
         toast({ title: 'Sucesso', description: 'Conta atualizada com sucesso' })
@@ -116,12 +127,20 @@ export function BankAccountModal({ isOpen, type, account, onClose, organizations
 
         if (data) {
           const changes: any = {}
+          const normalizeVal = (val: any) => {
+            if (val === null || val === undefined) return ''
+            return String(val).trim()
+          }
+
           Object.keys(formData).forEach((key) => {
             const k = key as keyof typeof formData
-            if (formData[k]) {
-              changes[k] = { new: formData[k] }
+            const newVal = normalizeVal(formData[k])
+            if (newVal) {
+              changes[k] = { new: newVal }
             }
           })
+
+          console.log('[BankAccountModal] Triggering logAction for CRIACAO', changes)
           await logAction('bank_accounts', data.id, 'CRIACAO', changes)
         }
 
