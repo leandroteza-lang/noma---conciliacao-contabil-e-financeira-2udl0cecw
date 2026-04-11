@@ -18,7 +18,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Label } from '@/components/ui/label'
 import { supabase } from '@/lib/supabase/client'
 import { ImportAccountModal } from '@/components/ImportAccountModal'
-import { AccountFormModal } from '@/components/AccountFormModal'
+import { BankAccountModal } from '@/components/BankAccountModal'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
@@ -46,6 +46,7 @@ import {
 } from '@/components/ui/select'
 import { useAuth } from '@/hooks/use-auth'
 import { useToast } from '@/hooks/use-toast'
+import { useAuditLog } from '@/hooks/use-audit-log'
 
 interface BankAccount {
   id: string
@@ -64,6 +65,7 @@ interface BankAccount {
 export default function Index() {
   const { user } = useAuth()
   const { toast } = useToast()
+  const { logAction } = useAuditLog()
   const [accounts, setAccounts] = useState<BankAccount[]>([])
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(true)
@@ -273,6 +275,9 @@ export default function Index() {
 
     if (error) toast({ title: 'Erro', description: error.message, variant: 'destructive' })
     else {
+      await logAction('bank_accounts', id, 'UPDATE', {
+        pending_deletion: { old: false, new: true },
+      })
       toast({ title: 'Enviado para Aprovação', description: 'A exclusão foi solicitada.' })
       fetchAccounts()
     }
@@ -294,6 +299,11 @@ export default function Index() {
     if (error) {
       toast({ title: 'Erro', description: error.message, variant: 'destructive' })
     } else {
+      for (const id of selectedIds) {
+        await logAction('bank_accounts', id, 'UPDATE', {
+          pending_deletion: { old: false, new: true },
+        })
+      }
       toast({
         title: 'Sucesso',
         description: `${selectedIds.length} conta(s) enviada(s) para aprovação.`,
@@ -326,12 +336,24 @@ export default function Index() {
       if (hasAccountType) updatePayload.account_type = bulkEditData.account_type
       if (hasClassification) updatePayload.classification = bulkEditData.classification
 
+      const oldAccounts = accounts.filter((acc) => selectedIds.includes(acc.id))
+
       const { error } = await supabase
         .from('bank_accounts')
         .update(updatePayload)
         .in('id', selectedIds)
 
       if (error) throw error
+
+      for (const acc of oldAccounts) {
+        const changes: Record<string, any> = {}
+        if (hasAccountType)
+          changes.account_type = { old: acc.account_type, new: updatePayload.account_type }
+        if (hasClassification)
+          changes.classification = { old: acc.classification, new: updatePayload.classification }
+
+        await logAction('bank_accounts', acc.id, 'UPDATE', changes)
+      }
 
       toast({
         title: 'Sucesso',
@@ -344,38 +366,6 @@ export default function Index() {
       toast({ title: 'Erro ao atualizar', description: err.message, variant: 'destructive' })
     } finally {
       setIsBulkSaving(false)
-    }
-  }
-
-  const handleEditSave = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!editingAccount) return
-
-    setIsSaving(true)
-    try {
-      const { error } = await supabase
-        .from('bank_accounts')
-        .update({
-          organization_id: editingAccount.organization_id,
-          account_code: editingAccount.account_code,
-          description: editingAccount.description,
-          bank_code: editingAccount.bank_code,
-          agency: editingAccount.agency,
-          account_number: editingAccount.account_number,
-          check_digit: editingAccount.check_digit,
-          account_type: editingAccount.account_type,
-          classification: editingAccount.classification,
-        })
-        .eq('id', editingAccount.id)
-
-      if (error) throw error
-      toast({ title: 'Sucesso', description: 'Conta atualizada com sucesso!' })
-      setEditingAccount(null)
-      fetchAccounts()
-    } catch (err: any) {
-      toast({ title: 'Erro ao salvar', description: err.message, variant: 'destructive' })
-    } finally {
-      setIsSaving(false)
     }
   }
 
@@ -768,173 +758,16 @@ export default function Index() {
           setIsImportModalOpen(false)
         }}
       />
-      <AccountFormModal
-        isOpen={isFormModalOpen}
-        onClose={() => setIsFormModalOpen(false)}
-        organizations={organizations}
-        onSave={async (data: any) => {
-          try {
-            const { error } = await supabase.from('bank_accounts').insert({
-              organization_id: data.organization_id,
-              account_code: data.contaContabil,
-              description: data.descricao,
-              bank_code: data.banco,
-              agency: data.agencia,
-              account_number: data.numeroConta,
-              check_digit: data.digitoConta,
-              account_type: data.tipoConta,
-              classification: data.classificacao,
-              company_name: organizations.find((o) => o.id === data.organization_id)?.name || '',
-            })
-            if (error) throw error
-            toast({ title: 'Sucesso', description: 'Conta criada com sucesso!' })
-            setIsFormModalOpen(false)
-            fetchAccounts()
-          } catch (error: any) {
-            toast({ title: 'Erro', description: error.message, variant: 'destructive' })
-          }
+      <BankAccountModal
+        isOpen={isFormModalOpen || !!editingAccount}
+        onClose={() => {
+          setIsFormModalOpen(false)
+          setEditingAccount(null)
         }}
+        organizations={organizations}
+        accountToEdit={editingAccount}
+        onSuccess={fetchAccounts}
       />
-
-      <Dialog open={!!editingAccount} onOpenChange={(open) => !open && setEditingAccount(null)}>
-        <DialogContent className="sm:max-w-[500px]">
-          <DialogHeader>
-            <DialogTitle>Editar Conta</DialogTitle>
-          </DialogHeader>
-          {editingAccount && (
-            <form onSubmit={handleEditSave} className="space-y-4 mt-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2 md:col-span-2">
-                  <Label>Empresa</Label>
-                  <Select
-                    value={editingAccount.organization_id || ''}
-                    onValueChange={(val) =>
-                      setEditingAccount({ ...editingAccount, organization_id: val })
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {organizations.map((org: any) => (
-                        <SelectItem key={org.id} value={org.id}>
-                          {org.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Conta Contábil</Label>
-                  <Input
-                    value={editingAccount.account_code || ''}
-                    onChange={(e) =>
-                      setEditingAccount({ ...editingAccount, account_code: e.target.value })
-                    }
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Descrição</Label>
-                  <Input
-                    value={editingAccount.description || ''}
-                    onChange={(e) =>
-                      setEditingAccount({ ...editingAccount, description: e.target.value })
-                    }
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Banco</Label>
-                  <Input
-                    value={editingAccount.bank_code || ''}
-                    onChange={(e) =>
-                      setEditingAccount({ ...editingAccount, bank_code: e.target.value })
-                    }
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Agência</Label>
-                  <Input
-                    value={editingAccount.agency || ''}
-                    onChange={(e) =>
-                      setEditingAccount({ ...editingAccount, agency: e.target.value })
-                    }
-                  />
-                </div>
-                <div className="grid grid-cols-[1fr_80px] gap-4">
-                  <div className="space-y-2">
-                    <Label>Número da Conta</Label>
-                    <Input
-                      value={editingAccount.account_number || ''}
-                      onChange={(e) =>
-                        setEditingAccount({ ...editingAccount, account_number: e.target.value })
-                      }
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Dígito</Label>
-                    <Input
-                      value={editingAccount.check_digit || ''}
-                      onChange={(e) =>
-                        setEditingAccount({ ...editingAccount, check_digit: e.target.value })
-                      }
-                    />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Tipo Conta</Label>
-                    <Select
-                      value={editingAccount.account_type || undefined}
-                      onValueChange={(val) =>
-                        setEditingAccount({ ...editingAccount, account_type: val })
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Corrente">Corrente</SelectItem>
-                        <SelectItem value="Poupança">Poupança</SelectItem>
-                        <SelectItem value="Caixa">Caixa</SelectItem>
-                        <SelectItem value="Aplicações">Aplicações</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Classificação</Label>
-                    <Select
-                      value={editingAccount.classification || undefined}
-                      onValueChange={(val) =>
-                        setEditingAccount({ ...editingAccount, classification: val })
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="B">B</SelectItem>
-                        <SelectItem value="C">C</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-              </div>
-              <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 mt-4">
-                <Button type="button" variant="outline" onClick={() => setEditingAccount(null)}>
-                  Cancelar
-                </Button>
-                <Button
-                  type="submit"
-                  disabled={isSaving}
-                  className="bg-blue-600 hover:bg-blue-700 text-white"
-                >
-                  {isSaving ? 'Salvando...' : 'Salvar Alterações'}
-                </Button>
-              </div>
-            </form>
-          )}
-        </DialogContent>
-      </Dialog>
       <Dialog open={isBulkEditModalOpen} onOpenChange={(open) => !open && closeBulkEditModal()}>
         <DialogContent className="sm:max-w-[400px]">
           <DialogHeader>

@@ -1,15 +1,14 @@
-import { useState, useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from '@/components/ui/dialog'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
 import {
   Select,
   SelectContent,
@@ -17,258 +16,275 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { supabase } from '@/lib/supabase/client'
 import { useToast } from '@/hooks/use-toast'
-import { Loader2 } from 'lucide-react'
+import { supabase } from '@/lib/supabase/client'
 import { useAuditLog } from '@/hooks/use-audit-log'
 
-export function BankAccountModal({ isOpen, type, account, onClose, organizations }: any) {
+interface BankAccountModalProps {
+  isOpen: boolean
+  onClose: () => void
+  organizations: any[]
+  accountToEdit?: any | null
+  onSuccess: () => void
+}
+
+export function BankAccountModal({
+  isOpen,
+  onClose,
+  organizations,
+  accountToEdit,
+  onSuccess,
+}: BankAccountModalProps) {
   const { toast } = useToast()
   const { logAction } = useAuditLog()
-  const [saving, setSaving] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
+
   const [formData, setFormData] = useState({
     organization_id: '',
     account_code: '',
-    account_type: '',
     description: '',
     bank_code: '',
     agency: '',
     account_number: '',
     check_digit: '',
+    account_type: '',
     classification: '',
   })
 
   useEffect(() => {
     if (isOpen) {
-      if (type === 'edit' && account) {
+      if (accountToEdit) {
         setFormData({
-          organization_id: account.organization_id || '',
-          account_code: account.account_code || '',
-          account_type: account.account_type || '',
-          description: account.description || '',
-          bank_code: account.bank_code || '',
-          agency: account.agency || '',
-          account_number: account.account_number || '',
-          check_digit: account.check_digit || '',
-          classification: account.classification || '',
+          organization_id: accountToEdit.organization_id || '',
+          account_code: accountToEdit.account_code || '',
+          description: accountToEdit.description || '',
+          bank_code: accountToEdit.bank_code || '',
+          agency: accountToEdit.agency || '',
+          account_number: accountToEdit.account_number || '',
+          check_digit: accountToEdit.check_digit || '',
+          account_type: accountToEdit.account_type || '',
+          classification: accountToEdit.classification || '',
         })
       } else {
         setFormData({
           organization_id: '',
           account_code: '',
-          account_type: '',
           description: '',
           bank_code: '',
           agency: '',
           account_number: '',
           check_digit: '',
+          account_type: '',
           classification: '',
         })
       }
     }
-  }, [isOpen, type, account])
+  }, [isOpen, accountToEdit])
 
-  const handleSave = async () => {
-    if (!formData.organization_id || !formData.description || !formData.account_type) {
-      toast({
-        title: 'Campos obrigatórios',
-        description: 'Preencha Empresa, Descrição e Tipo.',
-        variant: 'destructive',
-      })
-      return
-    }
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setIsSaving(true)
 
-    setSaving(true)
     try {
-      const org = organizations.find((o: any) => o.id === formData.organization_id)
-      const payload = {
-        ...formData,
-        company_name: org?.name || '',
-      }
+      const company_name = organizations.find((o) => o.id === formData.organization_id)?.name || ''
 
-      if (type === 'edit') {
-        const { error } = await supabase.from('bank_accounts').update(payload).eq('id', account.id)
+      if (accountToEdit) {
+        // Edit
+        const { error } = await supabase
+          .from('bank_accounts')
+          .update({
+            organization_id: formData.organization_id,
+            account_code: formData.account_code,
+            description: formData.description,
+            bank_code: formData.bank_code,
+            agency: formData.agency,
+            account_number: formData.account_number,
+            check_digit: formData.check_digit,
+            account_type: formData.account_type,
+            classification: formData.classification,
+            company_name,
+          })
+          .eq('id', accountToEdit.id)
+
         if (error) throw error
 
-        const changes: any = {}
-
-        const normalizeVal = (val: any) => {
-          if (val === null || val === undefined) return ''
-          return String(val).trim()
-        }
-
+        const changes: Record<string, any> = {}
         Object.keys(formData).forEach((key) => {
-          const k = key as keyof typeof formData
-          const oldVal = normalizeVal(account[k])
-          const newVal = normalizeVal(formData[k])
-
-          if (oldVal !== newVal) {
-            changes[k] = { old: oldVal, new: newVal }
-          }
+          const oldVal = accountToEdit[key]
+          const newVal = (formData as any)[key]
+          changes[key] = { old: oldVal, new: newVal }
         })
 
-        console.log('[BankAccountModal] Detected changes for audit:', changes)
+        await logAction('bank_accounts', accountToEdit.id, 'UPDATE', changes)
 
-        if (Object.keys(changes).length > 0) {
-          console.log('[BankAccountModal] Triggering logAction for EDICAO')
-          await logAction('bank_accounts', account.id, 'EDICAO', changes)
-        } else {
-          console.log('[BankAccountModal] No valid changes detected, skipping audit log')
-        }
-
-        toast({ title: 'Sucesso', description: 'Conta atualizada com sucesso' })
+        toast({ title: 'Sucesso', description: 'Conta atualizada com sucesso!' })
       } else {
+        // Create
         const { data, error } = await supabase
           .from('bank_accounts')
-          .insert(payload)
+          .insert({
+            organization_id: formData.organization_id,
+            account_code: formData.account_code,
+            description: formData.description,
+            bank_code: formData.bank_code,
+            agency: formData.agency,
+            account_number: formData.account_number,
+            check_digit: formData.check_digit,
+            account_type: formData.account_type,
+            classification: formData.classification,
+            company_name,
+          })
           .select()
           .single()
+
         if (error) throw error
 
-        if (data) {
-          const changes: any = {}
-          const normalizeVal = (val: any) => {
-            if (val === null || val === undefined) return ''
-            return String(val).trim()
-          }
+        const changes: Record<string, any> = {}
+        Object.keys(formData).forEach((key) => {
+          changes[key] = { new: (formData as any)[key] }
+        })
 
-          Object.keys(formData).forEach((key) => {
-            const k = key as keyof typeof formData
-            const newVal = normalizeVal(formData[k])
-            if (newVal) {
-              changes[k] = { new: newVal }
-            }
-          })
+        await logAction('bank_accounts', data.id, 'CREATE', changes)
 
-          console.log('[BankAccountModal] Triggering logAction for CRIACAO', changes)
-          await logAction('bank_accounts', data.id, 'CRIACAO', changes)
-        }
-
-        toast({ title: 'Sucesso', description: 'Conta criada com sucesso' })
+        toast({ title: 'Sucesso', description: 'Conta criada com sucesso!' })
       }
+
+      onSuccess()
       onClose()
     } catch (err: any) {
       toast({ title: 'Erro ao salvar', description: err.message, variant: 'destructive' })
     } finally {
-      setSaving(false)
+      setIsSaving(false)
     }
   }
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle>
-            {type === 'add' ? 'Nova Conta Bancária' : 'Editar Conta Bancária'}
+            {accountToEdit ? 'Editar Conta Bancária' : 'Nova Conta Bancária'}
           </DialogTitle>
           <DialogDescription>
-            Preencha os dados da conta abaixo. Os campos com * são obrigatórios.
+            {accountToEdit
+              ? 'Faça as alterações necessárias na conta.'
+              : 'Preencha os dados para criar uma nova conta.'}
           </DialogDescription>
         </DialogHeader>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4">
-          <div className="space-y-2 md:col-span-2">
-            <Label>Empresa *</Label>
-            <Select
-              value={formData.organization_id}
-              onValueChange={(v) => setFormData({ ...formData, organization_id: v })}
+        <form onSubmit={handleSubmit} className="space-y-4 mt-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2 md:col-span-2">
+              <Label>Empresa</Label>
+              <Select
+                value={formData.organization_id || ''}
+                onValueChange={(val) => setFormData({ ...formData, organization_id: val })}
+                required
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {organizations.map((org: any) => (
+                    <SelectItem key={org.id} value={org.id}>
+                      {org.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Conta Contábil</Label>
+              <Input
+                value={formData.account_code || ''}
+                onChange={(e) => setFormData({ ...formData, account_code: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Descrição</Label>
+              <Input
+                value={formData.description || ''}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Banco</Label>
+              <Input
+                value={formData.bank_code || ''}
+                onChange={(e) => setFormData({ ...formData, bank_code: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Agência</Label>
+              <Input
+                value={formData.agency || ''}
+                onChange={(e) => setFormData({ ...formData, agency: e.target.value })}
+              />
+            </div>
+            <div className="grid grid-cols-[1fr_80px] gap-4 md:col-span-2">
+              <div className="space-y-2">
+                <Label>Número da Conta</Label>
+                <Input
+                  value={formData.account_number || ''}
+                  onChange={(e) => setFormData({ ...formData, account_number: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Dígito</Label>
+                <Input
+                  value={formData.check_digit || ''}
+                  onChange={(e) => setFormData({ ...formData, check_digit: e.target.value })}
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4 md:col-span-2">
+              <div className="space-y-2">
+                <Label>Tipo Conta</Label>
+                <Select
+                  value={formData.account_type || undefined}
+                  onValueChange={(val) => setFormData({ ...formData, account_type: val })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Corrente">Corrente</SelectItem>
+                    <SelectItem value="Poupança">Poupança</SelectItem>
+                    <SelectItem value="Caixa">Caixa</SelectItem>
+                    <SelectItem value="Aplicações">Aplicações</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Classificação</Label>
+                <Select
+                  value={formData.classification || undefined}
+                  onValueChange={(val) => setFormData({ ...formData, classification: val })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="B">B</SelectItem>
+                    <SelectItem value="C">C</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+          <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 mt-4">
+            <Button type="button" variant="outline" onClick={onClose}>
+              Cancelar
+            </Button>
+            <Button
+              type="submit"
+              disabled={isSaving}
+              className="bg-blue-600 hover:bg-blue-700 text-white"
             >
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione a empresa" />
-              </SelectTrigger>
-              <SelectContent>
-                {organizations.map((o: any) => (
-                  <SelectItem key={o.id} value={o.id}>
-                    {o.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              {isSaving ? 'Salvando...' : 'Salvar'}
+            </Button>
           </div>
-
-          <div className="space-y-2 md:col-span-2">
-            <Label>Descrição da Conta *</Label>
-            <Input
-              placeholder="Ex: Conta Corrente Itaú"
-              value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label>Tipo de Conta *</Label>
-            <Select
-              value={formData.account_type}
-              onValueChange={(v) => setFormData({ ...formData, account_type: v })}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione o tipo" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Conta Corrente">Conta Corrente</SelectItem>
-                <SelectItem value="Conta Poupança">Conta Poupança</SelectItem>
-                <SelectItem value="Caixa">Caixa</SelectItem>
-                <SelectItem value="Aplicação">Aplicação</SelectItem>
-                <SelectItem value="Cartão de Crédito">Cartão de Crédito</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-2">
-            <Label>Conta Contábil</Label>
-            <Input
-              placeholder="Ex: 1.1.01.02.001"
-              value={formData.account_code}
-              onChange={(e) => setFormData({ ...formData, account_code: e.target.value })}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label>Código do Banco</Label>
-            <Input
-              placeholder="Ex: 341 (Itaú)"
-              value={formData.bank_code}
-              onChange={(e) => setFormData({ ...formData, bank_code: e.target.value })}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label>Agência</Label>
-            <Input
-              placeholder="Ex: 1234"
-              value={formData.agency}
-              onChange={(e) => setFormData({ ...formData, agency: e.target.value })}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label>Número da Conta</Label>
-            <Input
-              placeholder="Ex: 12345"
-              value={formData.account_number}
-              onChange={(e) => setFormData({ ...formData, account_number: e.target.value })}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label>Dígito</Label>
-            <Input
-              placeholder="Ex: X"
-              value={formData.check_digit}
-              onChange={(e) => setFormData({ ...formData, check_digit: e.target.value })}
-            />
-          </div>
-        </div>
-
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose} disabled={saving}>
-            Cancelar
-          </Button>
-          <Button onClick={handleSave} disabled={saving}>
-            {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-            Salvar
-          </Button>
-        </DialogFooter>
+        </form>
       </DialogContent>
     </Dialog>
   )
