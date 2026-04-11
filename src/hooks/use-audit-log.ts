@@ -33,8 +33,8 @@ export const useAuditLog = () => {
         }
 
         const payload = {
-          entityType,
-          entityId,
+          entity_type: entityType,
+          entity_id: entityId,
           action,
           performedBy: user.id,
           changes: sanitizedChanges,
