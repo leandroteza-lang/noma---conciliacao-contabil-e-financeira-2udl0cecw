@@ -41,6 +41,7 @@ export function DeleteAccountModal({ isOpen, account, onClose }: any) {
       })
 
       toast({ title: 'Sucesso', description: 'Solicitação de exclusão enviada para aprovação.' })
+      window.dispatchEvent(new CustomEvent('refresh-approvals-badge'))
       onClose()
     } catch (err: any) {
       toast({ title: 'Erro ao excluir', description: err.message, variant: 'destructive' })

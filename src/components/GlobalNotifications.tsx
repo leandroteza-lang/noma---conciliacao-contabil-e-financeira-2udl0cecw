@@ -68,8 +68,35 @@ export function GlobalNotifications() {
       )
       .subscribe()
 
+    const notifiedDeletionsRef = useRef<Set<string>>(new Set())
+
     let adminChannel: any = null
     if (role === 'admin') {
+      const handlePendingDeletion = (payload: any) => {
+        if (payload.new && payload.new.pending_deletion === true && !payload.new.deleted_at) {
+          const id = payload.new.id
+          if (!notifiedDeletionsRef.current.has(id)) {
+            notifiedDeletionsRef.current.add(id)
+            if (audioRef.current) {
+              audioRef.current.play().catch((e) => console.error('Audio play failed:', e))
+            }
+            toast.success('Exclusão Pendente!', {
+              description: 'Uma solicitação de exclusão foi enviada para revisão.',
+              duration: 10000,
+              icon: '🗑️',
+            })
+            window.dispatchEvent(new CustomEvent('refresh-approvals-badge'))
+          }
+        } else if (
+          payload.new &&
+          (payload.new.pending_deletion === false || payload.new.deleted_at)
+        ) {
+          if (payload.new.id) {
+            notifiedDeletionsRef.current.delete(payload.new.id)
+          }
+        }
+      }
+
       adminChannel = supabase
         .channel(`admin_notifications_${Math.random().toString(36).substring(2, 9)}`)
         .on(
@@ -108,6 +135,41 @@ export function GlobalNotifications() {
               window.dispatchEvent(new CustomEvent('refresh-approvals-badge'))
             }
           },
+        )
+        .on(
+          'postgres_changes',
+          { event: 'UPDATE', schema: 'public', table: 'organizations' },
+          handlePendingDeletion,
+        )
+        .on(
+          'postgres_changes',
+          { event: 'UPDATE', schema: 'public', table: 'departments' },
+          handlePendingDeletion,
+        )
+        .on(
+          'postgres_changes',
+          { event: 'UPDATE', schema: 'public', table: 'cost_centers' },
+          handlePendingDeletion,
+        )
+        .on(
+          'postgres_changes',
+          { event: 'UPDATE', schema: 'public', table: 'chart_of_accounts' },
+          handlePendingDeletion,
+        )
+        .on(
+          'postgres_changes',
+          { event: 'UPDATE', schema: 'public', table: 'bank_accounts' },
+          handlePendingDeletion,
+        )
+        .on(
+          'postgres_changes',
+          { event: 'UPDATE', schema: 'public', table: 'tipo_conta_tga' },
+          handlePendingDeletion,
+        )
+        .on(
+          'postgres_changes',
+          { event: 'UPDATE', schema: 'public', table: 'cadastro_usuarios' },
+          handlePendingDeletion,
         )
         .subscribe()
     }
