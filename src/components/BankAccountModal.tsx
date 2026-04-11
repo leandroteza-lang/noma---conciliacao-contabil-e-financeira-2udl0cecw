@@ -91,14 +91,18 @@ export function BankAccountModal({ isOpen, type, account, onClose, organizations
         if (error) throw error
 
         const changes: any = {}
-        Object.keys(payload).forEach((key) => {
-          const k = key as keyof typeof payload
-          if (String(payload[k]) !== String(account[k])) {
-            changes[k] = { old: account[k], new: payload[k] }
+        Object.keys(formData).forEach((key) => {
+          const k = key as keyof typeof formData
+          const oldVal = account[k] === null || account[k] === undefined ? '' : String(account[k])
+          const newVal =
+            formData[k] === null || formData[k] === undefined ? '' : String(formData[k])
+          if (oldVal !== newVal) {
+            changes[k] = { old: account[k] || '', new: formData[k] }
           }
         })
+
         if (Object.keys(changes).length > 0) {
-          await logAction('Contas Bancárias', account.id, 'UPDATE', changes)
+          await logAction('bank_accounts', account.id, 'UPDATE', changes)
         }
 
         toast({ title: 'Sucesso', description: 'Conta atualizada com sucesso' })
@@ -112,11 +116,13 @@ export function BankAccountModal({ isOpen, type, account, onClose, organizations
 
         if (data) {
           const changes: any = {}
-          Object.keys(payload).forEach((key) => {
-            const k = key as keyof typeof payload
-            changes[k] = { new: payload[k] }
+          Object.keys(formData).forEach((key) => {
+            const k = key as keyof typeof formData
+            if (formData[k]) {
+              changes[k] = { new: formData[k] }
+            }
           })
-          await logAction('Contas Bancárias', data.id, 'CREATE', changes)
+          await logAction('bank_accounts', data.id, 'CREATE', changes)
         }
 
         toast({ title: 'Sucesso', description: 'Conta criada com sucesso' })
