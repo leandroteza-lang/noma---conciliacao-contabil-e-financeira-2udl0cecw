@@ -66,6 +66,12 @@ export const translateAction = (action: string) => {
       return 'ALTERADO'
     case 'EDICAO_EM_LOTE':
       return 'ALTERADO EM LOTE'
+    case 'APPROVE':
+      return 'APROVAÇÃO'
+    case 'REJECT':
+      return 'REJEIÇÃO'
+    case 'RESTORE':
+      return 'RESTAURAÇÃO'
     default:
       return act
   }
@@ -185,6 +191,8 @@ export const getAffectedRecordInfo = (log: any, dict: Record<string, any>, logsH
 }
 
 const fieldTranslations: Record<string, string> = {
+  _entity_name: 'Nome do Registro',
+  entity_name: 'Nome do Registro',
   organization_id: 'Empresa',
   department_id: 'Departamento',
   permissions: 'Permissões',
@@ -290,6 +298,15 @@ const formatValue = (val: string | null, field: string, dict: any) => {
     if (hasUuid) {
       return mapped.join(', ')
     }
+  }
+
+  if (field === 'approval_status') {
+    const statuses: Record<string, string> = {
+      pending: 'Pendente',
+      approved: 'Aprovado',
+      rejected: 'Rejeitado',
+    }
+    return statuses[val] || val
   }
 
   if (field === 'role') {
