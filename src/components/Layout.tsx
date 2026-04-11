@@ -473,9 +473,8 @@ export default function Layout() {
         const deletionPromises = tables.map((table) =>
           supabase
             .from(table)
-            .select('*', { count: 'exact', head: true })
-            .eq('pending_deletion', true)
-            .is('deleted_at', null)
+            .select('id', { count: 'exact', head: true })
+            .or('pending_deletion.eq.true,deleted_at.not.is.null')
             .then((res) => (!res.error && res.count !== null ? res.count : 0))
             .catch((e) => {
               console.error(e)
@@ -485,9 +484,8 @@ export default function Layout() {
 
         const userDeletionPromise = supabase
           .from('cadastro_usuarios')
-          .select('*', { count: 'exact', head: true })
-          .eq('pending_deletion', true)
-          .is('deleted_at', null)
+          .select('id', { count: 'exact', head: true })
+          .or('pending_deletion.eq.true,deleted_at.not.is.null')
           .then((res) => (!res.error && res.count !== null ? res.count : 0))
           .catch((e) => {
             console.error(e)
@@ -496,7 +494,7 @@ export default function Layout() {
 
         const userApprovalPromise = supabase
           .from('cadastro_usuarios')
-          .select('*', { count: 'exact', head: true })
+          .select('id', { count: 'exact', head: true })
           .eq('approval_status', 'pending')
           .is('deleted_at', null)
           .then((res) => (!res.error && res.count !== null ? res.count : 0))
@@ -507,7 +505,7 @@ export default function Layout() {
 
         const pendingChangesPromise = supabase
           .from('pending_changes')
-          .select('*', { count: 'exact', head: true })
+          .select('id', { count: 'exact', head: true })
           .eq('status', 'pending')
           .then((res) => (!res.error && res.count !== null ? res.count : 0))
           .catch((e) => {
@@ -537,14 +535,14 @@ export default function Layout() {
 
             if ('Notification' in window) {
               if (Notification.permission === 'granted') {
-                new Notification('Nova Pendência', {
+                new Notification('Nova Pendência na Central', {
                   body: 'Você tem novos itens aguardando aprovação ou na lixeira.',
                   icon: '/favicon.ico',
                 })
               } else if (Notification.permission !== 'denied') {
                 Notification.requestPermission().then((permission) => {
                   if (permission === 'granted') {
-                    new Notification('Nova Pendência', {
+                    new Notification('Nova Pendência na Central', {
                       body: 'Você tem novos itens aguardando aprovação ou na lixeira.',
                       icon: '/favicon.ico',
                     })
@@ -567,7 +565,7 @@ export default function Layout() {
     window.addEventListener('refresh-approvals-badge', handleRefresh)
 
     const channel = supabase
-      .channel('approvals-badge-changes')
+      .channel(`approvals-badge-changes-${Math.random().toString(36).substring(2, 9)}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'organizations' }, () =>
         fetchPending(),
       )
