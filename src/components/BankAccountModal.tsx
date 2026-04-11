@@ -102,7 +102,7 @@ export function BankAccountModal({ isOpen, type, account, onClose, organizations
         })
 
         if (Object.keys(changes).length > 0) {
-          await logAction('bank_accounts', account.id, 'UPDATE', changes)
+          await logAction('bank_accounts', account.id, 'EDICAO', changes)
         }
 
         toast({ title: 'Sucesso', description: 'Conta atualizada com sucesso' })
@@ -122,7 +122,7 @@ export function BankAccountModal({ isOpen, type, account, onClose, organizations
               changes[k] = { new: formData[k] }
             }
           })
-          await logAction('bank_accounts', data.id, 'CREATE', changes)
+          await logAction('bank_accounts', data.id, 'CRIACAO', changes)
         }
 
         toast({ title: 'Sucesso', description: 'Conta criada com sucesso' })
