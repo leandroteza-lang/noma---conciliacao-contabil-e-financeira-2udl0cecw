@@ -20,9 +20,11 @@ import {
 import { supabase } from '@/lib/supabase/client'
 import { useToast } from '@/hooks/use-toast'
 import { Loader2 } from 'lucide-react'
+import { useAuditLog } from '@/hooks/use-audit-log'
 
 export function BankAccountModal({ isOpen, type, account, onClose, organizations }: any) {
   const { toast } = useToast()
+  const { logAction } = useAuditLog()
   const [saving, setSaving] = useState(false)
   const [formData, setFormData] = useState({
     organization_id: '',
@@ -87,10 +89,36 @@ export function BankAccountModal({ isOpen, type, account, onClose, organizations
       if (type === 'edit') {
         const { error } = await supabase.from('bank_accounts').update(payload).eq('id', account.id)
         if (error) throw error
+
+        const changes: any = {}
+        Object.keys(payload).forEach((key) => {
+          const k = key as keyof typeof payload
+          if (String(payload[k]) !== String(account[k])) {
+            changes[k] = { old: account[k], new: payload[k] }
+          }
+        })
+        if (Object.keys(changes).length > 0) {
+          await logAction('Contas Bancárias', account.id, 'UPDATE', changes)
+        }
+
         toast({ title: 'Sucesso', description: 'Conta atualizada com sucesso' })
       } else {
-        const { error } = await supabase.from('bank_accounts').insert(payload)
+        const { data, error } = await supabase
+          .from('bank_accounts')
+          .insert(payload)
+          .select()
+          .single()
         if (error) throw error
+
+        if (data) {
+          const changes: any = {}
+          Object.keys(payload).forEach((key) => {
+            const k = key as keyof typeof payload
+            changes[k] = { new: payload[k] }
+          })
+          await logAction('Contas Bancárias', data.id, 'CREATE', changes)
+        }
+
         toast({ title: 'Sucesso', description: 'Conta criada com sucesso' })
       }
       onClose()
