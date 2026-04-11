@@ -7,6 +7,7 @@ export function GlobalNotifications() {
   const { user, role } = useAuth() as any
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const notifiedQueriesRef = useRef<Set<string>>(new Set())
+  const notifiedDeletionsRef = useRef<Set<string>>(new Set())
 
   useEffect(() => {
     const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3')
@@ -67,8 +68,6 @@ export function GlobalNotifications() {
         },
       )
       .subscribe()
-
-    const notifiedDeletionsRef = useRef<Set<string>>(new Set())
 
     let adminChannel: any = null
     if (role === 'admin') {
