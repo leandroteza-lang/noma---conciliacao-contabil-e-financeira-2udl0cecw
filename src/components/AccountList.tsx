@@ -223,7 +223,7 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
       toast({ title: 'Erro', description: error.message, variant: 'destructive' })
     } else {
       for (const id of selectedIds) {
-        await logAction('Contas Bancárias', id, 'EXCLUSAO_EM_LOTE', {
+        await logAction('bank_accounts', id, 'DELETE', {
           pending_deletion: { old: false, new: true },
         })
       }
@@ -385,7 +385,7 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
           classificacao: 'classification',
         }
         const dbField = dbFieldMap[field] || field
-        await logAction('Contas Bancárias', id, 'EDICAO', {
+        await logAction('bank_accounts', id, 'UPDATE', {
           [dbField]: { old: oldAcc[field], new: val },
         })
       }
@@ -447,7 +447,7 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
           }
 
         if (Object.keys(changes).length > 0) {
-          await logAction('Contas Bancárias', editModalAccount.id, 'EDICAO', changes)
+          await logAction('bank_accounts', editModalAccount.id, 'UPDATE', changes)
         }
       }
 
