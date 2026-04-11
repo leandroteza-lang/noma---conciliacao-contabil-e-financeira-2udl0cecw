@@ -2,50 +2,51 @@ import { useCallback } from 'react'
 import { supabase } from '@/lib/supabase/client'
 import { useAuth } from './use-auth'
 
-export type AuditAction =
-  | 'CREATE'
-  | 'UPDATE'
-  | 'DELETE'
-  | 'LOGIN'
-  | 'LOGOUT'
-  | 'EXPORT'
-  | 'IMPORT'
-  | 'SHARE'
-
-export interface AuditLogPayload {
-  entityType: string
-  entityId: string
-  action: AuditAction
-  changes?: Record<string, { old?: any; new?: any }> | null
-}
-
-export function useAuditLog() {
+export const useAuditLog = () => {
   const { user } = useAuth()
 
   const logAction = useCallback(
-    async (payload: AuditLogPayload) => {
-      if (!user) return
+    async (entityType: string, entityId: string, action: string, changes?: Record<string, any>) => {
+      if (!user || !entityType || !entityId) return
 
       try {
-        // PROBLEMA 1 (Filtro local): Algumas implementações anteriores verificavam a tabela 'audit_config'
-        // e filtravam localmente entidades que não correspondiam exatamente ao nome esperado,
-        // excluindo 'bank_accounts'.
-        // SOLUÇÃO: O payload agora é enviado integralmente e incondicionalmente para a Edge Function,
-        // centralizando a inteligência de mapeamento e normalização de dados no backend.
+        let sanitizedChanges = changes
 
-        const { error } = await supabase.functions.invoke('audit-log', {
-          body: {
-            ...payload,
-            performedBy: user.id,
-            userAgent: navigator.userAgent,
-          },
-        })
-
-        if (error) {
-          console.error('Failed to log action:', error)
+        // Proteção extra contra payloads de alterações massivas que podem derrubar a Edge Function
+        if (changes) {
+          try {
+            const stringified = JSON.stringify(changes)
+            if (stringified.length > 100000) {
+              sanitizedChanges = {
+                _warning: {
+                  new: 'Objeto de mudanças muito grande, foi omitido para estabilidade.',
+                },
+              }
+            }
+          } catch (e) {
+            sanitizedChanges = {
+              _warning: {
+                new: 'Falha ao processar as alterações (objeto não pode ser formatado).',
+              },
+            }
+          }
         }
-      } catch (err) {
-        console.error('Error logging action:', err)
+
+        const payload = {
+          entityType,
+          entityId,
+          action,
+          performedBy: user.id,
+          changes: sanitizedChanges,
+          userAgent: navigator.userAgent,
+          timestamp: new Date().toISOString(),
+        }
+
+        await supabase.functions.invoke('audit-log', {
+          body: payload,
+        })
+      } catch (error) {
+        console.error('Failed to log action:', error)
       }
     },
     [user],
