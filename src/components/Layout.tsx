@@ -483,18 +483,6 @@ export default function Layout() {
             }),
         )
 
-        const trashPromises = tables.map((table) =>
-          supabase
-            .from(table)
-            .select('id', { count: 'exact', head: true })
-            .not('deleted_at', 'is', null)
-            .then((res) => (!res.error && typeof res.count === 'number' ? res.count : 0))
-            .catch((e) => {
-              console.error(e)
-              return 0
-            }),
-        )
-
         const userDeletionPromise = supabase
           .from('cadastro_usuarios')
           .select('id', { count: 'exact', head: true })
@@ -517,22 +505,10 @@ export default function Layout() {
             return 0
           })
 
-        const userTrashPromise = supabase
-          .from('cadastro_usuarios')
-          .select('id', { count: 'exact', head: true })
-          .not('deleted_at', 'is', null)
-          .then((res) => (!res.error && typeof res.count === 'number' ? res.count : 0))
-          .catch((e) => {
-            console.error(e)
-            return 0
-          })
-
         const results = await Promise.all([
           ...deletionPromises,
-          ...trashPromises,
           userDeletionPromise,
           userApprovalPromise,
-          userTrashPromise,
         ])
 
         const total = results.reduce((acc, count) => acc + count, 0)

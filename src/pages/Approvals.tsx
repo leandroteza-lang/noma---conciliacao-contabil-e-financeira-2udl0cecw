@@ -59,6 +59,7 @@ export default function Approvals() {
       if (finalEntityType === 'cost_center') finalEntityType = 'centro_custo'
       if (finalEntityType === 'chart_account') finalEntityType = 'conta_contabil'
       if (finalEntityType === 'bank_account') finalEntityType = 'conta_bancaria'
+      if (finalEntityType === 'tga_account') finalEntityType = 'tipo_conta_tga'
 
       let changes = customChanges ? { ...customChanges } : {}
 
@@ -112,51 +113,59 @@ export default function Approvals() {
     if (role !== 'admin') return
     try {
       setLoading(true)
-      const [orgs, depts, emps, newUsersRes, costs, charts, banks] = await Promise.all([
-        supabase
-          .from('organizations')
-          .select('*')
-          .or('pending_deletion.eq.true,deleted_at.not.is.null')
-          .then((res) => (res.error ? { data: [] } : res))
-          .catch(() => ({ data: [] })),
-        supabase
-          .from('departments')
-          .select('*')
-          .or('pending_deletion.eq.true,deleted_at.not.is.null')
-          .then((res) => (res.error ? { data: [] } : res))
-          .catch(() => ({ data: [] })),
-        supabase
-          .from('cadastro_usuarios')
-          .select('*')
-          .or('pending_deletion.eq.true,deleted_at.not.is.null')
-          .then((res) => (res.error ? { data: [] } : res))
-          .catch(() => ({ data: [] })),
-        supabase
-          .from('cadastro_usuarios')
-          .select('*')
-          .eq('approval_status', 'pending')
-          .is('deleted_at', null)
-          .then((res) => (res.error ? { data: [] } : res))
-          .catch(() => ({ data: [] })),
-        supabase
-          .from('cost_centers')
-          .select('*')
-          .or('pending_deletion.eq.true,deleted_at.not.is.null')
-          .then((res) => (res.error ? { data: [] } : res))
-          .catch(() => ({ data: [] })),
-        supabase
-          .from('chart_of_accounts')
-          .select('*')
-          .or('pending_deletion.eq.true,deleted_at.not.is.null')
-          .then((res) => (res.error ? { data: [] } : res))
-          .catch(() => ({ data: [] })),
-        supabase
-          .from('bank_accounts')
-          .select('*')
-          .or('pending_deletion.eq.true,deleted_at.not.is.null')
-          .then((res) => (res.error ? { data: [] } : res))
-          .catch(() => ({ data: [] })),
-      ])
+      const [orgs, depts, emps, newUsersRes, costs, charts, banks, tgaAccounts] = await Promise.all(
+        [
+          supabase
+            .from('organizations')
+            .select('*')
+            .or('pending_deletion.eq.true,deleted_at.not.is.null')
+            .then((res) => (res.error ? { data: [] } : res))
+            .catch(() => ({ data: [] })),
+          supabase
+            .from('departments')
+            .select('*')
+            .or('pending_deletion.eq.true,deleted_at.not.is.null')
+            .then((res) => (res.error ? { data: [] } : res))
+            .catch(() => ({ data: [] })),
+          supabase
+            .from('cadastro_usuarios')
+            .select('*')
+            .or('pending_deletion.eq.true,deleted_at.not.is.null')
+            .then((res) => (res.error ? { data: [] } : res))
+            .catch(() => ({ data: [] })),
+          supabase
+            .from('cadastro_usuarios')
+            .select('*')
+            .eq('approval_status', 'pending')
+            .is('deleted_at', null)
+            .then((res) => (res.error ? { data: [] } : res))
+            .catch(() => ({ data: [] })),
+          supabase
+            .from('cost_centers')
+            .select('*')
+            .or('pending_deletion.eq.true,deleted_at.not.is.null')
+            .then((res) => (res.error ? { data: [] } : res))
+            .catch(() => ({ data: [] })),
+          supabase
+            .from('chart_of_accounts')
+            .select('*')
+            .or('pending_deletion.eq.true,deleted_at.not.is.null')
+            .then((res) => (res.error ? { data: [] } : res))
+            .catch(() => ({ data: [] })),
+          supabase
+            .from('bank_accounts')
+            .select('*')
+            .or('pending_deletion.eq.true,deleted_at.not.is.null')
+            .then((res) => (res.error ? { data: [] } : res))
+            .catch(() => ({ data: [] })),
+          supabase
+            .from('tipo_conta_tga')
+            .select('*')
+            .or('pending_deletion.eq.true,deleted_at.not.is.null')
+            .then((res) => (res.error ? { data: [] } : res))
+            .catch(() => ({ data: [] })),
+        ],
+      )
 
       const unified: PendingItem[] = [
         ...(orgs.data || []).map((o: any) => ({
@@ -231,6 +240,18 @@ export default function Approvals() {
           pending: b.pending_deletion,
           originalData: b,
         })),
+        ...(tgaAccounts.data || []).map((t: any) => ({
+          id: t.id,
+          type: 'tga_account' as any,
+          typeLabel: 'Tipo Conta TGA',
+          name: `${t.codigo} - ${t.nome}`,
+          requestedAt: t.deletion_requested_at || t.created_at,
+          requestedBy: t.deletion_requested_by,
+          deletedAt: t.deleted_at,
+          deletedBy: t.deleted_by,
+          pending: t.pending_deletion,
+          originalData: t,
+        })),
       ]
 
       const userIds = [
@@ -261,7 +282,7 @@ export default function Approvals() {
       setActiveTab((prev) =>
         prev === 'pending' &&
         fetchedNewUsers.length > 0 &&
-        unified.filter((i) => i.pending).length === 0
+        unified.filter((i) => i.pending && !i.deletedAt).length === 0
           ? 'new_users'
           : prev,
       )
@@ -287,6 +308,7 @@ export default function Approvals() {
       cost_center: 'cost_centers',
       chart_account: 'chart_of_accounts',
       bank_account: 'bank_accounts',
+      tga_account: 'tipo_conta_tga',
     }
     return map[type] || ''
   }
@@ -578,7 +600,7 @@ export default function Approvals() {
     }
   }
 
-  const pendingItems = items.filter((i) => i.pending)
+  const pendingItems = items.filter((i) => i.pending && !i.deletedAt)
   const trashItems = items.filter((i) => i.deletedAt)
   const uniqueTrashRequesters = useMemo(
     () =>
@@ -650,6 +672,7 @@ export default function Approvals() {
                   <SelectItem value="cost_center">Centro de Custo</SelectItem>
                   <SelectItem value="chart_account">Conta Contábil</SelectItem>
                   <SelectItem value="bank_account">Conta Bancária</SelectItem>
+                  <SelectItem value="tga_account">Tipo Conta TGA</SelectItem>
                 </SelectContent>
               </Select>
             </div>
