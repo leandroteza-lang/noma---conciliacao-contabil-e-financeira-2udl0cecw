@@ -4,7 +4,7 @@ import { supabase } from '@/lib/supabase/client'
 import { toast } from 'sonner'
 
 export function GlobalNotifications() {
-  const { user } = useAuth()
+  const { user, role } = useAuth() as any
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const notifiedQueriesRef = useRef<Set<string>>(new Set())
 
@@ -68,10 +68,55 @@ export function GlobalNotifications() {
       )
       .subscribe()
 
+    let adminChannel: any = null
+    if (role === 'admin') {
+      adminChannel = supabase
+        .channel(`admin_notifications_${Math.random().toString(36).substring(2, 9)}`)
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'pending_changes',
+            filter: 'status=eq.pending',
+          },
+          (payload) => {
+            if (audioRef.current) {
+              audioRef.current.play().catch((e) => console.error('Audio play failed:', e))
+            }
+            toast.success('Nova Aprovação Pendente!', {
+              description: 'Uma nova alteração ou criação foi enviada para revisão.',
+              duration: 10000,
+              icon: '🔔',
+            })
+            window.dispatchEvent(new CustomEvent('refresh-approvals-badge'))
+          },
+        )
+        .on(
+          'postgres_changes',
+          { event: 'INSERT', schema: 'public', table: 'cadastro_usuarios' },
+          (payload) => {
+            if (payload.new.approval_status === 'pending') {
+              if (audioRef.current) {
+                audioRef.current.play().catch((e) => console.error('Audio play failed:', e))
+              }
+              toast.success('Novo Usuário Pendente!', {
+                description: 'Um novo usuário solicitou acesso.',
+                duration: 10000,
+                icon: '🔔',
+              })
+              window.dispatchEvent(new CustomEvent('refresh-approvals-badge'))
+            }
+          },
+        )
+        .subscribe()
+    }
+
     return () => {
       supabase.removeChannel(channel)
+      if (adminChannel) supabase.removeChannel(adminChannel)
     }
-  }, [user])
+  }, [user, role])
 
   return null
 }

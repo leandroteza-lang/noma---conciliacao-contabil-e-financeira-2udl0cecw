@@ -88,6 +88,10 @@ export function BankAccountModal({
     try {
       const company_name = organizations.find((o) => o.id === formData.organization_id)?.name || ''
 
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+
       if (accountToEdit) {
         // Edit - Send to pending_changes
         const changes: Record<string, any> = {}
@@ -109,10 +113,6 @@ export function BankAccountModal({
           return
         }
 
-        const {
-          data: { user },
-        } = await supabase.auth.getUser()
-
         const { error } = await supabase.from('pending_changes').insert({
           entity_type: 'bank_accounts',
           entity_id: accountToEdit.id,
@@ -127,36 +127,32 @@ export function BankAccountModal({
 
         toast({ title: 'Sucesso', description: 'Alteração enviada para aprovação!' })
       } else {
-        // Create
-        const { data, error } = await supabase
-          .from('bank_accounts')
-          .insert({
-            organization_id: formData.organization_id,
-            account_code: formData.account_code,
-            description: formData.description,
-            bank_code: formData.bank_code,
-            agency: formData.agency,
-            account_number: formData.account_number,
-            check_digit: formData.check_digit,
-            account_type: formData.account_type,
-            classification: formData.classification,
-            company_name,
-          })
-          .select()
-          .single()
+        // Create - Send to pending_changes
+        const newId = crypto.randomUUID()
+        const changes: Record<string, any> = {
+          __action: { new: 'CREATE' },
+        }
+        const currentData = { ...formData, company_name }
+        Object.keys(currentData).forEach((key) => {
+          changes[key] = { new: (currentData as any)[key] }
+        })
+
+        const { error } = await supabase.from('pending_changes').insert({
+          entity_type: 'bank_accounts',
+          entity_id: newId,
+          proposed_changes: changes,
+          status: 'pending',
+          requested_by: user?.id,
+        } as any)
 
         if (error) throw error
 
-        const changes: Record<string, any> = {}
-        Object.keys(formData).forEach((key) => {
-          changes[key] = { new: (formData as any)[key] }
-        })
+        await logAction('bank_accounts', newId, 'PROPOSE_CREATE', changes)
 
-        await logAction('bank_accounts', data.id, 'CREATE', changes)
-
-        toast({ title: 'Sucesso', description: 'Conta criada com sucesso!' })
+        toast({ title: 'Sucesso', description: 'Criação enviada para aprovação!' })
       }
 
+      window.dispatchEvent(new CustomEvent('refresh-approvals-badge'))
       onSuccess()
       onClose()
     } catch (err: any) {

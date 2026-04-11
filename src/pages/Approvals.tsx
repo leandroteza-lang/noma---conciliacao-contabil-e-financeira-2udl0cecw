@@ -293,23 +293,31 @@ export default function Approvals() {
 
       // Fetch entity names for edits
       const bankEditIds = fetchedEdits
-        .filter((e: any) => e.entity_type === 'bank_accounts')
+        .filter(
+          (e: any) =>
+            e.entity_type === 'bank_accounts' && e.proposed_changes?.__action?.new !== 'CREATE',
+        )
         .map((e: any) => e.entity_id)
+      const bMap: Record<string, string> = {}
       if (bankEditIds.length > 0) {
         const { data: bData } = await supabase
           .from('bank_accounts')
           .select('id, description, bank_code, account_number')
           .in('id', bankEditIds)
-        const bMap: Record<string, string> = {}
         bData?.forEach(
           (b: any) =>
             (bMap[b.id] = `${b.bank_code || ''} - ${b.description} (${b.account_number || ''})`),
         )
-        fetchedEdits.forEach((e: any) => {
-          if (e.entity_type === 'bank_accounts')
-            e.entity_name = bMap[e.entity_id] || 'Conta Bancária Desconhecida'
-        })
       }
+      fetchedEdits.forEach((e: any) => {
+        if (e.proposed_changes?.__action?.new === 'CREATE') {
+          e.entity_name = 'Nova Conta Bancária'
+          e.is_create = true
+          delete e.proposed_changes.__action
+        } else if (e.entity_type === 'bank_accounts') {
+          e.entity_name = bMap[e.entity_id] || 'Conta Bancária Desconhecida'
+        }
+      })
 
       unified.sort(
         (a, b) => new Date(b.requestedAt || 0).getTime() - new Date(a.requestedAt || 0).getTime(),
@@ -590,12 +598,20 @@ export default function Approvals() {
       const tableName = tableMap[edit.entity_type]
       if (!tableName) throw new Error('Entidade não suportada')
 
-      const { error: updateErr } = await supabase
-        .from(tableName)
-        .update(newValues)
-        .eq('id', edit.entity_id)
+      if (edit.is_create) {
+        const { error: insertErr } = await supabase
+          .from(tableName)
+          .insert({ id: edit.entity_id, ...newValues })
 
-      if (updateErr) throw updateErr
+        if (insertErr) throw insertErr
+      } else {
+        const { error: updateErr } = await supabase
+          .from(tableName)
+          .update(newValues)
+          .eq('id', edit.entity_id)
+
+        if (updateErr) throw updateErr
+      }
 
       // Update the pending_changes record
       const { error: statusErr } = await supabase
@@ -611,12 +627,17 @@ export default function Approvals() {
 
       await logAuditAction(
         { id: edit.entity_id, type: edit.entity_type, name: edit.entity_name },
-        'UPDATE',
+        edit.is_create ? 'CREATE' : 'UPDATE',
         edit.proposed_changes,
       )
 
       setProgress(100)
-      toast({ title: 'Aprovado', description: 'As alterações foram aplicadas com sucesso.' })
+      toast({
+        title: 'Aprovado',
+        description: edit.is_create
+          ? 'O novo registro foi criado com sucesso.'
+          : 'As alterações foram aplicadas com sucesso.',
+      })
       fetchPendingItems()
       window.dispatchEvent(new CustomEvent('refresh-approvals-badge'))
     } catch (e: any) {
@@ -650,12 +671,17 @@ export default function Approvals() {
 
       await logAuditAction(
         { id: edit.entity_id, type: edit.entity_type, name: edit.entity_name },
-        'REJECT_EDIT',
+        edit.is_create ? 'REJECT_CREATE' : 'REJECT_EDIT',
         edit.proposed_changes,
       )
 
       setProgress(100)
-      toast({ title: 'Rejeitado', description: 'A proposta de alteração foi rejeitada.' })
+      toast({
+        title: 'Rejeitado',
+        description: edit.is_create
+          ? 'A proposta de criação foi rejeitada.'
+          : 'A proposta de alteração foi rejeitada.',
+      })
       fetchPendingItems()
       window.dispatchEvent(new CustomEvent('refresh-approvals-badge'))
     } catch (e: any) {
