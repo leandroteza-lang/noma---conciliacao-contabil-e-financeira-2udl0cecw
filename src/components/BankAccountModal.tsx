@@ -125,7 +125,12 @@ export function BankAccountModal({
 
         await logAction('bank_accounts', accountToEdit.id, 'PROPOSE_UPDATE', changes)
 
-        toast({ title: 'Sucesso', description: 'Alteração enviada para aprovação!' })
+        toast({
+          title: 'Enviado para Aprovação',
+          description:
+            'As alterações foram enviadas para a Central de Aprovações e serão aplicadas após a revisão.',
+          duration: 8000,
+        })
       } else {
         // Create - Send to pending_changes
         const newId = crypto.randomUUID()
@@ -149,7 +154,12 @@ export function BankAccountModal({
 
         await logAction('bank_accounts', newId, 'PROPOSE_CREATE', changes)
 
-        toast({ title: 'Sucesso', description: 'Criação enviada para aprovação!' })
+        toast({
+          title: 'Enviado para Aprovação',
+          description:
+            'A nova conta bancária foi enviada para a Central de Aprovações e ficará visível nas listagens após ser aprovada por um administrador.',
+          duration: 8000,
+        })
       }
 
       window.dispatchEvent(new CustomEvent('refresh-approvals-badge'))

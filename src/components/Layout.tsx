@@ -505,10 +505,21 @@ export default function Layout() {
             return 0
           })
 
+        const pendingChangesPromise = supabase
+          .from('pending_changes')
+          .select('id', { count: 'exact', head: true })
+          .eq('status', 'pending')
+          .then((res) => (!res.error && typeof res.count === 'number' ? res.count : 0))
+          .catch((e) => {
+            console.error(e)
+            return 0
+          })
+
         const results = await Promise.all([
           ...deletionPromises,
           userDeletionPromise,
           userApprovalPromise,
+          pendingChangesPromise,
         ])
 
         const total = results.reduce((acc, count) => acc + count, 0)
@@ -576,6 +587,9 @@ export default function Layout() {
         fetchPending(),
       )
       .on('postgres_changes', { event: '*', schema: 'public', table: 'tipo_conta_tga' }, () =>
+        fetchPending(),
+      )
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'pending_changes' }, () =>
         fetchPending(),
       )
       .subscribe()

@@ -274,7 +274,7 @@ export default function Approvals() {
       ]
       if (userIds.length > 0) {
         const { data: users } = await supabase
-          .from('employees')
+          .from('cadastro_usuarios')
           .select('user_id, name')
           .in('user_id', userIds)
         const userMap: Record<string, string> = {}
@@ -311,7 +311,11 @@ export default function Approvals() {
       }
       fetchedEdits.forEach((e: any) => {
         if (e.proposed_changes?.__action?.new === 'CREATE') {
-          e.entity_name = 'Nova Conta Bancária'
+          const desc = e.proposed_changes.description?.new || ''
+          const bank = e.proposed_changes.bank_code?.new || ''
+          e.entity_name = desc
+            ? `${bank ? bank + ' - ' : ''}${desc} (Nova Conta)`
+            : 'Nova Conta Bancária'
           e.is_create = true
           delete e.proposed_changes.__action
         } else if (e.entity_type === 'bank_accounts') {
