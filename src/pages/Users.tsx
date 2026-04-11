@@ -55,6 +55,7 @@ import {
 import * as XLSX from 'xlsx'
 import { format } from 'date-fns'
 import { useAuditLog } from '@/hooks/use-audit-log'
+import { useAuth } from '@/hooks/use-auth'
 
 type SortField = 'name' | 'email' | 'cpf' | 'role' | 'department' | 'status'
 
