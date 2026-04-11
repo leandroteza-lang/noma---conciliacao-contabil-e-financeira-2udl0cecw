@@ -52,5 +52,4 @@ export const useAuditLog = () => {
     [user],
   )
 
-  return { logAction }
-}
+ 
