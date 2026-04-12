@@ -120,51 +120,53 @@ export default function TgaAccountTypes() {
     }
 
     let oldItem = null
-    let insertedId = null
+    const changes: any = {}
+
     if (editingId) {
       oldItem = data.find((i) => i.id === editingId)
-      const { error } = await supabase.from('tipo_conta_tga').update(payload).eq('id', editingId)
-      if (error) {
-        toast({ title: 'Erro ao salvar', description: error.message, variant: 'destructive' })
+      if (oldItem) {
+        if (oldItem.organization_id !== payload.organization_id)
+          changes.organization_id = { old: oldItem.organization_id, new: payload.organization_id }
+        if (oldItem.nome !== payload.nome) changes.nome = { old: oldItem.nome, new: payload.nome }
+        if (oldItem.abreviacao !== payload.abreviacao)
+          changes.abreviacao = { old: oldItem.abreviacao, new: payload.abreviacao }
+        if (oldItem.observacoes !== payload.observacoes)
+          changes.observacoes = { old: oldItem.observacoes, new: payload.observacoes }
+      }
+
+      if (Object.keys(changes).length === 0) {
+        toast({ title: 'Aviso', description: 'Nenhuma alteração detectada.' })
         return
       }
     } else {
-      const { data: inserted, error } = await supabase
-        .from('tipo_conta_tga')
-        .insert(payload)
-        .select()
-        .single()
-      if (error) {
-        toast({ title: 'Erro ao salvar', description: error.message, variant: 'destructive' })
-        return
-      }
-      insertedId = inserted?.id
-    }
-
-    if (editingId && oldItem) {
-      const changes: any = {}
-      if (oldItem.organization_id !== payload.organization_id)
-        changes.organization_id = { old: oldItem.organization_id, new: payload.organization_id }
-      if (oldItem.nome !== payload.nome) changes.nome = { old: oldItem.nome, new: payload.nome }
-      if (oldItem.abreviacao !== payload.abreviacao)
-        changes.abreviacao = { old: oldItem.abreviacao, new: payload.abreviacao }
-      if (oldItem.observacoes !== payload.observacoes)
-        changes.observacoes = { old: oldItem.observacoes, new: payload.observacoes }
-
-      if (Object.keys(changes).length > 0) {
-        await logAction('TIPO_CONTA_TGA', editingId, 'EDICAO', changes)
-      }
-    } else if (insertedId) {
-      const changes: any = {}
       Object.keys(payload).forEach((k) => {
         changes[k] = { new: (payload as any)[k] }
       })
-      await logAction('TIPO_CONTA_TGA', insertedId, 'CRIACAO', changes)
     }
 
-    toast({ title: 'Sucesso', description: 'Registro salvo com sucesso.' })
+    const authUser = await supabase.auth.getUser()
+    const entityId = editingId || crypto.randomUUID()
+
+    const { error } = await supabase.from('pending_changes').insert({
+      entity_type: 'TIPO_CONTA_TGA',
+      entity_id: entityId,
+      proposed_changes: changes,
+      requested_by: authUser.data.user?.id,
+      status: 'pending',
+    })
+
+    if (error) {
+      toast({
+        title: 'Erro ao solicitar aprovação',
+        description: error.message,
+        variant: 'destructive',
+      })
+      return
+    }
+
+    window.dispatchEvent(new CustomEvent('refresh-approvals-badge'))
+    toast({ title: 'Sucesso', description: 'Solicitação enviada para a Central de Aprovações.' })
     setIsModalOpen(false)
-    fetchData()
   }
 
   const checkDependencies = async (id: string, codigo: string) => {
@@ -193,21 +195,31 @@ export default function TgaAccountTypes() {
       return
     }
 
-    if (!confirm('Deseja realmente excluir este tipo de conta?')) return
-    const { error } = await supabase
-      .from('tipo_conta_tga')
-      .update({ deleted_at: new Date().toISOString() })
-      .eq('id', id)
+    if (!confirm('Deseja solicitar a exclusão deste tipo de conta?')) return
+
+    const authUser = await supabase.auth.getUser()
+
+    const { error } = await supabase.from('pending_changes').insert({
+      entity_type: 'TIPO_CONTA_TGA',
+      entity_id: id,
+      proposed_changes: { deleted_at: { old: null, new: new Date().toISOString() } },
+      requested_by: authUser.data.user?.id,
+      status: 'pending',
+    })
 
     if (error) {
-      toast({ title: 'Erro ao excluir', description: error.message, variant: 'destructive' })
-    } else {
-      await logAction('TIPO_CONTA_TGA', id, 'EXCLUSAO', {
-        deleted_at: { old: null, new: new Date().toISOString() },
+      toast({
+        title: 'Erro ao solicitar exclusão',
+        description: error.message,
+        variant: 'destructive',
       })
-      toast({ title: 'Sucesso', description: 'Registro excluído com sucesso.' })
+    } else {
+      window.dispatchEvent(new CustomEvent('refresh-approvals-badge'))
+      toast({
+        title: 'Sucesso',
+        description: 'Solicitação de exclusão enviada para a Central de Aprovações.',
+      })
       setSelectedIds((prev) => prev.filter((selId) => selId !== id))
-      fetchData()
     }
   }
 
@@ -232,27 +244,34 @@ export default function TgaAccountTypes() {
       return
     }
 
-    if (!confirm(`Deseja realmente excluir ${selectedIds.length} registros?`)) return
+    if (!confirm(`Deseja solicitar a exclusão de ${selectedIds.length} registros?`)) return
 
-    const { error } = await supabase
-      .from('tipo_conta_tga')
-      .update({ deleted_at: new Date().toISOString() })
-      .in('id', selectedIds)
+    const authUser = await supabase.auth.getUser()
+    const now = new Date().toISOString()
+
+    const inserts = selectedIds.map((id) => ({
+      entity_type: 'TIPO_CONTA_TGA',
+      entity_id: id,
+      proposed_changes: { deleted_at: { old: null, new: now } },
+      requested_by: authUser.data.user?.id,
+      status: 'pending',
+    }))
+
+    const { error } = await supabase.from('pending_changes').insert(inserts)
 
     if (error) {
-      toast({ title: 'Erro ao excluir', description: error.message, variant: 'destructive' })
+      toast({
+        title: 'Erro ao solicitar exclusão',
+        description: error.message,
+        variant: 'destructive',
+      })
     } else {
-      for (const id of selectedIds) {
-        await logAction('TIPO_CONTA_TGA', id, 'EXCLUSAO_EM_LOTE', {
-          deleted_at: { old: null, new: new Date().toISOString() },
-        })
-      }
+      window.dispatchEvent(new CustomEvent('refresh-approvals-badge'))
       toast({
         title: 'Sucesso',
-        description: `${selectedIds.length} registros excluídos com sucesso.`,
+        description: `Solicitação de exclusão de ${selectedIds.length} registros enviada para aprovação.`,
       })
       setSelectedIds([])
-      fetchData()
     }
   }
 
