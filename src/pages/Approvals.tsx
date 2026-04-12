@@ -175,7 +175,6 @@ export default function Approvals() {
             .then((res) => (res.error ? { data: [] } : res))
             .catch(() => ({ data: [] })),
         ])
-
       const unified: PendingItem[] = [
         ...(orgs.data || []).map((o: any) => ({
           id: o.id,
