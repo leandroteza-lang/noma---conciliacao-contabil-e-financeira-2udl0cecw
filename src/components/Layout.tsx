@@ -566,33 +566,27 @@ export default function Layout() {
     const handleRefresh = () => fetchPending()
     window.addEventListener('refresh-approvals-badge', handleRefresh)
 
-    const channel = supabase
-      .channel(`approvals-badge-changes-${Math.random().toString(36).substring(2, 9)}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'organizations' }, () =>
+    let channel = supabase.channel(
+      `approvals-badge-changes-${Math.random().toString(36).substring(2, 9)}`,
+    )
+    const realtimeTables = [
+      'organizations',
+      'departments',
+      'cadastro_usuarios',
+      'cost_centers',
+      'chart_of_accounts',
+      'bank_accounts',
+      'tipo_conta_tga',
+      'pending_changes',
+    ]
+
+    realtimeTables.forEach((table) => {
+      channel = channel.on('postgres_changes', { event: '*', schema: 'public', table }, () =>
         fetchPending(),
       )
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'departments' }, () =>
-        fetchPending(),
-      )
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'cadastro_usuarios' }, () =>
-        fetchPending(),
-      )
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'cost_centers' }, () =>
-        fetchPending(),
-      )
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'chart_of_accounts' }, () =>
-        fetchPending(),
-      )
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'bank_accounts' }, () =>
-        fetchPending(),
-      )
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'tipo_conta_tga' }, () =>
-        fetchPending(),
-      )
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'pending_changes' }, () =>
-        fetchPending(),
-      )
-      .subscribe()
+    })
+
+    channel.subscribe()
 
     return () => {
       window.removeEventListener('refresh-approvals-badge', handleRefresh)

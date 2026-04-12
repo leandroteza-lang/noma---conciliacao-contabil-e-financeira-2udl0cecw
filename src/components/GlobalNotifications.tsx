@@ -74,100 +74,87 @@ export function GlobalNotifications() {
       const handlePendingDeletion = (payload: any) => {
         window.dispatchEvent(new CustomEvent('refresh-approvals-badge'))
 
-        if (payload.new && (payload.new.pending_deletion === true || payload.new.deleted_at)) {
-          const id = payload.new.id
-          if (!notifiedDeletionsRef.current.has(id)) {
-            notifiedDeletionsRef.current.add(id)
+        if (payload.eventType === 'UPDATE' && payload.new) {
+          const isPending = payload.new.pending_deletion === true && !payload.new.deleted_at
+          const isTrash = payload.new.deleted_at !== null
 
-            const isTrash = !!payload.new.deleted_at
-            toast.success(isTrash ? 'Item na Lixeira!' : 'Exclusão Pendente!', {
-              description: isTrash
-                ? 'Um item foi movido para a lixeira.'
-                : 'Uma solicitação de exclusão foi enviada para revisão.',
-              duration: 10000,
-              icon: '🗑️',
-            })
-          }
-        } else if (
-          payload.new &&
-          payload.new.pending_deletion === false &&
-          !payload.new.deleted_at
-        ) {
-          if (payload.new.id) {
-            notifiedDeletionsRef.current.delete(payload.new.id)
+          if (isPending || isTrash) {
+            const id = payload.new.id
+            if (!notifiedDeletionsRef.current.has(id)) {
+              notifiedDeletionsRef.current.add(id)
+
+              toast.success(isTrash ? 'Item na Lixeira!' : 'Exclusão Pendente!', {
+                description: isTrash
+                  ? 'Um item foi movido para a lixeira.'
+                  : 'Uma solicitação de exclusão foi enviada para revisão.',
+                duration: 10000,
+                icon: '🗑️',
+              })
+            }
+          } else if (payload.new.pending_deletion === false && !payload.new.deleted_at) {
+            if (payload.new.id) {
+              notifiedDeletionsRef.current.delete(payload.new.id)
+            }
           }
         }
       }
 
-      adminChannel = supabase
-        .channel(`admin_notifications_${Math.random().toString(36).substring(2, 9)}`)
-        .on(
-          'postgres_changes',
-          {
-            event: 'INSERT',
-            schema: 'public',
-            table: 'pending_changes',
-            filter: 'status=eq.pending',
-          },
-          (payload) => {
-            toast.success('Nova Aprovação Pendente!', {
-              description: 'Uma nova alteração ou criação foi enviada para revisão.',
+      adminChannel = supabase.channel(
+        `admin_notifications_${Math.random().toString(36).substring(2, 9)}`,
+      )
+
+      adminChannel.on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'pending_changes',
+          filter: 'status=eq.pending',
+        },
+        (payload: any) => {
+          toast.success('Nova Aprovação Pendente!', {
+            description: 'Uma nova alteração ou criação foi enviada para revisão.',
+            duration: 10000,
+            icon: '🔔',
+          })
+          window.dispatchEvent(new CustomEvent('refresh-approvals-badge'))
+        },
+      )
+
+      adminChannel.on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'cadastro_usuarios' },
+        (payload: any) => {
+          if (payload.new.approval_status === 'pending') {
+            toast.success('Novo Usuário Pendente!', {
+              description: 'Um novo usuário solicitou acesso.',
               duration: 10000,
               icon: '🔔',
             })
             window.dispatchEvent(new CustomEvent('refresh-approvals-badge'))
-          },
-        )
-        .on(
+          }
+        },
+      )
+
+      const realtimeTables = [
+        'organizations',
+        'departments',
+        'cost_centers',
+        'chart_of_accounts',
+        'bank_accounts',
+        'tipo_conta_tga',
+        'cadastro_usuarios',
+      ]
+
+      realtimeTables.forEach((table) => {
+        adminChannel.on(
           'postgres_changes',
-          { event: 'INSERT', schema: 'public', table: 'cadastro_usuarios' },
-          (payload) => {
-            if (payload.new.approval_status === 'pending') {
-              toast.success('Novo Usuário Pendente!', {
-                description: 'Um novo usuário solicitou acesso.',
-                duration: 10000,
-                icon: '🔔',
-              })
-              window.dispatchEvent(new CustomEvent('refresh-approvals-badge'))
-            }
-          },
-        )
-        .on(
-          'postgres_changes',
-          { event: 'UPDATE', schema: 'public', table: 'organizations' },
+          { event: '*', schema: 'public', table },
           handlePendingDeletion,
         )
-        .on(
-          'postgres_changes',
-          { event: 'UPDATE', schema: 'public', table: 'departments' },
-          handlePendingDeletion,
-        )
-        .on(
-          'postgres_changes',
-          { event: 'UPDATE', schema: 'public', table: 'cost_centers' },
-          handlePendingDeletion,
-        )
-        .on(
-          'postgres_changes',
-          { event: 'UPDATE', schema: 'public', table: 'chart_of_accounts' },
-          handlePendingDeletion,
-        )
-        .on(
-          'postgres_changes',
-          { event: 'UPDATE', schema: 'public', table: 'bank_accounts' },
-          handlePendingDeletion,
-        )
-        .on(
-          'postgres_changes',
-          { event: 'UPDATE', schema: 'public', table: 'tipo_conta_tga' },
-          handlePendingDeletion,
-        )
-        .on(
-          'postgres_changes',
-          { event: 'UPDATE', schema: 'public', table: 'cadastro_usuarios' },
-          handlePendingDeletion,
-        )
-        .subscribe()
+      })
+
+      adminChannel.subscribe()
     }
 
     return () => {
