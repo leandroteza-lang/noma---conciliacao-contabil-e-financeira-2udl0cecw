@@ -299,6 +299,14 @@ export default function Approvals() {
             e.entity_type === 'bank_accounts' && e.proposed_changes?.__action?.new !== 'CREATE',
         )
         .map((e: any) => e.entity_id)
+
+      const userEditIds = fetchedEdits
+        .filter(
+          (e: any) =>
+            e.entity_type === 'cadastro_usuarios' && e.proposed_changes?.__action?.new !== 'CREATE',
+        )
+        .map((e: any) => e.entity_id)
+
       const bMap: Record<string, string> = {}
       if (bankEditIds.length > 0) {
         const { data: bData } = await supabase
@@ -310,17 +318,27 @@ export default function Approvals() {
             (bMap[b.id] = `${b.bank_code || ''} - ${b.description} (${b.account_number || ''})`),
         )
       }
+
+      const uMap: Record<string, string> = {}
+      if (userEditIds.length > 0) {
+        const { data: uData } = await supabase
+          .from('cadastro_usuarios')
+          .select('id, name')
+          .in('id', userEditIds)
+        uData?.forEach((u: any) => (uMap[u.id] = u.name))
+      }
+
       fetchedEdits.forEach((e: any) => {
         if (e.proposed_changes?.__action?.new === 'CREATE') {
-          const desc = e.proposed_changes.description?.new || ''
+          const desc = e.proposed_changes.description?.new || e.proposed_changes.name?.new || ''
           const bank = e.proposed_changes.bank_code?.new || ''
-          e.entity_name = desc
-            ? `${bank ? bank + ' - ' : ''}${desc} (Nova Conta)`
-            : 'Nova Conta Bancária'
+          e.entity_name = desc ? `${bank ? bank + ' - ' : ''}${desc} (Novo)` : 'Novo Registro'
           e.is_create = true
           delete e.proposed_changes.__action
         } else if (e.entity_type === 'bank_accounts') {
           e.entity_name = bMap[e.entity_id] || 'Conta Bancária Desconhecida'
+        } else if (e.entity_type === 'cadastro_usuarios') {
+          e.entity_name = uMap[e.entity_id] || 'Usuário Desconhecido'
         }
       })
 
@@ -599,23 +617,48 @@ export default function Approvals() {
       // Update the actual entity
       const tableMap: Record<string, string> = {
         bank_accounts: 'bank_accounts',
+        cadastro_usuarios: 'cadastro_usuarios',
       }
       const tableName = tableMap[edit.entity_type]
       if (!tableName) throw new Error('Entidade não suportada')
 
-      if (edit.is_create) {
-        const { error: insertErr } = await supabase
-          .from(tableName)
-          .insert({ id: edit.entity_id, ...newValues })
+      if (edit.entity_type === 'cadastro_usuarios' && newValues.companies) {
+        const comps = newValues.companies
+        delete newValues.companies
 
-        if (insertErr) throw insertErr
+        if (Object.keys(newValues).length > 0) {
+          const { error: updateErr } = await supabase
+            .from(tableName)
+            .update(newValues)
+            .eq('id', edit.entity_id)
+          if (updateErr) throw updateErr
+        }
+
+        await supabase.from('cadastro_usuarios_companies').delete().eq('usuario_id', edit.entity_id)
+        if (comps && Array.isArray(comps) && comps.length > 0) {
+          const companyInserts = comps.map((orgId: string) => ({
+            usuario_id: edit.entity_id,
+            organization_id: orgId,
+          }))
+          await supabase.from('cadastro_usuarios_companies').insert(companyInserts)
+        }
       } else {
-        const { error: updateErr } = await supabase
-          .from(tableName)
-          .update(newValues)
-          .eq('id', edit.entity_id)
+        if (edit.is_create) {
+          const { error: insertErr } = await supabase
+            .from(tableName)
+            .insert({ id: edit.entity_id, ...newValues })
 
-        if (updateErr) throw updateErr
+          if (insertErr) throw insertErr
+        } else {
+          if (Object.keys(newValues).length > 0) {
+            const { error: updateErr } = await supabase
+              .from(tableName)
+              .update(newValues)
+              .eq('id', edit.entity_id)
+
+            if (updateErr) throw updateErr
+          }
+        }
       }
 
       // Update the pending_changes record

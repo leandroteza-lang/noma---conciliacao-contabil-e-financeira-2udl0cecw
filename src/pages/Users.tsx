@@ -80,6 +80,7 @@ export default function Users() {
       .from('cadastro_usuarios')
       .select('*, departments(name)')
       .is('deleted_at', null)
+      .not('pending_deletion', 'eq', true)
       .order('created_at', { ascending: false })
 
     if (error) {
@@ -175,47 +176,56 @@ export default function Users() {
   }
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Deseja realmente excluir este usuário?')) return
+    if (!confirm('Deseja enviar este usuário para exclusão?')) return
     try {
-      const userToDelete = users.find((u) => u.id === id)
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
       const { error } = await supabase
         .from('cadastro_usuarios')
-        .update({ deleted_at: new Date().toISOString() })
+        .update({
+          pending_deletion: true,
+          deletion_requested_at: new Date().toISOString(),
+          deletion_requested_by: user?.id,
+        })
         .eq('id', id)
       if (error) throw error
 
-      if (userToDelete) {
-        await logAction('USUARIOS', id, 'EXCLUSAO', {
-          status: { old: 'Ativo', new: 'Excluído' },
-        })
-      }
-
-      toast({ title: 'Sucesso', description: 'Usuário excluído.' })
+      toast({
+        title: 'Sucesso',
+        description: 'Usuário enviado para a lixeira (pendente de aprovação).',
+      })
       setSelectedUsers((prev) => prev.filter((uid) => uid !== id))
       loadUsers()
+      window.dispatchEvent(new CustomEvent('refresh-approvals-badge'))
     } catch (err: any) {
       toast({ variant: 'destructive', title: 'Erro', description: err.message })
     }
   }
 
   const handleBulkDelete = async () => {
-    if (!confirm(`Deseja realmente excluir ${selectedUsers.length} usuários?`)) return
+    if (!confirm(`Deseja enviar ${selectedUsers.length} usuários para exclusão?`)) return
     try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
       const { error } = await supabase
         .from('cadastro_usuarios')
-        .update({ deleted_at: new Date().toISOString() })
+        .update({
+          pending_deletion: true,
+          deletion_requested_at: new Date().toISOString(),
+          deletion_requested_by: user?.id,
+        })
         .in('id', selectedUsers)
       if (error) throw error
 
-      for (const id of selectedUsers) {
-        await logAction('USUARIOS', id, 'EXCLUSAO_EM_LOTE', {
-          status: { old: 'Ativo', new: 'Excluído' },
-        })
-      }
-
-      toast({ title: 'Sucesso', description: `${selectedUsers.length} usuários excluídos.` })
+      toast({
+        title: 'Sucesso',
+        description: `${selectedUsers.length} usuários enviados para exclusão.`,
+      })
       setSelectedUsers([])
       loadUsers()
+      window.dispatchEvent(new CustomEvent('refresh-approvals-badge'))
     } catch (err: any) {
       toast({ variant: 'destructive', title: 'Erro', description: err.message })
     }
@@ -1233,51 +1243,53 @@ function EditUserModal({
     if (!name) return
     setLoading(true)
     try {
-      const updates: any = {
-        name,
-        cpf: cpf || null,
-        phone: phone || null,
-        role,
-        department_id: departmentId === 'none' ? null : departmentId,
-        status: status === 'true',
-        permissions: permissions.length > 0 ? permissions : ['all'],
-      }
+      const {
+        data: { user: authUser },
+      } = await supabase.auth.getUser()
 
-      const changes: Record<string, { old: any; new: any }> = {}
-      if (user.name !== name) changes.name = { old: user.name, new: name }
-      if ((user.cpf || '') !== (cpf || '')) changes.cpf = { old: user.cpf, new: cpf }
-      if ((user.phone || '') !== (phone || '')) changes.phone = { old: user.phone, new: phone }
-      if (user.role !== role) changes.role = { old: user.role, new: role }
+      const proposed_changes: any = {}
+      if (user.name !== name) proposed_changes.name = { old: user.name, new: name }
+      if ((user.cpf || '') !== (cpf || ''))
+        proposed_changes.cpf = { old: user.cpf, new: cpf || null }
+      if ((user.phone || '') !== (phone || ''))
+        proposed_changes.phone = { old: user.phone, new: phone || null }
+      if (user.role !== role) proposed_changes.role = { old: user.role, new: role }
       if ((user.department_id || 'none') !== departmentId)
-        changes.department_id = { old: user.department_id, new: departmentId }
+        proposed_changes.department_id = {
+          old: user.department_id,
+          new: departmentId === 'none' ? null : departmentId,
+        }
       if (user.status !== (status === 'true'))
-        changes.status = { old: user.status, new: status === 'true' }
+        proposed_changes.status = { old: user.status, new: status === 'true' }
 
       const oldPerms = [...(user.permissions || ['all'])].sort().join(',')
       const newPerms = [...(permissions.length > 0 ? permissions : ['all'])].sort().join(',')
-      if (oldPerms !== newPerms) changes.permissions = { old: user.permissions, new: permissions }
+      if (oldPerms !== newPerms)
+        proposed_changes.permissions = {
+          old: user.permissions || ['all'],
+          new: permissions.length > 0 ? permissions : ['all'],
+        }
 
       const oldComps = [...initialCompanies].sort().join(',')
       const newComps = [...companies].sort().join(',')
-      if (oldComps !== newComps) changes.companies = { old: initialCompanies, new: companies }
+      if (oldComps !== newComps)
+        proposed_changes.companies = { old: initialCompanies, new: companies }
 
-      const { error } = await supabase.from('cadastro_usuarios').update(updates).eq('id', user.id)
-      if (error) throw error
+      if (Object.keys(proposed_changes).length > 0) {
+        const { error } = await supabase.from('pending_changes').insert({
+          entity_type: 'cadastro_usuarios',
+          entity_id: user.id,
+          proposed_changes,
+          requested_by: authUser?.id,
+        })
+        if (error) throw error
 
-      await supabase.from('cadastro_usuarios_companies').delete().eq('usuario_id', user.id)
-      if (companies.length > 0) {
-        const companyInserts = companies.map((orgId: string) => ({
-          usuario_id: user.id,
-          organization_id: orgId,
-        }))
-        await supabase.from('cadastro_usuarios_companies').insert(companyInserts)
+        toast({ title: 'Sucesso', description: 'Alterações enviadas para aprovação.' })
+        window.dispatchEvent(new CustomEvent('refresh-approvals-badge'))
+      } else {
+        toast({ title: 'Aviso', description: 'Nenhuma alteração foi feita.' })
       }
 
-      if (Object.keys(changes).length > 0) {
-        await logAction('USUARIOS', user.id, 'EDICAO', changes)
-      }
-
-      toast({ title: 'Sucesso', description: 'Usuário atualizado com sucesso.' })
       onSaved()
       onClose()
     } catch (err: any) {
@@ -1555,57 +1567,61 @@ function BulkEditModal({
 
     setLoading(true)
     try {
-      const updates: any = {}
-      if (role !== 'no_change') updates.role = role
-      if (status !== 'no_change') updates.status = status === 'true'
-      if (departmentId !== 'no_change') {
-        updates.department_id = departmentId === 'none' ? null : departmentId
-      }
-      if (updatePermissions) {
-        updates.permissions = permissions.length > 0 ? permissions : ['all']
-      }
+      const {
+        data: { user: authUser },
+      } = await supabase.auth.getUser()
 
-      if (Object.keys(updates).length > 0) {
-        const { error } = await supabase
-          .from('cadastro_usuarios')
-          .update(updates)
-          .in('id', selectedUsers)
-        if (error) throw error
-      }
-
-      if (updateCompanies) {
-        await supabase.from('cadastro_usuarios_companies').delete().in('usuario_id', selectedUsers)
-
-        if (companies.length > 0) {
-          const companyInserts = selectedUsers.flatMap((userId) =>
-            companies.map((orgId) => ({
-              usuario_id: userId,
-              organization_id: orgId,
-            })),
-          )
-          await supabase.from('cadastro_usuarios_companies').insert(companyInserts)
-        }
-      }
+      const pendingInserts = []
 
       for (const userId of selectedUsers) {
         const u = users.find((user: any) => user.id === userId)
-        const changes: Record<string, { old: any; new: any }> = {}
-        if (role !== 'no_change' && u?.role !== role) changes.role = { old: u?.role, new: role }
-        if (status !== 'no_change' && u?.status !== (status === 'true'))
-          changes.status = { old: u?.status, new: status === 'true' }
-        if (departmentId !== 'no_change' && (u?.department_id || 'none') !== departmentId)
-          changes.department_id = { old: u?.department_id, new: departmentId }
-        if (updatePermissions) changes.permissions = { old: u?.permissions, new: permissions }
-        if (updateCompanies) changes.companies = { old: 'Múltiplas', new: companies }
+        if (!u) continue
 
-        if (Object.keys(changes).length > 0) {
-          await logAction('USUARIOS', userId, 'EDICAO_EM_LOTE', changes)
+        const proposed_changes: any = {}
+        if (role !== 'no_change' && u.role !== role)
+          proposed_changes.role = { old: u.role, new: role }
+        if (status !== 'no_change' && u.status !== (status === 'true'))
+          proposed_changes.status = { old: u.status, new: status === 'true' }
+        if (departmentId !== 'no_change' && (u.department_id || 'none') !== departmentId)
+          proposed_changes.department_id = {
+            old: u.department_id,
+            new: departmentId === 'none' ? null : departmentId,
+          }
+
+        if (updatePermissions) {
+          const newPerms = permissions.length > 0 ? permissions : ['all']
+          const oldPerms = u.permissions || ['all']
+          if (newPerms.sort().join(',') !== oldPerms.sort().join(',')) {
+            proposed_changes.permissions = { old: oldPerms, new: newPerms }
+          }
+        }
+
+        if (updateCompanies) {
+          proposed_changes.companies = { old: 'Múltiplas', new: companies }
+        }
+
+        if (Object.keys(proposed_changes).length > 0) {
+          pendingInserts.push({
+            entity_type: 'cadastro_usuarios',
+            entity_id: userId,
+            proposed_changes,
+            requested_by: authUser?.id,
+          })
         }
       }
 
-      toast({ title: 'Sucesso', description: `${selectedUsers.length} usuários atualizados.` })
+      if (pendingInserts.length > 0) {
+        const { error } = await supabase.from('pending_changes').insert(pendingInserts)
+        if (error) throw error
+      }
+
+      toast({
+        title: 'Sucesso',
+        description: `${pendingInserts.length} solicitações de alteração enviadas para aprovação.`,
+      })
       onSaved()
       onClose()
+      window.dispatchEvent(new CustomEvent('refresh-approvals-badge'))
     } catch (err: any) {
       toast({ variant: 'destructive', title: 'Erro', description: err.message })
     } finally {
