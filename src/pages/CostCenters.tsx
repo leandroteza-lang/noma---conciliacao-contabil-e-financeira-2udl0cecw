@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
+import { ImportCostCentersModal } from '@/components/ImportCostCentersModal'
 import {
   Select,
   SelectContent,
@@ -66,6 +67,7 @@ export default function CostCenters() {
   const canDelete = role === 'admin'
 
   const [isCreateOpen, setIsCreateOpen] = useState(false)
+  const [isImportOpen, setIsImportOpen] = useState(false)
   const [orgs, setOrgs] = useState<{ id: string; name: string }[]>([])
   const [tgaOptions, setTgaOptions] = useState<{ id: string; nome: string }[]>([])
   const [submitting, setSubmitting] = useState(false)
@@ -122,24 +124,25 @@ export default function CostCenters() {
       contabiliza: newCC.contabiliza !== 'none' ? newCC.contabiliza : null,
       observacoes: newCC.observacoes || null,
     }
-    const { data: inserted, error } = await supabase
-      .from('cost_centers')
-      .insert([payload])
-      .select()
-      .single()
+    const pendingPayload = {
+      entity_type: 'Centros de Custo',
+      entity_id: crypto.randomUUID(),
+      proposed_changes: payload,
+      status: 'pending',
+      requested_by: user?.id,
+    }
+
+    const { error } = await supabase.from('pending_changes').insert(pendingPayload)
     setSubmitting(false)
 
     if (error) {
       toast({ title: 'Erro', description: error.message, variant: 'destructive' })
     } else {
-      if (inserted) {
-        const changes: any = {}
-        Object.keys(payload).forEach((k) => {
-          changes[k] = { new: (payload as any)[k] }
-        })
-        await logAction('COST_CENTERS', inserted.id, 'CRIACAO', changes)
-      }
-      toast({ title: 'Sucesso', description: 'Centro de custo criado.' })
+      window.dispatchEvent(new Event('refresh-approvals-badge'))
+      toast({
+        title: 'Enviado para Aprovação',
+        description: 'A criação foi solicitada à central de aprovações.',
+      })
       setIsCreateOpen(false)
       setNewCC({
         organization_id: '',
@@ -262,6 +265,7 @@ export default function CostCenters() {
             pending_deletion: { old: false, new: true },
           })
         }
+        window.dispatchEvent(new Event('refresh-approvals-badge'))
         toast({
           title: 'Sucesso',
           description: `${toDelete.length} centro(s) de custo enviado(s) para aprovação.`,
@@ -328,6 +332,7 @@ export default function CostCenters() {
       await logAction('COST_CENTERS', id, 'SOLICITACAO_EXCLUSAO', {
         pending_deletion: { old: false, new: true },
       })
+      window.dispatchEvent(new Event('refresh-approvals-badge'))
       toast({ title: 'Enviado para Aprovação', description: 'A exclusão foi solicitada.' })
       fetchCostCenters()
     }
@@ -343,8 +348,8 @@ export default function CostCenters() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" asChild>
-            <Link to="/import">Importar Planilha</Link>
+          <Button variant="outline" onClick={() => setIsImportOpen(true)}>
+            Importar Planilha
           </Button>
           <Button
             onClick={() => {
@@ -357,6 +362,12 @@ export default function CostCenters() {
           </Button>
         </div>
       </div>
+
+      <ImportCostCentersModal
+        open={isImportOpen}
+        onOpenChange={setIsImportOpen}
+        onImportSuccess={fetchCostCenters}
+      />
 
       <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
         <DialogContent className="max-w-2xl">
