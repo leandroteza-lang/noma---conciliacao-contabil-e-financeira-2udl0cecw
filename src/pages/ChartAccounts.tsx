@@ -305,24 +305,31 @@ export default function ChartAccounts() {
 
   const handleSaveAccount = async (data: any) => {
     if (editingAccount) {
-      const { error } = await supabase
-        .from('chart_of_accounts')
-        .update(data)
-        .eq('id', editingAccount.id)
-      if (error) toast({ title: 'Erro', description: error.message, variant: 'destructive' })
-      else {
-        const changes: any = {}
-        Object.keys(data).forEach((k) => {
-          if ((editingAccount as any)[k] !== data[k]) {
-            changes[k] = { old: (editingAccount as any)[k], new: data[k] }
-          }
-        })
-        if (Object.keys(changes).length > 0) {
-          await logAction('CHART_OF_ACCOUNTS', editingAccount.id, 'EDICAO', changes)
+      const changes: any = {}
+      Object.keys(data).forEach((k) => {
+        if ((editingAccount as any)[k] !== data[k]) {
+          changes[k] = { old: (editingAccount as any)[k], new: data[k] }
         }
-        toast({ title: 'Sucesso', description: 'Conta atualizada com sucesso.' })
+      })
+
+      if (Object.keys(changes).length > 0) {
+        const { error } = await supabase.from('pending_changes').insert({
+          entity_type: 'chart_of_accounts',
+          entity_id: editingAccount.id,
+          proposed_changes: changes,
+          requested_by: user?.id,
+          status: 'pending',
+        })
+
+        if (error) {
+          toast({ title: 'Erro', description: error.message, variant: 'destructive' })
+        } else {
+          toast({ title: 'Sucesso', description: 'Alteração enviada para aprovação.' })
+          window.dispatchEvent(new CustomEvent('refresh-approvals-badge'))
+          setIsFormOpen(false)
+        }
+      } else {
         setIsFormOpen(false)
-        fetchAccounts()
       }
     } else {
       const { data: inserted, error } = await supabase
@@ -348,7 +355,7 @@ export default function ChartAccounts() {
 
   const handleBulkEditSave = async (data: any) => {
     if (selectedIds.length === 0) return
-    toast({ title: 'Aguarde', description: 'Atualizando contas...' })
+    toast({ title: 'Aguarde', description: 'Enviando alterações para aprovação...' })
 
     const chunkSize = 100
     let hasError = false
@@ -356,25 +363,34 @@ export default function ChartAccounts() {
 
     for (let i = 0; i < selectedIds.length; i += chunkSize) {
       const chunk = selectedIds.slice(i, i + chunkSize)
-      const { error } = await supabase.from('chart_of_accounts').update(data).in('id', chunk)
-      if (error) {
-        hasError = true
-        errorMessage = error.message
-        break
-      } else {
-        for (const id of chunk) {
+      const pendingInserts = chunk
+        .map((id) => {
           const acc = accounts.find((a) => a.id === id)
-          const changes: any = {}
+          const proposedChanges: any = {}
           Object.keys(data).forEach((k) => {
             if (acc && (acc as any)[k] !== data[k]) {
-              changes[k] = { old: (acc as any)[k], new: data[k] }
+              proposedChanges[k] = { old: (acc as any)[k], new: data[k] }
             } else if (!acc) {
-              changes[k] = { new: data[k] }
+              proposedChanges[k] = { new: data[k] }
             }
           })
-          if (Object.keys(changes).length > 0) {
-            await logAction('CHART_OF_ACCOUNTS', id, 'EDICAO_EM_LOTE', changes)
+
+          return {
+            entity_type: 'chart_of_accounts',
+            entity_id: id,
+            proposed_changes: proposedChanges,
+            requested_by: user?.id,
+            status: 'pending',
           }
+        })
+        .filter((p) => Object.keys(p.proposed_changes).length > 0)
+
+      if (pendingInserts.length > 0) {
+        const { error } = await supabase.from('pending_changes').insert(pendingInserts)
+        if (error) {
+          hasError = true
+          errorMessage = error.message
+          break
         }
       }
     }
@@ -382,10 +398,13 @@ export default function ChartAccounts() {
     if (hasError) {
       toast({ title: 'Erro', description: errorMessage, variant: 'destructive' })
     } else {
-      toast({ title: 'Sucesso', description: `${selectedIds.length} contas atualizadas.` })
+      toast({
+        title: 'Sucesso',
+        description: `Alterações de ${selectedIds.length} contas enviadas para aprovação.`,
+      })
+      window.dispatchEvent(new CustomEvent('refresh-approvals-badge'))
       setIsBulkEditOpen(false)
       setSelectedIds([])
-      fetchAccounts()
     }
   }
 
@@ -543,7 +562,7 @@ export default function ChartAccounts() {
         const chunk = idsToFetch.slice(i, i + chunkSize)
         const { data } = await supabase
           .from('chart_of_accounts')
-          .select('id, account_level, classification, organization_id')
+          .select('id, account_level, classification, organization_id, account_name')
           .in('id', chunk)
         if (data) fullAccountsToDelete.push(...data)
         setDeleteProgress((prev) => ({
@@ -640,20 +659,34 @@ export default function ChartAccounts() {
         return
       }
 
-      setDeleteProgress({ current: 0, total: toDelete.length, step: 'Excluindo contas...' })
+      setDeleteProgress({ current: 0, total: toDelete.length, step: 'Enviando para aprovação...' })
 
       let deletedCount = 0
       for (let i = 0; i < toDelete.length; i += chunkSize) {
         const chunk = toDelete.slice(i, i + chunkSize)
-        const { error } = await supabase.from('chart_of_accounts').delete().in('id', chunk)
+        const { error } = await supabase
+          .from('chart_of_accounts')
+          .update({
+            pending_deletion: true,
+            deletion_requested_at: new Date().toISOString(),
+            deletion_requested_by: user?.id,
+          })
+          .in('id', chunk)
+
         if (error) throw error
 
         for (const id of chunk) {
+          const acc =
+            fullAccountsToDelete.find((a) => a.id === id) ||
+            accountsToDelete.find((a) => a.id === id)
           await logAction(
             'CHART_OF_ACCOUNTS',
             id,
             chunk.length > 1 || accountsToDelete.length > 1 ? 'EXCLUSAO_EM_LOTE' : 'EXCLUSAO',
-            { status: { old: 'Ativo', new: 'Excluído' } },
+            {
+              pending_deletion: { old: false, new: true },
+              account_name: acc ? { old: acc.account_name, new: acc.account_name } : undefined,
+            },
           )
         }
 
@@ -664,16 +697,17 @@ export default function ChartAccounts() {
       if (blockedCount > 0) {
         toast({
           title: 'Ação Parcialmente Concluída',
-          description: `${deletedCount} conta(s) excluída(s). ${blockedCount} conta(s) possuem vínculos e não puderam ser excluídas.`,
+          description: `${deletedCount} conta(s) enviada(s) para aprovação. ${blockedCount} conta(s) possuem vínculos e não puderam ser excluídas.`,
           variant: 'destructive',
         })
       } else {
         toast({
           title: 'Sucesso',
-          description: `${deletedCount} conta(s) excluída(s) com sucesso.`,
+          description: `${deletedCount} conta(s) enviada(s) para aprovação de exclusão.`,
         })
       }
 
+      window.dispatchEvent(new CustomEvent('refresh-approvals-badge'))
       setSelectedIds([])
       fetchAccounts()
       fetchSummary()
@@ -1268,19 +1302,19 @@ export default function ChartAccounts() {
                     {!isDeleting ? (
                       <>
                         <p>
-                          Você está prestes a excluir <strong>{accountsToDelete.length}</strong>{' '}
-                          conta(s) selecionada(s).
+                          Você está prestes a solicitar a exclusão de{' '}
+                          <strong>{accountsToDelete.length}</strong> conta(s) selecionada(s).
                         </p>
                         {accountsToDelete.some((a) => a.account_level === 'Sintética') && (
                           <div className="bg-amber-50 text-amber-800 p-3 rounded-md text-sm border border-amber-200">
                             <strong>Atenção:</strong> Você selecionou contas Sintéticas. Todas as
                             contas analíticas e subcontas pertencentes a estes níveis também serão
-                            excluídas em cascata.
+                            enviadas para aprovação de exclusão em cascata.
                           </div>
                         )}
                         <p>
-                          Esta ação não pode ser desfeita. Contas com vínculos (lançamentos ou
-                          mapeamentos) não serão excluídas.
+                          Esta ação enviará os itens para a Central de Aprovações. Contas com
+                          vínculos (lançamentos ou mapeamentos) não serão enviadas.
                         </p>
                       </>
                     ) : (
@@ -1310,7 +1344,7 @@ export default function ChartAccounts() {
                 <AlertDialogFooter>
                   <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
                   <Button variant="destructive" onClick={executeDeletion} disabled={isDeleting}>
-                    Sim, excluir
+                    Solicitar Exclusão
                   </Button>
                 </AlertDialogFooter>
               )}
