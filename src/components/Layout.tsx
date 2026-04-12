@@ -127,7 +127,7 @@ export const MENU_ITEMS: MenuItem[] = [
   },
   {
     id: 'centros-de-custo',
-    title: 'Centros de Custo',
+    title: 'Centros de Custo TGA',
     path: '/centros-de-custo',
     icon: Briefcase,
     roles: ['admin', 'supervisor'],
