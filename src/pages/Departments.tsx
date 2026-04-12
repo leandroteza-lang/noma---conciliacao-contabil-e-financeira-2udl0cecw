@@ -22,7 +22,6 @@ import { supabase } from '@/lib/supabase/client'
 import { ImportDepartmentsModal } from '@/components/ImportDepartmentsModal'
 import { useAuth } from '@/hooks/use-auth'
 import { useToast } from '@/hooks/use-toast'
-import { useAuditLog } from '@/hooks/use-audit-log'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -80,7 +79,6 @@ export default function Departments() {
   const [isImportModalOpen, setIsImportModalOpen] = useState(false)
   const { user, role, permissions } = useAuth()
   const { toast } = useToast()
-  const { logAction } = useAuditLog()
 
   const safePerms = Array.isArray(permissions) ? permissions : []
   const hasFullAccess = safePerms.includes('all') || safePerms.includes('departamentos')
@@ -195,69 +193,48 @@ export default function Departments() {
         if (oldDep?.code !== finalCode) changes.code = { old: oldDep?.code, new: finalCode }
         if (oldDep?.name !== data.name) changes.name = { old: oldDep?.name, new: data.name }
 
-        if (Object.keys(changes).length > 0) {
-          if (role !== 'admin') {
-            const { error } = await supabase.from('pending_changes').insert({
-              entity_type: 'departments',
-              entity_id: editingId,
-              proposed_changes: changes,
-              status: 'pending',
-              requested_by: user.id,
-            })
-            if (error) throw error
-            toast({
-              title: 'Enviado para Aprovação',
-              description: 'A edição do departamento foi enviada para revisão.',
-            })
-          } else {
-            const { error } = await supabase
-              .from('departments')
-              .update({ code: finalCode, name: data.name })
-              .eq('id', editingId)
-              .eq('user_id', user.id)
-            if (error) throw error
-
-            await logAction('DEPARTMENTS', editingId, 'EDICAO', changes)
-            toast({ title: 'Sucesso', description: 'Departamento atualizado!' })
-          }
-        }
-      } else {
-        if (role !== 'admin') {
-          const newId = crypto.randomUUID()
-          const { error } = await supabase.from('pending_changes').insert({
-            entity_type: 'departments',
-            entity_id: newId,
-            proposed_changes: {
-              __action: { new: 'CREATE' },
-              code: { new: finalCode },
-              name: { new: data.name },
-              user_id: { new: user.id },
-            },
-            status: 'pending',
-            requested_by: user.id,
-          })
-          if (error) throw error
+        if (Object.keys(changes).length === 0) {
           toast({
-            title: 'Enviado para Aprovação',
-            description: 'A criação do departamento foi enviada para revisão.',
+            title: 'Nenhuma alteração detectada',
+            description: 'Altere o nome ou código antes de salvar.',
           })
-        } else {
-          const { data: inserted, error } = await supabase
-            .from('departments')
-            .insert([{ code: finalCode, name: data.name, user_id: user.id }])
-            .select()
-            .single()
-          if (error) throw error
-
-          if (inserted) {
-            await logAction('DEPARTMENTS', inserted.id, 'CRIACAO', {
-              code: { new: finalCode },
-              name: { new: data.name },
-            })
-          }
-
-          toast({ title: 'Sucesso', description: 'Departamento criado!' })
+          return
         }
+
+        const { error } = await supabase.from('pending_changes').insert({
+          entity_type: 'departments',
+          entity_id: editingId,
+          proposed_changes: changes,
+          status: 'pending',
+          requested_by: user.id,
+        })
+        if (error) throw error
+
+        toast({
+          title: 'Enviado para Aprovação',
+          description: 'A edição do departamento foi enviada para revisão.',
+        })
+        window.dispatchEvent(new CustomEvent('refresh-approvals-badge'))
+      } else {
+        const newId = crypto.randomUUID()
+        const { error } = await supabase.from('pending_changes').insert({
+          entity_type: 'departments',
+          entity_id: newId,
+          proposed_changes: {
+            __action: { new: 'CREATE' },
+            code: { new: finalCode },
+            name: { new: data.name },
+            user_id: { new: user.id },
+          },
+          status: 'pending',
+          requested_by: user.id,
+        })
+        if (error) throw error
+        toast({
+          title: 'Enviado para Aprovação',
+          description: 'A criação do departamento foi enviada para revisão.',
+        })
+        window.dispatchEvent(new CustomEvent('refresh-approvals-badge'))
       }
       setIsModalOpen(false)
       fetchDepartments()
