@@ -190,38 +190,74 @@ export default function Departments() {
       }
 
       if (editingId) {
-        const { error } = await supabase
-          .from('departments')
-          .update({ code: finalCode, name: data.name })
-          .eq('id', editingId)
-          .eq('user_id', user.id)
-        if (error) throw error
-
         const oldDep = departments.find((d) => d.id === editingId)
         const changes: any = {}
         if (oldDep?.code !== finalCode) changes.code = { old: oldDep?.code, new: finalCode }
         if (oldDep?.name !== data.name) changes.name = { old: oldDep?.name, new: data.name }
+
         if (Object.keys(changes).length > 0) {
-          await logAction('DEPARTMENTS', editingId, 'EDICAO', changes)
-        }
+          if (role !== 'admin') {
+            const { error } = await supabase.from('pending_changes').insert({
+              entity_type: 'departments',
+              entity_id: editingId,
+              proposed_changes: changes,
+              status: 'pending',
+              requested_by: user.id,
+            })
+            if (error) throw error
+            toast({
+              title: 'Enviado para Aprovação',
+              description: 'A edição do departamento foi enviada para revisão.',
+            })
+          } else {
+            const { error } = await supabase
+              .from('departments')
+              .update({ code: finalCode, name: data.name })
+              .eq('id', editingId)
+              .eq('user_id', user.id)
+            if (error) throw error
 
-        toast({ title: 'Sucesso', description: 'Departamento atualizado!' })
+            await logAction('DEPARTMENTS', editingId, 'EDICAO', changes)
+            toast({ title: 'Sucesso', description: 'Departamento atualizado!' })
+          }
+        }
       } else {
-        const { data: inserted, error } = await supabase
-          .from('departments')
-          .insert([{ code: finalCode, name: data.name, user_id: user.id }])
-          .select()
-          .single()
-        if (error) throw error
-
-        if (inserted) {
-          await logAction('DEPARTMENTS', inserted.id, 'CRIACAO', {
-            code: { new: finalCode },
-            name: { new: data.name },
+        if (role !== 'admin') {
+          const newId = crypto.randomUUID()
+          const { error } = await supabase.from('pending_changes').insert({
+            entity_type: 'departments',
+            entity_id: newId,
+            proposed_changes: {
+              __action: { new: 'CREATE' },
+              code: { new: finalCode },
+              name: { new: data.name },
+              user_id: { new: user.id },
+            },
+            status: 'pending',
+            requested_by: user.id,
           })
-        }
+          if (error) throw error
+          toast({
+            title: 'Enviado para Aprovação',
+            description: 'A criação do departamento foi enviada para revisão.',
+          })
+        } else {
+          const { data: inserted, error } = await supabase
+            .from('departments')
+            .insert([{ code: finalCode, name: data.name, user_id: user.id }])
+            .select()
+            .single()
+          if (error) throw error
 
-        toast({ title: 'Sucesso', description: 'Departamento criado!' })
+          if (inserted) {
+            await logAction('DEPARTMENTS', inserted.id, 'CRIACAO', {
+              code: { new: finalCode },
+              name: { new: data.name },
+            })
+          }
+
+          toast({ title: 'Sucesso', description: 'Departamento criado!' })
+        }
       }
       setIsModalOpen(false)
       fetchDepartments()

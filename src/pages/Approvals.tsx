@@ -61,7 +61,8 @@ export default function Approvals() {
       let finalEntityType = item.type || 'unknown'
       if (finalEntityType === 'employee') finalEntityType = 'usuario'
       if (finalEntityType === 'organization') finalEntityType = 'empresa'
-      if (finalEntityType === 'department') finalEntityType = 'departamento'
+      if (finalEntityType === 'department' || finalEntityType === 'departments')
+        finalEntityType = 'departamento'
       if (finalEntityType === 'cost_center') finalEntityType = 'centro_custo'
       if (finalEntityType === 'chart_account') finalEntityType = 'conta_contabil'
       if (finalEntityType === 'bank_account') finalEntityType = 'conta_bancaria'
@@ -307,6 +308,13 @@ export default function Approvals() {
         )
         .map((e: any) => e.entity_id)
 
+      const deptEditIds = fetchedEdits
+        .filter(
+          (e: any) =>
+            e.entity_type === 'departments' && e.proposed_changes?.__action?.new !== 'CREATE',
+        )
+        .map((e: any) => e.entity_id)
+
       const bMap: Record<string, string> = {}
       if (bankEditIds.length > 0) {
         const { data: bData } = await supabase
@@ -328,6 +336,15 @@ export default function Approvals() {
         uData?.forEach((u: any) => (uMap[u.id] = u.name))
       }
 
+      const dMap: Record<string, string> = {}
+      if (deptEditIds.length > 0) {
+        const { data: dData } = await supabase
+          .from('departments')
+          .select('id, name')
+          .in('id', deptEditIds)
+        dData?.forEach((d: any) => (dMap[d.id] = d.name))
+      }
+
       fetchedEdits.forEach((e: any) => {
         if (e.proposed_changes?.__action?.new === 'CREATE') {
           const desc = e.proposed_changes.description?.new || e.proposed_changes.name?.new || ''
@@ -339,6 +356,8 @@ export default function Approvals() {
           e.entity_name = bMap[e.entity_id] || 'Conta Bancária Desconhecida'
         } else if (e.entity_type === 'cadastro_usuarios') {
           e.entity_name = uMap[e.entity_id] || 'Usuário Desconhecido'
+        } else if (e.entity_type === 'departments') {
+          e.entity_name = dMap[e.entity_id] || 'Departamento Desconhecido'
         }
       })
 
@@ -618,6 +637,7 @@ export default function Approvals() {
       const tableMap: Record<string, string> = {
         bank_accounts: 'bank_accounts',
         cadastro_usuarios: 'cadastro_usuarios',
+        departments: 'departments',
       }
       const tableName = tableMap[edit.entity_type]
       if (!tableName) throw new Error('Entidade não suportada')
