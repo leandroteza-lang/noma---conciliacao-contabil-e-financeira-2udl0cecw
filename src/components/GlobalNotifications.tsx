@@ -17,6 +17,13 @@ export function GlobalNotifications() {
   useEffect(() => {
     if (!user) return
 
+    const playSound = () => {
+      if (audioRef.current) {
+        audioRef.current.currentTime = 0
+        audioRef.current.play().catch((e) => console.error('Audio play failed:', e))
+      }
+    }
+
     const fetchNotifiedQueries = async () => {
       const { data } = await supabase
         .from('shared_queries')
@@ -55,9 +62,7 @@ export function GlobalNotifications() {
           ) {
             notifiedQueriesRef.current.add(newRecord.id)
 
-            if (audioRef.current) {
-              audioRef.current.play().catch((e) => console.error('Audio play failed:', e))
-            }
+            playSound()
 
             toast.success('Novo Acesso!', {
               description: `O link "${newRecord.prompt}" foi acessado pela primeira vez.`,
@@ -83,6 +88,7 @@ export function GlobalNotifications() {
             if (!notifiedDeletionsRef.current.has(id)) {
               notifiedDeletionsRef.current.add(id)
 
+              playSound()
               toast.success(isTrash ? 'Item na Lixeira!' : 'Exclusão Pendente!', {
                 description: isTrash
                   ? 'Um item foi movido para a lixeira.'
@@ -109,15 +115,37 @@ export function GlobalNotifications() {
           event: 'INSERT',
           schema: 'public',
           table: 'pending_changes',
-          filter: 'status=eq.pending',
         },
         (payload: any) => {
-          toast.success('Nova Aprovação Pendente!', {
-            description: 'Uma nova alteração ou criação foi enviada para revisão.',
-            duration: 10000,
-            icon: '🔔',
-          })
-          window.dispatchEvent(new CustomEvent('refresh-approvals-badge'))
+          if (payload.new.status === 'pending') {
+            playSound()
+            toast.success('Nova Aprovação Pendente!', {
+              description: 'Uma nova alteração ou criação foi enviada para revisão.',
+              duration: 10000,
+              icon: '🔔',
+            })
+            window.dispatchEvent(new CustomEvent('refresh-approvals-badge'))
+          }
+        },
+      )
+
+      adminChannel.on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'pending_changes',
+        },
+        (payload: any) => {
+          if (payload.new.status === 'pending' && payload.old?.status !== 'pending') {
+            playSound()
+            toast.success('Nova Aprovação Pendente!', {
+              description: 'Uma nova alteração ou criação foi enviada para revisão.',
+              duration: 10000,
+              icon: '🔔',
+            })
+            window.dispatchEvent(new CustomEvent('refresh-approvals-badge'))
+          }
         },
       )
 
@@ -126,6 +154,26 @@ export function GlobalNotifications() {
         { event: 'INSERT', schema: 'public', table: 'cadastro_usuarios' },
         (payload: any) => {
           if (payload.new.approval_status === 'pending') {
+            playSound()
+            toast.success('Novo Usuário Pendente!', {
+              description: 'Um novo usuário solicitou acesso.',
+              duration: 10000,
+              icon: '🔔',
+            })
+            window.dispatchEvent(new CustomEvent('refresh-approvals-badge'))
+          }
+        },
+      )
+
+      adminChannel.on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'cadastro_usuarios' },
+        (payload: any) => {
+          if (
+            payload.new.approval_status === 'pending' &&
+            payload.old?.approval_status !== 'pending'
+          ) {
+            playSound()
             toast.success('Novo Usuário Pendente!', {
               description: 'Um novo usuário solicitou acesso.',
               duration: 10000,
