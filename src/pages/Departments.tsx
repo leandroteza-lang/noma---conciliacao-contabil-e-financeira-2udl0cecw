@@ -209,6 +209,7 @@ export default function Departments() {
               title: 'Enviado para Aprovação',
               description: 'A edição do departamento foi enviada para revisão.',
             })
+            window.dispatchEvent(new CustomEvent('refresh-approvals-badge'))
           } else {
             const { error } = await supabase
               .from('departments')
@@ -241,6 +242,7 @@ export default function Departments() {
             title: 'Enviado para Aprovação',
             description: 'A criação do departamento foi enviada para revisão.',
           })
+          window.dispatchEvent(new CustomEvent('refresh-approvals-badge'))
         } else {
           const { data: inserted, error } = await supabase
             .from('departments')
@@ -307,6 +309,7 @@ export default function Departments() {
         title: 'Enviado para Aprovação',
         description: 'A exclusão foi solicitada e aguarda aprovação do administrador.',
       })
+      window.dispatchEvent(new CustomEvent('refresh-approvals-badge'))
       fetchDepartments()
     } catch (error: any) {
       toast({ title: 'Erro', description: error.message, variant: 'destructive' })
@@ -353,6 +356,7 @@ export default function Departments() {
           title: 'Sucesso',
           description: `${toDelete.length} departamento(s) enviado(s) para aprovação.`,
         })
+        window.dispatchEvent(new CustomEvent('refresh-approvals-badge'))
       }
     }
 
