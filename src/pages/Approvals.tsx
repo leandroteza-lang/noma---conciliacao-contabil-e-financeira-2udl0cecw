@@ -122,19 +122,22 @@ export default function Approvals() {
           supabase
             .from('organizations')
             .select('*')
-            .or('pending_deletion.eq.true,deleted_at.not.is.null')
+            .eq('pending_deletion', true)
+            .is('deleted_at', null)
             .then((res) => (res.error ? { data: [] } : res))
             .catch(() => ({ data: [] })),
           supabase
             .from('departments')
             .select('*')
-            .or('pending_deletion.eq.true,deleted_at.not.is.null')
+            .eq('pending_deletion', true)
+            .is('deleted_at', null)
             .then((res) => (res.error ? { data: [] } : res))
             .catch(() => ({ data: [] })),
           supabase
             .from('cadastro_usuarios')
             .select('*')
-            .or('pending_deletion.eq.true,deleted_at.not.is.null')
+            .eq('pending_deletion', true)
+            .is('deleted_at', null)
             .then((res) => (res.error ? { data: [] } : res))
             .catch(() => ({ data: [] })),
           supabase
@@ -147,25 +150,29 @@ export default function Approvals() {
           supabase
             .from('cost_centers')
             .select('*')
-            .or('pending_deletion.eq.true,deleted_at.not.is.null')
+            .eq('pending_deletion', true)
+            .is('deleted_at', null)
             .then((res) => (res.error ? { data: [] } : res))
             .catch(() => ({ data: [] })),
           supabase
             .from('chart_of_accounts')
             .select('*')
-            .or('pending_deletion.eq.true,deleted_at.not.is.null')
+            .eq('pending_deletion', true)
+            .is('deleted_at', null)
             .then((res) => (res.error ? { data: [] } : res))
             .catch(() => ({ data: [] })),
           supabase
             .from('bank_accounts')
             .select('*')
-            .or('pending_deletion.eq.true,deleted_at.not.is.null')
+            .eq('pending_deletion', true)
+            .is('deleted_at', null)
             .then((res) => (res.error ? { data: [] } : res))
             .catch(() => ({ data: [] })),
           supabase
             .from('tipo_conta_tga')
             .select('*')
-            .or('pending_deletion.eq.true,deleted_at.not.is.null')
+            .eq('pending_deletion', true)
+            .is('deleted_at', null)
             .then((res) => (res.error ? { data: [] } : res))
             .catch(() => ({ data: [] })),
           supabase

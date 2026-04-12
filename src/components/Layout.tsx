@@ -474,7 +474,8 @@ export default function Layout() {
           supabase
             .from(table)
             .select('id', { count: 'exact', head: true })
-            .or('pending_deletion.eq.true,deleted_at.not.is.null')
+            .eq('pending_deletion', true)
+            .is('deleted_at', null)
             .then((res) => (!res.error && res.count !== null ? res.count : 0))
             .catch((e) => {
               console.error(e)
@@ -485,7 +486,8 @@ export default function Layout() {
         const userDeletionPromise = supabase
           .from('cadastro_usuarios')
           .select('id', { count: 'exact', head: true })
-          .or('pending_deletion.eq.true,deleted_at.not.is.null')
+          .eq('pending_deletion', true)
+          .is('deleted_at', null)
           .then((res) => (!res.error && res.count !== null ? res.count : 0))
           .catch((e) => {
             console.error(e)
