@@ -932,6 +932,24 @@ function NewUserModal({
       setCpfError('CPF inválido')
       return
     }
+
+    if (cpf) {
+      setLoading(true)
+      const { data: existingCpf } = await supabase
+        .from('cadastro_usuarios')
+        .select('id')
+        .eq('cpf', cpf)
+        .is('deleted_at', null)
+        .maybeSingle()
+
+      if (existingCpf) {
+        setCpfError('Este CPF já está cadastrado para outro usuário')
+        setLoading(false)
+        return
+      }
+      setLoading(false)
+    }
+
     setCpfError('')
 
     setLoading(true)
@@ -1246,6 +1264,25 @@ function EditUserModal({
       setCpfError('CPF inválido')
       return
     }
+
+    if (cpf && cpf !== user?.cpf) {
+      setLoading(true)
+      const { data: existingCpf } = await supabase
+        .from('cadastro_usuarios')
+        .select('id')
+        .eq('cpf', cpf)
+        .neq('id', user?.id)
+        .is('deleted_at', null)
+        .maybeSingle()
+
+      if (existingCpf) {
+        setCpfError('Este CPF já está cadastrado para outro usuário')
+        setLoading(false)
+        return
+      }
+      setLoading(false)
+    }
+
     setCpfError('')
 
     setLoading(true)
