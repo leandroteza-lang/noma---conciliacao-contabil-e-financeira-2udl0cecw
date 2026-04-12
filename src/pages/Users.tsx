@@ -925,8 +925,6 @@ function NewUserModal({
     }
   }, [isOpen])
 
-  const [cpfError, setCpfError] = useState('')
-
   const handleSave = async () => {
     if (!name || !email) return
 
@@ -1181,6 +1179,7 @@ function EditUserModal({
   const [organizations, setOrganizations] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
   const [departments, setDepartments] = useState<any[]>([])
+  const [cpfError, setCpfError] = useState('')
   const { toast } = useToast()
 
   const AVAILABLE_PERMISSIONS = [
