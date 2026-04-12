@@ -56,6 +56,7 @@ import * as XLSX from 'xlsx'
 import { format } from 'date-fns'
 import { useAuditLog } from '@/hooks/use-audit-log'
 import { useAuth } from '@/hooks/use-auth'
+import { isValidCPF, formatCPF } from '@/lib/utils'
 
 type SortField = 'name' | 'email' | 'cpf' | 'role' | 'department' | 'status'
 
@@ -578,23 +579,6 @@ function ImportUsersModal({
         .from('cadastro_usuarios')
         .select('id, email, cpf, pending_deletion, approval_status, deleted_at')
 
-      const isValidCPF = (cpfValue: string) => {
-        const cleanCpf = cpfValue.replace(/\D/g, '')
-        if (cleanCpf.length !== 11 || /^(\d)\1{10}$/.test(cleanCpf)) return false
-        let sum = 0
-        let remainder
-        for (let i = 1; i <= 9; i++) sum += parseInt(cleanCpf.substring(i - 1, i)) * (11 - i)
-        remainder = (sum * 10) % 11
-        if (remainder === 10 || remainder === 11) remainder = 0
-        if (remainder !== parseInt(cleanCpf.substring(9, 10))) return false
-        sum = 0
-        for (let i = 1; i <= 10; i++) sum += parseInt(cleanCpf.substring(i - 1, i)) * (12 - i)
-        remainder = (sum * 10) % 11
-        if (remainder === 10 || remainder === 11) remainder = 0
-        if (remainder !== parseInt(cleanCpf.substring(10, 11))) return false
-        return true
-      }
-
       const processedRows = rows.map((row: any, index) => {
         const email = String(row['EMAIL'] || '')
           .trim()
@@ -896,6 +880,7 @@ function NewUserModal({
   const [organizations, setOrganizations] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
   const [departments, setDepartments] = useState<any[]>([])
+  const [cpfError, setCpfError] = useState('')
   const { toast } = useToast()
   const { user } = useAuth()
 
@@ -931,6 +916,7 @@ function NewUserModal({
       setName('')
       setEmail('')
       setCpf('')
+      setCpfError('')
       setPhone('')
       setRole('collaborator')
       setDepartmentId('none')
@@ -939,8 +925,17 @@ function NewUserModal({
     }
   }, [isOpen])
 
+  const [cpfError, setCpfError] = useState('')
+
   const handleSave = async () => {
     if (!name || !email) return
+
+    if (cpf && !isValidCPF(cpf)) {
+      setCpfError('CPF inválido')
+      return
+    }
+    setCpfError('')
+
     setLoading(true)
     try {
       const { data, error } = await supabase.functions.invoke('manage-user', {
@@ -1001,9 +996,14 @@ function NewUserModal({
             <label className="text-sm font-medium">CPF</label>
             <Input
               value={cpf}
-              onChange={(e) => setCpf(e.target.value)}
+              onChange={(e) => {
+                setCpf(formatCPF(e.target.value))
+                setCpfError('')
+              }}
               placeholder="000.000.000-00"
+              className={cpfError ? 'border-red-500 focus-visible:ring-red-500' : ''}
             />
+            {cpfError && <p className="text-xs text-red-500">{cpfError}</p>}
           </div>
           <div className="space-y-2">
             <label className="text-sm font-medium">Telefone</label>
@@ -1236,11 +1236,19 @@ function EditUserModal({
       setPermissions(['all'])
       setCompanies([])
       setInitialCompanies([])
+      setCpfError('')
     }
   }, [isOpen, user])
 
   const handleSave = async () => {
     if (!name) return
+
+    if (cpf && !isValidCPF(cpf)) {
+      setCpfError('CPF inválido')
+      return
+    }
+    setCpfError('')
+
     setLoading(true)
     try {
       const {
@@ -1319,9 +1327,14 @@ function EditUserModal({
             <label className="text-sm font-medium">CPF</label>
             <Input
               value={cpf}
-              onChange={(e) => setCpf(e.target.value)}
+              onChange={(e) => {
+                setCpf(formatCPF(e.target.value))
+                setCpfError('')
+              }}
               placeholder="000.000.000-00"
+              className={cpfError ? 'border-red-500 focus-visible:ring-red-500' : ''}
             />
+            {cpfError && <p className="text-xs text-red-500">{cpfError}</p>}
           </div>
           <div className="space-y-2">
             <label className="text-sm font-medium">Telefone</label>
