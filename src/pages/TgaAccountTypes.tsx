@@ -69,7 +69,11 @@ export default function TgaAccountTypes() {
 
   const fetchData = async () => {
     const [{ data: tga }, { data: orgData }] = await Promise.all([
-      supabase.from('tipo_conta_tga').select('*, organizations(name)').is('deleted_at', null),
+      supabase
+        .from('tipo_conta_tga')
+        .select('*, organizations(name)')
+        .is('deleted_at', null)
+        .neq('pending_deletion', true),
       supabase.from('organizations').select('id, name').is('deleted_at', null),
     ])
     if (tga) setData(tga)
@@ -199,13 +203,14 @@ export default function TgaAccountTypes() {
 
     const authUser = await supabase.auth.getUser()
 
-    const { error } = await supabase.from('pending_changes').insert({
-      entity_type: 'TIPO_CONTA_TGA',
-      entity_id: id,
-      proposed_changes: { deleted_at: { old: null, new: new Date().toISOString() } },
-      requested_by: authUser.data.user?.id,
-      status: 'pending',
-    })
+    const { error } = await supabase
+      .from('tipo_conta_tga')
+      .update({
+        pending_deletion: true,
+        deletion_requested_at: new Date().toISOString(),
+        deletion_requested_by: authUser.data.user?.id,
+      } as any)
+      .eq('id', id)
 
     if (error) {
       toast({
@@ -220,6 +225,7 @@ export default function TgaAccountTypes() {
         description: 'Solicitação de exclusão enviada para a Central de Aprovações.',
       })
       setSelectedIds((prev) => prev.filter((selId) => selId !== id))
+      fetchData()
     }
   }
 
@@ -249,15 +255,14 @@ export default function TgaAccountTypes() {
     const authUser = await supabase.auth.getUser()
     const now = new Date().toISOString()
 
-    const inserts = selectedIds.map((id) => ({
-      entity_type: 'TIPO_CONTA_TGA',
-      entity_id: id,
-      proposed_changes: { deleted_at: { old: null, new: now } },
-      requested_by: authUser.data.user?.id,
-      status: 'pending',
-    }))
-
-    const { error } = await supabase.from('pending_changes').insert(inserts)
+    const { error } = await supabase
+      .from('tipo_conta_tga')
+      .update({
+        pending_deletion: true,
+        deletion_requested_at: now,
+        deletion_requested_by: authUser.data.user?.id,
+      } as any)
+      .in('id', selectedIds)
 
     if (error) {
       toast({
@@ -272,6 +277,7 @@ export default function TgaAccountTypes() {
         description: `Solicitação de exclusão de ${selectedIds.length} registros enviada para aprovação.`,
       })
       setSelectedIds([])
+      fetchData()
     }
   }
 
