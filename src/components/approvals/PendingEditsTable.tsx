@@ -1,126 +1,93 @@
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
-import { Badge } from '@/components/ui/badge'
+import { useState } from 'react'
+import { format } from 'date-fns'
+import { Eye, Check, X, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogDescription,
+  DialogFooter,
 } from '@/components/ui/dialog'
-import { Loader2, Check, X, Eye } from 'lucide-react'
-import { format } from 'date-fns'
-import { ptBR } from 'date-fns/locale'
-import { useState } from 'react'
 
-interface PendingEditsTableProps {
-  edits: any[]
-  processingId: string | null
-  onApprove: (edit: any) => void
-  onReject: (edit: any) => void
-}
+export function PendingEditsTable({ edits, processingId, onApprove, onReject }: any) {
+  const [selectedEdit, setSelectedEdit] = useState<any>(null)
 
-export function PendingEditsTable({
-  edits,
-  processingId,
-  onApprove,
-  onReject,
-}: PendingEditsTableProps) {
-  const [viewingEdit, setViewingEdit] = useState<any | null>(null)
-
-  if (edits.length === 0) {
-    return (
-      <div className="py-12 text-center text-slate-500 flex flex-col items-center">
-        <Check className="h-12 w-12 text-green-400 mb-3" />
-        <p className="text-lg font-medium text-slate-700">Tudo limpo!</p>
-        <p>Não há alterações pendentes de aprovação.</p>
-      </div>
-    )
+  if (!edits || edits.length === 0) {
+    return <div className="p-8 text-center text-slate-500">Nenhuma alteração pendente.</div>
   }
 
   const getTypeLabel = (type: string) => {
     const map: Record<string, string> = {
       bank_accounts: 'Conta Bancária',
       cost_centers: 'Centro de Custo',
-      organizations: 'Empresa',
-      departments: 'Departamento',
       chart_of_accounts: 'Conta Contábil',
+      departments: 'Departamento',
+      organizations: 'Empresa',
+      tipo_conta_tga: 'Tipo Conta TGA',
+      cadastro_usuarios: 'Usuário',
     }
     return map[type] || type
   }
 
-  const getFieldLabel = (field: string) => {
-    const map: Record<string, string> = {
-      description: 'Descrição',
-      account_number: 'Número da Conta',
-      agency: 'Agência',
-      bank_code: 'Banco',
-      account_type: 'Tipo de Conta',
-      classification: 'Classificação',
-      account_code: 'Conta Contábil',
-      company_name: 'Empresa',
-    }
-    return map[field] || field
+  const formatValue = (val: any) => {
+    if (val === null || val === undefined || val === '') return '-'
+    if (typeof val === 'boolean') return val ? 'Sim' : 'Não'
+    if (typeof val === 'object') return JSON.stringify(val)
+    return String(val)
   }
 
   return (
     <>
       <div className="overflow-x-auto">
-        <Table>
-          <TableHeader className="bg-slate-50">
-            <TableRow>
-              <TableHead>Tipo</TableHead>
-              <TableHead>Identificação</TableHead>
-              <TableHead>Solicitado por</TableHead>
-              <TableHead>Data da Solicitação</TableHead>
-              <TableHead className="text-right">Ações</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {edits.map((edit) => (
-              <TableRow key={edit.id} className="hover:bg-slate-50/50">
-                <TableCell className="py-3 px-4">
-                  <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+        <table className="w-full text-sm text-left">
+          <thead className="bg-slate-50 border-b border-slate-200">
+            <tr>
+              <th className="px-4 py-3 font-medium text-slate-600">Tipo</th>
+              <th className="px-4 py-3 font-medium text-slate-600">Identificação</th>
+              <th className="px-4 py-3 font-medium text-slate-600">Solicitado por</th>
+              <th className="px-4 py-3 font-medium text-slate-600">Data da Solicitação</th>
+              <th className="px-4 py-3 font-medium text-slate-600 text-right">Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            {edits.map((edit: any) => (
+              <tr key={edit.id} className="border-b border-slate-100 hover:bg-slate-50/50">
+                <td className="px-4 py-3">
+                  <Badge
+                    variant="outline"
+                    className="text-blue-600 border-blue-200 bg-blue-50 font-normal"
+                  >
                     {getTypeLabel(edit.entity_type)}
                   </Badge>
-                </TableCell>
-                <TableCell className="py-3 px-4 font-medium text-slate-900">
-                  {edit.entity_name || 'Registro Desconhecido'}
-                </TableCell>
-                <TableCell className="py-3 px-4 text-slate-600 text-sm">
-                  {edit.requested_by_name || '-'}
-                </TableCell>
-                <TableCell className="py-3 px-4 text-slate-500 text-sm whitespace-nowrap">
+                </td>
+                <td className="px-4 py-3 font-medium text-slate-900">{edit.entity_name}</td>
+                <td className="px-4 py-3 text-slate-600">
+                  {edit.requested_by_name || 'Desconhecido'}
+                </td>
+                <td className="px-4 py-3 text-slate-600">
                   {edit.requested_at
-                    ? format(new Date(edit.requested_at), "dd 'de' MMM 'às' HH:mm", {
-                        locale: ptBR,
-                      })
+                    ? format(new Date(edit.requested_at), "dd 'de' MMM 'às' HH:mm")
                     : '-'}
-                </TableCell>
-                <TableCell className="py-3 px-4 text-right">
+                </td>
+                <td className="px-4 py-3 text-right">
                   <div className="flex items-center justify-end gap-2">
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => setViewingEdit(edit)}
+                      onClick={() => setSelectedEdit(edit)}
                       disabled={!!processingId}
-                      className="text-slate-600 hover:text-slate-900"
                     >
                       <Eye className="h-4 w-4 mr-2" /> Revisar
                     </Button>
                     <Button
                       variant="outline"
-                      size="sm"
+                      size="icon"
+                      className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
                       onClick={() => onReject(edit)}
                       disabled={!!processingId}
-                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                      title="Rejeitar"
                     >
                       {processingId === edit.id ? (
                         <Loader2 className="h-4 w-4 animate-spin" />
@@ -129,123 +96,104 @@ export function PendingEditsTable({
                       )}
                     </Button>
                     <Button
-                      size="sm"
+                      size="icon"
+                      className="h-8 w-8 bg-green-600 hover:bg-green-700"
                       onClick={() => onApprove(edit)}
                       disabled={!!processingId}
-                      className="bg-green-600 hover:bg-green-700"
+                      title="Aprovar"
                     >
                       {processingId === edit.id ? (
                         <Loader2 className="h-4 w-4 animate-spin" />
                       ) : (
-                        <Check className="h-4 w-4" />
+                        <Check className="h-4 w-4 text-white" />
                       )}
                     </Button>
                   </div>
-                </TableCell>
-              </TableRow>
+                </td>
+              </tr>
             ))}
-          </TableBody>
-        </Table>
+          </tbody>
+        </table>
       </div>
 
-      <Dialog open={!!viewingEdit} onOpenChange={(open) => !open && setViewingEdit(null)}>
-        <DialogContent className="sm:max-w-[600px]">
+      <Dialog open={!!selectedEdit} onOpenChange={(open) => !open && setSelectedEdit(null)}>
+        <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Revisar Alteração</DialogTitle>
-            <DialogDescription>
-              Confira os dados propostos antes de aprovar ou rejeitar.
-            </DialogDescription>
+            <DialogTitle>Revisar Alterações</DialogTitle>
           </DialogHeader>
-
-          {viewingEdit && (
-            <div className="space-y-4 mt-4">
-              <div className="bg-slate-50 p-3 rounded-md border border-slate-200">
-                <p className="text-sm font-medium text-slate-700 mb-1">Registro</p>
-                <p className="text-sm text-slate-900">{viewingEdit.entity_name}</p>
-                <div className="flex gap-4 mt-2">
+          <div className="py-4">
+            {selectedEdit && (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4 text-sm bg-slate-50 p-3 rounded-md border border-slate-200">
                   <div>
-                    <p className="text-xs text-slate-500">Solicitante</p>
-                    <p className="text-sm">{viewingEdit.requested_by_name}</p>
+                    <span className="text-slate-500 block mb-1">Tipo de Registro</span>
+                    <span className="font-medium">{getTypeLabel(selectedEdit.entity_type)}</span>
                   </div>
                   <div>
-                    <p className="text-xs text-slate-500">Data</p>
-                    <p className="text-sm">
-                      {format(new Date(viewingEdit.requested_at), 'dd/MM/yyyy HH:mm')}
-                    </p>
+                    <span className="text-slate-500 block mb-1">Identificação</span>
+                    <span className="font-medium">{selectedEdit.entity_name}</span>
                   </div>
                 </div>
-              </div>
 
-              <div>
-                <h4 className="text-sm font-semibold text-slate-900 mb-2">Alterações Propostas</h4>
                 <div className="border border-slate-200 rounded-md overflow-hidden">
-                  <Table>
-                    <TableHeader className="bg-slate-100">
-                      <TableRow>
-                        <TableHead className="w-1/3">Campo</TableHead>
-                        <TableHead className="w-1/3 text-red-600">Valor Atual</TableHead>
-                        <TableHead className="w-1/3 text-green-600">Novo Valor</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {Object.entries(viewingEdit.proposed_changes).map(
-                        ([field, values]: [string, any]) => (
-                          <TableRow key={field}>
-                            <TableCell className="font-medium text-slate-700 capitalize">
-                              {getFieldLabel(field)}
-                            </TableCell>
-                            <TableCell className="text-slate-500 line-through decoration-red-300">
-                              {values.old !== undefined && values.old !== null && values.old !== ''
-                                ? String(values.old)
-                                : '-'}
-                            </TableCell>
-                            <TableCell className="text-green-700 font-medium">
-                              {values.new !== undefined && values.new !== null && values.new !== ''
-                                ? String(values.new)
-                                : '-'}
-                            </TableCell>
-                          </TableRow>
+                  <table className="w-full text-sm text-left">
+                    <thead className="bg-slate-50 border-b border-slate-200">
+                      <tr>
+                        <th className="px-4 py-2 font-medium text-slate-600">Campo</th>
+                        {!selectedEdit.is_create && (
+                          <th className="px-4 py-2 font-medium text-slate-600">Valor Anterior</th>
+                        )}
+                        <th className="px-4 py-2 font-medium text-slate-600">Novo Valor</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {Object.entries(selectedEdit.proposed_changes).map(
+                        ([field, vals]: [string, any]) => (
+                          <tr key={field} className="hover:bg-slate-50/50">
+                            <td className="px-4 py-3 font-medium text-slate-700">{field}</td>
+                            {!selectedEdit.is_create && (
+                              <td className="px-4 py-3 text-red-600 bg-red-50/30">
+                                <span className="line-through opacity-70">
+                                  {formatValue(vals.old)}
+                                </span>
+                              </td>
+                            )}
+                            <td className="px-4 py-3 text-green-600 bg-green-50/30">
+                              {formatValue(vals.new)}
+                            </td>
+                          </tr>
                         ),
                       )}
-                    </TableBody>
-                  </Table>
+                    </tbody>
+                  </table>
                 </div>
               </div>
-
-              <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 mt-6">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setViewingEdit(null)}
-                  disabled={!!processingId}
-                >
-                  Fechar
-                </Button>
-                <Button
-                  type="button"
-                  variant="destructive"
-                  onClick={() => {
-                    onReject(viewingEdit)
-                    setViewingEdit(null)
-                  }}
-                  disabled={!!processingId}
-                >
-                  <X className="h-4 w-4 mr-2" /> Rejeitar
-                </Button>
-                <Button
-                  type="button"
-                  className="bg-green-600 hover:bg-green-700 text-white"
-                  onClick={() => {
-                    onApprove(viewingEdit)
-                    setViewingEdit(null)
-                  }}
-                  disabled={!!processingId}
-                >
-                  <Check className="h-4 w-4 mr-2" /> Aprovar
-                </Button>
-              </div>
-            </div>
-          )}
+            )}
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setSelectedEdit(null)}>
+              Fechar
+            </Button>
+            <Button
+              variant="outline"
+              className="text-red-600 hover:bg-red-50 hover:text-red-700 border-red-200"
+              onClick={() => {
+                onReject(selectedEdit)
+                setSelectedEdit(null)
+              }}
+            >
+              <X className="h-4 w-4 mr-2" /> Rejeitar
+            </Button>
+            <Button
+              className="bg-green-600 hover:bg-green-700"
+              onClick={() => {
+                onApprove(selectedEdit)
+                setSelectedEdit(null)
+              }}
+            >
+              <Check className="h-4 w-4 mr-2 text-white" /> Aprovar
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </>

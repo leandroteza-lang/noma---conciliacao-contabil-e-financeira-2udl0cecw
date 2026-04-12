@@ -8,6 +8,8 @@ import {
   CalendarIcon,
   Eraser,
   Mail,
+  Check,
+  X,
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
 import { useAuth } from '@/hooks/use-auth'
@@ -1004,19 +1006,30 @@ export default function Approvals() {
                               </Button>
                               <Button
                                 variant="outline"
-                                size="sm"
+                                size="icon"
+                                className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
                                 onClick={() => handleRejectNewUser(user.id)}
                                 disabled={!!processingId}
+                                title="Rejeitar"
                               >
-                                Rejeitar
+                                {processingId === user.id ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <X className="h-4 w-4" />
+                                )}
                               </Button>
                               <Button
-                                size="sm"
+                                size="icon"
+                                className="h-8 w-8 bg-green-600 hover:bg-green-700"
                                 onClick={() => handleApproveNewUser(user.id)}
                                 disabled={!!processingId}
-                                className="bg-green-600 hover:bg-green-700"
+                                title="Aprovar"
                               >
-                                Aprovar
+                                {processingId === user.id ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <Check className="h-4 w-4 text-white" />
+                                )}
                               </Button>
                             </div>
                           </td>
