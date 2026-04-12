@@ -91,7 +91,9 @@ export function ImportCostCentersModal({
     setFile(f)
     const reader = new FileReader()
     reader.onload = async (evt) => {
-      const b64 = (evt.target?.result as string).split(',')[1]
+      const result = evt.target?.result as string
+      if (!result) return
+      const b64 = result.split(',')[1]
       setFileBase64(b64)
       await fetchPreview(b64, f.name, '')
     }
