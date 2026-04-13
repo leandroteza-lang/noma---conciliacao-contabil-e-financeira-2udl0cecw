@@ -161,7 +161,7 @@ Deno.serve(async (req: Request) => {
         if (typeof changes === 'string') {
           try {
             changes = JSON.parse(changes)
-          } catch (e) {}
+          } catch(e) {}
         }
         const ipAddress = logData.ipAddress || logData.ip_address
         const userAgent = logData.userAgent || logData.user_agent
@@ -408,25 +408,10 @@ Deno.serve(async (req: Request) => {
             let oldVal = null
             let newVal = null
             if (val !== null && typeof val === 'object' && ('old' in val || 'new' in val)) {
-              oldVal =
-                val.old !== undefined && val.old !== null
-                  ? typeof val.old === 'object'
-                    ? JSON.stringify(val.old)
-                    : String(val.old)
-                  : null
-              newVal =
-                val.new !== undefined && val.new !== null
-                  ? typeof val.new === 'object'
-                    ? JSON.stringify(val.new)
-                    : String(val.new)
-                  : null
+              oldVal = val.old !== undefined && val.old !== null ? (typeof val.old === 'object' ? JSON.stringify(val.old) : String(val.old)) : null
+              newVal = val.new !== undefined && val.new !== null ? (typeof val.new === 'object' ? JSON.stringify(val.new) : String(val.new)) : null
             } else {
-              newVal =
-                val !== undefined && val !== null
-                  ? typeof val === 'object'
-                    ? JSON.stringify(val)
-                    : String(val)
-                  : null
+              newVal = val !== undefined && val !== null ? (typeof val === 'object' ? JSON.stringify(val) : String(val)) : null
             }
             return {
               audit_log_id: auditLog.id,
