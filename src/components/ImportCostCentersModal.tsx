@@ -57,6 +57,7 @@ export function ImportCostCentersModal({
   const [step, setStep] = useState(1)
   const [file, setFile] = useState<File | null>(null)
   const [fileBase64, setFileBase64] = useState<string>('')
+  const [rawRecords, setRawRecords] = useState<any[]>([])
   const [sheets, setSheets] = useState<string[]>([])
   const [selectedSheet, setSelectedSheet] = useState<string>('')
   const [headers, setHeaders] = useState<string[]>([])
@@ -76,6 +77,7 @@ export function ImportCostCentersModal({
       setStep(1)
       setFile(null)
       setFileBase64('')
+      setRawRecords([])
       setMapping({})
       setResult(null)
       setTotalRecords(0)
@@ -125,6 +127,7 @@ export function ImportCostCentersModal({
       setSheets(data.sheets || [])
       setHeaders(data.headers || [])
       setTotalRecords(data.totalRecords || 0)
+      if (data.records) setRawRecords(data.records)
 
       if (!sheet && data.sheets?.length > 0) {
         setSelectedSheet(data.sheets[0])
@@ -167,27 +170,58 @@ export function ImportCostCentersModal({
       }
     })
 
+    let processedRecords = rawRecords.map((r: any, index: number) => {
+      const normalized: any = {}
+      normalized._originalIndex = index + 1
+      for (const key in r) {
+        const mappedKey = columnMapping[key] || key
+        const cleanKey = mappedKey
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .toUpperCase()
+          .trim()
+        normalized[cleanKey] = r[key] !== null && r[key] !== undefined ? String(r[key]).trim() : ''
+      }
+      return normalized
+    })
+
+    processedRecords.sort((a: any, b: any) => {
+      const getValHelper = (r: any, possibleKeys: string[]) => {
+        const keys = Object.keys(r)
+        for (const pk of possibleKeys) {
+          const cleanPk = pk.replace(/[^A-Z0-9]/g, '')
+          for (const k of keys) {
+            const cleanK = k.replace(/[^A-Z0-9]/g, '')
+            if (cleanK === cleanPk) return r[k]
+          }
+        }
+        return null
+      }
+      const codeA = String(getValHelper(a, ['COD', 'CODIGO']) || '')
+      const codeB = String(getValHelper(b, ['COD', 'CODIGO']) || '')
+      return codeA.length - codeB.length
+    })
+
     const BATCH_SIZE = 500
-    const total = totalRecords > 0 ? totalRecords : BATCH_SIZE
+    const total = processedRecords.length > 0 ? processedRecords.length : BATCH_SIZE
 
     let totalInserted = 0
     let allErrors: any[] = []
 
     try {
       for (let offset = 0; offset < total; offset += BATCH_SIZE) {
+        const chunk = processedRecords.slice(offset, offset + BATCH_SIZE)
+        if (chunk.length === 0) break
         setProgress(Math.min(Math.round((offset / total) * 100), 99))
 
         const { data, error } = await supabase.functions.invoke('import-data', {
           body: {
             type: 'COST_CENTERS',
-            fileBase64,
+            records: chunk,
             fileName: file?.name,
             sheetName: selectedSheet,
-            columnMapping,
             organizationId: selectedOrg,
             allowIncomplete,
-            offset,
-            limit: BATCH_SIZE,
             skipHistory: true,
           },
         })
@@ -195,7 +229,7 @@ export function ImportCostCentersModal({
         if (error) {
           const errMsg =
             error.message === 'Edge Function returned a non-2xx status code'
-              ? `Erro de conexão ao processar lote ${offset} a ${offset + BATCH_SIZE}. Verifique sua internet ou contate o suporte se a planilha for muito complexa.`
+              ? `Erro de conexão ao processar lote. O arquivo pode ser muito grande ou a internet oscilou. Tente novamente.`
               : error.message
           throw new Error(errMsg)
         }
