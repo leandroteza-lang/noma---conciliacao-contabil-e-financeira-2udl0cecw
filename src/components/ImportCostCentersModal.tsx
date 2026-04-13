@@ -28,6 +28,7 @@ import {
 import { useToast } from '@/hooks/use-toast'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Checkbox } from '@/components/ui/checkbox'
+import { Progress } from '@/components/ui/progress'
 
 const EXPECTED_FIELDS = [
   { key: 'CODIGO', label: 'Código (*)' },
@@ -61,6 +62,9 @@ export function ImportCostCentersModal({
   const [headers, setHeaders] = useState<string[]>([])
   const [mapping, setMapping] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(false)
+  const [isImporting, setIsImporting] = useState(false)
+  const [progress, setProgress] = useState(0)
+  const [totalRecords, setTotalRecords] = useState(0)
   const [orgs, setOrgs] = useState<{ id: string; name: string }[]>([])
   const [selectedOrg, setSelectedOrg] = useState<string>('USE_SPREADSHEET')
   const [allowIncomplete, setAllowIncomplete] = useState(false)
@@ -74,6 +78,9 @@ export function ImportCostCentersModal({
       setFileBase64('')
       setMapping({})
       setResult(null)
+      setTotalRecords(0)
+      setProgress(0)
+      setIsImporting(false)
       setSelectedOrg('USE_SPREADSHEET')
       supabase
         .from('organizations')
@@ -117,6 +124,8 @@ export function ImportCostCentersModal({
 
       setSheets(data.sheets || [])
       setHeaders(data.headers || [])
+      setTotalRecords(data.totalRecords || 0)
+
       if (!sheet && data.sheets?.length > 0) {
         setSelectedSheet(data.sheets[0])
       }
@@ -148,7 +157,9 @@ export function ImportCostCentersModal({
   }
 
   const handleImport = async () => {
-    setLoading(true)
+    setIsImporting(true)
+    setProgress(0)
+
     const columnMapping: Record<string, string> = {}
     Object.entries(mapping).forEach(([expected, fileCol]) => {
       if (fileCol && fileCol !== 'none') {
@@ -156,30 +167,64 @@ export function ImportCostCentersModal({
       }
     })
 
-    try {
-      const { data, error } = await supabase.functions.invoke('import-data', {
-        body: {
-          type: 'COST_CENTERS',
-          fileBase64,
-          fileName: file?.name,
-          sheetName: selectedSheet,
-          columnMapping,
-          organizationId: selectedOrg,
-          allowIncomplete,
-        },
-      })
+    const BATCH_SIZE = 500
+    const total = totalRecords > 0 ? totalRecords : BATCH_SIZE
 
-      if (error) {
-        const errMsg =
-          error.message === 'Edge Function returned a non-2xx status code'
-            ? 'Erro de comunicação com o servidor. A planilha pode ser muito grande ou estar mal formatada.'
-            : error.message
-        throw new Error(errMsg)
+    let totalInserted = 0
+    let allErrors: any[] = []
+
+    try {
+      for (let offset = 0; offset < total; offset += BATCH_SIZE) {
+        setProgress(Math.min(Math.round((offset / total) * 100), 99))
+
+        const { data, error } = await supabase.functions.invoke('import-data', {
+          body: {
+            type: 'COST_CENTERS',
+            fileBase64,
+            fileName: file?.name,
+            sheetName: selectedSheet,
+            columnMapping,
+            organizationId: selectedOrg,
+            allowIncomplete,
+            offset,
+            limit: BATCH_SIZE,
+            skipHistory: true,
+          },
+        })
+
+        if (error) {
+          const errMsg =
+            error.message === 'Edge Function returned a non-2xx status code'
+              ? `Erro de conexão ao processar lote ${offset} a ${offset + BATCH_SIZE}. Verifique sua internet ou contate o suporte se a planilha for muito complexa.`
+              : error.message
+          throw new Error(errMsg)
+        }
+
+        if (data?.error) throw new Error(data.error)
+
+        totalInserted += data.inserted || 0
+        if (data.errors && data.errors.length > 0) {
+          allErrors = [...allErrors, ...data.errors]
+        }
       }
 
-      if (data?.error) throw new Error(data.error)
+      setProgress(100)
+      setResult({ inserted: totalInserted, errors: allErrors })
 
-      setResult(data)
+      // Gravar histórico consolidado da importação
+      const { data: userData } = await supabase.auth.getUser()
+      if (userData?.user?.id) {
+        await supabase.from('import_history').insert({
+          user_id: userData.user.id,
+          import_type: 'COST_CENTERS',
+          file_name: file?.name || 'Importação',
+          total_records: totalRecords,
+          success_count: totalInserted,
+          error_count: allErrors.length,
+          status: 'Completed',
+        })
+      }
+
       setStep(3)
       onImportSuccess()
     } catch (err: any) {
@@ -189,12 +234,13 @@ export function ImportCostCentersModal({
         description: err.message || 'Ocorreu um erro inesperado durante o processamento.',
         variant: 'destructive',
       })
+    } finally {
+      setIsImporting(false)
     }
-    setLoading(false)
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={isImporting ? () => {} : onOpenChange}>
       <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>Importar Centros de Custo</DialogTitle>
@@ -228,7 +274,7 @@ export function ImportCostCentersModal({
                 <Select
                   value={selectedSheet}
                   onValueChange={handleSheetChange}
-                  disabled={loading || sheets.length <= 1}
+                  disabled={loading || isImporting || sheets.length <= 1}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Selecione a aba" />
@@ -244,7 +290,11 @@ export function ImportCostCentersModal({
               </div>
               <div className="space-y-2">
                 <Label>Empresa Padrão</Label>
-                <Select value={selectedOrg} onValueChange={setSelectedOrg} disabled={loading}>
+                <Select
+                  value={selectedOrg}
+                  onValueChange={setSelectedOrg}
+                  disabled={loading || isImporting}
+                >
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -272,7 +322,7 @@ export function ImportCostCentersModal({
                       <Select
                         value={mapping[ef.key] || 'none'}
                         onValueChange={(v) => setMapping((prev) => ({ ...prev, [ef.key]: v }))}
-                        disabled={loading}
+                        disabled={loading || isImporting}
                       >
                         <SelectTrigger className="h-8 text-sm">
                           <SelectValue placeholder="Não mapear" />
@@ -297,12 +347,26 @@ export function ImportCostCentersModal({
                 id="allow-inc"
                 checked={allowIncomplete}
                 onCheckedChange={(v) => setAllowIncomplete(!!v)}
-                disabled={loading}
+                disabled={loading || isImporting}
               />
               <Label htmlFor="allow-inc" className="text-sm text-slate-600 font-normal">
                 Ignorar erros e importar apenas linhas válidas
               </Label>
             </div>
+
+            {isImporting && (
+              <div className="space-y-2 mt-4 p-4 border rounded-md bg-slate-50 animate-fade-in-up">
+                <div className="flex justify-between text-sm font-medium text-slate-700">
+                  <span>Processando loteamento do arquivo...</span>
+                  <span>{progress}%</span>
+                </div>
+                <Progress value={progress} className="h-2" />
+                <p className="text-xs text-slate-500">
+                  Enviando {totalRecords} registros em lotes para evitar sobrecarga. Por favor, não
+                  feche esta janela.
+                </p>
+              </div>
+            )}
           </div>
         )}
 
@@ -340,17 +404,21 @@ export function ImportCostCentersModal({
         <DialogFooter>
           {step !== 3 ? (
             <>
-              <Button variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
+              <Button
+                variant="outline"
+                onClick={() => onOpenChange(false)}
+                disabled={loading || isImporting}
+              >
                 Cancelar
               </Button>
               {step === 2 && (
-                <Button onClick={handleImport} disabled={loading}>
-                  {loading ? (
+                <Button onClick={handleImport} disabled={loading || isImporting}>
+                  {isImporting ? (
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                   ) : (
                     <ArrowRight className="h-4 w-4 mr-2" />
                   )}
-                  Importar Dados
+                  {isImporting ? 'Importando...' : 'Importar Dados'}
                 </Button>
               )}
             </>
