@@ -871,6 +871,7 @@ export default function CostCenters() {
                   <SelectItem value="none">Selecione...</SelectItem>
                   <SelectItem value="SIM">SIM</SelectItem>
                   <SelectItem value="NAO">NÃO</SelectItem>
+                  <SelectItem value="SINTETICA">SINTÉTICA</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -1022,6 +1023,7 @@ export default function CostCenters() {
                   <SelectItem value="none">Selecione...</SelectItem>
                   <SelectItem value="SIM">SIM</SelectItem>
                   <SelectItem value="NAO">NÃO</SelectItem>
+                  <SelectItem value="SINTETICA">SINTÉTICA</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -1317,7 +1319,13 @@ export default function CostCenters() {
                               <TooltipTrigger asChild>
                                 <div className="truncate cursor-default w-full">
                                   <Badge
-                                    variant={cc.contabiliza === 'SIM' ? 'default' : 'secondary'}
+                                    variant={
+                                      cc.contabiliza === 'SIM'
+                                        ? 'default'
+                                        : cc.contabiliza === 'SINTETICA'
+                                          ? 'outline'
+                                          : 'secondary'
+                                    }
                                     className={cn(
                                       'text-[10px] h-4 py-0 px-1.5 truncate max-w-full inline-flex',
                                       isSynthetic &&

@@ -134,6 +134,7 @@ export function CostCenterBulkEditModal({ isOpen, onClose, onSave, count, tgaOpt
                 <SelectItem value="none">Limpar</SelectItem>
                 <SelectItem value="SIM">SIM</SelectItem>
                 <SelectItem value="NAO">NÃO</SelectItem>
+                <SelectItem value="SINTETICA">SINTÉTICA</SelectItem>
               </SelectContent>
             </Select>
           </div>
