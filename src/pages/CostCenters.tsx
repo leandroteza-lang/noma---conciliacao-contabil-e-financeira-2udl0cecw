@@ -1133,109 +1133,147 @@ export default function CostCenters() {
                   paginatedData.map((cc) => {
                     const isSynthetic = cc.tipo_lcto === 'S'
                     return (
-                      <TableRow
-                        key={cc.id}
-                        className={cn(
-                          'whitespace-nowrap',
-                          isSynthetic && 'bg-slate-50/50 font-medium',
-                        )}
-                      >
-                        <TableCell className="text-center">
-                          <Checkbox
-                            checked={selectedIds.includes(cc.id)}
-                            onCheckedChange={(checked) => {
-                              if (checked) setSelectedIds((prev) => [...prev, cc.id])
-                              else setSelectedIds((prev) => prev.filter((id) => id !== cc.id))
-                            }}
-                          />
-                        </TableCell>
-                        <TableCell
-                          className={cn(
-                            isSynthetic
-                              ? 'font-semibold text-slate-800'
-                              : 'font-medium text-slate-600',
-                          )}
+                      const codeLevel = (cc.code || '').match(/\./g)?.length || 0;
+                      const level = codeLevel + 1;
+                      
+                      let rowClass = 'bg-white text-slate-700 hover:bg-slate-50';
+                      if (isSynthetic) {
+                        if (level === 1) rowClass = 'bg-indigo-950 font-bold text-white hover:bg-indigo-900 border-b-indigo-900/50';
+                        else if (level === 2) rowClass = 'bg-blue-800 font-semibold text-white hover:bg-blue-700 border-b-blue-700/50';
+                        else if (level === 3) rowClass = 'bg-blue-500 font-medium text-white hover:bg-blue-600 border-b-blue-600/50';
+                        else if (level === 4) rowClass = 'bg-blue-200 font-medium text-blue-900 hover:bg-blue-300 border-b-blue-300/50';
+                        else rowClass = 'bg-blue-50 font-medium text-blue-800 hover:bg-blue-100 border-b-blue-100/50';
+                      }
+
+                      return (
+                        <TableRow
+                          key={cc.id}
+                          className={cn('whitespace-nowrap transition-colors', rowClass)}
                         >
-                          <div className="flex items-center">
-                            {isSynthetic ? (
-                              <Layers className="h-3 w-3 text-indigo-500 mr-2 flex-shrink-0" />
+                          <TableCell className="text-center">
+                            <Checkbox
+                              checked={selectedIds.includes(cc.id)}
+                              onCheckedChange={(checked) => {
+                                if (checked) setSelectedIds((prev) => [...prev, cc.id])
+                                else setSelectedIds((prev) => prev.filter((id) => id !== cc.id))
+                              }}
+                              className={cn(isSynthetic && level <= 3 && "border-white/50 data-[state=checked]:bg-white data-[state=checked]:text-blue-900")}
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center">
+                              {isSynthetic ? (
+                                <Layers className="h-3 w-3 mr-2 flex-shrink-0 opacity-70" />
+                              ) : (
+                                <div className="w-3 mr-2" />
+                              )}
+                              {cc.code}
+                            </div>
+                          </TableCell>
+                          <TableCell 
+                            style={{ paddingLeft: `${codeLevel * 1.5 + 0.75}rem` }}
+                          >
+                            {cc.description}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2 opacity-80">
+                              <Building2 className="h-3 w-3" />
+                              <span className="truncate max-w-[150px] text-xs">
+                                {cc.organization?.name || '-'}
+                              </span>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            {cc.tipo_lcto ? (
+                              <Badge
+                                variant={isSynthetic ? 'default' : 'outline'}
+                                className={cn(
+                                  isSynthetic && level <= 3 && 'bg-white/20 text-white hover:bg-white/30 border-none',
+                                  isSynthetic && level > 3 && 'bg-indigo-500 text-white hover:bg-indigo-600'
+                                )}
+                              >
+                                {cc.tipo_lcto}
+                              </Badge>
                             ) : (
-                              <div className="w-3 mr-2" />
+                              '-'
                             )}
-                            {cc.code}
-                          </div>
-                        </TableCell>
-                        <TableCell className={cn(isSynthetic && 'text-slate-800')}>
-                          {cc.description}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <Building2 className="h-3 w-3 text-muted-foreground" />
-                            <span className="truncate max-w-[150px] text-xs">
-                              {cc.organization?.name || '-'}
-                            </span>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          {cc.tipo_lcto ? (
-                            <Badge
-                              variant={isSynthetic ? 'default' : 'outline'}
-                              className={cn(isSynthetic && 'bg-indigo-500 hover:bg-indigo-600')}
+                          </TableCell>
+                          <TableCell>{cc.operational || '-'}</TableCell>
+                          <TableCell>{cc.tipo_conta_tga?.nome || '-'}</TableCell>
+                          <TableCell>
+                            {cc.type_tga ? (
+                              <Badge 
+                                variant="outline" 
+                                className={cn(isSynthetic && level <= 3 && "border-white/30 text-white")}
+                              >
+                                {cc.type_tga}
+                              </Badge>
+                            ) : '-'}
+                          </TableCell>
+                          <TableCell>
+                            {cc.fixed_variable ? (
+                              <Badge 
+                                variant="secondary"
+                                className={cn(isSynthetic && level <= 3 && "bg-white/10 text-white hover:bg-white/20")}
+                              >
+                                {cc.fixed_variable}
+                              </Badge>
+                            ) : '-'}
+                          </TableCell>
+                          <TableCell>
+                            {cc.classification ? (
+                              <Badge 
+                                variant="outline" 
+                                className={cn(
+                                  "bg-primary/5",
+                                  isSynthetic && level <= 3 && "bg-white/5 border-white/20 text-white"
+                                )}
+                              >
+                                {cc.classification}
+                              </Badge>
+                            ) : '-'}
+                          </TableCell>
+                          <TableCell>
+                            {cc.contabiliza ? (
+                              <Badge 
+                                variant={cc.contabiliza === 'SIM' ? 'default' : 'secondary'}
+                                className={cn(
+                                  isSynthetic && level <= 3 && cc.contabiliza === 'SIM' && "bg-white text-blue-900 hover:bg-white/90",
+                                  isSynthetic && level <= 3 && cc.contabiliza !== 'SIM' && "bg-white/10 text-white hover:bg-white/20"
+                                )}
+                              >
+                                {cc.contabiliza}
+                              </Badge>
+                            ) : '-'}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleEdit(cc)}
+                              className={cn(
+                                "h-8 w-8 mr-1",
+                                isSynthetic && level <= 3 
+                                  ? "text-white/70 hover:text-white hover:bg-white/20" 
+                                  : "text-slate-500 hover:text-blue-600 hover:bg-blue-50"
+                              )}
                             >
-                              {cc.tipo_lcto}
-                            </Badge>
-                          ) : (
-                            '-'
-                          )}
-                        </TableCell>
-                        <TableCell>{cc.operational || '-'}</TableCell>
-                        <TableCell>{cc.tipo_conta_tga?.nome || '-'}</TableCell>
-                        <TableCell>
-                          {cc.type_tga ? <Badge variant="outline">{cc.type_tga}</Badge> : '-'}
-                        </TableCell>
-                        <TableCell>
-                          {cc.fixed_variable ? (
-                            <Badge variant="secondary">{cc.fixed_variable}</Badge>
-                          ) : (
-                            '-'
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          {cc.classification ? (
-                            <Badge variant="outline" className="bg-primary/5">
-                              {cc.classification}
-                            </Badge>
-                          ) : (
-                            '-'
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          {cc.contabiliza ? (
-                            <Badge variant={cc.contabiliza === 'SIM' ? 'default' : 'secondary'}>
-                              {cc.contabiliza}
-                            </Badge>
-                          ) : (
-                            '-'
-                          )}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleEdit(cc)}
-                            className="h-8 w-8 text-slate-500 hover:text-blue-600 hover:bg-blue-50 mr-1"
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleDelete(cc.id)}
-                            className="h-8 w-8 text-slate-500 hover:text-red-600 hover:bg-red-50"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </TableCell>
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleDelete(cc.id)}
+                              className={cn(
+                                "h-8 w-8",
+                                isSynthetic && level <= 3 
+                                  ? "text-white/70 hover:text-red-300 hover:bg-white/20" 
+                                  : "text-slate-500 hover:text-red-600 hover:bg-red-50"
+                              )}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </TableCell>
                       </TableRow>
                     )
                   })
