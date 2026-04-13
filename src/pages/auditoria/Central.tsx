@@ -552,9 +552,11 @@ function ExpandableRow({
                             {translateField(detail.field_name)}
                           </TableCell>
                           <TableCell className="text-muted-foreground text-sm">
-                            {detail.old_value ? (
+                            {detail.old_value !== null &&
+                            detail.old_value !== undefined &&
+                            String(detail.old_value).trim() !== '' ? (
                               <span className="line-through decoration-destructive/40">
-                                {formatValue(detail.old_value, detail.field_name, dict)}
+                                {formatValue(String(detail.old_value), detail.field_name, dict)}
                               </span>
                             ) : (
                               <span className="italic text-muted-foreground/50 text-xs uppercase tracking-wider">
@@ -563,8 +565,10 @@ function ExpandableRow({
                             )}
                           </TableCell>
                           <TableCell className="text-emerald-600 dark:text-emerald-400 font-medium text-sm">
-                            {detail.new_value ? (
-                              formatValue(detail.new_value, detail.field_name, dict)
+                            {detail.new_value !== null &&
+                            detail.new_value !== undefined &&
+                            String(detail.new_value).trim() !== '' ? (
+                              formatValue(String(detail.new_value), detail.field_name, dict)
                             ) : (
                               <span className="italic text-muted-foreground/50 text-xs uppercase tracking-wider font-normal">
                                 Vazio

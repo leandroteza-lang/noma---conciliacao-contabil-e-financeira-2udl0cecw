@@ -7,13 +7,14 @@ export function useAuditLog() {
   const normalizeValue = (val: any) => {
     if (val === null || val === undefined) return ''
     if (typeof val === 'string') return val.trim()
+    if (typeof val === 'object') return JSON.stringify(val)
     return String(val)
   }
 
   const logAction = async (
     entityType: string,
     entityId: string,
-    action: 'CREATE' | 'UPDATE' | 'DELETE',
+    action: 'CREATE' | 'UPDATE' | 'DELETE' | string,
     changes: Record<string, any>,
   ) => {
     if (!user) return
@@ -23,11 +24,19 @@ export function useAuditLog() {
     if (changes) {
       for (const [key, value] of Object.entries(changes)) {
         if (value && typeof value === 'object' && ('old' in value || 'new' in value)) {
-          const oldVal = normalizeValue(value.old)
-          const newVal = normalizeValue(value.new)
+          const oldValStr = normalizeValue(value.old)
+          const newValStr = normalizeValue(value.new)
 
-          if (oldVal !== newVal) {
-            validChanges[key] = { old: value.old, new: value.new }
+          if (oldValStr !== newValStr) {
+            validChanges[key] = {
+              old: oldValStr,
+              new: newValStr,
+            }
+          }
+        } else if (value !== undefined) {
+          validChanges[key] = {
+            old: '',
+            new: normalizeValue(value),
           }
         }
       }
@@ -36,7 +45,10 @@ export function useAuditLog() {
     console.log('[Audit Log] Objeto changes original:', changes)
     console.log('[Audit Log] Mudanças válidas detectadas:', validChanges)
 
-    if (action === 'UPDATE' && Object.keys(validChanges).length === 0) {
+    if (
+      (action === 'UPDATE' || action === 'EDICAO' || action === 'ALTERADO') &&
+      Object.keys(validChanges).length === 0
+    ) {
       console.log('[Audit Log] Nenhuma mudança real detectada, ignorando envio.')
       return
     }
