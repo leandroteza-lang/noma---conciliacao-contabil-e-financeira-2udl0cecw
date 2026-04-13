@@ -275,7 +275,10 @@ export default function CostCenters() {
 
   const renderSortableHeader = (label: string, key: string, className?: string) => (
     <TableHead
-      className={cn('cursor-pointer hover:bg-slate-100 transition-colors select-none', className)}
+      className={cn(
+        'cursor-pointer hover:bg-slate-100 transition-colors select-none h-12 px-2 text-xs',
+        className,
+      )}
       onClick={() => handleSort(key)}
     >
       <div className="flex items-center gap-1">
@@ -1098,7 +1101,7 @@ export default function CostCenters() {
             <Table>
               <TableHeader className="bg-muted/50 whitespace-nowrap">
                 <TableRow>
-                  <TableHead className="w-12 text-center">
+                  <TableHead className="w-12 text-center h-12 px-2">
                     <Checkbox
                       checked={
                         paginatedData.length > 0 && selectedIds.length === paginatedData.length
@@ -1119,7 +1122,7 @@ export default function CostCenters() {
                   {renderSortableHeader('Fixo/Variável', 'fixed_variable')}
                   {renderSortableHeader('Classificação', 'classification')}
                   {renderSortableHeader('Contabiliza', 'contabiliza')}
-                  <TableHead className="text-right sticky right-0 bg-slate-100 z-10 shadow-[-4px_0_6px_-4px_rgba(0,0,0,0.1)]">
+                  <TableHead className="text-right sticky right-0 bg-slate-100 z-10 shadow-[-4px_0_6px_-4px_rgba(0,0,0,0.1)] h-12 px-2 text-xs">
                     Ação
                   </TableHead>
                 </TableRow>
@@ -1159,9 +1162,9 @@ export default function CostCenters() {
                     return (
                       <TableRow
                         key={cc.id}
-                        className={cn('whitespace-nowrap transition-colors', rowClass)}
+                        className={cn('whitespace-nowrap transition-colors text-xs h-8', rowClass)}
                       >
-                        <TableCell className="text-center">
+                        <TableCell className="text-center p-2">
                           <Checkbox
                             checked={selectedIds.includes(cc.id)}
                             onCheckedChange={(checked) => {
@@ -1169,13 +1172,14 @@ export default function CostCenters() {
                               else setSelectedIds((prev) => prev.filter((id) => id !== cc.id))
                             }}
                             className={cn(
+                              'h-3.5 w-3.5',
                               isSynthetic &&
                                 level <= 3 &&
                                 'border-white/50 data-[state=checked]:bg-white data-[state=checked]:text-blue-900',
                             )}
                           />
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="p-2">
                           <div className="flex items-center">
                             {isSynthetic ? (
                               <Layers className="h-3 w-3 mr-2 flex-shrink-0 opacity-70" />
@@ -1185,22 +1189,26 @@ export default function CostCenters() {
                             {cc.code}
                           </div>
                         </TableCell>
-                        <TableCell style={{ paddingLeft: `${codeLevel * 1.5 + 0.75}rem` }}>
+                        <TableCell
+                          className="p-2"
+                          style={{ paddingLeft: `${codeLevel * 1.5 + 0.5}rem` }}
+                        >
                           {cc.description}
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="p-2">
                           <div className="flex items-center gap-2 opacity-80">
                             <Building2 className="h-3 w-3" />
-                            <span className="truncate max-w-[150px] text-xs">
+                            <span className="truncate max-w-[150px]">
                               {cc.organization?.name || '-'}
                             </span>
                           </div>
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="p-2">
                           {cc.tipo_lcto ? (
                             <Badge
                               variant={isSynthetic ? 'default' : 'outline'}
                               className={cn(
+                                'text-[10px] h-4 py-0 px-1.5',
                                 isSynthetic &&
                                   level <= 3 &&
                                   'bg-white/20 text-white hover:bg-white/30 border-none',
@@ -1215,13 +1223,14 @@ export default function CostCenters() {
                             '-'
                           )}
                         </TableCell>
-                        <TableCell>{cc.operational || '-'}</TableCell>
-                        <TableCell>{cc.tipo_conta_tga?.nome || '-'}</TableCell>
-                        <TableCell>
+                        <TableCell className="p-2">{cc.operational || '-'}</TableCell>
+                        <TableCell className="p-2">{cc.tipo_conta_tga?.nome || '-'}</TableCell>
+                        <TableCell className="p-2">
                           {cc.type_tga ? (
                             <Badge
                               variant="outline"
                               className={cn(
+                                'text-[10px] h-4 py-0 px-1.5',
                                 isSynthetic && level <= 3 && 'border-white/30 text-white',
                               )}
                             >
@@ -1231,11 +1240,12 @@ export default function CostCenters() {
                             '-'
                           )}
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="p-2">
                           {cc.fixed_variable ? (
                             <Badge
                               variant="secondary"
                               className={cn(
+                                'text-[10px] h-4 py-0 px-1.5',
                                 isSynthetic &&
                                   level <= 3 &&
                                   'bg-white/10 text-white hover:bg-white/20',
@@ -1247,12 +1257,12 @@ export default function CostCenters() {
                             '-'
                           )}
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="p-2">
                           {cc.classification ? (
                             <Badge
                               variant="outline"
                               className={cn(
-                                'bg-primary/5',
+                                'bg-primary/5 text-[10px] h-4 py-0 px-1.5',
                                 isSynthetic &&
                                   level <= 3 &&
                                   'bg-white/5 border-white/20 text-white',
@@ -1264,11 +1274,12 @@ export default function CostCenters() {
                             '-'
                           )}
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="p-2">
                           {cc.contabiliza ? (
                             <Badge
                               variant={cc.contabiliza === 'SIM' ? 'default' : 'secondary'}
                               className={cn(
+                                'text-[10px] h-4 py-0 px-1.5',
                                 isSynthetic &&
                                   level <= 3 &&
                                   cc.contabiliza === 'SIM' &&
@@ -1285,32 +1296,32 @@ export default function CostCenters() {
                             '-'
                           )}
                         </TableCell>
-                        <TableCell className="text-right sticky right-0 bg-inherit z-10 shadow-[-4px_0_6px_-4px_rgba(0,0,0,0.05)]">
+                        <TableCell className="text-right p-2 sticky right-0 bg-inherit z-10 shadow-[-4px_0_6px_-4px_rgba(0,0,0,0.05)]">
                           <Button
                             variant="ghost"
                             size="icon"
                             onClick={() => handleEdit(cc)}
                             className={cn(
-                              'h-8 w-8 mr-1',
+                              'h-6 w-6 mr-1',
                               isSynthetic && level <= 3
                                 ? 'text-white/70 hover:text-white hover:bg-white/20'
                                 : 'text-slate-500 hover:text-blue-600 hover:bg-blue-50',
                             )}
                           >
-                            <Pencil className="h-4 w-4" />
+                            <Pencil className="h-3 w-3" />
                           </Button>
                           <Button
                             variant="ghost"
                             size="icon"
                             onClick={() => handleDelete(cc.id)}
                             className={cn(
-                              'h-8 w-8',
+                              'h-6 w-6',
                               isSynthetic && level <= 3
                                 ? 'text-white/70 hover:text-red-300 hover:bg-white/20'
                                 : 'text-slate-500 hover:text-red-600 hover:bg-red-50',
                             )}
                           >
-                            <Trash2 className="h-4 w-4" />
+                            <Trash2 className="h-3 w-3" />
                           </Button>
                         </TableCell>
                       </TableRow>
