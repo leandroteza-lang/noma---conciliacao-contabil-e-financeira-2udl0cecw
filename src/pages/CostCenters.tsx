@@ -1119,7 +1119,9 @@ export default function CostCenters() {
                   {renderSortableHeader('Fixo/Variável', 'fixed_variable')}
                   {renderSortableHeader('Classificação', 'classification')}
                   {renderSortableHeader('Contabiliza', 'contabiliza')}
-                  <TableHead className="text-right">Ação</TableHead>
+                  <TableHead className="text-right sticky right-0 bg-slate-100 z-10 shadow-[-4px_0_6px_-4px_rgba(0,0,0,0.1)]">
+                    Ação
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -1283,7 +1285,7 @@ export default function CostCenters() {
                             '-'
                           )}
                         </TableCell>
-                        <TableCell className="text-right">
+                        <TableCell className="text-right sticky right-0 bg-inherit z-10 shadow-[-4px_0_6px_-4px_rgba(0,0,0,0.05)]">
                           <Button
                             variant="ghost"
                             size="icon"
