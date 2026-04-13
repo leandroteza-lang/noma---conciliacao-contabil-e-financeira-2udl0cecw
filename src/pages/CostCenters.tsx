@@ -273,7 +273,7 @@ export default function CostCenters() {
     currentPage * itemsPerPage,
   )
 
-  const renderSortableHeader = (label: string, key: string, className?: string) => (
+  const renderSortableHeader = (label: any, key: string, className?: string) => (
     <TableHead
       className={cn(
         'cursor-pointer hover:bg-slate-100 transition-colors select-none h-12 px-2 text-xs',
@@ -1119,9 +1119,17 @@ export default function CostCenters() {
                   {renderSortableHeader('Operacional', 'operational')}
                   {renderSortableHeader('Tipo TGA', 'tipo_conta_tga.nome')}
                   {renderSortableHeader('Tipo', 'type_tga')}
-                  {renderSortableHeader('Fixo/Variável', 'fixed_variable')}
+                  {renderSortableHeader(
+                    <div className="whitespace-normal leading-tight text-left">
+                      Fixo/
+                      <br />
+                      Variável
+                    </div>,
+                    'fixed_variable',
+                    'w-[80px]',
+                  )}
                   {renderSortableHeader('Classificação', 'classification')}
-                  {renderSortableHeader('Contabiliza', 'contabiliza', 'min-w-[100px]')}
+                  {renderSortableHeader('Contabiliza', 'contabiliza', 'min-w-[200px]')}
                   <TableHead className="text-right sticky right-0 bg-slate-100 z-10 shadow-[-4px_0_6px_-4px_rgba(0,0,0,0.1)] h-12 px-2 text-xs">
                     Ação
                   </TableHead>
