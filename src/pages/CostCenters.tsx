@@ -39,6 +39,7 @@ import {
 } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -1310,24 +1311,37 @@ export default function CostCenters() {
                             '-'
                           )}
                         </TableCell>
-                        <TableCell className="p-2">
+                        <TableCell className="p-2 max-w-[200px]">
                           {cc.contabiliza ? (
-                            <Badge
-                              variant={cc.contabiliza === 'SIM' ? 'default' : 'secondary'}
-                              className={cn(
-                                'text-[10px] h-4 py-0 px-1.5',
-                                isSynthetic &&
-                                  level <= 3 &&
-                                  cc.contabiliza === 'SIM' &&
-                                  'bg-white text-blue-900 hover:bg-white/90',
-                                isSynthetic &&
-                                  level <= 3 &&
-                                  cc.contabiliza !== 'SIM' &&
-                                  'bg-white/10 text-white hover:bg-white/20',
-                              )}
-                            >
-                              {cc.contabiliza}
-                            </Badge>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <div className="truncate cursor-default w-full">
+                                  <Badge
+                                    variant={cc.contabiliza === 'SIM' ? 'default' : 'secondary'}
+                                    className={cn(
+                                      'text-[10px] h-4 py-0 px-1.5 truncate max-w-full inline-flex',
+                                      isSynthetic &&
+                                        level <= 3 &&
+                                        cc.contabiliza === 'SIM' &&
+                                        'bg-white text-blue-900 hover:bg-white/90',
+                                      isSynthetic &&
+                                        level <= 3 &&
+                                        cc.contabiliza !== 'SIM' &&
+                                        'bg-white/10 text-white hover:bg-white/20',
+                                    )}
+                                  >
+                                    <span className="truncate">
+                                      {cc.contabiliza}
+                                      {cc.observacoes ? ` - ${cc.observacoes}` : ''}
+                                    </span>
+                                  </Badge>
+                                </div>
+                              </TooltipTrigger>
+                              <TooltipContent className="max-w-[300px] text-xs whitespace-normal break-words">
+                                {cc.contabiliza}
+                                {cc.observacoes ? ` - ${cc.observacoes}` : ''}
+                              </TooltipContent>
+                            </Tooltip>
                           ) : (
                             '-'
                           )}
