@@ -626,7 +626,7 @@ export default function CostCenters() {
   }
 
   return (
-    <div className="container mx-auto max-w-7xl py-8 space-y-6 animate-fade-in-up">
+    <div className="w-full px-4 md:px-8 mx-auto py-8 space-y-6 animate-fade-in-up">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Centros de Custo (TGA)</h1>
@@ -1113,7 +1113,7 @@ export default function CostCenters() {
                     />
                   </TableHead>
                   {renderSortableHeader('Código', 'code', 'w-[180px]')}
-                  {renderSortableHeader('Descrição', 'description')}
+                  {renderSortableHeader('Descrição', 'description', 'min-w-[250px] w-full')}
                   {renderSortableHeader('Empresa', 'organization.name')}
                   {renderSortableHeader('Tipo Lcto', 'tipo_lcto')}
                   {renderSortableHeader('Operacional', 'operational')}
@@ -1121,7 +1121,7 @@ export default function CostCenters() {
                   {renderSortableHeader('Tipo', 'type_tga')}
                   {renderSortableHeader('Fixo/Variável', 'fixed_variable')}
                   {renderSortableHeader('Classificação', 'classification')}
-                  {renderSortableHeader('Contabiliza', 'contabiliza')}
+                  {renderSortableHeader('Contabiliza', 'contabiliza', 'min-w-[100px]')}
                   <TableHead className="text-right sticky right-0 bg-slate-100 z-10 shadow-[-4px_0_6px_-4px_rgba(0,0,0,0.1)] h-12 px-2 text-xs">
                     Ação
                   </TableHead>
@@ -1197,8 +1197,8 @@ export default function CostCenters() {
                         </TableCell>
                         <TableCell className="p-2">
                           <div className="flex items-center gap-2 opacity-80">
-                            <Building2 className="h-3 w-3" />
-                            <span className="truncate max-w-[150px]">
+                            <Building2 className="h-3 w-3 flex-shrink-0" />
+                            <span className="truncate max-w-[250px]">
                               {cc.organization?.name || '-'}
                             </span>
                           </div>
