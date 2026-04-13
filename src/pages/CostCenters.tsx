@@ -1119,7 +1119,7 @@ export default function CostCenters() {
                   {renderSortableHeader('Fixo/Variável', 'fixed_variable')}
                   {renderSortableHeader('Classificação', 'classification')}
                   {renderSortableHeader('Contabiliza', 'contabiliza')}
-                  <TableHead className="text-right">Ações</TableHead>
+                  <TableHead className="text-right">Ação</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
