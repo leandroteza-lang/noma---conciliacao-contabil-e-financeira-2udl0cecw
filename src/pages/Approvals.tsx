@@ -424,9 +424,19 @@ export default function Approvals() {
       }
 
       fetchedEdits.forEach((e: any) => {
-        if (e.proposed_changes?.__action?.new === 'CREATE') {
-          const desc = e.proposed_changes.description?.new || e.proposed_changes.name?.new || ''
-          const bank = e.proposed_changes.bank_code?.new || ''
+        if (
+          e.proposed_changes?.__action?.new === 'CREATE' ||
+          e.proposed_changes?.__action === 'CREATE'
+        ) {
+          const getVal = (field: string) => {
+            const val =
+              e.proposed_changes[field] ||
+              e.proposed_changes[field.charAt(0).toUpperCase() + field.slice(1)]
+            return val && typeof val === 'object' && 'new' in val ? val.new : val
+          }
+          const desc =
+            getVal('description') || getVal('Descrição') || getVal('name') || getVal('Nome') || ''
+          const bank = getVal('bank_code') || ''
           e.entity_name = desc ? `${bank ? bank + ' - ' : ''}${desc} (Novo)` : 'Novo Registro'
           e.is_create = true
           delete e.proposed_changes.__action
@@ -737,10 +747,46 @@ export default function Approvals() {
 
       // Get the new values
       const newValues: Record<string, any> = {}
+
+      const dbColumnMap: Record<string, string> = {
+        Descrição: 'description',
+        Código: 'code',
+        'Tipo Lcto': 'tipo_lcto',
+        Operacional: 'operational',
+        'Tipo TGA': 'tipo_tga_id',
+        Tipo: 'type_tga',
+        'Fixo/Variável': 'fixed_variable',
+        'Fixo / Variável': 'fixed_variable',
+        'Fixo\nVariável': 'fixed_variable',
+        FixoVariável: 'fixed_variable',
+        Contabiliza: 'contabiliza',
+        Observações: 'observacoes',
+        Empresa: 'organization_id',
+        Nome: 'name',
+        Email: 'email',
+        Telefone: 'phone',
+        Endereço: 'address',
+        Departamento: 'department_id',
+        Perfil: 'role',
+        CPF: 'cpf',
+        CNPJ: 'cnpj',
+      }
+
       Object.keys(edit.proposed_changes).forEach((key) => {
+        if (key === '__action') return
         const change = edit.proposed_changes[key]
-        if (change && typeof change === 'object' && 'new' in change) {
-          newValues[key] = change.new
+        let val = undefined
+
+        if (change !== null && typeof change === 'object' && ('new' in change || 'old' in change)) {
+          if ('new' in change) val = change.new
+        } else {
+          val = change
+        }
+
+        if (val !== undefined) {
+          const cleanKey = key.replace(/<[^>]*>?/gm, '').trim()
+          const dbKey = dbColumnMap[cleanKey] || dbColumnMap[key] || cleanKey
+          newValues[dbKey] = val
         }
       })
 
