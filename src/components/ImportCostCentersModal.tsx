@@ -31,17 +31,21 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Checkbox } from '@/components/ui/checkbox'
 
 const EXPECTED_FIELDS = [
-  { key: 'CODIGO', label: 'Código (*)' },
-  { key: 'DESCRICAO', label: 'Descrição (*)' },
-  { key: 'EMPRESA', label: 'Empresa (Coluna)' },
-  { key: 'TIPOTGA', label: 'Tipo Conta TGA' },
-  { key: 'TIPO', label: 'Tipo TGA' },
-  { key: 'FIXO_VARIAVEL', label: 'Fixo/Variável' },
-  { key: 'CLASSIFICACAO', label: 'Classificação' },
-  { key: 'OPERACIONAL', label: 'Operacional' },
-  { key: 'TIPOLCTO', label: 'Tipo Lançamento' },
-  { key: 'CONTABILIZA', label: 'Contabiliza' },
-  { key: 'OBSERVACOES', label: 'Observações' },
+  { key: 'CODIGO', label: 'Código (*)', aliases: ['CODIGO', 'COD'] },
+  { key: 'DESCRICAO', label: 'Descrição (*)', aliases: ['DESCRICAO', 'NOME'] },
+  { key: 'EMPRESA', label: 'Empresa (Coluna)', aliases: ['EMPRESA'] },
+  { key: 'TIPOTGA', label: 'Tipo Conta TGA', aliases: ['TIPOTGA'] },
+  { key: 'TIPO', label: 'Tipo TGA', aliases: ['TIPO'] },
+  {
+    key: 'FIXO_VARIAVEL',
+    label: 'Fixo/Variável',
+    aliases: ['FIXOOUVARIAVEL', 'FIXO_VARIAVEL', 'FIXOVARIAVEL'],
+  },
+  { key: 'CLASSIFICACAO', label: 'Classificação', aliases: ['CLASSIFICACAO'] },
+  { key: 'OPERACIONAL', label: 'Operacional', aliases: ['OPERACIONAL'] },
+  { key: 'TIPOLCTO', label: 'Tipo Lançamento', aliases: ['TIPOLCTO', 'TIPODELANCAMENTO'] },
+  { key: 'CONTABILIZA', label: 'Contabiliza', aliases: ['CONTABILIZA'] },
+  { key: 'OBSERVACOES', label: 'Observações', aliases: ['OBSERVACOES', 'OBS'] },
 ]
 
 export function ImportCostCentersModal({
@@ -189,17 +193,47 @@ export function ImportCostCentersModal({
       setHeaders(hdrs)
 
       const autoMap: Record<string, string> = {}
+
       hdrs.forEach((h: string) => {
         const cleanH = h
           .normalize('NFD')
           .replace(/[\u0300-\u036f]/g, '')
+          .replace(/[^A-Z0-9]/g, '')
           .toUpperCase()
           .trim()
-        const match = EXPECTED_FIELDS.find(
-          (ef) => cleanH.includes(ef.key) || ef.key.includes(cleanH),
+
+        const exactMatch = EXPECTED_FIELDS.find((ef) =>
+          ef.aliases.some((alias) => {
+            const cleanAlias = alias.replace(/[^A-Z0-9]/g, '')
+            return cleanH === cleanAlias
+          }),
         )
-        if (match) autoMap[match.key] = h
+        if (exactMatch && !autoMap[exactMatch.key]) {
+          autoMap[exactMatch.key] = h
+        }
       })
+
+      hdrs.forEach((h: string) => {
+        if (Object.values(autoMap).includes(h)) return
+
+        const cleanH = h
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .replace(/[^A-Z0-9]/g, '')
+          .toUpperCase()
+          .trim()
+
+        const partialMatch = EXPECTED_FIELDS.find((ef) =>
+          ef.aliases.some((alias) => {
+            const cleanAlias = alias.replace(/[^A-Z0-9]/g, '')
+            return cleanH.includes(cleanAlias)
+          }),
+        )
+        if (partialMatch && !autoMap[partialMatch.key]) {
+          autoMap[partialMatch.key] = h
+        }
+      })
+
       setMapping(autoMap)
       setStep(2)
     } catch (err: any) {
