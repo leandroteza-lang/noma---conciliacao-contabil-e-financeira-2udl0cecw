@@ -3,6 +3,7 @@ import { format } from 'date-fns'
 import { Eye, Check, X, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { Checkbox } from '@/components/ui/checkbox'
 import {
   Dialog,
   DialogContent,
@@ -11,7 +12,15 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog'
 
-export function PendingEditsTable({ edits, processingId, onApprove, onReject }: any) {
+export function PendingEditsTable({
+  edits,
+  processingId,
+  onApprove,
+  onReject,
+  selectedIds = [],
+  onSelect,
+  onSelectAll,
+}: any) {
   const [selectedEdit, setSelectedEdit] = useState<any>(null)
 
   if (!edits || edits.length === 0) {
@@ -58,6 +67,13 @@ export function PendingEditsTable({ edits, processingId, onApprove, onReject }: 
         <table className="w-full text-sm text-left">
           <thead className="bg-slate-50 border-b border-slate-200">
             <tr>
+              <th className="px-4 py-3 w-12">
+                <Checkbox
+                  checked={edits.length > 0 && selectedIds.length === edits.length}
+                  onCheckedChange={onSelectAll}
+                  aria-label="Selecionar todos"
+                />
+              </th>
               <th className="px-4 py-3 font-medium text-slate-600">Tipo</th>
               <th className="px-4 py-3 font-medium text-slate-600">Identificação</th>
               <th className="px-4 py-3 font-medium text-slate-600">Solicitado por</th>
@@ -68,6 +84,13 @@ export function PendingEditsTable({ edits, processingId, onApprove, onReject }: 
           <tbody>
             {edits.map((edit: any) => (
               <tr key={edit.id} className="border-b border-slate-100 hover:bg-slate-50/50">
+                <td className="px-4 py-3">
+                  <Checkbox
+                    checked={selectedIds.includes(edit.id)}
+                    onCheckedChange={(c) => onSelect && onSelect(edit.id, !!c)}
+                    aria-label={`Selecionar ${edit.entity_name}`}
+                  />
+                </td>
                 <td className="px-4 py-3">
                   <Badge
                     variant="outline"

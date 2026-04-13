@@ -486,7 +486,11 @@ export default function Approvals() {
       const fetchedNewUsers = newUsersRes.data || []
       setNewUsers(fetchedNewUsers)
       setPendingEdits(fetchedEdits)
-      setSelectedIds((prev) => prev.filter((id) => unified.some((i) => i.id === id)))
+      setSelectedIds((prev) =>
+        prev.filter(
+          (id) => unified.some((i) => i.id === id) || fetchedEdits.some((e: any) => e.id === id),
+        ),
+      )
 
       setActiveTab((prev) => {
         if (prev === 'pending' && unified.filter((i) => i.pending && !i.deletedAt).length === 0) {
@@ -736,10 +740,12 @@ export default function Approvals() {
     }
   }
 
-  const handleApproveEdit = async (edit: any) => {
-    setProcessingId(edit.id)
-    setIsProcessing(true)
-    setProgress(50)
+  const handleApproveEdit = async (edit: any, isBulk = false) => {
+    if (!isBulk) {
+      setProcessingId(edit.id)
+      setIsProcessing(true)
+      setProgress(50)
+    }
     try {
       const {
         data: { user },
@@ -881,28 +887,35 @@ export default function Approvals() {
         edit.proposed_changes,
       )
 
-      setProgress(100)
-      toast({
-        title: 'Aprovado',
-        description: edit.is_create
-          ? 'O novo registro foi criado com sucesso.'
-          : 'As alterações foram aplicadas com sucesso.',
-      })
-      fetchPendingItems()
-      window.dispatchEvent(new CustomEvent('refresh-approvals-badge'))
+      if (!isBulk) {
+        setProgress(100)
+        toast({
+          title: 'Aprovado',
+          description: edit.is_create
+            ? 'O novo registro foi criado com sucesso.'
+            : 'As alterações foram aplicadas com sucesso.',
+        })
+        fetchPendingItems()
+        window.dispatchEvent(new CustomEvent('refresh-approvals-badge'))
+      }
     } catch (e: any) {
-      toast({ title: 'Erro', description: e.message, variant: 'destructive' })
+      if (!isBulk) toast({ title: 'Erro', description: e.message, variant: 'destructive' })
+      throw e
     } finally {
-      setProcessingId(null)
-      setIsProcessing(false)
-      setProgress(0)
+      if (!isBulk) {
+        setProcessingId(null)
+        setIsProcessing(false)
+        setProgress(0)
+      }
     }
   }
 
-  const handleRejectEdit = async (edit: any) => {
-    setProcessingId(edit.id)
-    setIsProcessing(true)
-    setProgress(50)
+  const handleRejectEdit = async (edit: any, isBulk = false) => {
+    if (!isBulk) {
+      setProcessingId(edit.id)
+      setIsProcessing(true)
+      setProgress(50)
+    }
     try {
       const {
         data: { user },
@@ -925,17 +938,64 @@ export default function Approvals() {
         edit.proposed_changes,
       )
 
-      setProgress(100)
+      if (!isBulk) {
+        setProgress(100)
+        toast({
+          title: 'Rejeitado',
+          description: edit.is_create
+            ? 'A proposta de criação foi rejeitada.'
+            : 'A proposta de alteração foi rejeitada.',
+        })
+        fetchPendingItems()
+        window.dispatchEvent(new CustomEvent('refresh-approvals-badge'))
+      }
+    } catch (e: any) {
+      if (!isBulk) toast({ title: 'Erro', description: e.message, variant: 'destructive' })
+      throw e
+    } finally {
+      if (!isBulk) {
+        setProcessingId(null)
+        setIsProcessing(false)
+        setProgress(0)
+      }
+    }
+  }
+
+  const handleBulkEditAction = async (action: 'approve' | 'reject') => {
+    if (selectedIds.length === 0) return
+    if (
+      !confirm(
+        `Deseja realmente ${action === 'approve' ? 'APROVAR' : 'REJEITAR'} as ${selectedIds.length} alterações selecionadas?`,
+      )
+    )
+      return
+
+    setProcessingId('bulk')
+    setIsProcessing(true)
+    setProgress(0)
+    try {
+      const editsToProcess = pendingEdits.filter((e) => selectedIds.includes(e.id))
+      let processed = 0
+
+      for (const edit of editsToProcess) {
+        if (action === 'approve') {
+          await handleApproveEdit(edit, true)
+        } else {
+          await handleRejectEdit(edit, true)
+        }
+        processed++
+        setProgress((processed / editsToProcess.length) * 100)
+      }
+
       toast({
-        title: 'Rejeitado',
-        description: edit.is_create
-          ? 'A proposta de criação foi rejeitada.'
-          : 'A proposta de alteração foi rejeitada.',
+        title: 'Ação concluída',
+        description: `As alterações selecionadas foram ${action === 'approve' ? 'aprovadas' : 'rejeitadas'} com sucesso.`,
       })
+      setSelectedIds([])
       fetchPendingItems()
       window.dispatchEvent(new CustomEvent('refresh-approvals-badge'))
     } catch (e: any) {
-      toast({ title: 'Erro', description: e.message, variant: 'destructive' })
+      toast({ title: 'Erro na ação em lote', description: e.message, variant: 'destructive' })
     } finally {
       setProcessingId(null)
       setIsProcessing(false)
@@ -1166,33 +1226,66 @@ export default function Approvals() {
               {selectedIds.length} item(ns) selecionado(s)
             </span>
             <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handleBulkAction('restore')}
-                disabled={processingId === 'bulk'}
-                className="text-blue-600 hover:text-blue-700"
-              >
-                <RotateCcw className="h-4 w-4 mr-2" /> Restaurar
-              </Button>
-              {activeTab === 'pending' ? (
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  onClick={() => handleBulkAction('approve')}
-                  disabled={processingId === 'bulk'}
-                >
-                  <Trash2 className="h-4 w-4 mr-2" /> Aprovar Exclusão
-                </Button>
+              {activeTab === 'pending_edits' ? (
+                <>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
+                    onClick={() => handleBulkEditAction('reject')}
+                    disabled={processingId === 'bulk'}
+                  >
+                    <X className="h-4 w-4 mr-2" /> Rejeitar
+                  </Button>
+                  <Button
+                    size="sm"
+                    className="bg-green-600 hover:bg-green-700 text-white"
+                    onClick={() => handleBulkEditAction('approve')}
+                    disabled={processingId === 'bulk'}
+                  >
+                    <Check className="h-4 w-4 mr-2" /> Aprovar
+                  </Button>
+                </>
+              ) : activeTab === 'pending' ? (
+                <>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleBulkAction('restore')}
+                    disabled={processingId === 'bulk'}
+                    className="text-blue-600 hover:text-blue-700"
+                  >
+                    <RotateCcw className="h-4 w-4 mr-2" /> Restaurar
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => handleBulkAction('approve')}
+                    disabled={processingId === 'bulk'}
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" /> Aprovar Exclusão
+                  </Button>
+                </>
               ) : (
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  onClick={() => handleBulkAction('hardDelete')}
-                  disabled={processingId === 'bulk'}
-                >
-                  <Trash2 className="h-4 w-4 mr-2" /> Excluir Definitivamente
-                </Button>
+                <>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleBulkAction('restore')}
+                    disabled={processingId === 'bulk'}
+                    className="text-blue-600 hover:text-blue-700"
+                  >
+                    <RotateCcw className="h-4 w-4 mr-2" /> Restaurar
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => handleBulkAction('hardDelete')}
+                    disabled={processingId === 'bulk'}
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" /> Excluir Definitivamente
+                  </Button>
+                </>
               )}
             </div>
           </div>
@@ -1288,6 +1381,11 @@ export default function Approvals() {
               <PendingEditsTable
                 edits={pendingEdits}
                 processingId={processingId}
+                selectedIds={selectedIds}
+                onSelect={(id: string, c: boolean) =>
+                  setSelectedIds((prev) => (c ? [...prev, id] : prev.filter((x) => x !== id)))
+                }
+                onSelectAll={(c: boolean) => setSelectedIds(c ? pendingEdits.map((i) => i.id) : [])}
                 onApprove={handleApproveEdit}
                 onReject={handleRejectEdit}
               />
