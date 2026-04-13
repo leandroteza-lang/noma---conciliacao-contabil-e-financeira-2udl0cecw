@@ -1,11 +1,17 @@
 // AVOID UPDATING THIS FILE DIRECTLY. It is automatically generated.
-export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[]
+export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[]
 
 export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: '14.5'
+    PostgrestVersion: "14.5"
   }
   public: {
     Tables: {
@@ -36,25 +42,25 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: 'account_mapping_chart_account_id_fkey'
-            columns: ['chart_account_id']
+            foreignKeyName: "account_mapping_chart_account_id_fkey"
+            columns: ["chart_account_id"]
             isOneToOne: false
-            referencedRelation: 'chart_of_accounts'
-            referencedColumns: ['id']
+            referencedRelation: "chart_of_accounts"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: 'account_mapping_cost_center_id_fkey'
-            columns: ['cost_center_id']
+            foreignKeyName: "account_mapping_cost_center_id_fkey"
+            columns: ["cost_center_id"]
             isOneToOne: false
-            referencedRelation: 'cost_centers'
-            referencedColumns: ['id']
+            referencedRelation: "cost_centers"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: 'account_mapping_organization_id_fkey'
-            columns: ['organization_id']
+            foreignKeyName: "account_mapping_organization_id_fkey"
+            columns: ["organization_id"]
             isOneToOne: false
-            referencedRelation: 'organizations'
-            referencedColumns: ['id']
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -97,32 +103,32 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: 'accounting_entries_cost_center_id_fkey'
-            columns: ['cost_center_id']
+            foreignKeyName: "accounting_entries_cost_center_id_fkey"
+            columns: ["cost_center_id"]
             isOneToOne: false
-            referencedRelation: 'cost_centers'
-            referencedColumns: ['id']
+            referencedRelation: "cost_centers"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: 'accounting_entries_credit_account_id_fkey'
-            columns: ['credit_account_id']
+            foreignKeyName: "accounting_entries_credit_account_id_fkey"
+            columns: ["credit_account_id"]
             isOneToOne: false
-            referencedRelation: 'chart_of_accounts'
-            referencedColumns: ['id']
+            referencedRelation: "chart_of_accounts"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: 'accounting_entries_debit_account_id_fkey'
-            columns: ['debit_account_id']
+            foreignKeyName: "accounting_entries_debit_account_id_fkey"
+            columns: ["debit_account_id"]
             isOneToOne: false
-            referencedRelation: 'chart_of_accounts'
-            referencedColumns: ['id']
+            referencedRelation: "chart_of_accounts"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: 'accounting_entries_organization_id_fkey'
-            columns: ['organization_id']
+            foreignKeyName: "accounting_entries_organization_id_fkey"
+            columns: ["organization_id"]
             isOneToOne: false
-            referencedRelation: 'organizations'
-            referencedColumns: ['id']
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -180,11 +186,11 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: 'audit_details_audit_log_id_fkey'
-            columns: ['audit_log_id']
+            foreignKeyName: "audit_details_audit_log_id_fkey"
+            columns: ["audit_log_id"]
             isOneToOne: false
-            referencedRelation: 'audit_logs'
-            referencedColumns: ['id']
+            referencedRelation: "audit_logs"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -299,11 +305,11 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: 'bank_accounts_organization_id_fkey'
-            columns: ['organization_id']
+            foreignKeyName: "bank_accounts_organization_id_fkey"
+            columns: ["organization_id"]
             isOneToOne: false
-            referencedRelation: 'organizations'
-            referencedColumns: ['id']
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -385,11 +391,11 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: 'employees_department_id_fkey'
-            columns: ['department_id']
+            foreignKeyName: "employees_department_id_fkey"
+            columns: ["department_id"]
             isOneToOne: false
-            referencedRelation: 'departments'
-            referencedColumns: ['id']
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -408,18 +414,18 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: 'employee_companies_employee_id_fkey'
-            columns: ['usuario_id']
+            foreignKeyName: "employee_companies_employee_id_fkey"
+            columns: ["usuario_id"]
             isOneToOne: false
-            referencedRelation: 'cadastro_usuarios'
-            referencedColumns: ['id']
+            referencedRelation: "cadastro_usuarios"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: 'employee_companies_organization_id_fkey'
-            columns: ['organization_id']
+            foreignKeyName: "employee_companies_organization_id_fkey"
+            columns: ["organization_id"]
             isOneToOne: false
-            referencedRelation: 'organizations'
-            referencedColumns: ['id']
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -480,11 +486,11 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: 'chart_of_accounts_organization_id_fkey'
-            columns: ['organization_id']
+            foreignKeyName: "chart_of_accounts_organization_id_fkey"
+            columns: ["organization_id"]
             isOneToOne: false
-            referencedRelation: 'organizations'
-            referencedColumns: ['id']
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -512,11 +518,11 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: 'chart_of_accounts_backup_organization_id_fkey'
-            columns: ['organization_id']
+            foreignKeyName: "chart_of_accounts_backup_organization_id_fkey"
+            columns: ["organization_id"]
             isOneToOne: false
-            referencedRelation: 'organizations'
-            referencedColumns: ['id']
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -547,11 +553,11 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: 'chat_messages_session_id_fkey'
-            columns: ['session_id']
+            foreignKeyName: "chat_messages_session_id_fkey"
+            columns: ["session_id"]
             isOneToOne: false
-            referencedRelation: 'chat_sessions'
-            referencedColumns: ['id']
+            referencedRelation: "chat_sessions"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -645,25 +651,25 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: 'cost_centers_organization_id_fkey'
-            columns: ['organization_id']
+            foreignKeyName: "cost_centers_organization_id_fkey"
+            columns: ["organization_id"]
             isOneToOne: false
-            referencedRelation: 'organizations'
-            referencedColumns: ['id']
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: 'cost_centers_parent_id_fkey'
-            columns: ['parent_id']
+            foreignKeyName: "cost_centers_parent_id_fkey"
+            columns: ["parent_id"]
             isOneToOne: false
-            referencedRelation: 'cost_centers'
-            referencedColumns: ['id']
+            referencedRelation: "cost_centers"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: 'cost_centers_tipo_tga_id_fkey'
-            columns: ['tipo_tga_id']
+            foreignKeyName: "cost_centers_tipo_tga_id_fkey"
+            columns: ["tipo_tga_id"]
             isOneToOne: false
-            referencedRelation: 'tipo_conta_tga'
-            referencedColumns: ['id']
+            referencedRelation: "tipo_conta_tga"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -691,11 +697,11 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: 'cost_centers_backup_organization_id_fkey'
-            columns: ['organization_id']
+            foreignKeyName: "cost_centers_backup_organization_id_fkey"
+            columns: ["organization_id"]
             isOneToOne: false
-            referencedRelation: 'organizations'
-            referencedColumns: ['id']
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -774,25 +780,25 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: 'financial_movements_bank_account_id_fkey'
-            columns: ['bank_account_id']
+            foreignKeyName: "financial_movements_bank_account_id_fkey"
+            columns: ["bank_account_id"]
             isOneToOne: false
-            referencedRelation: 'bank_accounts'
-            referencedColumns: ['id']
+            referencedRelation: "bank_accounts"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: 'financial_movements_cost_center_id_fkey'
-            columns: ['cost_center_id']
+            foreignKeyName: "financial_movements_cost_center_id_fkey"
+            columns: ["cost_center_id"]
             isOneToOne: false
-            referencedRelation: 'cost_centers'
-            referencedColumns: ['id']
+            referencedRelation: "cost_centers"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: 'financial_movements_organization_id_fkey'
-            columns: ['organization_id']
+            foreignKeyName: "financial_movements_organization_id_fkey"
+            columns: ["organization_id"]
             isOneToOne: false
-            referencedRelation: 'organizations'
-            referencedColumns: ['id']
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -1021,11 +1027,11 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: 'tipo_conta_tga_organization_id_fkey'
-            columns: ['organization_id']
+            foreignKeyName: "tipo_conta_tga_organization_id_fkey"
+            columns: ["organization_id"]
             isOneToOne: false
-            referencedRelation: 'organizations'
-            referencedColumns: ['id']
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -1053,31 +1059,33 @@ export type Database = {
   }
 }
 
-type DatabaseWithoutInternals = Omit<Database, '__InternalSupabase'>
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
 
-type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, 'public'>]
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
 
 export type Tables<
   DefaultSchemaTableNameOrOptions extends
-    | keyof (DefaultSchema['Tables'] & DefaultSchema['Views'])
+    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables'] &
-        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Views'])
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
     : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
-  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables'] &
-      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Views'])[TableName] extends {
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
       Row: infer R
     }
     ? R
     : never
-  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema['Tables'] & DefaultSchema['Views'])
-    ? (DefaultSchema['Tables'] & DefaultSchema['Views'])[DefaultSchemaTableNameOrOptions] extends {
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
         Row: infer R
       }
       ? R
@@ -1086,23 +1094,23 @@ export type Tables<
 
 export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
-    | keyof DefaultSchema['Tables']
+    | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables']
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
     : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
-  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables'][TableName] extends {
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
       Insert: infer I
     }
     ? I
     : never
-  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema['Tables']
-    ? DefaultSchema['Tables'][DefaultSchemaTableNameOrOptions] extends {
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
         Insert: infer I
       }
       ? I
@@ -1111,23 +1119,23 @@ export type TablesInsert<
 
 export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
-    | keyof DefaultSchema['Tables']
+    | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables']
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
     : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
-  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables'][TableName] extends {
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
       Update: infer U
     }
     ? U
     : never
-  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema['Tables']
-    ? DefaultSchema['Tables'][DefaultSchemaTableNameOrOptions] extends {
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
         Update: infer U
       }
       ? U
@@ -1136,36 +1144,36 @@ export type TablesUpdate<
 
 export type Enums<
   DefaultSchemaEnumNameOrOptions extends
-    | keyof DefaultSchema['Enums']
+    | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
   EnumName extends DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions['schema']]['Enums']
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
     : never = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
-  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions['schema']]['Enums'][EnumName]
-  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema['Enums']
-    ? DefaultSchema['Enums'][DefaultSchemaEnumNameOrOptions]
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
     : never
 
 export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
-    | keyof DefaultSchema['CompositeTypes']
+    | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
   CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions['schema']]['CompositeTypes']
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
     : never = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
-  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions['schema']]['CompositeTypes'][CompositeTypeName]
-  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema['CompositeTypes']
-    ? DefaultSchema['CompositeTypes'][PublicCompositeTypeNameOrOptions]
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
     : never
 
 export const Constants = {
@@ -1173,6 +1181,7 @@ export const Constants = {
     Enums: {},
   },
 } as const
+
 
 // ====== DATABASE EXTENDED CONTEXT (auto-generated) ======
 // This section contains actual PostgreSQL column types, constraints, RLS policies,
@@ -1691,6 +1700,76 @@ export const Constants = {
 //     USING: ((organization_id IN ( SELECT organizations.id    FROM organizations   WHERE (organizations.user_id = auth.uid()))) OR (organization_id IN ( SELECT cuc.organization_id    FROM (cadastro_usuarios_companies cuc      JOIN cadastro_usuarios cu ON ((cuc.usuario_id = cu.id)))   WHERE ((cu.email)::text = (auth.jwt() ->> 'email'::text)))))
 
 // --- DATABASE FUNCTIONS ---
+// FUNCTION audit_table_update_trigger()
+//   CREATE OR REPLACE FUNCTION public.audit_table_update_trigger()
+//    RETURNS trigger
+//    LANGUAGE plpgsql
+//    SECURITY DEFINER
+//   AS $function$
+//   DECLARE
+//     v_old jsonb;
+//     v_new jsonb;
+//     v_changes jsonb := '{}'::jsonb;
+//     v_key text;
+//     v_old_val text;
+//     v_new_val text;
+//     v_audit_id uuid;
+//     v_entity_type text;
+//     v_user_id uuid;
+//     v_ignored_cols text[] := ARRAY['created_at', 'updated_at', 'deleted_at', 'deleted_by', 'deletion_requested_at', 'deletion_requested_by', 'pending_deletion', 'id', 'organization_id', 'user_id', 'password', 'encrypted_password'];
+//   BEGIN
+//     CASE TG_TABLE_NAME
+//       WHEN 'cadastro_usuarios' THEN v_entity_type := 'Usuários';
+//       WHEN 'bank_accounts' THEN v_entity_type := 'Contas Bancárias';
+//       WHEN 'cost_centers' THEN v_entity_type := 'Centros de Custo';
+//       WHEN 'chart_of_accounts' THEN v_entity_type := 'Plano de Contas';
+//       WHEN 'tipo_conta_tga' THEN v_entity_type := 'Tipos de Conta TGA';
+//       WHEN 'departments' THEN v_entity_type := 'Departamentos';
+//       WHEN 'organizations' THEN v_entity_type := 'Empresas';
+//       WHEN 'account_mapping' THEN v_entity_type := 'Mapeamento de Contas';
+//       WHEN 'financial_movements' THEN v_entity_type := 'Movimentações Financeiras';
+//       ELSE v_entity_type := TG_TABLE_NAME;
+//     END CASE;
+//   
+//     v_user_id := auth.uid();
+//   
+//     IF TG_OP = 'UPDATE' THEN
+//       v_old := to_jsonb(OLD);
+//       v_new := to_jsonb(NEW);
+//       
+//       FOR v_key IN SELECT key FROM jsonb_each(v_old)
+//       LOOP
+//         IF v_key = ANY(v_ignored_cols) THEN
+//           CONTINUE;
+//         END IF;
+//         
+//         v_old_val := trim(COALESCE(v_old->>v_key, ''));
+//         v_new_val := trim(COALESCE(v_new->>v_key, ''));
+//         
+//         IF v_old_val IS DISTINCT FROM v_new_val THEN
+//           v_changes := jsonb_set(v_changes, ARRAY[v_key], jsonb_build_object('old', v_old_val, 'new', v_new_val));
+//         END IF;
+//       END LOOP;
+//       
+//       IF v_changes != '{}'::jsonb THEN
+//         INSERT INTO public.audit_logs (entity_type, entity_id, action, performed_by, changes)
+//         VALUES (v_entity_type, NEW.id, 'UPDATE', v_user_id, v_changes)
+//         RETURNING id INTO v_audit_id;
+//         
+//         FOR v_key IN SELECT key FROM jsonb_each(v_changes)
+//         LOOP
+//           INSERT INTO public.audit_details (audit_log_id, field_name, old_value, new_value)
+//           VALUES (v_audit_id, v_key, v_changes->v_key->>'old', v_changes->v_key->>'new');
+//         END LOOP;
+//       END IF;
+//       
+//       RETURN NEW;
+//     END IF;
+//     
+//     RETURN NULL;
+//   END;
+//   $function$
+//   
 // FUNCTION check_bank_account_soft_delete()
 //   CREATE OR REPLACE FUNCTION public.check_bank_account_soft_delete()
 //    RETURNS trigger
@@ -1705,7 +1784,7 @@ export const Constants = {
 //     RETURN NEW;
 //   END;
 //   $function$
-//
+//   
 // FUNCTION check_chart_account_soft_delete()
 //   CREATE OR REPLACE FUNCTION public.check_chart_account_soft_delete()
 //    RETURNS trigger
@@ -1721,7 +1800,7 @@ export const Constants = {
 //     RETURN NEW;
 //   END;
 //   $function$
-//
+//   
 // FUNCTION check_cost_center_soft_delete()
 //   CREATE OR REPLACE FUNCTION public.check_cost_center_soft_delete()
 //    RETURNS trigger
@@ -1738,7 +1817,7 @@ export const Constants = {
 //     RETURN NEW;
 //   END;
 //   $function$
-//
+//   
 // FUNCTION check_department_soft_delete()
 //   CREATE OR REPLACE FUNCTION public.check_department_soft_delete()
 //    RETURNS trigger
@@ -1753,7 +1832,7 @@ export const Constants = {
 //     RETURN NEW;
 //   END;
 //   $function$
-//
+//   
 // FUNCTION check_organization_soft_delete()
 //   CREATE OR REPLACE FUNCTION public.check_organization_soft_delete()
 //    RETURNS trigger
@@ -1768,7 +1847,7 @@ export const Constants = {
 //     RETURN NEW;
 //   END;
 //   $function$
-//
+//   
 // FUNCTION check_tga_account_soft_delete()
 //   CREATE OR REPLACE FUNCTION public.check_tga_account_soft_delete()
 //    RETURNS trigger
@@ -1783,7 +1862,7 @@ export const Constants = {
 //     RETURN NEW;
 //   END;
 //   $function$
-//
+//   
 // FUNCTION delete_organization_chart_accounts(uuid)
 //   CREATE OR REPLACE FUNCTION public.delete_organization_chart_accounts(p_org_id uuid)
 //    RETURNS jsonb
@@ -1799,7 +1878,7 @@ export const Constants = {
 //     SELECT count(*) INTO v_total_count
 //     FROM public.chart_of_accounts
 //     WHERE organization_id = p_org_id;
-//
+//   
 //     -- Blocked
 //     SELECT count(DISTINCT id) INTO v_blocked_count
 //     FROM public.chart_of_accounts c
@@ -1809,16 +1888,16 @@ export const Constants = {
 //         EXISTS (SELECT 1 FROM public.accounting_entries WHERE credit_account_id = c.id) OR
 //         EXISTS (SELECT 1 FROM public.account_mapping WHERE chart_account_id = c.id)
 //       );
-//
+//   
 //     -- Delete unblocked
 //     DELETE FROM public.chart_of_accounts c
 //     WHERE c.organization_id = p_org_id
 //       AND NOT EXISTS (SELECT 1 FROM public.accounting_entries WHERE debit_account_id = c.id)
 //       AND NOT EXISTS (SELECT 1 FROM public.accounting_entries WHERE credit_account_id = c.id)
 //       AND NOT EXISTS (SELECT 1 FROM public.account_mapping WHERE chart_account_id = c.id);
-//
+//   
 //     GET DIAGNOSTICS v_deleted_count = ROW_COUNT;
-//
+//   
 //     RETURN jsonb_build_object(
 //       'total', v_total_count,
 //       'deleted', v_deleted_count,
@@ -1826,7 +1905,7 @@ export const Constants = {
 //     );
 //   END;
 //   $function$
-//
+//   
 // FUNCTION get_auth_user_by_email(text)
 //   CREATE OR REPLACE FUNCTION public.get_auth_user_by_email(p_email text)
 //    RETURNS uuid
@@ -1841,7 +1920,7 @@ export const Constants = {
 //     RETURN v_user_id;
 //   END;
 //   $function$
-//
+//   
 // FUNCTION handle_new_user()
 //   CREATE OR REPLACE FUNCTION public.handle_new_user()
 //    RETURNS trigger
@@ -1861,20 +1940,20 @@ export const Constants = {
 //     req_role := COALESCE(NEW.raw_user_meta_data->>'role', 'collaborator');
 //     req_cpf := NEW.raw_user_meta_data->>'cpf';
 //     req_phone := NEW.raw_user_meta_data->>'phone';
-//
+//     
 //     BEGIN
 //       req_dep_id := (NEW.raw_user_meta_data->>'department_id')::uuid;
 //     EXCEPTION WHEN OTHERS THEN
 //       req_dep_id := NULL;
 //     END;
-//
+//   
 //     IF req_cpf IS NOT NULL AND req_cpf != '' THEN
 //       -- Ignore users that are soft-deleted when checking for duplicates
 //       IF EXISTS (SELECT 1 FROM public.cadastro_usuarios WHERE cpf = req_cpf AND deleted_at IS NULL) THEN
 //         RAISE EXCEPTION 'CPF_DUPLICATE';
 //       END IF;
 //     END IF;
-//
+//   
 //     INSERT INTO public.cadastro_usuarios (
 //       id, user_id, name, email, role, cpf, phone, department_id, approval_status, status
 //     ) VALUES (
@@ -1889,16 +1968,16 @@ export const Constants = {
 //       'pending',
 //       true
 //     );
-//
+//   
 //     IF org_name IS NOT NULL AND org_name != '' THEN
 //       INSERT INTO public.organizations (id, user_id, name)
 //       VALUES (gen_random_uuid(), NEW.id, org_name);
 //     END IF;
-//
+//   
 //     RETURN NEW;
 //   END;
 //   $function$
-//
+//   
 // FUNCTION increment_shared_query_access(uuid)
 //   CREATE OR REPLACE FUNCTION public.increment_shared_query_access(query_id uuid)
 //    RETURNS void
@@ -1907,29 +1986,39 @@ export const Constants = {
 //   AS $function$
 //   BEGIN
 //     UPDATE public.shared_queries
-//     SET
+//     SET 
 //       access_count = access_count + 1,
-//       first_access_notified = CASE
-//         WHEN notify_first_access = true AND first_access_notified = false THEN true
-//         ELSE first_access_notified
+//       first_access_notified = CASE 
+//         WHEN notify_first_access = true AND first_access_notified = false THEN true 
+//         ELSE first_access_notified 
 //       END
 //     WHERE id = query_id;
 //   END;
 //   $function$
-//
+//   
 
 // --- TRIGGERS ---
+// Table: account_mapping
+//   trg_audit_account_mapping_update: CREATE TRIGGER trg_audit_account_mapping_update AFTER UPDATE ON public.account_mapping FOR EACH ROW EXECUTE FUNCTION audit_table_update_trigger()
 // Table: bank_accounts
+//   trg_audit_bank_accounts_update: CREATE TRIGGER trg_audit_bank_accounts_update AFTER UPDATE ON public.bank_accounts FOR EACH ROW EXECUTE FUNCTION audit_table_update_trigger()
 //   trg_check_bank_account_soft_delete: CREATE TRIGGER trg_check_bank_account_soft_delete BEFORE UPDATE ON public.bank_accounts FOR EACH ROW EXECUTE FUNCTION check_bank_account_soft_delete()
+// Table: cadastro_usuarios
+//   trg_audit_cadastro_usuarios_update: CREATE TRIGGER trg_audit_cadastro_usuarios_update AFTER UPDATE ON public.cadastro_usuarios FOR EACH ROW EXECUTE FUNCTION audit_table_update_trigger()
 // Table: chart_of_accounts
+//   trg_audit_chart_of_accounts_update: CREATE TRIGGER trg_audit_chart_of_accounts_update AFTER UPDATE ON public.chart_of_accounts FOR EACH ROW EXECUTE FUNCTION audit_table_update_trigger()
 //   trg_check_chart_account_soft_delete: CREATE TRIGGER trg_check_chart_account_soft_delete BEFORE UPDATE ON public.chart_of_accounts FOR EACH ROW EXECUTE FUNCTION check_chart_account_soft_delete()
 // Table: cost_centers
+//   trg_audit_cost_centers_update: CREATE TRIGGER trg_audit_cost_centers_update AFTER UPDATE ON public.cost_centers FOR EACH ROW EXECUTE FUNCTION audit_table_update_trigger()
 //   trg_check_cost_center_soft_delete: CREATE TRIGGER trg_check_cost_center_soft_delete BEFORE UPDATE ON public.cost_centers FOR EACH ROW EXECUTE FUNCTION check_cost_center_soft_delete()
 // Table: departments
+//   trg_audit_departments_update: CREATE TRIGGER trg_audit_departments_update AFTER UPDATE ON public.departments FOR EACH ROW EXECUTE FUNCTION audit_table_update_trigger()
 //   trg_check_department_soft_delete: CREATE TRIGGER trg_check_department_soft_delete BEFORE UPDATE ON public.departments FOR EACH ROW EXECUTE FUNCTION check_department_soft_delete()
 // Table: organizations
+//   trg_audit_organizations_update: CREATE TRIGGER trg_audit_organizations_update AFTER UPDATE ON public.organizations FOR EACH ROW EXECUTE FUNCTION audit_table_update_trigger()
 //   trg_check_organization_soft_delete: CREATE TRIGGER trg_check_organization_soft_delete BEFORE UPDATE ON public.organizations FOR EACH ROW EXECUTE FUNCTION check_organization_soft_delete()
 // Table: tipo_conta_tga
+//   trg_audit_tipo_conta_tga_update: CREATE TRIGGER trg_audit_tipo_conta_tga_update AFTER UPDATE ON public.tipo_conta_tga FOR EACH ROW EXECUTE FUNCTION audit_table_update_trigger()
 //   trg_check_tga_account_soft_delete: CREATE TRIGGER trg_check_tga_account_soft_delete BEFORE UPDATE ON public.tipo_conta_tga FOR EACH ROW EXECUTE FUNCTION check_tga_account_soft_delete()
 
 // --- INDEXES ---
@@ -1937,3 +2026,4 @@ export const Constants = {
 //   CREATE UNIQUE INDEX audit_config_entity_type_key ON public.audit_config USING btree (entity_type)
 // Table: cadastro_usuarios
 //   CREATE UNIQUE INDEX cadastro_usuarios_cpf_idx ON public.cadastro_usuarios USING btree (cpf) WHERE ((cpf IS NOT NULL) AND ((cpf)::text <> ''::text) AND (deleted_at IS NULL))
+
