@@ -15,6 +15,9 @@ import {
   Activity,
   BarChart2,
   BookOpen,
+  TrendingUp,
+  TrendingDown,
+  Landmark,
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
@@ -90,6 +93,7 @@ export default function CostCenters() {
 
   const [filterOrg, setFilterOrg] = useState<string>('all')
   const [filterTipoLcto, setFilterTipoLcto] = useState<string>('all')
+  const [filterCategory, setFilterCategory] = useState<string>('all')
 
   const canDelete = role === 'admin'
 
@@ -181,7 +185,16 @@ export default function CostCenters() {
     const matchesOrg = filterOrg === 'all' || cc.organization_id === filterOrg
     const matchesTipo = filterTipoLcto === 'all' || cc.tipo_lcto === filterTipoLcto
 
-    return matchesSearch && matchesOrg && matchesTipo
+    let matchesCategory = true
+    if (filterCategory === 'receitas') {
+      matchesCategory = cc.code ? cc.code.startsWith('1') : false
+    } else if (filterCategory === 'despesas') {
+      matchesCategory = cc.code ? cc.code.startsWith('2') : false
+    } else if (filterCategory === 'investimentos') {
+      matchesCategory = cc.code ? cc.code.startsWith('3') : false
+    }
+
+    return matchesSearch && matchesOrg && matchesTipo && matchesCategory
   })
 
   const totalPages = Math.max(1, Math.ceil(filteredData.length / itemsPerPage))
@@ -194,9 +207,9 @@ export default function CostCenters() {
     const relevant =
       filterOrg === 'all' ? costCenters : costCenters.filter((c) => c.organization_id === filterOrg)
     return {
-      total: relevant.length,
-      synthetic: relevant.filter((c) => c.tipo_lcto === 'S').length,
-      analytic: relevant.filter((c) => c.tipo_lcto === 'A').length,
+      receitas: relevant.filter((c) => c.code?.startsWith('1')).length,
+      despesas: relevant.filter((c) => c.code?.startsWith('2')).length,
+      investimentos: relevant.filter((c) => c.code?.startsWith('3')).length,
     }
   }, [costCenters, filterOrg])
 
@@ -482,43 +495,63 @@ export default function CostCenters() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <Card className="bg-gradient-to-br from-indigo-500 to-indigo-600 text-white shadow-lg border-0">
+        <Card
+          className={cn(
+            'bg-gradient-to-br from-emerald-500 to-emerald-600 text-white shadow-lg border-0 cursor-pointer transition-transform hover:scale-105',
+            filterCategory === 'receitas' && 'ring-4 ring-emerald-300 ring-offset-2',
+          )}
+          onClick={() => setFilterCategory((prev) => (prev === 'receitas' ? 'all' : 'receitas'))}
+        >
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-indigo-100 font-medium text-sm">Total de Centros</p>
-                <p className="text-3xl font-bold mt-1">{metrics.total}</p>
+                <p className="text-emerald-100 font-medium text-sm">Receitas (1)</p>
+                <p className="text-3xl font-bold mt-1">{metrics.receitas}</p>
               </div>
               <div className="bg-white/20 p-3 rounded-lg">
-                <BookOpen className="h-6 w-6 text-white" />
+                <TrendingUp className="h-6 w-6 text-white" />
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-emerald-500 to-emerald-600 text-white shadow-lg border-0">
+        <Card
+          className={cn(
+            'bg-gradient-to-br from-rose-500 to-rose-600 text-white shadow-lg border-0 cursor-pointer transition-transform hover:scale-105',
+            filterCategory === 'despesas' && 'ring-4 ring-rose-300 ring-offset-2',
+          )}
+          onClick={() => setFilterCategory((prev) => (prev === 'despesas' ? 'all' : 'despesas'))}
+        >
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-emerald-100 font-medium text-sm">Sintéticos</p>
-                <p className="text-3xl font-bold mt-1">{metrics.synthetic}</p>
+                <p className="text-rose-100 font-medium text-sm">Despesas (2)</p>
+                <p className="text-3xl font-bold mt-1">{metrics.despesas}</p>
               </div>
               <div className="bg-white/20 p-3 rounded-lg">
-                <BarChart2 className="h-6 w-6 text-white" />
+                <TrendingDown className="h-6 w-6 text-white" />
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-amber-500 to-amber-600 text-white shadow-lg border-0">
+        <Card
+          className={cn(
+            'bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-lg border-0 cursor-pointer transition-transform hover:scale-105',
+            filterCategory === 'investimentos' && 'ring-4 ring-blue-300 ring-offset-2',
+          )}
+          onClick={() =>
+            setFilterCategory((prev) => (prev === 'investimentos' ? 'all' : 'investimentos'))
+          }
+        >
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-amber-100 font-medium text-sm">Analíticos</p>
-                <p className="text-3xl font-bold mt-1">{metrics.analytic}</p>
+                <p className="text-blue-100 font-medium text-sm">Investimentos (3)</p>
+                <p className="text-3xl font-bold mt-1">{metrics.investimentos}</p>
               </div>
               <div className="bg-white/20 p-3 rounded-lg">
-                <Activity className="h-6 w-6 text-white" />
+                <Landmark className="h-6 w-6 text-white" />
               </div>
             </div>
           </CardContent>
