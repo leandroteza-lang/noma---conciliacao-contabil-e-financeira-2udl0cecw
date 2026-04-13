@@ -139,7 +139,7 @@ export default function Mapping() {
   const filteredCCs = useMemo(() => {
     let result = enrichedCCs
     if (filterStatus === 'mapped') result = result.filter((c) => c.mappingId)
-    if (filterStatus === 'pending') result = result.filter((c) => !c.mappingId)
+    if (filterStatus === 'pending') result = result.filter((c) => !c.mappingId && !c.isSynthetic)
     if (search) {
       const q = search.toLowerCase()
       result = result.filter((cc) => {
@@ -254,11 +254,38 @@ export default function Mapping() {
   }
 
   const toggleAll = () => {
-    if (selectedCCs.size === paginatedCCs.length && paginatedCCs.length > 0) {
+    const analytics = paginatedCCs.filter((c) => !c.isSynthetic)
+    if (selectedCCs.size === analytics.length && analytics.length > 0) {
       setSelectedCCs(new Set())
     } else {
-      setSelectedCCs(new Set(paginatedCCs.map((c) => c.id)))
+      setSelectedCCs(new Set(analytics.map((c) => c.id)))
     }
+  }
+
+  const getRowStyle = (cc: any) => {
+    if (cc.isSynthetic) {
+      switch (cc.level) {
+        case 0:
+          return 'bg-blue-900 text-white font-semibold'
+        case 1:
+          return 'bg-blue-800 text-white font-semibold'
+        case 2:
+          return 'bg-blue-700 text-white font-semibold'
+        case 3:
+          return 'bg-blue-600 text-white font-medium'
+        case 4:
+          return 'bg-blue-500 text-white font-medium'
+        case 5:
+          return 'bg-blue-400 text-slate-900 font-medium'
+        case 6:
+          return 'bg-blue-300 text-slate-900 font-medium'
+        default:
+          return 'bg-blue-200 text-slate-900 font-medium'
+      }
+    }
+    return cc.mappingId
+      ? 'bg-white hover:bg-slate-50 text-slate-700'
+      : 'bg-amber-50/20 hover:bg-amber-50/40 text-slate-700'
   }
 
   return (
@@ -400,24 +427,29 @@ export default function Mapping() {
         )}
 
         <div className="overflow-x-auto">
-          <Table>
-            <TableHeader className="bg-slate-50">
-              <TableRow>
-                <TableHead className="w-[40px] px-4">
+          <Table className="border-collapse">
+            <TableHeader className="bg-slate-50 border-b shadow-sm sticky top-0 z-10">
+              <TableRow className="h-9 hover:bg-slate-50">
+                <TableHead className="w-[40px] p-1 px-4 border-r border-slate-200">
                   <Checkbox
-                    checked={paginatedCCs.length > 0 && selectedCCs.size === paginatedCCs.length}
+                    checked={
+                      paginatedCCs.filter((c) => !c.isSynthetic).length > 0 &&
+                      selectedCCs.size === paginatedCCs.filter((c) => !c.isSynthetic).length
+                    }
                     onCheckedChange={toggleAll}
                   />
                 </TableHead>
-                <TableHead className="w-[50%]">
-                  <Badge variant="outline" className="mr-2 border-slate-300">
+                <TableHead className="w-[50%] p-2 border-r border-slate-200">
+                  <Badge variant="outline" className="mr-2 border-slate-300 bg-white">
                     DE
                   </Badge>{' '}
                   Centro de Custo TGA
                 </TableHead>
-                <TableHead>
-                  <Badge className="mr-2 bg-slate-700 hover:bg-slate-800">PARA</Badge> Conta
-                  Contábil Vinculada
+                <TableHead className="p-2">
+                  <Badge className="mr-2 bg-slate-700 hover:bg-slate-800 text-white border-0">
+                    PARA
+                  </Badge>{' '}
+                  Conta Contábil Vinculada
                 </TableHead>
               </TableRow>
             </TableHeader>
@@ -425,71 +457,55 @@ export default function Mapping() {
               {paginatedCCs.map((cc) => (
                 <TableRow
                   key={cc.id}
-                  className={cn(
-                    'transition-colors hover:bg-slate-50',
-                    cc.mappingId ? 'bg-white' : 'bg-amber-50/10',
-                    cc.isSynthetic ? 'border-b border-slate-100 bg-slate-50/50' : '',
-                  )}
+                  className={cn('transition-colors h-9 border-b border-slate-100', getRowStyle(cc))}
                 >
-                  <TableCell className="px-4">
-                    <Checkbox
-                      checked={selectedCCs.has(cc.id)}
-                      onCheckedChange={() => toggleCC(cc.id)}
-                    />
+                  <TableCell className="p-1 px-4 w-[40px] border-r border-slate-200/40">
+                    {!cc.isSynthetic && (
+                      <Checkbox
+                        checked={selectedCCs.has(cc.id)}
+                        onCheckedChange={() => toggleCC(cc.id)}
+                      />
+                    )}
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="p-1 border-r border-slate-200/40">
                     <div
-                      className="flex items-center gap-3 py-1"
-                      style={{ paddingLeft: `${cc.level * 1.5}rem` }}
+                      className="flex items-center gap-2"
+                      style={{ paddingLeft: `${cc.level * 1.25}rem` }}
                     >
                       <Badge
-                        variant={cc.isSynthetic ? 'secondary' : 'outline'}
+                        variant="outline"
                         className={cn(
-                          'w-6 h-6 p-0 flex items-center justify-center shrink-0 rounded-md font-bold',
-                          cc.isSynthetic
-                            ? 'bg-slate-200 text-slate-600 border-transparent'
-                            : 'bg-blue-50 text-blue-600 border-blue-200',
+                          'w-5 h-5 p-0 flex items-center justify-center shrink-0 rounded text-[10px] font-bold border-0',
+                          cc.isSynthetic ? 'bg-white/20 text-inherit' : 'bg-blue-50 text-blue-600',
                         )}
                         title={cc.isSynthetic ? 'Conta Sintética' : 'Conta Analítica'}
                       >
                         {cc.isSynthetic ? 'S' : 'A'}
                       </Badge>
-                      <div className="flex flex-col">
-                        <div className="flex items-center gap-2">
-                          <span
-                            className={cn(
-                              'font-mono text-sm',
-                              cc.isSynthetic
-                                ? 'font-bold text-slate-900'
-                                : 'font-semibold text-slate-700',
-                            )}
-                          >
-                            {cc.code}
-                          </span>
-                          {!cc.mappingId && !cc.isSynthetic && (
-                            <AlertCircle className="h-3 w-3 text-amber-500" />
-                          )}
-                        </div>
-                        <span
-                          className={cn(
-                            'text-sm',
-                            cc.isSynthetic ? 'text-slate-700 font-medium' : 'text-slate-500',
-                          )}
-                        >
+                      <div className="flex items-center gap-2 truncate">
+                        <span className="font-mono text-xs font-semibold whitespace-nowrap">
+                          {cc.code}
+                        </span>
+                        <span className="text-xs truncate opacity-90" title={cc.description}>
                           {cc.description}
                         </span>
+                        {!cc.mappingId && !cc.isSynthetic && (
+                          <AlertCircle className="h-3 w-3 text-amber-500 shrink-0" />
+                        )}
                       </div>
                     </div>
                   </TableCell>
-                  <TableCell>
-                    <div className="max-w-[500px]">
-                      <AccountCombobox
-                        accounts={cas}
-                        value={cc.mappedCa?.id}
-                        onChange={(caId) => handleMap(cc.id, caId, cc.mappingId)}
-                        onClear={cc.mappingId ? () => handleRemove(cc.mappingId) : undefined}
-                      />
-                    </div>
+                  <TableCell className="p-1 px-2">
+                    {(!cc.isSynthetic || cc.mappingId) && (
+                      <div className="max-w-[400px]">
+                        <AccountCombobox
+                          accounts={cas}
+                          value={cc.mappedCa?.id}
+                          onChange={(caId) => handleMap(cc.id, caId, cc.mappingId)}
+                          onClear={cc.mappingId ? () => handleRemove(cc.mappingId) : undefined}
+                        />
+                      </div>
+                    )}
                   </TableCell>
                 </TableRow>
               ))}
