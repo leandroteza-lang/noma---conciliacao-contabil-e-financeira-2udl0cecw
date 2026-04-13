@@ -65,7 +65,6 @@ export function AccountCombobox({
           role="combobox"
           aria-expanded={open}
           disabled={disabled}
-          title={selected?.hierarchyPath || ''}
           className={cn(
             'w-full justify-between font-normal text-left overflow-hidden relative group',
             selected ? 'h-auto min-h-8 py-1' : 'h-8 py-1',
@@ -86,11 +85,6 @@ export function AccountCombobox({
                 )}
                 <span className="text-xs truncate font-medium">{selected.account_name}</span>
               </span>
-              {selected.hierarchyPath && selected.hierarchyPath !== selected.account_name && (
-                <span className="text-[9px] text-slate-400 truncate mt-0.5 leading-none">
-                  {selected.hierarchyPath}
-                </span>
-              )}
             </div>
           ) : (
             <span className="text-xs text-slate-500 truncate">{placeholder}</span>
@@ -148,14 +142,6 @@ export function AccountCombobox({
                     <span className="text-xs truncate font-medium mt-0.5">
                       {account.account_name}
                     </span>
-                    {account.hierarchyPath && account.hierarchyPath !== account.account_name && (
-                      <span
-                        className="text-[10px] text-slate-400 truncate mt-0.5"
-                        title={account.hierarchyPath}
-                      >
-                        {account.hierarchyPath}
-                      </span>
-                    )}
                   </div>
                 </CommandItem>
               ))}

@@ -32,7 +32,6 @@ import {
 import { Search, Upload, Sparkles, AlertCircle, ListTree } from 'lucide-react'
 import { toast } from 'sonner'
 import { AccountCombobox, Account } from '@/components/AccountCombobox'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { ImportMappingModal } from '@/components/ImportMappingModal'
 import { cn } from '@/lib/utils'
 
@@ -534,34 +533,17 @@ export default function Mapping() {
                       >
                         {cc.isSynthetic ? 'S' : 'A'}
                       </Badge>
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <div className="flex flex-col overflow-hidden text-left cursor-default">
-                              <div className="flex items-center gap-2 truncate">
-                                <span className="font-mono text-[11px] font-semibold whitespace-nowrap">
-                                  {cc.code}
-                                </span>
-                                <span className="text-xs truncate font-medium">
-                                  {cc.description}
-                                </span>
-                                {!cc.mappingId && !cc.isSynthetic && (
-                                  <AlertCircle className="h-3 w-3 text-amber-500 shrink-0" />
-                                )}
-                              </div>
-                              {cc.hierarchyPath && cc.hierarchyPath !== cc.description && (
-                                <span className="text-[9px] opacity-70 truncate mt-0.5 leading-none">
-                                  {cc.hierarchyPath}
-                                </span>
-                              )}
-                            </div>
-                          </TooltipTrigger>
-                          <TooltipContent side="right" className="max-w-sm text-xs z-50">
-                            <p className="font-semibold mb-1">Caminho Hierárquico:</p>
-                            <p className="text-slate-300">{cc.hierarchyPath}</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
+                      <div className="flex flex-col overflow-hidden text-left cursor-default">
+                        <div className="flex items-center gap-2 truncate">
+                          <span className="font-mono text-[11px] font-semibold whitespace-nowrap">
+                            {cc.code}
+                          </span>
+                          <span className="text-xs truncate font-medium">{cc.description}</span>
+                          {!cc.mappingId && !cc.isSynthetic && (
+                            <AlertCircle className="h-3 w-3 text-amber-500 shrink-0" />
+                          )}
+                        </div>
+                      </div>
                     </div>
                   </TableCell>
                   <TableCell className="p-1.5 px-2 align-top pt-1.5">
@@ -578,7 +560,7 @@ export default function Mapping() {
                           </div>
                           {cc.mappedCa &&
                             cc.mappedCa.hierarchyArray &&
-                            cc.mappedCa.hierarchyArray.length > 1 && (
+                            cc.mappedCa.hierarchyArray.length > 0 && (
                               <Button
                                 variant="ghost"
                                 size="sm"
