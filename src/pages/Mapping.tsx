@@ -29,10 +29,11 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from '@/components/ui/pagination'
-import { Search, Upload, Sparkles } from 'lucide-react'
+import { Search, Upload, Sparkles, AlertCircle } from 'lucide-react'
 import { toast } from 'sonner'
 import { AccountCombobox, Account } from '@/components/AccountCombobox'
 import { ImportMappingModal } from '@/components/ImportMappingModal'
+import { cn } from '@/lib/utils'
 
 export default function Mapping() {
   const { user } = useAuth()
@@ -45,7 +46,7 @@ export default function Mapping() {
   const [filterStatus, setFilterStatus] = useState<'all' | 'mapped' | 'pending'>('all')
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
-  const ITEMS_PER_PAGE = 20
+  const ITEMS_PER_PAGE = 50
 
   const [selectedCCs, setSelectedCCs] = useState<Set<string>>(new Set())
   const [batchCaId, setBatchCaId] = useState<string>('')
@@ -112,12 +113,25 @@ export default function Mapping() {
   }, [debouncedLoad, orgId])
 
   const enrichedCCs = useMemo(() => {
-    return ccs.map((cc) => {
+    // Ordenar hierarquicamente pelo código
+    const sortedCCs = [...ccs].sort((a, b) =>
+      (a.code || '').localeCompare(b.code || '', undefined, { numeric: true }),
+    )
+
+    return sortedCCs.map((cc) => {
       const mapping = mappings.find((m) => m.cost_center_id === cc.id)
+      const level = (cc.code || '').split('.').length - 1
+      // É sintético se existir algum outro centro de custo que comece com o código dele + "."
+      const isSynthetic = sortedCCs.some(
+        (other) => other.id !== cc.id && (other.code || '').startsWith((cc.code || '') + '.'),
+      )
+
       return {
         ...cc,
         mappingId: mapping?.id,
         mappedCa: mapping ? cas.find((c) => c.id === mapping.chart_account_id) : null,
+        level,
+        isSynthetic,
       }
     })
   }, [ccs, cas, mappings])
@@ -395,7 +409,7 @@ export default function Mapping() {
                     onCheckedChange={toggleAll}
                   />
                 </TableHead>
-                <TableHead className="w-[40%]">
+                <TableHead className="w-[50%]">
                   <Badge variant="outline" className="mr-2 border-slate-300">
                     DE
                   </Badge>{' '}
@@ -409,7 +423,14 @@ export default function Mapping() {
             </TableHeader>
             <TableBody>
               {paginatedCCs.map((cc) => (
-                <TableRow key={cc.id} className={cc.mappingId ? 'bg-white' : 'bg-amber-50/20'}>
+                <TableRow
+                  key={cc.id}
+                  className={cn(
+                    'transition-colors hover:bg-slate-50',
+                    cc.mappingId ? 'bg-white' : 'bg-amber-50/10',
+                    cc.isSynthetic ? 'border-b border-slate-100 bg-slate-50/50' : '',
+                  )}
+                >
                   <TableCell className="px-4">
                     <Checkbox
                       checked={selectedCCs.has(cc.id)}
@@ -417,11 +438,47 @@ export default function Mapping() {
                     />
                   </TableCell>
                   <TableCell>
-                    <div className="flex flex-col">
-                      <span className="font-mono text-sm font-semibold text-slate-800">
-                        {cc.code}
-                      </span>
-                      <span className="text-sm text-slate-500">{cc.description}</span>
+                    <div
+                      className="flex items-center gap-3 py-1"
+                      style={{ paddingLeft: `${cc.level * 1.5}rem` }}
+                    >
+                      <Badge
+                        variant={cc.isSynthetic ? 'secondary' : 'outline'}
+                        className={cn(
+                          'w-6 h-6 p-0 flex items-center justify-center shrink-0 rounded-md font-bold',
+                          cc.isSynthetic
+                            ? 'bg-slate-200 text-slate-600 border-transparent'
+                            : 'bg-blue-50 text-blue-600 border-blue-200',
+                        )}
+                        title={cc.isSynthetic ? 'Conta Sintética' : 'Conta Analítica'}
+                      >
+                        {cc.isSynthetic ? 'S' : 'A'}
+                      </Badge>
+                      <div className="flex flex-col">
+                        <div className="flex items-center gap-2">
+                          <span
+                            className={cn(
+                              'font-mono text-sm',
+                              cc.isSynthetic
+                                ? 'font-bold text-slate-900'
+                                : 'font-semibold text-slate-700',
+                            )}
+                          >
+                            {cc.code}
+                          </span>
+                          {!cc.mappingId && !cc.isSynthetic && (
+                            <AlertCircle className="h-3 w-3 text-amber-500" />
+                          )}
+                        </div>
+                        <span
+                          className={cn(
+                            'text-sm',
+                            cc.isSynthetic ? 'text-slate-700 font-medium' : 'text-slate-500',
+                          )}
+                        >
+                          {cc.description}
+                        </span>
+                      </div>
                     </div>
                   </TableCell>
                   <TableCell>
