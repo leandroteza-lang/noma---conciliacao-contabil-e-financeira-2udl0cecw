@@ -31,19 +31,13 @@ import { Checkbox } from '@/components/ui/checkbox'
 
 const EXPECTED_FIELDS = [
   { key: 'CODIGO', label: 'Código (*)' },
-  { key: 'DESCRICAO', label: 'Descrição (*)' },
+  { key: 'NOME', label: 'Nome (*)' },
+  { key: 'ABREVIACAO', label: 'Abreviação' },
   { key: 'EMPRESA', label: 'Empresa (Coluna)' },
-  { key: 'TIPOTGA', label: 'Tipo Conta TGA' },
-  { key: 'TIPO', label: 'Tipo TGA' },
-  { key: 'FIXO_VARIAVEL', label: 'Fixo/Variável' },
-  { key: 'CLASSIFICACAO', label: 'Classificação' },
-  { key: 'OPERACIONAL', label: 'Operacional' },
-  { key: 'TIPOLCTO', label: 'Tipo Lançamento' },
-  { key: 'CONTABILIZA', label: 'Contabiliza' },
   { key: 'OBSERVACOES', label: 'Observações' },
 ]
 
-export function ImportCostCentersModal({
+export function ImportTgaModal({
   open,
   onOpenChange,
   onImportSuccess,
@@ -109,7 +103,7 @@ export function ImportCostCentersModal({
           fileBase64: b64,
           fileName: name,
           sheetName: sheet,
-          type: 'COST_CENTERS',
+          type: 'TGA_ACCOUNTS',
         },
       })
       if (error) throw error
@@ -159,7 +153,7 @@ export function ImportCostCentersModal({
     try {
       const { data, error } = await supabase.functions.invoke('import-data', {
         body: {
-          type: 'COST_CENTERS',
+          type: 'TGA_ACCOUNTS',
           fileBase64,
           fileName: file?.name,
           sheetName: selectedSheet,
@@ -197,7 +191,7 @@ export function ImportCostCentersModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Importar Centros de Custo</DialogTitle>
+          <DialogTitle>Importar Contas TGA</DialogTitle>
           <DialogDescription>Mapeie as colunas da sua planilha para o sistema.</DialogDescription>
         </DialogHeader>
 
@@ -221,7 +215,7 @@ export function ImportCostCentersModal({
         )}
 
         {step === 2 && (
-          <div className="space-y-4 animate-fade-in">
+          <div className="space-y-4 animate-fade-in-up">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Aba da Planilha</Label>

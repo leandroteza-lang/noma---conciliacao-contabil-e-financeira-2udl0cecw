@@ -1,8 +1,7 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
 import {
   Table,
   TableBody,
@@ -11,616 +10,135 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from '@/components/ui/dialog'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import { Label } from '@/components/ui/label'
-import { Checkbox } from '@/components/ui/checkbox'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import {
-  Search,
-  Plus,
-  Download,
-  Edit2,
-  Trash2,
-  ArrowUpDown,
-  ChevronDown,
-  Printer,
-  FileText,
-  FileSpreadsheet,
-  Loader2,
-} from 'lucide-react'
+import { Import, Search, Trash2, RefreshCcw } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
-import { useAuditLog } from '@/hooks/use-audit-log'
+import { ImportTgaModal } from '@/components/ImportTgaModal'
 
 export default function TgaAccountTypes() {
   const [data, setData] = useState<any[]>([])
-  const [orgs, setOrgs] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
-  const [sort, setSort] = useState({ field: 'codigo', asc: true })
-  const [isModalOpen, setIsModalOpen] = useState(false)
-  const [editingId, setEditingId] = useState<string | null>(null)
-  const [selectedIds, setSelectedIds] = useState<string[]>([])
-  const [isExporting, setIsExporting] = useState(false)
-  const [formData, setFormData] = useState({
-    organization_id: '',
-    nome: '',
-    abreviacao: '',
-    observacoes: '',
-  })
+  const [importOpen, setImportOpen] = useState(false)
   const { toast } = useToast()
-  const { logAction } = useAuditLog()
 
-  const fetchData = async () => {
-    const [{ data: tga }, { data: orgData }] = await Promise.all([
-      supabase
-        .from('tipo_conta_tga')
-        .select('*, organizations(name)')
-        .is('deleted_at', null)
-        .neq('pending_deletion', true),
-      supabase.from('organizations').select('id, name').is('deleted_at', null),
-    ])
-    if (tga) setData(tga)
-    if (orgData) setOrgs(orgData)
+  const loadData = async () => {
+    setLoading(true)
+    const { data: tgas, error } = await supabase
+      .from('tipo_conta_tga')
+      .select('*, organizations(name)')
+      .is('deleted_at', null)
+      .order('created_at', { ascending: false })
+
+    if (!error && tgas) {
+      setData(tgas)
+    }
+    setLoading(false)
   }
 
   useEffect(() => {
-    fetchData()
+    loadData()
   }, [])
 
-  const filteredData = useMemo(() => {
-    return data
-      .filter(
-        (i) =>
-          i.nome?.toLowerCase().includes(search.toLowerCase()) ||
-          i.codigo?.toLowerCase().includes(search.toLowerCase()),
-      )
-      .sort((a, b) => {
-        const fieldA =
-          sort.field === 'organization_id' ? a.organizations?.name || '' : a[sort.field] || ''
-        const fieldB =
-          sort.field === 'organization_id' ? b.organizations?.name || '' : b[sort.field] || ''
-
-        if (sort.field === 'codigo') {
-          const numA = parseInt(String(fieldA).replace(/\D/g, ''), 10)
-          const numB = parseInt(String(fieldB).replace(/\D/g, ''), 10)
-          if (!isNaN(numA) && !isNaN(numB)) {
-            return sort.asc ? numA - numB : numB - numA
-          }
-        }
-
-        return sort.asc
-          ? String(fieldA).localeCompare(String(fieldB))
-          : String(fieldB).localeCompare(String(fieldA))
-      })
-  }, [data, search, sort])
-
-  const handleSort = (field: string) => {
-    setSort((prev) => ({ field, asc: prev.field === field ? !prev.asc : true }))
-  }
-
-  const handleSave = async (e: React.FormEvent) => {
-    e.preventDefault()
-    const payload = {
-      ...formData,
-      organization_id:
-        formData.organization_id === 'none' ? null : formData.organization_id || null,
-    }
-
-    let oldItem = null
-    const changes: any = {}
-
-    if (editingId) {
-      oldItem = data.find((i) => i.id === editingId)
-      if (oldItem) {
-        if (oldItem.organization_id !== payload.organization_id)
-          changes.organization_id = { old: oldItem.organization_id, new: payload.organization_id }
-        if (oldItem.nome !== payload.nome) changes.nome = { old: oldItem.nome, new: payload.nome }
-        if (oldItem.abreviacao !== payload.abreviacao)
-          changes.abreviacao = { old: oldItem.abreviacao, new: payload.abreviacao }
-        if (oldItem.observacoes !== payload.observacoes)
-          changes.observacoes = { old: oldItem.observacoes, new: payload.observacoes }
-      }
-
-      if (Object.keys(changes).length === 0) {
-        toast({ title: 'Aviso', description: 'Nenhuma alteração detectada.' })
-        return
-      }
-    } else {
-      Object.keys(payload).forEach((k) => {
-        changes[k] = { new: (payload as any)[k] }
-      })
-    }
-
-    const authUser = await supabase.auth.getUser()
-    const entityId = editingId || crypto.randomUUID()
-
-    const { error } = await supabase.from('pending_changes').insert({
-      entity_type: 'TIPO_CONTA_TGA',
-      entity_id: entityId,
-      proposed_changes: changes,
-      requested_by: authUser.data.user?.id,
-      status: 'pending',
-    })
-
-    if (error) {
-      toast({
-        title: 'Erro ao solicitar aprovação',
-        description: error.message,
-        variant: 'destructive',
-      })
-      return
-    }
-
-    window.dispatchEvent(new CustomEvent('refresh-approvals-badge'))
-    toast({ title: 'Sucesso', description: 'Solicitação enviada para a Central de Aprovações.' })
-    setIsModalOpen(false)
-  }
-
-  const checkDependencies = async (id: string, codigo: string) => {
-    const { data: cData } = await supabase
-      .from('cost_centers')
-      .select('id')
-      .or(`type_tga.eq.${codigo},type_tga.eq.${id}`)
-      .is('deleted_at', null)
-      .limit(1)
-
-    if (cData && cData.length > 0) return true
-    return false
-  }
-
   const handleDelete = async (id: string) => {
-    const item = data.find((i) => i.id === id)
-    if (!item) return
-
-    const hasDeps = await checkDependencies(item.id, item.codigo)
-    if (hasDeps) {
-      toast({
-        title: 'Ação não permitida',
-        description: 'Existem centros de custo vinculados a este tipo de conta.',
-        variant: 'destructive',
-      })
-      return
-    }
-
-    if (!confirm('Deseja solicitar a exclusão deste tipo de conta?')) return
-
-    const authUser = await supabase.auth.getUser()
-
+    if (!window.confirm('Tem certeza que deseja excluir?')) return
     const { error } = await supabase
       .from('tipo_conta_tga')
-      .update({
-        pending_deletion: true,
-        deletion_requested_at: new Date().toISOString(),
-        deletion_requested_by: authUser.data.user?.id,
-      } as any)
+      .update({ deleted_at: new Date().toISOString() })
       .eq('id', id)
 
     if (error) {
-      toast({
-        title: 'Erro ao solicitar exclusão',
-        description: error.message,
-        variant: 'destructive',
-      })
+      toast({ title: 'Erro', description: error.message, variant: 'destructive' })
     } else {
-      window.dispatchEvent(new CustomEvent('refresh-approvals-badge'))
-      toast({
-        title: 'Sucesso',
-        description: 'Solicitação de exclusão enviada para a Central de Aprovações.',
-      })
-      setSelectedIds((prev) => prev.filter((selId) => selId !== id))
-      fetchData()
+      toast({ title: 'Sucesso', description: 'Registro excluído.' })
+      loadData()
     }
   }
 
-  const handleBatchDelete = async () => {
-    if (selectedIds.length === 0) return
-
-    let hasDependencies = false
-    for (const id of selectedIds) {
-      const item = data.find((i) => i.id === id)
-      if (item && (await checkDependencies(item.id, item.codigo))) {
-        hasDependencies = true
-        break
-      }
-    }
-
-    if (hasDependencies) {
-      toast({
-        title: 'Ação não permitida',
-        description: 'Um ou mais registros selecionados possuem vínculos em outras tabelas.',
-        variant: 'destructive',
-      })
-      return
-    }
-
-    if (!confirm(`Deseja solicitar a exclusão de ${selectedIds.length} registros?`)) return
-
-    const authUser = await supabase.auth.getUser()
-    const now = new Date().toISOString()
-
-    const { error } = await supabase
-      .from('tipo_conta_tga')
-      .update({
-        pending_deletion: true,
-        deletion_requested_at: now,
-        deletion_requested_by: authUser.data.user?.id,
-      } as any)
-      .in('id', selectedIds)
-
-    if (error) {
-      toast({
-        title: 'Erro ao solicitar exclusão',
-        description: error.message,
-        variant: 'destructive',
-      })
-    } else {
-      window.dispatchEvent(new CustomEvent('refresh-approvals-badge'))
-      toast({
-        title: 'Sucesso',
-        description: `Solicitação de exclusão de ${selectedIds.length} registros enviada para aprovação.`,
-      })
-      setSelectedIds([])
-      fetchData()
-    }
-  }
-
-  const openModal = (item?: any) => {
-    if (item) {
-      setEditingId(item.id)
-      setFormData({
-        organization_id: item.organization_id || 'none',
-        nome: item.nome,
-        abreviacao: item.abreviacao || '',
-        observacoes: item.observacoes || '',
-      })
-    } else {
-      setEditingId(null)
-      setFormData({ organization_id: 'none', nome: '', abreviacao: '', observacoes: '' })
-    }
-    setIsModalOpen(true)
-  }
-
-  const handlePrint = () => {
-    const printWindow = window.open('', '', 'width=800,height=600')
-    if (!printWindow) return
-
-    const html = `
-      <html>
-        <head>
-          <title>Tipos de Conta TGA</title>
-          <style>
-            body { font-family: Arial, sans-serif; padding: 20px; }
-            table { width: 100%; border-collapse: collapse; font-size: 12px; }
-            th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-            th { background-color: #f4f4f4; }
-          </style>
-        </head>
-        <body>
-          <h2>Tipos de Conta TGA</h2>
-          <table>
-            <thead>
-              <tr>
-                <th>Empresa</th>
-                <th>Código</th>
-                <th>Nome</th>
-                <th>Abreviação</th>
-                <th>Observações</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${filteredData
-                .map(
-                  (i) => `
-                <tr>
-                  <td>${i.organizations?.name || 'Geral / Nenhuma'}</td>
-                  <td>${i.codigo}</td>
-                  <td>${i.nome}</td>
-                  <td>${i.abreviacao || ''}</td>
-                  <td>${i.observacoes || ''}</td>
-                </tr>
-              `,
-                )
-                .join('')}
-            </tbody>
-          </table>
-          <script>
-            window.onload = () => { window.print(); window.close(); }
-          </script>
-        </body>
-      </html>
-    `
-    printWindow.document.write(html)
-    printWindow.document.close()
-  }
-
-  const exportData = async (format: 'pdf' | 'excel' | 'csv' | 'txt') => {
-    try {
-      setIsExporting(true)
-      const payload = filteredData.map((item) => ({
-        empresa: item.organizations?.name || 'Geral / Nenhuma',
-        codigo: item.codigo,
-        nome: item.nome,
-        abreviacao: item.abreviacao,
-        observacoes: item.observacoes,
-      }))
-
-      const { data: result, error } = await supabase.functions.invoke('export-tga-accounts', {
-        body: { format, data: payload },
-      })
-
-      if (error) throw error
-
-      if (format === 'excel' && result.excel) {
-        const link = document.createElement('a')
-        link.href = `data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,${result.excel}`
-        link.download = 'tipos_conta_tga.xlsx'
-        link.click()
-      } else if (format === 'csv' && result.csv) {
-        const blob = new Blob([result.csv], { type: 'text/csv;charset=utf-8;' })
-        const link = document.createElement('a')
-        link.href = URL.createObjectURL(blob)
-        link.download = 'tipos_conta_tga.csv'
-        link.click()
-      } else if (format === 'txt' && result.txt) {
-        const blob = new Blob([result.txt], { type: 'text/plain;charset=utf-8;' })
-        const link = document.createElement('a')
-        link.href = URL.createObjectURL(blob)
-        link.download = 'tipos_conta_tga.txt'
-        link.click()
-      } else if (format === 'pdf' && result.pdf) {
-        const link = document.createElement('a')
-        link.href = result.pdf
-        link.download = 'tipos_conta_tga.pdf'
-        link.click()
-      }
-
-      toast({
-        title: 'Exportação concluída',
-        description: `Arquivo ${format.toUpperCase()} gerado com sucesso.`,
-      })
-    } catch (error: any) {
-      toast({ title: 'Erro ao exportar', description: error.message, variant: 'destructive' })
-    } finally {
-      setIsExporting(false)
-    }
-  }
+  const filtered = data.filter(
+    (i) =>
+      (i.nome || '').toLowerCase().includes(search.toLowerCase()) ||
+      (i.codigo || '').toLowerCase().includes(search.toLowerCase()),
+  )
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <h1 className="text-2xl font-bold text-foreground">Tipos de Conta TGA</h1>
-        <div className="flex gap-2 w-full sm:w-auto flex-wrap">
-          {selectedIds.length > 0 && (
-            <Button variant="destructive" onClick={handleBatchDelete}>
-              <Trash2 className="w-4 h-4 mr-2" />
-              Excluir ({selectedIds.length})
-            </Button>
-          )}
-
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" disabled={isExporting}>
-                {isExporting ? (
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                ) : (
-                  <Download className="w-4 h-4 mr-2" />
-                )}
-                Exportar <ChevronDown className="w-4 h-4 ml-2" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => exportData('pdf')}>
-                <FileText className="w-4 h-4 mr-2 text-destructive" /> PDF
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => exportData('excel')}>
-                <FileSpreadsheet className="w-4 h-4 mr-2 text-green-600 dark:text-green-400" />{' '}
-                Excel (XLSX)
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => exportData('csv')}>
-                <FileText className="w-4 h-4 mr-2 text-blue-600" /> CSV
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => exportData('txt')}>
-                <FileText className="w-4 h-4 mr-2 text-gray-600" /> TXT
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={handlePrint}>
-                <Printer className="w-4 h-4 mr-2 text-primary" /> Imprimir
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-
-          <Button onClick={() => openModal()}>
-            <Plus className="w-4 h-4 mr-2" /> Novo Tipo
+    <div className="p-6 max-w-7xl mx-auto space-y-6">
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Tipos de Conta TGA</h1>
+          <p className="text-slate-500">Gerencie os tipos de conta TGA do sistema.</p>
+        </div>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setImportOpen(true)}>
+            <Import className="h-4 w-4 mr-2" />
+            Importar Planilha
+          </Button>
+          <Button onClick={loadData} variant="outline" size="icon">
+            <RefreshCcw className="h-4 w-4" />
           </Button>
         </div>
       </div>
 
-      <div className="flex items-center space-x-2 bg-card p-3 rounded-lg shadow-sm border border-border">
-        <Search className="w-5 h-5 text-muted-foreground" />
-        <Input
-          placeholder="Buscar por código ou nome..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="border-0 focus-visible:ring-0 shadow-none px-0 bg-transparent"
-        />
-      </div>
+      <div className="bg-white dark:bg-slate-900 p-4 rounded-lg border shadow-sm space-y-4">
+        <div className="flex relative w-full max-w-md">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+          <Input
+            className="pl-9"
+            placeholder="Buscar por nome ou código..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
 
-      <div className="bg-card rounded-lg shadow-sm border border-border overflow-x-auto">
-        <Table>
-          <TableHeader>
-            <TableRow className="bg-muted/50 hover:bg-muted/50">
-              <TableHead className="w-[50px] py-1.5 px-2 h-8">
-                <Checkbox
-                  checked={filteredData.length > 0 && selectedIds.length === filteredData.length}
-                  onCheckedChange={(c) => {
-                    if (c) setSelectedIds(filteredData.map((i) => i.id))
-                    else setSelectedIds([])
-                  }}
-                />
-              </TableHead>
-              <TableHead
-                className="cursor-pointer hover:bg-muted py-1.5 px-2 h-8"
-                onClick={() => handleSort('organization_id')}
-              >
-                Empresa <ArrowUpDown className="inline w-3 h-3 ml-1" />
-              </TableHead>
-              <TableHead
-                className="cursor-pointer hover:bg-muted py-1.5 px-2 h-8"
-                onClick={() => handleSort('codigo')}
-              >
-                Código <ArrowUpDown className="inline w-3 h-3 ml-1" />
-              </TableHead>
-              <TableHead
-                className="cursor-pointer hover:bg-muted py-1.5 px-2 h-8"
-                onClick={() => handleSort('nome')}
-              >
-                Nome <ArrowUpDown className="inline w-3 h-3 ml-1" />
-              </TableHead>
-              <TableHead
-                className="cursor-pointer hover:bg-muted py-1.5 px-2 h-8"
-                onClick={() => handleSort('abreviacao')}
-              >
-                Abrev. <ArrowUpDown className="inline w-3 h-3 ml-1" />
-              </TableHead>
-              <TableHead className="py-1.5 px-2 h-8">Ações</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filteredData.map((item, index) => (
-              <TableRow
-                key={item.id}
-                className={
-                  index % 2 === 0
-                    ? 'bg-background hover:bg-muted/50'
-                    : 'bg-muted/30 hover:bg-muted/50'
-                }
-              >
-                <TableCell className="py-1 px-2">
-                  <Checkbox
-                    checked={selectedIds.includes(item.id)}
-                    onCheckedChange={(c) => {
-                      if (c) setSelectedIds([...selectedIds, item.id])
-                      else setSelectedIds(selectedIds.filter((id) => id !== item.id))
-                    }}
-                  />
-                </TableCell>
-                <TableCell className="py-1 px-2 font-medium text-foreground/90">
-                  {item.organizations?.name || '-'}
-                </TableCell>
-                <TableCell className="py-1 px-2">{item.codigo}</TableCell>
-                <TableCell className="py-1 px-2">{item.nome}</TableCell>
-                <TableCell className="py-1 px-2">{item.abreviacao}</TableCell>
-                <TableCell className="py-1 px-2">
-                  <div className="flex items-center gap-1">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => openModal(item)}
-                      className="h-6 w-6 hover:text-primary hover:bg-primary/10"
-                    >
-                      <Edit2 className="w-3.5 h-3.5 text-primary" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleDelete(item.id)}
-                      className="h-6 w-6 hover:text-destructive hover:bg-destructive/10"
-                    >
-                      <Trash2 className="w-3.5 h-3.5 text-destructive" />
-                    </Button>
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))}
-            {filteredData.length === 0 && (
+        <div className="rounded-md border overflow-hidden">
+          <Table>
+            <TableHeader className="bg-slate-50 dark:bg-slate-800">
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                  Nenhum registro encontrado
-                </TableCell>
+                <TableHead>Código</TableHead>
+                <TableHead>Nome</TableHead>
+                <TableHead>Abreviação</TableHead>
+                <TableHead>Empresa</TableHead>
+                <TableHead className="w-[100px] text-center">Ações</TableHead>
               </TableRow>
-            )}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {loading ? (
+                <TableRow>
+                  <TableCell colSpan={5} className="text-center py-8">
+                    Carregando...
+                  </TableCell>
+                </TableRow>
+              ) : filtered.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={5} className="text-center py-8 text-slate-500">
+                    Nenhum registro encontrado
+                  </TableCell>
+                </TableRow>
+              ) : (
+                filtered.map((row) => (
+                  <TableRow key={row.id}>
+                    <TableCell className="font-medium">{row.codigo}</TableCell>
+                    <TableCell>{row.nome}</TableCell>
+                    <TableCell>{row.abreviacao || '-'}</TableCell>
+                    <TableCell>{row.organizations?.name || 'Geral'}</TableCell>
+                    <TableCell className="text-center">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleDelete(row.id)}
+                        className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
       </div>
 
-      <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-        <DialogContent className="sm:max-w-[500px]">
-          <DialogHeader>
-            <DialogTitle>{editingId ? 'Editar' : 'Novo'} Tipo de Conta TGA</DialogTitle>
-          </DialogHeader>
-          <form onSubmit={handleSave} className="space-y-4 pt-4">
-            <div className="space-y-2">
-              <Label>Empresa</Label>
-              <Select
-                value={formData.organization_id}
-                onValueChange={(v) => setFormData({ ...formData, organization_id: v })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione a empresa" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Geral / Nenhuma</SelectItem>
-                  {orgs.map((org) => (
-                    <SelectItem key={org.id} value={org.id}>
-                      {org.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Abreviação</Label>
-              <Input
-                maxLength={1}
-                value={formData.abreviacao}
-                onChange={(e) =>
-                  setFormData({ ...formData, abreviacao: e.target.value.toUpperCase() })
-                }
-                placeholder="Ex: D"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Nome</Label>
-              <Input
-                required
-                value={formData.nome}
-                onChange={(e) => setFormData({ ...formData, nome: e.target.value })}
-                placeholder="Ex: Despesas Administrativas"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Observações</Label>
-              <Textarea
-                value={formData.observacoes}
-                onChange={(e) => setFormData({ ...formData, observacoes: e.target.value })}
-                placeholder="Detalhes adicionais..."
-                className="resize-none h-20"
-              />
-            </div>
-            <DialogFooter className="pt-4">
-              <Button type="submit" className="w-full">
-                Salvar Registro
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+      <ImportTgaModal open={importOpen} onOpenChange={setImportOpen} onImportSuccess={loadData} />
     </div>
   )
 }

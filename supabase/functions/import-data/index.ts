@@ -138,26 +138,30 @@ Deno.serve(async (req: Request) => {
         } else {
           const workbook = XLSX.read(bytes, { type: 'array' })
           sheetNames = workbook.SheetNames
-          const targetSheet = payload.sheetName && workbook.SheetNames.includes(payload.sheetName)
-            ? payload.sheetName
-            : workbook.SheetNames[0]
+          const targetSheet =
+            payload.sheetName && workbook.SheetNames.includes(payload.sheetName)
+              ? payload.sheetName
+              : workbook.SheetNames[0]
           const worksheet = workbook.Sheets[targetSheet]
           rawRecords = XLSX.utils.sheet_to_json(worksheet, { defval: '' })
         }
 
         if (payload.action === 'PREVIEW') {
           const headers = rawRecords.length > 0 ? Object.keys(rawRecords[0]) : []
-          return new Response(JSON.stringify({
-            sheets: sheetNames,
-            headers: headers,
-            previewRows: rawRecords.slice(0, 3)
-          }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+          return new Response(
+            JSON.stringify({
+              sheets: sheetNames,
+              headers: headers,
+              previewRows: rawRecords.slice(0, 3),
+            }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+          )
         }
 
         records = rawRecords.map((r: any) => {
           const normalized: any = {}
           for (const key in r) {
-            const mappedKey = columnMapping[key] || key;
+            const mappedKey = columnMapping[key] || key
             const cleanKey = mappedKey
               .normalize('NFD')
               .replace(/[\u0300-\u036f]/g, '')
@@ -177,6 +181,7 @@ Deno.serve(async (req: Request) => {
       'BANK_ACCOUNTS',
       'COST_CENTERS',
       'CHART_ACCOUNTS',
+      'TGA_ACCOUNTS',
       'MAPPINGS',
       'FINANCIAL_ENTRIES',
       'COMPANIES',
@@ -219,6 +224,7 @@ Deno.serve(async (req: Request) => {
       (type === 'BANK_ACCOUNTS' ||
         type === 'COST_CENTERS' ||
         type === 'CHART_ACCOUNTS' ||
+        type === 'TGA_ACCOUNTS' ||
         type === 'MAPPINGS' ||
         type === 'FINANCIAL_ENTRIES')
     ) {
@@ -781,7 +787,11 @@ Deno.serve(async (req: Request) => {
         const { error: insErr } = await supabase.from('bank_accounts').insert(chunk)
         if (insErr) {
           chunk.forEach((c: any) => {
-            addError(0, `Erro na inserção em lote: ${insErr.message} - Conta: ${c.account_number}`, c)
+            addError(
+              0,
+              `Erro na inserção em lote: ${insErr.message} - Conta: ${c.account_number}`,
+              c,
+            )
           })
         } else {
           inserted += chunk.length
@@ -820,13 +830,17 @@ Deno.serve(async (req: Request) => {
 
         let orgId = organizationId
         if (!orgId) {
-          if (!allowIncomplete && (!empresa || String(empresa).trim() === '')) {
+          if (!empresa || String(empresa).trim() === '') {
             addError(rowNum, 'A coluna Empresa está vazia e nenhuma empresa foi selecionada.', row)
             continue
           }
-          orgId = empresa ? orgMap.get(String(empresa).trim().toLowerCase()) : null
+          orgId = orgMap.get(String(empresa).trim().toLowerCase())
           if (!orgId) {
-            addError(rowNum, `A empresa "${empresa}" não foi encontrada na sua conta. (Obrigatório)`, row)
+            addError(
+              rowNum,
+              `A empresa "${empresa}" não foi encontrada na sua conta. (Obrigatório)`,
+              row,
+            )
             continue
           }
         }
@@ -838,6 +852,7 @@ Deno.serve(async (req: Request) => {
       }
 
       for (const [orgId, orgRecords] of recordsByOrg.entries()) {
+        if (!orgId) continue
         let existingCCs: any[] = []
         let fetchHasMore = true
         let fetchPage = 0
@@ -860,7 +875,7 @@ Deno.serve(async (req: Request) => {
         }
 
         const ccCodeMap = new Map<string, string>()
-        existingCCs.forEach(cc => {
+        existingCCs.forEach((cc) => {
           if (cc.code) ccCodeMap.set(cc.code.trim(), cc.id)
         })
 
@@ -887,7 +902,7 @@ Deno.serve(async (req: Request) => {
 
         const tgaNameMap = new Map<string, string>()
         const tgaCodeMap = new Map<string, string>()
-        existingTga.forEach(tga => {
+        existingTga.forEach((tga) => {
           if (tga.nome) tgaNameMap.set(tga.nome.trim().toLowerCase(), tga.id)
           if (tga.codigo) tgaCodeMap.set(tga.codigo.trim().toUpperCase(), tga.id)
         })
@@ -925,7 +940,11 @@ Deno.serve(async (req: Request) => {
             parentId = ccCodeMap.get(parentCode)
 
             if (!parentId && !allowIncomplete) {
-              addError(rowNum, `Centro de custo pai "${parentCode}" não encontrado para hierarquia.`, row)
+              addError(
+                rowNum,
+                `Centro de custo pai "${parentCode}" não encontrado para hierarquia.`,
+                row,
+              )
               continue
             }
           }
@@ -1336,6 +1355,110 @@ Deno.serve(async (req: Request) => {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           },
         )
+      }
+    } else if (type === 'TGA_ACCOUNTS') {
+      if (organizationId && !validOrgs.has(organizationId)) {
+        throw new Error('A empresa selecionada é inválida ou você não tem permissão.')
+      }
+
+      let existingTgas: any[] = []
+      let fetchHasMore = true
+      let fetchPage = 0
+      while (fetchHasMore) {
+        const { data: pageData, error: fetchErr } = await supabase
+          .from('tipo_conta_tga')
+          .select('id, codigo, organization_id')
+          .is('deleted_at', null)
+          .range(fetchPage * 1000, (fetchPage + 1) * 1000 - 1)
+
+        if (fetchErr) throw new Error('Erro ao buscar contas TGA existentes: ' + fetchErr.message)
+        if (pageData && pageData.length > 0) {
+          existingTgas.push(...pageData)
+          fetchPage++
+          if (pageData.length < 1000) fetchHasMore = false
+        } else {
+          fetchHasMore = false
+        }
+      }
+
+      const existingTgaSet = new Set(
+        existingTgas.map(
+          (t: any) => `${t.organization_id || 'null'}-${String(t.codigo).trim().toUpperCase()}`,
+        ),
+      )
+
+      const toInsertTga = []
+
+      for (let i = 0; i < records.length; i++) {
+        const row = records[i]
+        const rowNum = i + 1
+
+        const getVal = (r: any, possibleKeys: string[]) => {
+          const keys = Object.keys(r)
+          for (const pk of possibleKeys) {
+            const cleanPk = pk.replace(/[^A-Z0-9]/g, '')
+            for (const k of keys) {
+              const cleanK = k.replace(/[^A-Z0-9]/g, '')
+              if (cleanK === cleanPk) return r[k]
+            }
+          }
+          return null
+        }
+
+        const empresa = getVal(row, ['EMPRESA'])
+        const codigo = getVal(row, ['CODIGO', 'COD'])
+        const nome = getVal(row, ['NOME', 'DESCRICAO'])
+        const abreviacao = getVal(row, ['ABREVIACAO', 'SIGLA'])
+        const observacoes = getVal(row, ['OBSERVACOES', 'OBS'])
+
+        let orgId = organizationId
+        if (!orgId) {
+          if (!allowIncomplete && (!empresa || String(empresa).trim() === '')) {
+            addError(rowNum, 'A coluna Empresa está vazia e nenhuma empresa foi selecionada.', row)
+            continue
+          }
+          orgId = empresa ? orgMap.get(String(empresa).trim().toLowerCase()) : null
+        }
+
+        if (!allowIncomplete && (!codigo || String(codigo).trim() === '')) {
+          addError(rowNum, 'A coluna Código está vazia.', row)
+          continue
+        }
+
+        if (!allowIncomplete && (!nome || String(nome).trim() === '')) {
+          addError(rowNum, 'A coluna Nome está vazia.', row)
+          continue
+        }
+
+        const strCodigo = String(codigo || '').trim()
+        const tgaKey = `${orgId || 'null'}-${strCodigo.toUpperCase()}`
+
+        if (existingTgaSet.has(tgaKey)) {
+          addError(rowNum, `O Código TGA "${strCodigo}" já está cadastrado para esta empresa.`, row)
+          continue
+        }
+
+        toInsertTga.push({
+          organization_id: orgId || null,
+          codigo: strCodigo,
+          nome: String(nome || ''),
+          abreviacao: abreviacao ? String(abreviacao).trim().substring(0, 10) : null,
+          observacoes: observacoes ? String(observacoes) : null,
+        })
+
+        existingTgaSet.add(tgaKey)
+      }
+
+      for (let i = 0; i < toInsertTga.length; i += 500) {
+        const chunk = toInsertTga.slice(i, i + 500)
+        const { error: insErr } = await supabase.from('tipo_conta_tga').insert(chunk)
+        if (insErr) {
+          chunk.forEach((c: any) => {
+            addError(0, `Erro na inserção em lote: ${insErr.message} - Código: ${c.codigo}`, c)
+          })
+        } else {
+          inserted += chunk.length
+        }
       }
     } else if (type === 'MAPPINGS') {
       if (organizationId && !validOrgs.has(organizationId)) {
