@@ -105,11 +105,16 @@ export function CostCenterBulkEditModal({ isOpen, onClose, onSave, count, tgaOpt
           </div>
           <div className="space-y-2">
             <Label>Tipo</Label>
-            <Input
-              value={typeTga}
-              onChange={(e) => setTypeTga(e.target.value)}
-              placeholder="Manter atual"
-            />
+            <Select value={typeTga} onValueChange={setTypeTga}>
+              <SelectTrigger>
+                <SelectValue placeholder="Manter atual" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Limpar</SelectItem>
+                <SelectItem value="D">D</SelectItem>
+                <SelectItem value="C">C</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           <div className="space-y-2">
             <Label>Fixo/Variável</Label>

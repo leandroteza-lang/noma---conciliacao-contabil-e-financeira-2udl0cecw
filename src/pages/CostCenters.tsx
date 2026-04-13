@@ -125,7 +125,7 @@ export default function CostCenters() {
     tipo_lcto: 'none',
     operational: 'none',
     tipo_tga_id: 'none',
-    type_tga: '',
+    type_tga: 'none',
     fixed_variable: '',
     contabiliza: 'none',
     observacoes: '',
@@ -137,7 +137,7 @@ export default function CostCenters() {
     tipo_lcto: 'none',
     operational: 'none',
     tipo_tga_id: 'none',
-    type_tga: '',
+    type_tga: 'none',
     fixed_variable: '',
     contabiliza: 'none',
     observacoes: '',
@@ -323,7 +323,7 @@ export default function CostCenters() {
       tipo_lcto: newCC.tipo_lcto !== 'none' ? newCC.tipo_lcto : null,
       operational: newCC.operational !== 'none' ? newCC.operational : null,
       tipo_tga_id: newCC.tipo_tga_id !== 'none' ? newCC.tipo_tga_id : null,
-      type_tga: newCC.type_tga || null,
+      type_tga: newCC.type_tga !== 'none' ? newCC.type_tga : null,
       fixed_variable: newCC.fixed_variable || null,
       contabiliza: newCC.contabiliza !== 'none' ? newCC.contabiliza : null,
       observacoes: newCC.observacoes || null,
@@ -355,7 +355,7 @@ export default function CostCenters() {
         tipo_lcto: 'none',
         operational: 'none',
         tipo_tga_id: 'none',
-        type_tga: '',
+        type_tga: 'none',
         fixed_variable: '',
         contabiliza: 'none',
         observacoes: '',
@@ -373,7 +373,7 @@ export default function CostCenters() {
       tipo_lcto: cc.tipo_lcto || 'none',
       operational: cc.operational || 'none',
       tipo_tga_id: cc.tipo_tga_id || 'none',
-      type_tga: cc.type_tga || '',
+      type_tga: cc.type_tga || 'none',
       fixed_variable: cc.fixed_variable || '',
       contabiliza: cc.contabiliza || 'none',
       observacoes: cc.observacoes || '',
@@ -397,7 +397,7 @@ export default function CostCenters() {
       tipo_lcto: editCC.tipo_lcto !== 'none' ? editCC.tipo_lcto : null,
       operational: editCC.operational !== 'none' ? editCC.operational : null,
       tipo_tga_id: editCC.tipo_tga_id !== 'none' ? editCC.tipo_tga_id : null,
-      type_tga: editCC.type_tga || null,
+      type_tga: editCC.type_tga !== 'none' ? editCC.type_tga : null,
       fixed_variable: editCC.fixed_variable || null,
       contabiliza: editCC.contabiliza !== 'none' ? editCC.contabiliza : null,
       observacoes: editCC.observacoes || null,
@@ -836,10 +836,19 @@ export default function CostCenters() {
             </div>
             <div className="space-y-2">
               <Label>Tipo</Label>
-              <Input
+              <Select
                 value={editCC.type_tga}
-                onChange={(e) => setEditCC({ ...editCC, type_tga: e.target.value })}
-              />
+                onValueChange={(v) => setEditCC({ ...editCC, type_tga: v })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Selecione...</SelectItem>
+                  <SelectItem value="D">D</SelectItem>
+                  <SelectItem value="C">C</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-2">
               <Label>Fixo/Variável</Label>
@@ -977,11 +986,19 @@ export default function CostCenters() {
             </div>
             <div className="space-y-2">
               <Label>Tipo</Label>
-              <Input
+              <Select
                 value={newCC.type_tga}
-                onChange={(e) => setNewCC({ ...newCC, type_tga: e.target.value })}
-                placeholder="Ex: T"
-              />
+                onValueChange={(v) => setNewCC({ ...newCC, type_tga: v })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Selecione...</SelectItem>
+                  <SelectItem value="D">D</SelectItem>
+                  <SelectItem value="C">C</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-2">
               <Label>Fixo/Variável</Label>
