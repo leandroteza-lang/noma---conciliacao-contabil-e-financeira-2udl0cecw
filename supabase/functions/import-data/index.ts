@@ -46,9 +46,11 @@ Deno.serve(async (req: Request) => {
       global: { headers: { Authorization: authHeader } },
       auth: { persistSession: false },
     })
-    
+
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
-    const supabaseAdmin = supabaseServiceKey ? createClient(supabaseUrl, supabaseServiceKey) : supabase
+    const supabaseAdmin = supabaseServiceKey
+      ? createClient(supabaseUrl, supabaseServiceKey)
+      : supabase
 
     const payload = await req.json()
     let records = payload.records
@@ -141,29 +143,33 @@ Deno.serve(async (req: Request) => {
         } else {
           const workbook = XLSX.read(bytes, { type: 'array' })
           sheetNames = workbook.SheetNames
-          const targetSheet = payload.sheetName && workbook.SheetNames.includes(payload.sheetName)
-            ? payload.sheetName
-            : workbook.SheetNames[0]
+          const targetSheet =
+            payload.sheetName && workbook.SheetNames.includes(payload.sheetName)
+              ? payload.sheetName
+              : workbook.SheetNames[0]
           const worksheet = workbook.Sheets[targetSheet]
           rawRecords = XLSX.utils.sheet_to_json(worksheet, { defval: '' })
         }
 
         if (payload.action === 'PREVIEW') {
           const headers = rawRecords.length > 0 ? Object.keys(rawRecords[0]) : []
-          return new Response(JSON.stringify({
-            sheets: sheetNames,
-            headers: headers,
-            previewRows: rawRecords.slice(0, 3),
-            records: rawRecords,
-            totalRecords: rawRecords.length
-          }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+          return new Response(
+            JSON.stringify({
+              sheets: sheetNames,
+              headers: headers,
+              previewRows: rawRecords.slice(0, 3),
+              records: rawRecords,
+              totalRecords: rawRecords.length,
+            }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+          )
         }
 
         records = rawRecords.map((r: any, index: number) => {
           const normalized: any = {}
           normalized._originalIndex = index + 1
           for (const key in r) {
-            const mappedKey = columnMapping[key] || key;
+            const mappedKey = columnMapping[key] || key
             const cleanKey = mappedKey
               .normalize('NFD')
               .replace(/[\u0300-\u036f]/g, '')
@@ -813,7 +819,11 @@ Deno.serve(async (req: Request) => {
         const { error: insErr } = await supabaseAdmin.from('bank_accounts').insert(chunk)
         if (insErr) {
           chunk.forEach((c: any) => {
-            addError(0, `Erro na inserção em lote: ${insErr.message} - Conta: ${c.account_number}`, c)
+            addError(
+              0,
+              `Erro na inserção em lote: ${insErr.message} - Conta: ${c.account_number}`,
+              c,
+            )
           })
         } else {
           inserted += chunk.length
@@ -851,7 +861,11 @@ Deno.serve(async (req: Request) => {
           }
           orgId = orgMap.get(String(empresa).trim().toLowerCase())
           if (!orgId) {
-            addError(rowNum, `A empresa "${empresa}" não foi encontrada na sua conta. (Obrigatório)`, row)
+            addError(
+              rowNum,
+              `A empresa "${empresa}" não foi encontrada na sua conta. (Obrigatório)`,
+              row,
+            )
             continue
           }
         }
@@ -862,22 +876,13 @@ Deno.serve(async (req: Request) => {
         recordsByOrg.get(orgId)!.push({ row, rowNum })
       }
 
-      for (const [orgId, orgRecords] of recordsByOrg.entries()) {
-        if (!orgId) continue;
+      let totalToInsert = 0
+      let totalToUpdate = 0
+      let totalToDelete = 0
+      const simulationDetails = []
 
-        const neededCodes = new Set<string>();
-        orgRecords.forEach((item: any) => {
-           const code = getVal(item.row, ['COD', 'CODIGO']);
-           const strCode = String(code || '').trim();
-           if (strCode) {
-             neededCodes.add(strCode);
-             if (strCode.includes('.')) {
-                const parts = strCode.split('.');
-                parts.pop();
-                neededCodes.add(parts.join('.'));
-             }
-           }
-        });
+      for (const [orgId, orgRecords] of recordsByOrg.entries()) {
+        if (!orgId) continue
 
         let existingCCs: any[] = []
         let fetchHasMoreCC = true
@@ -900,18 +905,10 @@ Deno.serve(async (req: Request) => {
           }
         }
 
-        const ccCodeMap = new Map<string, string>()
-        existingCCs.forEach(cc => {
-          if (cc.code) ccCodeMap.set(cc.code.trim(), cc.id)
+        const ccCodeMap = new Map<string, any>()
+        existingCCs.forEach((cc) => {
+          if (cc.code) ccCodeMap.set(cc.code.trim(), cc)
         })
-
-        if (!simulation && existingCCs.length > 0) {
-          await supabase.from('cost_centers_backup').insert({
-            organization_id: orgId,
-            user_id: user.id,
-            data: existingCCs,
-          })
-        }
 
         let existingTga: any[] = []
         let fetchHasMoreTga = true
@@ -936,12 +933,14 @@ Deno.serve(async (req: Request) => {
 
         const tgaNameMap = new Map<string, string>()
         const tgaCodeMap = new Map<string, string>()
-        existingTga.forEach(tga => {
+        existingTga.forEach((tga) => {
           if (tga.nome) tgaNameMap.set(tga.nome.trim().toLowerCase(), tga.id)
           if (tga.codigo) tgaCodeMap.set(tga.codigo.trim().toUpperCase(), tga.id)
         })
 
-        const toInsert = []
+        const toInsert: any[] = []
+        const toUpdate: any[] = []
+        const processedIds = new Set<string>()
 
         for (const item of orgRecords) {
           const { row, rowNum } = item
@@ -960,21 +959,21 @@ Deno.serve(async (req: Request) => {
 
           const strCode = String(code || '').trim()
 
-          if (ccCodeMap.has(strCode)) {
-            addError(rowNum, `O código "${strCode}" já está cadastrado para esta empresa.`, row)
-            continue
-          }
-
           let parentId = null
           if (strCode.includes('.')) {
             const codeParts = strCode.split('.')
             codeParts.pop()
             const parentCode = codeParts.join('.')
 
-            parentId = ccCodeMap.get(parentCode)
+            const parent = ccCodeMap.get(parentCode)
+            parentId = parent?.id
 
             if (!parentId && !allowIncomplete) {
-              addError(rowNum, `Centro de custo pai "${parentCode}" não encontrado para hierarquia.`, row)
+              addError(
+                rowNum,
+                `Centro de custo pai "${parentCode}" não encontrado para hierarquia.`,
+                row,
+              )
               continue
             }
           }
@@ -993,11 +992,7 @@ Deno.serve(async (req: Request) => {
             }
           }
 
-          const newId = crypto.randomUUID()
-          ccCodeMap.set(strCode, newId)
-
-          toInsert.push({
-            id: newId,
+          const payloadData = {
             organization_id: orgId,
             code: strCode,
             description: String(description || ''),
@@ -1010,20 +1005,103 @@ Deno.serve(async (req: Request) => {
             tipo_lcto: String(getVal(row, ['TIPOLCTO', 'TIPO_LCTO']) || ''),
             contabiliza: String(getVal(row, ['CONTABILIZA']) || ''),
             observacoes: String(getVal(row, ['OBSERVACOES']) || ''),
-          })
-        }
+          }
 
-        for (let i = 0; i < toInsert.length; i += 500) {
-          const chunk = toInsert.slice(i, i + 500)
-          const { error: insErr } = await supabaseAdmin.from('cost_centers').insert(chunk)
-          if (insErr) {
-            chunk.forEach((c: any) => {
-              addError(0, `Erro na inserção em lote: ${insErr.message} - Código: ${c.code}`, c)
-            })
+          const existing = ccCodeMap.get(strCode)
+
+          if (existing) {
+            if (existing.is_temp) {
+              addError(rowNum, `Centro de Custo duplicado na planilha: "${strCode}".`, row)
+            } else {
+              if (mode !== 'INSERT_ONLY') {
+                toUpdate.push({ ...payloadData, id: existing.id })
+                processedIds.add(existing.id)
+                ccCodeMap.set(strCode, { ...existing, is_temp: true })
+              } else {
+                processedIds.add(existing.id)
+              }
+            }
           } else {
-            inserted += chunk.length
+            const newId = crypto.randomUUID()
+            ccCodeMap.set(strCode, { id: newId, is_temp: true })
+            toInsert.push({ ...payloadData, id: newId })
           }
         }
+
+        let toDeleteIds: string[] = []
+        if (mode === 'REPLACE') {
+          toDeleteIds = existingCCs
+            .filter((c: any) => !processedIds.has(c.id))
+            .map((c: any) => c.id)
+        }
+
+        totalToInsert += toInsert.length
+        totalToUpdate += toUpdate.length
+        totalToDelete += toDeleteIds.length
+
+        simulationDetails.push({
+          orgId,
+          toInsert: toInsert.length,
+          toUpdate: toUpdate.length,
+          toDelete: toDeleteIds.length,
+        })
+
+        if (!simulation) {
+          if (existingCCs.length > 0) {
+            await supabase.from('cost_centers_backup').insert({
+              organization_id: orgId,
+              user_id: user.id,
+              data: existingCCs,
+            })
+          }
+
+          if (toDeleteIds.length > 0) {
+            for (let i = 0; i < toDeleteIds.length; i += 500) {
+              await supabaseAdmin
+                .from('cost_centers')
+                .update({ deleted_at: new Date().toISOString(), deleted_by: user.id })
+                .in('id', toDeleteIds.slice(i, i + 500))
+            }
+          }
+
+          for (let i = 0; i < toInsert.length; i += 500) {
+            const chunk = toInsert.slice(i, i + 500)
+            const { error: insErr } = await supabaseAdmin.from('cost_centers').insert(chunk)
+            if (insErr) {
+              chunk.forEach((c: any) => {
+                addError(0, `Erro na inserção em lote: ${insErr.message} - Código: ${c.code}`, c)
+              })
+            }
+          }
+
+          for (let i = 0; i < toUpdate.length; i += 500) {
+            const chunk = toUpdate.slice(i, i + 500)
+            const { error: updErr } = await supabaseAdmin.from('cost_centers').upsert(chunk)
+            if (updErr) {
+              chunk.forEach((c: any) => {
+                addError(0, `Erro na atualização em lote: ${updErr.message} - Código: ${c.code}`, c)
+              })
+            }
+          }
+
+          inserted += toInsert.length + toUpdate.length
+        }
+      }
+
+      if (simulation) {
+        return new Response(
+          JSON.stringify({
+            simulation: true,
+            totalToInsert,
+            totalToUpdate,
+            totalToDelete,
+            details: simulationDetails,
+            errors,
+          }),
+          {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          },
+        )
       }
     } else if (type === 'CHART_ACCOUNTS') {
       if (organizationId && !validOrgs.has(organizationId)) {
@@ -1412,7 +1490,9 @@ Deno.serve(async (req: Request) => {
       }
 
       const existingTgaSet = new Set(
-        existingTgas.map((t: any) => `${t.organization_id || 'null'}-${String(t.codigo).trim().toUpperCase()}`)
+        existingTgas.map(
+          (t: any) => `${t.organization_id || 'null'}-${String(t.codigo).trim().toUpperCase()}`,
+        ),
       )
 
       const toInsertTga = []
@@ -1787,7 +1867,8 @@ Deno.serve(async (req: Request) => {
         user_id: user.id,
         import_type: type,
         file_name: fileName || 'Importação via CSV',
-        total_records: typeof payload.totalRecords === 'number' ? payload.totalRecords : records.length,
+        total_records:
+          typeof payload.totalRecords === 'number' ? payload.totalRecords : records.length,
         success_count: inserted,
         error_count: rejected,
         status: 'Completed',
