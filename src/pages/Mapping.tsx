@@ -1,12 +1,19 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { supabase } from '@/lib/supabase/client'
 import { useAuth } from '@/hooks/use-auth'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import { ScrollArea } from '@/components/ui/scroll-area'
+import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Progress } from '@/components/ui/progress'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import {
   Table,
   TableBody,
@@ -15,341 +22,439 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { Search, X, Trash2, GripVertical, Save, ArrowRight } from 'lucide-react'
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationNext,
+  PaginationPrevious,
+} from '@/components/ui/pagination'
+import { Search, Upload, Sparkles } from 'lucide-react'
 import { toast } from 'sonner'
+import { AccountCombobox, Account } from '@/components/AccountCombobox'
+import { ImportMappingModal } from '@/components/ImportMappingModal'
 
 export default function Mapping() {
   const { user } = useAuth()
   const [orgId, setOrgId] = useState<string | null>(null)
   const [ccs, setCcs] = useState<any[]>([])
-  const [cas, setCas] = useState<any[]>([])
+  const [cas, setCas] = useState<Account[]>([])
   const [mappings, setMappings] = useState<any[]>([])
-  const [pending, setPending] = useState<{ ccId: string; caId: string }[]>([])
-  const [searchCC, setSearchCC] = useState('')
-  const [searchCA, setSearchCA] = useState('')
-  const [filterText, setFilterText] = useState('')
+
+  const [filterStatus, setFilterStatus] = useState<'all' | 'mapped' | 'pending'>('all')
+  const [search, setSearch] = useState('')
+  const [page, setPage] = useState(1)
+  const ITEMS_PER_PAGE = 20
+
+  const [selectedCCs, setSelectedCCs] = useState<Set<string>>(new Set())
+  const [batchCaId, setBatchCaId] = useState<string>('')
+  const [importOpen, setImportOpen] = useState(false)
+
+  const load = async () => {
+    if (!user) return
+    const { data: org } = await supabase
+      .from('organizations')
+      .select('id')
+      .eq('user_id', user.id)
+      .single()
+    if (!org) return
+    setOrgId(org.id)
+
+    const [resCC, resCA, resMap] = await Promise.all([
+      supabase
+        .from('cost_centers')
+        .select('*')
+        .eq('organization_id', org.id)
+        .is('deleted_at', null),
+      supabase
+        .from('chart_of_accounts')
+        .select('*')
+        .eq('organization_id', org.id)
+        .is('deleted_at', null),
+      supabase.from('account_mapping').select('*').eq('organization_id', org.id),
+    ])
+    setCcs(resCC.data || [])
+    setCas(resCA.data || [])
+    setMappings(resMap.data || [])
+  }
+
+  const loadRef = useRef(load)
+  loadRef.current = load
+
+  const debouncedLoad = useMemo(() => {
+    let timeout: any
+    return () => {
+      clearTimeout(timeout)
+      timeout = setTimeout(() => {
+        loadRef.current()
+      }, 300)
+    }
+  }, [])
 
   useEffect(() => {
-    if (!user) return
-    const load = async () => {
-      const { data: org } = await supabase
-        .from('organizations')
-        .select('id')
-        .eq('user_id', user.id)
-        .single()
-      if (!org) return
-      setOrgId(org.id)
-
-      const [resCC, resCA, resMap] = await Promise.all([
-        supabase.from('cost_centers').select('*').eq('organization_id', org.id),
-        supabase.from('chart_of_accounts').select('*').eq('organization_id', org.id),
-        supabase.from('account_mapping').select('*').eq('organization_id', org.id),
-      ])
-      setCcs(resCC.data || [])
-      setCas(resCA.data || [])
-      setMappings(resMap.data || [])
-    }
-    load()
-
+    debouncedLoad()
     const channel = supabase
       .channel('mappings')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'account_mapping' }, load)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'account_mapping' },
+        debouncedLoad,
+      )
       .subscribe()
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [user])
+  }, [debouncedLoad])
 
-  const onDragStart = (e: React.DragEvent, ccId: string) => e.dataTransfer.setData('ccId', ccId)
-  const onDragOver = (e: React.DragEvent) => e.preventDefault()
+  const enrichedCCs = useMemo(() => {
+    return ccs.map((cc) => {
+      const mapping = mappings.find((m) => m.cost_center_id === cc.id)
+      return {
+        ...cc,
+        mappingId: mapping?.id,
+        mappedCa: mapping ? cas.find((c) => c.id === mapping.chart_account_id) : null,
+      }
+    })
+  }, [ccs, cas, mappings])
 
-  const onDrop = (e: React.DragEvent, caId: string) => {
-    e.preventDefault()
-    const ccId = e.dataTransfer.getData('ccId')
-    if (!ccId) return
-
-    const existsDB = mappings.some((m) => m.cost_center_id === ccId && m.chart_account_id === caId)
-    const existsPending = pending.some((p) => p.ccId === ccId && p.caId === caId)
-
-    if (existsDB || existsPending) {
-      toast.error('Este mapeamento já existe.')
-      return
+  const filteredCCs = useMemo(() => {
+    let result = enrichedCCs
+    if (filterStatus === 'mapped') result = result.filter((c) => c.mappingId)
+    if (filterStatus === 'pending') result = result.filter((c) => !c.mappingId)
+    if (search) {
+      const q = search.toLowerCase()
+      result = result.filter((cc) => {
+        const matchCC =
+          cc.code?.toLowerCase().includes(q) || cc.description?.toLowerCase().includes(q)
+        const matchCA =
+          cc.mappedCa &&
+          (cc.mappedCa.account_code?.toLowerCase().includes(q) ||
+            cc.mappedCa.classification?.toLowerCase().includes(q) ||
+            cc.mappedCa.account_name?.toLowerCase().includes(q))
+        return matchCC || matchCA
+      })
     }
-    setPending((prev) => [...prev, { ccId, caId }])
+    return result
+  }, [enrichedCCs, filterStatus, search])
+
+  const totalPages = Math.ceil(filteredCCs.length / ITEMS_PER_PAGE)
+  const paginatedCCs = filteredCCs.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE)
+
+  useEffect(() => {
+    if (page > totalPages && totalPages > 0) setPage(totalPages)
+  }, [totalPages, page])
+
+  const total = enrichedCCs.length
+  const mappedCount = enrichedCCs.filter((c) => c.mappingId).length
+  const progress = total === 0 ? 0 : Math.round((mappedCount / total) * 100)
+
+  const handleMap = async (ccId: string, caId: string, existingMappingId?: string) => {
+    if (!orgId) return
+    if (existingMappingId) {
+      await supabase.from('account_mapping').delete().eq('id', existingMappingId)
+    }
+    const { error } = await supabase.from('account_mapping').insert({
+      organization_id: orgId,
+      cost_center_id: ccId,
+      chart_account_id: caId,
+      mapping_type: 'DE/PARA',
+    })
+    if (error) toast.error('Erro ao mapear: ' + error.message)
+    else toast.success('Conta vinculada com sucesso')
   }
 
-  const handleSave = async () => {
-    if (!pending.length || !orgId) return
-    const payload = pending.map((p) => ({
+  const handleRemove = async (mappingId: string) => {
+    const { error } = await supabase.from('account_mapping').delete().eq('id', mappingId)
+    if (error) toast.error('Erro ao remover: ' + error.message)
+    else toast.success('Vínculo removido')
+  }
+
+  const handleBatchMap = async () => {
+    if (!orgId || selectedCCs.size === 0 || !batchCaId) return
+    const ccIds = Array.from(selectedCCs)
+    const existingMappings = mappings.filter((m) => ccIds.includes(m.cost_center_id))
+    if (existingMappings.length > 0) {
+      await supabase
+        .from('account_mapping')
+        .delete()
+        .in(
+          'id',
+          existingMappings.map((m) => m.id),
+        )
+    }
+    const payloads = ccIds.map((ccId) => ({
       organization_id: orgId,
-      cost_center_id: p.ccId,
-      chart_account_id: p.caId,
+      cost_center_id: ccId,
+      chart_account_id: batchCaId,
       mapping_type: 'DE/PARA',
     }))
-
-    const { error } = await supabase.from('account_mapping').insert(payload)
-    if (error) {
-      toast.error('Erro ao salvar mapeamentos: ' + error.message)
-    } else {
-      toast.success(`${pending.length} mapeamento(s) salvo(s) com sucesso!`)
-      setPending([])
+    const { error } = await supabase.from('account_mapping').insert(payloads)
+    if (error) toast.error('Erro ao mapear em lote: ' + error.message)
+    else {
+      toast.success(`${ccIds.length} centro(s) de custo mapeado(s) com sucesso!`)
+      setSelectedCCs(new Set())
+      setBatchCaId('')
     }
   }
 
-  const handleDelete = async (id: string) => {
-    const { error } = await supabase.from('account_mapping').delete().eq('id', id)
-    if (error) toast.error('Erro ao excluir mapeamento')
-    else toast.success('Mapeamento excluído')
+  const handleAutoMap = async () => {
+    if (!orgId) return
+    const unmapped = enrichedCCs.filter((c) => !c.mappingId)
+    if (unmapped.length === 0) return toast.info('Todos os centros de custo já estão mapeados.')
+
+    const payloads: any[] = []
+    unmapped.forEach((cc) => {
+      const match = cas.find(
+        (ca) =>
+          ca.account_code === cc.code ||
+          (ca.account_name &&
+            cc.description &&
+            ca.account_name.toLowerCase() === cc.description.toLowerCase()),
+      )
+      if (match) {
+        payloads.push({
+          organization_id: orgId,
+          cost_center_id: cc.id,
+          chart_account_id: match.id,
+          mapping_type: 'DE/PARA (Auto)',
+        })
+      }
+    })
+    if (payloads.length === 0)
+      return toast.info('Nenhuma sugestão óbvia encontrada para os itens pendentes.')
+    const { error } = await supabase.from('account_mapping').insert(payloads)
+    if (error) toast.error('Erro no auto-mapeamento: ' + error.message)
+    else toast.success(`${payloads.length} mapeamentos sugeridos aplicados!`)
   }
 
-  const getCC = (id: string) => ccs.find((c) => c.id === id)
-  const getCA = (id: string) => cas.find((c) => c.id === id)
+  const toggleCC = (id: string) => {
+    const newSet = new Set(selectedCCs)
+    if (newSet.has(id)) newSet.delete(id)
+    else newSet.add(id)
+    setSelectedCCs(newSet)
+  }
 
-  const filteredCCs = ccs.filter(
-    (c) =>
-      c.code?.toLowerCase().includes(searchCC.toLowerCase()) ||
-      c.description?.toLowerCase().includes(searchCC.toLowerCase()),
-  )
-  const filteredCAs = cas.filter(
-    (c) =>
-      c.account_code?.toLowerCase().includes(searchCA.toLowerCase()) ||
-      c.account_name?.toLowerCase().includes(searchCA.toLowerCase()),
-  )
-  const filteredMappings = mappings.filter((m) => {
-    const cc = getCC(m.cost_center_id)
-    const ca = getCA(m.chart_account_id)
-    const search = filterText.toLowerCase()
-    return (
-      cc?.code?.toLowerCase().includes(search) ||
-      cc?.description?.toLowerCase().includes(search) ||
-      ca?.account_code?.toLowerCase().includes(search) ||
-      ca?.account_name?.toLowerCase().includes(search)
-    )
-  })
+  const toggleAll = () => {
+    if (selectedCCs.size === paginatedCCs.length && paginatedCCs.length > 0) {
+      setSelectedCCs(new Set())
+    } else {
+      setSelectedCCs(new Set(paginatedCCs.map((c) => c.id)))
+    }
+  }
 
   return (
     <div className="p-6 space-y-6 max-w-7xl mx-auto animate-in fade-in duration-500">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-slate-900">Mapeamento DE/PARA</h1>
           <p className="text-slate-500 mt-1">
-            Associe seus centros de custo às contas contábeis correspondentes.
+            Associe seus Centros de Custo (TGA) às Contas Contábeis de forma ágil e centralizada.
           </p>
+        </div>
+        <div className="flex gap-2 w-full md:w-auto">
+          <Button
+            variant="secondary"
+            onClick={handleAutoMap}
+            className="flex-1 md:flex-none bg-blue-50 text-blue-600 hover:bg-blue-100 border-blue-200"
+          >
+            <Sparkles className="h-4 w-4 mr-2" />
+            Sugestão Inteligente
+          </Button>
+          <Button onClick={() => setImportOpen(true)} className="flex-1 md:flex-none">
+            <Upload className="h-4 w-4 mr-2" />
+            Importar Planilha
+          </Button>
         </div>
       </div>
 
-      <Tabs defaultValue="create" className="w-full">
-        <TabsList className="mb-4">
-          <TabsTrigger value="create">Criar Mapeamento</TabsTrigger>
-          <TabsTrigger value="list">Mapeamentos Ativos</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="create" className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader className="pb-3 border-b">
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <Badge variant="outline">DE</Badge> Centros de Custo
-                </CardTitle>
-                <div className="relative mt-2">
-                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-500" />
-                  <Input
-                    placeholder="Buscar centro de custo..."
-                    className="pl-9"
-                    value={searchCC}
-                    onChange={(e) => setSearchCC(e.target.value)}
-                  />
-                </div>
-              </CardHeader>
-              <ScrollArea className="h-[400px] p-4 bg-slate-50/50">
-                <div className="flex flex-col gap-2">
-                  {filteredCCs.map((cc) => (
-                    <div
-                      key={cc.id}
-                      draggable
-                      onDragStart={(e) => onDragStart(e, cc.id)}
-                      className="p-3 border rounded-md bg-white cursor-grab active:cursor-grabbing flex items-center gap-3 hover:border-slate-300 transition-colors shadow-sm"
-                    >
-                      <GripVertical className="h-4 w-4 text-slate-400" />
-                      <div>
-                        <p className="font-mono text-sm font-medium text-slate-900">{cc.code}</p>
-                        <p className="text-xs text-slate-500">{cc.description}</p>
-                      </div>
-                    </div>
-                  ))}
-                  {filteredCCs.length === 0 && (
-                    <p className="text-sm text-center text-slate-500 py-4">
-                      Nenhum centro de custo encontrado.
-                    </p>
-                  )}
-                </div>
-              </ScrollArea>
-            </Card>
-
-            <Card>
-              <CardHeader className="pb-3 border-b">
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <Badge>PARA</Badge> Contas Contábeis
-                </CardTitle>
-                <div className="relative mt-2">
-                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-500" />
-                  <Input
-                    placeholder="Buscar conta contábil..."
-                    className="pl-9"
-                    value={searchCA}
-                    onChange={(e) => setSearchCA(e.target.value)}
-                  />
-                </div>
-              </CardHeader>
-              <ScrollArea className="h-[400px] p-4">
-                <div className="flex flex-col gap-2">
-                  {filteredCAs.map((ca) => (
-                    <div
-                      key={ca.id}
-                      onDrop={(e) => onDrop(e, ca.id)}
-                      onDragOver={onDragOver}
-                      className="p-3 border-2 border-dashed rounded-md bg-slate-50 hover:border-blue-400 hover:bg-blue-50 transition-all flex flex-col gap-1"
-                    >
-                      <p className="font-mono text-sm font-medium text-slate-900">
-                        {ca.account_code}
-                      </p>
-                      <p className="text-xs text-slate-500">{ca.account_name}</p>
-                      <p className="text-[10px] text-blue-500 font-medium mt-1 uppercase opacity-70">
-                        Arraste aqui para associar
-                      </p>
-                    </div>
-                  ))}
-                  {filteredCAs.length === 0 && (
-                    <p className="text-sm text-center text-slate-500 py-4">
-                      Nenhuma conta encontrada.
-                    </p>
-                  )}
-                </div>
-              </ScrollArea>
-            </Card>
-          </div>
-
-          {pending.length > 0 && (
-            <Card className="border-blue-200 bg-blue-50/30 shadow-md animate-in slide-in-from-bottom-4">
-              <CardHeader className="py-4 border-b border-blue-100 bg-white/50">
-                <div className="flex justify-between items-center">
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    Mapeamentos Pendentes
-                    <Badge variant="secondary">{pending.length}</Badge>
-                  </CardTitle>
-                  <Button onClick={handleSave} size="sm">
-                    <Save className="h-4 w-4 mr-2" /> Salvar Associações
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent className="p-4">
-                <div className="flex flex-col gap-3">
-                  {pending.map((p, i) => {
-                    const cc = getCC(p.ccId)
-                    const ca = getCA(p.caId)
-                    return (
-                      <div
-                        key={i}
-                        className="flex flex-col sm:flex-row items-center gap-4 bg-white p-3 rounded-lg border shadow-sm"
-                      >
-                        <div className="flex-1 flex items-center gap-3 w-full">
-                          <Badge variant="outline">DE</Badge>
-                          <div>
-                            <p className="font-mono text-sm font-medium">{cc?.code}</p>
-                            <p className="text-xs text-slate-500 truncate max-w-[200px]">
-                              {cc?.description}
-                            </p>
-                          </div>
-                        </div>
-                        <ArrowRight className="h-5 w-5 text-slate-300 hidden sm:block" />
-                        <div className="flex-1 flex items-center gap-3 w-full">
-                          <Badge>PARA</Badge>
-                          <div>
-                            <p className="font-mono text-sm font-medium">{ca?.account_code}</p>
-                            <p className="text-xs text-slate-500 truncate max-w-[200px]">
-                              {ca?.account_name}
-                            </p>
-                          </div>
-                        </div>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => setPending((arr) => arr.filter((_, idx) => idx !== i))}
-                        >
-                          <X className="h-4 w-4 text-red-500" />
-                        </Button>
-                      </div>
-                    )
-                  })}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-        </TabsContent>
-
-        <TabsContent value="list">
-          <Card>
-            <CardHeader className="pb-4">
-              <CardTitle>Mapeamentos Existentes</CardTitle>
-              <CardDescription>Consulte e gerencie as associações já realizadas.</CardDescription>
-            </CardHeader>
-            <div className="px-6 pb-4">
-              <div className="relative max-w-md">
-                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-500" />
-                <Input
-                  placeholder="Filtrar por código ou descrição (DE/PARA)..."
-                  className="pl-9"
-                  value={filterText}
-                  onChange={(e) => setFilterText(e.target.value)}
-                />
-              </div>
+      <Card className="bg-white shadow-sm border-slate-200 overflow-hidden">
+        <div className="p-4 bg-slate-50/50 border-b flex flex-col md:flex-row items-center gap-6">
+          <div className="flex-1 w-full">
+            <div className="flex justify-between mb-2 text-sm font-medium">
+              <span className="text-slate-700 font-semibold">Progresso do Mapeamento Geral</span>
+              <span className="text-emerald-600">{progress}% Concluído</span>
             </div>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Centro de Custo (DE)</TableHead>
-                  <TableHead>Conta Contábil (PARA)</TableHead>
-                  <TableHead className="w-[80px] text-right">Ações</TableHead>
+            <Progress value={progress} className="h-2.5 bg-slate-200" />
+          </div>
+          <div className="flex gap-6 text-sm text-slate-600 shrink-0 w-full md:w-auto justify-around md:justify-start">
+            <div className="text-center md:text-left">
+              <span className="block text-2xl font-bold text-slate-900 leading-none">
+                {mappedCount}
+              </span>
+              <span className="text-xs uppercase tracking-wider font-medium">Mapeados</span>
+            </div>
+            <div className="w-px bg-slate-200 hidden md:block"></div>
+            <div className="text-center md:text-left">
+              <span className="block text-2xl font-bold text-amber-500 leading-none">
+                {total - mappedCount}
+              </span>
+              <span className="text-xs uppercase tracking-wider font-medium">Pendentes</span>
+            </div>
+          </div>
+        </div>
+      </Card>
+
+      <Card className="shadow-sm">
+        <div className="p-4 border-b flex flex-col sm:flex-row gap-4 justify-between bg-white rounded-t-xl">
+          <div className="flex items-center gap-3 flex-1">
+            <div className="relative max-w-md w-full">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+              <Input
+                placeholder="Buscar por código, classificação ou descrição..."
+                className="pl-9 bg-slate-50 border-slate-200"
+                value={search}
+                onChange={(e) => {
+                  setSearch(e.target.value)
+                  setPage(1)
+                }}
+              />
+            </div>
+            <Select
+              value={filterStatus}
+              onValueChange={(val: any) => {
+                setFilterStatus(val)
+                setPage(1)
+              }}
+            >
+              <SelectTrigger className="w-[180px] bg-slate-50 border-slate-200">
+                <SelectValue placeholder="Filtrar status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos os itens</SelectItem>
+                <SelectItem value="mapped">Somente Mapeados</SelectItem>
+                <SelectItem value="pending">Somente Pendentes</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        {selectedCCs.size > 0 && (
+          <div className="bg-blue-50/80 border-b border-blue-100 p-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 animate-in fade-in slide-in-from-top-2">
+            <div className="flex items-center gap-3">
+              <Badge className="bg-blue-600 hover:bg-blue-700">
+                {selectedCCs.size} selecionados
+              </Badge>
+              <span className="text-sm font-medium text-blue-900 hidden sm:inline">
+                Definir conta contábil para os itens selecionados:
+              </span>
+            </div>
+            <div className="flex items-center gap-2 w-full sm:w-[400px]">
+              <AccountCombobox
+                accounts={cas}
+                value={batchCaId}
+                onChange={setBatchCaId}
+                placeholder="Buscar conta a aplicar..."
+              />
+              <Button
+                size="sm"
+                onClick={handleBatchMap}
+                disabled={!batchCaId}
+                className="shrink-0 bg-blue-600 hover:bg-blue-700 text-white"
+              >
+                Aplicar Lote
+              </Button>
+            </div>
+          </div>
+        )}
+
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader className="bg-slate-50">
+              <TableRow>
+                <TableHead className="w-[40px] px-4">
+                  <Checkbox
+                    checked={paginatedCCs.length > 0 && selectedCCs.size === paginatedCCs.length}
+                    onCheckedChange={toggleAll}
+                  />
+                </TableHead>
+                <TableHead className="w-[40%]">
+                  <Badge variant="outline" className="mr-2 border-slate-300">
+                    DE
+                  </Badge>{' '}
+                  Centro de Custo TGA
+                </TableHead>
+                <TableHead>
+                  <Badge className="mr-2 bg-slate-700 hover:bg-slate-800">PARA</Badge> Conta
+                  Contábil Vinculada
+                </TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {paginatedCCs.map((cc) => (
+                <TableRow key={cc.id} className={cc.mappingId ? 'bg-white' : 'bg-amber-50/20'}>
+                  <TableCell className="px-4">
+                    <Checkbox
+                      checked={selectedCCs.has(cc.id)}
+                      onCheckedChange={() => toggleCC(cc.id)}
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex flex-col">
+                      <span className="font-mono text-sm font-semibold text-slate-800">
+                        {cc.code}
+                      </span>
+                      <span className="text-sm text-slate-500">{cc.description}</span>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="max-w-[500px]">
+                      <AccountCombobox
+                        accounts={cas}
+                        value={cc.mappedCa?.id}
+                        onChange={(caId) => handleMap(cc.id, caId, cc.mappingId)}
+                        onClear={cc.mappingId ? () => handleRemove(cc.mappingId) : undefined}
+                      />
+                    </div>
+                  </TableCell>
                 </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredMappings.map((m) => {
-                  const cc = getCC(m.cost_center_id)
-                  const ca = getCA(m.chart_account_id)
-                  return (
-                    <TableRow key={m.id}>
-                      <TableCell>
-                        <div className="flex flex-col">
-                          <span className="font-mono text-sm font-medium">{cc?.code}</span>
-                          <span className="text-xs text-slate-500">{cc?.description}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex flex-col">
-                          <span className="font-mono text-sm font-medium">{ca?.account_code}</span>
-                          <span className="text-xs text-slate-500">{ca?.account_name}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Button variant="ghost" size="icon" onClick={() => handleDelete(m.id)}>
-                          <Trash2 className="h-4 w-4 text-red-500" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  )
-                })}
-                {filteredMappings.length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={3} className="text-center py-8 text-slate-500">
-                      Nenhum mapeamento encontrado.
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </Card>
-        </TabsContent>
-      </Tabs>
+              ))}
+              {paginatedCCs.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={3} className="h-32 text-center text-slate-500">
+                    Nenhum centro de custo encontrado para os filtros atuais.
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </div>
+
+        {totalPages > 1 && (
+          <div className="p-4 border-t bg-slate-50/50">
+            <Pagination className="justify-end">
+              <PaginationContent>
+                <PaginationItem>
+                  <PaginationPrevious
+                    href="#"
+                    onClick={(e) => {
+                      e.preventDefault()
+                      setPage((p) => Math.max(1, p - 1))
+                    }}
+                    className={page === 1 ? 'pointer-events-none opacity-50' : ''}
+                  />
+                </PaginationItem>
+                <PaginationItem>
+                  <span className="text-sm text-slate-500 px-4 font-medium">
+                    Página {page} de {totalPages}
+                  </span>
+                </PaginationItem>
+                <PaginationItem>
+                  <PaginationNext
+                    href="#"
+                    onClick={(e) => {
+                      e.preventDefault()
+                      setPage((p) => Math.min(totalPages, p + 1))
+                    }}
+                    className={page >= totalPages ? 'pointer-events-none opacity-50' : ''}
+                  />
+                </PaginationItem>
+              </PaginationContent>
+            </Pagination>
+          </div>
+        )}
+      </Card>
+
+      <ImportMappingModal open={importOpen} onOpenChange={setImportOpen} orgId={orgId} />
     </div>
   )
 }
