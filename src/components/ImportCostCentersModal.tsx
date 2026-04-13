@@ -56,7 +56,6 @@ export function ImportCostCentersModal({
   const { toast } = useToast()
   const [step, setStep] = useState(1)
   const [file, setFile] = useState<File | null>(null)
-  const [fileBase64, setFileBase64] = useState<string>('')
   const [rawRecords, setRawRecords] = useState<any[]>([])
   const [sheets, setSheets] = useState<string[]>([])
   const [selectedSheet, setSelectedSheet] = useState<string>('')
@@ -76,7 +75,6 @@ export function ImportCostCentersModal({
     if (open) {
       setStep(1)
       setFile(null)
-      setFileBase64('')
       setRawRecords([])
       setMapping({})
       setResult(null)
@@ -94,47 +92,106 @@ export function ImportCostCentersModal({
     }
   }, [open])
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const parseCSV = (text: string) => {
+    const delimiter = text.split(';').length > text.split(',').length ? ';' : ','
+    const rows: string[][] = []
+    let currentRow: string[] = []
+    let currentCell = ''
+    let inQuotes = false
+
+    for (let i = 0; i < text.length; i++) {
+      const char = text[i]
+      const nextChar = text[i + 1]
+
+      if (char === '"') {
+        if (inQuotes && nextChar === '"') {
+          currentCell += '"'
+          i++
+        } else {
+          inQuotes = !inQuotes
+        }
+      } else if (char === delimiter && !inQuotes) {
+        currentRow.push(currentCell)
+        currentCell = ''
+      } else if ((char === '\n' || (char === '\r' && nextChar === '\n')) && !inQuotes) {
+        if (char === '\r') i++
+        currentRow.push(currentCell)
+        if (currentRow.some((c) => c.trim() !== '')) rows.push(currentRow)
+        currentRow = []
+        currentCell = ''
+      } else {
+        currentCell += char
+      }
+    }
+    if (currentCell || currentRow.length > 0) {
+      currentRow.push(currentCell)
+      if (currentRow.some((c) => c.trim() !== '')) rows.push(currentRow)
+    }
+
+    const parsedRecords: any[] = []
+    if (rows.length > 0) {
+      const hdrs = rows[0].map((h) => h.trim())
+      for (let i = 1; i < rows.length; i++) {
+        const values = rows[i].map((v) => v.trim())
+        const row: any = {}
+        hdrs.forEach((h, idx) => {
+          row[h] = values[idx] || ''
+        })
+        parsedRecords.push(row)
+      }
+    }
+    return parsedRecords
+  }
+
+  const loadXlsxScript = (): Promise<any> => {
+    return new Promise((resolve, reject) => {
+      if ((window as any).XLSX) return resolve((window as any).XLSX)
+      const script = document.createElement('script')
+      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js'
+      script.onload = () => resolve((window as any).XLSX)
+      script.onerror = () => reject(new Error('Falha ao carregar biblioteca Excel'))
+      document.body.appendChild(script)
+    })
+  }
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0]
     if (!f) return
     setFile(f)
-    const reader = new FileReader()
-    reader.onload = async (evt) => {
-      const result = evt.target?.result as string
-      if (!result) return
-      const b64 = result.split(',')[1]
-      setFileBase64(b64)
-      await fetchPreview(b64, f.name, '')
-    }
-    reader.readAsDataURL(f)
-  }
-
-  const fetchPreview = async (b64: string, name: string, sheet: string) => {
     setLoading(true)
+
     try {
-      const { data, error } = await supabase.functions.invoke('import-data', {
-        body: {
-          action: 'PREVIEW',
-          fileBase64: b64,
-          fileName: name,
-          sheetName: sheet,
-          type: 'COST_CENTERS',
-        },
-      })
-      if (error) throw error
-      if (data.error) throw new Error(data.error)
+      const isCsv = f.name.toLowerCase().endsWith('.csv')
+      const buffer = await f.arrayBuffer()
 
-      setSheets(data.sheets || [])
-      setHeaders(data.headers || [])
-      setTotalRecords(data.totalRecords || 0)
-      if (data.records) setRawRecords(data.records)
+      let records: any[] = []
+      let sheetsFound: string[] = []
 
-      if (!sheet && data.sheets?.length > 0) {
-        setSelectedSheet(data.sheets[0])
+      if (isCsv) {
+        const text = new TextDecoder('utf-8').decode(buffer)
+        records = parseCSV(text)
+        sheetsFound = ['CSV Data']
+        setSelectedSheet('CSV Data')
+      } else {
+        const XLSX = await loadXlsxScript()
+        const workbook = XLSX.read(buffer, { type: 'array' })
+        sheetsFound = workbook.SheetNames
+        const targetSheet = workbook.SheetNames[0]
+        setSelectedSheet(targetSheet)
+        const worksheet = workbook.Sheets[targetSheet]
+        records = XLSX.utils.sheet_to_json(worksheet, { defval: '' })
+        ;(window as any)._tempWorkbook = workbook
       }
 
+      setSheets(sheetsFound)
+      setTotalRecords(records.length)
+      setRawRecords(records)
+
+      const hdrs = records.length > 0 ? Object.keys(records[0]) : []
+      setHeaders(hdrs)
+
       const autoMap: Record<string, string> = {}
-      data.headers?.forEach((h: string) => {
+      hdrs.forEach((h: string) => {
         const cleanH = h
           .normalize('NFD')
           .replace(/[\u0300-\u036f]/g, '')
@@ -148,7 +205,11 @@ export function ImportCostCentersModal({
       setMapping(autoMap)
       setStep(2)
     } catch (err: any) {
-      toast({ title: 'Erro', description: err.message, variant: 'destructive' })
+      toast({
+        title: 'Erro',
+        description: 'Falha ao ler o arquivo: ' + err.message,
+        variant: 'destructive',
+      })
       setStep(1)
     }
     setLoading(false)
@@ -156,7 +217,29 @@ export function ImportCostCentersModal({
 
   const handleSheetChange = (v: string) => {
     setSelectedSheet(v)
-    fetchPreview(fileBase64, file?.name || '', v)
+    if ((window as any)._tempWorkbook) {
+      const XLSX = (window as any).XLSX
+      const worksheet = (window as any)._tempWorkbook.Sheets[v]
+      const records = XLSX.utils.sheet_to_json(worksheet, { defval: '' })
+      setRawRecords(records)
+      setTotalRecords(records.length)
+      const hdrs = records.length > 0 ? Object.keys(records[0]) : []
+      setHeaders(hdrs)
+
+      const autoMap: Record<string, string> = {}
+      hdrs.forEach((h: string) => {
+        const cleanH = h
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .toUpperCase()
+          .trim()
+        const match = EXPECTED_FIELDS.find(
+          (ef) => cleanH.includes(ef.key) || ef.key.includes(cleanH),
+        )
+        if (match) autoMap[match.key] = h
+      })
+      setMapping(autoMap)
+    }
   }
 
   const handleImport = async () => {
@@ -170,7 +253,7 @@ export function ImportCostCentersModal({
       }
     })
 
-    let processedRecords = rawRecords.map((r: any, index: number) => {
+    const processedRecords = rawRecords.map((r: any, index: number) => {
       const normalized: any = {}
       normalized._originalIndex = index + 1
       for (const key in r) {
@@ -214,38 +297,48 @@ export function ImportCostCentersModal({
         if (chunk.length === 0) break
         setProgress(Math.min(Math.round((offset / total) * 100), 99))
 
-        const { data, error } = await supabase.functions.invoke('import-data', {
-          body: {
-            type: 'COST_CENTERS',
-            records: chunk,
-            fileName: file?.name,
-            sheetName: selectedSheet,
-            organizationId: selectedOrg,
-            allowIncomplete,
-            skipHistory: true,
-          },
-        })
+        let attempts = 0
+        let success = false
 
-        if (error) {
-          const errMsg =
-            error.message === 'Edge Function returned a non-2xx status code'
-              ? `Erro de conexão ao processar lote. O arquivo pode ser muito grande ou a internet oscilou. Tente novamente.`
-              : error.message
-          throw new Error(errMsg)
-        }
+        while (attempts < 3 && !success) {
+          try {
+            const { data, error } = await supabase.functions.invoke('import-data', {
+              body: {
+                type: 'COST_CENTERS',
+                records: chunk,
+                fileName: file?.name,
+                sheetName: selectedSheet,
+                organizationId: selectedOrg,
+                allowIncomplete,
+                skipHistory: true,
+              },
+            })
 
-        if (data?.error) throw new Error(data.error)
+            if (error) throw error
+            if (data?.error) throw new Error(data.error)
 
-        totalInserted += data.inserted || 0
-        if (data.errors && data.errors.length > 0) {
-          allErrors = [...allErrors, ...data.errors]
+            totalInserted += data.inserted || 0
+            if (data.errors && data.errors.length > 0) {
+              allErrors = [...allErrors, ...data.errors]
+            }
+            success = true
+          } catch (err: any) {
+            attempts++
+            if (attempts >= 3) {
+              const errMsg =
+                err.message === 'Edge Function returned a non-2xx status code'
+                  ? `Erro de conexão ao processar lote. O servidor demorou muito para responder ou a conexão falhou.`
+                  : err.message
+              throw new Error(errMsg)
+            }
+            await new Promise((r) => setTimeout(r, 1500))
+          }
         }
       }
 
       setProgress(100)
       setResult({ inserted: totalInserted, errors: allErrors })
 
-      // Gravar histórico consolidado da importação
       const { data: userData } = await supabase.auth.getUser()
       if (userData?.user?.id) {
         await supabase.from('import_history').insert({
