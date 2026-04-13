@@ -18,6 +18,7 @@ import {
   TrendingUp,
   TrendingDown,
   Landmark,
+  Wallet,
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
@@ -497,64 +498,58 @@ export default function CostCenters() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         <Card
           className={cn(
-            'bg-gradient-to-br from-emerald-500 to-emerald-600 text-white shadow-lg border-0 cursor-pointer transition-transform hover:scale-105',
-            filterCategory === 'receitas' && 'ring-4 ring-emerald-300 ring-offset-2',
+            'relative overflow-hidden border-0 cursor-pointer group transition-all duration-300',
+            'bg-gradient-to-br from-[#003d82] to-[#0099ff] text-white',
+            'shadow-lg hover:shadow-xl hover:shadow-[#0099ff]/20',
+            filterCategory === 'receitas' && 'ring-4 ring-[#0099ff] ring-offset-2',
           )}
           onClick={() => setFilterCategory((prev) => (prev === 'receitas' ? 'all' : 'receitas'))}
         >
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-emerald-100 font-medium text-sm">Receitas (1)</p>
-                <p className="text-3xl font-bold mt-1">{metrics.receitas}</p>
-              </div>
-              <div className="bg-white/20 p-3 rounded-lg">
-                <TrendingUp className="h-6 w-6 text-white" />
-              </div>
+          <CardContent className="p-4 h-full flex flex-col justify-between relative z-10">
+            <div>
+              <p className="text-white/80 font-medium text-sm">Receitas (1)</p>
+              <p className="text-3xl font-bold mt-1">{metrics.receitas}</p>
             </div>
           </CardContent>
+          <TrendingUp className="absolute -bottom-2 -right-2 w-20 h-20 text-white/20 group-hover:scale-110 group-hover:text-white/30 transition-all duration-300 z-0" />
         </Card>
 
         <Card
           className={cn(
-            'bg-gradient-to-br from-rose-500 to-rose-600 text-white shadow-lg border-0 cursor-pointer transition-transform hover:scale-105',
-            filterCategory === 'despesas' && 'ring-4 ring-rose-300 ring-offset-2',
+            'relative overflow-hidden border-0 cursor-pointer group transition-all duration-300',
+            'bg-gradient-to-br from-[#8b4513] to-[#ff8c00] text-white',
+            'shadow-lg hover:shadow-xl hover:shadow-[#ff8c00]/20',
+            filterCategory === 'despesas' && 'ring-4 ring-[#ff8c00] ring-offset-2',
           )}
           onClick={() => setFilterCategory((prev) => (prev === 'despesas' ? 'all' : 'despesas'))}
         >
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-rose-100 font-medium text-sm">Despesas (2)</p>
-                <p className="text-3xl font-bold mt-1">{metrics.despesas}</p>
-              </div>
-              <div className="bg-white/20 p-3 rounded-lg">
-                <TrendingDown className="h-6 w-6 text-white" />
-              </div>
+          <CardContent className="p-4 h-full flex flex-col justify-between relative z-10">
+            <div>
+              <p className="text-white/80 font-medium text-sm">Despesas (2)</p>
+              <p className="text-3xl font-bold mt-1">{metrics.despesas}</p>
             </div>
           </CardContent>
+          <TrendingDown className="absolute -bottom-2 -right-2 w-20 h-20 text-white/20 group-hover:scale-110 group-hover:text-white/30 transition-all duration-300 z-0" />
         </Card>
 
         <Card
           className={cn(
-            'bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-lg border-0 cursor-pointer transition-transform hover:scale-105',
-            filterCategory === 'investimentos' && 'ring-4 ring-blue-300 ring-offset-2',
+            'relative overflow-hidden border-0 cursor-pointer group transition-all duration-300',
+            'bg-gradient-to-br from-[#6c0572] to-[#ff006e] text-white',
+            'shadow-lg hover:shadow-xl hover:shadow-[#ff006e]/20',
+            filterCategory === 'investimentos' && 'ring-4 ring-[#ff006e] ring-offset-2',
           )}
           onClick={() =>
             setFilterCategory((prev) => (prev === 'investimentos' ? 'all' : 'investimentos'))
           }
         >
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-blue-100 font-medium text-sm">Investimentos (3)</p>
-                <p className="text-3xl font-bold mt-1">{metrics.investimentos}</p>
-              </div>
-              <div className="bg-white/20 p-3 rounded-lg">
-                <Landmark className="h-6 w-6 text-white" />
-              </div>
+          <CardContent className="p-4 h-full flex flex-col justify-between relative z-10">
+            <div>
+              <p className="text-white/80 font-medium text-sm">Investimentos (3)</p>
+              <p className="text-3xl font-bold mt-1">{metrics.investimentos}</p>
             </div>
           </CardContent>
+          <Wallet className="absolute -bottom-2 -right-2 w-20 h-20 text-white/20 group-hover:scale-110 group-hover:text-white/30 transition-all duration-300 z-0" />
         </Card>
       </div>
 
