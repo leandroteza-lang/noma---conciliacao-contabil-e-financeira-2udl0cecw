@@ -29,7 +29,7 @@ export function ImportMappingModal({ open, onOpenChange, orgId }: ImportMappingM
   } | null>(null)
 
   const handleUpload = async () => {
-    if (!file || !orgId) return
+    if (!file) return
     setLoading(true)
     setResults(null)
     try {
@@ -45,7 +45,7 @@ export function ImportMappingModal({ open, onOpenChange, orgId }: ImportMappingM
               type: 'MAPPINGS',
               fileName: file.name,
               fileBase64: base64,
-              organizationId: orgId,
+              organizationId: orgId || null,
             },
           })
 
@@ -58,6 +58,10 @@ export function ImportMappingModal({ open, onOpenChange, orgId }: ImportMappingM
             if (data.rejected === 0) {
               setTimeout(() => onOpenChange(false), 2000)
             }
+          } else if (data.rejected > 0) {
+            toast.warning(`Importação finalizada com ${data.rejected} rejeições.`)
+          } else {
+            toast.info('Nenhum registro foi importado.')
           }
         } catch (err: any) {
           toast.error('Erro na importação: ' + err.message)
@@ -65,9 +69,13 @@ export function ImportMappingModal({ open, onOpenChange, orgId }: ImportMappingM
           setLoading(false)
         }
       }
+      reader.onerror = () => {
+        toast.error('Erro ao ler o arquivo.')
+        setLoading(false)
+      }
       reader.readAsDataURL(file)
     } catch (err: any) {
-      toast.error('Erro ao ler arquivo: ' + err.message)
+      toast.error('Erro ao processar arquivo: ' + err.message)
       setLoading(false)
     }
   }
@@ -111,13 +119,19 @@ export function ImportMappingModal({ open, onOpenChange, orgId }: ImportMappingM
                 <FileSpreadsheet className="h-4 w-4 text-emerald-600" /> Colunas Obrigatórias:
               </p>
               <ul className="list-disc pl-5 space-y-1">
+                {!orgId && (
+                  <li>
+                    <strong>EMPRESA:</strong> Nome da empresa (Obrigatório pois nenhuma foi
+                    selecionada no filtro global).
+                  </li>
+                )}
                 <li>
                   <strong>CENTROCUSTO:</strong> Código exato do Centro de Custo TGA.
                 </li>
                 <li>
                   <strong>CONTACONTABIL:</strong> Código Reduzido da Conta Contábil.
                 </li>
-              </ul>
+              </ul>{' '}
               <p className="mt-3 text-xs opacity-80">
                 Outras colunas serão ignoradas. Linhas sem correspondência exata no banco serão
                 marcadas como rejeitadas.
