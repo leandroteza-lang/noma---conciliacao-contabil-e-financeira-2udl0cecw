@@ -398,7 +398,7 @@ export default function CostCenters() {
               <Input
                 value={newCC.code}
                 onChange={(e) => setNewCC({ ...newCC, code: e.target.value })}
-                placeholder="Ex: 1.01"
+                placeholder="Ex: 1.01.001"
               />
             </div>
             <div className="space-y-2">
