@@ -1087,6 +1087,17 @@ export default function CostCenters() {
                   ))}
                 </SelectContent>
               </Select>
+              <Select value={filterCategory} onValueChange={setFilterCategory}>
+                <SelectTrigger className="w-[160px] bg-white">
+                  <SelectValue placeholder="Categoria" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas Categorias</SelectItem>
+                  <SelectItem value="receitas">1 - Receitas</SelectItem>
+                  <SelectItem value="despesas">2 - Despesas</SelectItem>
+                  <SelectItem value="investimentos">3 - Investimentos</SelectItem>
+                </SelectContent>
+              </Select>
               <Select value={filterTipoLcto} onValueChange={setFilterTipoLcto}>
                 <SelectTrigger className="w-[140px] bg-white">
                   <SelectValue placeholder="Tipo" />
