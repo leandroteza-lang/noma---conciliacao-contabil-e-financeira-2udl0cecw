@@ -138,30 +138,26 @@ Deno.serve(async (req: Request) => {
         } else {
           const workbook = XLSX.read(bytes, { type: 'array' })
           sheetNames = workbook.SheetNames
-          const targetSheet =
-            payload.sheetName && workbook.SheetNames.includes(payload.sheetName)
-              ? payload.sheetName
-              : workbook.SheetNames[0]
+          const targetSheet = payload.sheetName && workbook.SheetNames.includes(payload.sheetName)
+            ? payload.sheetName
+            : workbook.SheetNames[0]
           const worksheet = workbook.Sheets[targetSheet]
           rawRecords = XLSX.utils.sheet_to_json(worksheet, { defval: '' })
         }
 
         if (payload.action === 'PREVIEW') {
           const headers = rawRecords.length > 0 ? Object.keys(rawRecords[0]) : []
-          return new Response(
-            JSON.stringify({
-              sheets: sheetNames,
-              headers: headers,
-              previewRows: rawRecords.slice(0, 3),
-            }),
-            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
-          )
+          return new Response(JSON.stringify({
+            sheets: sheetNames,
+            headers: headers,
+            previewRows: rawRecords.slice(0, 3)
+          }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
         }
 
         records = rawRecords.map((r: any) => {
           const normalized: any = {}
           for (const key in r) {
-            const mappedKey = columnMapping[key] || key
+            const mappedKey = columnMapping[key] || key;
             const cleanKey = mappedKey
               .normalize('NFD')
               .replace(/[\u0300-\u036f]/g, '')
