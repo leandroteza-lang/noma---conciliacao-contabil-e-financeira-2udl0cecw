@@ -36,7 +36,9 @@ export function ImportMappingModal({ open, onOpenChange, orgId }: ImportMappingM
       const reader = new FileReader()
       reader.onload = async (e) => {
         try {
-          const base64 = (e.target?.result as string).split(',')[1]
+          const result = e.target?.result as string
+          if (!result) throw new Error('Falha ao ler o arquivo')
+          const base64 = result.split(',')[1]
 
           const { data, error } = await supabase.functions.invoke('import-data', {
             body: {
