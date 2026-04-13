@@ -87,6 +87,7 @@ export function ImportMappingModal({ open, onOpenChange, orgId }: ImportMappingM
             })
 
             if (error) throw error
+            if (data?.error) throw new Error(data.error)
             if (data?.sheets) {
               setSheets(data.sheets)
               if (data.sheets.length > 0) {
