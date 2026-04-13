@@ -303,12 +303,6 @@ export default function CostCenters() {
     }
   }, [costCenters, filterOrg])
 
-  const getIndent = (code: string) => {
-    if (!code) return 0
-    const level = (code.match(/\./g) || []).length
-    return level * 1.5
-  }
-
   const handleCreate = async () => {
     if (!newCC.organization_id || !newCC.code || !newCC.description) {
       toast({
@@ -1162,10 +1156,7 @@ export default function CostCenters() {
                               : 'font-medium text-slate-600',
                           )}
                         >
-                          <div
-                            className="flex items-center"
-                            style={{ paddingLeft: `${getIndent(cc.code)}rem` }}
-                          >
+                          <div className="flex items-center">
                             {isSynthetic ? (
                               <Layers className="h-3 w-3 text-indigo-500 mr-2 flex-shrink-0" />
                             ) : (
