@@ -1112,9 +1112,9 @@ export default function CostCenters() {
                       }}
                     />
                   </TableHead>
+                  {renderSortableHeader('Empresa', 'organization.name')}
                   {renderSortableHeader('Código', 'code', 'w-[180px]')}
                   {renderSortableHeader('Descrição', 'description', 'min-w-[250px] w-full')}
-                  {renderSortableHeader('Empresa', 'organization.name')}
                   {renderSortableHeader('Tipo Lcto', 'tipo_lcto')}
                   {renderSortableHeader('Operacional', 'operational')}
                   {renderSortableHeader('Tipo TGA', 'tipo_conta_tga.nome')}
@@ -1188,6 +1188,14 @@ export default function CostCenters() {
                           />
                         </TableCell>
                         <TableCell className="p-2">
+                          <div className="flex items-center gap-2 opacity-80">
+                            <Building2 className="h-3 w-3 flex-shrink-0" />
+                            <span className="truncate max-w-[250px]">
+                              {cc.organization?.name || '-'}
+                            </span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="p-2">
                           <div className="flex items-center">
                             {isSynthetic ? (
                               <Layers className="h-3 w-3 mr-2 flex-shrink-0 opacity-70" />
@@ -1202,14 +1210,6 @@ export default function CostCenters() {
                           style={{ paddingLeft: `${codeLevel * 1.5 + 0.5}rem` }}
                         >
                           {cc.description}
-                        </TableCell>
-                        <TableCell className="p-2">
-                          <div className="flex items-center gap-2 opacity-80">
-                            <Building2 className="h-3 w-3 flex-shrink-0" />
-                            <span className="truncate max-w-[250px]">
-                              {cc.organization?.name || '-'}
-                            </span>
-                          </div>
                         </TableCell>
                         <TableCell className="p-2">
                           {cc.tipo_lcto ? (
