@@ -138,30 +138,26 @@ Deno.serve(async (req: Request) => {
         } else {
           const workbook = XLSX.read(bytes, { type: 'array' })
           sheetNames = workbook.SheetNames
-          const targetSheet =
-            payload.sheetName && workbook.SheetNames.includes(payload.sheetName)
-              ? payload.sheetName
-              : workbook.SheetNames[0]
+          const targetSheet = payload.sheetName && workbook.SheetNames.includes(payload.sheetName)
+            ? payload.sheetName
+            : workbook.SheetNames[0]
           const worksheet = workbook.Sheets[targetSheet]
           rawRecords = XLSX.utils.sheet_to_json(worksheet, { defval: '' })
         }
 
         if (payload.action === 'PREVIEW') {
           const headers = rawRecords.length > 0 ? Object.keys(rawRecords[0]) : []
-          return new Response(
-            JSON.stringify({
-              sheets: sheetNames,
-              headers: headers,
-              previewRows: rawRecords.slice(0, 3),
-            }),
-            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
-          )
+          return new Response(JSON.stringify({
+            sheets: sheetNames,
+            headers: headers,
+            previewRows: rawRecords.slice(0, 3)
+          }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
         }
 
         records = rawRecords.map((r: any) => {
           const normalized: any = {}
           for (const key in r) {
-            const mappedKey = columnMapping[key] || key
+            const mappedKey = columnMapping[key] || key;
             const cleanKey = mappedKey
               .normalize('NFD')
               .replace(/[\u0300-\u036f]/g, '')
@@ -785,11 +781,7 @@ Deno.serve(async (req: Request) => {
         const { error: insErr } = await supabase.from('bank_accounts').insert(chunk)
         if (insErr) {
           chunk.forEach((c: any) => {
-            addError(
-              0,
-              `Erro na inserção em lote: ${insErr.message} - Conta: ${c.account_number}`,
-              c,
-            )
+            addError(0, `Erro na inserção em lote: ${insErr.message} - Conta: ${c.account_number}`, c)
           })
         } else {
           inserted += chunk.length
@@ -834,11 +826,7 @@ Deno.serve(async (req: Request) => {
           }
           orgId = empresa ? orgMap.get(String(empresa).trim().toLowerCase()) : null
           if (!orgId) {
-            addError(
-              rowNum,
-              `A empresa "${empresa}" não foi encontrada na sua conta. (Obrigatório)`,
-              row,
-            )
+            addError(rowNum, `A empresa "${empresa}" não foi encontrada na sua conta. (Obrigatório)`, row)
             continue
           }
         }
@@ -872,7 +860,7 @@ Deno.serve(async (req: Request) => {
         }
 
         const ccCodeMap = new Map<string, string>()
-        existingCCs.forEach((cc) => {
+        existingCCs.forEach(cc => {
           if (cc.code) ccCodeMap.set(cc.code.trim(), cc.id)
         })
 
@@ -899,7 +887,7 @@ Deno.serve(async (req: Request) => {
 
         const tgaNameMap = new Map<string, string>()
         const tgaCodeMap = new Map<string, string>()
-        existingTga.forEach((tga) => {
+        existingTga.forEach(tga => {
           if (tga.nome) tgaNameMap.set(tga.nome.trim().toLowerCase(), tga.id)
           if (tga.codigo) tgaCodeMap.set(tga.codigo.trim().toUpperCase(), tga.id)
         })
@@ -937,11 +925,7 @@ Deno.serve(async (req: Request) => {
             parentId = ccCodeMap.get(parentCode)
 
             if (!parentId && !allowIncomplete) {
-              addError(
-                rowNum,
-                `Centro de custo pai "${parentCode}" não encontrado para hierarquia.`,
-                row,
-              )
+              addError(rowNum, `Centro de custo pai "${parentCode}" não encontrado para hierarquia.`, row)
               continue
             }
           }
