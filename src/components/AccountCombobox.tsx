@@ -18,6 +18,7 @@ export interface Account {
   classification: string | null
   account_name: string | null
   hierarchyPath?: string
+  hierarchyArray?: Account[]
 }
 
 interface AccountComboboxProps {

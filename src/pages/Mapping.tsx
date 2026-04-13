@@ -29,7 +29,7 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from '@/components/ui/pagination'
-import { Search, Upload, Sparkles, AlertCircle } from 'lucide-react'
+import { Search, Upload, Sparkles, AlertCircle, ListTree } from 'lucide-react'
 import { toast } from 'sonner'
 import { AccountCombobox, Account } from '@/components/AccountCombobox'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
@@ -50,6 +50,7 @@ export default function Mapping() {
   const ITEMS_PER_PAGE = 50
 
   const [selectedCCs, setSelectedCCs] = useState<Set<string>>(new Set())
+  const [expandedAccounts, setExpandedAccounts] = useState<Set<string>>(new Set())
   const [batchCaId, setBatchCaId] = useState<string>('')
   const [importOpen, setImportOpen] = useState(false)
 
@@ -116,6 +117,8 @@ export default function Mapping() {
   const enrichedCAs = useMemo(() => {
     return cas.map((ca) => {
       let hierarchyPath = ca.account_name || ''
+      let hierarchyArray: Account[] = []
+
       if (ca.classification) {
         const parents = cas
           .filter(
@@ -131,13 +134,15 @@ export default function Mapping() {
             .filter(Boolean)
             .join(' > ')
         }
+        hierarchyArray = [...parents, ca]
+      } else {
+        hierarchyArray = [ca]
       }
-      return { ...ca, hierarchyPath }
+      return { ...ca, hierarchyPath, hierarchyArray }
     })
   }, [cas])
 
   const enrichedCCs = useMemo(() => {
-    // Ordenar hierarquicamente pelo código
     const sortedCCs = [...ccs].sort((a, b) =>
       (a.code || '').localeCompare(b.code || '', undefined, { numeric: true }),
     )
@@ -145,7 +150,6 @@ export default function Mapping() {
     return sortedCCs.map((cc) => {
       const mapping = mappings.find((m) => m.cost_center_id === cc.id)
       const level = (cc.code || '').split('.').length - 1
-      // É sintético se existir algum outro centro de custo que comece com o código dele + "."
       const isSynthetic = sortedCCs.some(
         (other) => other.id !== cc.id && (other.code || '').startsWith((cc.code || '') + '.'),
       )
@@ -292,6 +296,13 @@ export default function Mapping() {
     if (newSet.has(id)) newSet.delete(id)
     else newSet.add(id)
     setSelectedCCs(newSet)
+  }
+
+  const toggleExpand = (id: string) => {
+    const newSet = new Set(expandedAccounts)
+    if (newSet.has(id)) newSet.delete(id)
+    else newSet.add(id)
+    setExpandedAccounts(newSet)
   }
 
   const toggleAll = () => {
@@ -498,9 +509,9 @@ export default function Mapping() {
               {paginatedCCs.map((cc) => (
                 <TableRow
                   key={cc.id}
-                  className={cn('transition-colors h-9 border-b border-slate-100', getRowStyle(cc))}
+                  className={cn('transition-colors border-b border-slate-100', getRowStyle(cc))}
                 >
-                  <TableCell className="p-1 px-4 w-[40px] border-r border-slate-200/40">
+                  <TableCell className="p-1.5 px-4 w-[40px] border-r border-slate-200/40 align-top pt-2">
                     {!cc.isSynthetic && (
                       <Checkbox
                         checked={selectedCCs.has(cc.id)}
@@ -508,7 +519,7 @@ export default function Mapping() {
                       />
                     )}
                   </TableCell>
-                  <TableCell className="p-1 border-r border-slate-200/40">
+                  <TableCell className="p-1.5 border-r border-slate-200/40 align-top pt-2">
                     <div
                       className="flex items-center gap-2"
                       style={{ paddingLeft: `${cc.level * 1.25}rem` }}
@@ -553,15 +564,88 @@ export default function Mapping() {
                       </TooltipProvider>
                     </div>
                   </TableCell>
-                  <TableCell className="p-1 px-2">
+                  <TableCell className="p-1.5 px-2 align-top pt-1.5">
                     {(!cc.isSynthetic || cc.mappingId) && (
-                      <div className="max-w-[400px]">
-                        <AccountCombobox
-                          accounts={enrichedCAs}
-                          value={cc.mappedCa?.id}
-                          onChange={(caId) => handleMap(cc.id, caId, cc.mappingId)}
-                          onClear={cc.mappingId ? () => handleRemove(cc.mappingId) : undefined}
-                        />
+                      <div className="flex flex-col gap-1 w-full max-w-[500px]">
+                        <div className="flex items-start gap-1 w-full">
+                          <div className="flex-1">
+                            <AccountCombobox
+                              accounts={enrichedCAs}
+                              value={cc.mappedCa?.id}
+                              onChange={(caId) => handleMap(cc.id, caId, cc.mappingId)}
+                              onClear={cc.mappingId ? () => handleRemove(cc.mappingId) : undefined}
+                            />
+                          </div>
+                          {cc.mappedCa &&
+                            cc.mappedCa.hierarchyArray &&
+                            cc.mappedCa.hierarchyArray.length > 1 && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => toggleExpand(cc.id)}
+                                className={cn(
+                                  'h-8 px-2 text-xs font-medium shrink-0 transition-colors',
+                                  expandedAccounts.has(cc.id)
+                                    ? 'bg-slate-200 text-slate-800'
+                                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200',
+                                )}
+                                title="Ver raiz da conta"
+                              >
+                                <ListTree className="h-3.5 w-3.5 mr-1" />
+                                {expandedAccounts.has(cc.id) ? 'Recolher' : 'Expandir'}
+                              </Button>
+                            )}
+                        </div>
+
+                        {expandedAccounts.has(cc.id) &&
+                          cc.mappedCa &&
+                          cc.mappedCa.hierarchyArray && (
+                            <div className="mt-1 mb-1 p-2 bg-slate-50/80 rounded border border-slate-200 shadow-sm animate-in fade-in slide-in-from-top-1">
+                              <div className="text-[9px] font-bold uppercase text-slate-400 mb-1.5 tracking-wider ml-1">
+                                Raiz Hierárquica
+                              </div>
+                              <div className="space-y-1 relative before:absolute before:inset-y-0 before:left-[7px] before:w-px before:bg-slate-300 pb-1">
+                                {cc.mappedCa.hierarchyArray.map((node: any, idx: number) => {
+                                  const isLast = idx === cc.mappedCa.hierarchyArray.length - 1
+                                  return (
+                                    <div
+                                      key={node.id}
+                                      className="flex items-start gap-2 relative z-10"
+                                    >
+                                      <div className="flex flex-col items-center justify-start h-full mt-1 bg-transparent">
+                                        <div
+                                          className={cn(
+                                            'w-1.5 h-1.5 rounded-full ring-2 ring-slate-50 shadow-sm',
+                                            isLast ? 'bg-blue-500 ring-blue-100' : 'bg-slate-400',
+                                          )}
+                                        />
+                                      </div>
+                                      <div
+                                        className={cn(
+                                          'flex items-center gap-1.5',
+                                          isLast ? 'opacity-100' : 'opacity-75',
+                                        )}
+                                      >
+                                        <span className="font-mono text-[10px] font-semibold text-slate-500 bg-white px-1 rounded border border-slate-100 shadow-sm">
+                                          {node.classification || node.account_code}
+                                        </span>
+                                        <span
+                                          className={cn(
+                                            'text-[11px] leading-none',
+                                            isLast
+                                              ? 'font-semibold text-slate-800'
+                                              : 'font-medium text-slate-600',
+                                          )}
+                                        >
+                                          {node.account_name}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  )
+                                })}
+                              </div>
+                            </div>
+                          )}
                       </div>
                     )}
                   </TableCell>
