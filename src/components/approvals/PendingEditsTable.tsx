@@ -198,4 +198,3 @@ export function PendingEditsTable({ edits, processingId, onApprove, onReject }: 
       </Dialog>
     </>
   )
-}

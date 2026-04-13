@@ -1216,12 +1216,4 @@ export default function Approvals() {
                 processingId={processingId}
                 onRestore={handleRestore}
                 onApprove={handleApprove}
-                onHardDelete={handleHardDelete}
-              />
-            )}
-          </CardContent>
-        </Card>
-      </Tabs>
-    </div>
-  )
-}
+                onHardDelete={handleHar
