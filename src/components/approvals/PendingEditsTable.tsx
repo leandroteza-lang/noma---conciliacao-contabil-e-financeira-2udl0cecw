@@ -27,6 +27,20 @@ export function PendingEditsTable({ edits, processingId, onApprove, onReject }: 
       organizations: 'Empresa',
       tipo_conta_tga: 'Tipo Conta TGA',
       cadastro_usuarios: 'Usuário',
+      'Centros de Custo': 'Centro de Custo',
+      'Centro de Custo': 'Centro de Custo',
+      'Contas Bancárias': 'Conta Bancária',
+      'Conta Bancária': 'Conta Bancária',
+      Usuários: 'Usuário',
+      Usuário: 'Usuário',
+      Departamentos: 'Departamento',
+      Departamento: 'Departamento',
+      Empresas: 'Empresa',
+      Empresa: 'Empresa',
+      'Plano de Contas': 'Conta Contábil',
+      'Conta Contábil': 'Conta Contábil',
+      'Tipos de Conta TGA': 'Tipo Conta TGA',
+      'Tipo Conta TGA': 'Tipo Conta TGA',
     }
     return map[type] || type
   }

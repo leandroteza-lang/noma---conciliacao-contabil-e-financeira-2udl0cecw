@@ -297,15 +297,16 @@ export default function Approvals() {
       const bankEditIds = fetchedEdits
         .filter(
           (e: any) =>
-            (e.entity_type === 'bank_accounts' || e.entity_type === 'bank_account') &&
-            e.proposed_changes?.__action?.new !== 'CREATE',
+            ['bank_accounts', 'bank_account', 'Contas Bancárias', 'Conta Bancária'].includes(
+              e.entity_type,
+            ) && e.proposed_changes?.__action?.new !== 'CREATE',
         )
         .map((e: any) => e.entity_id)
 
       const userEditIds = fetchedEdits
         .filter(
           (e: any) =>
-            (e.entity_type === 'cadastro_usuarios' || e.entity_type === 'employee') &&
+            ['cadastro_usuarios', 'employee', 'Usuários', 'Usuário'].includes(e.entity_type) &&
             e.proposed_changes?.__action?.new !== 'CREATE',
         )
         .map((e: any) => e.entity_id)
@@ -313,15 +314,16 @@ export default function Approvals() {
       const deptEditIds = fetchedEdits
         .filter(
           (e: any) =>
-            (e.entity_type === 'departments' || e.entity_type === 'department') &&
-            e.proposed_changes?.__action?.new !== 'CREATE',
+            ['departments', 'department', 'Departamentos', 'Departamento'].includes(
+              e.entity_type,
+            ) && e.proposed_changes?.__action?.new !== 'CREATE',
         )
         .map((e: any) => e.entity_id)
 
       const orgEditIds = fetchedEdits
         .filter(
           (e: any) =>
-            (e.entity_type === 'organizations' || e.entity_type === 'organization') &&
+            ['organizations', 'organization', 'Empresas', 'Empresa'].includes(e.entity_type) &&
             e.proposed_changes?.__action?.new !== 'CREATE',
         )
         .map((e: any) => e.entity_id)
@@ -329,24 +331,27 @@ export default function Approvals() {
       const costCenterEditIds = fetchedEdits
         .filter(
           (e: any) =>
-            (e.entity_type === 'cost_centers' || e.entity_type === 'cost_center') &&
-            e.proposed_changes?.__action?.new !== 'CREATE',
+            ['cost_centers', 'cost_center', 'Centros de Custo', 'Centro de Custo'].includes(
+              e.entity_type,
+            ) && e.proposed_changes?.__action?.new !== 'CREATE',
         )
         .map((e: any) => e.entity_id)
 
       const chartAccountEditIds = fetchedEdits
         .filter(
           (e: any) =>
-            (e.entity_type === 'chart_of_accounts' || e.entity_type === 'chart_account') &&
-            e.proposed_changes?.__action?.new !== 'CREATE',
+            ['chart_of_accounts', 'chart_account', 'Plano de Contas', 'Conta Contábil'].includes(
+              e.entity_type,
+            ) && e.proposed_changes?.__action?.new !== 'CREATE',
         )
         .map((e: any) => e.entity_id)
 
       const tgaEditIds = fetchedEdits
         .filter(
           (e: any) =>
-            (e.entity_type === 'tipo_conta_tga' || e.entity_type === 'tga_account') &&
-            e.proposed_changes?.__action?.new !== 'CREATE',
+            ['tipo_conta_tga', 'tga_account', 'Tipos de Conta TGA', 'Tipo Conta TGA'].includes(
+              e.entity_type,
+            ) && e.proposed_changes?.__action?.new !== 'CREATE',
         )
         .map((e: any) => e.entity_id)
 
@@ -425,19 +430,41 @@ export default function Approvals() {
           e.entity_name = desc ? `${bank ? bank + ' - ' : ''}${desc} (Novo)` : 'Novo Registro'
           e.is_create = true
           delete e.proposed_changes.__action
-        } else if (e.entity_type === 'bank_accounts' || e.entity_type === 'bank_account') {
+        } else if (
+          ['bank_accounts', 'bank_account', 'Contas Bancárias', 'Conta Bancária'].includes(
+            e.entity_type,
+          )
+        ) {
           e.entity_name = bMap[e.entity_id] || 'Conta Bancária Desconhecida'
-        } else if (e.entity_type === 'cadastro_usuarios' || e.entity_type === 'employee') {
+        } else if (
+          ['cadastro_usuarios', 'employee', 'Usuários', 'Usuário'].includes(e.entity_type)
+        ) {
           e.entity_name = uMap[e.entity_id] || 'Usuário Desconhecido'
-        } else if (e.entity_type === 'departments' || e.entity_type === 'department') {
+        } else if (
+          ['departments', 'department', 'Departamentos', 'Departamento'].includes(e.entity_type)
+        ) {
           e.entity_name = dMap[e.entity_id] || 'Departamento Desconhecido'
-        } else if (e.entity_type === 'organizations' || e.entity_type === 'organization') {
+        } else if (
+          ['organizations', 'organization', 'Empresas', 'Empresa'].includes(e.entity_type)
+        ) {
           e.entity_name = oMap[e.entity_id] || 'Empresa Desconhecida'
-        } else if (e.entity_type === 'cost_centers' || e.entity_type === 'cost_center') {
+        } else if (
+          ['cost_centers', 'cost_center', 'Centros de Custo', 'Centro de Custo'].includes(
+            e.entity_type,
+          )
+        ) {
           e.entity_name = cMap[e.entity_id] || 'Centro de Custo Desconhecido'
-        } else if (e.entity_type === 'chart_of_accounts' || e.entity_type === 'chart_account') {
+        } else if (
+          ['chart_of_accounts', 'chart_account', 'Plano de Contas', 'Conta Contábil'].includes(
+            e.entity_type,
+          )
+        ) {
           e.entity_name = caMap[e.entity_id] || 'Conta Contábil Desconhecida'
-        } else if (e.entity_type === 'tipo_conta_tga' || e.entity_type === 'tga_account') {
+        } else if (
+          ['tipo_conta_tga', 'tga_account', 'Tipos de Conta TGA', 'Tipo Conta TGA'].includes(
+            e.entity_type,
+          )
+        ) {
           e.entity_name = tMap[e.entity_id] || 'Tipo Conta TGA Desconhecido'
         }
       })
@@ -721,23 +748,37 @@ export default function Approvals() {
       const tableMap: Record<string, string> = {
         bank_accounts: 'bank_accounts',
         bank_account: 'bank_accounts',
+        'Contas Bancárias': 'bank_accounts',
+        'Conta Bancária': 'bank_accounts',
         cadastro_usuarios: 'cadastro_usuarios',
         employee: 'cadastro_usuarios',
+        Usuários: 'cadastro_usuarios',
+        Usuário: 'cadastro_usuarios',
         departments: 'departments',
         department: 'departments',
+        Departamentos: 'departments',
+        Departamento: 'departments',
         organizations: 'organizations',
         organization: 'organizations',
+        Empresas: 'organizations',
+        Empresa: 'organizations',
         cost_centers: 'cost_centers',
         cost_center: 'cost_centers',
+        'Centros de Custo': 'cost_centers',
+        'Centro de Custo': 'cost_centers',
         chart_of_accounts: 'chart_of_accounts',
         chart_account: 'chart_of_accounts',
+        'Plano de Contas': 'chart_of_accounts',
+        'Conta Contábil': 'chart_of_accounts',
         tipo_conta_tga: 'tipo_conta_tga',
         tga_account: 'tipo_conta_tga',
+        'Tipos de Conta TGA': 'tipo_conta_tga',
+        'Tipo Conta TGA': 'tipo_conta_tga',
       }
       const tableName = tableMap[edit.entity_type]
-      if (!tableName) throw new Error('Entidade não suportada')
+      if (!tableName) throw new Error(`Entidade não suportada: ${edit.entity_type}`)
 
-      if (edit.entity_type === 'cadastro_usuarios' && newValues.companies) {
+      if (tableName === 'cadastro_usuarios' && newValues.companies) {
         const comps = newValues.companies
         delete newValues.companies
 
