@@ -32,6 +32,7 @@ import {
 import { Search, Upload, Sparkles, AlertCircle } from 'lucide-react'
 import { toast } from 'sonner'
 import { AccountCombobox, Account } from '@/components/AccountCombobox'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { ImportMappingModal } from '@/components/ImportMappingModal'
 import { cn } from '@/lib/utils'
 
@@ -112,6 +113,29 @@ export default function Mapping() {
     }
   }, [debouncedLoad, orgId])
 
+  const enrichedCAs = useMemo(() => {
+    return cas.map((ca) => {
+      let hierarchyPath = ca.account_name || ''
+      if (ca.classification) {
+        const parents = cas
+          .filter(
+            (c) =>
+              c.classification &&
+              ca.classification!.startsWith(c.classification) &&
+              ca.classification !== c.classification,
+          )
+          .sort((a, b) => a.classification!.length - b.classification!.length)
+
+        if (parents.length > 0) {
+          hierarchyPath = [...parents.map((p) => p.account_name), ca.account_name]
+            .filter(Boolean)
+            .join(' > ')
+        }
+      }
+      return { ...ca, hierarchyPath }
+    })
+  }, [cas])
+
   const enrichedCCs = useMemo(() => {
     // Ordenar hierarquicamente pelo código
     const sortedCCs = [...ccs].sort((a, b) =>
@@ -126,15 +150,29 @@ export default function Mapping() {
         (other) => other.id !== cc.id && (other.code || '').startsWith((cc.code || '') + '.'),
       )
 
+      let hierarchyPath = cc.description || ''
+      if (cc.code) {
+        const parents = sortedCCs
+          .filter((c) => c.code && cc.code!.startsWith(c.code) && cc.code !== c.code)
+          .sort((a, b) => a.code!.length - b.code!.length)
+
+        if (parents.length > 0) {
+          hierarchyPath = [...parents.map((p) => p.description), cc.description]
+            .filter(Boolean)
+            .join(' > ')
+        }
+      }
+
       return {
         ...cc,
         mappingId: mapping?.id,
-        mappedCa: mapping ? cas.find((c) => c.id === mapping.chart_account_id) : null,
+        mappedCa: mapping ? enrichedCAs.find((c) => c.id === mapping.chart_account_id) : null,
         level,
         isSynthetic,
+        hierarchyPath,
       }
     })
-  }, [ccs, cas, mappings])
+  }, [ccs, enrichedCAs, mappings])
 
   const filteredCCs = useMemo(() => {
     let result = enrichedCCs
@@ -144,12 +182,15 @@ export default function Mapping() {
       const q = search.toLowerCase()
       result = result.filter((cc) => {
         const matchCC =
-          cc.code?.toLowerCase().includes(q) || cc.description?.toLowerCase().includes(q)
+          cc.code?.toLowerCase().includes(q) ||
+          cc.description?.toLowerCase().includes(q) ||
+          cc.hierarchyPath?.toLowerCase().includes(q)
         const matchCA =
           cc.mappedCa &&
           (cc.mappedCa.account_code?.toLowerCase().includes(q) ||
             cc.mappedCa.classification?.toLowerCase().includes(q) ||
-            cc.mappedCa.account_name?.toLowerCase().includes(q))
+            cc.mappedCa.account_name?.toLowerCase().includes(q) ||
+            cc.mappedCa.hierarchyPath?.toLowerCase().includes(q))
         return matchCC || matchCA
       })
     }
@@ -409,7 +450,7 @@ export default function Mapping() {
             </div>
             <div className="flex items-center gap-2 w-full sm:w-[400px]">
               <AccountCombobox
-                accounts={cas}
+                accounts={enrichedCAs}
                 value={batchCaId}
                 onChange={setBatchCaId}
                 placeholder="Buscar conta a aplicar..."
@@ -482,24 +523,41 @@ export default function Mapping() {
                       >
                         {cc.isSynthetic ? 'S' : 'A'}
                       </Badge>
-                      <div className="flex items-center gap-2 truncate">
-                        <span className="font-mono text-xs font-semibold whitespace-nowrap">
-                          {cc.code}
-                        </span>
-                        <span className="text-xs truncate opacity-90" title={cc.description}>
-                          {cc.description}
-                        </span>
-                        {!cc.mappingId && !cc.isSynthetic && (
-                          <AlertCircle className="h-3 w-3 text-amber-500 shrink-0" />
-                        )}
-                      </div>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <div className="flex flex-col overflow-hidden text-left cursor-default">
+                              <div className="flex items-center gap-2 truncate">
+                                <span className="font-mono text-[11px] font-semibold whitespace-nowrap">
+                                  {cc.code}
+                                </span>
+                                <span className="text-xs truncate font-medium">
+                                  {cc.description}
+                                </span>
+                                {!cc.mappingId && !cc.isSynthetic && (
+                                  <AlertCircle className="h-3 w-3 text-amber-500 shrink-0" />
+                                )}
+                              </div>
+                              {cc.hierarchyPath && cc.hierarchyPath !== cc.description && (
+                                <span className="text-[9px] opacity-70 truncate mt-0.5 leading-none">
+                                  {cc.hierarchyPath}
+                                </span>
+                              )}
+                            </div>
+                          </TooltipTrigger>
+                          <TooltipContent side="right" className="max-w-sm text-xs z-50">
+                            <p className="font-semibold mb-1">Caminho Hierárquico:</p>
+                            <p className="text-slate-300">{cc.hierarchyPath}</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
                     </div>
                   </TableCell>
                   <TableCell className="p-1 px-2">
                     {(!cc.isSynthetic || cc.mappingId) && (
                       <div className="max-w-[400px]">
                         <AccountCombobox
-                          accounts={cas}
+                          accounts={enrichedCAs}
                           value={cc.mappedCa?.id}
                           onChange={(caId) => handleMap(cc.id, caId, cc.mappingId)}
                           onClear={cc.mappingId ? () => handleRemove(cc.mappingId) : undefined}

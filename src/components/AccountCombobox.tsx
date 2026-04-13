@@ -17,6 +17,7 @@ export interface Account {
   account_code: string | null
   classification: string | null
   account_name: string | null
+  hierarchyPath?: string
 }
 
 interface AccountComboboxProps {
@@ -48,7 +49,8 @@ export function AccountCombobox({
           return (
             a.account_code?.toLowerCase().includes(q) ||
             a.classification?.toLowerCase().includes(q) ||
-            a.account_name?.toLowerCase().includes(q)
+            a.account_name?.toLowerCase().includes(q) ||
+            a.hierarchyPath?.toLowerCase().includes(q)
           )
         })
         .slice(0, 50)
@@ -62,22 +64,35 @@ export function AccountCombobox({
           role="combobox"
           aria-expanded={open}
           disabled={disabled}
-          className="w-full justify-between font-normal text-left overflow-hidden relative group"
+          title={selected?.hierarchyPath || ''}
+          className={cn(
+            'w-full justify-between font-normal text-left overflow-hidden relative group',
+            selected ? 'h-auto min-h-8 py-1' : 'h-8 py-1',
+          )}
         >
           {selected ? (
-            <span className="flex items-center gap-2 truncate pr-6">
-              {selected.account_code && (
-                <span className="font-mono bg-slate-100 px-1.5 py-0.5 rounded text-xs text-slate-700">
-                  {selected.account_code}
+            <div className="flex flex-col overflow-hidden text-left w-full pr-6">
+              <span className="flex items-center gap-2 truncate">
+                {selected.account_code && (
+                  <span className="font-mono bg-slate-100 px-1.5 py-0.5 rounded text-[10px] text-slate-700">
+                    {selected.account_code}
+                  </span>
+                )}
+                {selected.classification && (
+                  <span className="font-mono text-[10px] text-slate-500">
+                    {selected.classification}
+                  </span>
+                )}
+                <span className="text-xs truncate font-medium">{selected.account_name}</span>
+              </span>
+              {selected.hierarchyPath && selected.hierarchyPath !== selected.account_name && (
+                <span className="text-[9px] text-slate-400 truncate mt-0.5 leading-none">
+                  {selected.hierarchyPath}
                 </span>
               )}
-              {selected.classification && (
-                <span className="font-mono text-xs text-slate-500">{selected.classification}</span>
-              )}
-              <span className="truncate">{selected.account_name}</span>
-            </span>
+            </div>
           ) : (
-            <span className="text-slate-500 truncate">{placeholder}</span>
+            <span className="text-xs text-slate-500 truncate">{placeholder}</span>
           )}
 
           <div className="absolute right-2 flex items-center bg-white pl-1">
@@ -122,16 +137,24 @@ export function AccountCombobox({
                       value === account.id ? 'opacity-100' : 'opacity-0',
                     )}
                   />
-                  <div className="flex flex-col overflow-hidden">
-                    <span className="font-mono text-xs text-slate-500 flex gap-1">
+                  <div className="flex flex-col overflow-hidden w-full">
+                    <span className="font-mono text-[10px] text-slate-500 flex gap-1">
                       {account.account_code && (
                         <span className="bg-slate-100 px-1 rounded">{account.account_code}</span>
                       )}
                       {account.classification && <span>{account.classification}</span>}
                     </span>
-                    <span className="text-sm truncate font-medium mt-0.5">
+                    <span className="text-xs truncate font-medium mt-0.5">
                       {account.account_name}
                     </span>
+                    {account.hierarchyPath && account.hierarchyPath !== account.account_name && (
+                      <span
+                        className="text-[10px] text-slate-400 truncate mt-0.5"
+                        title={account.hierarchyPath}
+                      >
+                        {account.hierarchyPath}
+                      </span>
+                    )}
                   </div>
                 </CommandItem>
               ))}
