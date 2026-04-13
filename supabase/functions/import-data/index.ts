@@ -138,26 +138,30 @@ Deno.serve(async (req: Request) => {
         } else {
           const workbook = XLSX.read(bytes, { type: 'array' })
           sheetNames = workbook.SheetNames
-          const targetSheet = payload.sheetName && workbook.SheetNames.includes(payload.sheetName)
-            ? payload.sheetName
-            : workbook.SheetNames[0]
+          const targetSheet =
+            payload.sheetName && workbook.SheetNames.includes(payload.sheetName)
+              ? payload.sheetName
+              : workbook.SheetNames[0]
           const worksheet = workbook.Sheets[targetSheet]
           rawRecords = XLSX.utils.sheet_to_json(worksheet, { defval: '' })
         }
 
         if (payload.action === 'PREVIEW') {
           const headers = rawRecords.length > 0 ? Object.keys(rawRecords[0]) : []
-          return new Response(JSON.stringify({
-            sheets: sheetNames,
-            headers: headers,
-            previewRows: rawRecords.slice(0, 3)
-          }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+          return new Response(
+            JSON.stringify({
+              sheets: sheetNames,
+              headers: headers,
+              previewRows: rawRecords.slice(0, 3),
+            }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+          )
         }
 
         records = rawRecords.map((r: any) => {
           const normalized: any = {}
           for (const key in r) {
-            const mappedKey = columnMapping[key] || key;
+            const mappedKey = columnMapping[key] || key
             const cleanKey = mappedKey
               .normalize('NFD')
               .replace(/[\u0300-\u036f]/g, '')
@@ -703,6 +707,9 @@ Deno.serve(async (req: Request) => {
       if (organizationId && !validOrgs.has(organizationId)) {
         throw new Error('A empresa selecionada é inválida ou você não tem permissão.')
       }
+
+      const toInsertBankAccounts = []
+
       for (let i = 0; i < records.length; i++) {
         const row = records[i]
         const rowNum = i + 1
@@ -758,7 +765,7 @@ Deno.serve(async (req: Request) => {
           continue
         }
 
-        const { error: insertError } = await supabase.from('bank_accounts').insert({
+        toInsertBankAccounts.push({
           organization_id: orgId,
           account_code: String(contaContabil || ''),
           account_type: String(getVal(row, ['CODCAIXA', 'TIPODECONTA', 'TIPO']) || ''),
@@ -770,40 +777,54 @@ Deno.serve(async (req: Request) => {
           check_digit: rawCheckDigit,
           company_name: String(empresa || ''),
         })
+        existingAccSet.add(accountKey)
+      }
 
-        if (insertError) {
-          addError(rowNum, `Erro ao inserir no banco - ${insertError.message}`, row)
+      for (let i = 0; i < toInsertBankAccounts.length; i += 500) {
+        const chunk = toInsertBankAccounts.slice(i, i + 500)
+        const { error: insErr } = await supabase.from('bank_accounts').insert(chunk)
+        if (insErr) {
+          chunk.forEach((c: any) => {
+            addError(
+              0,
+              `Erro na inserção em lote: ${insErr.message} - Conta: ${c.account_number}`,
+              c,
+            )
+          })
         } else {
-          existingAccSet.add(accountKey)
-          inserted++
+          inserted += chunk.length
         }
       }
     } else if (type === 'COST_CENTERS') {
+      const getVal = (r: any, possibleKeys: string[]) => {
+        const keys = Object.keys(r)
+        for (const pk of possibleKeys) {
+          const cleanPk = pk.replace(/[^A-Z0-9]/g, '')
+          for (const k of keys) {
+            const cleanK = k.replace(/[^A-Z0-9]/g, '')
+            if (cleanK === cleanPk) return r[k]
+          }
+        }
+        return null
+      }
+
       const sortedRecords = [...records].map((r, i) => ({ ...r, _originalIndex: i + 1 }))
-      sortedRecords.sort((a, b) => String(a['COD'] || '').length - String(b['COD'] || '').length)
+      sortedRecords.sort((a, b) => {
+        const codeA = String(getVal(a, ['COD', 'CODIGO']) || '')
+        const codeB = String(getVal(b, ['COD', 'CODIGO']) || '')
+        return codeA.length - codeB.length
+      })
 
       if (organizationId && !validOrgs.has(organizationId)) {
         throw new Error('A empresa selecionada é inválida ou você não tem permissão.')
       }
+
+      const recordsByOrg = new Map<string, any[]>()
+
       for (let i = 0; i < sortedRecords.length; i++) {
         const row = sortedRecords[i]
         const rowNum = row._originalIndex
-
-        const getVal = (r: any, possibleKeys: string[]) => {
-          const keys = Object.keys(r)
-          for (const pk of possibleKeys) {
-            const cleanPk = pk.replace(/[^A-Z0-9]/g, '')
-            for (const k of keys) {
-              const cleanK = k.replace(/[^A-Z0-9]/g, '')
-              if (cleanK === cleanPk) return r[k]
-            }
-          }
-          return null
-        }
-
         const empresa = getVal(row, ['EMPRESA'])
-        const code = getVal(row, ['COD', 'CODIGO'])
-        const description = getVal(row, ['DESCRICAO', 'NOME'])
 
         let orgId = organizationId
         if (!orgId) {
@@ -811,7 +832,6 @@ Deno.serve(async (req: Request) => {
             addError(rowNum, 'A coluna Empresa está vazia e nenhuma empresa foi selecionada.', row)
             continue
           }
-
           orgId = empresa ? orgMap.get(String(empresa).trim().toLowerCase()) : null
           if (!orgId) {
             addError(
@@ -823,116 +843,153 @@ Deno.serve(async (req: Request) => {
           }
         }
 
-        if (!allowIncomplete && (!code || String(code).trim() === '')) {
-          addError(rowNum, 'A coluna Código está vazia.', row)
-          continue
+        if (!recordsByOrg.has(orgId)) {
+          recordsByOrg.set(orgId, [])
         }
+        recordsByOrg.get(orgId)!.push({ row, rowNum })
+      }
 
-        if (!allowIncomplete && (!description || String(description).trim() === '')) {
-          addError(rowNum, 'A coluna Descrição está vazia.', row)
-          continue
-        }
-
-        const strCode = String(code || '').trim()
-        let parentId = null
-
-        if (strCode.includes('.') && orgId) {
-          const codeParts = strCode.split('.')
-          codeParts.pop()
-          const parentCode = codeParts.join('.')
-
-          const { data: parentData, error: parentError } = await supabase
+      for (const [orgId, orgRecords] of recordsByOrg.entries()) {
+        let existingCCs: any[] = []
+        let fetchHasMore = true
+        let fetchPage = 0
+        while (fetchHasMore) {
+          const { data: pageData, error: ccErr } = await supabase
             .from('cost_centers')
-            .select('id')
+            .select('id, code')
             .eq('organization_id', orgId)
-            .eq('code', parentCode)
             .is('deleted_at', null)
-            .maybeSingle()
+            .range(fetchPage * 1000, (fetchPage + 1) * 1000 - 1)
 
-          if (parentError && !allowIncomplete) {
-            addError(rowNum, `Erro ao buscar centro de custo pai - ${parentError.message}`, row)
-            continue
-          }
-
-          if (parentData) {
-            parentId = parentData.id
-          } else if (!allowIncomplete) {
-            addError(
-              rowNum,
-              `Centro de custo pai "${parentCode}" não encontrado para hierarquia.`,
-              row,
-            )
-            continue
-          }
-        }
-
-        const { data: existing, error: checkError } = await supabase
-          .from('cost_centers')
-          .select('id')
-          .eq('organization_id', orgId || '')
-          .eq('code', strCode)
-          .is('deleted_at', null)
-          .maybeSingle()
-
-        if (checkError && orgId) {
-          addError(rowNum, `Falha ao verificar duplicata - ${checkError.message}`, row)
-          continue
-        }
-
-        if (existing) {
-          addError(rowNum, `O código "${strCode}" já está cadastrado para esta empresa.`, row)
-          continue
-        }
-
-        let tipoTgaId = null
-        const strTipoTga = String(getVal(row, ['TIPOTGA']) || '').trim()
-        if (strTipoTga && orgId) {
-          const { data: tgaData } = await supabase
-            .from('tipo_conta_tga')
-            .select('id')
-            .eq('organization_id', orgId)
-            .ilike('nome', strTipoTga)
-            .is('deleted_at', null)
-            .maybeSingle()
-
-          if (tgaData) {
-            tipoTgaId = tgaData.id
+          if (ccErr) throw new Error(`Erro ao buscar centros de custo: ${ccErr.message}`)
+          if (pageData && pageData.length > 0) {
+            existingCCs.push(...pageData)
+            fetchPage++
+            if (pageData.length < 1000) fetchHasMore = false
           } else {
-            const { data: tgaDataCode } = await supabase
-              .from('tipo_conta_tga')
-              .select('id')
-              .eq('organization_id', orgId)
-              .eq('codigo', strTipoTga)
-              .is('deleted_at', null)
-              .maybeSingle()
-            if (tgaDataCode) {
-              tipoTgaId = tgaDataCode.id
-            } else if (!allowIncomplete) {
+            fetchHasMore = false
+          }
+        }
+
+        const ccCodeMap = new Map<string, string>()
+        existingCCs.forEach((cc) => {
+          if (cc.code) ccCodeMap.set(cc.code.trim(), cc.id)
+        })
+
+        let existingTga: any[] = []
+        fetchHasMore = true
+        fetchPage = 0
+        while (fetchHasMore) {
+          const { data: pageData, error: tgaErr } = await supabase
+            .from('tipo_conta_tga')
+            .select('id, nome, codigo')
+            .eq('organization_id', orgId)
+            .is('deleted_at', null)
+            .range(fetchPage * 1000, (fetchPage + 1) * 1000 - 1)
+
+          if (tgaErr) throw new Error(`Erro ao buscar tipos TGA: ${tgaErr.message}`)
+          if (pageData && pageData.length > 0) {
+            existingTga.push(...pageData)
+            fetchPage++
+            if (pageData.length < 1000) fetchHasMore = false
+          } else {
+            fetchHasMore = false
+          }
+        }
+
+        const tgaNameMap = new Map<string, string>()
+        const tgaCodeMap = new Map<string, string>()
+        existingTga.forEach((tga) => {
+          if (tga.nome) tgaNameMap.set(tga.nome.trim().toLowerCase(), tga.id)
+          if (tga.codigo) tgaCodeMap.set(tga.codigo.trim().toUpperCase(), tga.id)
+        })
+
+        const toInsert = []
+
+        for (const item of orgRecords) {
+          const { row, rowNum } = item
+          const code = getVal(row, ['COD', 'CODIGO'])
+          const description = getVal(row, ['DESCRICAO', 'NOME'])
+
+          if (!allowIncomplete && (!code || String(code).trim() === '')) {
+            addError(rowNum, 'A coluna Código está vazia.', row)
+            continue
+          }
+
+          if (!allowIncomplete && (!description || String(description).trim() === '')) {
+            addError(rowNum, 'A coluna Descrição está vazia.', row)
+            continue
+          }
+
+          const strCode = String(code || '').trim()
+
+          if (ccCodeMap.has(strCode)) {
+            addError(rowNum, `O código "${strCode}" já está cadastrado para esta empresa.`, row)
+            continue
+          }
+
+          let parentId = null
+          if (strCode.includes('.')) {
+            const codeParts = strCode.split('.')
+            codeParts.pop()
+            const parentCode = codeParts.join('.')
+
+            parentId = ccCodeMap.get(parentCode)
+
+            if (!parentId && !allowIncomplete) {
+              addError(
+                rowNum,
+                `Centro de custo pai "${parentCode}" não encontrado para hierarquia.`,
+                row,
+              )
+              continue
+            }
+          }
+
+          let tipoTgaId = null
+          const strTipoTga = String(getVal(row, ['TIPOTGA']) || '').trim()
+          if (strTipoTga) {
+            const byName = tgaNameMap.get(strTipoTga.toLowerCase())
+            const byCode = tgaCodeMap.get(strTipoTga.toUpperCase())
+
+            tipoTgaId = byName || byCode || null
+
+            if (!tipoTgaId && !allowIncomplete) {
               addError(rowNum, `Tipo TGA "${strTipoTga}" não encontrado.`, row)
               continue
             }
           }
+
+          const newId = crypto.randomUUID()
+          ccCodeMap.set(strCode, newId)
+
+          toInsert.push({
+            id: newId,
+            organization_id: orgId,
+            code: strCode,
+            description: String(description || ''),
+            parent_id: parentId || null,
+            type_tga: String(getVal(row, ['TIPO']) || ''),
+            tipo_tga_id: tipoTgaId,
+            fixed_variable: String(getVal(row, ['FIXOOUVARIAVEL', 'FIXO_VARIAVEL']) || ''),
+            classification: String(getVal(row, ['CLASSIFICACAO']) || ''),
+            operational: String(getVal(row, ['OPERACIONAL']) || ''),
+            tipo_lcto: String(getVal(row, ['TIPOLCTO', 'TIPO_LCTO']) || ''),
+            contabiliza: String(getVal(row, ['CONTABILIZA']) || ''),
+            observacoes: String(getVal(row, ['OBSERVACOES']) || ''),
+          })
         }
 
-        const { error: insertError } = await supabase.from('cost_centers').insert({
-          organization_id: orgId,
-          code: strCode,
-          description: String(description || ''),
-          parent_id: parentId || null,
-          type_tga: String(getVal(row, ['TIPO']) || ''),
-          tipo_tga_id: tipoTgaId,
-          fixed_variable: String(getVal(row, ['FIXOOUVARIAVEL', 'FIXO_VARIAVEL']) || ''),
-          classification: String(getVal(row, ['CLASSIFICACAO']) || ''),
-          operational: String(getVal(row, ['OPERACIONAL']) || ''),
-          tipo_lcto: String(getVal(row, ['TIPOLCTO', 'TIPO_LCTO']) || ''),
-          contabiliza: String(getVal(row, ['CONTABILIZA']) || ''),
-          observacoes: String(getVal(row, ['OBSERVACOES']) || ''),
-        } as any)
-
-        if (insertError) {
-          addError(rowNum, `Erro ao inserir no banco - ${insertError.message}`, row)
-        } else {
-          inserted++
+        for (let i = 0; i < toInsert.length; i += 500) {
+          const chunk = toInsert.slice(i, i + 500)
+          const { error: insErr } = await supabase.from('cost_centers').insert(chunk)
+          if (insErr) {
+            chunk.forEach((c: any) => {
+              addError(0, `Erro na inserção em lote: ${insErr.message} - Código: ${c.code}`, c)
+            })
+          } else {
+            inserted += chunk.length
+          }
         }
       }
     } else if (type === 'CHART_ACCOUNTS') {
