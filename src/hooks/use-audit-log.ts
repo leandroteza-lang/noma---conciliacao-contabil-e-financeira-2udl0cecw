@@ -23,6 +23,8 @@ export function useAuditLog() {
 
     if (changes) {
       for (const [key, value] of Object.entries(changes)) {
+        if (['_snapshot', 'id', 'created_at', 'updated_at', 'deleted_at'].includes(key)) continue
+
         if (value !== null && typeof value === 'object' && ('old' in value || 'new' in value)) {
           const oldValStr = normalizeValue(value.old)
           const newValStr = normalizeValue(value.new)
@@ -34,9 +36,19 @@ export function useAuditLog() {
             }
           }
         } else if (value !== undefined) {
-          validChanges[key] = {
-            old: '',
-            new: normalizeValue(value),
+          const flatVal = normalizeValue(value)
+          // Para UPDATE, descartar flat values pois não sabemos se realmente mudaram.
+          // O banco de dados via Trigger garantirá a auditoria precisa das mudanças.
+          if (
+            action === 'CREATE' ||
+            action === 'INSERT' ||
+            action === 'DELETE' ||
+            action === 'SOFT_DELETE'
+          ) {
+            validChanges[key] = {
+              old: '',
+              new: flatVal,
+            }
           }
         }
       }

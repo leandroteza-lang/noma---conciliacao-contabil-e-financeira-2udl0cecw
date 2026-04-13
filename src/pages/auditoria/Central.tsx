@@ -558,8 +558,34 @@ function ExpandableRow({
                   <Skeleton className="h-8 w-full rounded-md" />
                   <Skeleton className="h-8 w-full rounded-md" />
                 </div>
-              ) : details.filter((d) => !['_entity_name', 'entity_name'].includes(d.field_name))
-                  .length > 0 ? (
+              ) : details.filter((d) => {
+                  const isInternal = [
+                    '_entity_name',
+                    'entity_name',
+                    '_snapshot',
+                    'id',
+                    'created_at',
+                    'updated_at',
+                    'deleted_at',
+                    'deleted_by',
+                    'organization_id',
+                    'user_id',
+                    'pending_deletion',
+                  ].includes(d.field_name)
+                  if (isInternal) return false
+
+                  const oldV =
+                    d.old_value !== null && d.old_value !== undefined
+                      ? String(d.old_value).trim()
+                      : ''
+                  const newV =
+                    d.new_value !== null && d.new_value !== undefined
+                      ? String(d.new_value).trim()
+                      : ''
+                  if (oldV === newV) return false
+
+                  return true
+                }).length > 0 ? (
                 <div className="rounded-md border border-border bg-background shadow-sm overflow-hidden w-full max-w-4xl">
                   <Table>
                     <TableHeader className="bg-muted/30">
@@ -586,7 +612,34 @@ function ExpandableRow({
                     </TableHeader>
                     <TableBody>
                       {details
-                        .filter((d) => !['_entity_name', 'entity_name'].includes(d.field_name))
+                        .filter((d) => {
+                          const isInternal = [
+                            '_entity_name',
+                            'entity_name',
+                            '_snapshot',
+                            'id',
+                            'created_at',
+                            'updated_at',
+                            'deleted_at',
+                            'deleted_by',
+                            'organization_id',
+                            'user_id',
+                            'pending_deletion',
+                          ].includes(d.field_name)
+                          if (isInternal) return false
+
+                          const oldV =
+                            d.old_value !== null && d.old_value !== undefined
+                              ? String(d.old_value).trim()
+                              : ''
+                          const newV =
+                            d.new_value !== null && d.new_value !== undefined
+                              ? String(d.new_value).trim()
+                              : ''
+                          if (oldV === newV) return false
+
+                          return true
+                        })
                         .map((detail) => (
                           <TableRow key={detail.id} className="hover:bg-muted/30">
                             <TableCell className="font-medium text-foreground text-sm">
