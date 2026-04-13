@@ -340,7 +340,45 @@ function ExpandableRow({
     if (!expanded && details.length === 0) {
       setLoadingDetails(true)
       const { data } = await supabase.from('audit_details').select('*').eq('audit_log_id', log.id)
-      setDetails(data || [])
+
+      let finalDetails = data || []
+
+      if (finalDetails.length === 0 && log.changes && typeof log.changes === 'object') {
+        finalDetails = Object.entries(log.changes).map(([field, val]: [string, any], index) => {
+          let oldVal = null
+          let newVal = null
+          if (val !== null && typeof val === 'object' && ('old' in val || 'new' in val)) {
+            oldVal =
+              val.old !== undefined && val.old !== null
+                ? typeof val.old === 'object'
+                  ? JSON.stringify(val.old)
+                  : String(val.old)
+                : null
+            newVal =
+              val.new !== undefined && val.new !== null
+                ? typeof val.new === 'object'
+                  ? JSON.stringify(val.new)
+                  : String(val.new)
+                : null
+          } else {
+            newVal =
+              val !== undefined && val !== null
+                ? typeof val === 'object'
+                  ? JSON.stringify(val)
+                  : String(val)
+                : null
+          }
+          return {
+            id: `fallback-${index}`,
+            audit_log_id: log.id,
+            field_name: field,
+            old_value: oldVal,
+            new_value: newVal,
+          }
+        })
+      }
+
+      setDetails(finalDetails)
       setLoadingDetails(false)
     }
     setExpanded(!expanded)
@@ -520,7 +558,8 @@ function ExpandableRow({
                   <Skeleton className="h-8 w-full rounded-md" />
                   <Skeleton className="h-8 w-full rounded-md" />
                 </div>
-              ) : details.length > 0 ? (
+              ) : details.filter((d) => !['_entity_name', 'entity_name'].includes(d.field_name))
+                  .length > 0 ? (
                 <div className="rounded-md border border-border bg-background shadow-sm overflow-hidden w-full max-w-4xl">
                   <Table>
                     <TableHeader className="bg-muted/30">
@@ -546,42 +585,44 @@ function ExpandableRow({
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {details.map((detail) => (
-                        <TableRow key={detail.id} className="hover:bg-muted/30">
-                          <TableCell className="font-medium text-foreground text-sm">
-                            {translateField(detail.field_name)}
-                          </TableCell>
-                          <TableCell className="text-muted-foreground text-sm">
-                            {detail.old_value !== null &&
-                            detail.old_value !== undefined &&
-                            String(detail.old_value).trim() !== '' ? (
-                              <span className="line-through decoration-destructive/40">
-                                {formatValue(String(detail.old_value), detail.field_name, dict)}
-                              </span>
-                            ) : (
-                              <span className="italic text-muted-foreground/50 text-xs uppercase tracking-wider">
-                                Vazio
-                              </span>
-                            )}
-                          </TableCell>
-                          <TableCell className="text-emerald-600 dark:text-emerald-400 font-medium text-sm">
-                            {detail.new_value !== null &&
-                            detail.new_value !== undefined &&
-                            String(detail.new_value).trim() !== '' ? (
-                              formatValue(String(detail.new_value), detail.field_name, dict)
-                            ) : (
-                              <span className="italic text-muted-foreground/50 text-xs uppercase tracking-wider font-normal">
-                                Vazio
-                              </span>
-                            )}
-                          </TableCell>
-                          <TableCell className="text-center">
-                            <Badge className="bg-indigo-100 hover:bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-400 shadow-none px-3 py-0.5 text-[11px] font-bold rounded-full tracking-wide whitespace-nowrap">
-                              Alterado
-                            </Badge>
-                          </TableCell>
-                        </TableRow>
-                      ))}
+                      {details
+                        .filter((d) => !['_entity_name', 'entity_name'].includes(d.field_name))
+                        .map((detail) => (
+                          <TableRow key={detail.id} className="hover:bg-muted/30">
+                            <TableCell className="font-medium text-foreground text-sm">
+                              {translateField(detail.field_name)}
+                            </TableCell>
+                            <TableCell className="text-muted-foreground text-sm">
+                              {detail.old_value !== null &&
+                              detail.old_value !== undefined &&
+                              String(detail.old_value).trim() !== '' ? (
+                                <span className="line-through decoration-destructive/40">
+                                  {formatValue(String(detail.old_value), detail.field_name, dict)}
+                                </span>
+                              ) : (
+                                <span className="italic text-muted-foreground/50 text-xs uppercase tracking-wider">
+                                  Vazio
+                                </span>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-emerald-600 dark:text-emerald-400 font-medium text-sm">
+                              {detail.new_value !== null &&
+                              detail.new_value !== undefined &&
+                              String(detail.new_value).trim() !== '' ? (
+                                formatValue(String(detail.new_value), detail.field_name, dict)
+                              ) : (
+                                <span className="italic text-muted-foreground/50 text-xs uppercase tracking-wider font-normal">
+                                  Vazio
+                                </span>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-center">
+                              <Badge className="bg-indigo-100 hover:bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-400 shadow-none px-3 py-0.5 text-[11px] font-bold rounded-full tracking-wide whitespace-nowrap">
+                                Alterado
+                              </Badge>
+                            </TableCell>
+                          </TableRow>
+                        ))}
                     </TableBody>
                   </Table>
                 </div>

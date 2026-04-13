@@ -23,7 +23,7 @@ export function useAuditLog() {
 
     if (changes) {
       for (const [key, value] of Object.entries(changes)) {
-        if (value && typeof value === 'object' && ('old' in value || 'new' in value)) {
+        if (value !== null && typeof value === 'object' && ('old' in value || 'new' in value)) {
           const oldValStr = normalizeValue(value.old)
           const newValStr = normalizeValue(value.new)
 

@@ -13,7 +13,7 @@
     "export-chart-accounts": 12,
     "export-tga-accounts": 9,
     "chat": 22,
-    "audit-log": 13,
+    "audit-log": 14,
     "cleanup-audit-logs": 3,
     "delete-chart-accounts": 2,
     "export-cost-centers": 1

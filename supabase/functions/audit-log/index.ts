@@ -157,7 +157,12 @@ Deno.serve(async (req: Request) => {
         const entityId = logData.entityId || logData.entity_id
         const action = logData.action
         const performedBy = logData.performedBy || logData.performed_by
-        const changes = logData.changes
+        let changes = logData.changes
+        if (typeof changes === 'string') {
+          try {
+            changes = JSON.parse(changes)
+          } catch (e) {}
+        }
         const ipAddress = logData.ipAddress || logData.ip_address
         const userAgent = logData.userAgent || logData.user_agent
         const sessionId = logData.sessionId || logData.session_id
@@ -403,10 +408,25 @@ Deno.serve(async (req: Request) => {
             let oldVal = null
             let newVal = null
             if (val !== null && typeof val === 'object' && ('old' in val || 'new' in val)) {
-              oldVal = val.old !== undefined && val.old !== null ? (typeof val.old === 'object' ? JSON.stringify(val.old) : String(val.old)) : null
-              newVal = val.new !== undefined && val.new !== null ? (typeof val.new === 'object' ? JSON.stringify(val.new) : String(val.new)) : null
+              oldVal =
+                val.old !== undefined && val.old !== null
+                  ? typeof val.old === 'object'
+                    ? JSON.stringify(val.old)
+                    : String(val.old)
+                  : null
+              newVal =
+                val.new !== undefined && val.new !== null
+                  ? typeof val.new === 'object'
+                    ? JSON.stringify(val.new)
+                    : String(val.new)
+                  : null
             } else {
-              newVal = val !== undefined && val !== null ? (typeof val === 'object' ? JSON.stringify(val) : String(val)) : null
+              newVal =
+                val !== undefined && val !== null
+                  ? typeof val === 'object'
+                    ? JSON.stringify(val)
+                    : String(val)
+                  : null
             }
             return {
               audit_log_id: auditLog.id,
