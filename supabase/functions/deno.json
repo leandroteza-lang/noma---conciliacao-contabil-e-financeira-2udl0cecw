@@ -1,6 +1,6 @@
 {
   "_versions": {
-    "import-data": 56,
+    "import-data": 57,
     "generate-entries": 10,
     "export-dashboard": 9,
     "export-analysis": 9,
@@ -15,6 +15,7 @@
     "chat": 22,
     "audit-log": 12,
     "cleanup-audit-logs": 3,
-    "delete-chart-accounts": 2
+    "delete-chart-accounts": 2,
+    "export-cost-centers": 1
   }
 }

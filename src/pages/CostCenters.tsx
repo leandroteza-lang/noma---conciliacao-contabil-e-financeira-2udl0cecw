@@ -1,6 +1,21 @@
-import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
-import { Plus, Search, Building2, Layers, Trash2, ChevronLeft, ChevronRight } from 'lucide-react'
+import { useEffect, useState, useMemo } from 'react'
+import {
+  Plus,
+  Search,
+  Building2,
+  Layers,
+  Trash2,
+  ChevronLeft,
+  ChevronRight,
+  FileText,
+  FileSpreadsheet,
+  Download,
+  RotateCcw,
+  Filter,
+  Activity,
+  BarChart2,
+  BookOpen,
+} from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -15,7 +30,12 @@ import {
 } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
-import { ImportCostCentersModal } from '@/components/ImportCostCentersModal'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import {
   Select,
   SelectContent,
@@ -31,9 +51,12 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
+import { ImportCostCentersModal } from '@/components/ImportCostCentersModal'
+import { UndoImportCostCentersModal } from '@/components/UndoImportCostCentersModal'
 import { useAuth } from '@/hooks/use-auth'
 import { useToast } from '@/hooks/use-toast'
 import { useAuditLog } from '@/hooks/use-audit-log'
+import { cn } from '@/lib/utils'
 
 interface CostCenter {
   id: string
@@ -49,6 +72,7 @@ interface CostCenter {
   contabiliza: string | null
   observacoes: string | null
   organization: { name: string } | null
+  organization_id: string | null
   tipo_conta_tga: { nome: string } | null
 }
 
@@ -62,12 +86,17 @@ export default function CostCenters() {
   const [selectedIds, setSelectedIds] = useState<string[]>([])
 
   const [currentPage, setCurrentPage] = useState(1)
-  const [itemsPerPage, setItemsPerPage] = useState(10)
+  const [itemsPerPage, setItemsPerPage] = useState(50)
+
+  const [filterOrg, setFilterOrg] = useState<string>('all')
+  const [filterTipoLcto, setFilterTipoLcto] = useState<string>('all')
 
   const canDelete = role === 'admin'
 
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [isImportOpen, setIsImportOpen] = useState(false)
+  const [isUndoOpen, setIsUndoOpen] = useState(false)
+
   const [orgs, setOrgs] = useState<{ id: string; name: string }[]>([])
   const [tgaOptions, setTgaOptions] = useState<{ id: string; nome: string }[]>([])
   const [submitting, setSubmitting] = useState(false)
@@ -84,8 +113,16 @@ export default function CostCenters() {
     observacoes: '',
   })
 
+  useEffect(() => {
+    loadOrgs()
+  }, [])
+
   const loadOrgs = async () => {
-    const { data } = await supabase.from('organizations').select('id, name').is('deleted_at', null)
+    const { data } = await supabase
+      .from('organizations')
+      .select('id, name')
+      .is('deleted_at', null)
+      .order('name')
     if (data) setOrgs(data)
   }
 
@@ -101,6 +138,73 @@ export default function CostCenters() {
       setTgaOptions([])
     }
   }, [newCC.organization_id])
+
+  const fetchCostCenters = async () => {
+    setLoading(true)
+    const { data, error } = await supabase
+      .from('cost_centers')
+      .select('*, organization:organizations(name), tipo_conta_tga(nome)')
+      .neq('pending_deletion', true)
+      .is('deleted_at', null)
+      .order('code', { ascending: true })
+
+    if (!error && data) {
+      setCostCenters(data as any)
+      setSelectedIds((prev) => prev.filter((id) => data.some((d) => d.id === id)))
+    }
+    setLoading(false)
+  }
+
+  useEffect(() => {
+    if (!user) return
+    fetchCostCenters()
+
+    const channel = supabase
+      .channel('schema-db-changes-cc')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'cost_centers' }, () => {
+        fetchCostCenters()
+      })
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [user])
+
+  const filteredData = costCenters.filter((cc) => {
+    const term = search.toLowerCase()
+    const matchesSearch =
+      (cc.code && cc.code.toLowerCase().includes(term)) ||
+      (cc.description && cc.description.toLowerCase().includes(term)) ||
+      (cc.organization?.name && cc.organization.name.toLowerCase().includes(term))
+
+    const matchesOrg = filterOrg === 'all' || cc.organization_id === filterOrg
+    const matchesTipo = filterTipoLcto === 'all' || cc.tipo_lcto === filterTipoLcto
+
+    return matchesSearch && matchesOrg && matchesTipo
+  })
+
+  const totalPages = Math.max(1, Math.ceil(filteredData.length / itemsPerPage))
+  const paginatedData = filteredData.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage,
+  )
+
+  const metrics = useMemo(() => {
+    const relevant =
+      filterOrg === 'all' ? costCenters : costCenters.filter((c) => c.organization_id === filterOrg)
+    return {
+      total: relevant.length,
+      synthetic: relevant.filter((c) => c.tipo_lcto === 'S').length,
+      analytic: relevant.filter((c) => c.tipo_lcto === 'A').length,
+    }
+  }, [costCenters, filterOrg])
+
+  const getIndent = (code: string) => {
+    if (!code) return 0
+    const level = (code.match(/\./g) || []).length
+    return level * 1.5
+  }
 
   const handleCreate = async () => {
     if (!newCC.organization_id || !newCC.code || !newCC.description) {
@@ -160,60 +264,6 @@ export default function CostCenters() {
     }
   }
 
-  const fetchCostCenters = async () => {
-    setLoading(true)
-    const { data, error } = await supabase
-      .from('cost_centers')
-      .select('*, organization:organizations(name), tipo_conta_tga(nome)')
-      .neq('pending_deletion', true)
-      .is('deleted_at', null)
-      .order('code', { ascending: true })
-
-    if (!error && data) {
-      setCostCenters(data as any)
-      setSelectedIds((prev) => prev.filter((id) => data.some((d) => d.id === id)))
-    }
-    setLoading(false)
-  }
-
-  useEffect(() => {
-    if (!user) return
-
-    fetchCostCenters()
-
-    const channel = supabase
-      .channel('schema-db-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'cost_centers' }, () => {
-        fetchCostCenters()
-      })
-      .subscribe()
-
-    return () => {
-      supabase.removeChannel(channel)
-    }
-  }, [user])
-
-  const filteredData = costCenters.filter((cc) => {
-    const term = search.toLowerCase()
-    return (
-      (cc.code && cc.code.toLowerCase().includes(term)) ||
-      (cc.description && cc.description.toLowerCase().includes(term)) ||
-      (cc.organization?.name && cc.organization.name.toLowerCase().includes(term))
-    )
-  })
-
-  const totalPages = Math.max(1, Math.ceil(filteredData.length / itemsPerPage))
-  const paginatedData = filteredData.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage,
-  )
-
-  const getIndent = (code: string) => {
-    if (!code) return 0
-    const level = (code.match(/\./g) || []).length
-    return level * 1.5
-  }
-
   const handleBulkDelete = async () => {
     if (selectedIds.length === 0) return
     if (!confirm(`Deseja solicitar a exclusão de ${selectedIds.length} centro(s) de custo?`)) return
@@ -240,7 +290,6 @@ export default function CostCenters() {
         (linkedMovements && linkedMovements.length > 0) ||
         (linkedMappings && linkedMappings.length > 0) ||
         (linkedChildren && linkedChildren.length > 0)
-
       return { id, hasRelations }
     })
 
@@ -276,7 +325,7 @@ export default function CostCenters() {
     if (blocked.length > 0) {
       toast({
         title: 'Ação Parcialmente Bloqueada',
-        description: `${blocked.length} centro(s) de custo possuem vínculos (movimentações, mapeamentos ou sub-centros) e não puderam ser excluídos.`,
+        description: `${blocked.length} centro(s) de custo possuem vínculos e não puderam ser excluídos.`,
         variant: 'destructive',
       })
     }
@@ -338,35 +387,154 @@ export default function CostCenters() {
     }
   }
 
+  const handleExport = async (format: 'excel' | 'pdf' | 'csv' | 'txt') => {
+    try {
+      const payload = filteredData.map((cc) => ({
+        Empresa: cc.organization?.name || '',
+        Código: cc.code || '',
+        Descrição: cc.description || '',
+        'Tipo Lcto': cc.tipo_lcto || '',
+        Operacional: cc.operational || '',
+        'Tipo TGA': cc.tipo_conta_tga?.nome || '',
+        Tipo: cc.type_tga || '',
+        'Fixo/Variável': cc.fixed_variable || '',
+        Classificação: cc.classification || '',
+        Contabiliza: cc.contabiliza || '',
+      }))
+
+      const { data, error } = await supabase.functions.invoke('export-cost-centers', {
+        body: { format, data: payload },
+      })
+
+      if (error) throw error
+
+      if (format === 'excel') {
+        const link = document.createElement('a')
+        link.href = `data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,${data.excel}`
+        link.download = 'Centros_de_Custo.xlsx'
+        link.click()
+      } else if (format === 'pdf') {
+        const link = document.createElement('a')
+        link.href = data.pdf
+        link.download = 'Centros_de_Custo.pdf'
+        link.click()
+      } else if (format === 'csv') {
+        const blob = new Blob([data.csv], { type: 'text/csv;charset=utf-8;' })
+        const link = document.createElement('a')
+        link.href = URL.createObjectURL(blob)
+        link.download = 'Centros_de_Custo.csv'
+        link.click()
+      } else if (format === 'txt') {
+        const blob = new Blob([data.txt], { type: 'text/plain;charset=utf-8;' })
+        const link = document.createElement('a')
+        link.href = URL.createObjectURL(blob)
+        link.download = 'Centros_de_Custo.txt'
+        link.click()
+      }
+    } catch (err: any) {
+      toast({ title: 'Erro', description: err.message, variant: 'destructive' })
+    }
+  }
+
   return (
     <div className="container mx-auto max-w-7xl py-8 space-y-6 animate-fade-in-up">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Centros de Custo</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Centros de Custo (TGA)</h1>
           <p className="text-muted-foreground">
             Gerencie a hierarquia de centros de custo das suas empresas.
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={() => setIsImportOpen(true)}>
+        <div className="flex items-center gap-2 flex-wrap">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="gap-2">
+                <Download className="h-4 w-4" />
+                Exportar
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => handleExport('excel')} className="gap-2">
+                <FileSpreadsheet className="h-4 w-4 text-green-600" /> Excel
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleExport('csv')} className="gap-2">
+                <FileText className="h-4 w-4 text-slate-600" /> CSV
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleExport('txt')} className="gap-2">
+                <FileText className="h-4 w-4 text-slate-400" /> TXT
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleExport('pdf')} className="gap-2">
+                <FileText className="h-4 w-4 text-red-600" /> PDF
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <Button variant="outline" onClick={() => setIsUndoOpen(true)} className="gap-2">
+            <RotateCcw className="h-4 w-4" /> Desfazer Importação
+          </Button>
+          <Button variant="outline" onClick={() => setIsImportOpen(true)} className="gap-2">
             Importar Planilha
           </Button>
-          <Button
-            onClick={() => {
-              loadOrgs()
-              setIsCreateOpen(true)
-            }}
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            Novo Centro de Custo
+          <Button onClick={() => setIsCreateOpen(true)} className="gap-2">
+            <Plus className="h-4 w-4" /> Novo Centro de Custo
           </Button>
         </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <Card className="bg-gradient-to-br from-indigo-500 to-indigo-600 text-white shadow-lg border-0">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-indigo-100 font-medium text-sm">Total de Centros</p>
+                <p className="text-3xl font-bold mt-1">{metrics.total}</p>
+              </div>
+              <div className="bg-white/20 p-3 rounded-lg">
+                <BookOpen className="h-6 w-6 text-white" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-gradient-to-br from-emerald-500 to-emerald-600 text-white shadow-lg border-0">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-emerald-100 font-medium text-sm">Sintéticos</p>
+                <p className="text-3xl font-bold mt-1">{metrics.synthetic}</p>
+              </div>
+              <div className="bg-white/20 p-3 rounded-lg">
+                <BarChart2 className="h-6 w-6 text-white" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-gradient-to-br from-amber-500 to-amber-600 text-white shadow-lg border-0">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-amber-100 font-medium text-sm">Analíticos</p>
+                <p className="text-3xl font-bold mt-1">{metrics.analytic}</p>
+              </div>
+              <div className="bg-white/20 p-3 rounded-lg">
+                <Activity className="h-6 w-6 text-white" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       <ImportCostCentersModal
         open={isImportOpen}
         onOpenChange={setIsImportOpen}
         onImportSuccess={fetchCostCenters}
+      />
+      <UndoImportCostCentersModal
+        isOpen={isUndoOpen}
+        onClose={() => setIsUndoOpen(false)}
+        onSuccess={fetchCostCenters}
+        organizations={orgs}
       />
 
       <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
@@ -531,18 +699,44 @@ export default function CostCenters() {
               <CardTitle>Lista de Centros de Custo</CardTitle>
               <CardDescription>Visualize e filtre sua estrutura hierárquica.</CardDescription>
             </div>
-            <div className="relative w-full sm:w-72">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                type="search"
-                placeholder="Buscar por código ou descrição..."
-                className="pl-8"
-                value={search}
-                onChange={(e) => {
-                  setSearch(e.target.value)
-                  setCurrentPage(1)
-                }}
-              />{' '}
+            <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap w-full sm:w-auto">
+              <Select value={filterOrg} onValueChange={setFilterOrg}>
+                <SelectTrigger className="w-[180px] bg-white">
+                  <Filter className="h-4 w-4 mr-2 text-muted-foreground" />
+                  <SelectValue placeholder="Empresa" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas as Empresas</SelectItem>
+                  {orgs.map((o) => (
+                    <SelectItem key={o.id} value={o.id}>
+                      {o.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={filterTipoLcto} onValueChange={setFilterTipoLcto}>
+                <SelectTrigger className="w-[140px] bg-white">
+                  <SelectValue placeholder="Tipo" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos</SelectItem>
+                  <SelectItem value="S">Sintético (S)</SelectItem>
+                  <SelectItem value="A">Analítico (A)</SelectItem>
+                </SelectContent>
+              </Select>
+              <div className="relative w-full sm:w-64">
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  type="search"
+                  placeholder="Buscar..."
+                  className="pl-8 bg-white"
+                  value={search}
+                  onChange={(e) => {
+                    setSearch(e.target.value)
+                    setCurrentPage(1)
+                  }}
+                />
+              </div>
             </div>
           </div>
         </CardHeader>
@@ -574,100 +768,128 @@ export default function CostCenters() {
                   <TableHead>Fixo/Variável</TableHead>
                   <TableHead>Classificação</TableHead>
                   <TableHead>Contabiliza</TableHead>
-                  <TableHead>Observações</TableHead>
                   {canDelete && <TableHead className="text-right">Ações</TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {loading ? (
                   <TableRow>
-                    <TableCell colSpan={13} className="h-24 text-center">
+                    <TableCell colSpan={12} className="h-24 text-center">
                       Carregando centros de custo...
                     </TableCell>
                   </TableRow>
                 ) : paginatedData.length > 0 ? (
-                  paginatedData.map((cc) => (
-                    <TableRow key={cc.id} className="whitespace-nowrap">
-                      {canDelete && (
-                        <TableCell className="text-center">
-                          <Checkbox
-                            checked={selectedIds.includes(cc.id)}
-                            onCheckedChange={(checked) => {
-                              if (checked) setSelectedIds((prev) => [...prev, cc.id])
-                              else setSelectedIds((prev) => prev.filter((id) => id !== cc.id))
-                            }}
-                          />
-                        </TableCell>
-                      )}
-                      <TableCell className="font-medium">
-                        <div
-                          className="flex items-center"
-                          style={{ paddingLeft: `${getIndent(cc.code)}rem` }}
+                  paginatedData.map((cc) => {
+                    const isSynthetic = cc.tipo_lcto === 'S'
+                    return (
+                      <TableRow
+                        key={cc.id}
+                        className={cn(
+                          'whitespace-nowrap',
+                          isSynthetic && 'bg-slate-50/50 font-medium',
+                        )}
+                      >
+                        {canDelete && (
+                          <TableCell className="text-center">
+                            <Checkbox
+                              checked={selectedIds.includes(cc.id)}
+                              onCheckedChange={(checked) => {
+                                if (checked) setSelectedIds((prev) => [...prev, cc.id])
+                                else setSelectedIds((prev) => prev.filter((id) => id !== cc.id))
+                              }}
+                            />
+                          </TableCell>
+                        )}
+                        <TableCell
+                          className={cn(
+                            isSynthetic
+                              ? 'font-semibold text-slate-800'
+                              : 'font-medium text-slate-600',
+                          )}
                         >
-                          <Layers className="h-3 w-3 text-muted-foreground mr-2 opacity-50" />
-                          {cc.code}
-                        </div>
-                      </TableCell>
-                      <TableCell>{cc.description}</TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Building2 className="h-3 w-3 text-muted-foreground" />
-                          <span className="truncate max-w-[150px]">
-                            {cc.organization?.name || '-'}
-                          </span>
-                        </div>
-                      </TableCell>
-                      <TableCell>{cc.tipo_lcto || '-'}</TableCell>
-                      <TableCell>{cc.operational || '-'}</TableCell>
-                      <TableCell>{cc.tipo_conta_tga?.nome || '-'}</TableCell>
-                      <TableCell>
-                        {cc.type_tga ? <Badge variant="outline">{cc.type_tga}</Badge> : '-'}
-                      </TableCell>
-                      <TableCell>
-                        {cc.fixed_variable ? (
-                          <Badge variant="secondary">{cc.fixed_variable}</Badge>
-                        ) : (
-                          '-'
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {cc.classification ? (
-                          <Badge variant="outline" className="bg-primary/5">
-                            {cc.classification}
-                          </Badge>
-                        ) : (
-                          '-'
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {cc.contabiliza ? (
-                          <Badge variant={cc.contabiliza === 'SIM' ? 'default' : 'secondary'}>
-                            {cc.contabiliza}
-                          </Badge>
-                        ) : (
-                          '-'
-                        )}
-                      </TableCell>
-                      <TableCell className="max-w-[200px] truncate" title={cc.observacoes || ''}>
-                        {cc.observacoes || '-'}
-                      </TableCell>
-                      {canDelete && (
-                        <TableCell className="text-right">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleDelete(cc.id)}
-                            className="h-8 w-8 text-slate-500 hover:text-red-600 hover:bg-red-50"
+                          <div
+                            className="flex items-center"
+                            style={{ paddingLeft: `${getIndent(cc.code)}rem` }}
                           >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                            {isSynthetic ? (
+                              <Layers className="h-3 w-3 text-indigo-500 mr-2 flex-shrink-0" />
+                            ) : (
+                              <div className="w-3 mr-2" />
+                            )}
+                            {cc.code}
+                          </div>
                         </TableCell>
-                      )}
-                    </TableRow>
-                  ))
+                        <TableCell className={cn(isSynthetic && 'text-slate-800')}>
+                          {cc.description}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <Building2 className="h-3 w-3 text-muted-foreground" />
+                            <span className="truncate max-w-[150px] text-xs">
+                              {cc.organization?.name || '-'}
+                            </span>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          {cc.tipo_lcto ? (
+                            <Badge
+                              variant={isSynthetic ? 'default' : 'outline'}
+                              className={cn(isSynthetic && 'bg-indigo-500 hover:bg-indigo-600')}
+                            >
+                              {cc.tipo_lcto}
+                            </Badge>
+                          ) : (
+                            '-'
+                          )}
+                        </TableCell>
+                        <TableCell>{cc.operational || '-'}</TableCell>
+                        <TableCell>{cc.tipo_conta_tga?.nome || '-'}</TableCell>
+                        <TableCell>
+                          {cc.type_tga ? <Badge variant="outline">{cc.type_tga}</Badge> : '-'}
+                        </TableCell>
+                        <TableCell>
+                          {cc.fixed_variable ? (
+                            <Badge variant="secondary">{cc.fixed_variable}</Badge>
+                          ) : (
+                            '-'
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {cc.classification ? (
+                            <Badge variant="outline" className="bg-primary/5">
+                              {cc.classification}
+                            </Badge>
+                          ) : (
+                            '-'
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {cc.contabiliza ? (
+                            <Badge variant={cc.contabiliza === 'SIM' ? 'default' : 'secondary'}>
+                              {cc.contabiliza}
+                            </Badge>
+                          ) : (
+                            '-'
+                          )}
+                        </TableCell>
+                        {canDelete && (
+                          <TableCell className="text-right">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleDelete(cc.id)}
+                              className="h-8 w-8 text-slate-500 hover:text-red-600 hover:bg-red-50"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </TableCell>
+                        )}
+                      </TableRow>
+                    )
+                  })
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={13} className="h-24 text-center">
+                    <TableCell colSpan={12} className="h-24 text-center">
                       Nenhum centro de custo encontrado.
                     </TableCell>
                   </TableRow>
@@ -677,7 +899,7 @@ export default function CostCenters() {
           </div>
 
           {!loading && filteredData.length > 0 && (
-            <div className="flex flex-col sm:flex-row items-center justify-between p-4 border-t border-slate-100 gap-4">
+            <div className="flex flex-col sm:flex-row items-center justify-between p-4 border-t border-slate-100 gap-4 mt-2 bg-white rounded-b-lg">
               <p className="text-sm text-slate-500">
                 Mostrando {(currentPage - 1) * itemsPerPage + 1} até{' '}
                 {Math.min(currentPage * itemsPerPage, filteredData.length)} de {filteredData.length}
