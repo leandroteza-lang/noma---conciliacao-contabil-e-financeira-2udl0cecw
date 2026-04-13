@@ -37,6 +37,7 @@ import { ImportMappingModal } from '@/components/ImportMappingModal'
 export default function Mapping() {
   const { user } = useAuth()
   const [orgId, setOrgId] = useState<string | null>(null)
+  const [orgs, setOrgs] = useState<any[]>([])
   const [ccs, setCcs] = useState<any[]>([])
   const [cas, setCas] = useState<Account[]>([])
   const [mappings, setMappings] = useState<any[]>([])
@@ -52,26 +53,30 @@ export default function Mapping() {
 
   const load = async () => {
     if (!user) return
-    const { data: org } = await supabase
+    const { data: orgsData } = await supabase
       .from('organizations')
-      .select('id')
-      .eq('user_id', user.id)
-      .single()
-    if (!org) return
-    setOrgId(org.id)
+      .select('id, name')
+      .is('deleted_at', null)
+      .order('name')
+
+    if (orgsData) setOrgs(orgsData)
+
+    const currentOrgId = orgId || orgsData?.[0]?.id
+    if (!currentOrgId) return
+    if (!orgId) setOrgId(currentOrgId)
 
     const [resCC, resCA, resMap] = await Promise.all([
       supabase
         .from('cost_centers')
         .select('*')
-        .eq('organization_id', org.id)
+        .eq('organization_id', currentOrgId)
         .is('deleted_at', null),
       supabase
         .from('chart_of_accounts')
         .select('*')
-        .eq('organization_id', org.id)
+        .eq('organization_id', currentOrgId)
         .is('deleted_at', null),
-      supabase.from('account_mapping').select('*').eq('organization_id', org.id),
+      supabase.from('account_mapping').select('*').eq('organization_id', currentOrgId),
     ])
     setCcs(resCC.data || [])
     setCas(resCA.data || [])
@@ -104,7 +109,7 @@ export default function Mapping() {
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [debouncedLoad])
+  }, [debouncedLoad, orgId])
 
   const enrichedCCs = useMemo(() => {
     return ccs.map((cc) => {
@@ -246,7 +251,30 @@ export default function Mapping() {
     <div className="p-6 space-y-6 max-w-7xl mx-auto animate-in fade-in duration-500">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-slate-900">Mapeamento DE/PARA</h1>
+          <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-2">
+            <h1 className="text-3xl font-bold tracking-tight text-slate-900">Mapeamento DE/PARA</h1>
+            {orgs.length > 0 && (
+              <Select
+                value={orgId || ''}
+                onValueChange={(val) => {
+                  setOrgId(val)
+                  setPage(1)
+                  setSelectedCCs(new Set())
+                }}
+              >
+                <SelectTrigger className="w-[220px] h-8 bg-white border-slate-200 shadow-sm">
+                  <SelectValue placeholder="Selecione a empresa" />
+                </SelectTrigger>
+                <SelectContent>
+                  {orgs.map((o) => (
+                    <SelectItem key={o.id} value={o.id}>
+                      {o.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          </div>
           <p className="text-slate-500 mt-1">
             Associe seus Centros de Custo (TGA) às Contas Contábeis de forma ágil e centralizada.
           </p>
