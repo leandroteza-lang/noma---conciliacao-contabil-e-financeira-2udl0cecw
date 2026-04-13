@@ -19,6 +19,11 @@ import {
   TrendingDown,
   Landmark,
   Wallet,
+  ArrowUp,
+  ArrowDown,
+  ArrowUpDown,
+  Pencil,
+  Edit2,
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
@@ -57,6 +62,7 @@ import {
 import { Label } from '@/components/ui/label'
 import { ImportCostCentersModal } from '@/components/ImportCostCentersModal'
 import { UndoImportCostCentersModal } from '@/components/UndoImportCostCentersModal'
+import { CostCenterBulkEditModal } from '@/components/CostCenterBulkEditModal'
 import { useAuth } from '@/hooks/use-auth'
 import { useToast } from '@/hooks/use-toast'
 import { useAuditLog } from '@/hooks/use-audit-log'
@@ -96,15 +102,34 @@ export default function CostCenters() {
   const [filterTipoLcto, setFilterTipoLcto] = useState<string>('all')
   const [filterCategory, setFilterCategory] = useState<string>('all')
 
-  const canDelete = role === 'admin'
+  const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>({
+    key: 'code',
+    direction: 'asc',
+  })
 
   const [isCreateOpen, setIsCreateOpen] = useState(false)
+  const [isEditOpen, setIsEditOpen] = useState(false)
+  const [isBulkEditOpen, setIsBulkEditOpen] = useState(false)
   const [isImportOpen, setIsImportOpen] = useState(false)
   const [isUndoOpen, setIsUndoOpen] = useState(false)
 
   const [orgs, setOrgs] = useState<{ id: string; name: string }[]>([])
   const [tgaOptions, setTgaOptions] = useState<{ id: string; nome: string }[]>([])
+  const [allTgaOptions, setAllTgaOptions] = useState<{ id: string; nome: string }[]>([])
   const [submitting, setSubmitting] = useState(false)
+  const [editCC, setEditCC] = useState({
+    id: '',
+    organization_id: '',
+    code: '',
+    description: '',
+    tipo_lcto: 'none',
+    operational: 'none',
+    tipo_tga_id: 'none',
+    type_tga: '',
+    fixed_variable: '',
+    contabiliza: 'none',
+    observacoes: '',
+  })
   const [newCC, setNewCC] = useState({
     organization_id: '',
     code: '',
@@ -120,6 +145,7 @@ export default function CostCenters() {
 
   useEffect(() => {
     loadOrgs()
+    loadAllTgaOptions()
   }, [])
 
   const loadOrgs = async () => {
@@ -129,6 +155,11 @@ export default function CostCenters() {
       .is('deleted_at', null)
       .order('name')
     if (data) setOrgs(data)
+  }
+
+  const loadAllTgaOptions = async () => {
+    const { data } = await supabase.from('tipo_conta_tga').select('id, nome').is('deleted_at', null)
+    if (data) setAllTgaOptions(data)
   }
 
   useEffect(() => {
@@ -198,10 +229,68 @@ export default function CostCenters() {
     return matchesSearch && matchesOrg && matchesTipo && matchesCategory
   })
 
-  const totalPages = Math.max(1, Math.ceil(filteredData.length / itemsPerPage))
-  const paginatedData = filteredData.slice(
+  const handleSort = (key: string) => {
+    setSortConfig((current) => {
+      if (current && current.key === key) {
+        return { key, direction: current.direction === 'asc' ? 'desc' : 'asc' }
+      }
+      return { key, direction: 'asc' }
+    })
+  }
+
+  const sortedData = useMemo(() => {
+    let sortableItems = [...filteredData]
+    if (sortConfig !== null) {
+      sortableItems.sort((a: any, b: any) => {
+        let aVal = a[sortConfig.key]
+        let bVal = b[sortConfig.key]
+
+        if (sortConfig.key === 'organization.name') {
+          aVal = a.organization?.name
+          bVal = b.organization?.name
+        } else if (sortConfig.key === 'tipo_conta_tga.nome') {
+          aVal = a.tipo_conta_tga?.nome
+          bVal = b.tipo_conta_tga?.nome
+        }
+
+        if (aVal === null || aVal === undefined) aVal = ''
+        if (bVal === null || bVal === undefined) bVal = ''
+
+        if (typeof aVal === 'string') aVal = aVal.toLowerCase()
+        if (typeof bVal === 'string') bVal = bVal.toLowerCase()
+
+        if (aVal < bVal) return sortConfig.direction === 'asc' ? -1 : 1
+        if (aVal > bVal) return sortConfig.direction === 'asc' ? 1 : -1
+        return 0
+      })
+    }
+    return sortableItems
+  }, [filteredData, sortConfig])
+
+  const totalPages = Math.max(1, Math.ceil(sortedData.length / itemsPerPage))
+  const paginatedData = sortedData.slice(
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage,
+  )
+
+  const renderSortableHeader = (label: string, key: string, className?: string) => (
+    <TableHead
+      className={cn('cursor-pointer hover:bg-slate-100 transition-colors select-none', className)}
+      onClick={() => handleSort(key)}
+    >
+      <div className="flex items-center gap-1">
+        {label}
+        {sortConfig?.key === key ? (
+          sortConfig.direction === 'asc' ? (
+            <ArrowUp className="h-3 w-3" />
+          ) : (
+            <ArrowDown className="h-3 w-3" />
+          )
+        ) : (
+          <ArrowUpDown className="h-3 w-3 opacity-20" />
+        )}
+      </div>
+    </TableHead>
   )
 
   const metrics = useMemo(() => {
@@ -274,6 +363,95 @@ export default function CostCenters() {
         contabiliza: 'none',
         observacoes: '',
       })
+      fetchCostCenters()
+    }
+  }
+
+  const handleEdit = (cc: CostCenter) => {
+    setEditCC({
+      id: cc.id,
+      organization_id: cc.organization_id || '',
+      code: cc.code || '',
+      description: cc.description || '',
+      tipo_lcto: cc.tipo_lcto || 'none',
+      operational: cc.operational || 'none',
+      tipo_tga_id: cc.tipo_tga_id || 'none',
+      type_tga: cc.type_tga || '',
+      fixed_variable: cc.fixed_variable || '',
+      contabiliza: cc.contabiliza || 'none',
+      observacoes: cc.observacoes || '',
+    })
+    setIsEditOpen(true)
+  }
+
+  const submitEdit = async () => {
+    if (!editCC.code || !editCC.description) {
+      toast({
+        title: 'Atenção',
+        description: 'Preencha código e descrição.',
+        variant: 'destructive',
+      })
+      return
+    }
+    setSubmitting(true)
+    const payload = {
+      code: editCC.code,
+      description: editCC.description,
+      tipo_lcto: editCC.tipo_lcto !== 'none' ? editCC.tipo_lcto : null,
+      operational: editCC.operational !== 'none' ? editCC.operational : null,
+      tipo_tga_id: editCC.tipo_tga_id !== 'none' ? editCC.tipo_tga_id : null,
+      type_tga: editCC.type_tga || null,
+      fixed_variable: editCC.fixed_variable || null,
+      contabiliza: editCC.contabiliza !== 'none' ? editCC.contabiliza : null,
+      observacoes: editCC.observacoes || null,
+    }
+
+    const pendingPayload = {
+      entity_type: 'Centros de Custo',
+      entity_id: editCC.id,
+      proposed_changes: payload,
+      status: 'pending',
+      requested_by: user?.id,
+    }
+
+    const { error } = await supabase.from('pending_changes').insert(pendingPayload)
+    setSubmitting(false)
+
+    if (error) {
+      toast({ title: 'Erro', description: error.message, variant: 'destructive' })
+    } else {
+      window.dispatchEvent(new Event('refresh-approvals-badge'))
+      toast({
+        title: 'Enviado para Aprovação',
+        description: 'A edição foi solicitada à central de aprovações.',
+      })
+      setIsEditOpen(false)
+      fetchCostCenters()
+    }
+  }
+
+  const handleBulkEdit = async (changes: any) => {
+    setSubmitting(true)
+    const pendingChanges = selectedIds.map((id) => ({
+      entity_type: 'Centros de Custo',
+      entity_id: id,
+      proposed_changes: changes,
+      status: 'pending',
+      requested_by: user?.id,
+    }))
+
+    const { error } = await supabase.from('pending_changes').insert(pendingChanges)
+    setSubmitting(false)
+    if (error) {
+      toast({ title: 'Erro', description: error.message, variant: 'destructive' })
+    } else {
+      window.dispatchEvent(new Event('refresh-approvals-badge'))
+      toast({
+        title: 'Enviado para Aprovação',
+        description: `${selectedIds.length} edições solicitadas à central.`,
+      })
+      setIsBulkEditOpen(false)
+      setSelectedIds([])
       fetchCostCenters()
     }
   }
@@ -565,6 +743,149 @@ export default function CostCenters() {
         organizations={orgs}
       />
 
+      <CostCenterBulkEditModal
+        isOpen={isBulkEditOpen}
+        onClose={() => setIsBulkEditOpen(false)}
+        onSave={handleBulkEdit}
+        count={selectedIds.length}
+        tgaOptions={allTgaOptions}
+      />
+
+      <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Editar Centro de Custo</DialogTitle>
+          </DialogHeader>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4">
+            <div className="space-y-2 md:col-span-2">
+              <Label>Empresa</Label>
+              <Select value={editCC.organization_id} disabled>
+                <SelectTrigger>
+                  <SelectValue placeholder="Empresa" />
+                </SelectTrigger>
+                <SelectContent>
+                  {orgs.map((o) => (
+                    <SelectItem key={o.id} value={o.id}>
+                      {o.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Código</Label>
+              <Input
+                value={editCC.code}
+                onChange={(e) => setEditCC({ ...editCC, code: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Descrição</Label>
+              <Input
+                value={editCC.description}
+                onChange={(e) => setEditCC({ ...editCC, description: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Tipo Lcto</Label>
+              <Select
+                value={editCC.tipo_lcto}
+                onValueChange={(v) => setEditCC({ ...editCC, tipo_lcto: v })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Selecione...</SelectItem>
+                  <SelectItem value="A">A</SelectItem>
+                  <SelectItem value="S">S</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Operacional</Label>
+              <Select
+                value={editCC.operational}
+                onValueChange={(v) => setEditCC({ ...editCC, operational: v })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Selecione...</SelectItem>
+                  <SelectItem value="F">F</SelectItem>
+                  <SelectItem value="T">T</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2 md:col-span-2">
+              <Label>Tipo TGA</Label>
+              <Select
+                value={editCC.tipo_tga_id}
+                onValueChange={(v) => setEditCC({ ...editCC, tipo_tga_id: v })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Busque de Tipos de Conta TGA..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Selecione...</SelectItem>
+                  {allTgaOptions.map((tga) => (
+                    <SelectItem key={tga.id} value={tga.id}>
+                      {tga.nome}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Tipo</Label>
+              <Input
+                value={editCC.type_tga}
+                onChange={(e) => setEditCC({ ...editCC, type_tga: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Fixo/Variável</Label>
+              <Input
+                value={editCC.fixed_variable}
+                onChange={(e) => setEditCC({ ...editCC, fixed_variable: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Contabiliza</Label>
+              <Select
+                value={editCC.contabiliza}
+                onValueChange={(v) => setEditCC({ ...editCC, contabiliza: v })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Selecione...</SelectItem>
+                  <SelectItem value="SIM">SIM</SelectItem>
+                  <SelectItem value="NAO">NÃO</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Observações</Label>
+              <Input
+                value={editCC.observacoes}
+                onChange={(e) => setEditCC({ ...editCC, observacoes: e.target.value })}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsEditOpen(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={submitEdit} disabled={submitting}>
+              Salvar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
@@ -709,14 +1030,24 @@ export default function CostCenters() {
         </DialogContent>
       </Dialog>
 
-      {selectedIds.length > 0 && canDelete && (
+      {selectedIds.length > 0 && (
         <div className="bg-slate-50 border border-slate-200 rounded-md p-3 flex items-center justify-between animate-in fade-in slide-in-from-top-2">
           <span className="text-sm font-medium text-slate-700">
             {selectedIds.length} item(ns) selecionado(s)
           </span>
-          <Button variant="destructive" size="sm" onClick={handleBulkDelete} className="gap-2">
-            <Trash2 className="h-4 w-4" /> Excluir Selecionados
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsBulkEditOpen(true)}
+              className="gap-2"
+            >
+              <Edit2 className="h-4 w-4" /> Editar Selecionados
+            </Button>
+            <Button variant="destructive" size="sm" onClick={handleBulkDelete} className="gap-2">
+              <Trash2 className="h-4 w-4" /> Excluir Selecionados
+            </Button>
+          </div>
         </div>
       )}
 
@@ -773,30 +1104,28 @@ export default function CostCenters() {
             <Table>
               <TableHeader className="bg-muted/50 whitespace-nowrap">
                 <TableRow>
-                  {canDelete && (
-                    <TableHead className="w-12 text-center">
-                      <Checkbox
-                        checked={
-                          paginatedData.length > 0 && selectedIds.length === paginatedData.length
-                        }
-                        onCheckedChange={(checked) => {
-                          if (checked) setSelectedIds(paginatedData.map((d) => d.id))
-                          else setSelectedIds([])
-                        }}
-                      />
-                    </TableHead>
-                  )}
-                  <TableHead className="w-[180px]">Código</TableHead>
-                  <TableHead>Descrição</TableHead>
-                  <TableHead>Empresa</TableHead>
-                  <TableHead>Tipo Lcto</TableHead>
-                  <TableHead>Operacional</TableHead>
-                  <TableHead>Tipo TGA</TableHead>
-                  <TableHead>Tipo</TableHead>
-                  <TableHead>Fixo/Variável</TableHead>
-                  <TableHead>Classificação</TableHead>
-                  <TableHead>Contabiliza</TableHead>
-                  {canDelete && <TableHead className="text-right">Ações</TableHead>}
+                  <TableHead className="w-12 text-center">
+                    <Checkbox
+                      checked={
+                        paginatedData.length > 0 && selectedIds.length === paginatedData.length
+                      }
+                      onCheckedChange={(checked) => {
+                        if (checked) setSelectedIds(paginatedData.map((d) => d.id))
+                        else setSelectedIds([])
+                      }}
+                    />
+                  </TableHead>
+                  {renderSortableHeader('Código', 'code', 'w-[180px]')}
+                  {renderSortableHeader('Descrição', 'description')}
+                  {renderSortableHeader('Empresa', 'organization.name')}
+                  {renderSortableHeader('Tipo Lcto', 'tipo_lcto')}
+                  {renderSortableHeader('Operacional', 'operational')}
+                  {renderSortableHeader('Tipo TGA', 'tipo_conta_tga.nome')}
+                  {renderSortableHeader('Tipo', 'type_tga')}
+                  {renderSortableHeader('Fixo/Variável', 'fixed_variable')}
+                  {renderSortableHeader('Classificação', 'classification')}
+                  {renderSortableHeader('Contabiliza', 'contabiliza')}
+                  <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -817,17 +1146,15 @@ export default function CostCenters() {
                           isSynthetic && 'bg-slate-50/50 font-medium',
                         )}
                       >
-                        {canDelete && (
-                          <TableCell className="text-center">
-                            <Checkbox
-                              checked={selectedIds.includes(cc.id)}
-                              onCheckedChange={(checked) => {
-                                if (checked) setSelectedIds((prev) => [...prev, cc.id])
-                                else setSelectedIds((prev) => prev.filter((id) => id !== cc.id))
-                              }}
-                            />
-                          </TableCell>
-                        )}
+                        <TableCell className="text-center">
+                          <Checkbox
+                            checked={selectedIds.includes(cc.id)}
+                            onCheckedChange={(checked) => {
+                              if (checked) setSelectedIds((prev) => [...prev, cc.id])
+                              else setSelectedIds((prev) => prev.filter((id) => id !== cc.id))
+                            }}
+                          />
+                        </TableCell>
                         <TableCell
                           className={cn(
                             isSynthetic
@@ -900,18 +1227,24 @@ export default function CostCenters() {
                             '-'
                           )}
                         </TableCell>
-                        {canDelete && (
-                          <TableCell className="text-right">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleDelete(cc.id)}
-                              className="h-8 w-8 text-slate-500 hover:text-red-600 hover:bg-red-50"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </TableCell>
-                        )}
+                        <TableCell className="text-right">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleEdit(cc)}
+                            className="h-8 w-8 text-slate-500 hover:text-blue-600 hover:bg-blue-50 mr-1"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleDelete(cc.id)}
+                            className="h-8 w-8 text-slate-500 hover:text-red-600 hover:bg-red-50"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </TableCell>
                       </TableRow>
                     )
                   })
