@@ -154,12 +154,12 @@ export function PendingEditsTable({ edits, processingId, onApprove, onReject }: 
                             {!selectedEdit.is_create && (
                               <td className="px-4 py-3 text-red-600 bg-red-50/30">
                                 <span className="line-through opacity-70">
-                                  {formatValue(vals.old)}
+                                  {formatValue(vals?.old)}
                                 </span>
                               </td>
                             )}
                             <td className="px-4 py-3 text-green-600 bg-green-50/30">
-                              {formatValue(vals.new)}
+                              {formatValue(vals?.new)}
                             </td>
                           </tr>
                         ),

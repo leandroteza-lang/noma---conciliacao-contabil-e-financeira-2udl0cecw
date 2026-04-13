@@ -711,7 +711,10 @@ export default function Approvals() {
       // Get the new values
       const newValues: Record<string, any> = {}
       Object.keys(edit.proposed_changes).forEach((key) => {
-        newValues[key] = edit.proposed_changes[key].new
+        const change = edit.proposed_changes[key]
+        if (change && typeof change === 'object' && 'new' in change) {
+          newValues[key] = change.new
+        }
       })
 
       // Update the actual entity
