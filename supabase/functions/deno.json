@@ -1,21 +1,23 @@
 {
   "_versions": {
-    "import-data": 61,
-    "generate-entries": 10,
-    "export-dashboard": 9,
-    "export-analysis": 9,
-    "export-companies": 11,
-    "export-departments": 12,
-    "export-users": 12,
-    "manage-user": 20,
-    "send-email": 9,
-    "export-bank-accounts": 10,
-    "export-chart-accounts": 12,
-    "export-tga-accounts": 9,
-    "chat": 22,
-    "audit-log": 15,
-    "cleanup-audit-logs": 3,
-    "delete-chart-accounts": 2,
-    "export-cost-centers": 3
+    "import-data": 49,
+    "generate-entries": 9,
+    "export-dashboard": 8,
+    "export-analysis": 8,
+    "export-companies": 10,
+    "export-departments": 11,
+    "export-users": 11,
+    "manage-user": 19,
+    "send-email": 8,
+    "export-bank-accounts": 9,
+    "export-chart-accounts": 11,
+    "export-tga-accounts": 8,
+    "chat": 21,
+    "audit-log": 11,
+    "cleanup-audit-logs": 2,
+    "delete-chart-accounts": 1
+  }
+}
+ "export-cost-centers": 3
   }
 }
