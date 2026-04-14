@@ -3,65 +3,45 @@ import { createClient } from 'jsr:@supabase/supabase-js@2'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+  'Access-Control-Allow-Headers':
+    'authorization, x-client-info, x-supabase-client-platform, apikey, content-type',
 }
 
-Deno.serve(async (req) => {
+Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
 
   try {
-    const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? ''
-    const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY') ?? ''
-    const supabase = createClient(supabaseUrl, supabaseKey, {
-      global: {
-        headers: { Authorization: req.headers.get('Authorization')! },
+    const supabaseClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      {
+        global: {
+          headers: { Authorization: req.headers.get('Authorization')! },
+        },
       },
-    })
+    )
 
-    const reqBody = await req.json().catch(() => ({}))
-    const organizationId = reqBody.organizationId
+    const url = new URL(req.url)
+    const orgId = url.searchParams.get('orgId')
 
-    if (!organizationId) {
-      return new Response(JSON.stringify({ error: 'organizationId is required' }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 400,
-      })
+    let query = supabaseClient.from('cost_centers').select('*').is('deleted_at', null)
+
+    if (orgId) {
+      query = query.eq('organization_id', orgId)
     }
 
-    const { data, error } = await supabase
-      .from('cost_centers')
-      .select('*')
-      .eq('organization_id', organizationId)
-      .is('deleted_at', null)
-      .order('code')
+    const { data, error } = await query
 
-    if (error) throw error
-
-    // Generate CSV
-    const headers = ['ID', 'Código', 'Descrição', 'Tipo']
-    const csvRows = [headers.join(',')]
-
-    for (const row of data || []) {
-      csvRows.push(
-        [
-          row.id,
-          `"${row.code || ''}"`,
-          `"${(row.description || '').replace(/"/g, '""')}"`,
-          `"${row.type || ''}"`,
-        ].join(','),
-      )
+    if (error) {
+      throw error
     }
 
-    const csvContent = csvRows.join('\n')
-
-    return new Response(csvContent, {
-      headers: {
-        ...corsHeaders,
-        'Content-Type': 'text/csv; charset=utf-8',
-        'Content-Disposition': 'attachment; filename="cost_centers.csv"',
-      },
+    return new Response(JSON.stringify(data), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      status: 200,
     })
   } catch (error: any) {
     return new Response(JSON.stringify({ error: error.message }), {

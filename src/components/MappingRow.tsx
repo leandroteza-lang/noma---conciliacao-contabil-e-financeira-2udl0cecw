@@ -58,10 +58,10 @@ export const MappingRow = memo(function MappingRow({
       </TableCell>
 
       {cc.isSynthetic && !cc.mappingId ? (
-        <TableCell colSpan={2} className="p-1.5 px-2 pr-4 align-middle max-w-0">
-          <div className="flex items-center justify-between w-full gap-4">
+        <>
+          <TableCell className="p-1.5 border-r border-slate-200/40 align-middle max-w-0">
             <div
-              className="flex items-center justify-start gap-2 min-w-0"
+              className="flex items-center justify-start gap-2 w-full min-w-0"
               style={{ paddingLeft: cc.level > 0 ? `${cc.level * 1.25}rem` : undefined }}
             >
               <div className="flex items-center gap-1 shrink-0">
@@ -84,8 +84,8 @@ export const MappingRow = memo(function MappingRow({
                   S
                 </Badge>
               </div>
-              <div className="flex flex-col overflow-hidden text-left cursor-default min-w-0">
-                <div className="flex items-center justify-start gap-2 truncate min-w-0">
+              <div className="flex flex-col overflow-hidden text-left cursor-default w-full min-w-0">
+                <div className="flex items-center justify-start gap-2 truncate w-full min-w-0">
                   <span className="font-mono text-[11px] font-semibold whitespace-nowrap shrink-0">
                     {cc.code}
                   </span>
@@ -93,8 +93,9 @@ export const MappingRow = memo(function MappingRow({
                 </div>
               </div>
             </div>
-
-            <div className="flex shrink-0">
+          </TableCell>
+          <TableCell className="p-1.5 px-2 pr-4 align-middle max-w-0">
+            <div className="flex justify-end shrink-0 w-full">
               <Button
                 variant="outline"
                 size="sm"
@@ -114,8 +115,8 @@ export const MappingRow = memo(function MappingRow({
                 {isGroupCollapsed ? 'Expandir' : 'Recolher'}
               </Button>
             </div>
-          </div>
-        </TableCell>
+          </TableCell>
+        </>
       ) : (
         <>
           <TableCell className="p-1.5 border-r border-slate-200/40 align-middle max-w-0">
