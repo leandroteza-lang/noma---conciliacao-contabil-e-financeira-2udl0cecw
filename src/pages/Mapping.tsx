@@ -722,10 +722,7 @@ export default function Mapping() {
 
           <AlertDialog>
             <AlertDialogTrigger asChild>
-              <Button
-                variant="outline"
-                className="flex-1 sm:flex-none border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
-              >
+              <Button className="flex-1 sm:flex-none bg-[#cc0000] hover:bg-[#aa0000] text-white shadow-sm">
                 <Trash2 className="h-4 w-4 mr-2" />
                 <span>Excluir Todas Vinculações Contábeis</span>
               </Button>
