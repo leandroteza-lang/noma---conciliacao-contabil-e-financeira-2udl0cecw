@@ -56,75 +56,114 @@ export const MappingRow = memo(function MappingRow({
           </div>
         )}
       </TableCell>
-      <TableCell className="p-1.5 border-r border-slate-200/40 align-middle max-w-0">
-        <div
-          className="flex items-center justify-start gap-2 w-full min-w-0"
-          style={{ paddingLeft: cc.level > 0 ? `${cc.level * 1.25}rem` : undefined }}
-        >
-          <div className="flex items-center gap-1 shrink-0">
-            {cc.isSynthetic ? (
-              <button
+
+      {cc.isSynthetic && !cc.mappingId ? (
+        <TableCell colSpan={2} className="p-1.5 px-2 pr-4 align-middle max-w-0">
+          <div className="flex items-center justify-between w-full gap-4">
+            <div
+              className="flex items-center justify-start gap-2 min-w-0"
+              style={{ paddingLeft: cc.level > 0 ? `${cc.level * 1.25}rem` : undefined }}
+            >
+              <div className="flex items-center gap-1 shrink-0">
+                <button
+                  onClick={() => onToggleGroup(cc.id)}
+                  className="w-5 h-5 flex items-center justify-center rounded hover:bg-white/20 text-inherit transition-colors"
+                  title={isGroupCollapsed ? 'Expandir grupo' : 'Recolher grupo'}
+                >
+                  {isGroupCollapsed ? (
+                    <ChevronRight className="h-4 w-4" />
+                  ) : (
+                    <ChevronDown className="h-4 w-4" />
+                  )}
+                </button>
+                <Badge
+                  variant="outline"
+                  className="w-5 h-5 p-0 flex items-center justify-center shrink-0 rounded text-[10px] font-bold border-0 bg-white/20 text-inherit"
+                  title="Conta Sintética"
+                >
+                  S
+                </Badge>
+              </div>
+              <div className="flex flex-col overflow-hidden text-left cursor-default min-w-0">
+                <div className="flex items-center justify-start gap-2 truncate min-w-0">
+                  <span className="font-mono text-[11px] font-semibold whitespace-nowrap shrink-0">
+                    {cc.code}
+                  </span>
+                  <span className="text-xs truncate font-medium">{cc.description}</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex shrink-0">
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={() => onToggleGroup(cc.id)}
-                className="w-5 h-5 flex items-center justify-center rounded hover:bg-white/20 text-inherit transition-colors"
-                title={isGroupCollapsed ? 'Expandir grupo' : 'Recolher grupo'}
+                className={cn(
+                  'h-8 px-3 text-xs font-medium transition-colors border-0',
+                  cc.level <= 2
+                    ? 'bg-white/10 text-white hover:bg-white/20 hover:text-white'
+                    : 'bg-black/5 text-blue-950 hover:bg-black/10 hover:text-blue-950',
+                )}
               >
                 {isGroupCollapsed ? (
-                  <ChevronRight className="h-4 w-4" />
+                  <ChevronRight className="h-3.5 w-3.5 mr-1" />
                 ) : (
-                  <ChevronDown className="h-4 w-4" />
+                  <ChevronDown className="h-3.5 w-3.5 mr-1" />
                 )}
-              </button>
-            ) : (
-              <div className="w-5 h-5" />
-            )}
-            <Badge
-              variant="outline"
-              className={cn(
-                'w-5 h-5 p-0 flex items-center justify-center shrink-0 rounded text-[10px] font-bold border-0',
-                cc.isSynthetic ? 'bg-white/20 text-inherit' : 'bg-blue-50 text-blue-600',
-              )}
-              title={cc.isSynthetic ? 'Conta Sintética' : 'Conta Analítica'}
-            >
-              {cc.isSynthetic ? 'S' : 'A'}
-            </Badge>
-          </div>
-          <div className="flex flex-col overflow-hidden text-left cursor-default w-full min-w-0">
-            <div className="flex items-center justify-start gap-2 truncate w-full min-w-0">
-              <span className="font-mono text-[11px] font-semibold whitespace-nowrap shrink-0">
-                {cc.code}
-              </span>
-              <span className="text-xs truncate font-medium">{cc.description}</span>
-              {!cc.mappingId && !cc.isSynthetic && (
-                <AlertCircle className="h-3 w-3 text-amber-500 shrink-0" />
-              )}
+                {isGroupCollapsed ? 'Expandir' : 'Recolher'}
+              </Button>
             </div>
           </div>
-        </div>
-      </TableCell>
-      <TableCell className="p-1.5 px-2 pr-4 align-middle max-w-0">
-        {cc.isSynthetic && !cc.mappingId ? (
-          <div className="flex justify-start">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => onToggleGroup(cc.id)}
-              className={cn(
-                'h-8 px-3 text-xs font-medium transition-colors border-0',
-                cc.level <= 2
-                  ? 'bg-white/10 text-white hover:bg-white/20 hover:text-white'
-                  : 'bg-black/5 text-blue-950 hover:bg-black/10 hover:text-blue-950',
-              )}
+        </TableCell>
+      ) : (
+        <>
+          <TableCell className="p-1.5 border-r border-slate-200/40 align-middle max-w-0">
+            <div
+              className="flex items-center justify-start gap-2 w-full min-w-0"
+              style={{ paddingLeft: cc.level > 0 ? `${cc.level * 1.25}rem` : undefined }}
             >
-              {isGroupCollapsed ? (
-                <ChevronRight className="h-3.5 w-3.5 mr-1" />
-              ) : (
-                <ChevronDown className="h-3.5 w-3.5 mr-1" />
-              )}
-              {isGroupCollapsed ? 'Expandir' : 'Recolher'}
-            </Button>
-          </div>
-        ) : (
-          (!cc.isSynthetic || cc.mappingId) && (
+              <div className="flex items-center gap-1 shrink-0">
+                {cc.isSynthetic ? (
+                  <button
+                    onClick={() => onToggleGroup(cc.id)}
+                    className="w-5 h-5 flex items-center justify-center rounded hover:bg-white/20 text-inherit transition-colors"
+                    title={isGroupCollapsed ? 'Expandir grupo' : 'Recolher grupo'}
+                  >
+                    {isGroupCollapsed ? (
+                      <ChevronRight className="h-4 w-4" />
+                    ) : (
+                      <ChevronDown className="h-4 w-4" />
+                    )}
+                  </button>
+                ) : (
+                  <div className="w-5 h-5" />
+                )}
+                <Badge
+                  variant="outline"
+                  className={cn(
+                    'w-5 h-5 p-0 flex items-center justify-center shrink-0 rounded text-[10px] font-bold border-0',
+                    cc.isSynthetic ? 'bg-white/20 text-inherit' : 'bg-blue-50 text-blue-600',
+                  )}
+                  title={cc.isSynthetic ? 'Conta Sintética' : 'Conta Analítica'}
+                >
+                  {cc.isSynthetic ? 'S' : 'A'}
+                </Badge>
+              </div>
+              <div className="flex flex-col overflow-hidden text-left cursor-default w-full min-w-0">
+                <div className="flex items-center justify-start gap-2 truncate w-full min-w-0">
+                  <span className="font-mono text-[11px] font-semibold whitespace-nowrap shrink-0">
+                    {cc.code}
+                  </span>
+                  <span className="text-xs truncate font-medium">{cc.description}</span>
+                  {!cc.mappingId && !cc.isSynthetic && (
+                    <AlertCircle className="h-3 w-3 text-amber-500 shrink-0" />
+                  )}
+                </div>
+              </div>
+            </div>
+          </TableCell>
+          <TableCell className="p-1.5 px-2 pr-4 align-middle max-w-0">
             <div className="flex flex-col gap-1 w-full min-w-0">
               <div className="flex items-center gap-2 w-full min-w-0">
                 <div className="flex-1 min-w-0">
@@ -223,9 +262,9 @@ export const MappingRow = memo(function MappingRow({
                 </div>
               )}
             </div>
-          )
-        )}
-      </TableCell>
+          </TableCell>
+        </>
+      )}
     </TableRow>
   )
 })
