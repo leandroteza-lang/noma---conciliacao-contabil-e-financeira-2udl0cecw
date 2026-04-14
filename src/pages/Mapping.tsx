@@ -565,36 +565,6 @@ export default function Mapping() {
             <span className="hidden sm:inline">Importar Planilha</span>
             <span className="sm:hidden">Importar</span>
           </Button>
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button
-                variant="outline"
-                className="flex-1 md:flex-none border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
-              >
-                <Trash2 className="h-4 w-4 mr-2" />
-                <span className="hidden sm:inline">Limpar Tudo</span>
-                <span className="sm:hidden">Limpar</span>
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Remover todos os mapeamentos?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  Isso removerá as contas contábeis vinculadas de <strong>todos</strong> os centros
-                  de custo desta empresa. Esta ação não pode ser desfeita.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                <AlertDialogAction
-                  onClick={handleRemoveAll}
-                  className="bg-red-600 hover:bg-red-700 text-white"
-                >
-                  Sim, remover tudo
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
         </div>
       </div>
 
@@ -657,6 +627,36 @@ export default function Mapping() {
               </SelectContent>
             </Select>
           </div>
+
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button
+                variant="outline"
+                className="flex-1 sm:flex-none border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                <span>Excluir Todas Vinculações Contábeis</span>
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Remover todos os mapeamentos?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Isso removerá as contas contábeis vinculadas de <strong>todos</strong> os centros
+                  de custo desta empresa. Esta ação não pode ser desfeita.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={handleRemoveAll}
+                  className="bg-red-600 hover:bg-red-700 text-white"
+                >
+                  Sim, remover tudo
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
 
         {selectedCCs.size > 0 && (
