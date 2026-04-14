@@ -120,64 +120,80 @@ export default function Approvals() {
     if (role !== 'admin') return
     try {
       setLoading(true)
-      const [orgs, depts, emps, newUsersRes, costs, charts, banks, tgaAccounts, editsRes] =
-        await Promise.all([
-          supabase
-            .from('organizations')
-            .select('*')
-            .or('pending_deletion.eq.true,deleted_at.not.is.null')
-            .then((res) => (res.error ? { data: [] } : res))
-            .catch(() => ({ data: [] })),
-          supabase
-            .from('departments')
-            .select('*')
-            .or('pending_deletion.eq.true,deleted_at.not.is.null')
-            .then((res) => (res.error ? { data: [] } : res))
-            .catch(() => ({ data: [] })),
-          supabase
-            .from('cadastro_usuarios')
-            .select('*')
-            .or('pending_deletion.eq.true,deleted_at.not.is.null')
-            .then((res) => (res.error ? { data: [] } : res))
-            .catch(() => ({ data: [] })),
-          supabase
-            .from('cadastro_usuarios')
-            .select('*')
-            .eq('approval_status', 'pending')
-            .is('deleted_at', null)
-            .then((res) => (res.error ? { data: [] } : res))
-            .catch(() => ({ data: [] })),
-          supabase
-            .from('cost_centers')
-            .select('*')
-            .or('pending_deletion.eq.true,deleted_at.not.is.null')
-            .then((res) => (res.error ? { data: [] } : res))
-            .catch(() => ({ data: [] })),
-          supabase
-            .from('chart_of_accounts')
-            .select('*')
-            .or('pending_deletion.eq.true,deleted_at.not.is.null')
-            .then((res) => (res.error ? { data: [] } : res))
-            .catch(() => ({ data: [] })),
-          supabase
-            .from('bank_accounts')
-            .select('*')
-            .or('pending_deletion.eq.true,deleted_at.not.is.null')
-            .then((res) => (res.error ? { data: [] } : res))
-            .catch(() => ({ data: [] })),
-          supabase
-            .from('tipo_conta_tga')
-            .select('*')
-            .or('pending_deletion.eq.true,deleted_at.not.is.null')
-            .then((res) => (res.error ? { data: [] } : res))
-            .catch(() => ({ data: [] })),
-          supabase
-            .from('pending_changes')
-            .select('*')
-            .eq('status', 'pending')
-            .then((res) => (res.error ? { data: [] } : res))
-            .catch(() => ({ data: [] })),
-        ])
+      const [
+        orgs,
+        depts,
+        emps,
+        newUsersRes,
+        costs,
+        charts,
+        banks,
+        tgaAccounts,
+        mappingsRes,
+        editsRes,
+      ] = await Promise.all([
+        supabase
+          .from('organizations')
+          .select('*')
+          .or('pending_deletion.eq.true,deleted_at.not.is.null')
+          .then((res) => (res.error ? { data: [] } : res))
+          .catch(() => ({ data: [] })),
+        supabase
+          .from('departments')
+          .select('*')
+          .or('pending_deletion.eq.true,deleted_at.not.is.null')
+          .then((res) => (res.error ? { data: [] } : res))
+          .catch(() => ({ data: [] })),
+        supabase
+          .from('cadastro_usuarios')
+          .select('*')
+          .or('pending_deletion.eq.true,deleted_at.not.is.null')
+          .then((res) => (res.error ? { data: [] } : res))
+          .catch(() => ({ data: [] })),
+        supabase
+          .from('cadastro_usuarios')
+          .select('*')
+          .eq('approval_status', 'pending')
+          .is('deleted_at', null)
+          .then((res) => (res.error ? { data: [] } : res))
+          .catch(() => ({ data: [] })),
+        supabase
+          .from('cost_centers')
+          .select('*')
+          .or('pending_deletion.eq.true,deleted_at.not.is.null')
+          .then((res) => (res.error ? { data: [] } : res))
+          .catch(() => ({ data: [] })),
+        supabase
+          .from('chart_of_accounts')
+          .select('*')
+          .or('pending_deletion.eq.true,deleted_at.not.is.null')
+          .then((res) => (res.error ? { data: [] } : res))
+          .catch(() => ({ data: [] })),
+        supabase
+          .from('bank_accounts')
+          .select('*')
+          .or('pending_deletion.eq.true,deleted_at.not.is.null')
+          .then((res) => (res.error ? { data: [] } : res))
+          .catch(() => ({ data: [] })),
+        supabase
+          .from('tipo_conta_tga')
+          .select('*')
+          .or('pending_deletion.eq.true,deleted_at.not.is.null')
+          .then((res) => (res.error ? { data: [] } : res))
+          .catch(() => ({ data: [] })),
+        supabase
+          .from('account_mapping')
+          .select('*, cost_centers(code), chart_of_accounts(account_code)')
+          .or('pending_deletion.eq.true,deleted_at.not.is.null')
+          .then((res) => (res.error ? { data: [] } : res))
+          .catch(() => ({ data: [] })),
+        supabase
+          .from('pending_changes')
+          .select('*')
+          .eq('status', 'pending')
+          .then((res) => (res.error ? { data: [] } : res))
+          .catch(() => ({ data: [] })),
+      ])
       const unified: PendingItem[] = [
         ...(orgs.data || []).map((o: any) => ({
           id: o.id,
@@ -262,6 +278,18 @@ export default function Approvals() {
           deletedBy: t.deleted_by,
           pending: t.pending_deletion,
           originalData: t,
+        })),
+        ...(mappingsRes.data || []).map((m: any) => ({
+          id: m.id,
+          type: 'account_mapping' as any,
+          typeLabel: 'Mapeamento de Contas',
+          name: `${m.cost_centers?.code || '?'} -> ${m.chart_of_accounts?.account_code || '?'}`,
+          requestedAt: m.deletion_requested_at || m.created_at,
+          requestedBy: m.deletion_requested_by,
+          deletedAt: m.deleted_at,
+          deletedBy: m.deleted_by,
+          pending: m.pending_deletion,
+          originalData: m,
         })),
       ]
 
@@ -355,6 +383,14 @@ export default function Approvals() {
         )
         .map((e: any) => e.entity_id)
 
+      const mapEditIds = fetchedEdits
+        .filter(
+          (e: any) =>
+            ['account_mapping', 'Mapeamentos', 'Mapeamento de Contas'].includes(e.entity_type) &&
+            e.proposed_changes?.__action?.new !== 'CREATE',
+        )
+        .map((e: any) => e.entity_id)
+
       const bMap: Record<string, string> = {}
       if (bankEditIds.length > 0) {
         const { data: bData } = await supabase
@@ -423,6 +459,19 @@ export default function Approvals() {
         tData?.forEach((t: any) => (tMap[t.id] = `${t.codigo || ''} - ${t.nome}`))
       }
 
+      const mapMap: Record<string, string> = {}
+      if (mapEditIds.length > 0) {
+        const { data: mapData } = await supabase
+          .from('account_mapping')
+          .select('id, cost_centers(code), chart_of_accounts(account_code)')
+          .in('id', mapEditIds)
+        mapData?.forEach(
+          (m: any) =>
+            (mapMap[m.id] =
+              `${m.cost_centers?.code || ''} -> ${m.chart_of_accounts?.account_code || ''}`),
+        )
+      }
+
       fetchedEdits.forEach((e: any) => {
         if (
           e.proposed_changes?.__action?.new === 'CREATE' ||
@@ -476,6 +525,10 @@ export default function Approvals() {
           )
         ) {
           e.entity_name = tMap[e.entity_id] || 'Tipo Conta TGA Desconhecido'
+        } else if (
+          ['account_mapping', 'Mapeamentos', 'Mapeamento de Contas'].includes(e.entity_type)
+        ) {
+          e.entity_name = mapMap[e.entity_id] || 'Mapeamento Desconhecido'
         }
       })
 
@@ -522,6 +575,7 @@ export default function Approvals() {
       chart_account: 'chart_of_accounts',
       bank_account: 'bank_accounts',
       tga_account: 'tipo_conta_tga',
+      account_mapping: 'account_mapping',
     }
     return map[type] || ''
   }
@@ -826,6 +880,9 @@ export default function Approvals() {
         tga_account: 'tipo_conta_tga',
         'Tipos de Conta TGA': 'tipo_conta_tga',
         'Tipo Conta TGA': 'tipo_conta_tga',
+        account_mapping: 'account_mapping',
+        Mapeamentos: 'account_mapping',
+        'Mapeamento de Contas': 'account_mapping',
       }
       const tableName = tableMap[edit.entity_type]
       if (!tableName) throw new Error(`Entidade não suportada: ${edit.entity_type}`)
@@ -1147,6 +1204,7 @@ export default function Approvals() {
                   <SelectItem value="chart_account">Conta Contábil</SelectItem>
                   <SelectItem value="bank_account">Conta Bancária</SelectItem>
                   <SelectItem value="tga_account">Tipo Conta TGA</SelectItem>
+                  <SelectItem value="account_mapping">Mapeamento de Contas</SelectItem>
                 </SelectContent>
               </Select>
             </div>

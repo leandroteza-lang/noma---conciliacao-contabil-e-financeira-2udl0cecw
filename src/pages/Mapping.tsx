@@ -321,7 +321,7 @@ export default function Mapping() {
       if (!isAdmin) {
         const mapping = mappings.find((m) => m.id === mappingId)
 
-        await supabase
+        const { error } = await supabase
           .from('account_mapping')
           .update({
             pending_deletion: true,
@@ -329,22 +329,6 @@ export default function Mapping() {
             deletion_requested_by: user?.id,
           })
           .eq('id', mappingId)
-
-        const proposed = {
-          ...(mapping || {}),
-          deleted_at: new Date().toISOString(),
-          deleted_by: user?.id,
-          pending_deletion: false,
-          deletion_requested_at: null,
-          deletion_requested_by: null,
-        }
-
-        const { error } = await supabase.from('pending_changes').insert({
-          entity_type: 'account_mapping',
-          entity_id: mappingId,
-          proposed_changes: proposed,
-          requested_by: user?.id,
-        })
 
         if (error) {
           toast.error('Erro ao solicitar exclusão: ' + error.message)
@@ -382,17 +366,22 @@ export default function Mapping() {
       }
 
       if (!isAdmin) {
-        const proposed = {
+        const isCreate = !existingMappingId
+        const newId = existingMappingId || crypto.randomUUID()
+        const proposed: any = {
           organization_id: orgId,
           cost_center_id: ccId,
           chart_account_id: targetCaId,
           mapping_type: 'DE/PARA',
-          id: existingMappingId || crypto.randomUUID(),
+          id: newId,
+        }
+        if (isCreate) {
+          proposed.__action = 'CREATE'
         }
 
         const { error } = await supabase.from('pending_changes').insert({
           entity_type: 'account_mapping',
-          entity_id: proposed.id,
+          entity_id: newId,
           proposed_changes: proposed,
           requested_by: user?.id,
         })
@@ -461,16 +450,23 @@ export default function Mapping() {
     if (!isAdmin) {
       const pendingInserts = ccIds.map((ccId) => {
         const existing = mappings.find((m) => m.cost_center_id === ccId)
-        const proposed = {
+        const isCreate = !existing
+        const newId = existing ? existing.id : crypto.randomUUID()
+        const proposed: any = {
           organization_id: orgId,
           cost_center_id: ccId,
           chart_account_id: targetBatchCaId,
           mapping_type: 'DE/PARA',
-          id: existing ? existing.id : crypto.randomUUID(),
+          id: newId,
         }
+
+        if (isCreate) {
+          proposed.__action = 'CREATE'
+        }
+
         return {
           entity_type: 'account_mapping',
-          entity_id: proposed.id,
+          entity_id: newId,
           proposed_changes: proposed,
           requested_by: user?.id,
         }
@@ -531,7 +527,7 @@ export default function Mapping() {
       const existingMappings = mappings.filter((m) => ccIds.includes(m.cost_center_id))
       if (existingMappings.length === 0) return
 
-      await supabase
+      const { error } = await supabase
         .from('account_mapping')
         .update({
           pending_deletion: true,
@@ -543,25 +539,9 @@ export default function Mapping() {
           existingMappings.map((m) => m.id),
         )
 
-      const pendingInserts = existingMappings.map((m) => ({
-        entity_type: 'account_mapping',
-        entity_id: m.id,
-        proposed_changes: {
-          ...m,
-          deleted_at: new Date().toISOString(),
-          deleted_by: user?.id,
-          pending_deletion: false,
-          deletion_requested_at: null,
-          deletion_requested_by: null,
-        },
-        requested_by: user?.id,
-      }))
-
-      const { error } = await supabase.from('pending_changes').insert(pendingInserts)
-
-      if (error) toast.error('Erro ao solicitar desvinculação: ' + error.message)
+      if (error) toast.error('Erro ao solicitar exclusão: ' + error.message)
       else {
-        toast.success(`${existingMappings.length} solicitações de desvinculação enviadas!`)
+        toast.success(`${existingMappings.length} solicitações de exclusão enviadas!`)
         setSelectedCCs(new Set())
         loadRef.current()
       }
@@ -594,7 +574,7 @@ export default function Mapping() {
       const existingMappings = mappings.filter((m) => m.organization_id === orgId)
       if (existingMappings.length === 0) return
 
-      await supabase
+      const { error } = await supabase
         .from('account_mapping')
         .update({
           pending_deletion: true,
@@ -604,26 +584,10 @@ export default function Mapping() {
         .eq('organization_id', orgId)
         .is('deleted_at', null)
 
-      const pendingInserts = existingMappings.map((m) => ({
-        entity_type: 'account_mapping',
-        entity_id: m.id,
-        proposed_changes: {
-          ...m,
-          deleted_at: new Date().toISOString(),
-          deleted_by: user?.id,
-          pending_deletion: false,
-          deletion_requested_at: null,
-          deletion_requested_by: null,
-        },
-        requested_by: user?.id,
-      }))
-
-      const { error } = await supabase.from('pending_changes').insert(pendingInserts)
-
       if (error) {
         toast.error('Erro ao solicitar limpeza: ' + error.message)
       } else {
-        toast.success('Solicitação de limpeza enviada para aprovação!')
+        toast.success('Solicitação de exclusão geral enviada para aprovação!')
         setSelectedCCs(new Set())
         loadRef.current()
       }
@@ -674,12 +638,15 @@ export default function Mapping() {
       return toast.info('Nenhuma sugestão óbvia encontrada para os itens pendentes.')
 
     if (!isAdmin) {
-      const pendingInserts = payloads.map((p) => ({
-        entity_type: 'account_mapping',
-        entity_id: crypto.randomUUID(),
-        proposed_changes: { ...p, id: crypto.randomUUID() },
-        requested_by: user?.id,
-      }))
+      const pendingInserts = payloads.map((p) => {
+        const newId = crypto.randomUUID()
+        return {
+          entity_type: 'account_mapping',
+          entity_id: newId,
+          proposed_changes: { ...p, id: newId, __action: 'CREATE' },
+          requested_by: user?.id,
+        }
+      })
       const { error } = await supabase.from('pending_changes').insert(pendingInserts)
       if (error) toast.error('Erro no auto-mapeamento: ' + error.message)
       else toast.success(`${payloads.length} mapeamentos sugeridos enviados para aprovação!`)
@@ -986,19 +953,18 @@ export default function Mapping() {
                 <AlertDialogTrigger asChild>
                   <Button
                     size="sm"
-                    variant="destructive"
-                    className="shrink-0"
-                    title="Remover vínculo dos selecionados"
+                    className="shrink-0 bg-[#cc0000] hover:bg-[#aa0000] text-white shadow-sm"
+                    title="Excluir vínculo dos selecionados"
                   >
-                    <Unlink className="h-4 w-4 sm:mr-2" />
-                    <span className="hidden sm:inline">Desvincular</span>
+                    <Trash2 className="h-4 w-4 sm:mr-2" />
+                    <span className="hidden sm:inline">Excluir</span>
                   </Button>
                 </AlertDialogTrigger>
                 <AlertDialogContent>
                   <AlertDialogHeader>
-                    <AlertDialogTitle>Desvincular contas selecionadas?</AlertDialogTitle>
+                    <AlertDialogTitle>Excluir vínculos selecionados?</AlertDialogTitle>
                     <AlertDialogDescription>
-                      Você está prestes a remover o vínculo contábil de{' '}
+                      Você está prestes a excluir o vínculo contábil de{' '}
                       <strong>{selectedCCs.size}</strong> centro(s) de custo. Deseja continuar?
                     </AlertDialogDescription>
                   </AlertDialogHeader>
@@ -1006,9 +972,9 @@ export default function Mapping() {
                     <AlertDialogCancel>Cancelar</AlertDialogCancel>
                     <AlertDialogAction
                       onClick={handleBatchRemove}
-                      className="bg-red-600 hover:bg-red-700 text-white"
+                      className="bg-[#cc0000] hover:bg-[#aa0000] text-white"
                     >
-                      Sim, desvincular
+                      Sim, excluir
                     </AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>
