@@ -318,42 +318,23 @@ export default function Mapping() {
     async (mappingId: string) => {
       if (!mappingId) return
 
-      if (!isAdmin) {
-        const mapping = mappings.find((m) => m.id === mappingId)
-
-        const { error } = await supabase
-          .from('account_mapping')
-          .update({
-            pending_deletion: true,
-            deletion_requested_at: new Date().toISOString(),
-            deletion_requested_by: user?.id,
-          })
-          .eq('id', mappingId)
-
-        if (error) {
-          toast.error('Erro ao solicitar exclusão: ' + error.message)
-        } else {
-          toast.success('Solicitação de exclusão enviada para aprovação')
-          loadRef.current()
-        }
-        return
-      }
-
-      setMappings((prev) => prev.filter((m) => m.id !== mappingId))
       const { error } = await supabase
         .from('account_mapping')
-        .update({ deleted_at: new Date().toISOString(), deleted_by: user?.id })
+        .update({
+          pending_deletion: true,
+          deletion_requested_at: new Date().toISOString(),
+          deletion_requested_by: user?.id,
+        })
         .eq('id', mappingId)
 
       if (error) {
-        toast.error('Erro ao remover: ' + error.message)
-        loadRef.current()
+        toast.error('Erro ao solicitar exclusão: ' + error.message)
       } else {
-        toast.success('Vínculo removido')
+        toast.success('Solicitação de exclusão enviada para aprovação')
         loadRef.current()
       }
     },
-    [isAdmin, user?.id],
+    [user?.id],
   )
 
   const handleMap = useCallback(
@@ -522,46 +503,24 @@ export default function Mapping() {
     if (!orgId || selectedCCs.size === 0) return
 
     const ccIds = Array.from(selectedCCs)
-
-    if (!isAdmin) {
-      const existingMappings = mappings.filter((m) => ccIds.includes(m.cost_center_id))
-      if (existingMappings.length === 0) return
-
-      const { error } = await supabase
-        .from('account_mapping')
-        .update({
-          pending_deletion: true,
-          deletion_requested_at: new Date().toISOString(),
-          deletion_requested_by: user?.id,
-        })
-        .in(
-          'id',
-          existingMappings.map((m) => m.id),
-        )
-
-      if (error) toast.error('Erro ao solicitar exclusão: ' + error.message)
-      else {
-        toast.success(`${existingMappings.length} solicitações de exclusão enviadas!`)
-        setSelectedCCs(new Set())
-        loadRef.current()
-      }
-      return
-    }
-
-    setMappings((prev) => prev.filter((m) => !ccIds.includes(m.cost_center_id)))
+    const existingMappings = mappings.filter((m) => ccIds.includes(m.cost_center_id))
+    if (existingMappings.length === 0) return
 
     const { error } = await supabase
       .from('account_mapping')
-      .update({ deleted_at: new Date().toISOString(), deleted_by: user?.id })
-      .in('cost_center_id', ccIds)
-      .eq('organization_id', orgId)
-      .is('deleted_at', null)
+      .update({
+        pending_deletion: true,
+        deletion_requested_at: new Date().toISOString(),
+        deletion_requested_by: user?.id,
+      })
+      .in(
+        'id',
+        existingMappings.map((m) => m.id),
+      )
 
-    if (error) {
-      toast.error('Erro ao desvincular em lote: ' + error.message)
-      loadRef.current()
-    } else {
-      toast.success(`${ccIds.length} centro(s) de custo desvinculado(s) com sucesso!`)
+    if (error) toast.error('Erro ao solicitar exclusão: ' + error.message)
+    else {
+      toast.success(`${existingMappings.length} solicitações de exclusão enviadas para aprovação!`)
       setSelectedCCs(new Set())
       loadRef.current()
     }
@@ -570,41 +529,23 @@ export default function Mapping() {
   const handleRemoveAll = async () => {
     if (!orgId) return
 
-    if (!isAdmin) {
-      const existingMappings = mappings.filter((m) => m.organization_id === orgId)
-      if (existingMappings.length === 0) return
-
-      const { error } = await supabase
-        .from('account_mapping')
-        .update({
-          pending_deletion: true,
-          deletion_requested_at: new Date().toISOString(),
-          deletion_requested_by: user?.id,
-        })
-        .eq('organization_id', orgId)
-        .is('deleted_at', null)
-
-      if (error) {
-        toast.error('Erro ao solicitar limpeza: ' + error.message)
-      } else {
-        toast.success('Solicitação de exclusão geral enviada para aprovação!')
-        setSelectedCCs(new Set())
-        loadRef.current()
-      }
-      return
-    }
+    const existingMappings = mappings.filter((m) => m.organization_id === orgId)
+    if (existingMappings.length === 0) return
 
     const { error } = await supabase
       .from('account_mapping')
-      .update({ deleted_at: new Date().toISOString(), deleted_by: user?.id })
+      .update({
+        pending_deletion: true,
+        deletion_requested_at: new Date().toISOString(),
+        deletion_requested_by: user?.id,
+      })
       .eq('organization_id', orgId)
       .is('deleted_at', null)
 
     if (error) {
-      toast.error('Erro ao limpar mapeamentos: ' + error.message)
+      toast.error('Erro ao solicitar limpeza: ' + error.message)
     } else {
-      toast.success('Todos os mapeamentos foram removidos com sucesso!')
-      setMappings([])
+      toast.success('Solicitação de exclusão geral enviada para aprovação!')
       setSelectedCCs(new Set())
       loadRef.current()
     }
