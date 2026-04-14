@@ -29,7 +29,18 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from '@/components/ui/pagination'
-import { Search, Upload, Sparkles, AlertCircle, ListTree } from 'lucide-react'
+import { Search, Upload, Sparkles, AlertCircle, ListTree, Unlink, Trash2 } from 'lucide-react'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog'
 import { toast } from 'sonner'
 import { AccountCombobox, Account } from '@/components/AccountCombobox'
 import { ImportMappingModal } from '@/components/ImportMappingModal'
@@ -388,6 +399,45 @@ export default function Mapping() {
     }
   }
 
+  const handleBatchRemove = async () => {
+    if (!orgId || selectedCCs.size === 0) return
+
+    const ccIds = Array.from(selectedCCs)
+
+    // Optimistic Update
+    setMappings((prev) => prev.filter((m) => !ccIds.includes(m.cost_center_id)))
+
+    const { error } = await supabase
+      .from('account_mapping')
+      .delete()
+      .in('cost_center_id', ccIds)
+      .eq('organization_id', orgId)
+
+    if (error) {
+      toast.error('Erro ao desvincular em lote: ' + error.message)
+      load()
+    } else {
+      toast.success(`${ccIds.length} centro(s) de custo desvinculado(s) com sucesso!`)
+      setSelectedCCs(new Set())
+      load()
+    }
+  }
+
+  const handleRemoveAll = async () => {
+    if (!orgId) return
+
+    const { error } = await supabase.from('account_mapping').delete().eq('organization_id', orgId)
+
+    if (error) {
+      toast.error('Erro ao limpar mapeamentos: ' + error.message)
+    } else {
+      toast.success('Todos os mapeamentos foram removidos com sucesso!')
+      setMappings([])
+      setSelectedCCs(new Set())
+      load()
+    }
+  }
+
   const handleAutoMap = async () => {
     if (!orgId) return
     const unmapped = enrichedCCs.filter((c) => !c.mappingId && !c.isSynthetic)
@@ -500,19 +550,51 @@ export default function Mapping() {
             Associe seus Centros de Custo (TGA) às Contas Contábeis de forma ágil e centralizada.
           </p>
         </div>
-        <div className="flex gap-2 w-full md:w-auto">
+        <div className="flex flex-wrap gap-2 w-full md:w-auto mt-4 md:mt-0">
           <Button
             variant="secondary"
             onClick={handleAutoMap}
             className="flex-1 md:flex-none bg-blue-50 text-blue-600 hover:bg-blue-100 border-blue-200"
           >
             <Sparkles className="h-4 w-4 mr-2" />
-            Sugestão Inteligente
+            <span className="hidden sm:inline">Sugestão Inteligente</span>
+            <span className="sm:hidden">Sugestão</span>
           </Button>
           <Button onClick={() => setImportOpen(true)} className="flex-1 md:flex-none">
             <Upload className="h-4 w-4 mr-2" />
-            Importar Planilha
+            <span className="hidden sm:inline">Importar Planilha</span>
+            <span className="sm:hidden">Importar</span>
           </Button>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button
+                variant="outline"
+                className="flex-1 md:flex-none border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                <span className="hidden sm:inline">Limpar Tudo</span>
+                <span className="sm:hidden">Limpar</span>
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Remover todos os mapeamentos?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Isso removerá as contas contábeis vinculadas de <strong>todos</strong> os centros
+                  de custo desta empresa. Esta ação não pode ser desfeita.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={handleRemoveAll}
+                  className="bg-red-600 hover:bg-red-700 text-white"
+                >
+                  Sim, remover tudo
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
       </div>
 
@@ -583,27 +665,39 @@ export default function Mapping() {
               <Badge className="bg-blue-600 hover:bg-blue-700">
                 {selectedCCs.size} selecionados
               </Badge>
-              <span className="text-sm font-medium text-blue-900 hidden sm:inline">
-                Definir conta contábil para os itens selecionados:
+              <span className="text-sm font-medium text-blue-900 hidden lg:inline">
+                Ações em lote para os itens selecionados:
               </span>
             </div>
-            <div className="flex items-center gap-2 w-full sm:w-[500px]">
-              <AccountCombobox
-                accounts={enrichedCAs}
-                value={batchCaId}
-                onChange={(val) => {
-                  const id = typeof val === 'object' ? (val as any)?.id : val
-                  setBatchCaId(id || '')
-                }}
-                placeholder="Buscar conta a aplicar..."
-              />
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              <div className="flex-1 sm:w-[300px] min-w-0">
+                <AccountCombobox
+                  accounts={enrichedCAs}
+                  value={batchCaId}
+                  onChange={(val) => {
+                    const id = typeof val === 'object' ? (val as any)?.id : val
+                    setBatchCaId(id || '')
+                  }}
+                  placeholder="Buscar conta a aplicar..."
+                />
+              </div>
               <Button
                 size="sm"
                 onClick={handleBatchMap}
                 disabled={!batchCaId}
                 className="shrink-0 bg-blue-600 hover:bg-blue-700 text-white"
               >
-                Aplicar Lote
+                Aplicar
+              </Button>
+              <Button
+                size="sm"
+                variant="destructive"
+                onClick={handleBatchRemove}
+                className="shrink-0"
+                title="Remover vínculo dos selecionados"
+              >
+                <Unlink className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">Desvincular</span>
               </Button>
             </div>
           </div>
