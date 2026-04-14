@@ -818,9 +818,9 @@ export default function Mapping() {
 
         <div className="overflow-x-auto">
           <Table className="border-collapse">
-            <TableHeader className="bg-slate-100 border-b shadow-sm sticky top-0 z-10">
-              <TableRow className="h-14 hover:bg-slate-100">
-                <TableHead className="w-[40px] text-center border-r border-slate-200 align-middle">
+            <TableHeader className="bg-indigo-950 border-b border-indigo-900 shadow-sm sticky top-0 z-10">
+              <TableRow className="h-14 hover:bg-indigo-950 border-b-0">
+                <TableHead className="w-[40px] text-center border-r border-indigo-900/50 align-middle">
                   <div className="flex justify-center">
                     <Checkbox
                       checked={
@@ -828,14 +828,15 @@ export default function Mapping() {
                         selectedCCs.size === paginatedCCs.filter((c) => !c.isSynthetic).length
                       }
                       onCheckedChange={toggleAll}
+                      className="border-white/50 data-[state=checked]:bg-white data-[state=checked]:text-indigo-950"
                     />
                   </div>
                 </TableHead>
-                <TableHead className="w-[40%] text-center border-r border-slate-200 p-3 align-middle">
-                  <div className="flex items-center justify-center gap-3 bg-[#020617] mx-auto w-full max-w-md py-3 px-4 rounded-xl shadow-md border border-slate-800">
+                <TableHead className="w-[40%] text-center border-r border-indigo-900/50 p-3 align-middle">
+                  <div className="flex items-center justify-center gap-2 w-full">
                     <Badge
                       variant="outline"
-                      className="border-slate-700 bg-slate-800 text-slate-200 font-bold"
+                      className="border-white/30 bg-white/10 text-white font-bold"
                     >
                       DE
                     </Badge>
@@ -845,8 +846,8 @@ export default function Mapping() {
                   </div>
                 </TableHead>
                 <TableHead className="w-[60%] p-3 pr-4 text-center align-middle">
-                  <div className="flex items-center justify-center gap-3 bg-[#020617] mx-auto w-full max-w-md py-3 px-4 rounded-xl shadow-md border border-slate-800">
-                    <Badge className="bg-blue-600 hover:bg-blue-700 text-white border-0 font-bold">
+                  <div className="flex items-center justify-center gap-2 w-full">
+                    <Badge className="bg-white/20 hover:bg-white/30 text-white border-0 font-bold">
                       PARA
                     </Badge>
                     <span className="font-bold text-white text-[15px] tracking-wide">
