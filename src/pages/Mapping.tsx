@@ -319,7 +319,9 @@ export default function Mapping() {
       if (!mappingId) return
 
       if (!isAdmin) {
-        const { error } = await supabase
+        const mapping = mappings.find((m) => m.id === mappingId)
+
+        await supabase
           .from('account_mapping')
           .update({
             pending_deletion: true,
@@ -327,6 +329,22 @@ export default function Mapping() {
             deletion_requested_by: user?.id,
           })
           .eq('id', mappingId)
+
+        const proposed = {
+          ...(mapping || {}),
+          deleted_at: new Date().toISOString(),
+          deleted_by: user?.id,
+          pending_deletion: false,
+          deletion_requested_at: null,
+          deletion_requested_by: null,
+        }
+
+        const { error } = await supabase.from('pending_changes').insert({
+          entity_type: 'account_mapping',
+          entity_id: mappingId,
+          proposed_changes: proposed,
+          requested_by: user?.id,
+        })
 
         if (error) {
           toast.error('Erro ao solicitar exclusão: ' + error.message)
@@ -513,7 +531,7 @@ export default function Mapping() {
       const existingMappings = mappings.filter((m) => ccIds.includes(m.cost_center_id))
       if (existingMappings.length === 0) return
 
-      const { error } = await supabase
+      await supabase
         .from('account_mapping')
         .update({
           pending_deletion: true,
@@ -524,6 +542,22 @@ export default function Mapping() {
           'id',
           existingMappings.map((m) => m.id),
         )
+
+      const pendingInserts = existingMappings.map((m) => ({
+        entity_type: 'account_mapping',
+        entity_id: m.id,
+        proposed_changes: {
+          ...m,
+          deleted_at: new Date().toISOString(),
+          deleted_by: user?.id,
+          pending_deletion: false,
+          deletion_requested_at: null,
+          deletion_requested_by: null,
+        },
+        requested_by: user?.id,
+      }))
+
+      const { error } = await supabase.from('pending_changes').insert(pendingInserts)
 
       if (error) toast.error('Erro ao solicitar desvinculação: ' + error.message)
       else {
@@ -560,7 +594,7 @@ export default function Mapping() {
       const existingMappings = mappings.filter((m) => m.organization_id === orgId)
       if (existingMappings.length === 0) return
 
-      const { error } = await supabase
+      await supabase
         .from('account_mapping')
         .update({
           pending_deletion: true,
@@ -569,6 +603,22 @@ export default function Mapping() {
         })
         .eq('organization_id', orgId)
         .is('deleted_at', null)
+
+      const pendingInserts = existingMappings.map((m) => ({
+        entity_type: 'account_mapping',
+        entity_id: m.id,
+        proposed_changes: {
+          ...m,
+          deleted_at: new Date().toISOString(),
+          deleted_by: user?.id,
+          pending_deletion: false,
+          deletion_requested_at: null,
+          deletion_requested_by: null,
+        },
+        requested_by: user?.id,
+      }))
+
+      const { error } = await supabase.from('pending_changes').insert(pendingInserts)
 
       if (error) {
         toast.error('Erro ao solicitar limpeza: ' + error.message)
