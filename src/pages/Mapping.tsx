@@ -144,6 +144,7 @@ export default function Mapping() {
           .from('account_mapping')
           .select('*')
           .eq('organization_id', currentOrgId)
+          .neq('pending_deletion', true)
           .is('deleted_at', null)
           .range(page * 1000, (page + 1) * 1000 - 1)
         if (data && data.length > 0) {
@@ -318,37 +319,24 @@ export default function Mapping() {
     async (mappingId: string) => {
       if (!mappingId) return
 
-      if (isAdmin) {
-        const { error } = await supabase
-          .from('account_mapping')
-          .update({ deleted_at: new Date().toISOString(), deleted_by: user?.id })
-          .eq('id', mappingId)
+      const { error } = await supabase
+        .from('account_mapping')
+        .update({
+          pending_deletion: true,
+          deletion_requested_at: new Date().toISOString(),
+          deletion_requested_by: user?.id,
+        })
+        .eq('id', mappingId)
 
-        if (error) {
-          toast.error('Erro ao excluir: ' + error.message)
-        } else {
-          toast.success('Vínculo excluído com sucesso')
-          loadRef.current()
-        }
+      if (error) {
+        toast.error('Erro ao solicitar exclusão: ' + error.message)
       } else {
-        const { error } = await supabase
-          .from('account_mapping')
-          .update({
-            pending_deletion: true,
-            deletion_requested_at: new Date().toISOString(),
-            deletion_requested_by: user?.id,
-          })
-          .eq('id', mappingId)
-
-        if (error) {
-          toast.error('Erro ao solicitar exclusão: ' + error.message)
-        } else {
-          toast.success('Solicitação de exclusão enviada para aprovação')
-          loadRef.current()
-        }
+        toast.success('Solicitação de exclusão enviada para aprovação')
+        window.dispatchEvent(new Event('refresh-approvals-badge'))
+        loadRef.current()
       }
     },
-    [user?.id, isAdmin],
+    [user?.id],
   )
 
   const handleMap = useCallback(
@@ -523,42 +511,24 @@ export default function Mapping() {
       return
     }
 
-    if (isAdmin) {
-      const { error } = await supabase
-        .from('account_mapping')
-        .update({ deleted_at: new Date().toISOString(), deleted_by: user?.id })
-        .in(
-          'id',
-          existingMappings.map((m) => m.id),
-        )
+    const { error } = await supabase
+      .from('account_mapping')
+      .update({
+        pending_deletion: true,
+        deletion_requested_at: new Date().toISOString(),
+        deletion_requested_by: user?.id,
+      })
+      .in(
+        'id',
+        existingMappings.map((m) => m.id),
+      )
 
-      if (error) toast.error('Erro ao excluir em lote: ' + error.message)
-      else {
-        toast.success(`${existingMappings.length} vínculos excluídos com sucesso!`)
-        setSelectedCCs(new Set())
-        loadRef.current()
-      }
-    } else {
-      const { error } = await supabase
-        .from('account_mapping')
-        .update({
-          pending_deletion: true,
-          deletion_requested_at: new Date().toISOString(),
-          deletion_requested_by: user?.id,
-        })
-        .in(
-          'id',
-          existingMappings.map((m) => m.id),
-        )
-
-      if (error) toast.error('Erro ao solicitar exclusão: ' + error.message)
-      else {
-        toast.success(
-          `${existingMappings.length} solicitações de exclusão enviadas para aprovação!`,
-        )
-        setSelectedCCs(new Set())
-        loadRef.current()
-      }
+    if (error) toast.error('Erro ao solicitar exclusão: ' + error.message)
+    else {
+      toast.success(`${existingMappings.length} solicitações de exclusão enviadas para aprovação!`)
+      window.dispatchEvent(new Event('refresh-approvals-badge'))
+      setSelectedCCs(new Set())
+      loadRef.current()
     }
   }
 
@@ -571,38 +541,23 @@ export default function Mapping() {
       return
     }
 
-    if (isAdmin) {
-      const { error } = await supabase
-        .from('account_mapping')
-        .update({ deleted_at: new Date().toISOString(), deleted_by: user?.id })
-        .eq('organization_id', orgId)
-        .is('deleted_at', null)
+    const { error } = await supabase
+      .from('account_mapping')
+      .update({
+        pending_deletion: true,
+        deletion_requested_at: new Date().toISOString(),
+        deletion_requested_by: user?.id,
+      })
+      .eq('organization_id', orgId)
+      .is('deleted_at', null)
 
-      if (error) {
-        toast.error('Erro ao excluir todas as vinculações: ' + error.message)
-      } else {
-        toast.success('Todas as vinculações foram excluídas com sucesso!')
-        setSelectedCCs(new Set())
-        loadRef.current()
-      }
+    if (error) {
+      toast.error('Erro ao solicitar limpeza: ' + error.message)
     } else {
-      const { error } = await supabase
-        .from('account_mapping')
-        .update({
-          pending_deletion: true,
-          deletion_requested_at: new Date().toISOString(),
-          deletion_requested_by: user?.id,
-        })
-        .eq('organization_id', orgId)
-        .is('deleted_at', null)
-
-      if (error) {
-        toast.error('Erro ao solicitar limpeza: ' + error.message)
-      } else {
-        toast.success('Solicitação de exclusão geral enviada para aprovação!')
-        setSelectedCCs(new Set())
-        loadRef.current()
-      }
+      toast.success('Solicitação de exclusão geral enviada para aprovação!')
+      window.dispatchEvent(new Event('refresh-approvals-badge'))
+      setSelectedCCs(new Set())
+      loadRef.current()
     }
   }
 
@@ -891,15 +846,16 @@ export default function Mapping() {
             <AlertDialogTrigger asChild>
               <Button className="flex-1 sm:flex-none bg-[#cc0000] hover:bg-[#aa0000] text-white shadow-sm">
                 <Trash2 className="h-4 w-4 mr-2" />
-                <span>Excluir Todas Vinculações Contábeis</span>
+                <span>Solicitar Exclusão Geral</span>
               </Button>
             </AlertDialogTrigger>
             <AlertDialogContent>
               <AlertDialogHeader>
-                <AlertDialogTitle>Remover todos os mapeamentos?</AlertDialogTitle>
+                <AlertDialogTitle>Solicitar exclusão de todos os vínculos?</AlertDialogTitle>
                 <AlertDialogDescription>
-                  Isso removerá as contas contábeis vinculadas de <strong>todos</strong> os centros
-                  de custo desta empresa. Esta ação não pode ser desfeita.
+                  Isso enviará a solicitação de remoção das contas contábeis vinculadas de{' '}
+                  <strong>todos</strong> os centros de custo desta empresa para a Central de
+                  Aprovações.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
@@ -908,7 +864,7 @@ export default function Mapping() {
                   onClick={handleRemoveAll}
                   className="bg-red-600 hover:bg-red-700 text-white"
                 >
-                  Sim, remover tudo
+                  Sim, solicitar
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
@@ -958,10 +914,11 @@ export default function Mapping() {
                 </AlertDialogTrigger>
                 <AlertDialogContent>
                   <AlertDialogHeader>
-                    <AlertDialogTitle>Excluir vínculos selecionados?</AlertDialogTitle>
+                    <AlertDialogTitle>Solicitar exclusão dos vínculos?</AlertDialogTitle>
                     <AlertDialogDescription>
-                      Você está prestes a excluir o vínculo contábil de{' '}
-                      <strong>{selectedCCs.size}</strong> centro(s) de custo. Deseja continuar?
+                      Você está prestes a solicitar a exclusão do vínculo contábil de{' '}
+                      <strong>{selectedCCs.size}</strong> centro(s) de custo. Os registros irão para
+                      a Central de Aprovações.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
@@ -970,7 +927,7 @@ export default function Mapping() {
                       onClick={handleBatchRemove}
                       className="bg-[#cc0000] hover:bg-[#aa0000] text-white"
                     >
-                      Sim, excluir
+                      Sim, solicitar
                     </AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>

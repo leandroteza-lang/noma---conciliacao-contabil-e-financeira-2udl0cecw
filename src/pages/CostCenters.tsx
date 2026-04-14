@@ -64,6 +64,16 @@ import { Label } from '@/components/ui/label'
 import { ImportCostCentersModal } from '@/components/ImportCostCentersModal'
 import { UndoImportCostCentersModal } from '@/components/UndoImportCostCentersModal'
 import { CostCenterBulkEditModal } from '@/components/CostCenterBulkEditModal'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { useAuth } from '@/hooks/use-auth'
 import { useToast } from '@/hooks/use-toast'
 import { useAuditLog } from '@/hooks/use-audit-log'
@@ -113,6 +123,9 @@ export default function CostCenters() {
   const [isBulkEditOpen, setIsBulkEditOpen] = useState(false)
   const [isImportOpen, setIsImportOpen] = useState(false)
   const [isUndoOpen, setIsUndoOpen] = useState(false)
+
+  const [deleteId, setDeleteId] = useState<string | null>(null)
+  const [isBulkDeleteOpen, setIsBulkDeleteOpen] = useState(false)
 
   const [orgs, setOrgs] = useState<{ id: string; name: string }[]>([])
   const [tgaOptions, setTgaOptions] = useState<{ id: string; nome: string }[]>([])
@@ -454,9 +467,8 @@ export default function CostCenters() {
     }
   }
 
-  const handleBulkDelete = async () => {
+  const confirmBulkDelete = async () => {
     if (selectedIds.length === 0) return
-    if (!confirm(`Deseja solicitar a exclusão de ${selectedIds.length} centro(s) de custo?`)) return
 
     const checkPromises = selectedIds.map(async (id) => {
       const { data: linkedMovements } = await supabase
@@ -468,6 +480,7 @@ export default function CostCenters() {
         .from('account_mapping')
         .select('id')
         .eq('cost_center_id', id)
+        .is('deleted_at', null)
         .limit(1)
       const { data: linkedChildren } = await supabase
         .from('cost_centers')
@@ -521,10 +534,14 @@ export default function CostCenters() {
     }
 
     setSelectedIds([])
+    setIsBulkDeleteOpen(false)
     fetchCostCenters()
   }
 
-  const handleDelete = async (id: string) => {
+  const confirmDelete = async () => {
+    if (!deleteId) return
+    const id = deleteId
+
     const { data: linkedMovements } = await supabase
       .from('financial_movements')
       .select('id')
@@ -534,6 +551,7 @@ export default function CostCenters() {
       .from('account_mapping')
       .select('id')
       .eq('cost_center_id', id)
+      .is('deleted_at', null)
       .limit(1)
     const { data: linkedChildren } = await supabase
       .from('cost_centers')
@@ -552,10 +570,9 @@ export default function CostCenters() {
         description: 'Este centro de custo possui vínculos e não pode ser excluído.',
         variant: 'destructive',
       })
+      setDeleteId(null)
       return
     }
-
-    if (!confirm('Deseja solicitar a exclusão deste centro de custo?')) return
 
     const { error } = await supabase
       .from('cost_centers')
@@ -575,6 +592,7 @@ export default function CostCenters() {
       toast({ title: 'Enviado para Aprovação', description: 'A exclusão foi solicitada.' })
       fetchCostCenters()
     }
+    setDeleteId(null)
   }
 
   const handleExport = async (format: 'excel' | 'pdf' | 'csv' | 'txt') => {
@@ -728,6 +746,42 @@ export default function CostCenters() {
           <Wallet className="absolute -bottom-2 -right-2 w-20 h-20 text-white/20 group-hover:scale-110 group-hover:text-white/30 transition-all duration-300 z-0" />
         </Card>
       </div>
+
+      <AlertDialog open={!!deleteId} onOpenChange={(open: boolean) => !open && setDeleteId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Solicitar Exclusão</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja solicitar a exclusão deste centro de custo? O registro será
+              enviado para a Central de Aprovações.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} className="bg-red-600 hover:bg-red-700">
+              Sim, solicitar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={isBulkDeleteOpen} onOpenChange={setIsBulkDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Solicitar Exclusão em Lote</AlertDialogTitle>
+            <AlertDialogDescription>
+              Deseja solicitar a exclusão de {selectedIds.length} centro(s) de custo? Os registros
+              válidos serão enviados para a Central de Aprovações.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmBulkDelete} className="bg-red-600 hover:bg-red-700">
+              Sim, solicitar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <ImportCostCentersModal
         open={isImportOpen}
@@ -1061,7 +1115,12 @@ export default function CostCenters() {
             >
               <Edit2 className="h-4 w-4" /> Editar Selecionados
             </Button>
-            <Button variant="destructive" size="sm" onClick={handleBulkDelete} className="gap-2">
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={() => setIsBulkDeleteOpen(true)}
+              className="gap-2"
+            >
               <Trash2 className="h-4 w-4" /> Excluir Selecionados
             </Button>
           </div>
@@ -1371,7 +1430,7 @@ export default function CostCenters() {
                           <Button
                             variant="ghost"
                             size="icon"
-                            onClick={() => handleDelete(cc.id)}
+                            onClick={() => setDeleteId(cc.id)}
                             className={cn(
                               'h-6 w-6',
                               isSynthetic && level <= 3
