@@ -567,39 +567,39 @@ export default function Mapping() {
             Associe seus Centros de Custo (TGA) às Contas Contábeis de forma ágil e centralizada.
           </p>
         </div>
-        <div className="flex flex-wrap gap-2 w-full md:w-auto mt-4 md:mt-0">
+        <div className="flex flex-col gap-2 w-full sm:w-auto mt-4 md:mt-0">
           <Button
             variant="secondary"
             onClick={handleAutoMap}
-            className="flex-1 md:flex-none bg-blue-50 text-blue-600 hover:bg-blue-100 border-blue-200"
+            className="w-full sm:w-[220px] justify-start bg-blue-50 text-blue-600 hover:bg-blue-100 border-0"
           >
-            <Sparkles className="h-4 w-4 mr-2" />
-            <span className="hidden sm:inline">Sugestão Inteligente</span>
-            <span className="sm:hidden">Sugestão</span>
+            <Sparkles className="h-4 w-4 mr-2 text-blue-500" />
+            Sugestão Inteligente
           </Button>
-          <Button onClick={() => setImportOpen(true)} className="flex-1 md:flex-none">
+          <Button
+            onClick={() => setImportOpen(true)}
+            className="w-full sm:w-[220px] justify-start bg-[#cc0000] hover:bg-[#aa0000] text-white shadow-sm"
+          >
             <Upload className="h-4 w-4 mr-2" />
-            <span className="hidden sm:inline">Importar Planilha</span>
-            <span className="sm:hidden">Importar</span>
+            Importar Planilha
           </Button>
         </div>
       </div>
 
       <Card className="bg-white shadow-sm border-slate-200 overflow-hidden">
-        <div className="p-4 bg-slate-50/50 border-b flex flex-col md:flex-row items-center gap-6">
+        <div className="p-6 border-b flex flex-col md:flex-row items-center gap-8 bg-white rounded-t-xl">
           <div className="flex-1 w-full">
             <div className="flex justify-between mb-2 text-sm font-medium">
               <span className="text-slate-700 font-semibold">Progresso do Mapeamento Geral</span>
               <span className="text-emerald-600">{progress}% Concluído</span>
             </div>
-            <Progress value={progress} className="h-2.5 bg-slate-200" />
+            <Progress value={progress} className="h-2.5 bg-slate-100 [&>div]:bg-[#cc0000]" />
           </div>
-          <div className="flex gap-3 text-sm shrink-0 w-full md:w-auto justify-around md:justify-start items-center">
+          <div className="flex items-center justify-center sm:justify-end gap-6 border-l border-slate-200 pl-6 shrink-0">
             <div
               className={cn(
-                'text-center md:text-left cursor-pointer transition-all p-3 rounded-xl min-w-[120px]',
-                'bg-gradient-to-br from-[#003d82] to-[#0099ff] text-white shadow-lg hover:shadow-xl hover:shadow-[#0099ff]/20',
-                filterStatus === 'mapped' ? 'ring-4 ring-[#0099ff] ring-offset-2' : '',
+                'flex flex-col items-center cursor-pointer hover:opacity-80 transition-opacity',
+                filterStatus === 'mapped' && 'opacity-50',
               )}
               onClick={() => {
                 setFilterStatus(filterStatus === 'mapped' ? 'all' : 'mapped')
@@ -607,16 +607,18 @@ export default function Mapping() {
               }}
               title="Filtrar por Mapeados"
             >
-              <span className="block text-2xl font-bold leading-none">{mappedCount}</span>
-              <span className="text-xs uppercase tracking-wider font-medium opacity-90 mt-1 block">
+              <span className="text-3xl font-bold text-slate-900 leading-none">{mappedCount}</span>
+              <span className="text-[10px] font-semibold text-slate-500 tracking-wider uppercase mt-1">
                 Mapeados
               </span>
             </div>
+
+            <div className="h-10 w-px bg-slate-200"></div>
+
             <div
               className={cn(
-                'text-center md:text-left cursor-pointer transition-all p-3 rounded-xl min-w-[120px]',
-                'bg-gradient-to-br from-[#8b4513] to-[#ff8c00] text-white shadow-lg hover:shadow-xl hover:shadow-[#ff8c00]/20',
-                filterStatus === 'pending' ? 'ring-4 ring-[#ff8c00] ring-offset-2' : '',
+                'flex flex-col items-center cursor-pointer hover:opacity-80 transition-opacity',
+                filterStatus === 'pending' && 'opacity-50',
               )}
               onClick={() => {
                 setFilterStatus(filterStatus === 'pending' ? 'all' : 'pending')
@@ -624,8 +626,10 @@ export default function Mapping() {
               }}
               title="Filtrar por Pendentes"
             >
-              <span className="block text-2xl font-bold leading-none">{total - mappedCount}</span>
-              <span className="text-xs uppercase tracking-wider font-medium opacity-90 mt-1 block">
+              <span className="text-3xl font-bold text-amber-500 leading-none">
+                {total - mappedCount}
+              </span>
+              <span className="text-[10px] font-semibold text-slate-500 tracking-wider uppercase mt-1">
                 Pendentes
               </span>
             </div>
