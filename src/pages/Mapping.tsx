@@ -467,7 +467,7 @@ export default function Mapping() {
   }
 
   return (
-    <div className="p-6 space-y-6 max-w-7xl mx-auto animate-in fade-in duration-500">
+    <div className="p-6 space-y-6 max-w-[1600px] mx-auto animate-in fade-in duration-500">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-2">
@@ -585,7 +585,7 @@ export default function Mapping() {
                 Definir conta contábil para os itens selecionados:
               </span>
             </div>
-            <div className="flex items-center gap-2 w-full sm:w-[400px]">
+            <div className="flex items-center gap-2 w-full sm:w-[500px]">
               <AccountCombobox
                 accounts={enrichedCAs}
                 value={batchCaId}
@@ -620,7 +620,7 @@ export default function Mapping() {
                     onCheckedChange={toggleAll}
                   />
                 </TableHead>
-                <TableHead className="w-[50%] p-2 border-r border-slate-200">
+                <TableHead className="w-[45%] p-2 border-r border-slate-200">
                   <Badge variant="outline" className="mr-2 border-slate-300 bg-white">
                     DE
                   </Badge>{' '}
@@ -678,8 +678,8 @@ export default function Mapping() {
                   </TableCell>
                   <TableCell className="p-1.5 px-2 align-top pt-1.5">
                     {(!cc.isSynthetic || cc.mappingId) && (
-                      <div className="flex flex-col gap-1 w-full max-w-[500px]">
-                        <div className="flex items-start gap-1 w-full">
+                      <div className="flex flex-col gap-1 w-full">
+                        <div className="flex items-start gap-2 w-full">
                           <div className="flex-1">
                             <AccountCombobox
                               accounts={enrichedCAs}

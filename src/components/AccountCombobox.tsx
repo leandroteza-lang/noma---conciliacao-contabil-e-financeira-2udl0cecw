@@ -64,11 +64,13 @@ export function AccountCombobox({
                   {selected.account_code}
                 </Badge>
               )}
-              <span className="truncate text-[13px] flex items-center gap-1.5">
+              <span className="truncate text-[13px] flex items-center gap-1.5 min-w-0">
                 {selected.classification && (
-                  <span className="font-mono text-slate-500">{selected.classification}</span>
+                  <span className="font-mono text-slate-500 shrink-0">
+                    {selected.classification}
+                  </span>
                 )}
-                <span className="font-medium text-slate-700">{selected.account_name}</span>
+                <span className="font-medium text-slate-700 truncate">{selected.account_name}</span>
               </span>
             </div>
           ) : (
@@ -93,7 +95,7 @@ export function AccountCombobox({
           </div>
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[400px] lg:w-[500px] p-0" align="start">
+      <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
         <Command
           filter={(val, search) => {
             if (val.includes(search.toLowerCase())) return 1
@@ -138,13 +140,15 @@ export function AccountCombobox({
                         </Badge>
                       )}
                       <div className="flex flex-col truncate">
-                        <span className="truncate text-[13px] flex items-center gap-1.5">
+                        <span className="truncate text-[13px] flex items-center gap-1.5 min-w-0">
                           {account.classification && (
-                            <span className="font-mono text-slate-500">
+                            <span className="font-mono text-slate-500 shrink-0">
                               {account.classification}
                             </span>
                           )}
-                          <span className="font-medium text-slate-700">{account.account_name}</span>
+                          <span className="font-medium text-slate-700 truncate">
+                            {account.account_name}
+                          </span>
                         </span>
                         {account.hierarchyPath &&
                           account.hierarchyPath !== account.account_name && (

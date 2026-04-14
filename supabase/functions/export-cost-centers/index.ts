@@ -3,7 +3,8 @@ import { jsPDF } from 'npm:jspdf@2.5.1'
 import autoTablePkg from 'npm:jspdf-autotable@3.8.2'
 import * as XLSX from 'npm:xlsx@0.18.5'
 
-const autoTable = typeof autoTablePkg === 'function' ? autoTablePkg : (autoTablePkg as any).default || autoTablePkg
+const autoTable =
+  typeof autoTablePkg === 'function' ? autoTablePkg : (autoTablePkg as any).default || autoTablePkg
 
 if (typeof globalThis.window === 'undefined') {
   ;(globalThis as any).window = globalThis
@@ -15,7 +16,8 @@ if (typeof globalThis.document === 'undefined') {
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, x-supabase-client-platform, apikey, content-type',
+  'Access-Control-Allow-Headers':
+    'authorization, x-client-info, x-supabase-client-platform, apikey, content-type',
 }
 
 Deno.serve(async (req: Request) => {
@@ -37,7 +39,8 @@ Deno.serve(async (req: Request) => {
     }
 
     if (format === 'csv') {
-      let csvContent = 'Empresa;Código;Descrição;Tipo Lcto;Operacional;Tipo TGA;Tipo;Fixo/Variável;Classificação;Contabiliza\n'
+      let csvContent =
+        'Empresa;Código;Descrição;Tipo Lcto;Operacional;Tipo TGA;Tipo;Fixo/Variável;Classificação;Contabiliza\n'
       data.forEach((r: any) => {
         csvContent += `"${r['Empresa'] || ''}";"${r['Código'] || ''}";"${r['Descrição'] || ''}";"${r['Tipo Lcto'] || ''}";"${r['Operacional'] || ''}";"${r['Tipo TGA'] || ''}";"${r['Tipo'] || ''}";"${r['Fixo/Variável'] || ''}";"${r['Classificação'] || ''}";"${r['Contabiliza'] || ''}"\n`
       })
@@ -47,7 +50,8 @@ Deno.serve(async (req: Request) => {
     }
 
     if (format === 'txt') {
-      let txtContent = 'RELATÓRIO DE CENTROS DE CUSTO\n=========================================\n\n'
+      let txtContent =
+        'RELATÓRIO DE CENTROS DE CUSTO\n=========================================\n\n'
       data.forEach((r: any) => {
         txtContent += `Empresa: ${r['Empresa'] || '-'}\n`
         txtContent += `Código: ${r['Código'] || '-'}\n`
