@@ -450,26 +450,20 @@ export default function Mapping() {
     if (cc.isSynthetic) {
       switch (cc.level) {
         case 0:
-          return 'bg-blue-900 text-white font-semibold'
+          return 'bg-indigo-950 font-bold text-white hover:bg-indigo-900'
         case 1:
-          return 'bg-blue-800 text-white font-semibold'
+          return 'bg-blue-800 font-semibold text-white hover:bg-blue-700'
         case 2:
-          return 'bg-blue-700 text-white font-semibold'
+          return 'bg-blue-500 font-medium text-white hover:bg-blue-400'
         case 3:
-          return 'bg-blue-600 text-white font-medium'
-        case 4:
-          return 'bg-blue-500 text-white font-medium'
-        case 5:
-          return 'bg-blue-400 text-slate-900 font-medium'
-        case 6:
-          return 'bg-blue-300 text-slate-900 font-medium'
+          return 'bg-blue-200 font-medium text-blue-950 hover:bg-blue-300'
         default:
-          return 'bg-blue-200 text-slate-900 font-medium'
+          return 'bg-blue-50 font-medium text-blue-900 hover:bg-blue-100'
       }
     }
     return cc.mappingId
-      ? 'bg-white hover:bg-slate-50 text-slate-700'
-      : 'bg-amber-50/20 hover:bg-amber-50/40 text-slate-700'
+      ? 'bg-white font-normal text-slate-700 hover:bg-slate-50'
+      : 'bg-amber-50/20 font-normal text-slate-700 hover:bg-amber-50/40'
   }
 
   return (
