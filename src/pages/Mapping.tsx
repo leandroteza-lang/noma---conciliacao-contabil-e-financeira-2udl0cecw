@@ -57,7 +57,7 @@ export default function Mapping() {
   const [filterStatus, setFilterStatus] = useState<'all' | 'mapped' | 'pending'>('all')
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
-  const [itemsPerPage, setItemsPerPage] = useState(50)
+  const [itemsPerPage, setItemsPerPage] = useState(500)
 
   const [selectedCCs, setSelectedCCs] = useState<Set<string>>(new Set())
   const [expandedAccounts, setExpandedAccounts] = useState<Set<string>>(new Set())
@@ -74,9 +74,13 @@ export default function Mapping() {
 
     if (orgsData) setOrgs(orgsData)
 
-    const currentOrgId = orgId || orgsData?.[0]?.id
+    let currentOrgId = orgId
+    if (!currentOrgId && orgsData && orgsData.length > 0) {
+      const nomaParts = orgsData.find((o) => (o.name || '').trim().toUpperCase() === 'NOMA PARTS')
+      currentOrgId = nomaParts ? nomaParts.id : orgsData[0].id
+      setOrgId(currentOrgId)
+    }
     if (!currentOrgId) return
-    if (!orgId) setOrgId(currentOrgId)
 
     const fetchAllCostCenters = async () => {
       let all: any[] = []
@@ -577,15 +581,35 @@ export default function Mapping() {
             </div>
             <Progress value={progress} className="h-2.5 bg-slate-200" />
           </div>
-          <div className="flex gap-6 text-sm text-slate-600 shrink-0 w-full md:w-auto justify-around md:justify-start">
-            <div className="text-center md:text-left">
+          <div className="flex gap-2 text-sm text-slate-600 shrink-0 w-full md:w-auto justify-around md:justify-start items-center">
+            <div
+              className={cn(
+                'text-center md:text-left cursor-pointer transition-all hover:bg-slate-100 p-2 rounded-lg',
+                filterStatus === 'mapped' ? 'bg-slate-100 ring-1 ring-slate-200' : '',
+              )}
+              onClick={() => {
+                setFilterStatus(filterStatus === 'mapped' ? 'all' : 'mapped')
+                setPage(1)
+              }}
+              title="Filtrar por Mapeados"
+            >
               <span className="block text-2xl font-bold text-slate-900 leading-none">
                 {mappedCount}
               </span>
               <span className="text-xs uppercase tracking-wider font-medium">Mapeados</span>
             </div>
-            <div className="w-px bg-slate-200 hidden md:block"></div>
-            <div className="text-center md:text-left">
+            <div className="w-px h-8 bg-slate-200 hidden md:block mx-2"></div>
+            <div
+              className={cn(
+                'text-center md:text-left cursor-pointer transition-all hover:bg-amber-50/50 p-2 rounded-lg',
+                filterStatus === 'pending' ? 'bg-amber-50 ring-1 ring-amber-200' : '',
+              )}
+              onClick={() => {
+                setFilterStatus(filterStatus === 'pending' ? 'all' : 'pending')
+                setPage(1)
+              }}
+              title="Filtrar por Pendentes"
+            >
               <span className="block text-2xl font-bold text-amber-500 leading-none">
                 {total - mappedCount}
               </span>
@@ -909,7 +933,7 @@ export default function Mapping() {
                 }}
               >
                 <SelectTrigger className="w-[80px] h-8 bg-white border-slate-200">
-                  <SelectValue placeholder="50" />
+                  <SelectValue placeholder="500" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="10">10</SelectItem>
