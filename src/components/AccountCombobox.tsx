@@ -43,19 +43,30 @@ export function AccountCombobox({
 
   const selected = accounts.find((a) => a.id === value)
 
+  const normalizeStr = (str: string | null | undefined) => {
+    if (!str) return ''
+    return str
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+  }
+
   const filtered = search
     ? accounts
         .filter((a) => {
-          const q = search.toLowerCase()
-          return (
-            a.account_code?.toLowerCase().includes(q) ||
-            a.classification?.toLowerCase().includes(q) ||
-            a.account_name?.toLowerCase().includes(q) ||
-            a.hierarchyPath?.toLowerCase().includes(q)
-          )
+          const searchTerms = normalizeStr(search).split(' ').filter(Boolean)
+
+          const targetString = [
+            normalizeStr(a.account_code),
+            normalizeStr(a.classification),
+            normalizeStr(a.account_name),
+            normalizeStr(a.hierarchyPath),
+          ].join(' ')
+
+          return searchTerms.every((term) => targetString.includes(term))
         })
-        .slice(0, 50)
-    : accounts.slice(0, 50)
+        .slice(0, 150)
+    : accounts.slice(0, 150)
 
   return (
     <Popover open={open} onOpenChange={setOpen}>

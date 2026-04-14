@@ -182,19 +182,28 @@ export default function Mapping() {
     if (filterStatus === 'mapped') result = result.filter((c) => c.mappingId)
     if (filterStatus === 'pending') result = result.filter((c) => !c.mappingId && !c.isSynthetic)
     if (search) {
-      const q = search.toLowerCase()
+      const normalizeStr = (str: string | null | undefined) => {
+        if (!str) return ''
+        return str
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .toLowerCase()
+      }
+
+      const searchTerms = normalizeStr(search).split(' ').filter(Boolean)
+
       result = result.filter((cc) => {
-        const matchCC =
-          cc.code?.toLowerCase().includes(q) ||
-          cc.description?.toLowerCase().includes(q) ||
-          cc.hierarchyPath?.toLowerCase().includes(q)
-        const matchCA =
-          cc.mappedCa &&
-          (cc.mappedCa.account_code?.toLowerCase().includes(q) ||
-            cc.mappedCa.classification?.toLowerCase().includes(q) ||
-            cc.mappedCa.account_name?.toLowerCase().includes(q) ||
-            cc.mappedCa.hierarchyPath?.toLowerCase().includes(q))
-        return matchCC || matchCA
+        const targetString = [
+          normalizeStr(cc.code),
+          normalizeStr(cc.description),
+          normalizeStr(cc.hierarchyPath),
+          cc.mappedCa ? normalizeStr(cc.mappedCa.account_code) : '',
+          cc.mappedCa ? normalizeStr(cc.mappedCa.classification) : '',
+          cc.mappedCa ? normalizeStr(cc.mappedCa.account_name) : '',
+          cc.mappedCa ? normalizeStr(cc.mappedCa.hierarchyPath) : '',
+        ].join(' ')
+
+        return searchTerms.every((term) => targetString.includes(term))
       })
     }
     return result
@@ -219,9 +228,31 @@ export default function Mapping() {
       return
     }
 
+    // Optimistic Update
+    setMappings((prev) => {
+      const filtered = prev.filter((m) => m.id !== existingMappingId && m.cost_center_id !== ccId)
+      return [
+        ...filtered,
+        {
+          id: 'temp-' + Date.now(),
+          organization_id: orgId,
+          cost_center_id: ccId,
+          chart_account_id: targetCaId,
+          mapping_type: 'DE/PARA',
+        },
+      ]
+    })
+
     if (existingMappingId) {
       await supabase.from('account_mapping').delete().eq('id', existingMappingId)
     }
+    // Delete by cost_center_id just to be safe and avoid duplicates
+    await supabase
+      .from('account_mapping')
+      .delete()
+      .eq('cost_center_id', ccId)
+      .eq('organization_id', orgId)
+
     const { error } = await supabase.from('account_mapping').insert({
       organization_id: orgId,
       cost_center_id: ccId,
@@ -231,21 +262,27 @@ export default function Mapping() {
 
     if (error) {
       toast.error('Erro ao mapear: ' + error.message)
+      load() // Revert optimistic update
     } else {
       toast.success('Conta vinculada com sucesso')
-      load() // Recarrega imediatamente para refletir a alteração na UI
+      load()
     }
   }
 
   const handleRemove = async (mappingId: string) => {
     if (!mappingId) return
+
+    // Optimistic Update
+    setMappings((prev) => prev.filter((m) => m.id !== mappingId))
+
     const { error } = await supabase.from('account_mapping').delete().eq('id', mappingId)
 
     if (error) {
       toast.error('Erro ao remover: ' + error.message)
+      load() // Revert optimistic update
     } else {
       toast.success('Vínculo removido')
-      load() // Recarrega imediatamente para refletir a alteração na UI
+      load()
     }
   }
 
@@ -266,6 +303,14 @@ export default function Mapping() {
           existingMappings.map((m) => m.id),
         )
     }
+
+    // Also delete by cost_center_id to avoid unique constraint violations or duplicates
+    await supabase
+      .from('account_mapping')
+      .delete()
+      .in('cost_center_id', ccIds)
+      .eq('organization_id', orgId)
+
     const payloads = ccIds.map((ccId) => ({
       organization_id: orgId,
       cost_center_id: ccId,
