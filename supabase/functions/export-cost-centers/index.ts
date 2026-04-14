@@ -50,7 +50,7 @@ Deno.serve(async (req) => {
           `"${row.code || ''}"`,
           `"${(row.description || '').replace(/"/g, '""')}"`,
           `"${row.type || ''}"`,
-        ].join(',')
+        ].join(','),
       )
     }
 

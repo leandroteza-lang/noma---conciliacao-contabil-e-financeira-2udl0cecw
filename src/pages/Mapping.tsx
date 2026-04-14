@@ -583,9 +583,17 @@ export default function Mapping() {
           <div className="flex-1 w-full">
             <div className="flex justify-between mb-2 text-sm font-medium">
               <span className="text-slate-700 font-semibold">Progresso do Mapeamento Geral</span>
-              <span className="text-emerald-600">{progress}% Concluído</span>
+              <span className={progress === 100 ? 'text-emerald-600' : 'text-[#cc0000]'}>
+                {progress}% Concluído
+              </span>
             </div>
-            <Progress value={progress} className="h-2.5 bg-slate-100 [&>div]:bg-[#cc0000]" />
+            <Progress
+              value={progress}
+              className={cn(
+                'h-2.5 bg-slate-100 transition-all',
+                progress === 100 ? '[&>div]:bg-emerald-500' : '[&>div]:bg-[#cc0000]',
+              )}
+            />
           </div>
           <div className="flex items-center justify-center sm:justify-end gap-4 shrink-0">
             <div
