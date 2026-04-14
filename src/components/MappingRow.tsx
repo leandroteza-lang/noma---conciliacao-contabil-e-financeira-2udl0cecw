@@ -24,15 +24,15 @@ export const MappingRow = memo(function MappingRow({
     if (cc.isSynthetic) {
       switch (cc.level) {
         case 0:
-          return 'bg-indigo-950 font-bold text-white hover:bg-indigo-900'
+          return 'bg-slate-950 font-bold text-white hover:bg-slate-900'
         case 1:
-          return 'bg-blue-800 font-semibold text-white hover:bg-blue-700'
+          return 'bg-slate-800 font-semibold text-white hover:bg-slate-700'
         case 2:
-          return 'bg-blue-500 font-medium text-white hover:bg-blue-400'
+          return 'bg-slate-600 font-medium text-white hover:bg-slate-500'
         case 3:
-          return 'bg-blue-200 font-medium text-blue-950 hover:bg-blue-300'
+          return 'bg-slate-200 font-medium text-slate-900 hover:bg-slate-300'
         default:
-          return 'bg-blue-50 font-medium text-blue-900 hover:bg-blue-100'
+          return 'bg-slate-50 font-medium text-slate-800 hover:bg-slate-100'
       }
     }
 
@@ -49,17 +49,19 @@ export const MappingRow = memo(function MappingRow({
 
   return (
     <TableRow className={cn('transition-colors border-b border-slate-100', getRowStyle(cc, index))}>
-      <TableCell className="p-1.5 px-4 w-[40px] border-r border-slate-200/40 align-top pt-2">
+      <TableCell className="p-1.5 px-4 w-[40px] border-r border-slate-200/40 align-middle text-center">
         {!cc.isSynthetic && (
-          <Checkbox checked={isSelected} onCheckedChange={() => onToggleCC(cc.id)} />
+          <div className="flex justify-center">
+            <Checkbox checked={isSelected} onCheckedChange={() => onToggleCC(cc.id)} />
+          </div>
         )}
       </TableCell>
-      <TableCell className="p-1.5 border-r border-slate-200/40 align-top pt-2 max-w-0">
+      <TableCell className="p-1.5 border-r border-slate-200/40 align-middle max-w-0">
         <div
-          className="flex items-center gap-2 w-full min-w-0"
-          style={{ paddingLeft: `${cc.level * 1.25}rem` }}
+          className="flex items-center justify-center gap-2 w-full min-w-0"
+          style={{ paddingLeft: cc.level > 0 ? `${cc.level * 1.25}rem` : undefined }}
         >
-          <div className="flex items-center gap-1 shrink-0">
+          <div className="flex items-center justify-center gap-1 shrink-0">
             {cc.isSynthetic ? (
               <button
                 onClick={() => onToggleGroup(cc.id)}
@@ -86,8 +88,8 @@ export const MappingRow = memo(function MappingRow({
               {cc.isSynthetic ? 'S' : 'A'}
             </Badge>
           </div>
-          <div className="flex flex-col overflow-hidden text-left cursor-default w-full min-w-0">
-            <div className="flex items-center gap-2 truncate w-full min-w-0">
+          <div className="flex flex-col overflow-hidden text-center cursor-default w-full min-w-0">
+            <div className="flex items-center justify-center gap-2 truncate w-full min-w-0">
               <span className="font-mono text-[11px] font-semibold whitespace-nowrap shrink-0">
                 {cc.code}
               </span>
@@ -99,9 +101,9 @@ export const MappingRow = memo(function MappingRow({
           </div>
         </div>
       </TableCell>
-      <TableCell className="p-1.5 px-2 pr-4 align-top pt-1.5 max-w-0">
+      <TableCell className="p-1.5 px-2 pr-4 align-middle max-w-0">
         {cc.isSynthetic && !cc.mappingId ? (
-          <div className="flex justify-end">
+          <div className="flex justify-center">
             <Button
               variant="outline"
               size="sm"
@@ -123,8 +125,8 @@ export const MappingRow = memo(function MappingRow({
           </div>
         ) : (
           (!cc.isSynthetic || cc.mappingId) && (
-            <div className="flex flex-col gap-1 w-full min-w-0">
-              <div className="flex items-start gap-2 w-full min-w-0">
+            <div className="flex flex-col items-center justify-center gap-1 w-full min-w-0">
+              <div className="flex items-center justify-center gap-2 w-full min-w-0 max-w-md mx-auto">
                 <div className="flex-1 min-w-0">
                   <AccountCombobox
                     accounts={enrichedCAs}
@@ -178,20 +180,20 @@ export const MappingRow = memo(function MappingRow({
 
                       if (node.account_level === 'Sintética') {
                         if (level === 1) {
-                          rowClass = 'bg-indigo-950 font-bold text-white hover:bg-indigo-900'
-                          badgeClass = 'bg-indigo-900 text-white border-indigo-800'
+                          rowClass = 'bg-slate-950 font-bold text-white hover:bg-slate-900'
+                          badgeClass = 'bg-slate-900 text-white border-slate-800'
                         } else if (level === 2) {
-                          rowClass = 'bg-blue-800 font-semibold text-white hover:bg-blue-700'
-                          badgeClass = 'bg-blue-700 text-white border-blue-600'
+                          rowClass = 'bg-slate-800 font-semibold text-white hover:bg-slate-700'
+                          badgeClass = 'bg-slate-700 text-white border-slate-600'
                         } else if (level === 3) {
-                          rowClass = 'bg-blue-500 font-medium text-white hover:bg-blue-400'
-                          badgeClass = 'bg-blue-600 text-white border-blue-500'
+                          rowClass = 'bg-slate-600 font-medium text-white hover:bg-slate-500'
+                          badgeClass = 'bg-slate-600 text-white border-slate-500'
                         } else if (level === 4) {
-                          rowClass = 'bg-blue-200 font-medium text-blue-950 hover:bg-blue-300'
-                          badgeClass = 'bg-blue-300 text-blue-900 border-blue-400'
+                          rowClass = 'bg-slate-200 font-medium text-slate-900 hover:bg-slate-300'
+                          badgeClass = 'bg-slate-300 text-slate-900 border-slate-400'
                         } else {
-                          rowClass = 'bg-blue-50 font-medium text-blue-900 hover:bg-blue-100'
-                          badgeClass = 'bg-blue-100 text-blue-800 border-blue-200'
+                          rowClass = 'bg-slate-50 font-medium text-slate-800 hover:bg-slate-100'
+                          badgeClass = 'bg-slate-200 text-slate-800 border-slate-300'
                         }
                       }
 
@@ -199,20 +201,21 @@ export const MappingRow = memo(function MappingRow({
                         <div
                           key={node.id}
                           className={cn(
-                            'flex items-center gap-2 px-2 py-1.5 transition-colors border-b border-slate-100/50 last:border-0',
+                            'flex items-center justify-center gap-2 px-2 py-1.5 transition-colors border-b border-slate-100/50 last:border-0',
                             rowClass,
                           )}
-                          style={{ paddingLeft: `${Math.max(0.5, level * 0.75)}rem` }}
                         >
                           <span
                             className={cn(
-                              'font-mono text-[10px] px-1 rounded border shadow-sm shrink-0',
+                              'font-mono text-[10px] px-1.5 py-0.5 rounded border shadow-sm shrink-0',
                               badgeClass,
                             )}
                           >
                             {code}
                           </span>
-                          <span className="text-[11px] truncate">{node.account_name}</span>
+                          <span className="text-[11px] truncate font-medium">
+                            {node.account_name}
+                          </span>
                         </div>
                       )
                     })}

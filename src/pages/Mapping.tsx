@@ -818,28 +818,41 @@ export default function Mapping() {
 
         <div className="overflow-x-auto">
           <Table className="border-collapse">
-            <TableHeader className="bg-slate-50 border-b shadow-sm sticky top-0 z-10">
-              <TableRow className="h-9 hover:bg-slate-50">
-                <TableHead className="w-[40px] p-1 px-4 border-r border-slate-200">
-                  <Checkbox
-                    checked={
-                      paginatedCCs.filter((c) => !c.isSynthetic).length > 0 &&
-                      selectedCCs.size === paginatedCCs.filter((c) => !c.isSynthetic).length
-                    }
-                    onCheckedChange={toggleAll}
-                  />
+            <TableHeader className="bg-slate-100 border-b shadow-sm sticky top-0 z-10">
+              <TableRow className="h-14 hover:bg-slate-100">
+                <TableHead className="w-[40px] text-center border-r border-slate-200 align-middle">
+                  <div className="flex justify-center">
+                    <Checkbox
+                      checked={
+                        paginatedCCs.filter((c) => !c.isSynthetic).length > 0 &&
+                        selectedCCs.size === paginatedCCs.filter((c) => !c.isSynthetic).length
+                      }
+                      onCheckedChange={toggleAll}
+                    />
+                  </div>
                 </TableHead>
-                <TableHead className="w-[40%] p-2 border-r border-slate-200">
-                  <Badge variant="outline" className="mr-2 border-slate-300 bg-white">
-                    DE
-                  </Badge>{' '}
-                  Centro de Custo TGA
+                <TableHead className="w-[40%] text-center border-r border-slate-200 p-2 align-middle">
+                  <div className="flex items-center justify-center gap-2 bg-white mx-auto max-w-sm py-1.5 px-3 rounded-lg shadow-sm border border-slate-200/60">
+                    <Badge
+                      variant="outline"
+                      className="border-slate-300 bg-slate-50 text-slate-700"
+                    >
+                      DE
+                    </Badge>
+                    <span className="font-semibold text-slate-800 text-sm">
+                      Centro de Custo TGA
+                    </span>
+                  </div>
                 </TableHead>
-                <TableHead className="p-2 w-[60%] pr-4">
-                  <Badge className="mr-2 bg-slate-700 hover:bg-slate-800 text-white border-0">
-                    PARA
-                  </Badge>{' '}
-                  Conta Contábil Vinculada
+                <TableHead className="w-[60%] p-2 pr-4 text-center align-middle">
+                  <div className="flex items-center justify-center gap-2 bg-white mx-auto max-w-sm py-1.5 px-3 rounded-lg shadow-sm border border-slate-200/60">
+                    <Badge className="bg-slate-800 hover:bg-slate-900 text-white border-0">
+                      PARA
+                    </Badge>
+                    <span className="font-semibold text-slate-800 text-sm">
+                      Conta Contábil Vinculada
+                    </span>
+                  </div>
                 </TableHead>
               </TableRow>
             </TableHeader>
