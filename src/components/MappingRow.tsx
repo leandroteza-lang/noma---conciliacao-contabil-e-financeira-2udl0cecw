@@ -42,6 +42,10 @@ export const MappingRow = memo(function MappingRow({
         : 'bg-amber-50/60 font-normal text-slate-700 hover:bg-amber-50/80'
     }
 
+    if (cc.ccPendingDeletion) {
+      return 'bg-red-50/50 font-normal text-slate-500 opacity-70'
+    }
+
     return idx % 2 === 0
       ? 'bg-white font-normal text-slate-700 hover:bg-slate-50'
       : 'bg-[#dbeefc] font-normal text-slate-800 hover:bg-[#d0e9f9]'
@@ -52,7 +56,11 @@ export const MappingRow = memo(function MappingRow({
       <TableCell className="p-1.5 px-4 w-[40px] border-r border-slate-200/40 align-middle text-center">
         {!cc.isSynthetic && (
           <div className="flex justify-center">
-            <Checkbox checked={isSelected} onCheckedChange={() => onToggleCC(cc.id)} />
+            <Checkbox
+              checked={isSelected}
+              disabled={cc.ccPendingDeletion}
+              onCheckedChange={() => onToggleCC(cc.id)}
+            />
           </div>
         )}
       </TableCell>
@@ -188,15 +196,23 @@ export const MappingRow = memo(function MappingRow({
                       }
                     />
                   </div>
-                  {cc.pendingDeletion && (
+                  {cc.ccPendingDeletion && (
                     <Badge
                       variant="outline"
-                      className="bg-red-50 text-red-600 border-red-200 whitespace-nowrap shrink-0 text-[10px] h-8 flex items-center px-2 shadow-sm"
+                      className="bg-red-50 text-red-600 border-red-200 whitespace-nowrap shrink-0 text-[10px] h-8 flex items-center px-2 shadow-sm mr-2"
                     >
-                      Exclusão Pendente
+                      CC em Exclusão
                     </Badge>
                   )}
-                  {cc.mappingId && !cc.pendingDeletion && (
+                  {cc.pendingDeletion && !cc.ccPendingDeletion && (
+                    <Badge
+                      variant="outline"
+                      className="bg-orange-50 text-orange-600 border-orange-200 whitespace-nowrap shrink-0 text-[10px] h-8 flex items-center px-2 shadow-sm mr-2"
+                    >
+                      Desvínculo Pendente
+                    </Badge>
+                  )}
+                  {cc.mappingId && !cc.pendingDeletion && !cc.ccPendingDeletion && (
                     <Button
                       variant="outline"
                       size="sm"

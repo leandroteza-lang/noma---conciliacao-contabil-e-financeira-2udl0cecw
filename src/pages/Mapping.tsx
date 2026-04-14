@@ -41,6 +41,13 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { toast } from 'sonner'
 import { AccountCombobox, Account } from '@/components/AccountCombobox'
 import { ImportMappingModal } from '@/components/ImportMappingModal'
@@ -72,6 +79,7 @@ export default function Mapping() {
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set())
   const [batchCaId, setBatchCaId] = useState<string>('')
   const [importOpen, setImportOpen] = useState(false)
+  const [batchActionType, setBatchActionType] = useState<'unlink' | 'delete_cc' | null>(null)
 
   const load = async () => {
     if (!user) return
@@ -251,6 +259,7 @@ export default function Mapping() {
         mappingId: mapping?.id,
         mappedCa: mapping ? enrichedCAs.find((c) => c.id === mapping.chart_account_id) : null,
         pendingDeletion: mapping?.pending_deletion,
+        ccPendingDeletion: cc.pending_deletion,
         level,
         isSynthetic,
         hierarchyPath,
@@ -508,6 +517,7 @@ export default function Mapping() {
     const existingMappings = mappings.filter((m) => ccIds.includes(m.cost_center_id))
     if (existingMappings.length === 0) {
       toast.info('Nenhum vínculo encontrado para excluir nos itens selecionados.')
+      setBatchActionType(null)
       return
     }
 
@@ -523,11 +533,42 @@ export default function Mapping() {
         existingMappings.map((m) => m.id),
       )
 
-    if (error) toast.error('Erro ao solicitar exclusão: ' + error.message)
-    else {
-      toast.success(`${existingMappings.length} solicitações de exclusão enviadas para aprovação!`)
+    if (error) {
+      toast.error('Erro ao solicitar desvinculação: ' + error.message)
+    } else {
+      toast.success(
+        `${existingMappings.length} solicitações de desvinculação enviadas para aprovação!`,
+      )
       window.dispatchEvent(new Event('refresh-approvals-badge'))
       setSelectedCCs(new Set())
+      setBatchActionType(null)
+      loadRef.current()
+    }
+  }
+
+  const handleBatchDeleteCC = async () => {
+    if (!orgId || selectedCCs.size === 0) return
+
+    const ccIds = Array.from(selectedCCs)
+
+    const { error } = await supabase
+      .from('cost_centers')
+      .update({
+        pending_deletion: true,
+        deletion_requested_at: new Date().toISOString(),
+        deletion_requested_by: user?.id,
+      })
+      .in('id', ccIds)
+
+    if (error) {
+      toast.error('Erro ao solicitar exclusão de cadastro: ' + error.message)
+    } else {
+      toast.success(
+        `${ccIds.length} solicitações de exclusão de Centro de Custo enviadas para aprovação!`,
+      )
+      window.dispatchEvent(new Event('refresh-approvals-badge'))
+      setSelectedCCs(new Set())
+      setBatchActionType(null)
       loadRef.current()
     }
   }
@@ -643,7 +684,7 @@ export default function Mapping() {
 
   const toggleAll = useCallback(() => {
     setSelectedCCs((prev) => {
-      const analytics = paginatedCCs.filter((c) => !c.isSynthetic)
+      const analytics = paginatedCCs.filter((c) => !c.isSynthetic && !c.ccPendingDeletion)
       if (prev.size === analytics.length && analytics.length > 0) {
         return new Set()
       } else {
@@ -901,24 +942,43 @@ export default function Mapping() {
               >
                 Aplicar
               </Button>
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
                   <Button
                     size="sm"
                     className="shrink-0 bg-[#cc0000] hover:bg-[#aa0000] text-white shadow-sm"
-                    title="Excluir vínculo dos selecionados"
                   >
                     <Trash2 className="h-4 w-4 sm:mr-2" />
-                    <span className="hidden sm:inline">Excluir</span>
+                    <span className="hidden sm:inline">Excluir...</span>
                   </Button>
-                </AlertDialogTrigger>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => setBatchActionType('unlink')}>
+                    <Unlink className="h-4 w-4 mr-2" />
+                    Desvincular Contas
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={() => setBatchActionType('delete_cc')}
+                    className="text-red-600 focus:text-red-600 focus:bg-red-50"
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Excluir Centros de Custo
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              <AlertDialog
+                open={batchActionType === 'unlink'}
+                onOpenChange={(open) => !open && setBatchActionType(null)}
+              >
                 <AlertDialogContent>
                   <AlertDialogHeader>
-                    <AlertDialogTitle>Solicitar exclusão dos vínculos?</AlertDialogTitle>
+                    <AlertDialogTitle>Solicitar desvinculação?</AlertDialogTitle>
                     <AlertDialogDescription>
-                      Você está prestes a solicitar a exclusão do vínculo contábil de{' '}
-                      <strong>{selectedCCs.size}</strong> centro(s) de custo. Os registros irão para
-                      a Central de Aprovações.
+                      Você está prestes a solicitar a exclusão do <strong>vínculo contábil</strong>{' '}
+                      de <strong>{selectedCCs.size}</strong> centro(s) de custo. Os registros irão
+                      para a Central de Aprovações. O centro de custo em si NÃO será excluído.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
@@ -927,7 +987,32 @@ export default function Mapping() {
                       onClick={handleBatchRemove}
                       className="bg-[#cc0000] hover:bg-[#aa0000] text-white"
                     >
-                      Sim, solicitar
+                      Sim, desvincular
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+
+              <AlertDialog
+                open={batchActionType === 'delete_cc'}
+                onOpenChange={(open) => !open && setBatchActionType(null)}
+              >
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Solicitar exclusão de Centros de Custo?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Você está prestes a solicitar a <strong>exclusão definitiva</strong> do
+                      cadastro de <strong>{selectedCCs.size}</strong> centro(s) de custo (e seus
+                      vínculos). As solicitações irão para a Central de Aprovações.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={handleBatchDeleteCC}
+                      className="bg-[#cc0000] hover:bg-[#aa0000] text-white"
+                    >
+                      Sim, excluir
                     </AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>
