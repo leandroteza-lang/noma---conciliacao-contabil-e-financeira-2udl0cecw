@@ -55,7 +55,7 @@ export function AccountCombobox({
           )}
         >
           {selected ? (
-            <div className="flex items-center gap-2 truncate w-full">
+            <div className="flex items-center gap-2 truncate w-full min-w-0">
               {selected.account_code && (
                 <Badge
                   variant="secondary"
@@ -74,7 +74,7 @@ export function AccountCombobox({
               </span>
             </div>
           ) : (
-            <span className="truncate">{placeholder}</span>
+            <span className="truncate min-w-0">{placeholder}</span>
           )}
           <div className="flex items-center gap-1 shrink-0 opacity-50 ml-2">
             {selected && onClear && (

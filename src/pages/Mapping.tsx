@@ -626,7 +626,7 @@ export default function Mapping() {
                   </Badge>{' '}
                   Centro de Custo TGA
                 </TableHead>
-                <TableHead className="p-2">
+                <TableHead className="p-2 w-[55%]">
                   <Badge className="mr-2 bg-slate-700 hover:bg-slate-800 text-white border-0">
                     PARA
                   </Badge>{' '}
@@ -648,9 +648,9 @@ export default function Mapping() {
                       />
                     )}
                   </TableCell>
-                  <TableCell className="p-1.5 border-r border-slate-200/40 align-top pt-2">
+                  <TableCell className="p-1.5 border-r border-slate-200/40 align-top pt-2 max-w-0">
                     <div
-                      className="flex items-center gap-2"
+                      className="flex items-center gap-2 w-full min-w-0"
                       style={{ paddingLeft: `${cc.level * 1.25}rem` }}
                     >
                       <Badge
@@ -663,9 +663,9 @@ export default function Mapping() {
                       >
                         {cc.isSynthetic ? 'S' : 'A'}
                       </Badge>
-                      <div className="flex flex-col overflow-hidden text-left cursor-default">
-                        <div className="flex items-center gap-2 truncate">
-                          <span className="font-mono text-[11px] font-semibold whitespace-nowrap">
+                      <div className="flex flex-col overflow-hidden text-left cursor-default w-full min-w-0">
+                        <div className="flex items-center gap-2 truncate w-full min-w-0">
+                          <span className="font-mono text-[11px] font-semibold whitespace-nowrap shrink-0">
                             {cc.code}
                           </span>
                           <span className="text-xs truncate font-medium">{cc.description}</span>
@@ -676,11 +676,11 @@ export default function Mapping() {
                       </div>
                     </div>
                   </TableCell>
-                  <TableCell className="p-1.5 px-2 align-top pt-1.5">
+                  <TableCell className="p-1.5 px-2 align-top pt-1.5 max-w-0">
                     {(!cc.isSynthetic || cc.mappingId) && (
-                      <div className="flex flex-col gap-1 w-full">
-                        <div className="flex items-start gap-2 w-full">
-                          <div className="flex-1">
+                      <div className="flex flex-col gap-1 w-full min-w-0">
+                        <div className="flex items-start gap-2 w-full min-w-0">
+                          <div className="flex-1 min-w-0">
                             <AccountCombobox
                               accounts={enrichedCAs}
                               value={cc.mappedCa?.id}
