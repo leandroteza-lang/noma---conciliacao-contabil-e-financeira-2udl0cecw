@@ -16,6 +16,6 @@
     "audit-log": 15,
     "cleanup-audit-logs": 3,
     "delete-chart-accounts": 2,
-    "export-cost-centers": 1
+    "export-cost-centers": 2
   }
 }

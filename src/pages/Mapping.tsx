@@ -620,13 +620,13 @@ export default function Mapping() {
                     onCheckedChange={toggleAll}
                   />
                 </TableHead>
-                <TableHead className="w-[45%] p-2 border-r border-slate-200">
+                <TableHead className="w-[40%] p-2 border-r border-slate-200">
                   <Badge variant="outline" className="mr-2 border-slate-300 bg-white">
                     DE
                   </Badge>{' '}
                   Centro de Custo TGA
                 </TableHead>
-                <TableHead className="p-2 w-[55%]">
+                <TableHead className="p-2 w-[60%] pr-4">
                   <Badge className="mr-2 bg-slate-700 hover:bg-slate-800 text-white border-0">
                     PARA
                   </Badge>{' '}
@@ -676,7 +676,7 @@ export default function Mapping() {
                       </div>
                     </div>
                   </TableCell>
-                  <TableCell className="p-1.5 px-2 align-top pt-1.5 max-w-0">
+                  <TableCell className="p-1.5 px-2 pr-4 align-top pt-1.5 max-w-0">
                     {(!cc.isSynthetic || cc.mappingId) && (
                       <div className="flex flex-col gap-1 w-full min-w-0">
                         <div className="flex items-start gap-2 w-full min-w-0">
@@ -700,14 +700,14 @@ export default function Mapping() {
                             cc.mappedCa.hierarchyArray &&
                             cc.mappedCa.hierarchyArray.length > 0 && (
                               <Button
-                                variant="ghost"
+                                variant="outline"
                                 size="sm"
                                 onClick={() => toggleExpand(cc.id)}
                                 className={cn(
-                                  'h-8 px-2 text-xs font-medium shrink-0 transition-colors',
+                                  'h-9 px-3 text-xs font-medium shrink-0 transition-colors bg-white shadow-sm',
                                   expandedAccounts.has(cc.id)
-                                    ? 'bg-slate-200 text-slate-800'
-                                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200',
+                                    ? 'bg-slate-100 text-slate-800 border-slate-300'
+                                    : 'text-slate-700 hover:bg-slate-50 border-slate-200',
                                 )}
                                 title="Ver raiz da conta"
                               >

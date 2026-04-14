@@ -1,104 +1,72 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts'
-import { jsPDF } from 'npm:jspdf@2.5.1'
-import autoTablePkg from 'npm:jspdf-autotable@3.8.2'
-import * as XLSX from 'npm:xlsx@0.18.5'
-
-const autoTable =
-  typeof autoTablePkg === 'function' ? autoTablePkg : (autoTablePkg as any).default || autoTablePkg
-
-if (typeof globalThis.window === 'undefined') {
-  ;(globalThis as any).window = globalThis
-}
-if (typeof globalThis.document === 'undefined') {
-  ;(globalThis as any).document = { createElement: () => ({}) }
-}
+import { createClient } from 'jsr:@supabase/supabase-js@2'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-  'Access-Control-Allow-Headers':
-    'authorization, x-client-info, x-supabase-client-platform, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-Deno.serve(async (req: Request) => {
-  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
+Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders })
+  }
+
   try {
-    const authHeader = req.headers.get('Authorization')
-    if (!authHeader) throw new Error('Cabeçalho de autorização ausente')
+    const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? ''
+    const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY') ?? ''
+    const supabase = createClient(supabaseUrl, supabaseKey, {
+      global: {
+        headers: { Authorization: req.headers.get('Authorization')! },
+      },
+    })
 
-    const { format, data } = await req.json()
+    const reqBody = await req.json().catch(() => ({}))
+    const organizationId = reqBody.organizationId
 
-    if (format === 'excel') {
-      const worksheet = XLSX.utils.json_to_sheet(data)
-      const workbook = XLSX.utils.book_new()
-      XLSX.utils.book_append_sheet(workbook, worksheet, 'Centros de Custo')
-      const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'base64' })
-      return new Response(JSON.stringify({ excel: excelBuffer }), {
+    if (!organizationId) {
+      return new Response(JSON.stringify({ error: 'organizationId is required' }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 400,
       })
     }
 
-    if (format === 'csv') {
-      let csvContent =
-        'Empresa;Código;Descrição;Tipo Lcto;Operacional;Tipo TGA;Tipo;Fixo/Variável;Classificação;Contabiliza\n'
-      data.forEach((r: any) => {
-        csvContent += `"${r['Empresa'] || ''}";"${r['Código'] || ''}";"${r['Descrição'] || ''}";"${r['Tipo Lcto'] || ''}";"${r['Operacional'] || ''}";"${r['Tipo TGA'] || ''}";"${r['Tipo'] || ''}";"${r['Fixo/Variável'] || ''}";"${r['Classificação'] || ''}";"${r['Contabiliza'] || ''}"\n`
-      })
-      return new Response(JSON.stringify({ csv: csvContent }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      })
+    const { data, error } = await supabase
+      .from('cost_centers')
+      .select('*')
+      .eq('organization_id', organizationId)
+      .is('deleted_at', null)
+      .order('code')
+
+    if (error) throw error
+
+    // Generate CSV
+    const headers = ['ID', 'Código', 'Descrição', 'Tipo']
+    const csvRows = [headers.join(',')]
+
+    for (const row of data || []) {
+      csvRows.push(
+        [
+          row.id,
+          `"${row.code || ''}"`,
+          `"${(row.description || '').replace(/"/g, '""')}"`,
+          `"${row.type || ''}"`,
+        ].join(','),
+      )
     }
 
-    if (format === 'txt') {
-      let txtContent =
-        'RELATÓRIO DE CENTROS DE CUSTO\n=========================================\n\n'
-      data.forEach((r: any) => {
-        txtContent += `Empresa: ${r['Empresa'] || '-'}\n`
-        txtContent += `Código: ${r['Código'] || '-'}\n`
-        txtContent += `Descrição: ${r['Descrição'] || '-'}\n`
-        txtContent += `Tipo Lcto: ${r['Tipo Lcto'] || '-'}\n`
-        txtContent += `Operacional: ${r['Operacional'] || '-'}\n`
-        txtContent += `Tipo TGA: ${r['Tipo TGA'] || '-'}\n`
-        txtContent += '-----------------------------------------\n'
-      })
-      return new Response(JSON.stringify({ txt: txtContent }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      })
-    }
+    const csvContent = csvRows.join('\n')
 
-    if (format === 'pdf') {
-      const doc = new jsPDF('landscape')
-      doc.setFontSize(16)
-      doc.text('Relatório de Centros de Custo', 14, 20)
-
-      const body = data.map((r: any) => [
-        r['Empresa'] || '-',
-        r['Código'] || '-',
-        r['Descrição'] || '-',
-        r['Tipo Lcto'] || '-',
-        r['Operacional'] || '-',
-        r['Tipo TGA'] || '-',
-      ])
-
-      autoTable(doc, {
-        startY: 25,
-        head: [['Empresa', 'Código', 'Descrição', 'Tipo Lcto', 'Operacional', 'Tipo TGA']],
-        body: body,
-        theme: 'grid',
-        headStyles: { fillColor: [220, 38, 38] },
-        styles: { fontSize: 9 },
-      })
-
-      const pdf = doc.output('datauristring')
-      return new Response(JSON.stringify({ pdf }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      })
-    }
-    throw new Error('Formato inválido.')
-  } catch (err: any) {
-    return new Response(JSON.stringify({ error: err.message }), {
-      status: 400,
+    return new Response(csvContent, {
+      headers: {
+        ...corsHeaders,
+        'Content-Type': 'text/csv; charset=utf-8',
+        'Content-Disposition': 'attachment; filename="cost_centers.csv"',
+      },
+    })
+  } catch (error: any) {
+    return new Response(JSON.stringify({ error: error.message }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      status: 400,
     })
   }
 })
