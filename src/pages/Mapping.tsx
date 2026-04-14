@@ -594,11 +594,12 @@ export default function Mapping() {
             </div>
             <Progress value={progress} className="h-2.5 bg-slate-200" />
           </div>
-          <div className="flex gap-2 text-sm text-slate-600 shrink-0 w-full md:w-auto justify-around md:justify-start items-center">
+          <div className="flex gap-3 text-sm shrink-0 w-full md:w-auto justify-around md:justify-start items-center">
             <div
               className={cn(
-                'text-center md:text-left cursor-pointer transition-all hover:bg-slate-100 p-2 rounded-lg',
-                filterStatus === 'mapped' ? 'bg-slate-100 ring-1 ring-slate-200' : '',
+                'text-center md:text-left cursor-pointer transition-all p-3 rounded-xl min-w-[120px]',
+                'bg-gradient-to-br from-[#003d82] to-[#0099ff] text-white shadow-lg hover:shadow-xl hover:shadow-[#0099ff]/20',
+                filterStatus === 'mapped' ? 'ring-4 ring-[#0099ff] ring-offset-2' : '',
               )}
               onClick={() => {
                 setFilterStatus(filterStatus === 'mapped' ? 'all' : 'mapped')
@@ -606,16 +607,16 @@ export default function Mapping() {
               }}
               title="Filtrar por Mapeados"
             >
-              <span className="block text-2xl font-bold text-slate-900 leading-none">
-                {mappedCount}
+              <span className="block text-2xl font-bold leading-none">{mappedCount}</span>
+              <span className="text-xs uppercase tracking-wider font-medium opacity-90 mt-1 block">
+                Mapeados
               </span>
-              <span className="text-xs uppercase tracking-wider font-medium">Mapeados</span>
             </div>
-            <div className="w-px h-8 bg-slate-200 hidden md:block mx-2"></div>
             <div
               className={cn(
-                'text-center md:text-left cursor-pointer transition-all hover:bg-amber-50/50 p-2 rounded-lg',
-                filterStatus === 'pending' ? 'bg-amber-50 ring-1 ring-amber-200' : '',
+                'text-center md:text-left cursor-pointer transition-all p-3 rounded-xl min-w-[120px]',
+                'bg-gradient-to-br from-[#8b4513] to-[#ff8c00] text-white shadow-lg hover:shadow-xl hover:shadow-[#ff8c00]/20',
+                filterStatus === 'pending' ? 'ring-4 ring-[#ff8c00] ring-offset-2' : '',
               )}
               onClick={() => {
                 setFilterStatus(filterStatus === 'pending' ? 'all' : 'pending')
@@ -623,10 +624,10 @@ export default function Mapping() {
               }}
               title="Filtrar por Pendentes"
             >
-              <span className="block text-2xl font-bold text-amber-500 leading-none">
-                {total - mappedCount}
+              <span className="block text-2xl font-bold leading-none">{total - mappedCount}</span>
+              <span className="text-xs uppercase tracking-wider font-medium opacity-90 mt-1 block">
+                Pendentes
               </span>
-              <span className="text-xs uppercase tracking-wider font-medium">Pendentes</span>
             </div>
           </div>
         </div>
