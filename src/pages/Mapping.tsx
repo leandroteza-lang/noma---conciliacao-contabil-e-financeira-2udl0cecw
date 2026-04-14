@@ -46,7 +46,7 @@ export default function Mapping() {
   const [filterStatus, setFilterStatus] = useState<'all' | 'mapped' | 'pending'>('all')
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
-  const ITEMS_PER_PAGE = 50
+  const [itemsPerPage, setItemsPerPage] = useState(50)
 
   const [selectedCCs, setSelectedCCs] = useState<Set<string>>(new Set())
   const [expandedAccounts, setExpandedAccounts] = useState<Set<string>>(new Set())
@@ -267,8 +267,8 @@ export default function Mapping() {
     return result
   }, [enrichedCCs, filterStatus, search])
 
-  const totalPages = Math.ceil(filteredCCs.length / ITEMS_PER_PAGE)
-  const paginatedCCs = filteredCCs.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE)
+  const totalPages = Math.ceil(filteredCCs.length / itemsPerPage)
+  const paginatedCCs = filteredCCs.slice((page - 1) * itemsPerPage, page * itemsPerPage)
 
   useEffect(() => {
     if (page > totalPages && totalPages > 0) setPage(totalPages)
@@ -803,37 +803,60 @@ export default function Mapping() {
           </Table>
         </div>
 
-        {totalPages > 1 && (
-          <div className="p-4 border-t bg-slate-50/50">
-            <Pagination className="justify-end">
-              <PaginationContent>
-                <PaginationItem>
-                  <PaginationPrevious
-                    href="#"
-                    onClick={(e) => {
-                      e.preventDefault()
-                      setPage((p) => Math.max(1, p - 1))
-                    }}
-                    className={page === 1 ? 'pointer-events-none opacity-50' : ''}
-                  />
-                </PaginationItem>
-                <PaginationItem>
-                  <span className="text-sm text-slate-500 px-4 font-medium">
-                    Página {page} de {totalPages}
-                  </span>
-                </PaginationItem>
-                <PaginationItem>
-                  <PaginationNext
-                    href="#"
-                    onClick={(e) => {
-                      e.preventDefault()
-                      setPage((p) => Math.min(totalPages, p + 1))
-                    }}
-                    className={page >= totalPages ? 'pointer-events-none opacity-50' : ''}
-                  />
-                </PaginationItem>
-              </PaginationContent>
-            </Pagination>
+        {totalPages > 0 && (
+          <div className="p-4 border-t bg-slate-50/50 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-2 text-sm text-slate-500">
+              <span>Itens por página:</span>
+              <Select
+                value={itemsPerPage.toString()}
+                onValueChange={(val) => {
+                  setItemsPerPage(Number(val))
+                  setPage(1)
+                }}
+              >
+                <SelectTrigger className="w-[80px] h-8 bg-white border-slate-200">
+                  <SelectValue placeholder="50" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="10">10</SelectItem>
+                  <SelectItem value="25">25</SelectItem>
+                  <SelectItem value="50">50</SelectItem>
+                  <SelectItem value="100">100</SelectItem>
+                  <SelectItem value="500">500</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {totalPages > 1 && (
+              <Pagination className="w-auto mx-0">
+                <PaginationContent>
+                  <PaginationItem>
+                    <PaginationPrevious
+                      href="#"
+                      onClick={(e) => {
+                        e.preventDefault()
+                        setPage((p) => Math.max(1, p - 1))
+                      }}
+                      className={page === 1 ? 'pointer-events-none opacity-50' : ''}
+                    />
+                  </PaginationItem>
+                  <PaginationItem>
+                    <span className="text-sm text-slate-500 px-4 font-medium">
+                      Página {page} de {totalPages}
+                    </span>
+                  </PaginationItem>
+                  <PaginationItem>
+                    <PaginationNext
+                      href="#"
+                      onClick={(e) => {
+                        e.preventDefault()
+                        setPage((p) => Math.min(totalPages, p + 1))
+                      }}
+                      className={page >= totalPages ? 'pointer-events-none opacity-50' : ''}
+                    />
+                  </PaginationItem>
+                </PaginationContent>
+              </Pagination>
+            )}
           </div>
         )}
       </Card>
