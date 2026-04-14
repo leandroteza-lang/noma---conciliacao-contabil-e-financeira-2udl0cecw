@@ -56,7 +56,13 @@ export default function Mapping() {
 
   const [filterStatus, setFilterStatus] = useState<'all' | 'mapped' | 'pending'>('all')
   const [search, setSearch] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
   const [page, setPage] = useState(1)
+
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search), 400)
+    return () => clearTimeout(t)
+  }, [search])
   const [itemsPerPage, setItemsPerPage] = useState(500)
 
   const [selectedCCs, setSelectedCCs] = useState<Set<string>>(new Set())
@@ -161,30 +167,26 @@ export default function Mapping() {
   const loadRef = useRef(load)
   loadRef.current = load
 
-  const debouncedLoad = useMemo(() => {
-    let timeout: any
-    return () => {
-      clearTimeout(timeout)
-      timeout = setTimeout(() => {
-        loadRef.current()
-      }, 300)
-    }
-  }, [])
+  const [refreshCounter, setRefreshCounter] = useState(0)
 
   useEffect(() => {
-    debouncedLoad()
+    loadRef.current()
+  }, [orgId, refreshCounter])
+
+  useEffect(() => {
+    let timeoutId: any
     const channel = supabase
       .channel('mappings')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'account_mapping' },
-        debouncedLoad,
-      )
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'account_mapping' }, () => {
+        clearTimeout(timeoutId)
+        timeoutId = setTimeout(() => setRefreshCounter((prev) => prev + 1), 2000)
+      })
       .subscribe()
     return () => {
       supabase.removeChannel(channel)
+      clearTimeout(timeoutId)
     }
-  }, [debouncedLoad, orgId])
+  }, [])
 
   const enrichedCAs = useMemo(() => {
     return cas.map((ca) => {
@@ -254,7 +256,7 @@ export default function Mapping() {
     let result = enrichedCCs
     if (filterStatus === 'mapped') result = result.filter((c) => c.mappingId)
     if (filterStatus === 'pending') result = result.filter((c) => !c.mappingId && !c.isSynthetic)
-    if (search) {
+    if (debouncedSearch) {
       const normalizeStr = (str: string | null | undefined) => {
         if (!str) return ''
         return str
@@ -263,7 +265,7 @@ export default function Mapping() {
           .toLowerCase()
       }
 
-      const searchTerms = normalizeStr(search).split(' ').filter(Boolean)
+      const searchTerms = normalizeStr(debouncedSearch).split(' ').filter(Boolean)
 
       result = result.filter((cc) => {
         const targetString = [
@@ -280,7 +282,7 @@ export default function Mapping() {
       })
     }
     return result
-  }, [enrichedCCs, filterStatus, search])
+  }, [enrichedCCs, filterStatus, debouncedSearch])
 
   const totalPages = Math.ceil(filteredCCs.length / itemsPerPage)
   const paginatedCCs = filteredCCs.slice((page - 1) * itemsPerPage, page * itemsPerPage)
