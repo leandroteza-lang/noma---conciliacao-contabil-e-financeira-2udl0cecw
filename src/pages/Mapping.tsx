@@ -540,6 +540,11 @@ export default function Mapping() {
     setCollapsedGroups(new Set())
   }, [filteredCCs])
 
+  const handleExpandAnalytic = useCallback(() => {
+    setExpandedAccounts(new Set())
+    setCollapsedGroups(new Set())
+  }, [])
+
   const handleCollapseAll = useCallback(() => {
     setExpandedAccounts(new Set())
     const allGroupIds = filteredCCs.filter((cc) => cc.isSynthetic).map((cc) => cc.id)
@@ -695,6 +700,14 @@ export default function Mapping() {
               >
                 <ListTree className="h-3.5 w-3.5 mr-1.5" />
                 Expandir Todos
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleExpandAnalytic}
+                className="h-10 sm:h-9 px-3 text-xs font-medium text-slate-700 hover:text-slate-900 bg-white shadow-sm"
+              >
+                Expandir Analítico
               </Button>
               <Button
                 variant="outline"
