@@ -211,29 +211,50 @@ export default function Mapping() {
   const mappedCount = enrichedCCs.filter((c) => c.mappingId).length
   const progress = total === 0 ? 0 : Math.round((mappedCount / total) * 100)
 
-  const handleMap = async (ccId: string, caId: string, existingMappingId?: string) => {
+  const handleMap = async (ccId: string, caId: any, existingMappingId?: string) => {
     if (!orgId) return
+    const targetCaId = typeof caId === 'object' ? caId?.id : caId
+    if (!targetCaId) {
+      if (existingMappingId) return handleRemove(existingMappingId)
+      return
+    }
+
     if (existingMappingId) {
       await supabase.from('account_mapping').delete().eq('id', existingMappingId)
     }
     const { error } = await supabase.from('account_mapping').insert({
       organization_id: orgId,
       cost_center_id: ccId,
-      chart_account_id: caId,
+      chart_account_id: targetCaId,
       mapping_type: 'DE/PARA',
     })
-    if (error) toast.error('Erro ao mapear: ' + error.message)
-    else toast.success('Conta vinculada com sucesso')
+
+    if (error) {
+      toast.error('Erro ao mapear: ' + error.message)
+    } else {
+      toast.success('Conta vinculada com sucesso')
+      load() // Recarrega imediatamente para refletir a alteração na UI
+    }
   }
 
   const handleRemove = async (mappingId: string) => {
+    if (!mappingId) return
     const { error } = await supabase.from('account_mapping').delete().eq('id', mappingId)
-    if (error) toast.error('Erro ao remover: ' + error.message)
-    else toast.success('Vínculo removido')
+
+    if (error) {
+      toast.error('Erro ao remover: ' + error.message)
+    } else {
+      toast.success('Vínculo removido')
+      load() // Recarrega imediatamente para refletir a alteração na UI
+    }
   }
 
   const handleBatchMap = async () => {
     if (!orgId || selectedCCs.size === 0 || !batchCaId) return
+
+    const targetBatchCaId = typeof batchCaId === 'object' ? (batchCaId as any)?.id : batchCaId
+    if (!targetBatchCaId) return
+
     const ccIds = Array.from(selectedCCs)
     const existingMappings = mappings.filter((m) => ccIds.includes(m.cost_center_id))
     if (existingMappings.length > 0) {
@@ -248,15 +269,18 @@ export default function Mapping() {
     const payloads = ccIds.map((ccId) => ({
       organization_id: orgId,
       cost_center_id: ccId,
-      chart_account_id: batchCaId,
+      chart_account_id: targetBatchCaId,
       mapping_type: 'DE/PARA',
     }))
     const { error } = await supabase.from('account_mapping').insert(payloads)
-    if (error) toast.error('Erro ao mapear em lote: ' + error.message)
-    else {
+
+    if (error) {
+      toast.error('Erro ao mapear em lote: ' + error.message)
+    } else {
       toast.success(`${ccIds.length} centro(s) de custo mapeado(s) com sucesso!`)
       setSelectedCCs(new Set())
       setBatchCaId('')
+      load()
     }
   }
 
@@ -285,9 +309,15 @@ export default function Mapping() {
     })
     if (payloads.length === 0)
       return toast.info('Nenhuma sugestão óbvia encontrada para os itens pendentes.')
+
     const { error } = await supabase.from('account_mapping').insert(payloads)
-    if (error) toast.error('Erro no auto-mapeamento: ' + error.message)
-    else toast.success(`${payloads.length} mapeamentos sugeridos aplicados!`)
+
+    if (error) {
+      toast.error('Erro no auto-mapeamento: ' + error.message)
+    } else {
+      toast.success(`${payloads.length} mapeamentos sugeridos aplicados!`)
+      load()
+    }
   }
 
   const toggleCC = (id: string) => {
@@ -462,7 +492,10 @@ export default function Mapping() {
               <AccountCombobox
                 accounts={enrichedCAs}
                 value={batchCaId}
-                onChange={setBatchCaId}
+                onChange={(val) => {
+                  const id = typeof val === 'object' ? (val as any)?.id : val
+                  setBatchCaId(id || '')
+                }}
                 placeholder="Buscar conta a aplicar..."
               />
               <Button
@@ -554,7 +587,15 @@ export default function Mapping() {
                             <AccountCombobox
                               accounts={enrichedCAs}
                               value={cc.mappedCa?.id}
-                              onChange={(caId) => handleMap(cc.id, caId, cc.mappingId)}
+                              onChange={(caId) => {
+                                const selectedId =
+                                  typeof caId === 'object' ? (caId as any)?.id : caId
+                                if (selectedId) {
+                                  handleMap(cc.id, selectedId, cc.mappingId)
+                                } else {
+                                  if (cc.mappingId) handleRemove(cc.mappingId)
+                                }
+                              }}
                               onClear={cc.mappingId ? () => handleRemove(cc.mappingId) : undefined}
                             />
                           </div>
