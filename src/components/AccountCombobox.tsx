@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { Check, ChevronsUpDown, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import {
   Command,
   CommandEmpty,
@@ -14,20 +15,20 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 
 export interface Account {
   id: string
-  account_code: string | null
-  classification: string | null
-  account_name: string | null
+  account_code?: string | null
+  classification?: string | null
+  account_name?: string | null
   hierarchyPath?: string
-  hierarchyArray?: Account[]
+  hierarchyArray?: any[]
+  [key: string]: any
 }
 
 interface AccountComboboxProps {
   accounts: Account[]
-  value?: string
-  onChange: (accountId: string) => void
+  value?: string | null
+  onChange: (value: string) => void
   onClear?: () => void
   placeholder?: string
-  disabled?: boolean
 }
 
 export function AccountCombobox({
@@ -36,37 +37,10 @@ export function AccountCombobox({
   onChange,
   onClear,
   placeholder = 'Selecionar conta...',
-  disabled,
 }: AccountComboboxProps) {
   const [open, setOpen] = useState(false)
-  const [search, setSearch] = useState('')
 
-  const selected = accounts.find((a) => a.id === value)
-
-  const normalizeStr = (str: string | null | undefined) => {
-    if (!str) return ''
-    return str
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .toLowerCase()
-  }
-
-  const filtered = search
-    ? accounts
-        .filter((a) => {
-          const searchTerms = normalizeStr(search).split(' ').filter(Boolean)
-
-          const targetString = [
-            normalizeStr(a.account_code),
-            normalizeStr(a.classification),
-            normalizeStr(a.account_name),
-            normalizeStr(a.hierarchyPath),
-          ].join(' ')
-
-          return searchTerms.every((term) => targetString.includes(term))
-        })
-        .slice(0, 150)
-    : accounts.slice(0, 150)
+  const selected = useMemo(() => accounts.find((a) => a.id === value), [accounts, value])
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -75,87 +49,114 @@ export function AccountCombobox({
           variant="outline"
           role="combobox"
           aria-expanded={open}
-          disabled={disabled}
           className={cn(
-            'w-full justify-between font-normal text-left overflow-hidden relative group',
-            selected ? 'h-auto min-h-8 py-1' : 'h-8 py-1',
+            'w-full justify-between font-normal h-9 bg-white px-3 border-slate-200 shadow-sm hover:bg-slate-50',
+            !selected && 'text-slate-500',
           )}
         >
           {selected ? (
-            <div className="flex flex-col overflow-hidden text-left w-full pr-6">
-              <span className="flex items-center gap-2 truncate">
-                {selected.account_code && (
-                  <span className="font-mono bg-slate-100 px-1.5 py-0.5 rounded text-[10px] text-slate-700">
-                    {selected.account_code}
-                  </span>
-                )}
+            <div className="flex items-center gap-2 truncate w-full">
+              {selected.account_code && (
+                <Badge
+                  variant="secondary"
+                  className="bg-indigo-950 text-white font-bold hover:bg-indigo-900 border-0 shrink-0 px-1.5 py-0.5 rounded text-[11px]"
+                >
+                  {selected.account_code}
+                </Badge>
+              )}
+              <span className="truncate text-[13px] flex items-center gap-1.5">
                 {selected.classification && (
-                  <span className="font-mono text-[10px] text-slate-500">
-                    {selected.classification}
-                  </span>
+                  <span className="font-mono text-slate-500">{selected.classification}</span>
                 )}
-                <span className="text-xs truncate font-medium">{selected.account_name}</span>
+                <span className="font-medium text-slate-700">{selected.account_name}</span>
               </span>
             </div>
           ) : (
-            <span className="text-xs text-slate-500 truncate">{placeholder}</span>
+            <span className="truncate">{placeholder}</span>
           )}
-
-          <div className="absolute right-2 flex items-center bg-white pl-1">
+          <div className="flex items-center gap-1 shrink-0 opacity-50 ml-2">
             {selected && onClear && (
-              <span
-                className="opacity-0 group-hover:opacity-100 p-1 hover:bg-slate-100 rounded-md cursor-pointer transition-opacity mr-1"
+              <div
+                role="button"
+                tabIndex={0}
+                className="h-5 w-5 hover:opacity-100 flex items-center justify-center rounded-sm hover:bg-slate-200 transition-colors"
                 onClick={(e) => {
+                  e.preventDefault()
                   e.stopPropagation()
                   onClear()
                 }}
               >
-                <X className="h-3 w-3 text-slate-400 hover:text-red-500" />
-              </span>
+                <X className="h-3.5 w-3.5" />
+              </div>
             )}
-            <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-50" />
+            <ChevronsUpDown className="h-4 w-4 shrink-0" />
           </div>
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[400px] p-0" align="start">
-        <Command shouldFilter={false}>
+      <PopoverContent className="w-[400px] lg:w-[500px] p-0" align="start">
+        <Command
+          filter={(val, search) => {
+            if (val.includes(search.toLowerCase())) return 1
+            return 0
+          }}
+        >
           <CommandInput
-            placeholder="Buscar por código, classificação ou nome..."
-            value={search}
-            onValueChange={setSearch}
+            placeholder="Buscar conta por código, classif. ou nome..."
+            className="h-9 text-sm"
           />
-          <CommandList>
-            <CommandEmpty>Nenhuma conta encontrada.</CommandEmpty>
+          <CommandList className="max-h-[300px]">
+            <CommandEmpty className="py-6 text-center text-sm text-slate-500">
+              Nenhuma conta encontrada.
+            </CommandEmpty>
             <CommandGroup>
-              {filtered.map((account) => (
-                <CommandItem
-                  key={account.id}
-                  value={account.id}
-                  onSelect={() => {
-                    onChange(account.id)
-                    setOpen(false)
-                    setSearch('')
-                  }}
-                >
-                  <Check
-                    className={cn(
-                      'mr-2 h-4 w-4 shrink-0',
-                      value === account.id ? 'opacity-100' : 'opacity-0',
-                    )}
-                  />
-                  <div className="flex flex-col overflow-hidden w-full">
-                    <span className="font-mono text-[10px] text-slate-500 flex gap-1">
-                      {account.account_code && (
-                        <span className="bg-slate-100 px-1 rounded">{account.account_code}</span>
+              {accounts.map((account) => {
+                const searchString =
+                  `${account.account_code || ''} ${account.classification || ''} ${account.account_name || ''}`.toLowerCase()
+                return (
+                  <CommandItem
+                    key={account.id}
+                    value={searchString}
+                    onSelect={() => {
+                      onChange(account.id)
+                      setOpen(false)
+                    }}
+                    className="flex items-center gap-2 py-2 px-3 cursor-pointer"
+                  >
+                    <Check
+                      className={cn(
+                        'mr-1 h-4 w-4 shrink-0',
+                        value === account.id ? 'opacity-100 text-blue-600' : 'opacity-0',
                       )}
-                      {account.classification && <span>{account.classification}</span>}
-                    </span>
-                    <span className="text-xs truncate font-medium mt-0.5">
-                      {account.account_name}
-                    </span>
-                  </div>
-                </CommandItem>
-              ))}
+                    />
+                    <div className="flex items-center gap-2 truncate flex-1">
+                      {account.account_code && (
+                        <Badge
+                          variant="secondary"
+                          className="bg-indigo-950 text-white font-bold hover:bg-indigo-900 border-0 shrink-0 px-1.5 py-0.5 rounded text-[11px]"
+                        >
+                          {account.account_code}
+                        </Badge>
+                      )}
+                      <div className="flex flex-col truncate">
+                        <span className="truncate text-[13px] flex items-center gap-1.5">
+                          {account.classification && (
+                            <span className="font-mono text-slate-500">
+                              {account.classification}
+                            </span>
+                          )}
+                          <span className="font-medium text-slate-700">{account.account_name}</span>
+                        </span>
+                        {account.hierarchyPath &&
+                          account.hierarchyPath !== account.account_name && (
+                            <span className="text-[10px] text-slate-400 truncate mt-0.5">
+                              {account.hierarchyPath}
+                            </span>
+                          )}
+                      </div>
+                    </div>
+                  </CommandItem>
+                )
+              })}
             </CommandGroup>
           </CommandList>
         </Command>
