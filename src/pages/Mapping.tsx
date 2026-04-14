@@ -831,25 +831,25 @@ export default function Mapping() {
                     />
                   </div>
                 </TableHead>
-                <TableHead className="w-[40%] text-center border-r border-slate-200 p-2 align-middle">
-                  <div className="flex items-center justify-center gap-2 bg-white mx-auto max-w-sm py-1.5 px-3 rounded-lg shadow-sm border border-slate-200/60">
+                <TableHead className="w-[40%] text-center border-r border-slate-200 p-3 align-middle">
+                  <div className="flex items-center justify-center gap-3 bg-[#020617] mx-auto w-full max-w-md py-3 px-4 rounded-xl shadow-md border border-slate-800">
                     <Badge
                       variant="outline"
-                      className="border-slate-300 bg-slate-50 text-slate-700"
+                      className="border-slate-700 bg-slate-800 text-slate-200 font-bold"
                     >
                       DE
                     </Badge>
-                    <span className="font-semibold text-slate-800 text-sm">
+                    <span className="font-bold text-white text-[15px] tracking-wide">
                       Centro de Custo TGA
                     </span>
                   </div>
                 </TableHead>
-                <TableHead className="w-[60%] p-2 pr-4 text-center align-middle">
-                  <div className="flex items-center justify-center gap-2 bg-white mx-auto max-w-sm py-1.5 px-3 rounded-lg shadow-sm border border-slate-200/60">
-                    <Badge className="bg-slate-800 hover:bg-slate-900 text-white border-0">
+                <TableHead className="w-[60%] p-3 pr-4 text-center align-middle">
+                  <div className="flex items-center justify-center gap-3 bg-[#020617] mx-auto w-full max-w-md py-3 px-4 rounded-xl shadow-md border border-slate-800">
+                    <Badge className="bg-blue-600 hover:bg-blue-700 text-white border-0 font-bold">
                       PARA
                     </Badge>
-                    <span className="font-semibold text-slate-800 text-sm">
+                    <span className="font-bold text-white text-[15px] tracking-wide">
                       Conta Contábil Vinculada
                     </span>
                   </div>
