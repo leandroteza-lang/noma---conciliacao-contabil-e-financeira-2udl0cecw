@@ -502,6 +502,19 @@ export default function Mapping() {
     }
   }
 
+  const handleExpandAll = () => {
+    const allExpandableIds = filteredCCs
+      .filter(
+        (cc) => cc.mappedCa && cc.mappedCa.hierarchyArray && cc.mappedCa.hierarchyArray.length > 0,
+      )
+      .map((cc) => cc.id)
+    setExpandedAccounts(new Set(allExpandableIds))
+  }
+
+  const handleCollapseAll = () => {
+    setExpandedAccounts(new Set())
+  }
+
   const getRowStyle = (cc: any) => {
     if (cc.isSynthetic) {
       switch (cc.level) {
@@ -620,8 +633,8 @@ export default function Mapping() {
       </Card>
 
       <Card className="shadow-sm">
-        <div className="p-4 border-b flex flex-col sm:flex-row gap-4 justify-between bg-white rounded-t-xl">
-          <div className="flex items-center gap-3 flex-1">
+        <div className="p-4 border-b flex flex-col xl:flex-row gap-4 justify-between bg-white rounded-t-xl">
+          <div className="flex flex-wrap items-center gap-3 flex-1">
             <div className="relative max-w-md w-full">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
               <Input
@@ -650,6 +663,26 @@ export default function Mapping() {
                 <SelectItem value="pending">Somente Pendentes</SelectItem>
               </SelectContent>
             </Select>
+
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleExpandAll}
+                className="h-10 sm:h-9 px-3 text-xs font-medium text-slate-700 hover:text-slate-900 bg-white shadow-sm"
+              >
+                <ListTree className="h-3.5 w-3.5 mr-1.5" />
+                Expandir Todos
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleCollapseAll}
+                className="h-10 sm:h-9 px-3 text-xs font-medium text-slate-700 hover:text-slate-900 bg-white shadow-sm"
+              >
+                Recolher Todos
+              </Button>
+            </div>
           </div>
 
           <AlertDialog>
