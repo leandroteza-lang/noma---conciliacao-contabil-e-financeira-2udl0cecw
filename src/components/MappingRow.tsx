@@ -3,7 +3,7 @@ import { TableRow, TableCell } from '@/components/ui/table'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { AlertCircle, ListTree, ChevronDown, ChevronRight } from 'lucide-react'
+import { AlertCircle, ListTree, ChevronDown, ChevronRight, Unlink } from 'lucide-react'
 import { AccountCombobox } from '@/components/AccountCombobox'
 import { cn } from '@/lib/utils'
 
@@ -195,6 +195,18 @@ export const MappingRow = memo(function MappingRow({
                     >
                       Exclusão Pendente
                     </Badge>
+                  )}
+                  {cc.mappingId && !cc.pendingDeletion && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => onRemove(cc.mappingId)}
+                      className="h-9 px-2 shrink-0 text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200 shadow-sm ml-2"
+                      title="Desvincular"
+                    >
+                      <Unlink className="h-4 w-4" />
+                      <span className="sr-only">Desvincular</span>
+                    </Button>
                   )}
                 </div>
                 {cc.mappedCa &&
