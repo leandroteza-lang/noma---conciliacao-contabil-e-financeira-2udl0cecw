@@ -274,8 +274,9 @@ export default function Mapping() {
     if (page > totalPages && totalPages > 0) setPage(totalPages)
   }, [totalPages, page])
 
-  const total = enrichedCCs.length
-  const mappedCount = enrichedCCs.filter((c) => c.mappingId).length
+  const analyticalCCs = enrichedCCs.filter((c) => !c.isSynthetic)
+  const total = analyticalCCs.length
+  const mappedCount = analyticalCCs.filter((c) => c.mappingId).length
   const progress = total === 0 ? 0 : Math.round((mappedCount / total) * 100)
 
   const handleMap = async (ccId: string, caId: any, existingMappingId?: string) => {
@@ -389,8 +390,9 @@ export default function Mapping() {
 
   const handleAutoMap = async () => {
     if (!orgId) return
-    const unmapped = enrichedCCs.filter((c) => !c.mappingId)
-    if (unmapped.length === 0) return toast.info('Todos os centros de custo já estão mapeados.')
+    const unmapped = enrichedCCs.filter((c) => !c.mappingId && !c.isSynthetic)
+    if (unmapped.length === 0)
+      return toast.info('Todos os centros de custo analíticos já estão mapeados.')
 
     const payloads: any[] = []
     unmapped.forEach((cc) => {
