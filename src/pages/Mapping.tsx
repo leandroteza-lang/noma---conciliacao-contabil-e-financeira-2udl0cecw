@@ -68,6 +68,7 @@ export default function Mapping() {
 
   const [selectedCCs, setSelectedCCs] = useState<Set<string>>(new Set())
   const [expandedAccounts, setExpandedAccounts] = useState<Set<string>>(new Set())
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set())
   const [batchCaId, setBatchCaId] = useState<string>('')
   const [importOpen, setImportOpen] = useState(false)
 
@@ -285,8 +286,21 @@ export default function Mapping() {
     return result
   }, [enrichedCCs, filterStatus, debouncedSearch])
 
-  const totalPages = Math.ceil(filteredCCs.length / itemsPerPage)
-  const paginatedCCs = filteredCCs.slice((page - 1) * itemsPerPage, page * itemsPerPage)
+  const visibleCCs = useMemo(() => {
+    if (debouncedSearch) return filteredCCs
+
+    const collapsedCodes = enrichedCCs
+      .filter((c) => collapsedGroups.has(c.id) && c.code)
+      .map((c) => c.code!)
+
+    return filteredCCs.filter((cc) => {
+      if (!cc.code) return true
+      return !collapsedCodes.some((collapsedCode) => cc.code!.startsWith(collapsedCode + '.'))
+    })
+  }, [filteredCCs, collapsedGroups, enrichedCCs, debouncedSearch])
+
+  const totalPages = Math.ceil(visibleCCs.length / itemsPerPage)
+  const paginatedCCs = visibleCCs.slice((page - 1) * itemsPerPage, page * itemsPerPage)
 
   useEffect(() => {
     if (page > totalPages && totalPages > 0) setPage(totalPages)
@@ -503,6 +517,15 @@ export default function Mapping() {
     })
   }, [])
 
+  const toggleGroup = useCallback((id: string) => {
+    setCollapsedGroups((prev) => {
+      const newSet = new Set(prev)
+      if (newSet.has(id)) newSet.delete(id)
+      else newSet.add(id)
+      return newSet
+    })
+  }, [])
+
   const toggleAll = useCallback(() => {
     setSelectedCCs((prev) => {
       const analytics = paginatedCCs.filter((c) => !c.isSynthetic)
@@ -583,7 +606,7 @@ export default function Mapping() {
           <div className="flex-1 w-full">
             <div className="flex justify-between mb-2 text-sm font-medium">
               <span className="text-slate-700 font-semibold">Progresso do Mapeamento Geral</span>
-              <span className={progress === 100 ? 'text-emerald-600' : 'text-[#cc0000]'}>
+              <span className={progress === 100 ? 'text-emerald-600' : 'text-blue-600'}>
                 {progress}% Concluído
               </span>
             </div>
@@ -591,7 +614,7 @@ export default function Mapping() {
               value={progress}
               className={cn(
                 'h-2.5 bg-slate-100 transition-all',
-                progress === 100 ? '[&>div]:bg-emerald-500' : '[&>div]:bg-[#cc0000]',
+                progress === 100 ? '[&>div]:bg-emerald-500' : '[&>div]:bg-blue-600',
               )}
             />
           </div>
@@ -819,9 +842,11 @@ export default function Mapping() {
                   index={index}
                   isSelected={selectedCCs.has(cc.id)}
                   isExpanded={expandedAccounts.has(cc.id)}
+                  isGroupCollapsed={collapsedGroups.has(cc.id)}
                   enrichedCAs={enrichedCAs}
                   onToggleCC={toggleCC}
                   onToggleExpand={toggleExpand}
+                  onToggleGroup={toggleGroup}
                   onMap={handleMap}
                   onRemove={handleRemove}
                 />

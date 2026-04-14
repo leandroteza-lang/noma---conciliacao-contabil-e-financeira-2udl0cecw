@@ -3,7 +3,7 @@ import { TableRow, TableCell } from '@/components/ui/table'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { AlertCircle, ListTree } from 'lucide-react'
+import { AlertCircle, ListTree, ChevronDown, ChevronRight } from 'lucide-react'
 import { AccountCombobox } from '@/components/AccountCombobox'
 import { cn } from '@/lib/utils'
 
@@ -12,9 +12,11 @@ export const MappingRow = memo(function MappingRow({
   index,
   isSelected,
   isExpanded,
+  isGroupCollapsed,
   enrichedCAs,
   onToggleCC,
   onToggleExpand,
+  onToggleGroup,
   onMap,
   onRemove,
 }: any) {
@@ -57,16 +59,33 @@ export const MappingRow = memo(function MappingRow({
           className="flex items-center gap-2 w-full min-w-0"
           style={{ paddingLeft: `${cc.level * 1.25}rem` }}
         >
-          <Badge
-            variant="outline"
-            className={cn(
-              'w-5 h-5 p-0 flex items-center justify-center shrink-0 rounded text-[10px] font-bold border-0',
-              cc.isSynthetic ? 'bg-white/20 text-inherit' : 'bg-blue-50 text-blue-600',
+          <div className="flex items-center gap-1 shrink-0">
+            {cc.isSynthetic ? (
+              <button
+                onClick={() => onToggleGroup(cc.id)}
+                className="w-5 h-5 flex items-center justify-center rounded hover:bg-white/20 text-inherit transition-colors"
+                title={isGroupCollapsed ? 'Expandir grupo' : 'Recolher grupo'}
+              >
+                {isGroupCollapsed ? (
+                  <ChevronRight className="h-4 w-4" />
+                ) : (
+                  <ChevronDown className="h-4 w-4" />
+                )}
+              </button>
+            ) : (
+              <div className="w-5 h-5" />
             )}
-            title={cc.isSynthetic ? 'Conta Sintética' : 'Conta Analítica'}
-          >
-            {cc.isSynthetic ? 'S' : 'A'}
-          </Badge>
+            <Badge
+              variant="outline"
+              className={cn(
+                'w-5 h-5 p-0 flex items-center justify-center shrink-0 rounded text-[10px] font-bold border-0',
+                cc.isSynthetic ? 'bg-white/20 text-inherit' : 'bg-blue-50 text-blue-600',
+              )}
+              title={cc.isSynthetic ? 'Conta Sintética' : 'Conta Analítica'}
+            >
+              {cc.isSynthetic ? 'S' : 'A'}
+            </Badge>
+          </div>
           <div className="flex flex-col overflow-hidden text-left cursor-default w-full min-w-0">
             <div className="flex items-center gap-2 truncate w-full min-w-0">
               <span className="font-mono text-[11px] font-semibold whitespace-nowrap shrink-0">
