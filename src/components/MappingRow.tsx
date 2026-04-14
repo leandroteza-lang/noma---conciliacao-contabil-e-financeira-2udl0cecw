@@ -167,20 +167,35 @@ export const MappingRow = memo(function MappingRow({
           <TableCell className="p-1.5 px-2 pr-4 align-middle max-w-0">
             <div className="flex flex-col gap-1 w-full min-w-0">
               <div className="flex items-center gap-2 w-full min-w-0">
-                <div className="flex-1 min-w-0">
-                  <AccountCombobox
-                    accounts={enrichedCAs}
-                    value={cc.mappedCa?.id}
-                    onChange={(caId) => {
-                      const selectedId = typeof caId === 'object' ? (caId as any)?.id : caId
-                      if (selectedId) {
-                        onMap(cc.id, selectedId, cc.mappingId)
-                      } else {
-                        if (cc.mappingId) onRemove(cc.mappingId)
+                <div className="flex-1 min-w-0 flex items-center gap-2">
+                  <div className="flex-1 min-w-0">
+                    <AccountCombobox
+                      accounts={enrichedCAs}
+                      value={cc.mappedCa?.id}
+                      disabled={cc.pendingDeletion}
+                      onChange={(caId) => {
+                        const selectedId = typeof caId === 'object' ? (caId as any)?.id : caId
+                        if (selectedId) {
+                          onMap(cc.id, selectedId, cc.mappingId)
+                        } else {
+                          if (cc.mappingId) onRemove(cc.mappingId)
+                        }
+                      }}
+                      onClear={
+                        cc.mappingId && !cc.pendingDeletion
+                          ? () => onRemove(cc.mappingId)
+                          : undefined
                       }
-                    }}
-                    onClear={cc.mappingId ? () => onRemove(cc.mappingId) : undefined}
-                  />
+                    />
+                  </div>
+                  {cc.pendingDeletion && (
+                    <Badge
+                      variant="outline"
+                      className="bg-red-50 text-red-600 border-red-200 whitespace-nowrap shrink-0 text-[10px] h-8 flex items-center px-2 shadow-sm"
+                    >
+                      Exclusão Pendente
+                    </Badge>
+                  )}
                 </div>
                 {cc.mappedCa &&
                   cc.mappedCa.hierarchyArray &&

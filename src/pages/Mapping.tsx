@@ -48,7 +48,8 @@ import { MappingRow } from '@/components/MappingRow'
 import { cn } from '@/lib/utils'
 
 export default function Mapping() {
-  const { user } = useAuth()
+  const { user, role } = useAuth() as any
+  const isAdmin = role === 'admin'
   const [orgId, setOrgId] = useState<string | null>(null)
   const [orgs, setOrgs] = useState<any[]>([])
   const [ccs, setCcs] = useState<any[]>([])
@@ -143,6 +144,7 @@ export default function Mapping() {
           .from('account_mapping')
           .select('*')
           .eq('organization_id', currentOrgId)
+          .is('deleted_at', null)
           .range(page * 1000, (page + 1) * 1000 - 1)
         if (data && data.length > 0) {
           all.push(...data)
@@ -247,6 +249,7 @@ export default function Mapping() {
         ...cc,
         mappingId: mapping?.id,
         mappedCa: mapping ? enrichedCAs.find((c) => c.id === mapping.chart_account_id) : null,
+        pendingDeletion: mapping?.pending_deletion,
         level,
         isSynthetic,
         hierarchyPath,
@@ -311,20 +314,45 @@ export default function Mapping() {
   const mappedCount = analyticalCCs.filter((c) => c.mappingId).length
   const progress = total === 0 ? 0 : Math.round((mappedCount / total) * 100)
 
-  const handleRemove = useCallback(async (mappingId: string) => {
-    if (!mappingId) return
+  const handleRemove = useCallback(
+    async (mappingId: string) => {
+      if (!mappingId) return
 
-    setMappings((prev) => prev.filter((m) => m.id !== mappingId))
-    const { error } = await supabase.from('account_mapping').delete().eq('id', mappingId)
+      if (!isAdmin) {
+        const { error } = await supabase
+          .from('account_mapping')
+          .update({
+            pending_deletion: true,
+            deletion_requested_at: new Date().toISOString(),
+            deletion_requested_by: user?.id,
+          })
+          .eq('id', mappingId)
 
-    if (error) {
-      toast.error('Erro ao remover: ' + error.message)
-      loadRef.current()
-    } else {
-      toast.success('Vínculo removido')
-      loadRef.current()
-    }
-  }, [])
+        if (error) {
+          toast.error('Erro ao solicitar exclusão: ' + error.message)
+        } else {
+          toast.success('Solicitação de exclusão enviada para aprovação')
+          loadRef.current()
+        }
+        return
+      }
+
+      setMappings((prev) => prev.filter((m) => m.id !== mappingId))
+      const { error } = await supabase
+        .from('account_mapping')
+        .update({ deleted_at: new Date().toISOString(), deleted_by: user?.id })
+        .eq('id', mappingId)
+
+      if (error) {
+        toast.error('Erro ao remover: ' + error.message)
+        loadRef.current()
+      } else {
+        toast.success('Vínculo removido')
+        loadRef.current()
+      }
+    },
+    [isAdmin, user?.id],
+  )
 
   const handleMap = useCallback(
     async (ccId: string, caId: any, existingMappingId?: string) => {
@@ -332,6 +360,30 @@ export default function Mapping() {
       const targetCaId = typeof caId === 'object' ? caId?.id : caId
       if (!targetCaId) {
         if (existingMappingId) return handleRemove(existingMappingId)
+        return
+      }
+
+      if (!isAdmin) {
+        const proposed = {
+          organization_id: orgId,
+          cost_center_id: ccId,
+          chart_account_id: targetCaId,
+          mapping_type: 'DE/PARA',
+          id: existingMappingId || crypto.randomUUID(),
+        }
+
+        const { error } = await supabase.from('pending_changes').insert({
+          entity_type: 'account_mapping',
+          entity_id: proposed.id,
+          proposed_changes: proposed,
+          requested_by: user?.id,
+        })
+
+        if (error) {
+          toast.error('Erro ao solicitar mapeamento: ' + error.message)
+        } else {
+          toast.success('Solicitação enviada para aprovação')
+        }
         return
       }
 
@@ -350,13 +402,17 @@ export default function Mapping() {
       })
 
       if (existingMappingId) {
-        await supabase.from('account_mapping').delete().eq('id', existingMappingId)
+        await supabase
+          .from('account_mapping')
+          .update({ deleted_at: new Date().toISOString(), deleted_by: user?.id })
+          .eq('id', existingMappingId)
       }
       await supabase
         .from('account_mapping')
-        .delete()
+        .update({ deleted_at: new Date().toISOString(), deleted_by: user?.id })
         .eq('cost_center_id', ccId)
         .eq('organization_id', orgId)
+        .is('deleted_at', null)
 
       const { error } = await supabase.from('account_mapping').insert({
         organization_id: orgId,
@@ -373,7 +429,7 @@ export default function Mapping() {
         loadRef.current()
       }
     },
-    [orgId, handleRemove],
+    [orgId, handleRemove, isAdmin, user?.id],
   )
 
   const handleBatchMap = async () => {
@@ -383,11 +439,40 @@ export default function Mapping() {
     if (!targetBatchCaId) return
 
     const ccIds = Array.from(selectedCCs)
+
+    if (!isAdmin) {
+      const pendingInserts = ccIds.map((ccId) => {
+        const existing = mappings.find((m) => m.cost_center_id === ccId)
+        const proposed = {
+          organization_id: orgId,
+          cost_center_id: ccId,
+          chart_account_id: targetBatchCaId,
+          mapping_type: 'DE/PARA',
+          id: existing ? existing.id : crypto.randomUUID(),
+        }
+        return {
+          entity_type: 'account_mapping',
+          entity_id: proposed.id,
+          proposed_changes: proposed,
+          requested_by: user?.id,
+        }
+      })
+
+      const { error } = await supabase.from('pending_changes').insert(pendingInserts)
+      if (error) toast.error('Erro ao enviar para aprovação: ' + error.message)
+      else {
+        toast.success(`${ccIds.length} solicitações enviadas para aprovação!`)
+        setSelectedCCs(new Set())
+        setBatchCaId('')
+      }
+      return
+    }
+
     const existingMappings = mappings.filter((m) => ccIds.includes(m.cost_center_id))
     if (existingMappings.length > 0) {
       await supabase
         .from('account_mapping')
-        .delete()
+        .update({ deleted_at: new Date().toISOString(), deleted_by: user?.id })
         .in(
           'id',
           existingMappings.map((m) => m.id),
@@ -396,9 +481,10 @@ export default function Mapping() {
 
     await supabase
       .from('account_mapping')
-      .delete()
+      .update({ deleted_at: new Date().toISOString(), deleted_by: user?.id })
       .in('cost_center_id', ccIds)
       .eq('organization_id', orgId)
+      .is('deleted_at', null)
 
     const payloads = ccIds.map((ccId) => ({
       organization_id: orgId,
@@ -422,13 +508,40 @@ export default function Mapping() {
     if (!orgId || selectedCCs.size === 0) return
 
     const ccIds = Array.from(selectedCCs)
+
+    if (!isAdmin) {
+      const existingMappings = mappings.filter((m) => ccIds.includes(m.cost_center_id))
+      if (existingMappings.length === 0) return
+
+      const { error } = await supabase
+        .from('account_mapping')
+        .update({
+          pending_deletion: true,
+          deletion_requested_at: new Date().toISOString(),
+          deletion_requested_by: user?.id,
+        })
+        .in(
+          'id',
+          existingMappings.map((m) => m.id),
+        )
+
+      if (error) toast.error('Erro ao solicitar desvinculação: ' + error.message)
+      else {
+        toast.success(`${existingMappings.length} solicitações de desvinculação enviadas!`)
+        setSelectedCCs(new Set())
+        loadRef.current()
+      }
+      return
+    }
+
     setMappings((prev) => prev.filter((m) => !ccIds.includes(m.cost_center_id)))
 
     const { error } = await supabase
       .from('account_mapping')
-      .delete()
+      .update({ deleted_at: new Date().toISOString(), deleted_by: user?.id })
       .in('cost_center_id', ccIds)
       .eq('organization_id', orgId)
+      .is('deleted_at', null)
 
     if (error) {
       toast.error('Erro ao desvincular em lote: ' + error.message)
@@ -443,7 +556,35 @@ export default function Mapping() {
   const handleRemoveAll = async () => {
     if (!orgId) return
 
-    const { error } = await supabase.from('account_mapping').delete().eq('organization_id', orgId)
+    if (!isAdmin) {
+      const existingMappings = mappings.filter((m) => m.organization_id === orgId)
+      if (existingMappings.length === 0) return
+
+      const { error } = await supabase
+        .from('account_mapping')
+        .update({
+          pending_deletion: true,
+          deletion_requested_at: new Date().toISOString(),
+          deletion_requested_by: user?.id,
+        })
+        .eq('organization_id', orgId)
+        .is('deleted_at', null)
+
+      if (error) {
+        toast.error('Erro ao solicitar limpeza: ' + error.message)
+      } else {
+        toast.success('Solicitação de limpeza enviada para aprovação!')
+        setSelectedCCs(new Set())
+        loadRef.current()
+      }
+      return
+    }
+
+    const { error } = await supabase
+      .from('account_mapping')
+      .update({ deleted_at: new Date().toISOString(), deleted_by: user?.id })
+      .eq('organization_id', orgId)
+      .is('deleted_at', null)
 
     if (error) {
       toast.error('Erro ao limpar mapeamentos: ' + error.message)
@@ -481,6 +622,19 @@ export default function Mapping() {
     })
     if (payloads.length === 0)
       return toast.info('Nenhuma sugestão óbvia encontrada para os itens pendentes.')
+
+    if (!isAdmin) {
+      const pendingInserts = payloads.map((p) => ({
+        entity_type: 'account_mapping',
+        entity_id: crypto.randomUUID(),
+        proposed_changes: { ...p, id: crypto.randomUUID() },
+        requested_by: user?.id,
+      }))
+      const { error } = await supabase.from('pending_changes').insert(pendingInserts)
+      if (error) toast.error('Erro no auto-mapeamento: ' + error.message)
+      else toast.success(`${payloads.length} mapeamentos sugeridos enviados para aprovação!`)
+      return
+    }
 
     const { error } = await supabase.from('account_mapping').insert(payloads)
 

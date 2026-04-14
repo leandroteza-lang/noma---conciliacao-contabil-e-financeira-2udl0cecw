@@ -192,6 +192,7 @@ export function GlobalNotifications() {
         'bank_accounts',
         'tipo_conta_tga',
         'cadastro_usuarios',
+        'account_mapping',
       ]
 
       realtimeTables.forEach((table) => {
