@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils'
 
 export const MappingRow = memo(function MappingRow({
   cc,
+  index,
   isSelected,
   isExpanded,
   enrichedCAs,
@@ -17,7 +18,7 @@ export const MappingRow = memo(function MappingRow({
   onMap,
   onRemove,
 }: any) {
-  const getRowStyle = (cc: any) => {
+  const getRowStyle = (cc: any, idx: number) => {
     if (cc.isSynthetic) {
       switch (cc.level) {
         case 0:
@@ -32,13 +33,20 @@ export const MappingRow = memo(function MappingRow({
           return 'bg-blue-50 font-medium text-blue-900 hover:bg-blue-100'
       }
     }
-    return cc.mappingId
+
+    if (!cc.mappingId) {
+      return idx % 2 === 0
+        ? 'bg-amber-50/20 font-normal text-slate-700 hover:bg-amber-50/40'
+        : 'bg-amber-50/60 font-normal text-slate-700 hover:bg-amber-50/80'
+    }
+
+    return idx % 2 === 0
       ? 'bg-white font-normal text-slate-700 hover:bg-slate-50'
-      : 'bg-amber-50/20 font-normal text-slate-700 hover:bg-amber-50/40'
+      : 'bg-[#dbeefc] font-normal text-slate-800 hover:bg-[#d0e9f9]'
   }
 
   return (
-    <TableRow className={cn('transition-colors border-b border-slate-100', getRowStyle(cc))}>
+    <TableRow className={cn('transition-colors border-b border-slate-100', getRowStyle(cc, index))}>
       <TableCell className="p-1.5 px-4 w-[40px] border-r border-slate-200/40 align-top pt-2">
         {!cc.isSynthetic && (
           <Checkbox checked={isSelected} onCheckedChange={() => onToggleCC(cc.id)} />

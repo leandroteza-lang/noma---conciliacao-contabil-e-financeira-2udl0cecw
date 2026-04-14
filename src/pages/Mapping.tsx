@@ -804,10 +804,11 @@ export default function Mapping() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {paginatedCCs.map((cc) => (
+              {paginatedCCs.map((cc, index) => (
                 <MappingRow
                   key={cc.id}
                   cc={cc}
+                  index={index}
                   isSelected={selectedCCs.has(cc.id)}
                   isExpanded={expandedAccounts.has(cc.id)}
                   enrichedCAs={enrichedCAs}
