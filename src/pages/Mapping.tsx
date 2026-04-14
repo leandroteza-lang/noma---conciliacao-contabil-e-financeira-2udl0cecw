@@ -29,7 +29,7 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from '@/components/ui/pagination'
-import { Search, Upload, Sparkles, AlertCircle, ListTree, Unlink, Trash2 } from 'lucide-react'
+import { Search, Upload, Sparkles, ListTree, Unlink, Trash2 } from 'lucide-react'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -314,14 +314,12 @@ export default function Mapping() {
   const handleRemove = useCallback(async (mappingId: string) => {
     if (!mappingId) return
 
-    // Optimistic Update
     setMappings((prev) => prev.filter((m) => m.id !== mappingId))
-
     const { error } = await supabase.from('account_mapping').delete().eq('id', mappingId)
 
     if (error) {
       toast.error('Erro ao remover: ' + error.message)
-      loadRef.current() // Revert optimistic update
+      loadRef.current()
     } else {
       toast.success('Vínculo removido')
       loadRef.current()
@@ -337,7 +335,6 @@ export default function Mapping() {
         return
       }
 
-      // Optimistic Update
       setMappings((prev) => {
         const filtered = prev.filter((m) => m.id !== existingMappingId && m.cost_center_id !== ccId)
         return [
@@ -355,7 +352,6 @@ export default function Mapping() {
       if (existingMappingId) {
         await supabase.from('account_mapping').delete().eq('id', existingMappingId)
       }
-      // Delete by cost_center_id just to be safe and avoid duplicates
       await supabase
         .from('account_mapping')
         .delete()
@@ -371,7 +367,7 @@ export default function Mapping() {
 
       if (error) {
         toast.error('Erro ao mapear: ' + error.message)
-        loadRef.current() // Revert optimistic update
+        loadRef.current()
       } else {
         toast.success('Conta vinculada com sucesso')
         loadRef.current()
@@ -398,7 +394,6 @@ export default function Mapping() {
         )
     }
 
-    // Also delete by cost_center_id to avoid unique constraint violations or duplicates
     await supabase
       .from('account_mapping')
       .delete()
@@ -427,8 +422,6 @@ export default function Mapping() {
     if (!orgId || selectedCCs.size === 0) return
 
     const ccIds = Array.from(selectedCCs)
-
-    // Optimistic Update
     setMappings((prev) => prev.filter((m) => !ccIds.includes(m.cost_center_id)))
 
     const { error } = await supabase

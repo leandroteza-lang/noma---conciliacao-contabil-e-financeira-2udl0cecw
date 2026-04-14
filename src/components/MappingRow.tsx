@@ -148,10 +148,10 @@ export const MappingRow = memo(function MappingRow({
                       size="sm"
                       onClick={() => onToggleExpand(cc.id)}
                       className={cn(
-                        'h-9 px-3 text-xs font-medium shrink-0 transition-colors bg-white shadow-sm',
+                        'h-9 px-3 text-xs font-medium shrink-0 transition-colors shadow-sm',
                         isExpanded
                           ? 'bg-slate-100 text-slate-800 border-slate-300'
-                          : 'text-slate-700 hover:bg-slate-50 border-slate-200',
+                          : 'bg-white text-slate-700 hover:bg-slate-50 border-slate-200',
                       )}
                       title="Ver raiz da conta"
                     >
