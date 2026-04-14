@@ -43,6 +43,7 @@ export function ImportMappingModal({
 
   const [sheets, setSheets] = useState<string[]>([])
   const [selectedSheet, setSelectedSheet] = useState<string>('')
+  const [importMode, setImportMode] = useState<string>('UPDATE')
 
   const [previewInfo, setPreviewInfo] = useState<{ totalRecords?: number } | null>(null)
   const [progress, setProgress] = useState(0)
@@ -156,6 +157,7 @@ export function ImportMappingModal({
               fileBase64: base64,
               organizationId: selectedOrg,
               sheetName: selectedSheet,
+              mode: importMode,
             },
           })
 
@@ -239,6 +241,20 @@ export function ImportMappingModal({
                       {org.name}
                     </SelectItem>
                   ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="grid w-full items-center gap-1.5 animate-in fade-in duration-300">
+              <Label htmlFor="mode">Modo de Importação</Label>
+              <Select value={importMode} onValueChange={setImportMode}>
+                <SelectTrigger id="mode">
+                  <SelectValue placeholder="Selecione o modo" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="UPDATE">Adicionar e Atualizar (Padrão)</SelectItem>
+                  <SelectItem value="INSERT_ONLY">Importar Somente Novos</SelectItem>
+                  <SelectItem value="REPLACE">Substituir Tudo (Cuidado)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
