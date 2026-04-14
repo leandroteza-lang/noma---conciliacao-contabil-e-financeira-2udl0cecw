@@ -749,16 +749,37 @@ export default function Mapping() {
               >
                 Aplicar
               </Button>
-              <Button
-                size="sm"
-                variant="destructive"
-                onClick={handleBatchRemove}
-                className="shrink-0"
-                title="Remover vínculo dos selecionados"
-              >
-                <Unlink className="h-4 w-4 sm:mr-2" />
-                <span className="hidden sm:inline">Desvincular</span>
-              </Button>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    className="shrink-0"
+                    title="Remover vínculo dos selecionados"
+                  >
+                    <Unlink className="h-4 w-4 sm:mr-2" />
+                    <span className="hidden sm:inline">Desvincular</span>
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Desvincular contas selecionadas?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Você está prestes a remover o vínculo contábil de{' '}
+                      <strong>{selectedCCs.size}</strong> centro(s) de custo. Deseja continuar?
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={handleBatchRemove}
+                      className="bg-red-600 hover:bg-red-700 text-white"
+                    >
+                      Sim, desvincular
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             </div>
           </div>
         )}
