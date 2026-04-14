@@ -18,15 +18,22 @@ import {
 } from '@/components/ui/select'
 import { supabase } from '@/lib/supabase/client'
 import { toast } from 'sonner'
-import { Loader2, UploadCloud, FileSpreadsheet } from 'lucide-react'
+import { Loader2, UploadCloud, FileSpreadsheet, CheckCircle2 } from 'lucide-react'
+import { Progress } from '@/components/ui/progress'
 
 interface ImportMappingModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   orgId: string | null
+  onSuccess?: () => void
 }
 
-export function ImportMappingModal({ open, onOpenChange, orgId }: ImportMappingModalProps) {
+export function ImportMappingModal({
+  open,
+  onOpenChange,
+  orgId,
+  onSuccess,
+}: ImportMappingModalProps) {
   const [file, setFile] = useState<File | null>(null)
   const [loading, setLoading] = useState(false)
   const [previewLoading, setPreviewLoading] = useState(false)
@@ -36,6 +43,9 @@ export function ImportMappingModal({ open, onOpenChange, orgId }: ImportMappingM
 
   const [sheets, setSheets] = useState<string[]>([])
   const [selectedSheet, setSelectedSheet] = useState<string>('')
+
+  const [previewInfo, setPreviewInfo] = useState<{ totalRecords?: number } | null>(null)
+  const [progress, setProgress] = useState(0)
 
   const [results, setResults] = useState<{
     inserted?: number
@@ -93,6 +103,9 @@ export function ImportMappingModal({ open, onOpenChange, orgId }: ImportMappingM
               if (data.sheets.length > 0) {
                 setSelectedSheet(data.sheets[0])
               }
+              setPreviewInfo({
+                totalRecords: data.totalRecords,
+              })
             }
           } catch (err: any) {
             toast.error('Erro ao ler abas da planilha: ' + err.message)
@@ -118,7 +131,16 @@ export function ImportMappingModal({ open, onOpenChange, orgId }: ImportMappingM
       return
     }
     setLoading(true)
+    setProgress(0)
     setResults(null)
+
+    const progressInterval = setInterval(() => {
+      setProgress((prev) => {
+        if (prev >= 90) return 90
+        return prev + 10
+      })
+    }, 500)
+
     try {
       const reader = new FileReader()
       reader.onload = async (e) => {
@@ -140,7 +162,13 @@ export function ImportMappingModal({ open, onOpenChange, orgId }: ImportMappingM
           if (error) throw error
           if (data.error) throw new Error(data.error)
 
+          setProgress(100)
           setResults(data)
+
+          if (data.inserted > 0 || data.rejected > 0) {
+            onSuccess?.()
+          }
+
           if (data.inserted > 0) {
             toast.success(`${data.inserted} mapeamentos importados com sucesso!`)
             if (data.rejected === 0) {
@@ -154,16 +182,19 @@ export function ImportMappingModal({ open, onOpenChange, orgId }: ImportMappingM
         } catch (err: any) {
           toast.error('Erro na importação: ' + err.message)
         } finally {
+          clearInterval(progressInterval)
           setLoading(false)
         }
       }
       reader.onerror = () => {
         toast.error('Erro ao ler o arquivo.')
+        clearInterval(progressInterval)
         setLoading(false)
       }
       reader.readAsDataURL(file)
     } catch (err: any) {
       toast.error('Erro ao processar arquivo: ' + err.message)
+      clearInterval(progressInterval)
       setLoading(false)
     }
   }
@@ -173,6 +204,8 @@ export function ImportMappingModal({ open, onOpenChange, orgId }: ImportMappingM
     setFile(null)
     setSheets([])
     setSelectedSheet('')
+    setPreviewInfo(null)
+    setProgress(0)
   }
 
   return (
@@ -262,6 +295,32 @@ export function ImportMappingModal({ open, onOpenChange, orgId }: ImportMappingM
               </p>
             </div>
 
+            {previewInfo && !loading && (
+              <div className="bg-blue-50 border border-blue-200 rounded-md p-4 text-sm text-blue-800 animate-in fade-in duration-300">
+                <p className="font-semibold flex items-center gap-2 mb-1">
+                  <CheckCircle2 className="h-4 w-4 text-blue-600" />
+                  Planilha Carregada
+                </p>
+                <p>
+                  Encontramos aproximadamente <strong>{previewInfo.totalRecords}</strong> registros
+                  na aba selecionada.
+                </p>
+                <p className="mt-2 text-xs opacity-90">
+                  Clique no botão abaixo para confirmar e iniciar a importação.
+                </p>
+              </div>
+            )}
+
+            {loading && (
+              <div className="space-y-2 animate-in fade-in duration-300">
+                <div className="flex items-center justify-between text-sm text-slate-600">
+                  <span>Importando registros...</span>
+                  <span className="font-medium">{progress}%</span>
+                </div>
+                <Progress value={progress} className="h-2" />
+              </div>
+            )}
+
             <Button
               className="w-full"
               onClick={handleUpload}
@@ -278,7 +337,7 @@ export function ImportMappingModal({ open, onOpenChange, orgId }: ImportMappingM
               ) : (
                 <UploadCloud className="mr-2 h-4 w-4" />
               )}
-              {loading ? 'Processando...' : 'Importar Planilha'}
+              {loading ? 'Processando Importação...' : 'Confirmar e Importar Planilha'}
             </Button>
           </div>
         ) : (

@@ -886,7 +886,12 @@ export default function Mapping() {
         )}
       </Card>
 
-      <ImportMappingModal open={importOpen} onOpenChange={setImportOpen} orgId={orgId} />
+      <ImportMappingModal
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        orgId={orgId}
+        onSuccess={() => setRefreshCounter((prev) => prev + 1)}
+      />
     </div>
   )
 }
