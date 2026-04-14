@@ -67,22 +67,80 @@ export default function Mapping() {
     if (!currentOrgId) return
     if (!orgId) setOrgId(currentOrgId)
 
-    const [resCC, resCA, resMap] = await Promise.all([
-      supabase
-        .from('cost_centers')
-        .select('*')
-        .eq('organization_id', currentOrgId)
-        .is('deleted_at', null),
-      supabase
-        .from('chart_of_accounts')
-        .select('*')
-        .eq('organization_id', currentOrgId)
-        .is('deleted_at', null),
-      supabase.from('account_mapping').select('*').eq('organization_id', currentOrgId),
+    const fetchAllCostCenters = async () => {
+      let all: any[] = []
+      let page = 0
+      let hasMore = true
+      while (hasMore) {
+        const { data } = await supabase
+          .from('cost_centers')
+          .select('*')
+          .eq('organization_id', currentOrgId)
+          .is('deleted_at', null)
+          .range(page * 1000, (page + 1) * 1000 - 1)
+        if (data && data.length > 0) {
+          all.push(...data)
+          if (data.length < 1000) hasMore = false
+          else page++
+        } else {
+          hasMore = false
+        }
+      }
+      return all
+    }
+
+    const fetchAllChartAccounts = async () => {
+      let all: any[] = []
+      let page = 0
+      let hasMore = true
+      while (hasMore) {
+        const { data } = await supabase
+          .from('chart_of_accounts')
+          .select('*')
+          .eq('organization_id', currentOrgId)
+          .is('deleted_at', null)
+          .range(page * 1000, (page + 1) * 1000 - 1)
+        if (data && data.length > 0) {
+          all.push(...data)
+          if (data.length < 1000) hasMore = false
+          else page++
+        } else {
+          hasMore = false
+        }
+      }
+      return all
+    }
+
+    const fetchAllMappings = async () => {
+      let all: any[] = []
+      let page = 0
+      let hasMore = true
+      while (hasMore) {
+        const { data } = await supabase
+          .from('account_mapping')
+          .select('*')
+          .eq('organization_id', currentOrgId)
+          .range(page * 1000, (page + 1) * 1000 - 1)
+        if (data && data.length > 0) {
+          all.push(...data)
+          if (data.length < 1000) hasMore = false
+          else page++
+        } else {
+          hasMore = false
+        }
+      }
+      return all
+    }
+
+    const [ccData, caData, mapData] = await Promise.all([
+      fetchAllCostCenters(),
+      fetchAllChartAccounts(),
+      fetchAllMappings(),
     ])
-    setCcs(resCC.data || [])
-    setCas(resCA.data || [])
-    setMappings(resMap.data || [])
+
+    setCcs(ccData)
+    setCas(caData)
+    setMappings(mapData)
   }
 
   const loadRef = useRef(load)
