@@ -726,46 +726,65 @@ export default function Mapping() {
                         {expandedAccounts.has(cc.id) &&
                           cc.mappedCa &&
                           cc.mappedCa.hierarchyArray && (
-                            <div className="mt-1 mb-1 p-2 bg-slate-50/80 rounded border border-slate-200 shadow-sm animate-in fade-in slide-in-from-top-1">
-                              <div className="text-[9px] font-bold uppercase text-slate-400 mb-1.5 tracking-wider ml-1">
-                                Raiz Hierárquica
+                            <div className="mt-2 mb-2 rounded-md overflow-hidden border border-slate-200 shadow-sm animate-in fade-in slide-in-from-top-1">
+                              <div className="bg-slate-50 px-2 py-1.5 border-b border-slate-200">
+                                <span className="text-[9px] font-bold uppercase text-slate-500 tracking-wider">
+                                  Raiz Hierárquica
+                                </span>
                               </div>
-                              <div className="space-y-1 relative before:absolute before:inset-y-0 before:left-[7px] before:w-px before:bg-slate-300 pb-1">
-                                {cc.mappedCa.hierarchyArray.map((node: any, idx: number) => {
-                                  const isLast = idx === cc.mappedCa.hierarchyArray.length - 1
+                              <div className="flex flex-col">
+                                {cc.mappedCa.hierarchyArray.map((node: any) => {
+                                  const code = node.classification || node.account_code || ''
+                                  const level = (code.match(/\./g) || []).length + 1
+
+                                  let rowClass =
+                                    'bg-white font-normal text-slate-700 hover:bg-slate-50'
+                                  let badgeClass = 'bg-slate-100 text-slate-600 border-slate-200'
+
+                                  if (node.account_level === 'Sintética') {
+                                    if (level === 1) {
+                                      rowClass =
+                                        'bg-indigo-950 font-bold text-white hover:bg-indigo-900'
+                                      badgeClass = 'bg-indigo-900 text-white border-indigo-800'
+                                    } else if (level === 2) {
+                                      rowClass =
+                                        'bg-blue-800 font-semibold text-white hover:bg-blue-700'
+                                      badgeClass = 'bg-blue-700 text-white border-blue-600'
+                                    } else if (level === 3) {
+                                      rowClass =
+                                        'bg-blue-500 font-medium text-white hover:bg-blue-400'
+                                      badgeClass = 'bg-blue-600 text-white border-blue-500'
+                                    } else if (level === 4) {
+                                      rowClass =
+                                        'bg-blue-200 font-medium text-blue-950 hover:bg-blue-300'
+                                      badgeClass = 'bg-blue-300 text-blue-900 border-blue-400'
+                                    } else {
+                                      rowClass =
+                                        'bg-blue-50 font-medium text-blue-900 hover:bg-blue-100'
+                                      badgeClass = 'bg-blue-100 text-blue-800 border-blue-200'
+                                    }
+                                  }
+
                                   return (
                                     <div
                                       key={node.id}
-                                      className="flex items-start gap-2 relative z-10"
+                                      className={cn(
+                                        'flex items-center gap-2 px-2 py-1.5 transition-colors border-b border-slate-100/50 last:border-0',
+                                        rowClass,
+                                      )}
+                                      style={{ paddingLeft: `${Math.max(0.5, level * 0.75)}rem` }}
                                     >
-                                      <div className="flex flex-col items-center justify-start h-full mt-1 bg-transparent">
-                                        <div
-                                          className={cn(
-                                            'w-1.5 h-1.5 rounded-full ring-2 ring-slate-50 shadow-sm',
-                                            isLast ? 'bg-blue-500 ring-blue-100' : 'bg-slate-400',
-                                          )}
-                                        />
-                                      </div>
-                                      <div
+                                      <span
                                         className={cn(
-                                          'flex items-center gap-1.5',
-                                          isLast ? 'opacity-100' : 'opacity-75',
+                                          'font-mono text-[10px] px-1 rounded border shadow-sm shrink-0',
+                                          badgeClass,
                                         )}
                                       >
-                                        <span className="font-mono text-[10px] font-semibold text-slate-500 bg-white px-1 rounded border border-slate-100 shadow-sm">
-                                          {node.classification || node.account_code}
-                                        </span>
-                                        <span
-                                          className={cn(
-                                            'text-[11px] leading-none',
-                                            isLast
-                                              ? 'font-semibold text-slate-800'
-                                              : 'font-medium text-slate-600',
-                                          )}
-                                        >
-                                          {node.account_name}
-                                        </span>
-                                      </div>
+                                        {code}
+                                      </span>
+                                      <span className="text-[11px] truncate">
+                                        {node.account_name}
+                                      </span>
                                     </div>
                                   )
                                 })}
