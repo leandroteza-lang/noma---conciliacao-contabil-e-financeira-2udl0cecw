@@ -89,13 +89,25 @@ export function GlobalNotifications() {
               notifiedDeletionsRef.current.add(id)
 
               playSound()
-              toast.success(isTrash ? 'Item na Lixeira!' : 'Exclusão Pendente!', {
-                description: isTrash
-                  ? 'Um item foi movido para a lixeira.'
-                  : 'Uma solicitação de exclusão foi enviada para revisão.',
-                duration: 10000,
-                icon: '🗑️',
-              })
+
+              const isDesvinculacao = payload.table === 'account_mapping'
+
+              toast.success(
+                isTrash
+                  ? 'Item na Lixeira!'
+                  : isDesvinculacao
+                    ? 'Desvinculação Pendente!'
+                    : 'Exclusão Pendente!',
+                {
+                  description: isTrash
+                    ? 'Um item foi movido para a lixeira.'
+                    : isDesvinculacao
+                      ? 'Uma solicitação de desvinculação foi enviada para revisão.'
+                      : 'Uma solicitação de exclusão foi enviada para revisão.',
+                  duration: 10000,
+                  icon: isDesvinculacao && !isTrash ? '🔗' : '🗑️',
+                },
+              )
             }
           } else if (payload.new.pending_deletion === false && !payload.new.deleted_at) {
             if (payload.new.id) {
