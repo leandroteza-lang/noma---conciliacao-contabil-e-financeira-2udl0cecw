@@ -468,6 +468,7 @@ export default function Layout() {
           'chart_of_accounts',
           'bank_accounts',
           'tipo_conta_tga',
+          'account_mapping',
         ] as const
 
         const deletionPromises = tables.map((table) =>
@@ -577,6 +578,7 @@ export default function Layout() {
       'chart_of_accounts',
       'bank_accounts',
       'tipo_conta_tga',
+      'account_mapping',
       'pending_changes',
     ]
 
