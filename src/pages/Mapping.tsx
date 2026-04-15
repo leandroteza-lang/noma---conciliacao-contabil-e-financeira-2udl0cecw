@@ -117,6 +117,13 @@ export default function Mapping() {
           'Centro de Custo': ccStr,
           'Conta Contábil': caStr,
           Status: status,
+          ccCode: cc.code || '',
+          ccDesc: cc.description || '',
+          caCode: cc.mappedCa?.account_code || '',
+          caDesc: cc.mappedCa?.account_name || '',
+          level: cc.level || 0,
+          isSynthetic: !!cc.isSynthetic,
+          mapped: !!cc.mappingId,
         }
       })
 
@@ -148,26 +155,22 @@ export default function Mapping() {
         a.download = `Mapeamentos_${new Date().toISOString().split('T')[0]}.txt`
         a.click()
         URL.revokeObjectURL(url)
-      } else if ((format === 'pdf' || format === 'browser') && data.pdf) {
-        if (format === 'browser') {
-          const pdfWindow = window.open('')
-          if (pdfWindow) {
-            pdfWindow.document.write(
-              `<iframe width='100%' height='100%' style='border:none;margin:0;padding:0;' src='${data.pdf}'></iframe>`,
-            )
-            pdfWindow.document.title = 'Mapeamentos'
-            pdfWindow.document.body.style.margin = '0'
-          } else {
-            toast.error(
-              'O navegador bloqueou a abertura da nova aba. Permita pop-ups para este site.',
-            )
-          }
+      } else if (format === 'browser' && data.html) {
+        const browserWindow = window.open('', '_blank')
+        if (browserWindow) {
+          browserWindow.document.open()
+          browserWindow.document.write(data.html)
+          browserWindow.document.close()
         } else {
-          const a = document.createElement('a')
-          a.href = data.pdf
-          a.download = `Mapeamentos_${new Date().toISOString().split('T')[0]}.pdf`
-          a.click()
+          toast.error(
+            'O navegador bloqueou a abertura da nova aba. Permita pop-ups para este site.',
+          )
         }
+      } else if (format === 'pdf' && data.pdf) {
+        const a = document.createElement('a')
+        a.href = data.pdf
+        a.download = `Mapeamentos_${new Date().toISOString().split('T')[0]}.pdf`
+        a.click()
       }
 
       toast.success('Exportação concluída!', { id: toastId })
