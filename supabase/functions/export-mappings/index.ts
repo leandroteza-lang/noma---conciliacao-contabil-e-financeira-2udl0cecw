@@ -32,7 +32,7 @@ Deno.serve(async (req: Request) => {
       const exportData = data.map((r: any) => ({
         'Centro de Custo': r['Centro de Custo'],
         'Conta Contábil': r['Conta Contábil'],
-        Status: r['Status'],
+        'Status': r['Status']
       }))
       const worksheet = XLSX.utils.json_to_sheet(exportData)
       const workbook = XLSX.utils.book_new()
@@ -229,9 +229,7 @@ Deno.serve(async (req: Request) => {
         </tr>
       </thead>
       <tbody>
-        ${data
-          .map(
-            (r: any) => `
+        ${data.map((r: any) => `
           <tr class="${r.isSynthetic ? 'synthetic' : 'analytic'}">
             <td>
               <div class="flex-row">
@@ -241,24 +239,18 @@ Deno.serve(async (req: Request) => {
               </div>
             </td>
             <td>
-              ${
-                r.mapped
-                  ? `
+              ${r.mapped ? `
                 <div class="flex-row">
                   <span class="code">${r.caCode}</span>
                   <span>${r.caDesc}</span>
                 </div>
-              `
-                  : '<span class="empty-state">Não vinculado</span>'
-              }
+              ` : '<span class="empty-state">Não vinculado</span>'}
             </td>
             <td style="text-align: center;">
               ${r.isSynthetic ? '-' : `<span class="${r.mapped ? 'status-mapped' : 'status-pending'}">${r.status}</span>`}
             </td>
           </tr>
-        `,
-          )
-          .join('')}
+        `).join('')}
       </tbody>
     </table>
   </div>
@@ -272,24 +264,19 @@ Deno.serve(async (req: Request) => {
 
     if (format === 'pdf') {
       const doc = new jsPDF('landscape')
-
+      
       doc.setFontSize(18)
       doc.setTextColor(15, 23, 42)
       doc.text('Relatório de Mapeamento DE/PARA', 14, 20)
-
+      
       doc.setFontSize(10)
       doc.setTextColor(100, 116, 139)
-      doc.text(
-        `Gerado em ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR')}`,
-        280 - 14,
-        20,
-        { align: 'right' },
-      )
+      doc.text(`Gerado em ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR')}`, 280 - 14, 20, { align: 'right' })
 
       const body = data.map((r: any) => [
         { content: `${'   '.repeat(r.level || 0)}${r.ccCode} - ${r.ccDesc}` },
         { content: r.mapped ? `${r.caCode} - ${r.caDesc}` : 'Não vinculado' },
-        { content: r.isSynthetic ? '-' : r.status },
+        { content: r.isSynthetic ? '-' : r.status }
       ])
 
       autoTable(doc, {
@@ -297,22 +284,22 @@ Deno.serve(async (req: Request) => {
         head: [['DE: Centro de Custo TGA', 'PARA: Conta Contábil Vinculada', 'Status']],
         body: body,
         theme: 'grid',
-        headStyles: {
+        headStyles: { 
           fillColor: [30, 27, 75], // indigo-950
           textColor: [255, 255, 255],
           fontStyle: 'bold',
-          halign: 'left',
+          halign: 'left'
         },
         columnStyles: {
           0: { cellWidth: 125 },
           1: { cellWidth: 115 },
-          2: { cellWidth: 30, halign: 'center' },
+          2: { cellWidth: 30, halign: 'center' }
         },
-        styles: {
+        styles: { 
           fontSize: 9,
           cellPadding: 5,
           lineColor: [226, 232, 240], // slate-200
-          lineWidth: 0.1,
+          lineWidth: 0.1
         },
         willDrawCell: function (cellData: any) {
           const rowData = data[cellData.row.index]
@@ -327,21 +314,21 @@ Deno.serve(async (req: Request) => {
             }
 
             if (cellData.column.index === 2 && !rowData.isSynthetic) {
-              if (rowData.mapped) {
-                cellData.cell.styles.textColor = [5, 150, 105] // emerald-600
-                cellData.cell.styles.fontStyle = 'bold'
-              } else {
-                cellData.cell.styles.textColor = [180, 83, 9] // amber-700
-                cellData.cell.styles.fontStyle = 'bold'
-              }
+               if (rowData.mapped) {
+                 cellData.cell.styles.textColor = [5, 150, 105] // emerald-600
+                 cellData.cell.styles.fontStyle = 'bold'
+               } else {
+                 cellData.cell.styles.textColor = [180, 83, 9] // amber-700
+                 cellData.cell.styles.fontStyle = 'bold'
+               }
             }
 
             if (cellData.column.index === 1 && !rowData.mapped) {
-              cellData.cell.styles.textColor = [148, 163, 184] // slate-400
-              cellData.cell.styles.fontStyle = 'italic'
+               cellData.cell.styles.textColor = [148, 163, 184] // slate-400
+               cellData.cell.styles.fontStyle = 'italic'
             }
           }
-        },
+        }
       })
 
       const pdf = doc.output('datauristring')
