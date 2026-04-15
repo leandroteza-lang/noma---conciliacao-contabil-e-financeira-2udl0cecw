@@ -29,7 +29,19 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from '@/components/ui/pagination'
-import { Search, Upload, Sparkles, ListTree, Unlink, Trash2 } from 'lucide-react'
+import {
+  Search,
+  Upload,
+  Sparkles,
+  ListTree,
+  Unlink,
+  Trash2,
+  Download,
+  FileSpreadsheet,
+  FileText,
+  FileDown,
+  ExternalLink,
+} from 'lucide-react'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -80,6 +92,91 @@ export default function Mapping() {
   const [batchCaId, setBatchCaId] = useState<string>('')
   const [importOpen, setImportOpen] = useState(false)
   const [batchActionType, setBatchActionType] = useState<'unlink' | 'delete_cc' | null>(null)
+  const [isExporting, setIsExporting] = useState(false)
+
+  const handleExport = async (format: 'excel' | 'csv' | 'txt' | 'pdf' | 'browser') => {
+    if (filteredCCs.length === 0) {
+      toast.info('Não há dados para exportar com os filtros atuais.')
+      return
+    }
+
+    setIsExporting(true)
+    const toastId = toast.loading('Gerando exportação...')
+
+    try {
+      const exportData = filteredCCs.map((cc) => {
+        const ccStr = `${cc.code || ''} - ${cc.description || ''}`.replace(/^- | -$/, '').trim()
+        const caStr = cc.mappedCa
+          ? `${cc.mappedCa.account_code || ''} - ${cc.mappedCa.account_name || ''}`
+              .replace(/^- | -$/, '')
+              .trim()
+          : 'Não vinculado'
+        const status = cc.mappingId ? 'Mapeado' : 'Pendente'
+
+        return {
+          'Centro de Custo': ccStr,
+          'Conta Contábil': caStr,
+          Status: status,
+        }
+      })
+
+      const { data, error } = await supabase.functions.invoke('export-mappings', {
+        body: { format, data: exportData },
+      })
+
+      if (error) throw new Error(error.message)
+
+      if (format === 'excel' && data.excel) {
+        const url = `data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,${data.excel}`
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `Mapeamentos_${new Date().toISOString().split('T')[0]}.xlsx`
+        a.click()
+      } else if (format === 'csv' && data.csv) {
+        const blob = new Blob([data.csv], { type: 'text/csv;charset=utf-8;' })
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `Mapeamentos_${new Date().toISOString().split('T')[0]}.csv`
+        a.click()
+        URL.revokeObjectURL(url)
+      } else if (format === 'txt' && data.txt) {
+        const blob = new Blob([data.txt], { type: 'text/plain;charset=utf-8;' })
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `Mapeamentos_${new Date().toISOString().split('T')[0]}.txt`
+        a.click()
+        URL.revokeObjectURL(url)
+      } else if ((format === 'pdf' || format === 'browser') && data.pdf) {
+        if (format === 'browser') {
+          const pdfWindow = window.open('')
+          if (pdfWindow) {
+            pdfWindow.document.write(
+              `<iframe width='100%' height='100%' style='border:none;margin:0;padding:0;' src='${data.pdf}'></iframe>`,
+            )
+            pdfWindow.document.title = 'Mapeamentos'
+            pdfWindow.document.body.style.margin = '0'
+          } else {
+            toast.error(
+              'O navegador bloqueou a abertura da nova aba. Permita pop-ups para este site.',
+            )
+          }
+        } else {
+          const a = document.createElement('a')
+          a.href = data.pdf
+          a.download = `Mapeamentos_${new Date().toISOString().split('T')[0]}.pdf`
+          a.click()
+        }
+      }
+
+      toast.success('Exportação concluída!', { id: toastId })
+    } catch (err: any) {
+      toast.error('Erro ao exportar: ' + err.message, { id: toastId })
+    } finally {
+      setIsExporting(false)
+    }
+  }
 
   const load = async () => {
     if (!user) return
@@ -746,18 +843,55 @@ export default function Mapping() {
             Associe seus Centros de Custo (TGA) às Contas Contábeis de forma ágil e centralizada.
           </p>
         </div>
-        <div className="flex flex-col gap-2 w-full sm:w-auto mt-4 md:mt-0">
+        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto mt-4 md:mt-0">
           <Button
             variant="secondary"
             onClick={handleAutoMap}
-            className="w-full sm:w-[220px] justify-start bg-blue-50 text-blue-600 hover:bg-blue-100 border-0"
+            className="w-full sm:w-auto justify-start bg-blue-50 text-blue-600 hover:bg-blue-100 border-0"
           >
             <Sparkles className="h-4 w-4 mr-2 text-blue-500" />
             Sugestão Inteligente
           </Button>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                disabled={isExporting}
+                variant="outline"
+                className="w-full sm:w-auto bg-white shadow-sm border-slate-200"
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Exportar
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuItem onClick={() => handleExport('excel')}>
+                <FileSpreadsheet className="h-4 w-4 mr-2" />
+                Excel (XLSX)
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleExport('csv')}>
+                <FileText className="h-4 w-4 mr-2" />
+                CSV
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleExport('txt')}>
+                <FileText className="h-4 w-4 mr-2" />
+                TXT
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => handleExport('pdf')}>
+                <FileDown className="h-4 w-4 mr-2" />
+                PDF (Download)
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleExport('browser')}>
+                <ExternalLink className="h-4 w-4 mr-2" />
+                Abrir no Browser
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
           <Button
             onClick={() => setImportOpen(true)}
-            className="w-full sm:w-[220px] justify-start bg-[#cc0000] hover:bg-[#aa0000] text-white shadow-sm"
+            className="w-full sm:w-auto justify-start bg-[#cc0000] hover:bg-[#aa0000] text-white shadow-sm"
           >
             <Upload className="h-4 w-4 mr-2" />
             Importar Planilha
