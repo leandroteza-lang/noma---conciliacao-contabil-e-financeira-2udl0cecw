@@ -95,7 +95,7 @@ export default function Mapping() {
   const [isExporting, setIsExporting] = useState(false)
 
   const handleExport = async (format: 'excel' | 'csv' | 'txt' | 'pdf' | 'browser') => {
-    if (filteredCCs.length === 0) {
+    if (visibleCCs.length === 0) {
       toast.info('Não há dados para exportar com os filtros atuais.')
       return
     }
@@ -104,16 +104,20 @@ export default function Mapping() {
     const toastId = toast.loading('Gerando exportação...')
 
     try {
-      const exportData = filteredCCs.map((cc) => {
+      const exportData: any[] = []
+      let indexCount = 0
+
+      visibleCCs.forEach((cc) => {
+        const isMapped = !!cc.mappingId
         const ccStr = `${cc.code || ''} - ${cc.description || ''}`.replace(/^- | -$/, '').trim()
         const caStr = cc.mappedCa
           ? `${cc.mappedCa.account_code || ''} - ${cc.mappedCa.account_name || ''}`
               .replace(/^- | -$/, '')
               .trim()
           : 'Não vinculado'
-        const status = cc.mappingId ? 'Mapeado' : 'Pendente'
+        const status = isMapped ? 'Mapeado' : 'Pendente'
 
-        return {
+        exportData.push({
           'Centro de Custo': ccStr,
           'Conta Contábil': caStr,
           Status: status,
@@ -123,8 +127,16 @@ export default function Mapping() {
           caDesc: cc.mappedCa?.account_name || '',
           level: cc.level || 0,
           isSynthetic: !!cc.isSynthetic,
-          mapped: !!cc.mappingId,
-        }
+          mapped: isMapped,
+          ccPendingDeletion: !!cc.ccPendingDeletion,
+          pendingDeletion: !!cc.pendingDeletion,
+          isExpanded: expandedAccounts.has(cc.id),
+          hierarchyArray:
+            expandedAccounts.has(cc.id) && cc.mappedCa?.hierarchyArray
+              ? cc.mappedCa.hierarchyArray
+              : [],
+          rowIndex: indexCount++,
+        })
       })
 
       const { data, error } = await supabase.functions.invoke('export-mappings', {
