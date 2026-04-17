@@ -33,6 +33,38 @@ import {
 import { Search, Map as MapIcon, Trash2, Upload, Loader2, ArrowRight } from 'lucide-react'
 import { toast } from '@/hooks/use-toast'
 
+const erpColumns = [
+  { key: 'data_emissao', label: 'Data Emissão', type: 'date' },
+  { key: 'historico', label: 'Histórico' },
+  { key: 'nome_cli_fornec', label: 'Nome Cli/Fornec' },
+  { key: 'conta_caixa', label: 'Conta/Caixa' },
+  { key: 'nome_caixa', label: 'Nome Caixa' },
+  { key: 'c_custo', label: 'C.Custo' },
+  { key: 'descricao_c_custo', label: 'Descrição C.Custo' },
+  { key: 'valor', label: 'Valor', type: 'currency' },
+  { key: 'valor_liquido', label: 'Valor Líquido', type: 'currency' },
+  { key: 'compensado', label: 'Compensado' },
+  { key: 'tipo_operacao', label: 'Tipo Operação' },
+  { key: 'dt_compens', label: 'Dt Compens.', type: 'date' },
+  { key: 'conta_caixa_destino', label: 'Conta/Caixa Destino' },
+  { key: 'forma_pagto', label: 'Forma Pagto' },
+  { key: 'n_documento', label: 'Nº Documento' },
+  { key: 'fp', label: 'FP' },
+  { key: 'n_cheque', label: 'Nº Cheque' },
+  { key: 'data_vencto', label: 'Data Vencto', type: 'date' },
+  { key: 'nominal_a', label: 'Nominal a' },
+  { key: 'emitente_cheque', label: 'Emitente Cheque' },
+  { key: 'cnpj_cpf', label: 'CNPJ/CPF' },
+  { key: 'n_extrato', label: 'Nº Extrato' },
+  { key: 'filial', label: 'Filial' },
+  { key: 'data_canc', label: 'Data Canc.', type: 'date' },
+  { key: 'data_estorno', label: 'Data Estorno', type: 'date' },
+  { key: 'banco', label: 'Banco' },
+  { key: 'c_corrente', label: 'C.Corrente' },
+  { key: 'cod_cli_for', label: 'Cód.Cli/For' },
+  { key: 'departamento', label: 'Departamento' },
+]
+
 export default function FinancialMovements() {
   const [movements, setMovements] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -128,6 +160,12 @@ export default function FinancialMovements() {
     if (!file) return
 
     setImporting(true)
+    const { data: orgData } = await supabase
+      .from('organizations')
+      .select('id')
+      .limit(1)
+      .maybeSingle()
+
     const reader = new FileReader()
     reader.onload = async (e) => {
       const result = e.target?.result as string | undefined
@@ -143,6 +181,7 @@ export default function FinancialMovements() {
             fileName: file.name,
             allowIncomplete: true,
             mode: 'INSERT_ONLY',
+            organizationId: orgData?.id,
           },
         })
 
@@ -167,17 +206,13 @@ export default function FinancialMovements() {
   const filteredMovements = movements.filter(
     (m) =>
       m.historico?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      '' ||
       m.c_custo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      '' ||
       m.nome_cli_fornec?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      '' ||
-      m.conta_caixa?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      '',
+      m.conta_caixa?.toLowerCase().includes(searchTerm.toLowerCase()),
   )
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-fade-in">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-red-600">
@@ -226,27 +261,20 @@ export default function FinancialMovements() {
           <div className="rounded-md border border-border/50 overflow-hidden bg-card">
             <div className="overflow-x-auto max-h-[600px] relative">
               <Table>
-                <TableHeader className="bg-muted/50 sticky top-0 z-10 shadow-sm">
+                <TableHeader className="bg-muted/50 sticky top-0 z-20 shadow-sm">
                   <TableRow>
-                    <TableHead className="whitespace-nowrap font-semibold">Data Emissão</TableHead>
-                    <TableHead className="whitespace-nowrap font-semibold">Histórico</TableHead>
-                    <TableHead className="whitespace-nowrap font-semibold">
-                      Fornecedor/Cliente
-                    </TableHead>
-                    <TableHead className="whitespace-nowrap font-semibold">Conta/Caixa</TableHead>
-                    <TableHead className="whitespace-nowrap font-semibold">
-                      Centro de Custo
-                    </TableHead>
-                    <TableHead className="whitespace-nowrap font-semibold text-right">
-                      Valor (R$)
-                    </TableHead>
+                    {erpColumns.map((col) => (
+                      <TableHead key={col.key} className="whitespace-nowrap font-semibold">
+                        {col.label}
+                      </TableHead>
+                    ))}
                     <TableHead className="whitespace-nowrap font-semibold text-center">
                       Status
                     </TableHead>
                     <TableHead className="whitespace-nowrap font-semibold">
                       DE/PARA Contábil
                     </TableHead>
-                    <TableHead className="whitespace-nowrap font-semibold text-right">
+                    <TableHead className="whitespace-nowrap font-semibold text-right sticky right-0 bg-muted/50 z-30 shadow-[-4px_0_10px_-4px_rgba(0,0,0,0.1)]">
                       Ações
                     </TableHead>
                   </TableRow>
@@ -254,40 +282,44 @@ export default function FinancialMovements() {
                 <TableBody>
                   {loading ? (
                     <TableRow>
-                      <TableCell colSpan={9} className="h-32 text-center text-muted-foreground">
+                      <TableCell
+                        colSpan={erpColumns.length + 3}
+                        className="h-32 text-center text-muted-foreground"
+                      >
                         <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2 text-red-600" />
                         Carregando movimentos...
                       </TableCell>
                     </TableRow>
                   ) : filteredMovements.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={9} className="h-32 text-center text-muted-foreground">
+                      <TableCell
+                        colSpan={erpColumns.length + 3}
+                        className="h-32 text-center text-muted-foreground"
+                      >
                         Nenhum movimento encontrado. Importe uma planilha para começar.
                       </TableCell>
                     </TableRow>
                   ) : (
                     filteredMovements.map((m) => (
-                      <TableRow key={m.id} className="hover:bg-muted/30 transition-colors">
-                        <TableCell className="whitespace-nowrap font-medium text-muted-foreground">
-                          {m.data_emissao
-                            ? format(new Date(m.data_emissao), 'dd/MM/yyyy', { locale: ptBR })
-                            : '-'}
-                        </TableCell>
-                        <TableCell className="max-w-[200px] truncate" title={m.historico}>
-                          {m.historico || '-'}
-                        </TableCell>
-                        <TableCell className="max-w-[150px] truncate" title={m.nome_cli_fornec}>
-                          {m.nome_cli_fornec || '-'}
-                        </TableCell>
-                        <TableCell className="max-w-[150px] truncate" title={m.nome_caixa}>
-                          {m.conta_caixa} - {m.nome_caixa}
-                        </TableCell>
-                        <TableCell className="max-w-[150px] truncate" title={m.descricao_c_custo}>
-                          {m.c_custo} - {m.descricao_c_custo}
-                        </TableCell>
-                        <TableCell className="text-right font-semibold whitespace-nowrap text-foreground">
-                          {m.valor?.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                        </TableCell>
+                      <TableRow key={m.id} className="hover:bg-muted/30 transition-colors group">
+                        {erpColumns.map((col) => (
+                          <TableCell
+                            key={col.key}
+                            className="whitespace-nowrap max-w-[200px] truncate"
+                            title={String(m[col.key] || '')}
+                          >
+                            {col.type === 'date'
+                              ? m[col.key]
+                                ? format(new Date(m[col.key]), 'dd/MM/yyyy', { locale: ptBR })
+                                : '-'
+                              : col.type === 'currency'
+                                ? m[col.key]?.toLocaleString('pt-BR', {
+                                    style: 'currency',
+                                    currency: 'BRL',
+                                  }) || '-'
+                                : m[col.key] || '-'}
+                          </TableCell>
+                        ))}
                         <TableCell className="text-center">
                           <Badge
                             variant={m.status === 'Mapeado' ? 'default' : 'secondary'}
@@ -315,8 +347,8 @@ export default function FinancialMovements() {
                             </span>
                           )}
                         </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end gap-1">
+                        <TableCell className="text-right sticky right-0 bg-card group-hover:bg-muted/30 transition-colors z-10 shadow-[-4px_0_10px_-4px_rgba(0,0,0,0.05)]">
+                          <div className="flex justify-end gap-1 bg-inherit">
                             <Button
                               variant="ghost"
                               size="sm"
