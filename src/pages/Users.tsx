@@ -56,7 +56,7 @@ import * as XLSX from 'xlsx'
 import { format } from 'date-fns'
 import { useAuditLog } from '@/hooks/use-audit-log'
 import { useAuth } from '@/hooks/use-auth'
-import { isValidCPF, formatCPF } from '@/lib/utils'
+import { isValidCPF, formatCPF, cn } from '@/lib/utils'
 
 type SortField = 'name' | 'email' | 'cpf' | 'role' | 'department' | 'status'
 
@@ -416,10 +416,16 @@ export default function Users() {
                 </TableCell>
               </TableRow>
             ) : (
-              sortedUsers.map((user) => (
+              sortedUsers.map((user, index) => (
                 <TableRow
                   key={user.id}
-                  className={selectedUsers.includes(user.id) ? 'bg-muted/50' : ''}
+                  className={cn(
+                    selectedUsers.includes(user.id)
+                      ? 'bg-muted/50'
+                      : index % 2 === 0
+                        ? 'bg-background hover:bg-muted/50'
+                        : 'bg-[#e11d48]/5 hover:bg-[#e11d48]/10 dark:bg-[#e11d48]/10 dark:hover:bg-[#e11d48]/20',
+                  )}
                 >
                   <TableCell className="text-center py-2">
                     <Checkbox
@@ -772,8 +778,15 @@ function ImportUsersModal({
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {previewData.map((row) => (
-                      <TableRow key={row._index}>
+                    {previewData.map((row, index) => (
+                      <TableRow
+                        key={row._index}
+                        className={
+                          index % 2 === 0
+                            ? 'bg-background hover:bg-muted/50'
+                            : 'bg-[#e11d48]/5 hover:bg-[#e11d48]/10 dark:bg-[#e11d48]/10 dark:hover:bg-[#e11d48]/20'
+                        }
+                      >
                         <TableCell className="text-center font-medium text-muted-foreground py-2">
                           {row._index}
                         </TableCell>
