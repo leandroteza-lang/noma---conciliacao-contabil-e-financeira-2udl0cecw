@@ -126,7 +126,10 @@ const AuditDetailsTable = ({ details }: { details: any[] }) => {
               const newVal =
                 detail.display_new !== undefined ? detail.display_new : detail.new_value
               return (
-                <TableRow key={idx} className="hover:bg-muted/30">
+                <TableRow
+                  key={idx}
+                  className={cn('hover:bg-muted/30', idx % 2 === 1 ? 'bg-red-50' : 'bg-white')}
+                >
                   <TableCell className="font-medium">
                     {detail.display_name || detail.field_name}
                   </TableCell>
@@ -588,11 +591,12 @@ export default function AuditoriaUsuarios() {
                   </TableCell>
                 </TableRow>
               ) : (
-                sortedLogs.map((log) => (
+                sortedLogs.map((log, idx) => (
                   <React.Fragment key={log.id}>
                     <TableRow
                       className={cn(
                         'hover:bg-muted/30 transition-colors cursor-pointer group',
+                        idx % 2 === 1 ? 'bg-red-50' : 'bg-white',
                         expandedLog === log.id && 'bg-muted/50',
                       )}
                       onClick={() => setExpandedLog(expandedLog === log.id ? null : log.id)}
