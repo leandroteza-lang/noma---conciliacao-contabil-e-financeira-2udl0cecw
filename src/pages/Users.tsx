@@ -423,12 +423,11 @@ export default function Users() {
                 <TableRow
                   key={user.id}
                   className={cn(
-                    'transition-colors',
-                    selectedUsers.includes(user.id)
-                      ? 'bg-muted/50'
-                      : index % 2 === 1
-                        ? 'bg-red-50 hover:bg-red-100 dark:bg-[#e11d48]/10 dark:hover:bg-[#e11d48]/20'
-                        : 'bg-white hover:bg-muted/30 dark:bg-background dark:hover:bg-muted/50',
+                    'transition-colors cursor-pointer group',
+                    index % 2 === 1
+                      ? '!bg-red-50 hover:!bg-red-100 !text-slate-900'
+                      : '!bg-white hover:!bg-slate-50 !text-slate-900',
+                    selectedUsers.includes(user.id) && '!bg-slate-200',
                   )}
                 >
                   <TableCell className="text-center py-2">
@@ -441,10 +440,13 @@ export default function Users() {
                     />
                   </TableCell>
                   <TableCell className="font-medium py-2">{user.name}</TableCell>
-                  <TableCell className="text-muted-foreground py-2">{user.email}</TableCell>
-                  <TableCell className="text-muted-foreground py-2">{user.cpf || '-'}</TableCell>
+                  <TableCell className="text-slate-600 py-2">{user.email}</TableCell>
+                  <TableCell className="text-slate-600 py-2">{user.cpf || '-'}</TableCell>
                   <TableCell className="py-2">
-                    <Badge variant="outline" className="font-normal">
+                    <Badge
+                      variant="outline"
+                      className="font-normal border-slate-300 text-slate-700"
+                    >
                       {user.role === 'admin'
                         ? 'Administrador'
                         : user.role === 'supervisor'
@@ -454,7 +456,7 @@ export default function Users() {
                             : 'Colaborador'}
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-muted-foreground py-2">
+                  <TableCell className="text-slate-600 py-2">
                     {user.departments?.name || '-'}
                   </TableCell>
                   <TableCell className="py-2">
@@ -786,19 +788,19 @@ function ImportUsersModal({
                       <TableRow
                         key={row._index}
                         className={cn(
-                          'transition-colors',
+                          'transition-colors cursor-pointer group',
                           index % 2 === 1
-                            ? 'bg-red-50 hover:bg-red-100 dark:bg-[#e11d48]/10 dark:hover:bg-[#e11d48]/20'
-                            : 'bg-white hover:bg-muted/30 dark:bg-background dark:hover:bg-muted/50',
+                            ? '!bg-red-50 hover:!bg-red-100 !text-slate-900'
+                            : '!bg-white hover:!bg-slate-50 !text-slate-900',
                         )}
                       >
-                        <TableCell className="text-center font-medium text-muted-foreground py-2">
+                        <TableCell className="text-center font-medium text-slate-500 py-2">
                           {row._index}
                         </TableCell>
                         <TableCell className="font-medium py-2">{row.nome || '-'}</TableCell>
                         <TableCell className="py-2">
                           <div className="flex flex-col">
-                            <span className="text-muted-foreground">{row.email || '-'}</span>
+                            <span className="text-slate-600">{row.email || '-'}</span>
                             {!row.emailValid && row.email && (
                               <span className="text-[10px] text-red-500 font-semibold mt-0.5">
                                 E-mail Inválido
@@ -813,7 +815,7 @@ function ImportUsersModal({
                         </TableCell>
                         <TableCell className="py-2">
                           <div className="flex flex-col">
-                            <span className="text-muted-foreground">{row.cpf || '-'}</span>
+                            <span className="text-slate-600">{row.cpf || '-'}</span>
                             {!row.cpfValid && row.cpf && (
                               <span className="text-[10px] text-red-500 font-semibold mt-0.5">
                                 CPF Inválido
@@ -821,7 +823,7 @@ function ImportUsersModal({
                             )}
                           </div>
                         </TableCell>
-                        <TableCell className="text-muted-foreground py-2">
+                        <TableCell className="text-slate-600 py-2">
                           {row.departamento || '-'}
                         </TableCell>
                         <TableCell className="py-2">
