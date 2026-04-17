@@ -588,11 +588,14 @@ export default function AuditoriaUsuarios() {
                   </TableCell>
                 </TableRow>
               ) : (
-                sortedLogs.map((log) => (
+                sortedLogs.map((log, idx) => (
                   <React.Fragment key={log.id}>
                     <TableRow
                       className={cn(
                         'hover:bg-muted/30 transition-colors cursor-pointer group',
+                        idx % 2 === 0
+                          ? 'bg-white dark:bg-slate-950'
+                          : 'bg-red-50 dark:bg-red-950/20',
                         expandedLog === log.id && 'bg-muted/50',
                       )}
                       onClick={() => setExpandedLog(expandedLog === log.id ? null : log.id)}
