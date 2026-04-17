@@ -112,6 +112,13 @@ export const MENU_ITEMS: MenuItem[] = [
     roles: ['admin', 'supervisor', 'collaborator'],
   },
   {
+    id: 'movimento-financeiro-tga',
+    title: 'Movimento Financeiro TGA',
+    path: '/movimento-financeiro',
+    icon: List,
+    roles: ['admin', 'supervisor', 'collaborator'],
+  },
+  {
     id: 'empresas',
     title: 'Empresas',
     path: '/empresas',

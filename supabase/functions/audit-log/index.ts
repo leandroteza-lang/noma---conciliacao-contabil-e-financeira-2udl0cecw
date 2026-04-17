@@ -117,6 +117,15 @@ Deno.serve(async (req: Request) => {
             ].includes(lowerType)
           )
             displayType = 'Movimentações Financeiras'
+          else if (
+            [
+              'erp_financial_movements',
+              'movimento_financeiro_tga',
+              'movimento financeiro tga',
+              'erp financial movements',
+            ].includes(lowerType)
+          )
+            displayType = 'Movimento Financeiro TGA'
 
           query = query.eq('entity_type', displayType)
         }
@@ -161,7 +170,7 @@ Deno.serve(async (req: Request) => {
         if (typeof changes === 'string') {
           try {
             changes = JSON.parse(changes)
-          } catch(e) {}
+          } catch (e) {}
         }
         const ipAddress = logData.ipAddress || logData.ip_address
         const userAgent = logData.userAgent || logData.user_agent
@@ -282,6 +291,17 @@ Deno.serve(async (req: Request) => {
           tableName = 'financial_movements'
           nameCol = 'description'
           displayEntityType = 'Movimentações Financeiras'
+        } else if (
+          [
+            'erp_financial_movements',
+            'movimento_financeiro_tga',
+            'movimento financeiro tga',
+            'erp financial movements',
+          ].includes(finalEntityType)
+        ) {
+          tableName = 'erp_financial_movements'
+          nameCol = 'historico'
+          displayEntityType = 'Movimento Financeiro TGA'
         }
 
         if (tableName) {
@@ -373,8 +393,21 @@ Deno.serve(async (req: Request) => {
         let finalChanges: any = {}
         if (changes && typeof changes === 'object') {
           for (const [k, v] of Object.entries(changes)) {
-            if (['_snapshot', 'id', 'created_at', 'updated_at', 'deleted_at', 'deleted_by', 'organization_id', 'user_id', 'pending_deletion'].includes(k)) continue;
-            finalChanges[k] = v;
+            if (
+              [
+                '_snapshot',
+                'id',
+                'created_at',
+                'updated_at',
+                'deleted_at',
+                'deleted_by',
+                'organization_id',
+                'user_id',
+                'pending_deletion',
+              ].includes(k)
+            )
+              continue
+            finalChanges[k] = v
           }
         }
 
@@ -415,10 +448,25 @@ Deno.serve(async (req: Request) => {
             let oldVal = null
             let newVal = null
             if (val !== null && typeof val === 'object' && ('old' in val || 'new' in val)) {
-              oldVal = val.old !== undefined && val.old !== null ? (typeof val.old === 'object' ? JSON.stringify(val.old) : String(val.old)) : null
-              newVal = val.new !== undefined && val.new !== null ? (typeof val.new === 'object' ? JSON.stringify(val.new) : String(val.new)) : null
+              oldVal =
+                val.old !== undefined && val.old !== null
+                  ? typeof val.old === 'object'
+                    ? JSON.stringify(val.old)
+                    : String(val.old)
+                  : null
+              newVal =
+                val.new !== undefined && val.new !== null
+                  ? typeof val.new === 'object'
+                    ? JSON.stringify(val.new)
+                    : String(val.new)
+                  : null
             } else {
-              newVal = val !== undefined && val !== null ? (typeof val === 'object' ? JSON.stringify(val) : String(val)) : null
+              newVal =
+                val !== undefined && val !== null
+                  ? typeof val === 'object'
+                    ? JSON.stringify(val)
+                    : String(val)
+                  : null
             }
             return {
               audit_log_id: auditLog.id,

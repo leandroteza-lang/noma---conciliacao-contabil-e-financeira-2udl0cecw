@@ -9,6 +9,7 @@ import Departments from './pages/Departments'
 import Users from './pages/Users'
 import Mapping from './pages/Mapping'
 import Entries from './pages/Entries'
+import FinancialMovements from './pages/FinancialMovements'
 import CostCenters from './pages/CostCenters'
 import ChartAccounts from './pages/ChartAccounts'
 import Dashboard from './pages/Dashboard'
@@ -55,6 +56,7 @@ const App = () => (
               <Route path="/import" element={<Import />} />
               <Route path="/mapeamento" element={<Mapping />} />
               <Route path="/lancamentos" element={<Entries />} />
+              <Route path="/movimento-financeiro" element={<FinancialMovements />} />
               <Route path="/centros-de-custo" element={<CostCenters />} />
               <Route path="/plano-de-contas" element={<ChartAccounts />} />
               <Route path="/dashboard" element={<Dashboard />} />
