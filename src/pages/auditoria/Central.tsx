@@ -47,6 +47,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Checkbox } from '@/components/ui/checkbox'
 import { useToast } from '@/hooks/use-toast'
 import { AuditDashboard } from '@/components/AuditLog/AuditDashboard'
+import { useSearchParams } from 'react-router-dom'
 
 export const translateAction = (action: string) => {
   const act = action?.toUpperCase() || ''
@@ -125,6 +126,10 @@ export const getAffectedRecordInfo = (log: any, dict: Record<string, any>, logsH
         case 'tipos de conta tga':
         case 'tga_account_types':
           return getVal('nome') || getVal('codigo')
+        case 'mapeamento':
+        case 'mapeamento de contas':
+        case 'account_mapping':
+          return getVal('mapping_type') || 'Mapeamento'
       }
       return null
     }
@@ -163,6 +168,10 @@ export const getAffectedRecordInfo = (log: any, dict: Record<string, any>, logsH
         case 'tipos de conta tga':
         case 'tga_account_types':
           return getVal('codigo') || getVal('abreviacao')
+        case 'mapeamento':
+        case 'mapeamento de contas':
+        case 'account_mapping':
+          return getVal('id') || 'Vínculo'
       }
       return null
     }
@@ -716,10 +725,11 @@ const SortableHead = ({ label, sortKey, currentSort, requestSort }: any) => {
 
 export default function CentralAuditoria() {
   const { toast } = useToast()
+  const [searchParams] = useSearchParams()
   const [logs, setLogs] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [deleting, setDeleting] = useState(false)
-  const [entityFilter, setEntityFilter] = useState<string>('todos')
+  const [entityFilter, setEntityFilter] = useState<string>(searchParams.get('entity') || 'todos')
   const [search, setSearch] = useState('')
   const [globalDict, setGlobalDict] = useState<Record<string, any>>({})
   const [selected, setSelected] = useState<Set<string>>(new Set())
@@ -748,6 +758,7 @@ export default function CentralAuditoria() {
       { data: charts },
       { data: banks },
       { data: tgas },
+      { data: mappings },
     ] = await Promise.all([
       supabase.from('cadastro_usuarios').select('id, user_id, name, email'),
       supabase.from('organizations').select('id, name, cnpj'),
@@ -756,6 +767,7 @@ export default function CentralAuditoria() {
       supabase.from('chart_of_accounts').select('id, account_name, account_code'),
       supabase.from('bank_accounts').select('id, description, account_number'),
       supabase.from('tipo_conta_tga').select('id, nome, codigo'),
+      supabase.from('account_mapping').select('id, cost_center_id, chart_account_id, mapping_type'),
     ])
 
     users?.forEach((u) => {
@@ -788,6 +800,15 @@ export default function CentralAuditoria() {
         type: 'tipo_conta_tga',
       }
     })
+    mappings?.forEach((m) => {
+      const cc = costs?.find((c) => c.id === m.cost_center_id)
+      const ca = charts?.find((c) => c.id === m.chart_account_id)
+      dict[m.id] = {
+        name: `DE: ${cc?.code || '?'} PARA: ${ca?.account_code || '?'}`,
+        sub: m.mapping_type || 'Mapeamento',
+        type: 'mapeamento',
+      }
+    })
 
     setGlobalDict(dict)
   }
@@ -809,6 +830,13 @@ export default function CentralAuditoria() {
         centro_custo: ['centro_custo', 'cost_centers', 'Centros de Custo'],
         conta_bancaria: ['conta_bancaria', 'bank_accounts', 'Contas Bancárias'],
         tipo_conta_tga: ['tipo_conta_tga', 'tga_account_types', 'Tipos de Conta TGA'],
+        mapeamento: [
+          'account_mapping',
+          'Mapeamento de Contas',
+          'mapeamento',
+          'mapeamento de/para',
+          'Mapeamento DE/PARA',
+        ],
       }
       query = query.in('entity_type', filterMap[entityFilter] || [entityFilter])
     }
@@ -1199,6 +1227,7 @@ export default function CentralAuditoria() {
                   <SelectItem value="centro_custo">Centros de Custo</SelectItem>
                   <SelectItem value="conta_bancaria">Listagem de Contas</SelectItem>
                   <SelectItem value="tipo_conta_tga">Tipos de Conta TGA</SelectItem>
+                  <SelectItem value="mapeamento">Mapeamento DE/PARA</SelectItem>
                 </SelectContent>
               </Select>
               <Button

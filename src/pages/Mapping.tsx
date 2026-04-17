@@ -41,7 +41,9 @@ import {
   FileText,
   FileDown,
   ExternalLink,
+  History,
 } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -866,6 +868,17 @@ export default function Mapping() {
           >
             <Sparkles className="h-4 w-4 mr-2 text-blue-500" />
             Sugestão Inteligente
+          </Button>
+
+          <Button
+            variant="outline"
+            className="w-full sm:w-auto bg-white shadow-sm border-slate-200"
+            asChild
+          >
+            <Link to="/auditoria/central?entity=mapeamento">
+              <History className="h-4 w-4 mr-2" />
+              Histórico
+            </Link>
           </Button>
 
           <DropdownMenu>
