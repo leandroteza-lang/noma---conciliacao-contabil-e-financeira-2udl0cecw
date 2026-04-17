@@ -32,6 +32,7 @@ import {
 } from '@/components/ui/select'
 import { Search, Map as MapIcon, Trash2, Upload, Loader2, ArrowRight } from 'lucide-react'
 import { toast } from '@/hooks/use-toast'
+import { ImportErpFinancialModal } from '@/components/ImportErpFinancialModal'
 
 const erpColumns = [
   { key: 'data_emissao', label: 'Data Emissão', type: 'date' },
@@ -73,8 +74,7 @@ export default function FinancialMovements() {
   const [mappingModalOpen, setMappingModalOpen] = useState(false)
   const [selectedMovement, setSelectedMovement] = useState<any>(null)
   const [selectedAccountId, setSelectedAccountId] = useState('')
-  const [importing, setImporting] = useState(false)
-  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [importModalOpen, setImportModalOpen] = useState(false)
 
   const { user } = useAuth()
 
@@ -155,54 +155,6 @@ export default function FinancialMovements() {
     }
   }
 
-  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
-    if (!file) return
-
-    setImporting(true)
-    const { data: orgData } = await supabase
-      .from('organizations')
-      .select('id')
-      .limit(1)
-      .maybeSingle()
-
-    const reader = new FileReader()
-    reader.onload = async (e) => {
-      const result = e.target?.result as string | undefined
-      if (!result) return
-
-      const base64 = result.split(',')[1]
-
-      try {
-        const { data, error } = await supabase.functions.invoke('import-data', {
-          body: {
-            type: 'ERP_FINANCIAL_MOVEMENTS',
-            fileBase64: base64,
-            fileName: file.name,
-            allowIncomplete: true,
-            mode: 'INSERT_ONLY',
-            organizationId: orgData?.id,
-          },
-        })
-
-        if (error) throw error
-        if (data.error) throw new Error(data.error)
-
-        toast({
-          title: 'Sucesso',
-          description: `${data.inserted} registros importados com sucesso.`,
-        })
-        fetchMovements()
-      } catch (err: any) {
-        toast({ title: 'Erro na importação', description: err.message, variant: 'destructive' })
-      } finally {
-        setImporting(false)
-        if (fileInputRef.current) fileInputRef.current.value = ''
-      }
-    }
-    reader.readAsDataURL(file)
-  }
-
   const filteredMovements = movements.filter(
     (m) =>
       m.historico?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -223,24 +175,12 @@ export default function FinancialMovements() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Input
-            type="file"
-            accept=".xlsx, .xls, .csv"
-            className="hidden"
-            ref={fileInputRef}
-            onChange={handleFileUpload}
-          />
           <Button
-            onClick={() => fileInputRef.current?.click()}
-            disabled={importing}
+            onClick={() => setImportModalOpen(true)}
             className="gap-2 bg-red-600 hover:bg-red-700 text-white"
           >
-            {importing ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <Upload className="w-4 h-4" />
-            )}
-            {importing ? 'Importando...' : 'Importar Planilha ERP'}
+            <Upload className="w-4 h-4" />
+            Importar Planilha ERP
           </Button>
         </div>
       </div>
@@ -470,6 +410,12 @@ export default function FinancialMovements() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ImportErpFinancialModal
+        open={importModalOpen}
+        onOpenChange={setImportModalOpen}
+        onImportSuccess={fetchMovements}
+      />
     </div>
   )
 }
