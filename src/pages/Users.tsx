@@ -310,7 +310,10 @@ export default function Users() {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-          <Button onClick={() => setIsNewUserModalOpen(true)}>
+          <Button
+            onClick={() => setIsNewUserModalOpen(true)}
+            className="bg-[#e11d48] hover:bg-[#b91c3c] text-white"
+          >
             <Plus className="w-4 h-4 mr-2" /> Novo Usuário
           </Button>
         </div>
@@ -424,7 +427,7 @@ export default function Users() {
                       ? 'bg-muted/50'
                       : index % 2 === 0
                         ? 'bg-background hover:bg-muted/50'
-                        : 'bg-[#e11d48]/5 hover:bg-[#e11d48]/10 dark:bg-[#e11d48]/10 dark:hover:bg-[#e11d48]/20',
+                        : 'bg-[#e11d48]/10 hover:bg-[#e11d48]/20 dark:bg-[#e11d48]/20 dark:hover:bg-[#e11d48]/30',
                   )}
                 >
                   <TableCell className="text-center py-2">
@@ -781,11 +784,11 @@ function ImportUsersModal({
                     {previewData.map((row, index) => (
                       <TableRow
                         key={row._index}
-                        className={
+                        className={cn(
                           index % 2 === 0
                             ? 'bg-background hover:bg-muted/50'
-                            : 'bg-[#e11d48]/5 hover:bg-[#e11d48]/10 dark:bg-[#e11d48]/10 dark:hover:bg-[#e11d48]/20'
-                        }
+                            : 'bg-[#e11d48]/10 hover:bg-[#e11d48]/20 dark:bg-[#e11d48]/20 dark:hover:bg-[#e11d48]/30',
+                        )}
                       >
                         <TableCell className="text-center font-medium text-muted-foreground py-2">
                           {row._index}
