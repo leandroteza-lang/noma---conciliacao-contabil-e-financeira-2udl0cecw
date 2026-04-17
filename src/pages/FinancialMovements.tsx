@@ -130,7 +130,10 @@ export default function FinancialMovements() {
     setImporting(true)
     const reader = new FileReader()
     reader.onload = async (e) => {
-      const base64 = (e.target?.result as string).split(',')[1]
+      const result = e.target?.result as string | undefined
+      if (!result) return
+
+      const base64 = result.split(',')[1]
 
       try {
         const { data, error } = await supabase.functions.invoke('import-data', {
