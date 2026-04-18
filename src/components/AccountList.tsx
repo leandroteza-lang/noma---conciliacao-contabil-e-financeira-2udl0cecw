@@ -168,6 +168,8 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
   const [editing, setEditing] = useState<{ id: string; field: string } | null>(null)
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [editModalAccount, setEditModalAccount] = useState<any | null>(null)
+  const [isBulkEditOpen, setIsBulkEditOpen] = useState(false)
+  const [bulkEditData, setBulkEditData] = useState<any>({})
   const [isSaving, setIsSaving] = useState(false)
   const [sortConfig, setSortConfig] = useState<{
     key: string
@@ -206,6 +208,53 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
     }
     return sortable
   }, [accounts, sortConfig, organizations])
+
+  const handleBulkEditSave = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (selectedIds.length === 0) return
+
+    setIsSaving(true)
+    try {
+      const updates: any = {}
+      if (bulkEditData.organization_id) updates.organization_id = bulkEditData.organization_id
+      if (bulkEditData.tipoConta) updates.account_type = bulkEditData.tipoConta
+      if (bulkEditData.classificacao) updates.classification = bulkEditData.classificacao
+      if (bulkEditData.banco) updates.bank_code = bulkEditData.banco
+
+      if (Object.keys(updates).length === 0) {
+        toast({ title: 'Aviso', description: 'Nenhum campo preenchido para alteração.' })
+        setIsSaving(false)
+        return
+      }
+
+      const { error } = await supabase.from('bank_accounts').update(updates).in('id', selectedIds)
+
+      if (error) throw error
+
+      for (const id of selectedIds) {
+        const changes: any = {}
+        if (updates.organization_id) changes.organization_id = { new: updates.organization_id }
+        if (updates.account_type) changes.account_type = { new: updates.account_type }
+        if (updates.classification) changes.classification = { new: updates.classification }
+        if (updates.bank_code) changes.bank_code = { new: updates.bank_code }
+
+        await logAction('Contas Bancárias', id, 'UPDATE_BULK', changes)
+      }
+
+      toast({
+        title: 'Sucesso',
+        description: `${selectedIds.length} contas atualizadas com sucesso!`,
+      })
+      setIsBulkEditOpen(false)
+      setSelectedIds([])
+      setBulkEditData({})
+      window.dispatchEvent(new CustomEvent('refresh-bank-accounts'))
+    } catch (err: any) {
+      toast({ title: 'Erro', description: err.message, variant: 'destructive' })
+    } finally {
+      setIsSaving(false)
+    }
+  }
 
   const handleBulkDelete = async () => {
     if (selectedIds.length === 0) return
@@ -483,9 +532,24 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
               <span className="text-sm font-medium text-foreground">
                 {selectedIds.length} item(ns) selecionado(s)
               </span>
-              <Button variant="destructive" size="sm" onClick={handleBulkDelete} className="gap-2">
-                <Trash2 className="h-4 w-4" /> Excluir Selecionados
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setIsBulkEditOpen(true)}
+                  className="gap-2"
+                >
+                  <Edit className="h-4 w-4" /> Editar em Lote
+                </Button>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={handleBulkDelete}
+                  className="gap-2"
+                >
+                  <Trash2 className="h-4 w-4" /> Excluir Selecionados
+                </Button>
+              </div>
             </div>
           )}
         </div>
@@ -768,6 +832,79 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
           )
         })}
       </div>
+
+      <Dialog
+        open={isBulkEditOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            setIsBulkEditOpen(false)
+            setBulkEditData({})
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Editar em Lote ({selectedIds.length} contas)</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleBulkEditSave} className="space-y-4 mt-4">
+            <div className="space-y-2">
+              <Label>Nova Empresa</Label>
+              <select
+                value={bulkEditData.organization_id || ''}
+                onChange={(e) =>
+                  setBulkEditData({ ...bulkEditData, organization_id: e.target.value })
+                }
+                className="flex h-10 w-full rounded-md border border-input bg-background text-foreground px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <option value="">Manter original...</option>
+                {organizations.map((org: Organization) => (
+                  <option key={org.id} value={org.id}>
+                    {org.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-2">
+              <Label>Novo Tipo de Conta</Label>
+              <Input
+                placeholder="Manter original..."
+                value={bulkEditData.tipoConta || ''}
+                onChange={(e) => setBulkEditData({ ...bulkEditData, tipoConta: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Nova Classificação</Label>
+              <Input
+                placeholder="Manter original..."
+                value={bulkEditData.classificacao || ''}
+                onChange={(e) =>
+                  setBulkEditData({ ...bulkEditData, classificacao: e.target.value })
+                }
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Novo Banco</Label>
+              <Input
+                placeholder="Manter original..."
+                value={bulkEditData.banco || ''}
+                onChange={(e) => setBulkEditData({ ...bulkEditData, banco: e.target.value })}
+              />
+            </div>
+            <div className="flex justify-end gap-3 pt-4 border-t border-border mt-4">
+              <Button type="button" variant="outline" onClick={() => setIsBulkEditOpen(false)}>
+                Cancelar
+              </Button>
+              <Button
+                type="submit"
+                disabled={isSaving}
+                className="bg-primary hover:bg-primary/90 text-primary-foreground"
+              >
+                {isSaving ? 'Salvando...' : 'Aplicar a Todos'}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={!!editModalAccount} onOpenChange={(open) => !open && setEditModalAccount(null)}>
         <DialogContent className="sm:max-w-[500px]">
