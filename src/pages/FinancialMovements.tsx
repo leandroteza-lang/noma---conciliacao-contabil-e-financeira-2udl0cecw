@@ -21,6 +21,7 @@ import {
   UploadCloud,
   CheckCircle2,
   AlertCircle,
+  Clock,
 } from 'lucide-react'
 import { ImportErpFinancialModal } from '@/components/ImportErpFinancialModal'
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart'
@@ -40,7 +41,16 @@ export default function FinancialMovements() {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editForm, setEditForm] = useState<any>({})
   const [activeImport, setActiveImport] = useState<any>(null)
+  const [elapsedSeconds, setElapsedSeconds] = useState(0)
   const pageSize = 15
+
+  const formatTime = (seconds: number) => {
+    const m = Math.floor(Math.max(0, seconds) / 60)
+      .toString()
+      .padStart(2, '0')
+    const s = (Math.max(0, seconds) % 60).toString().padStart(2, '0')
+    return `${m}:${s}`
+  }
 
   const fetchActiveImport = async () => {
     if (!user) return
@@ -90,30 +100,47 @@ export default function FinancialMovements() {
 
   useEffect(() => {
     let interval: any
-    if (activeImport && ['Processing', 'Pending'].includes(activeImport.status)) {
-      interval = setInterval(async () => {
-        if (!user) return
-        const { data } = await supabase
-          .from('import_history')
-          .select('*')
-          .eq('id', activeImport.id)
-          .single()
+    let timerInterval: any
 
-        if (data) {
-          setActiveImport(data)
-          fetchDataSilent()
-          if (data.status === 'Completed' || data.status === 'Error') {
-            clearInterval(interval)
-            fetchChart()
-            setTimeout(() => setActiveImport(null), 8000)
-          }
+    if (activeImport) {
+      if (['Processing', 'Pending'].includes(activeImport.status)) {
+        const start = new Date(activeImport.created_at).getTime()
+        const updateTimer = () => {
+          const now = new Date().getTime()
+          setElapsedSeconds(Math.floor((now - start) / 1000))
         }
-      }, 3000)
+        updateTimer()
+        timerInterval = setInterval(updateTimer, 1000)
+
+        interval = setInterval(async () => {
+          if (!user) return
+          const { data } = await supabase
+            .from('import_history')
+            .select('*')
+            .eq('id', activeImport.id)
+            .single()
+
+          if (data) {
+            setActiveImport(data)
+            fetchDataSilent()
+            if (data.status === 'Completed' || data.status === 'Error') {
+              clearInterval(interval)
+              clearInterval(timerInterval)
+              fetchChart()
+              setTimeout(() => setActiveImport(null), 8000)
+            }
+          }
+        }, 3000)
+      }
+    } else {
+      setElapsedSeconds(0)
     }
+
     return () => {
       if (interval) clearInterval(interval)
+      if (timerInterval) clearInterval(timerInterval)
     }
-  }, [activeImport?.status, activeImport?.id, user, page, search])
+  }, [activeImport?.status, activeImport?.id, activeImport?.created_at, user, page, search])
 
   const fetchData = async () => {
     if (!user) return
@@ -184,7 +211,7 @@ export default function FinancialMovements() {
           className={`shadow-sm border ${activeImport.status === 'Error' ? 'border-red-200 bg-red-50/50' : activeImport.status === 'Completed' ? 'border-green-200 bg-green-50/50' : 'border-blue-200 bg-blue-50/50'}`}
         >
           <CardContent className="p-4 flex flex-col gap-3">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="flex items-center gap-2">
                 {activeImport.status === 'Processing' || activeImport.status === 'Pending' ? (
                   <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
@@ -205,11 +232,20 @@ export default function FinancialMovements() {
                   {activeImport.status === 'Completed' && 'Importação concluída com sucesso!'}
                 </span>
               </div>
-              <span className="text-sm font-medium text-slate-600">
-                {activeImport.total_records > 0
-                  ? `${activeImport.processed_records || 0} / ${activeImport.total_records} registros (${Math.round(((activeImport.processed_records || 0) / activeImport.total_records) * 100)}%)`
-                  : 'Iniciando...'}
-              </span>
+              <div className="flex items-center gap-4 text-sm font-medium text-slate-600">
+                <div
+                  className="flex items-center gap-1.5 font-mono bg-white/60 px-2.5 py-1 rounded-md border border-slate-200/60 text-slate-700"
+                  title="Tempo de importação"
+                >
+                  <Clock className="h-3.5 w-3.5 text-slate-500" />
+                  {formatTime(elapsedSeconds)}
+                </div>
+                <span>
+                  {activeImport.total_records > 0
+                    ? `${activeImport.processed_records || 0} / ${activeImport.total_records} registros (${Math.round(((activeImport.processed_records || 0) / activeImport.total_records) * 100)}%)`
+                    : 'Iniciando...'}
+                </span>
+              </div>
             </div>
 
             <Progress
