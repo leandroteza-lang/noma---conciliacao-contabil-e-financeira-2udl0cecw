@@ -153,22 +153,7 @@ export function ImportMappingModal({
           } = await supabase.auth.getSession()
 
           setProgress(5)
-          const parseRes = await supabase.functions.invoke('import-data', {
-            body: {
-              action: 'PARSE_ALL',
-              type: 'MAPPINGS',
-              fileName: file.name,
-              fileBase64: base64,
-              sheetName: selectedSheet,
-            },
-            headers: session ? { Authorization: `Bearer ${session.access_token}` } : undefined,
-          })
-
-          if (parseRes.error) throw parseRes.error
-          if (parseRes.data?.error) throw new Error(parseRes.data.error)
-
-          const allRecords = parseRes.data?.records || []
-          const totalRecords = allRecords.length
+          const totalRecords = previewInfo?.totalRecords || 0
 
           if (totalRecords === 0) {
             toast.info('Nenhum registro encontrado na planilha.')
@@ -176,14 +161,12 @@ export function ImportMappingModal({
             return
           }
 
-          const CHUNK_SIZE = 1000
+          const CHUNK_SIZE = 500
           let inserted = 0
           let rejected = 0
           let errors: any[] = []
 
           for (let i = 0; i < totalRecords; i += CHUNK_SIZE) {
-            const chunk = allRecords.slice(i, i + CHUNK_SIZE)
-
             const {
               data: { session: currentSession },
             } = await supabase.auth.getSession()
@@ -194,10 +177,12 @@ export function ImportMappingModal({
               body: {
                 type: 'MAPPINGS',
                 fileName: file.name,
+                fileBase64: base64,
+                sheetName: selectedSheet,
                 organizationId: selectedOrg,
                 mode: chunkMode,
-                records: chunk,
                 offset: i,
+                limit: CHUNK_SIZE,
                 skipHistory: true,
               },
               headers: currentSession
