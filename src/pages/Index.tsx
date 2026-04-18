@@ -21,6 +21,10 @@ import {
   ChevronsRight,
   Columns,
   FilterX,
+  ArrowUp,
+  ArrowDown,
+  Trash,
+  Edit2,
 } from 'lucide-react'
 import {
   DropdownMenu,
@@ -38,6 +42,17 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
+import { Checkbox } from '@/components/ui/checkbox'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogDescription,
+} from '@/components/ui/dialog'
+import { Label } from '@/components/ui/label'
+import { toast } from 'sonner'
 
 const tableHeaders = [
   { label: 'Empresa', key: 'company_name' },
@@ -67,6 +82,13 @@ export default function Index() {
   const [orgs, setOrgs] = useState<{ id: string; name: string }[]>([])
   const [banks, setBanks] = useState<string[]>([])
   const [types, setTypes] = useState<string[]>([])
+
+  const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(
+    null,
+  )
+  const [selectedIds, setSelectedIds] = useState<string[]>([])
+  const [isBulkEditOpen, setIsBulkEditOpen] = useState(false)
+  const [bulkEditForm, setBulkEditForm] = useState({ account_type: '', classification: '' })
 
   const defaultCols = tableHeaders.reduce(
     (acc, h) => ({ ...acc, [h.key]: true }),
@@ -120,7 +142,6 @@ export default function Index() {
       .from('bank_accounts')
       .select('*', { count: 'exact' })
       .is('deleted_at', null)
-      .order('created_at', { ascending: false })
 
     if (search) {
       query = query.or(
@@ -140,11 +161,18 @@ export default function Index() {
       query = query.eq('account_type', filterType)
     }
 
+    if (sortConfig) {
+      query = query.order(sortConfig.key, { ascending: sortConfig.direction === 'asc' })
+    } else {
+      query = query.order('created_at', { ascending: false })
+    }
+
     const {
       data: res,
       count,
       error,
     } = await query.range(page * pageSize, (page + 1) * pageSize - 1)
+
     if (!error && res) {
       setData(res)
       setTotalCount(count || 0)
@@ -158,10 +186,77 @@ export default function Index() {
 
   useEffect(() => {
     fetchData()
-  }, [user, page, pageSize, search, filterOrg, filterBank, filterType])
+  }, [user, page, pageSize, search, filterOrg, filterBank, filterType, sortConfig])
+
+  // Clear selections when filters or page change
+  useEffect(() => {
+    setSelectedIds([])
+  }, [page, pageSize, search, filterOrg, filterBank, filterType, sortConfig])
 
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize))
-  const visibleCount = tableHeaders.filter((h) => visibleColumns[h.key] !== false).length
+  const visibleCount = tableHeaders.filter((h) => visibleColumns[h.key] !== false).length + 1 // +1 for checkbox
+
+  const handleSort = (key: string) => {
+    let direction: 'asc' | 'desc' = 'asc'
+    if (sortConfig && sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc'
+    }
+    setSortConfig({ key, direction })
+    setPage(0)
+  }
+
+  const handleSelectAll = (checked: boolean) => {
+    if (checked && data.length > 0) {
+      setSelectedIds(data.map((d) => d.id))
+    } else {
+      setSelectedIds([])
+    }
+  }
+
+  const handleBulkDelete = async () => {
+    if (!confirm(`Tem certeza que deseja excluir as ${selectedIds.length} contas selecionadas?`))
+      return
+
+    setLoading(true)
+    const { error } = await supabase
+      .from('bank_accounts')
+      .update({ deleted_at: new Date().toISOString(), deleted_by: user?.id })
+      .in('id', selectedIds)
+
+    if (error) {
+      toast.error(`Erro ao excluir contas: ${error.message}`)
+    } else {
+      toast.success(`${selectedIds.length} conta(s) excluída(s) com sucesso.`)
+      setSelectedIds([])
+      fetchData()
+    }
+    setLoading(false)
+  }
+
+  const submitBulkEdit = async () => {
+    const updates: any = {}
+    if (bulkEditForm.account_type) updates.account_type = bulkEditForm.account_type
+    if (bulkEditForm.classification) updates.classification = bulkEditForm.classification
+
+    if (Object.keys(updates).length === 0) {
+      toast.info('Nenhuma alteração informada.')
+      return
+    }
+
+    setLoading(true)
+    const { error } = await supabase.from('bank_accounts').update(updates).in('id', selectedIds)
+
+    if (error) {
+      toast.error(`Erro ao atualizar contas: ${error.message}`)
+    } else {
+      toast.success(`${selectedIds.length} conta(s) atualizada(s) com sucesso.`)
+      setIsBulkEditOpen(false)
+      setSelectedIds([])
+      setBulkEditForm({ account_type: '', classification: '' })
+      fetchData()
+    }
+    setLoading(false)
+  }
 
   return (
     <div className="p-6 space-y-6 max-w-[1600px] mx-auto animate-fade-in-up">
@@ -251,7 +346,11 @@ export default function Index() {
                 </SelectContent>
               </Select>
 
-              {(filterOrg !== 'all' || filterBank !== 'all' || filterType !== 'all' || search) && (
+              {(filterOrg !== 'all' ||
+                filterBank !== 'all' ||
+                filterType !== 'all' ||
+                search ||
+                sortConfig !== null) && (
                 <Button
                   variant="ghost"
                   size="sm"
@@ -261,10 +360,11 @@ export default function Index() {
                     setFilterBank('all')
                     setFilterType('all')
                     setSearch('')
+                    setSortConfig(null)
                     setPage(0)
                   }}
                 >
-                  <FilterX className="h-4 w-4 mr-1.5" /> Limpar
+                  <FilterX className="h-4 w-4 mr-1.5" /> Limpar Filtros
                 </Button>
               )}
             </div>
@@ -408,21 +508,70 @@ export default function Index() {
             </div>
           </div>
         </CardHeader>
+
         <CardContent className="p-0 bg-white">
+          {selectedIds.length > 0 && (
+            <div className="bg-primary/5 border-b border-primary/10 px-4 py-3 flex flex-col sm:flex-row items-center justify-between gap-3 animate-in fade-in slide-in-from-top-2">
+              <span className="text-sm font-semibold text-primary">
+                {selectedIds.length}{' '}
+                {selectedIds.length === 1 ? 'conta selecionada' : 'contas selecionadas'}
+              </span>
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="flex-1 sm:flex-none bg-white border-primary/20 text-primary hover:bg-primary/10"
+                  onClick={() => setIsBulkEditOpen(true)}
+                >
+                  <Edit2 className="w-4 h-4 mr-2" /> Editar Selecionadas
+                </Button>
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  className="flex-1 sm:flex-none"
+                  onClick={handleBulkDelete}
+                >
+                  <Trash className="w-4 h-4 mr-2" /> Excluir Selecionadas
+                </Button>
+              </div>
+            </div>
+          )}
+
           <Table className="w-full min-w-max">
             <TableHeader>
               <TableRow className="bg-slate-50 hover:bg-slate-50 border-b">
+                <TableHead className="w-12 px-4 text-center">
+                  <Checkbox
+                    checked={data.length > 0 && selectedIds.length === data.length}
+                    onCheckedChange={handleSelectAll}
+                    aria-label="Selecionar todos os registros da página"
+                  />
+                </TableHead>
                 {tableHeaders
                   .filter((h) => visibleColumns[h.key] !== false)
                   .map((h) => (
                     <TableHead
                       key={h.key}
+                      onClick={() => handleSort(h.key)}
                       className={cn(
-                        'h-10 px-4 text-xs font-semibold text-slate-600 whitespace-nowrap',
+                        'h-10 px-4 text-xs font-semibold text-slate-600 whitespace-nowrap cursor-pointer hover:bg-slate-100 transition-colors select-none',
                         h.align === 'center' ? 'text-center' : 'text-left',
                       )}
                     >
-                      {h.label}
+                      <div
+                        className={cn(
+                          'flex items-center gap-1.5',
+                          h.align === 'center' && 'justify-center',
+                        )}
+                      >
+                        {h.label}
+                        {sortConfig?.key === h.key &&
+                          (sortConfig.direction === 'asc' ? (
+                            <ArrowUp className="h-3 w-3 text-primary" />
+                          ) : (
+                            <ArrowDown className="h-3 w-3 text-primary" />
+                          ))}
+                      </div>
                     </TableHead>
                   ))}
               </TableRow>
@@ -444,8 +593,21 @@ export default function Index() {
                 data.map((row) => (
                   <TableRow
                     key={row.id}
-                    className="hover:bg-slate-50/80 transition-colors border-b"
+                    className={cn(
+                      'hover:bg-slate-50/80 transition-colors border-b',
+                      selectedIds.includes(row.id) && 'bg-primary/5',
+                    )}
                   >
+                    <TableCell className="px-4 text-center">
+                      <Checkbox
+                        checked={selectedIds.includes(row.id)}
+                        onCheckedChange={(checked) => {
+                          if (checked) setSelectedIds((p) => [...p, row.id])
+                          else setSelectedIds((p) => p.filter((id) => id !== row.id))
+                        }}
+                        aria-label={`Selecionar conta ${row.description}`}
+                      />
+                    </TableCell>
                     {tableHeaders
                       .filter((h) => visibleColumns[h.key] !== false)
                       .map((h) => (
@@ -466,6 +628,59 @@ export default function Index() {
           </Table>
         </CardContent>
       </Card>
+
+      <Dialog open={isBulkEditOpen} onOpenChange={setIsBulkEditOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edição em Lote</DialogTitle>
+            <DialogDescription>
+              Você está editando <strong>{selectedIds.length}</strong> conta(s) selecionada(s). Os
+              campos preenchidos serão aplicados a todas elas.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Tipo de Conta</Label>
+              <Select
+                value={bulkEditForm.account_type || 'none'}
+                onValueChange={(v) =>
+                  setBulkEditForm((p) => ({ ...p, account_type: v === 'none' ? '' : v }))
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione um tipo..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none" className="text-slate-500 italic">
+                    -- Não alterar --
+                  </SelectItem>
+                  {types.map((t) => (
+                    <SelectItem key={t} value={t}>
+                      {t}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Classificação</Label>
+              <Input
+                placeholder="Deixe em branco para não alterar"
+                value={bulkEditForm.classification}
+                onChange={(e) => setBulkEditForm((p) => ({ ...p, classification: e.target.value }))}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsBulkEditOpen(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={submitBulkEdit} disabled={loading}>
+              Salvar Alterações
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
