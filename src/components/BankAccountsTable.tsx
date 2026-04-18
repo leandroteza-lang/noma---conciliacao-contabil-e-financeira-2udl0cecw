@@ -8,7 +8,18 @@ import {
 } from '@/components/ui/table'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Edit2, Trash2, Loader2, Building2, CreditCard } from 'lucide-react'
+import {
+  Edit2,
+  Trash2,
+  Loader2,
+  Building2,
+  CreditCard,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
+  ChevronsLeft,
+  ChevronsRight,
+} from 'lucide-react'
 import { useIsMobile } from '@/hooks/use-mobile'
 import {
   Pagination,
@@ -19,6 +30,13 @@ import {
 } from '@/components/ui/pagination'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 
 export function BankAccountsTable({
   accounts = [],
@@ -31,8 +49,22 @@ export function BankAccountsTable({
   currentPage,
   totalPages,
   onPageChange,
+  sortConfig,
+  onSort = () => {},
+  itemsPerPage = 100,
+  onItemsPerPageChange = () => {},
 }: any) {
   const isMobile = useIsMobile()
+
+  const SortIcon = ({ columnKey }: { columnKey: string }) => {
+    if (sortConfig?.key !== columnKey)
+      return <ArrowUpDown className="ml-1 h-3 w-3 inline opacity-50" />
+    return sortConfig.direction === 'asc' ? (
+      <ArrowUp className="ml-1 h-3 w-3 inline" />
+    ) : (
+      <ArrowDown className="ml-1 h-3 w-3 inline" />
+    )
+  }
 
   if (loading) {
     return (
@@ -158,14 +190,70 @@ export function BankAccountsTable({
                     aria-label="Selecionar todos"
                   />
                 </TableHead>
-                <TableHead className="p-2">Empresa</TableHead>
-                <TableHead className="p-2">Conta Contábil</TableHead>
-                <TableHead className="p-2">Descrição</TableHead>
-                <TableHead className="p-2">Banco</TableHead>
-                <TableHead className="p-2">Agência</TableHead>
-                <TableHead className="p-2">Conta</TableHead>
-                <TableHead className="p-2">Tipo</TableHead>
-                <TableHead className="p-2">Classificação</TableHead>
+                <TableHead
+                  className="p-2 cursor-pointer select-none hover:bg-muted/50 transition-colors group"
+                  onClick={() => onSort('company_name')}
+                >
+                  <div className="flex items-center">
+                    Empresa <SortIcon columnKey="company_name" />
+                  </div>
+                </TableHead>
+                <TableHead
+                  className="p-2 cursor-pointer select-none hover:bg-muted/50 transition-colors group"
+                  onClick={() => onSort('account_code')}
+                >
+                  <div className="flex items-center">
+                    Conta Contábil <SortIcon columnKey="account_code" />
+                  </div>
+                </TableHead>
+                <TableHead
+                  className="p-2 cursor-pointer select-none hover:bg-muted/50 transition-colors group"
+                  onClick={() => onSort('description')}
+                >
+                  <div className="flex items-center">
+                    Descrição <SortIcon columnKey="description" />
+                  </div>
+                </TableHead>
+                <TableHead
+                  className="p-2 cursor-pointer select-none hover:bg-muted/50 transition-colors group"
+                  onClick={() => onSort('bank_code')}
+                >
+                  <div className="flex items-center">
+                    Banco <SortIcon columnKey="bank_code" />
+                  </div>
+                </TableHead>
+                <TableHead
+                  className="p-2 cursor-pointer select-none hover:bg-muted/50 transition-colors group"
+                  onClick={() => onSort('agency')}
+                >
+                  <div className="flex items-center">
+                    Agência <SortIcon columnKey="agency" />
+                  </div>
+                </TableHead>
+                <TableHead
+                  className="p-2 cursor-pointer select-none hover:bg-muted/50 transition-colors group"
+                  onClick={() => onSort('account_number')}
+                >
+                  <div className="flex items-center">
+                    Conta <SortIcon columnKey="account_number" />
+                  </div>
+                </TableHead>
+                <TableHead
+                  className="p-2 cursor-pointer select-none hover:bg-muted/50 transition-colors group"
+                  onClick={() => onSort('account_type')}
+                >
+                  <div className="flex items-center">
+                    Tipo <SortIcon columnKey="account_type" />
+                  </div>
+                </TableHead>
+                <TableHead
+                  className="p-2 cursor-pointer select-none hover:bg-muted/50 transition-colors group"
+                  onClick={() => onSort('classification')}
+                >
+                  <div className="flex items-center">
+                    Classificação <SortIcon columnKey="classification" />
+                  </div>
+                </TableHead>
                 <TableHead className="text-right p-2">Ações</TableHead>
               </TableRow>
             </TableHeader>
@@ -240,38 +328,87 @@ export function BankAccountsTable({
         </div>
       )}
 
-      {totalPages > 1 && (
-        <Pagination className="mt-4">
-          <PaginationContent>
-            <PaginationItem>
-              <PaginationPrevious
-                href="#"
-                onClick={(e) => {
-                  e.preventDefault()
-                  onPageChange(Math.max(1, currentPage - 1))
-                }}
-                className={currentPage === 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
-              />
-            </PaginationItem>
-            <PaginationItem className="hidden sm:block">
-              <span className="text-sm text-muted-foreground px-4">
-                Página {currentPage} de {totalPages}
-              </span>
-            </PaginationItem>
-            <PaginationItem>
-              <PaginationNext
-                href="#"
-                onClick={(e) => {
-                  e.preventDefault()
-                  onPageChange(Math.min(totalPages, currentPage + 1))
-                }}
-                className={
-                  currentPage === totalPages ? 'pointer-events-none opacity-50' : 'cursor-pointer'
-                }
-              />
-            </PaginationItem>
-          </PaginationContent>
-        </Pagination>
+      {totalPages > 0 && (
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-4 px-1">
+          <div className="flex items-center space-x-2">
+            <p className="text-sm text-muted-foreground">Registros por página</p>
+            <Select
+              value={String(itemsPerPage)}
+              onValueChange={(v) => onItemsPerPageChange(Number(v))}
+            >
+              <SelectTrigger className="h-8 w-[70px]">
+                <SelectValue placeholder={itemsPerPage} />
+              </SelectTrigger>
+              <SelectContent side="top">
+                {[10, 50, 100].map((pageSize) => (
+                  <SelectItem key={pageSize} value={String(pageSize)}>
+                    {pageSize}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <Pagination className="w-auto mx-0">
+            <PaginationContent>
+              <PaginationItem>
+                <Button
+                  variant="ghost"
+                  className="h-8 w-8 p-0"
+                  onClick={() => onPageChange(1)}
+                  disabled={currentPage === 1}
+                >
+                  <ChevronsLeft className="h-4 w-4" />
+                  <span className="sr-only">Primeira página</span>
+                </Button>
+              </PaginationItem>
+              <PaginationItem>
+                <PaginationPrevious
+                  href="#"
+                  onClick={(e) => {
+                    e.preventDefault()
+                    onPageChange(Math.max(1, currentPage - 1))
+                  }}
+                  className={
+                    currentPage === 1
+                      ? 'pointer-events-none opacity-50 h-8 px-2'
+                      : 'cursor-pointer h-8 px-2'
+                  }
+                />
+              </PaginationItem>
+              <PaginationItem className="hidden sm:block">
+                <span className="text-sm text-muted-foreground px-4">
+                  Página {currentPage} de {totalPages}
+                </span>
+              </PaginationItem>
+              <PaginationItem>
+                <PaginationNext
+                  href="#"
+                  onClick={(e) => {
+                    e.preventDefault()
+                    onPageChange(Math.min(totalPages, currentPage + 1))
+                  }}
+                  className={
+                    currentPage === totalPages
+                      ? 'pointer-events-none opacity-50 h-8 px-2'
+                      : 'cursor-pointer h-8 px-2'
+                  }
+                />
+              </PaginationItem>
+              <PaginationItem>
+                <Button
+                  variant="ghost"
+                  className="h-8 w-8 p-0"
+                  onClick={() => onPageChange(totalPages)}
+                  disabled={currentPage === totalPages}
+                >
+                  <ChevronsRight className="h-4 w-4" />
+                  <span className="sr-only">Última página</span>
+                </Button>
+              </PaginationItem>
+            </PaginationContent>
+          </Pagination>
+        </div>
       )}
     </div>
   )

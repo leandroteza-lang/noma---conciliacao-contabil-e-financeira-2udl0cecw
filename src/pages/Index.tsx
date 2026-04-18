@@ -34,7 +34,10 @@ export default function Index() {
   const [isImportModalOpen, setIsImportModalOpen] = useState(false)
 
   const [currentPage, setCurrentPage] = useState(1)
-  const itemsPerPage = 10
+  const [itemsPerPage, setItemsPerPage] = useState(100)
+  const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(
+    null,
+  )
 
   const { toast } = useToast()
   const navigate = useNavigate()
@@ -137,7 +140,7 @@ export default function Index() {
     try {
       toast({ title: 'Gerando exportação...' })
 
-      const exportData = filteredAccounts.map((acc) => ({
+      const exportData = sortedAccounts.map((acc) => ({
         Empresa: acc.organizations?.name || acc.company_name || '',
         'Conta Contábil': acc.account_code || '',
         Descrição: acc.description || '',
@@ -189,11 +192,39 @@ export default function Index() {
     return matchesSearch && matchesCompany && matchesType
   })
 
-  const paginatedAccounts = filteredAccounts.slice(
+  const handleSort = (key: string) => {
+    let direction: 'asc' | 'desc' = 'asc'
+    if (sortConfig && sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc'
+    }
+    setSortConfig({ key, direction })
+  }
+
+  const sortedAccounts = [...filteredAccounts].sort((a, b) => {
+    if (!sortConfig) return 0
+    const { key, direction } = sortConfig
+
+    let valA = a[key]
+    let valB = b[key]
+
+    if (key === 'company_name') {
+      valA = a.organizations?.name || a.company_name || ''
+      valB = b.organizations?.name || b.company_name || ''
+    }
+
+    valA = valA || ''
+    valB = valB || ''
+
+    if (valA < valB) return direction === 'asc' ? -1 : 1
+    if (valA > valB) return direction === 'asc' ? 1 : -1
+    return 0
+  })
+
+  const paginatedAccounts = sortedAccounts.slice(
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage,
   )
-  const totalPages = Math.max(1, Math.ceil(filteredAccounts.length / itemsPerPage))
+  const totalPages = Math.max(1, Math.ceil(sortedAccounts.length / itemsPerPage))
 
   const toggleSelect = (id: string) => {
     setSelectedAccounts((prev) =>
@@ -311,6 +342,13 @@ export default function Index() {
         currentPage={currentPage}
         totalPages={totalPages}
         onPageChange={setCurrentPage}
+        sortConfig={sortConfig}
+        onSort={handleSort}
+        itemsPerPage={itemsPerPage}
+        onItemsPerPageChange={(v: number) => {
+          setItemsPerPage(v)
+          setCurrentPage(1)
+        }}
       />
 
       <BankAccountFormModal
