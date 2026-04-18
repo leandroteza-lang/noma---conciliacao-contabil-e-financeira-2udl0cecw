@@ -343,6 +343,8 @@ Deno.serve(async (req: Request) => {
                 columnMapping: payload.columnMapping,
                 inserted: 0,
                 rejected: 0,
+                ignored: 0,
+                updated: 0,
                 errors: [],
               }),
             })
@@ -736,6 +738,8 @@ Deno.serve(async (req: Request) => {
 
     let inserted = 0
     let rejected = 0
+    let ignored = 0
+    let updated = 0
     const errors: any[] = []
 
     const addError = (rowNum: number, msg: string, rowData: any) => {
@@ -2657,6 +2661,8 @@ Deno.serve(async (req: Request) => {
         } else {
           inserted += res.inserted || 0
           rejected += res.rejected || 0
+          ignored += res.ignored || 0
+          updated += res.updated || 0
           if (res.errors && Array.isArray(res.errors)) {
             res.errors.forEach((err: any) => {
               addError(err.row || 0, err.error, {})
@@ -2669,6 +2675,8 @@ Deno.serve(async (req: Request) => {
     if (payload.action === 'PROCESS_CHUNK') {
       const newInserted = (payload.inserted || 0) + inserted
       const newRejected = (payload.rejected || 0) + rejected
+      const newIgnored = (payload.ignored || 0) + ignored
+      const newUpdated = (payload.updated || 0) + updated
       const newErrors = [...(payload.errors || []), ...errors].slice(0, 100)
 
       const nextChunk = payload.chunkIndex + 1
@@ -2680,6 +2688,8 @@ Deno.serve(async (req: Request) => {
           processed_records: Math.min(nextChunk * 2000, payload.totalRecords || nextChunk * 2000),
           success_count: newInserted,
           error_count: newRejected,
+          ignored_count: newIgnored,
+          updated_count: newUpdated,
           errors_list: newErrors,
           status: isDone ? 'Completed' : 'Processing',
         })
@@ -2702,6 +2712,8 @@ Deno.serve(async (req: Request) => {
                     chunkIndex: nextChunk,
                     inserted: newInserted,
                     rejected: newRejected,
+                    ignored: newIgnored,
+                    updated: newUpdated,
                     errors: newErrors,
                   }),
                 },
@@ -2749,6 +2761,8 @@ Deno.serve(async (req: Request) => {
     if (payload.action === 'PROCESS_BACKGROUND') {
       const newInserted = (payload.inserted || 0) + inserted
       const newRejected = (payload.rejected || 0) + rejected
+      const newIgnored = (payload.ignored || 0) + ignored
+      const newUpdated = (payload.updated || 0) + updated
       const newErrors = [...(payload.errors || []), ...errors].slice(0, 100)
       const nextOffset = (payload.offset || 0) + (payload.limit || 100)
       const rawTotalRecords =
@@ -2768,6 +2782,8 @@ Deno.serve(async (req: Request) => {
           total_records: rawTotalRecords,
           success_count: newInserted,
           error_count: newRejected,
+          ignored_count: newIgnored,
+          updated_count: newUpdated,
           errors_list: newErrors,
           status: isDone ? 'Completed' : 'Processing',
         })
@@ -2790,6 +2806,8 @@ Deno.serve(async (req: Request) => {
                     offset: nextOffset,
                     inserted: newInserted,
                     rejected: newRejected,
+                    ignored: newIgnored,
+                    updated: newUpdated,
                     errors: newErrors,
                   }),
                 },
@@ -2833,11 +2851,13 @@ Deno.serve(async (req: Request) => {
           typeof payload.totalRecords === 'number' ? payload.totalRecords : records.length,
         success_count: inserted,
         error_count: rejected,
+        ignored_count: ignored,
+        updated_count: updated,
         status: 'Completed',
       })
     }
 
-    return new Response(JSON.stringify({ inserted, rejected, errors }), {
+    return new Response(JSON.stringify({ inserted, rejected, ignored, updated, errors }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
   } catch (err: any) {

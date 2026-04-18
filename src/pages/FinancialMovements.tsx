@@ -416,8 +416,7 @@ export default function FinancialMovements() {
                     'Processando importação...'}
                   {activeImport.status === 'Pending' && 'Aguardando processamento...'}
                   {activeImport.status === 'Error' && 'Última Importação: Erro'}
-                  {activeImport.status === 'Completed' &&
-                    'Última Importação: Concluída com sucesso'}
+                  {activeImport.status === 'Completed' && 'Última Importação: Concluída'}
                 </span>
               </div>
               <div className="flex items-center gap-4 text-sm font-medium text-slate-600">
@@ -452,19 +451,49 @@ export default function FinancialMovements() {
               </p>
             )}
 
+            {['Completed', 'Processing', 'Error'].includes(activeImport.status) && (
+              <div className="text-xs text-slate-700 bg-white/60 p-2.5 rounded-md border border-slate-200 flex flex-wrap items-center gap-x-6 gap-y-2 font-medium">
+                <div className="flex items-center gap-1.5" title="Registros Inseridos (Novos)">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-sm shadow-emerald-200"></span>
+                  {activeImport.success_count || 0} Inseridos
+                </div>
+                <div
+                  className="flex items-center gap-1.5"
+                  title="Registros Atualizados (Substituídos)"
+                >
+                  <span className="w-2 h-2 rounded-full bg-blue-500 shadow-sm shadow-blue-200"></span>
+                  {activeImport.updated_count || 0} Atualizados
+                </div>
+                <div className="flex items-center gap-1.5" title="Registros Ignorados (Duplicados)">
+                  <span className="w-2 h-2 rounded-full bg-slate-400 shadow-sm shadow-slate-200"></span>
+                  {activeImport.ignored_count || 0} Ignorados
+                </div>
+                <div className="flex items-center gap-1.5" title="Registros com Erro">
+                  <span className="w-2 h-2 rounded-full bg-red-500 shadow-sm shadow-red-200"></span>
+                  <span className={activeImport.error_count > 0 ? 'text-red-600' : ''}>
+                    {activeImport.error_count || 0} Erros
+                  </span>
+                </div>
+              </div>
+            )}
+
             {activeImport.status === 'Error' &&
               activeImport.errors_list &&
               activeImport.errors_list.length > 0 && (
-                <div className="text-xs text-red-600 mt-1 max-h-20 overflow-y-auto bg-red-100 p-2 rounded">
-                  <p className="font-semibold mb-1">Últimos erros encontrados:</p>
-                  <ul className="list-disc pl-4">
-                    {activeImport.errors_list.slice(0, 3).map((err: any, idx: number) => (
+                <div className="text-xs text-red-600 mt-1 max-h-32 overflow-y-auto bg-red-50 border border-red-200 p-3 rounded-md shadow-sm">
+                  <p className="font-semibold mb-1.5 flex items-center gap-1.5">
+                    <AlertCircle className="w-3.5 h-3.5" /> Últimos erros encontrados:
+                  </p>
+                  <ul className="list-disc pl-5 space-y-1">
+                    {activeImport.errors_list.slice(0, 10).map((err: any, idx: number) => (
                       <li key={idx}>
-                        Linha {err.row}: {err.error}
+                        Linha {err.row > 0 ? err.row : '?'}: {err.error}
                       </li>
                     ))}
-                    {activeImport.errors_list.length > 3 && (
-                      <li>... e mais {activeImport.errors_list.length - 3} erros.</li>
+                    {activeImport.errors_list.length > 10 && (
+                      <li className="font-medium pt-1 text-red-700">
+                        ... e mais {activeImport.errors_list.length - 10} erros.
+                      </li>
                     )}
                   </ul>
                 </div>

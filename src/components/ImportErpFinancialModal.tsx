@@ -585,6 +585,8 @@ export function ImportErpFinancialModal({ open, onOpenChange, onImportSuccess }:
           userId: user?.id,
           inserted: 0,
           rejected: 0,
+          ignored: 0,
+          updated: 0,
           errors: [],
         },
       })
