@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { supabase } from '@/lib/supabase/client'
 import {
   Dialog,
   DialogContent,
@@ -17,24 +18,41 @@ import {
 } from '@/components/ui/select'
 
 export function BankAccountBulkEditModal({ isOpen, onClose, onSave, count }: any) {
-  const [accountType, setAccountType] = useState('')
-  const [classification, setClassification] = useState('')
+  const [accountType, setAccountType] = useState('none')
+  const [classification, setClassification] = useState('none')
+  const [organizationId, setOrganizationId] = useState('none')
+  const [organizations, setOrganizations] = useState<any[]>([])
 
   useEffect(() => {
-    if (!isOpen) {
-      setAccountType('')
-      setClassification('')
+    if (isOpen) {
+      supabase
+        .from('organizations')
+        .select('id, name')
+        .is('deleted_at', null)
+        .order('name')
+        .then(({ data }) => {
+          if (data) setOrganizations(data)
+        })
+    } else {
+      setAccountType('none')
+      setClassification('none')
+      setOrganizationId('none')
     }
   }, [isOpen])
 
   const handleSave = () => {
     const payload: any = {}
-    if (accountType) payload.account_type = accountType
-    if (classification) payload.classification = classification
+    if (accountType && accountType !== 'none') payload.account_type = accountType
+    if (classification && classification !== 'none') payload.classification = classification
+    if (organizationId && organizationId !== 'none') payload.organization_id = organizationId
+
     onSave(payload)
   }
 
-  const hasChanges = accountType || classification
+  const hasChanges =
+    (accountType && accountType !== 'none') ||
+    (classification && classification !== 'none') ||
+    (organizationId && organizationId !== 'none')
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -44,35 +62,55 @@ export function BankAccountBulkEditModal({ isOpen, onClose, onSave, count }: any
         </DialogHeader>
         <div className="grid gap-4 py-4">
           <div className="space-y-2">
-            <Label>Tipo</Label>
-            <Select
-              value={accountType || 'NO_CHANGE'}
-              onValueChange={(val) => setAccountType(val === 'NO_CHANGE' ? '' : val)}
-            >
+            <Label>Empresa</Label>
+            <Select value={organizationId} onValueChange={setOrganizationId}>
               <SelectTrigger>
                 <SelectValue placeholder="Não alterar" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="NO_CHANGE">Não alterar</SelectItem>
-                <SelectItem value="CAIXA">CAIXA</SelectItem>
-                <SelectItem value="CORRENTE">CORRENTE</SelectItem>
-                <SelectItem value="POUPANÇA">POUPANÇA</SelectItem>
-                <SelectItem value="APLICAÇÕES">APLICAÇÕES</SelectItem>
-                <SelectItem value="OUTROS">OUTROS</SelectItem>
+                <SelectItem value="none">Não alterar</SelectItem>
+                {organizations.map((org) => (
+                  <SelectItem key={org.id} value={org.id}>
+                    {org.name}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
+
           <div className="space-y-2">
-            <Label>Classificação</Label>
-            <Select
-              value={classification || 'NO_CHANGE'}
-              onValueChange={(val) => setClassification(val === 'NO_CHANGE' ? '' : val)}
-            >
+            <Label>Tipo</Label>
+            <Select value={accountType} onValueChange={setAccountType}>
               <SelectTrigger>
                 <SelectValue placeholder="Não alterar" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="NO_CHANGE">Não alterar</SelectItem>
+                <SelectItem value="none">Não alterar</SelectItem>
+                <SelectItem value="Corrente">Corrente</SelectItem>
+                <SelectItem value="Poupança">Poupança</SelectItem>
+                <SelectItem value="Caixa">Caixa</SelectItem>
+                <SelectItem value="Aplicação">Aplicação</SelectItem>
+                <SelectItem value="5">5</SelectItem>
+                <SelectItem value="6">6</SelectItem>
+                <SelectItem value="7">7</SelectItem>
+                <SelectItem value="08">08</SelectItem>
+                <SelectItem value="14">14</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Classificação</Label>
+            <Select value={classification} onValueChange={setClassification}>
+              <SelectTrigger>
+                <SelectValue placeholder="Não alterar" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Não alterar</SelectItem>
+                <SelectItem value="Operacional">Operacional</SelectItem>
+                <SelectItem value="Investimento">Investimento</SelectItem>
+                <SelectItem value="Financiamento">Financiamento</SelectItem>
+                <SelectItem value="A">A</SelectItem>
                 <SelectItem value="B">B</SelectItem>
                 <SelectItem value="C">C</SelectItem>
               </SelectContent>
@@ -83,7 +121,11 @@ export function BankAccountBulkEditModal({ isOpen, onClose, onSave, count }: any
           <Button type="button" variant="ghost" onClick={onClose}>
             Cancelar
           </Button>
-          <Button onClick={handleSave} disabled={!hasChanges}>
+          <Button
+            onClick={handleSave}
+            disabled={!hasChanges}
+            className="bg-red-400 hover:bg-red-500 text-white"
+          >
             Aplicar a Todos
           </Button>
         </DialogFooter>
