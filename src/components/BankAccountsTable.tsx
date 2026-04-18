@@ -76,8 +76,13 @@ export function BankAccountsTable({
                     {acc.bank_code || '-'}
                   </div>
                   <div>
-                    <span className="text-muted-foreground block text-xs">Ag / Conta</span>
-                    {acc.agency || '-'} / {acc.account_number || '-'}-{acc.check_digit || '-'}
+                    <span className="text-muted-foreground block text-xs">Agência</span>
+                    {acc.agency || '-'}
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground block text-xs">Conta</span>
+                    {acc.account_number || '-'}
+                    {acc.check_digit ? `-${acc.check_digit}` : ''}
                   </div>
                   <div>
                     <span className="text-muted-foreground block text-xs">C. Contábil</span>
@@ -120,7 +125,8 @@ export function BankAccountsTable({
                 <TableHead className="p-2">Empresa</TableHead>
                 <TableHead className="p-2">Descrição</TableHead>
                 <TableHead className="p-2">Banco</TableHead>
-                <TableHead className="p-2">Ag / Conta</TableHead>
+                <TableHead className="p-2">Agência</TableHead>
+                <TableHead className="p-2">Conta</TableHead>
                 <TableHead className="p-2">C. Contábil</TableHead>
                 <TableHead className="p-2">Tipo de Conta</TableHead>
                 <TableHead className="p-2">Classificação</TableHead>
@@ -141,14 +147,10 @@ export function BankAccountsTable({
                   </TableCell>
                   <TableCell className="p-2 font-medium">{acc.description}</TableCell>
                   <TableCell className="p-2">{acc.bank_code || '-'}</TableCell>
-                  <TableCell className="p-2 text-sm">
-                    <div className="flex flex-col">
-                      <span className="text-muted-foreground">Ag: {acc.agency || '-'}</span>
-                      <span>
-                        Cc: {acc.account_number || '-'}
-                        {acc.check_digit ? `-${acc.check_digit}` : ''}
-                      </span>
-                    </div>
+                  <TableCell className="p-2">{acc.agency || '-'}</TableCell>
+                  <TableCell className="p-2">
+                    {acc.account_number || '-'}
+                    {acc.check_digit ? `-${acc.check_digit}` : ''}
                   </TableCell>
                   <TableCell className="p-2 font-mono text-sm">{acc.account_code || '-'}</TableCell>
                   <TableCell className="p-2">
