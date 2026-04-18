@@ -208,7 +208,14 @@ export function AccountCombobox({
   }
 
   const renderFlat = () => {
-    return accounts.map((account) => {
+    const searchLower = search.toLowerCase()
+    const matches = accounts.filter((account) => {
+      const searchString =
+        `${account.account_code || ''} ${account.classification || ''} ${account.account_name || ''}`.toLowerCase()
+      return searchString.includes(searchLower)
+    })
+
+    return matches.slice(0, 100).map((account) => {
       const searchString =
         `${account.account_code || ''} ${account.classification || ''} ${account.account_name || ''}`.toLowerCase()
       return (
@@ -313,13 +320,7 @@ export function AccountCombobox({
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
-        <Command
-          filter={(val, searchVal) => {
-            if (!searchVal) return 1
-            if (val.includes(searchVal.toLowerCase())) return 1
-            return 0
-          }}
-        >
+        <Command shouldFilter={false}>
           <CommandInput
             placeholder="Buscar conta..."
             className="h-9 text-sm"

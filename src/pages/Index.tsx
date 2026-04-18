@@ -61,13 +61,28 @@ export default function Index() {
         .order('name')
       if (orgs) setCompanies(orgs)
 
-      const { data: accs } = await supabase
-        .from('bank_accounts')
-        .select('*, organizations(name)')
-        .is('deleted_at', null)
-        .order('created_at', { ascending: false })
+      let allAccs: any[] = []
+      let fetchHasMore = true
+      let fetchPage = 0
 
-      if (accs) setAccounts(accs)
+      while (fetchHasMore) {
+        const { data: accs } = await supabase
+          .from('bank_accounts')
+          .select('*, organizations(name)')
+          .is('deleted_at', null)
+          .order('created_at', { ascending: false })
+          .range(fetchPage * 1000, (fetchPage + 1) * 1000 - 1)
+
+        if (accs && accs.length > 0) {
+          allAccs.push(...accs)
+          fetchPage++
+          if (accs.length < 1000) fetchHasMore = false
+        } else {
+          fetchHasMore = false
+        }
+      }
+
+      setAccounts(allAccs)
     } catch (error) {
       console.error(error)
     } finally {
@@ -76,22 +91,33 @@ export default function Index() {
   }
 
   const fetchChartAccounts = async () => {
-    let query = supabase
-      .from('chart_of_accounts')
-      .select('id, account_code, account_name, classification')
-      .is('deleted_at', null)
-      .order('classification')
+    let allData: any[] = []
+    let fetchHasMore = true
+    let fetchPage = 0
 
-    if (companyFilter !== 'ALL') {
-      query = query.eq('organization_id', companyFilter)
+    while (fetchHasMore) {
+      let query = supabase
+        .from('chart_of_accounts')
+        .select('id, account_code, account_name, classification')
+        .is('deleted_at', null)
+        .order('classification')
+        .range(fetchPage * 1000, (fetchPage + 1) * 1000 - 1)
+
+      if (companyFilter !== 'ALL') {
+        query = query.eq('organization_id', companyFilter)
+      }
+
+      const { data } = await query
+      if (data && data.length > 0) {
+        allData.push(...data)
+        fetchPage++
+        if (data.length < 1000) fetchHasMore = false
+      } else {
+        fetchHasMore = false
+      }
     }
 
-    const { data } = await query
-    if (data) {
-      setChartAccounts(data)
-    } else {
-      setChartAccounts([])
-    }
+    setChartAccounts(allData)
   }
 
   useEffect(() => {
