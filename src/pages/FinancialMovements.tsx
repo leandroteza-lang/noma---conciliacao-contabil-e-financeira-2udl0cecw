@@ -101,6 +101,7 @@ export default function FinancialMovements() {
   const [editForm, setEditForm] = useState<any>({})
   const [activeImport, setActiveImport] = useState<any>(null)
   const [elapsedSeconds, setElapsedSeconds] = useState(0)
+  const [refreshKey, setRefreshKey] = useState(0)
 
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [deleteModalOpen, setDeleteModalOpen] = useState(false)
@@ -259,7 +260,7 @@ export default function FinancialMovements() {
       toast.success('Todos os registros foram excluídos com sucesso!')
       setSelectedIds([])
       setPage(0)
-      fetchData()
+      setRefreshKey((k) => k + 1)
     } catch (error: any) {
       console.error('Erro na exclusão em lote:', error)
       setDeletionState((prev) => ({ ...prev, status: 'Error' }))
@@ -286,7 +287,7 @@ export default function FinancialMovements() {
       toast.success(`${selectedIds.length} registros excluídos com sucesso!`)
       setSelectedIds([])
       setPage(0)
-      await fetchData()
+      setRefreshKey((k) => k + 1)
     } catch (error: any) {
       console.error('Erro ao excluir:', error)
       toast.error('Erro ao excluir: ' + error.message)
@@ -414,6 +415,7 @@ export default function FinancialMovements() {
             if (data.status === 'Completed' || data.status === 'Error') {
               clearInterval(interval)
               clearInterval(timerInterval)
+              setRefreshKey((k) => k + 1)
               setElapsedSeconds((prev) => {
                 localStorage.setItem(
                   'last_import_time_erp_fin',
@@ -481,7 +483,7 @@ export default function FinancialMovements() {
 
   useEffect(() => {
     fetchData()
-  }, [user, page, search, pageSize, sortColumn, sortDirection])
+  }, [user, page, search, pageSize, sortColumn, sortDirection, refreshKey])
 
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize))
   const visibleCount = tableHeaders.filter((h) => visibleColumns[h.key] !== false).length + 2
@@ -1299,10 +1301,10 @@ export default function FinancialMovements() {
                                   .update(editForm)
                                   .eq('id', row.id)
                                 if (!error) {
-                                  setData(
-                                    data.map((d) => (d.id === row.id ? { ...d, ...editForm } : d)),
-                                  )
                                   setEditingId(null)
+                                  setRefreshKey((k) => k + 1)
+                                } else {
+                                  toast.error('Erro ao salvar: ' + error.message)
                                 }
                               }}
                             >
@@ -1375,6 +1377,7 @@ export default function FinancialMovements() {
         onOpenChange={setIsImportOpen}
         onImportSuccess={() => {
           setPage(0)
+          setRefreshKey((k) => k + 1)
           fetchActiveImport()
         }}
       />
