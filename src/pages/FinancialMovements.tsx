@@ -28,7 +28,11 @@ import {
   ArrowUp,
   ArrowDown,
   Columns,
+  Trash2,
 } from 'lucide-react'
+import { Checkbox } from '@/components/ui/checkbox'
+import { toast } from 'sonner'
+import { DeleteConfirmModal } from '@/components/DeleteConfirmModal'
 import {
   Select,
   SelectContent,
@@ -98,6 +102,11 @@ export default function FinancialMovements() {
   const [activeImport, setActiveImport] = useState<any>(null)
   const [elapsedSeconds, setElapsedSeconds] = useState(0)
 
+  const [selectedIds, setSelectedIds] = useState<string[]>([])
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false)
+  const [deleteMode, setDeleteMode] = useState<'selected' | 'all' | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
+
   const defaultVisibleColumns = tableHeaders.reduce(
     (acc, h) => ({ ...acc, [h.key]: true }),
     {} as Record<string, boolean>,
@@ -130,6 +139,58 @@ export default function FinancialMovements() {
       .padStart(2, '0')
     const s = (Math.max(0, seconds) % 60).toString().padStart(2, '0')
     return `${m}:${s}`
+  }
+
+  const toggleRow = (id: string) => {
+    setSelectedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]))
+  }
+
+  const toggleAllPage = () => {
+    const pageIds = data.map((d) => d.id)
+    const allSelected = pageIds.length > 0 && pageIds.every((id) => selectedIds.includes(id))
+
+    if (allSelected) {
+      setSelectedIds((prev) => prev.filter((id) => !pageIds.includes(id)))
+    } else {
+      setSelectedIds((prev) => Array.from(new Set([...prev, ...pageIds])))
+    }
+  }
+
+  const handleDelete = async () => {
+    if (!user || !deleteMode) return
+    setIsDeleting(true)
+    try {
+      if (deleteMode === 'all') {
+        const { error } = await supabase
+          .from('erp_financial_movements')
+          .update({ deleted_at: new Date().toISOString(), deleted_by: user.id })
+          .is('deleted_at', null)
+
+        if (error) throw error
+        toast.success('Todos os registros foram excluídos com sucesso!')
+      } else if (deleteMode === 'selected') {
+        const chunkSize = 500
+        for (let i = 0; i < selectedIds.length; i += chunkSize) {
+          const chunk = selectedIds.slice(i, i + chunkSize)
+          const { error } = await supabase
+            .from('erp_financial_movements')
+            .update({ deleted_at: new Date().toISOString(), deleted_by: user.id })
+            .in('id', chunk)
+          if (error) throw error
+        }
+        toast.success(`${selectedIds.length} registros excluídos com sucesso!`)
+      }
+      setSelectedIds([])
+      setPage(0)
+      await fetchData()
+    } catch (error: any) {
+      console.error('Erro ao excluir:', error)
+      toast.error('Erro ao excluir: ' + error.message)
+    } finally {
+      setIsDeleting(false)
+      setDeleteModalOpen(false)
+      setDeleteMode(null)
+    }
   }
 
   const handleSort = (key: string) => {
@@ -319,8 +380,7 @@ export default function FinancialMovements() {
   }, [user, page, search, pageSize, sortColumn, sortDirection])
 
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize))
-  const visibleCount = tableHeaders.filter((h) => visibleColumns[h.key] !== false).length + 1
-
+  const visibleCount = tableHeaders.filter((h) => visibleColumns[h.key] !== false).length + 2
   return (
     <div className="p-6 space-y-6 max-w-[1600px] mx-auto animate-fade-in-up">
       {activeImport && (
@@ -422,11 +482,58 @@ export default function FinancialMovements() {
             Gestão, visualização e conciliação de lançamentos do ERP
           </p>
         </div>
-        <Button onClick={() => setIsImportOpen(true)} className="shadow-sm">
-          <UploadCloud className="mr-2 h-4 w-4" />
-          Importar Planilha
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            onClick={() => {
+              setDeleteMode('all')
+              setDeleteModalOpen(true)
+            }}
+            className="shadow-sm text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
+            disabled={totalCount === 0 || loading}
+          >
+            <Trash2 className="mr-2 h-4 w-4" />
+            Excluir Todos
+          </Button>
+          <Button onClick={() => setIsImportOpen(true)} className="shadow-sm">
+            <UploadCloud className="mr-2 h-4 w-4" />
+            Importar Planilha
+          </Button>
+        </div>
       </div>
+
+      {selectedIds.length > 0 && (
+        <div className="bg-blue-50/80 border border-blue-200 rounded-lg p-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 animate-in fade-in slide-in-from-top-2 shadow-sm">
+          <div className="flex items-center gap-2">
+            <div className="bg-blue-600 text-white text-xs font-bold px-2 py-1 rounded-md">
+              {selectedIds.length}
+            </div>
+            <span className="text-sm font-medium text-blue-900">registros selecionados</span>
+          </div>
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setSelectedIds([])}
+              className="bg-white hover:bg-slate-100 flex-1 sm:flex-none"
+            >
+              Cancelar
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={() => {
+                setDeleteMode('selected')
+                setDeleteModalOpen(true)
+              }}
+              className="flex-1 sm:flex-none shadow-sm"
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Excluir Selecionados
+            </Button>
+          </div>
+        </div>
+      )}
 
       <Card className="shadow-sm border-slate-200">
         <CardHeader className="pb-3 border-b bg-slate-50/50 flex flex-col gap-3">
@@ -440,6 +547,7 @@ export default function FinancialMovements() {
                 onChange={(e) => {
                   setSearch(e.target.value)
                   setPage(0)
+                  setSelectedIds([])
                 }}
               />
             </div>
@@ -554,6 +662,15 @@ export default function FinancialMovements() {
           >
             <TableHeader>
               <TableRow className="bg-slate-50 hover:bg-slate-50 border-b">
+                <TableHead className="w-[40px] px-2 py-1 border-r text-center align-middle">
+                  <div className="flex items-center justify-center">
+                    <Checkbox
+                      checked={data.length > 0 && data.every((d) => selectedIds.includes(d.id))}
+                      onCheckedChange={toggleAllPage}
+                      aria-label="Selecionar todos da página"
+                    />
+                  </div>
+                </TableHead>
                 {tableHeaders
                   .filter((h) => visibleColumns[h.key] !== false)
                   .map((h) => (
@@ -612,6 +729,15 @@ export default function FinancialMovements() {
                       key={row.id}
                       className="hover:bg-slate-50/80 transition-colors border-b"
                     >
+                      <TableCell className="px-2 py-1.5 border-r text-center align-middle">
+                        <div className="flex items-center justify-center">
+                          <Checkbox
+                            checked={selectedIds.includes(row.id)}
+                            onCheckedChange={() => toggleRow(row.id)}
+                            aria-label="Selecionar registro"
+                          />
+                        </div>
+                      </TableCell>
                       {visibleColumns['compensado'] !== false && (
                         <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 border-r">
                           {row.compensado || '-'}
@@ -1024,6 +1150,21 @@ export default function FinancialMovements() {
           setPage(0)
           fetchActiveImport()
         }}
+      />
+
+      <DeleteConfirmModal
+        isOpen={deleteModalOpen}
+        onClose={() => setDeleteModalOpen(false)}
+        onConfirm={handleDelete}
+        isLoading={isDeleting}
+        title={
+          deleteMode === 'all' ? 'Excluir Todos os Registros' : 'Excluir Registros Selecionados'
+        }
+        description={
+          deleteMode === 'all'
+            ? 'Tem certeza que deseja excluir TODOS os registros de movimento financeiro da base? Esta ação enviará todos os dados para a lixeira.'
+            : `Tem certeza que deseja excluir os ${selectedIds.length} registros selecionados?`
+        }
       />
     </div>
   )
