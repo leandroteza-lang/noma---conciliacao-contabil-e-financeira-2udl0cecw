@@ -226,9 +226,3 @@ export function BankAccountsTable({
                 }
               />
             </PaginationItem>
-          </PaginationContent>
-        </Pagination>
-      )}
-    </div>
-  )
-}
