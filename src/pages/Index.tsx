@@ -1,27 +1,7 @@
-import { useEffect, useState, useMemo } from 'react'
-import {
-  Plus,
-  Search,
-  Building2,
-  Trash2,
-  ChevronLeft,
-  ChevronRight,
-  ArrowUpDown,
-  Download,
-  FileText,
-  FileSpreadsheet,
-  Loader2,
-  Upload,
-  Edit,
-} from 'lucide-react'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Label } from '@/components/ui/label'
+import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase/client'
-import { ImportAccountModal } from '@/components/ImportAccountModal'
-import { BankAccountModal } from '@/components/BankAccountModal'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { useAuth } from '@/hooks/use-auth'
+import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import {
   Table,
   TableBody,
@@ -30,11 +10,23 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { Checkbox } from '@/components/ui/checkbox'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import {
+  Loader2,
+  Search,
+  ArrowLeft,
+  ArrowRight,
+  ChevronsLeft,
+  ChevronsRight,
+  Columns,
+} from 'lucide-react'
 import {
   DropdownMenu,
+  DropdownMenuCheckboxItem,
   DropdownMenuContent,
-  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import {
@@ -44,789 +36,306 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { useAuth } from '@/hooks/use-auth'
-import { useToast } from '@/hooks/use-toast'
-import { useAuditLog } from '@/hooks/use-audit-log'
+import { cn } from '@/lib/utils'
 
-interface BankAccount {
-  id: string
-  organization_id: string
-  account_code: string
-  account_type: string
-  description: string
-  bank_code: string
-  agency: string
-  account_number: string
-  check_digit: string
-  company_name: string
-  organizations?: { name: string }
-}
+const tableHeaders = [
+  { label: 'Empresa', key: 'company_name' },
+  { label: 'Descrição', key: 'description' },
+  { label: 'Banco', key: 'bank_code', align: 'center' },
+  { label: 'Agência', key: 'agency', align: 'center' },
+  { label: 'Nº Conta', key: 'account_number', align: 'center' },
+  { label: 'Dígito', key: 'check_digit', align: 'center' },
+  { label: 'Tipo', key: 'account_type', align: 'center' },
+  { label: 'Conta Contábil', key: 'account_code', align: 'center' },
+  { label: 'Classificação', key: 'classification', align: 'center' },
+]
 
 export default function Index() {
   const { user } = useAuth()
-  const { toast } = useToast()
-  const { logAction } = useAuditLog()
-  const [accounts, setAccounts] = useState<BankAccount[]>([])
-  const [search, setSearch] = useState('')
+  const [data, setData] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
-  const [selectedIds, setSelectedIds] = useState<string[]>([])
-  const [currentPage, setCurrentPage] = useState(1)
-  const [itemsPerPage, setItemsPerPage] = useState(10)
-  const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(
-    null,
+  const [page, setPage] = useState(0)
+  const [pageSize, setPageSize] = useState(50)
+  const [search, setSearch] = useState('')
+  const [totalCount, setTotalCount] = useState(0)
+
+  const defaultCols = tableHeaders.reduce(
+    (acc, h) => ({ ...acc, [h.key]: true }),
+    {} as Record<string, boolean>,
   )
-  const [isImportModalOpen, setIsImportModalOpen] = useState(false)
-  const [isFormModalOpen, setIsFormModalOpen] = useState(false)
-  const [organizations, setOrganizations] = useState<any[]>([])
-  const [editingAccount, setEditingAccount] = useState<any | null>(null)
-  const [isSaving, setIsSaving] = useState(false)
-  const [isBulkEditModalOpen, setIsBulkEditModalOpen] = useState(false)
-  const [bulkEditData, setBulkEditData] = useState({ account_type: '', classification: '' })
-  const [isBulkSaving, setIsBulkSaving] = useState(false)
+  const [visibleColumns, setVisibleColumns] = useState<Record<string, boolean>>(() => {
+    const saved = localStorage.getItem('bank_accounts_cols')
+    return saved ? { ...defaultCols, ...JSON.parse(saved) } : defaultCols
+  })
 
   useEffect(() => {
-    const fetchOrgs = async () => {
-      const { data } = await supabase.from('organizations').select('*').is('deleted_at', null)
-      if (data) setOrganizations(data)
-    }
-    fetchOrgs()
-  }, [])
+    localStorage.setItem('bank_accounts_cols', JSON.stringify(visibleColumns))
+  }, [visibleColumns])
 
-  const fetchAccounts = async () => {
+  const toggleColumn = (key: string) => setVisibleColumns((p) => ({ ...p, [key]: !p[key] }))
+  const selectAllColumns = () => setVisibleColumns(defaultCols)
+  const selectNoColumns = () =>
+    setVisibleColumns(tableHeaders.reduce((acc, h) => ({ ...acc, [h.key]: false }), {}))
+  const invertColumns = () =>
+    setVisibleColumns((p) => tableHeaders.reduce((acc, h) => ({ ...acc, [h.key]: !p[h.key] }), {}))
+
+  const fetchData = async () => {
     if (!user) return
     setLoading(true)
-    const { data, error } = await supabase
+    let query = supabase
       .from('bank_accounts')
-      .select('*, organizations(name)')
-      .neq('pending_deletion', true)
+      .select('*', { count: 'exact' })
       .is('deleted_at', null)
       .order('created_at', { ascending: false })
 
-    if (!error && data) {
-      setAccounts(data as any)
-      setSelectedIds((prev) => prev.filter((id) => data.some((d) => d.id === id)))
+    if (search) {
+      query = query.or(
+        `description.ilike.%${search}%,company_name.ilike.%${search}%,account_number.ilike.%${search}%`,
+      )
+    }
+
+    const {
+      data: res,
+      count,
+      error,
+    } = await query.range(page * pageSize, (page + 1) * pageSize - 1)
+    if (!error && res) {
+      setData(res)
+      setTotalCount(count || 0)
     }
     setLoading(false)
   }
 
   useEffect(() => {
-    fetchAccounts()
+    fetchData()
+  }, [user, page, pageSize, search])
 
-    const channel = supabase
-      .channel('schema-db-changes-bank-accounts')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'bank_accounts' }, () => {
-        fetchAccounts()
-      })
-      .subscribe()
-
-    return () => {
-      supabase.removeChannel(channel)
-    }
-  }, [user])
-
-  const filteredData = accounts.filter((acc) => {
-    const term = search.toLowerCase()
-    return (
-      (acc.description && acc.description.toLowerCase().includes(term)) ||
-      (acc.bank_code && acc.bank_code.toLowerCase().includes(term)) ||
-      (acc.agency && acc.agency.toLowerCase().includes(term)) ||
-      (acc.account_number && acc.account_number.toLowerCase().includes(term)) ||
-      (acc.company_name && acc.company_name.toLowerCase().includes(term)) ||
-      (acc.organizations?.name && acc.organizations.name.toLowerCase().includes(term)) ||
-      (acc.account_type && acc.account_type.toLowerCase().includes(term)) ||
-      (acc.classification && acc.classification.toLowerCase().includes(term))
-    )
-  })
-
-  const handleSort = (key: string) => {
-    let direction: 'asc' | 'desc' = 'asc'
-    if (sortConfig && sortConfig.key === key && sortConfig.direction === 'asc') direction = 'desc'
-    setSortConfig({ key, direction })
-  }
-
-  const sortedData = useMemo(() => {
-    const sortable = [...filteredData]
-    if (sortConfig !== null) {
-      sortable.sort((a: any, b: any) => {
-        let aVal = a[sortConfig.key]
-        let bVal = b[sortConfig.key]
-        if (sortConfig.key === 'company_name') {
-          aVal = a.organizations?.name || a.company_name || ''
-          bVal = b.organizations?.name || b.company_name || ''
-        }
-        if (!aVal) aVal = ''
-        if (!bVal) bVal = ''
-        if (typeof aVal === 'string') aVal = aVal.toLowerCase()
-        if (typeof bVal === 'string') bVal = bVal.toLowerCase()
-        if (aVal < bVal) return sortConfig.direction === 'asc' ? -1 : 1
-        if (aVal > bVal) return sortConfig.direction === 'asc' ? 1 : -1
-        return 0
-      })
-    }
-    return sortable
-  }, [filteredData, sortConfig])
-
-  const totalPages = Math.max(1, Math.ceil(sortedData.length / itemsPerPage))
-  const paginatedData = sortedData.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage,
-  )
-
-  const handleExport = async (formatType: 'pdf' | 'excel' | 'browser' | 'csv' | 'txt') => {
-    try {
-      toast({ title: 'Aguarde', description: 'Gerando relatório...' })
-
-      let win: Window | null = null
-      if (formatType === 'browser') {
-        win = window.open('', '_blank')
-        if (win) {
-          win.document.write('Gerando relatório, aguarde...')
-        }
-      }
-
-      const session = await supabase.auth.getSession()
-      const token = session.data.session?.access_token
-
-      const payload = {
-        format: formatType === 'browser' ? 'pdf' : formatType,
-        data: sortedData.map((acc) => ({
-          Empresa: acc.organizations?.name || acc.company_name || '-',
-          'Conta Contábil': acc.account_code || '-',
-          Descrição: acc.description || '-',
-          Banco: acc.bank_code || '-',
-          Agência: acc.agency || '-',
-          Número: acc.account_number
-            ? `${acc.account_number}${acc.check_digit ? '-' + acc.check_digit : ''}`
-            : '-',
-        })),
-      }
-
-      const res = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/export-bank-accounts`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-          body: JSON.stringify(payload),
-        },
-      )
-
-      if (!res.ok) {
-        if (win) win.close()
-        throw new Error('Falha ao exportar')
-      }
-
-      const result = await res.json()
-
-      if (formatType === 'excel') {
-        const binaryString = atob(result.excel)
-        const len = binaryString.length
-        const bytes = new Uint8Array(len)
-        for (let i = 0; i < len; i++) bytes[i] = binaryString.charCodeAt(i)
-        const blob = new Blob([bytes], {
-          type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        })
-        const link = document.createElement('a')
-        link.href = URL.createObjectURL(blob)
-        link.download = 'contas_bancarias.xlsx'
-        link.click()
-      } else if (formatType === 'csv') {
-        const blob = new Blob([result.csv], { type: 'text/csv;charset=utf-8;' })
-        const link = document.createElement('a')
-        link.href = URL.createObjectURL(blob)
-        link.download = 'contas_bancarias.csv'
-        link.click()
-      } else if (formatType === 'txt') {
-        const blob = new Blob([result.txt], { type: 'text/plain;charset=utf-8;' })
-        const link = document.createElement('a')
-        link.href = URL.createObjectURL(blob)
-        link.download = 'contas_bancarias.txt'
-        link.click()
-      } else if (formatType === 'browser') {
-        if (win) {
-          win.document.open()
-          win.document.write(
-            `<iframe src="${result.pdf}" frameborder="0" style="border:0; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100%;" allowfullscreen></iframe>`,
-          )
-          win.document.close()
-        }
-      } else {
-        const link = document.createElement('a')
-        link.href = result.pdf
-        link.download = 'contas_bancarias.pdf'
-        link.click()
-      }
-      toast({ title: 'Sucesso', description: 'Relatório gerado com sucesso!' })
-    } catch (error: any) {
-      toast({ title: 'Erro na exportação', description: error.message, variant: 'destructive' })
-    }
-  }
-
-  const handleDelete = async (id: string) => {
-    if (!confirm('Deseja solicitar a exclusão desta conta?')) return
-
-    const { error } = await supabase
-      .from('bank_accounts')
-      .update({
-        pending_deletion: true,
-        deletion_requested_at: new Date().toISOString(),
-        deletion_requested_by: user?.id,
-      })
-      .eq('id', id)
-
-    if (error) toast({ title: 'Erro', description: error.message, variant: 'destructive' })
-    else {
-      await logAction('bank_accounts', id, 'UPDATE', {
-        pending_deletion: { old: false, new: true },
-      })
-      toast({ title: 'Enviado para Aprovação', description: 'A exclusão foi solicitada.' })
-      fetchAccounts()
-    }
-  }
-
-  const handleBulkDelete = async () => {
-    if (selectedIds.length === 0) return
-    if (!confirm(`Deseja solicitar a exclusão de ${selectedIds.length} conta(s)?`)) return
-
-    const { error } = await supabase
-      .from('bank_accounts')
-      .update({
-        pending_deletion: true,
-        deletion_requested_at: new Date().toISOString(),
-        deletion_requested_by: user?.id,
-      })
-      .in('id', selectedIds)
-
-    if (error) {
-      toast({ title: 'Erro', description: error.message, variant: 'destructive' })
-    } else {
-      for (const id of selectedIds) {
-        await logAction('bank_accounts', id, 'UPDATE', {
-          pending_deletion: { old: false, new: true },
-        })
-      }
-      toast({
-        title: 'Sucesso',
-        description: `${selectedIds.length} conta(s) enviada(s) para aprovação.`,
-      })
-      setSelectedIds([])
-      fetchAccounts()
-    }
-  }
-
-  const closeBulkEditModal = () => {
-    setIsBulkEditModalOpen(false)
-    setBulkEditData({ account_type: '', classification: '' })
-  }
-
-  const handleBulkEditSave = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (selectedIds.length === 0) return
-
-    const hasAccountType = bulkEditData.account_type && bulkEditData.account_type !== 'keep'
-    const hasClassification = bulkEditData.classification && bulkEditData.classification !== 'keep'
-
-    if (!hasAccountType && !hasClassification) {
-      toast({ title: 'Aviso', description: 'Selecione pelo menos um campo para alterar.' })
-      return
-    }
-
-    setIsBulkSaving(true)
-    try {
-      const updatePayload: any = {}
-      if (hasAccountType) updatePayload.account_type = bulkEditData.account_type
-      if (hasClassification) updatePayload.classification = bulkEditData.classification
-
-      const oldAccounts = accounts.filter((acc) => selectedIds.includes(acc.id))
-
-      const { error } = await supabase
-        .from('bank_accounts')
-        .update(updatePayload)
-        .in('id', selectedIds)
-
-      if (error) throw error
-
-      for (const acc of oldAccounts) {
-        const changes: Record<string, any> = {}
-        if (hasAccountType)
-          changes.account_type = { old: acc.account_type, new: updatePayload.account_type }
-        if (hasClassification)
-          changes.classification = { old: acc.classification, new: updatePayload.classification }
-
-        await logAction('bank_accounts', acc.id, 'UPDATE', changes)
-      }
-
-      toast({
-        title: 'Sucesso',
-        description: `${selectedIds.length} conta(s) atualizada(s) com sucesso!`,
-      })
-      closeBulkEditModal()
-      setSelectedIds([])
-      fetchAccounts()
-    } catch (err: any) {
-      toast({ title: 'Erro ao atualizar', description: err.message, variant: 'destructive' })
-    } finally {
-      setIsBulkSaving(false)
-    }
-  }
-
-  const handleExportTemplate = async () => {
-    try {
-      toast({ title: 'Aguarde', description: 'Gerando modelo...' })
-
-      const session = await supabase.auth.getSession()
-      const token = session.data.session?.access_token
-
-      const payload = {
-        format: 'excel',
-        data: [
-          {
-            Empresa: 'Exemplo Ltda',
-            'Conta Contábil': '1.01.01.01',
-            Descrição: 'Conta Principal',
-            Banco: '001',
-            Agência: '1234',
-            'Número da Conta': '12345',
-            Dígito: '6',
-            'Tipo de Conta': 'Conta Corrente',
-            Classificação: 'Ativo',
-          },
-        ],
-      }
-
-      const res = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/export-bank-accounts`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-          body: JSON.stringify(payload),
-        },
-      )
-
-      if (!res.ok) {
-        throw new Error('Falha ao exportar modelo')
-      }
-
-      const result = await res.json()
-
-      const binaryString = atob(result.excel)
-      const len = binaryString.length
-      const bytes = new Uint8Array(len)
-      for (let i = 0; i < len; i++) bytes[i] = binaryString.charCodeAt(i)
-      const blob = new Blob([bytes], {
-        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      })
-      const link = document.createElement('a')
-      link.href = URL.createObjectURL(blob)
-      link.download = 'modelo_importacao_contas_bancarias.xlsx'
-      link.click()
-      toast({ title: 'Sucesso', description: 'Modelo gerado com sucesso!' })
-    } catch (error: any) {
-      toast({ title: 'Erro na exportação', description: error.message, variant: 'destructive' })
-    }
-  }
+  const totalPages = Math.max(1, Math.ceil(totalCount / pageSize))
+  const visibleCount = tableHeaders.filter((h) => visibleColumns[h.key] !== false).length
 
   return (
-    <div className="container mx-auto p-4 sm:p-6 max-w-7xl space-y-6 animate-in fade-in duration-500">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+    <div className="p-6 space-y-6 max-w-[1600px] mx-auto animate-fade-in-up">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-slate-900">Listagem de Contas</h1>
           <p className="text-slate-500 mt-1">
-            Gerencie as contas bancárias cadastradas no sistema.
+            Gerenciamento e visualização rápida das contas bancárias.
           </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="gap-2">
-                <Download className="h-4 w-4" /> Exportar
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem
-                onClick={() => handleExport('browser')}
-                className="cursor-pointer gap-2"
-              >
-                <FileText className="h-4 w-4" /> Abrir no Browser
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => handleExport('pdf')}
-                className="cursor-pointer gap-2"
-              >
-                <FileText className="h-4 w-4 text-red-600" /> PDF
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => handleExport('excel')}
-                className="cursor-pointer gap-2"
-              >
-                <FileSpreadsheet className="h-4 w-4 text-green-600" /> Excel (XLSX)
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => handleExport('csv')}
-                className="cursor-pointer gap-2"
-              >
-                <FileText className="h-4 w-4 text-blue-600" /> CSV
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => handleExport('txt')}
-                className="cursor-pointer gap-2"
-              >
-                <FileText className="h-4 w-4 text-gray-600" /> TXT
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button className="gap-2 bg-cyan-500 hover:bg-cyan-600 text-white border-none">
-                <Upload className="h-4 w-4" /> Importar em Lote
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={handleExportTemplate} className="cursor-pointer gap-2">
-                <Download className="h-4 w-4 text-blue-600" /> Exportar Modelo Padrão
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => setIsImportModalOpen(true)}
-                className="cursor-pointer gap-2"
-              >
-                <Upload className="h-4 w-4 text-green-600" /> Importar Planilha
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-
-          <Button
-            className="gap-2 bg-blue-600 hover:bg-blue-700"
-            onClick={() => setIsFormModalOpen(true)}
-          >
-            <Plus className="h-4 w-4" /> Nova Conta
-          </Button>
         </div>
       </div>
 
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle>Listagem de Contas Bancárias</CardTitle>
-          <CardDescription>Visualize e filtre suas contas bancárias.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-col sm:flex-row gap-4 mb-4">
-            <div className="relative w-full sm:w-80">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-500" />
+      <Card className="shadow-sm border-slate-200">
+        <CardHeader className="pb-3 border-b bg-slate-50/50 flex flex-col gap-3">
+          <div className="flex flex-col xl:flex-row items-start xl:items-center gap-4 w-full">
+            <div className="relative flex-1 w-full max-w-md">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
               <Input
-                placeholder="Buscar por descrição, banco, agência ou conta..."
-                className="pl-9"
+                placeholder="Buscar por descrição, empresa ou conta..."
+                className="pl-9 bg-white"
                 value={search}
                 onChange={(e) => {
                   setSearch(e.target.value)
-                  setCurrentPage(1)
+                  setPage(0)
                 }}
               />
             </div>
-          </div>
-
-          {selectedIds.length > 0 && (
-            <div className="bg-slate-50 border border-slate-200 rounded-md p-3 flex items-center justify-between mb-4 animate-in fade-in slide-in-from-top-2">
-              <span className="text-sm font-medium text-slate-700">
-                {selectedIds.length} item(ns) selecionado(s)
-              </span>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setIsBulkEditModalOpen(true)}
-                  className="gap-2"
-                >
-                  <Edit className="h-4 w-4" /> Editar Selecionados
-                </Button>
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  onClick={handleBulkDelete}
-                  className="gap-2"
-                >
-                  <Trash2 className="h-4 w-4" /> Excluir Selecionados
-                </Button>
-              </div>
-            </div>
-          )}
-
-          <div className="rounded-md border overflow-x-auto">
-            <Table>
-              <TableHeader className="bg-slate-50">
-                <TableRow>
-                  <TableHead className="w-12 text-center p-2">
-                    <Checkbox
-                      checked={
-                        paginatedData.length > 0 && selectedIds.length === paginatedData.length
-                      }
-                      onCheckedChange={(checked) => {
-                        if (checked) setSelectedIds(paginatedData.map((d) => d.id))
-                        else setSelectedIds([])
+            <div className="flex flex-wrap items-center gap-3 xl:ml-auto bg-white p-1.5 rounded-md border shadow-sm">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7 text-xs flex items-center gap-1.5 px-2"
+                  >
+                    <Columns className="h-3.5 w-3.5" />
+                    <span className="hidden sm:inline">Colunas</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-64 max-h-[60vh] overflow-y-auto">
+                  <DropdownMenuLabel>Visibilidade das Colunas</DropdownMenuLabel>
+                  <div className="flex items-center justify-between px-2 pb-2 gap-1">
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      className="h-6 px-2 text-[10px] flex-1"
+                      onClick={(e) => {
+                        e.preventDefault()
+                        selectAllColumns()
                       }}
-                    />
-                  </TableHead>
-                  <TableHead
-                    className="cursor-pointer hover:bg-slate-100 p-2"
-                    onClick={() => handleSort('company_name')}
-                  >
-                    <div className="flex items-center gap-2">
-                      Empresa <ArrowUpDown className="h-3 w-3 text-slate-400" />
-                    </div>
-                  </TableHead>
-                  <TableHead
-                    className="cursor-pointer hover:bg-slate-100 p-2"
-                    onClick={() => handleSort('description')}
-                  >
-                    <div className="flex items-center gap-2">
-                      Descrição <ArrowUpDown className="h-3 w-3 text-slate-400" />
-                    </div>
-                  </TableHead>
-                  <TableHead
-                    className="cursor-pointer hover:bg-slate-100 p-2"
-                    onClick={() => handleSort('bank_code')}
-                  >
-                    <div className="flex items-center gap-2">
-                      Banco <ArrowUpDown className="h-3 w-3 text-slate-400" />
-                    </div>
-                  </TableHead>
-                  <TableHead
-                    className="cursor-pointer hover:bg-slate-100 p-2"
-                    onClick={() => handleSort('agency')}
-                  >
-                    <div className="flex items-center gap-2">
-                      Agência / Conta <ArrowUpDown className="h-3 w-3 text-slate-400" />
-                    </div>
-                  </TableHead>
-                  <TableHead
-                    className="cursor-pointer hover:bg-slate-100 p-2"
-                    onClick={() => handleSort('account_code')}
-                  >
-                    <div className="flex items-center gap-2">
-                      Conta Contábil <ArrowUpDown className="h-3 w-3 text-slate-400" />
-                    </div>
-                  </TableHead>
-                  <TableHead
-                    className="cursor-pointer hover:bg-slate-100 p-2"
-                    onClick={() => handleSort('account_type')}
-                  >
-                    <div className="flex items-center gap-2">
-                      Tipo Conta <ArrowUpDown className="h-3 w-3 text-slate-400" />
-                    </div>
-                  </TableHead>
-                  <TableHead
-                    className="cursor-pointer hover:bg-slate-100 p-2"
-                    onClick={() => handleSort('classification')}
-                  >
-                    <div className="flex items-center gap-2">
-                      Classificação <ArrowUpDown className="h-3 w-3 text-slate-400" />
-                    </div>
-                  </TableHead>
-                  <TableHead className="text-right p-2">Ações</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {loading ? (
-                  <TableRow>
-                    <TableCell colSpan={9} className="h-24 text-center p-2">
-                      <Loader2 className="h-6 w-6 animate-spin mx-auto text-slate-400" />
-                    </TableCell>
-                  </TableRow>
-                ) : paginatedData.length > 0 ? (
-                  paginatedData.map((acc) => (
-                    <TableRow key={acc.id} className="hover:bg-slate-50/50">
-                      <TableCell className="text-center p-2">
-                        <Checkbox
-                          checked={selectedIds.includes(acc.id)}
-                          onCheckedChange={(checked) => {
-                            if (checked) setSelectedIds((prev) => [...prev, acc.id])
-                            else setSelectedIds((prev) => prev.filter((id) => id !== acc.id))
-                          }}
-                        />
-                      </TableCell>
-                      <TableCell className="font-medium text-sm p-2">
-                        <div className="flex items-center gap-2">
-                          <Building2 className="h-4 w-4 text-slate-400" />
-                          {acc.organizations?.name || acc.company_name || '-'}
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-sm p-2">{acc.description || '-'}</TableCell>
-                      <TableCell className="text-sm p-2">{acc.bank_code || '-'}</TableCell>
-                      <TableCell className="text-sm p-2">
-                        <div className="flex flex-col">
-                          <span>Ag: {acc.agency || '-'}</span>
-                          <span className="text-muted-foreground">
-                            Cc: {acc.account_number}
-                            {acc.check_digit ? `-${acc.check_digit}` : ''}
-                          </span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-sm p-2">{acc.account_code || '-'}</TableCell>
-                      <TableCell className="text-sm p-2">{acc.account_type || '-'}</TableCell>
-                      <TableCell className="text-sm p-2">{acc.classification || '-'}</TableCell>
-                      <TableCell className="text-right p-2">
-                        <div className="flex items-center justify-end gap-1">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-slate-500 hover:text-blue-600 hover:bg-blue-50"
-                            onClick={() => setEditingAccount(acc)}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-slate-500 hover:text-red-600 hover:bg-red-50"
-                            onClick={() => handleDelete(acc.id)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                ) : (
-                  <TableRow>
-                    <TableCell colSpan={9} className="h-24 text-center text-slate-500 p-2">
-                      Nenhuma conta encontrada.
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </div>
+                    >
+                      Todos
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      className="h-6 px-2 text-[10px] flex-1"
+                      onClick={(e) => {
+                        e.preventDefault()
+                        selectNoColumns()
+                      }}
+                    >
+                      Nenhum
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      className="h-6 px-2 text-[10px] flex-1"
+                      onClick={(e) => {
+                        e.preventDefault()
+                        invertColumns()
+                      }}
+                    >
+                      Inverter
+                    </Button>
+                  </div>
+                  <DropdownMenuSeparator />
+                  {tableHeaders.map((h) => (
+                    <DropdownMenuCheckboxItem
+                      key={h.key}
+                      checked={visibleColumns[h.key] !== false}
+                      onCheckedChange={() => toggleColumn(h.key)}
+                      onSelect={(e) => e.preventDefault()}
+                      className="text-xs cursor-pointer"
+                    >
+                      {h.label}
+                    </DropdownMenuCheckboxItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
 
-          {!loading && sortedData.length > 0 && (
-            <div className="flex flex-col sm:flex-row items-center justify-between pt-4 gap-4 border-t mt-4">
-              <p className="text-sm text-slate-500">
-                Mostrando {(currentPage - 1) * itemsPerPage + 1} até{' '}
-                {Math.min(currentPage * itemsPerPage, sortedData.length)} de {sortedData.length}
-              </p>
-              <div className="flex items-center gap-4">
-                <div className="flex items-center gap-2">
-                  <p className="text-sm text-slate-500 hidden sm:block">Itens por página:</p>
-                  <Select
-                    value={itemsPerPage.toString()}
-                    onValueChange={(v) => {
-                      setItemsPerPage(Number(v))
-                      setCurrentPage(1)
-                    }}
-                  >
-                    <SelectTrigger className="h-8 w-[70px]">
-                      <SelectValue placeholder={itemsPerPage} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="10">10</SelectItem>
-                      <SelectItem value="50">50</SelectItem>
-                      <SelectItem value="100">100</SelectItem>
-                      <SelectItem value="1000">1000</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                    disabled={currentPage === 1}
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                  </Button>
-                  <span className="text-sm font-medium px-2">
-                    {currentPage} / {totalPages}
-                  </span>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                    disabled={currentPage === totalPages}
-                  >
-                    <ChevronRight className="h-4 w-4" />
-                  </Button>
-                </div>
+              <div className="hidden sm:block w-px h-4 bg-slate-200 mx-1"></div>
+
+              <div className="flex items-center gap-2 text-xs">
+                <span className="text-slate-500 whitespace-nowrap hidden sm:inline">
+                  Por página:
+                </span>
+                <Select
+                  value={pageSize.toString()}
+                  onValueChange={(v) => {
+                    setPageSize(Number(v))
+                    setPage(0)
+                  }}
+                >
+                  <SelectTrigger className="h-7 w-[70px] text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="50">50</SelectItem>
+                    <SelectItem value="100">100</SelectItem>
+                    <SelectItem value="500">500</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="hidden sm:block w-px h-4 bg-slate-200 mx-1"></div>
+              <div className="flex items-center gap-2 text-xs text-slate-500 whitespace-nowrap">
+                <span>
+                  Pág {page + 1} de {totalPages}
+                </span>
+                <span className="font-semibold text-slate-700 hidden sm:inline">
+                  ({totalCount} regs)
+                </span>
+              </div>
+
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7"
+                  onClick={() => setPage(0)}
+                  disabled={page === 0 || loading}
+                >
+                  <ChevronsLeft className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7"
+                  onClick={() => setPage((p) => Math.max(0, p - 1))}
+                  disabled={page === 0 || loading}
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7"
+                  onClick={() => setPage((p) => p + 1)}
+                  disabled={page >= totalPages - 1 || loading}
+                >
+                  <ArrowRight className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7"
+                  onClick={() => setPage(totalPages - 1)}
+                  disabled={page >= totalPages - 1 || loading}
+                >
+                  <ChevronsRight className="h-4 w-4" />
+                </Button>
               </div>
             </div>
-          )}
+          </div>
+        </CardHeader>
+        <CardContent className="p-0 bg-white">
+          <Table className="w-full min-w-max">
+            <TableHeader>
+              <TableRow className="bg-slate-50 hover:bg-slate-50 border-b">
+                {tableHeaders
+                  .filter((h) => visibleColumns[h.key] !== false)
+                  .map((h) => (
+                    <TableHead
+                      key={h.key}
+                      className={cn(
+                        'h-10 px-4 text-xs font-semibold text-slate-600 whitespace-nowrap',
+                        h.align === 'center' ? 'text-center' : 'text-left',
+                      )}
+                    >
+                      {h.label}
+                    </TableHead>
+                  ))}
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {loading ? (
+                <TableRow>
+                  <TableCell colSpan={visibleCount} className="text-center h-48">
+                    <Loader2 className="h-6 w-6 animate-spin mx-auto text-primary" />
+                  </TableCell>
+                </TableRow>
+              ) : data.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={visibleCount} className="text-center h-48 text-slate-500">
+                    Nenhuma conta encontrada.
+                  </TableCell>
+                </TableRow>
+              ) : (
+                data.map((row) => (
+                  <TableRow
+                    key={row.id}
+                    className="hover:bg-slate-50/80 transition-colors border-b"
+                  >
+                    {tableHeaders
+                      .filter((h) => visibleColumns[h.key] !== false)
+                      .map((h) => (
+                        <TableCell
+                          key={h.key}
+                          className={cn(
+                            'px-4 py-3 text-xs text-slate-600 whitespace-nowrap',
+                            h.align === 'center' ? 'text-center' : 'text-left',
+                          )}
+                        >
+                          {row[h.key] || '-'}
+                        </TableCell>
+                      ))}
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
         </CardContent>
       </Card>
-
-      <ImportAccountModal
-        isOpen={isImportModalOpen}
-        onClose={() => setIsImportModalOpen(false)}
-        onSuccess={() => {
-          fetchAccounts()
-          setIsImportModalOpen(false)
-        }}
-      />
-      <BankAccountModal
-        isOpen={isFormModalOpen || !!editingAccount}
-        onClose={() => {
-          setIsFormModalOpen(false)
-          setEditingAccount(null)
-        }}
-        organizations={organizations}
-        accountToEdit={editingAccount}
-        onSuccess={fetchAccounts}
-      />
-      <Dialog open={isBulkEditModalOpen} onOpenChange={(open) => !open && closeBulkEditModal()}>
-        <DialogContent className="sm:max-w-[400px]">
-          <DialogHeader>
-            <DialogTitle>Editar {selectedIds.length} Contas Selecionadas</DialogTitle>
-          </DialogHeader>
-          <form onSubmit={handleBulkEditSave} className="space-y-4 mt-4">
-            <div className="space-y-2">
-              <Label>Tipo Conta</Label>
-              <Select
-                value={bulkEditData.account_type || undefined}
-                onValueChange={(val) => setBulkEditData({ ...bulkEditData, account_type: val })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Manter original" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="keep">Manter original</SelectItem>
-                  <SelectItem value="Corrente">Corrente</SelectItem>
-                  <SelectItem value="Poupança">Poupança</SelectItem>
-                  <SelectItem value="Caixa">Caixa</SelectItem>
-                  <SelectItem value="Aplicações">Aplicações</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Classificação</Label>
-              <Select
-                value={bulkEditData.classification || undefined}
-                onValueChange={(val) => setBulkEditData({ ...bulkEditData, classification: val })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Manter original" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="keep">Manter original</SelectItem>
-                  <SelectItem value="B">B</SelectItem>
-                  <SelectItem value="C">C</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 mt-4">
-              <Button type="button" variant="outline" onClick={closeBulkEditModal}>
-                Cancelar
-              </Button>
-              <Button
-                type="submit"
-                disabled={
-                  isBulkSaving ||
-                  (!(bulkEditData.account_type && bulkEditData.account_type !== 'keep') &&
-                    !(bulkEditData.classification && bulkEditData.classification !== 'keep'))
-                }
-                className="bg-blue-600 hover:bg-blue-700 text-white"
-              >
-                {isBulkSaving ? 'Salvando...' : 'Aplicar Alterações'}
-              </Button>
-            </div>
-          </form>
-        </DialogContent>
-      </Dialog>
     </div>
   )
 }
