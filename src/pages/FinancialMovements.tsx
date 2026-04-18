@@ -54,6 +54,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { cn } from '@/lib/utils'
 
 const tableHeaders = [
+  { label: 'Empresa', key: 'empresa' },
   { label: 'Compensado', key: 'compensado' },
   { label: 'Tipo Op.', key: 'tipo_operacao' },
   { label: 'Data Emissão', key: 'data_emissao' },
@@ -360,11 +361,14 @@ export default function FinancialMovements() {
 
   const fetchDataSilent = async () => {
     if (!user) return
+    let orderCol = sortColumn
+    if (sortColumn === 'empresa') orderCol = 'organization_id'
+
     let query = supabase
       .from('erp_financial_movements')
-      .select('*', { count: 'exact' })
+      .select('*, organizations(name)', { count: 'exact' })
       .is('deleted_at', null)
-      .order(sortColumn, { ascending: sortDirection === 'asc' })
+      .order(orderCol, { ascending: sortDirection === 'asc' })
 
     if (search) {
       query = query.or(
@@ -450,11 +454,14 @@ export default function FinancialMovements() {
   const fetchData = async () => {
     if (!user) return
     setLoading(true)
+    let orderCol = sortColumn
+    if (sortColumn === 'empresa') orderCol = 'organization_id'
+
     let query = supabase
       .from('erp_financial_movements')
-      .select('*', { count: 'exact' })
+      .select('*, organizations(name)', { count: 'exact' })
       .is('deleted_at', null)
-      .order(sortColumn, { ascending: sortDirection === 'asc' })
+      .order(orderCol, { ascending: sortDirection === 'asc' })
 
     if (search) {
       query = query.or(
@@ -967,6 +974,14 @@ export default function FinancialMovements() {
                           />
                         </div>
                       </TableCell>
+                      {visibleColumns['empresa'] !== false && (
+                        <TableCell
+                          className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-800 font-medium max-w-[150px] truncate border-r"
+                          title={row.organizations?.name}
+                        >
+                          {row.organizations?.name || '-'}
+                        </TableCell>
+                      )}
                       {visibleColumns['compensado'] !== false && (
                         <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 border-r">
                           {row.compensado || '-'}
