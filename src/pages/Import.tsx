@@ -460,14 +460,20 @@ export default function Import() {
       } = await supabase.auth.getSession()
 
       const CHUNK_SIZE = 100
+      const MIN_PROGRESS_DURING_IMPORT = 10
+      const MAX_PROGRESS_DURING_IMPORT = 99
+      const PROGRESS_RANGE = MAX_PROGRESS_DURING_IMPORT - MIN_PROGRESS_DURING_IMPORT
       const validRecords = validationInfo.validRecords
       const totalRecords = validRecords.length
+      const totalChunks = Math.ceil(totalRecords / CHUNK_SIZE)
       let totalInserted = 0
       let totalRejected = 0
       const allErrors: ImportError[] = []
 
       for (let offset = 0; offset < totalRecords; offset += CHUNK_SIZE) {
+        const chunkNumber = Math.floor(offset / CHUNK_SIZE) + 1
         const chunk = validRecords.slice(offset, offset + CHUNK_SIZE)
+        const isLastChunk = offset + CHUNK_SIZE >= totalRecords
         const { data, error } = await supabase.functions.invoke('import-data', {
           body: {
             records: chunk,
@@ -476,7 +482,7 @@ export default function Import() {
             allowIncomplete,
             offset,
             totalRecords,
-            skipHistory: offset + CHUNK_SIZE < totalRecords,
+            skipHistory: !isLastChunk,
           },
           headers: session
             ? {
@@ -485,15 +491,26 @@ export default function Import() {
             : undefined,
         })
 
-        if (error) throw new Error(error.message || 'Erro desconhecido ao chamar a função')
-        if (data?.error) throw new Error(data.error)
+        if (error) {
+          throw new Error(
+            `Falha no lote ${chunkNumber}/${totalChunks}: ${error.message || 'erro desconhecido'}`,
+          )
+        }
+        if (data?.error) {
+          throw new Error(`Falha no lote ${chunkNumber}/${totalChunks}: ${data.error}`)
+        }
 
         totalInserted += data.inserted || 0
         totalRejected += data.rejected || 0
         if (Array.isArray(data.errors)) allErrors.push(...data.errors)
 
         const done = Math.min(offset + chunk.length, totalRecords)
-        setImportProgress(Math.round((done / totalRecords) * 100))
+        setImportProgress(
+          Math.min(
+            MAX_PROGRESS_DURING_IMPORT,
+            MIN_PROGRESS_DURING_IMPORT + Math.round((done / totalRecords) * PROGRESS_RANGE),
+          ),
+        )
       }
 
       const finalResult: ImportResult = {
