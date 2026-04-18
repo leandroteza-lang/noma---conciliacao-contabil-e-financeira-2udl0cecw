@@ -1273,7 +1273,9 @@ Deno.serve(async (req: Request) => {
             .range(fetchPage * 1000, (fetchPage + 1) * 1000 - 1)
 
           if (existingAccError) {
-            throw new Error('Erro ao buscar contas bancárias existentes: ' + existingAccError.message)
+            throw new Error(
+              'Erro ao buscar contas bancárias existentes: ' + existingAccError.message,
+            )
           }
 
           if (pageData && pageData.length > 0) {
@@ -1384,7 +1386,11 @@ Deno.serve(async (req: Request) => {
             if (insErr) {
               console.error(`[BANK_ACCOUNTS] Insert error:`, insErr)
               chunk.forEach((c: any) => {
-                addError(c._rowNum, `Erro na inserção: ${insErr.message} - Conta: ${c.account_number}`, c)
+                addError(
+                  c._rowNum,
+                  `Erro na inserção: ${insErr.message} - Conta: ${c.account_number}`,
+                  c,
+                )
               })
             }
           }
@@ -1399,7 +1405,11 @@ Deno.serve(async (req: Request) => {
             if (updErr) {
               console.error(`[BANK_ACCOUNTS] Upsert error:`, updErr)
               chunk.forEach((c: any) => {
-                addError(c._rowNum, `Erro na atualização: ${updErr.message} - Conta: ${c.account_number}`, c)
+                addError(
+                  c._rowNum,
+                  `Erro na atualização: ${updErr.message} - Conta: ${c.account_number}`,
+                  c,
+                )
               })
             }
           }
@@ -2737,7 +2747,11 @@ Deno.serve(async (req: Request) => {
           } else if (orgs && orgs.length > 0) {
             orgId = orgs[0].id
           } else {
-            addError(rowNum, 'Nenhuma empresa associada ao usuário para realizar a importação.', row)
+            addError(
+              rowNum,
+              'Nenhuma empresa associada ao usuário para realizar a importação.',
+              row,
+            )
             continue
           }
         }

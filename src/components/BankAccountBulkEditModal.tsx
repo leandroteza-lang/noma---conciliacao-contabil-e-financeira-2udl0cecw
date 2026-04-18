@@ -102,9 +102,8 @@ export function BankAccountBulkEditModal({ isOpen, onClose, onSave, count }: any
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="none">Não alterar</SelectItem>
-                <SelectItem value="Operacional">Operacional</SelectItem>
-                <SelectItem value="Investimento">Investimento</SelectItem>
-                <SelectItem value="Financiamento">Financiamento</SelectItem>
+                <SelectItem value="B">B</SelectItem>
+                <SelectItem value="C">C</SelectItem>
               </SelectContent>
             </Select>
           </div>
