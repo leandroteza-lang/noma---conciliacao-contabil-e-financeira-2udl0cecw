@@ -37,7 +37,10 @@ Deno.serve(async (req: Request) => {
     const payload = await req.json()
     requestPayload = payload
 
-    if ((payload.action === 'PROCESS_BACKGROUND' || payload.action === 'PROCESS_CHUNK') && payload.userId) {
+    if (
+      (payload.action === 'PROCESS_BACKGROUND' || payload.action === 'PROCESS_CHUNK') &&
+      payload.userId
+    ) {
       user = { id: payload.userId }
     } else {
       const userResponse = await fetch(`${supabaseUrl}/auth/v1/user`, {
@@ -57,7 +60,7 @@ Deno.serve(async (req: Request) => {
     }
 
     const supabase =
-      (payload.action === 'PROCESS_BACKGROUND' || payload.action === 'PROCESS_CHUNK')
+      payload.action === 'PROCESS_BACKGROUND' || payload.action === 'PROCESS_CHUNK'
         ? supabaseAdmin
         : createClient(supabaseUrl, supabaseKey, {
             global: { headers: { Authorization: authHeader } },
@@ -125,8 +128,10 @@ Deno.serve(async (req: Request) => {
                 if (!isNaN(date.getTime())) return date.toISOString().split('T')[0]
               }
               if (typeof val === 'string') {
-                const clean = val.trim()
-                const ptBrMatch = clean.match(/(\d{2})[\/\-](\d{2})[\/\-](\d{4})/)
+                let clean = val.trim()
+                if (clean.includes('T')) clean = clean.split('T')[0]
+
+                const ptBrMatch = clean.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/)
                 if (ptBrMatch) {
                   const day = parseInt(ptBrMatch[1], 10)
                   const month = parseInt(ptBrMatch[2], 10)
@@ -142,15 +147,27 @@ Deno.serve(async (req: Request) => {
                     return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
                   }
                 }
-                const isoMatch = clean.match(/(\d{4})[\/\-](\d{2})[\/\-](\d{2})/)
-                if (isoMatch) return `${isoMatch[1]}-${isoMatch[2]}-${isoMatch[3]}`
+
+                const ptBrShortMatch = clean.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2})$/)
+                if (ptBrShortMatch) {
+                  const day = parseInt(ptBrShortMatch[1], 10)
+                  const month = parseInt(ptBrShortMatch[2], 10)
+                  let year = parseInt(ptBrShortMatch[3], 10)
+                  year = year < 50 ? 2000 + year : 1900 + year
+                  if (month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+                    return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+                  }
+                }
+
+                const isoMatch = clean.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})$/)
+                if (isoMatch) {
+                  return `${isoMatch[1]}-${String(isoMatch[2]).padStart(2, '0')}-${String(isoMatch[3]).padStart(2, '0')}`
+                }
               }
               try {
                 const d = new Date(val)
                 if (!isNaN(d.getTime())) return d.toISOString().split('T')[0]
-              } catch (e) {
-                // Ignore invalid dates
-              }
+              } catch (e) {}
               return null
             }
 
@@ -158,6 +175,7 @@ Deno.serve(async (req: Request) => {
               if (val === null || val === undefined || val === '') return null
               if (typeof val === 'number') return val
               let str = String(val).trim()
+              if (/^\-?\d+(\.\d+)?$/.test(str)) return parseFloat(str)
               const commas = (str.match(/,/g) || []).length
               const dots = (str.match(/\./g) || []).length
               if (dots > 0 && commas > 0) {
@@ -390,18 +408,16 @@ Deno.serve(async (req: Request) => {
 
     const safeParseDate = (val: any) => {
       if (val === null || val === undefined || val === '') return null
-
       const numVal = Number(val)
       if (!isNaN(numVal) && String(val).trim() !== '' && numVal > 10000 && numVal < 100000) {
         const date = new Date(Math.round((numVal - 25569) * 86400 * 1000))
-        if (!isNaN(date.getTime())) {
-          return date.toISOString().split('T')[0]
-        }
+        if (!isNaN(date.getTime())) return date.toISOString().split('T')[0]
       }
-
       if (typeof val === 'string') {
-        const clean = val.trim()
-        const ptBrMatch = clean.match(/(\d{2})[\/\-](\d{2})[\/\-](\d{4})/)
+        let clean = val.trim()
+        if (clean.includes('T')) clean = clean.split('T')[0]
+
+        const ptBrMatch = clean.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/)
         if (ptBrMatch) {
           const day = parseInt(ptBrMatch[1], 10)
           const month = parseInt(ptBrMatch[2], 10)
@@ -411,59 +427,45 @@ Deno.serve(async (req: Request) => {
           }
         }
 
-        const isoMatch = clean.match(/(\d{4})[\/\-](\d{2})[\/\-](\d{2})/)
-        if (isoMatch) {
-          const year = parseInt(isoMatch[1], 10)
-          const month = parseInt(isoMatch[2], 10)
-          const day = parseInt(isoMatch[3], 10)
-          if (year >= 1900 && year <= 2100 && month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+        const ptBrShortMatch = clean.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2})$/)
+        if (ptBrShortMatch) {
+          const day = parseInt(ptBrShortMatch[1], 10)
+          const month = parseInt(ptBrShortMatch[2], 10)
+          let year = parseInt(ptBrShortMatch[3], 10)
+          year = year < 50 ? 2000 + year : 1900 + year
+          if (month >= 1 && month <= 12 && day >= 1 && day <= 31) {
             return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
           }
         }
-      }
 
+        const isoMatch = clean.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})$/)
+        if (isoMatch) {
+          return `${isoMatch[1]}-${String(isoMatch[2]).padStart(2, '0')}-${String(isoMatch[3]).padStart(2, '0')}`
+        }
+      }
       try {
         const d = new Date(val)
-        if (!isNaN(d.getTime())) {
-          const year = d.getFullYear()
-          if (year >= 1900 && year <= 2100) {
-            return d.toISOString().split('T')[0]
-          }
-        }
-      } catch (e) {
-        // Ignore invalid dates
-      }
-
+        if (!isNaN(d.getTime())) return d.toISOString().split('T')[0]
+      } catch (e) {}
       return null
     }
 
     const safeParseNum = (val: any) => {
       if (val === null || val === undefined || val === '') return null
       if (typeof val === 'number') return val
-
       let str = String(val).trim()
-
+      if (/^\-?\d+(\.\d+)?$/.test(str)) return parseFloat(str)
       const commas = (str.match(/,/g) || []).length
       const dots = (str.match(/\./g) || []).length
-
       if (dots > 0 && commas > 0) {
         const lastComma = str.lastIndexOf(',')
         const lastDot = str.lastIndexOf('.')
-        if (lastComma > lastDot) {
-          str = str.replace(/\./g, '').replace(',', '.')
-        } else {
-          str = str.replace(/,/g, '')
-        }
-      } else if (commas === 1 && dots === 0) {
-        str = str.replace(',', '.')
-      } else if (commas > 1 && dots === 0) {
-        str = str.replace(/,/g, '')
-      } else if (dots > 1 && commas === 0) {
-        str = str.replace(/\./g, '')
-      }
-
+        if (lastComma > lastDot) str = str.replace(/\./g, '').replace(',', '.')
+        else str = str.replace(/,/g, '')
+      } else if (commas === 1 && dots === 0) str = str.replace(',', '.')
+      else if (commas > 1 && dots === 0) str = str.replace(/,/g, '')
+      else if (dots > 1 && commas === 0) str = str.replace(/\./g, '')
       str = str.replace(/[^0-9\.\-]/g, '')
-
       const parsed = parseFloat(str)
       return isNaN(parsed) ? null : parsed
     }
@@ -2686,20 +2688,23 @@ Deno.serve(async (req: Request) => {
         EdgeRuntime.waitUntil(
           (async () => {
             try {
-              const resNext = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/import-data`, {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  Authorization: `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+              const resNext = await fetch(
+                `${Deno.env.get('SUPABASE_URL')}/functions/v1/import-data`,
+                {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+                  },
+                  body: JSON.stringify({
+                    ...payload,
+                    chunkIndex: nextChunk,
+                    inserted: newInserted,
+                    rejected: newRejected,
+                    errors: newErrors,
+                  }),
                 },
-                body: JSON.stringify({
-                  ...payload,
-                  chunkIndex: nextChunk,
-                  inserted: newInserted,
-                  rejected: newRejected,
-                  errors: newErrors,
-                }),
-              })
+              )
               if (!resNext.ok) {
                 const errText = await resNext.text()
                 throw new Error(`HTTP ${resNext.status}: ${errText}`)
@@ -2713,7 +2718,10 @@ Deno.serve(async (req: Request) => {
                   .from('import_history')
                   .update({
                     status: 'Error',
-                    errors_list: [...newErrors, { error: `Falha ao iniciar próximo chunk: ${e.message}` }].slice(0, 100),
+                    errors_list: [
+                      ...newErrors,
+                      { error: `Falha ao iniciar próximo chunk: ${e.message}` },
+                    ].slice(0, 100),
                   })
                   .eq('id', payload.importId)
               }
@@ -2768,20 +2776,23 @@ Deno.serve(async (req: Request) => {
         EdgeRuntime.waitUntil(
           (async () => {
             try {
-              const resNextBg = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/import-data`, {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  Authorization: `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+              const resNextBg = await fetch(
+                `${Deno.env.get('SUPABASE_URL')}/functions/v1/import-data`,
+                {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+                  },
+                  body: JSON.stringify({
+                    ...payload,
+                    offset: nextOffset,
+                    inserted: newInserted,
+                    rejected: newRejected,
+                    errors: newErrors,
+                  }),
                 },
-                body: JSON.stringify({
-                  ...payload,
-                  offset: nextOffset,
-                  inserted: newInserted,
-                  rejected: newRejected,
-                  errors: newErrors,
-                }),
-              })
+              )
               if (!resNextBg.ok) {
                 const errText = await resNextBg.text()
                 throw new Error(`HTTP ${resNextBg.status}: ${errText}`)
@@ -2795,7 +2806,10 @@ Deno.serve(async (req: Request) => {
                   .from('import_history')
                   .update({
                     status: 'Error',
-                    errors_list: [...newErrors, { error: `Falha ao iniciar próximo chunk bg: ${e.message}` }].slice(0, 100),
+                    errors_list: [
+                      ...newErrors,
+                      { error: `Falha ao iniciar próximo chunk bg: ${e.message}` },
+                    ].slice(0, 100),
                   })
                   .eq('id', payload.importId)
               }
@@ -2828,7 +2842,11 @@ Deno.serve(async (req: Request) => {
   } catch (err: any) {
     if (req.method === 'POST') {
       try {
-        if ((requestPayload.action === 'PROCESS_BACKGROUND' || requestPayload.action === 'PROCESS_CHUNK') && requestPayload.importId) {
+        if (
+          (requestPayload.action === 'PROCESS_BACKGROUND' ||
+            requestPayload.action === 'PROCESS_CHUNK') &&
+          requestPayload.importId
+        ) {
           const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
           if (supabaseServiceKey) {
             const supabaseAdmin = createClient(Deno.env.get('SUPABASE_URL')!, supabaseServiceKey)
