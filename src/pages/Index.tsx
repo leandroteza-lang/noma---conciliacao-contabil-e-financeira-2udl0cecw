@@ -272,7 +272,17 @@ export default function Index() {
     if (accountFilter) {
       const selectedChartAccount = chartAccounts.find((ca) => ca.id === accountFilter)
       if (selectedChartAccount) {
-        matchesAccount = acc.account_code === selectedChartAccount.account_code
+        const accCode = acc.account_code?.trim().toLowerCase()
+        const accClass = acc.classification?.trim().toLowerCase()
+        const selCode = selectedChartAccount.account_code?.trim().toLowerCase()
+        const selClass = selectedChartAccount.classification?.trim().toLowerCase()
+
+        matchesAccount = !!(
+          (accCode && selCode && accCode === selCode) ||
+          (accCode && selClass && accCode === selClass) ||
+          (accClass && selClass && accClass === selClass) ||
+          (accClass && selCode && accClass === selCode)
+        )
       } else {
         matchesAccount = false
       }
