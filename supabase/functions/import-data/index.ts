@@ -46,9 +46,11 @@ Deno.serve(async (req: Request) => {
       global: { headers: { Authorization: authHeader } },
       auth: { persistSession: false },
     })
-    
+
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
-    const supabaseAdmin = supabaseServiceKey ? createClient(supabaseUrl, supabaseServiceKey) : supabase
+    const supabaseAdmin = supabaseServiceKey
+      ? createClient(supabaseUrl, supabaseServiceKey)
+      : supabase
 
     const payload = await req.json()
     let records = payload.records
@@ -63,6 +65,109 @@ Deno.serve(async (req: Request) => {
         : null
     const rootMapping = payload.rootMapping || {}
     const columnMapping = payload.columnMapping || {}
+
+    const createRowAccessor = (row: any) => {
+      const cleanRowKeys: Record<string, string> = {}
+      const keys = Object.keys(row)
+      for (let i = 0; i < keys.length; i++) {
+        const k = keys[i]
+        cleanRowKeys[
+          String(k)
+            .replace(/[^A-Z0-9]/gi, '')
+            .toUpperCase()
+        ] = k
+      }
+      return (possibleKeys: string[]) => {
+        for (let i = 0; i < possibleKeys.length; i++) {
+          const cleanPk = String(possibleKeys[i])
+            .replace(/[^A-Z0-9]/gi, '')
+            .toUpperCase()
+          const actualKey = cleanRowKeys[cleanPk]
+          if (actualKey !== undefined && row[actualKey] !== undefined) {
+            return row[actualKey]
+          }
+        }
+        return null
+      }
+    }
+
+    const safeParseDate = (val: any) => {
+      if (val === null || val === undefined || val === '') return null
+
+      const numVal = Number(val)
+      if (!isNaN(numVal) && String(val).trim() !== '' && numVal > 10000 && numVal < 100000) {
+        const date = new Date(Math.round((numVal - 25569) * 86400 * 1000))
+        if (!isNaN(date.getTime())) {
+          return date.toISOString().split('T')[0]
+        }
+      }
+
+      if (typeof val === 'string') {
+        const clean = val.trim().substring(0, 20)
+        const ptBrMatch = clean.match(/^(\d{2})[\/\-](\d{2})[\/\-](\d{4})/)
+        if (ptBrMatch) {
+          const day = parseInt(ptBrMatch[1], 10)
+          const month = parseInt(ptBrMatch[2], 10)
+          const year = parseInt(ptBrMatch[3], 10)
+          if (year >= 1900 && year <= 2100 && month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+            return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+          }
+        }
+
+        const isoMatch = clean.match(/^(\d{4})[\/\-](\d{2})[\/\-](\d{2})/)
+        if (isoMatch) {
+          const year = parseInt(isoMatch[1], 10)
+          const month = parseInt(isoMatch[2], 10)
+          const day = parseInt(isoMatch[3], 10)
+          if (year >= 1900 && year <= 2100 && month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+            return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+          }
+        }
+      }
+
+      try {
+        const d = new Date(val)
+        if (!isNaN(d.getTime())) {
+          const year = d.getFullYear()
+          if (year >= 1900 && year <= 2100) {
+            return d.toISOString().split('T')[0]
+          }
+        }
+      } catch (e) {}
+
+      return null
+    }
+
+    const safeParseNum = (val: any) => {
+      if (val === null || val === undefined || val === '') return null
+      if (typeof val === 'number') return val
+
+      let str = String(val).trim()
+
+      const commas = (str.match(/,/g) || []).length
+      const dots = (str.match(/\./g) || []).length
+
+      if (dots > 0 && commas > 0) {
+        const lastComma = str.lastIndexOf(',')
+        const lastDot = str.lastIndexOf('.')
+        if (lastComma > lastDot) {
+          str = str.replace(/\./g, '').replace(',', '.')
+        } else {
+          str = str.replace(/,/g, '')
+        }
+      } else if (commas === 1 && dots === 0) {
+        str = str.replace(',', '.')
+      } else if (commas > 1 && dots === 0) {
+        str = str.replace(/,/g, '')
+      } else if (dots > 1 && commas === 0) {
+        str = str.replace(/\./g, '')
+      }
+
+      str = str.replace(/[^0-9\.\-]/g, '')
+
+      const parsed = parseFloat(str)
+      return isNaN(parsed) ? null : parsed
+    }
 
     if (payload.fileBase64) {
       try {
@@ -141,31 +246,38 @@ Deno.serve(async (req: Request) => {
 
           if (payload.action === 'PREVIEW') {
             const headers = rawRecords.length > 0 ? Object.keys(rawRecords[0]) : []
-            return new Response(JSON.stringify({
-              sheets: sheetNames,
-              headers: headers,
-              previewRows: rawRecords.slice(0, 3),
-              totalRecords: rawRecords.length
-            }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+            return new Response(
+              JSON.stringify({
+                sheets: sheetNames,
+                headers: headers,
+                previewRows: rawRecords.slice(0, 3),
+                totalRecords: rawRecords.length,
+              }),
+              { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+            )
           }
         } else {
           const wbSheets = XLSX.read(bytes, { type: 'array', bookSheets: true })
           sheetNames = wbSheets.SheetNames
-          const targetSheet = payload.sheetName && sheetNames.includes(payload.sheetName)
-            ? payload.sheetName
-            : sheetNames[0]
+          const targetSheet =
+            payload.sheetName && sheetNames.includes(payload.sheetName)
+              ? payload.sheetName
+              : sheetNames[0]
 
           if (payload.action === 'PREVIEW') {
             const workbookPreview = XLSX.read(bytes, { type: 'array', sheets: [targetSheet] })
             const worksheetPreview = workbookPreview.Sheets[targetSheet]
             const previewRawRecords = XLSX.utils.sheet_to_json(worksheetPreview, { defval: '' })
             const headers = previewRawRecords.length > 0 ? Object.keys(previewRawRecords[0]) : []
-            return new Response(JSON.stringify({
-              sheets: sheetNames,
-              headers: headers,
-              previewRows: previewRawRecords.slice(0, 3),
-              totalRecords: previewRawRecords.length
-            }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+            return new Response(
+              JSON.stringify({
+                sheets: sheetNames,
+                headers: headers,
+                previewRows: previewRawRecords.slice(0, 3),
+                totalRecords: previewRawRecords.length,
+              }),
+              { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+            )
           }
 
           const workbook = XLSX.read(bytes, { type: 'array', sheets: [targetSheet] })
@@ -177,7 +289,7 @@ Deno.serve(async (req: Request) => {
           const normalized: any = {}
           normalized._originalIndex = index + 1
           for (const key in r) {
-            const mappedKey = columnMapping[key] || key;
+            const mappedKey = columnMapping[key] || key
             const cleanKey = mappedKey
               .normalize('NFD')
               .replace(/[\u0300-\u036f]/g, '')
@@ -189,22 +301,12 @@ Deno.serve(async (req: Request) => {
           return normalized
         })
 
-        const getValHelper = (r: any, possibleKeys: string[]) => {
-          const keys = Object.keys(r)
-          for (const pk of possibleKeys) {
-            const cleanPk = pk.replace(/[^A-Z0-9]/g, '')
-            for (const k of keys) {
-              const cleanK = k.replace(/[^A-Z0-9]/g, '')
-              if (cleanK === cleanPk) return r[k]
-            }
-          }
-          return null
-        }
-
         if (type === 'COST_CENTERS') {
           records.sort((a: any, b: any) => {
-            const codeA = String(getValHelper(a, ['COD', 'CODIGO']) || '')
-            const codeB = String(getValHelper(b, ['COD', 'CODIGO']) || '')
+            const getValA = createRowAccessor(a)
+            const getValB = createRowAccessor(b)
+            const codeA = String(getValA(['COD', 'CODIGO']) || '')
+            const codeB = String(getValB(['COD', 'CODIGO']) || '')
             return codeA.length - codeB.length
           })
         }
@@ -255,7 +357,10 @@ Deno.serve(async (req: Request) => {
       if (errors.length < 100) {
         errors.push({ row: rowNum, error: msg })
       } else if (errors.length === 100) {
-        errors.push({ row: 0, error: 'Muitos erros encontrados. Exibindo apenas os 100 primeiros.' })
+        errors.push({
+          row: 0,
+          error: 'Muitos erros encontrados. Exibindo apenas os 100 primeiros.',
+        })
       }
     }
 
@@ -289,27 +394,16 @@ Deno.serve(async (req: Request) => {
       for (let i = 0; i < records.length; i++) {
         const row = records[i]
         const rowNum = i + 1
+        const getVal = createRowAccessor(row)
 
-        const getVal = (r: any, possibleKeys: string[]) => {
-          const keys = Object.keys(r)
-          for (const pk of possibleKeys) {
-            const cleanPk = pk.replace(/[^A-Z0-9]/g, '')
-            for (const k of keys) {
-              const cleanK = k.replace(/[^A-Z0-9]/g, '')
-              if (cleanK === cleanPk) return r[k]
-            }
-          }
-          return null
-        }
-
-        const nome = getVal(row, ['NOME', 'RAZAOSOCIAL', 'EMPRESA'])
+        const nome = getVal(['NOME', 'RAZAOSOCIAL', 'EMPRESA'])
         if (!allowIncomplete && (!nome || String(nome).trim() === '')) {
           addError(rowNum, 'A coluna NOME está vazia.', row)
           continue
         }
 
-        const cnpj = String(getVal(row, ['CNPJ']) || '').trim()
-        const cpf = String(getVal(row, ['CPF']) || '').trim()
+        const cnpj = String(getVal(['CNPJ']) || '').trim()
+        const cpf = String(getVal(['CPF']) || '').trim()
 
         if (cnpj) {
           const { data: existingCnpj } = await supabase
@@ -329,10 +423,10 @@ Deno.serve(async (req: Request) => {
           name: String(nome || `Empresa ${rowNum}`),
           cnpj: cnpj || null,
           cpf: cpf || null,
-          email: String(getVal(row, ['EMAIL']) || ''),
-          phone: String(getVal(row, ['TELEFONE', 'FONE']) || ''),
-          address: String(getVal(row, ['ENDERECO', 'END']) || ''),
-          observations: String(getVal(row, ['OBSERVACOES', 'OBS']) || ''),
+          email: String(getVal(['EMAIL']) || ''),
+          phone: String(getVal(['TELEFONE', 'FONE']) || ''),
+          address: String(getVal(['ENDERECO', 'END']) || ''),
+          observations: String(getVal(['OBSERVACOES', 'OBS']) || ''),
           status: true,
         })
 
@@ -346,26 +440,15 @@ Deno.serve(async (req: Request) => {
       for (let i = 0; i < records.length; i++) {
         const row = records[i]
         const rowNum = i + 1
+        const getVal = createRowAccessor(row)
 
-        const getVal = (r: any, possibleKeys: string[]) => {
-          const keys = Object.keys(r)
-          for (const pk of possibleKeys) {
-            const cleanPk = pk.replace(/[^A-Z0-9]/g, '')
-            for (const k of keys) {
-              const cleanK = k.replace(/[^A-Z0-9]/g, '')
-              if (cleanK === cleanPk) return r[k]
-            }
-          }
-          return null
-        }
-
-        const nome = getVal(row, ['NOME', 'DEPARTAMENTO'])
+        const nome = getVal(['NOME', 'DEPARTAMENTO'])
         if (!allowIncomplete && (!nome || String(nome).trim() === '')) {
           addError(rowNum, 'A coluna NOME está vazia.', row)
           continue
         }
 
-        const codigo = String(getVal(row, ['CODIGO', 'COD']) || '').trim()
+        const codigo = String(getVal(['CODIGO', 'COD']) || '').trim()
 
         if (codigo) {
           const { data: existingCode } = await supabase
@@ -412,32 +495,21 @@ Deno.serve(async (req: Request) => {
       for (let i = 0; i < records.length; i++) {
         const row = records[i]
         const rowNum = i + 1
+        const getVal = createRowAccessor(row)
 
-        const getVal = (r: any, possibleKeys: string[]) => {
-          const keys = Object.keys(r)
-          for (const pk of possibleKeys) {
-            const cleanPk = pk.replace(/[^A-Z0-9]/g, '')
-            for (const k of keys) {
-              const cleanK = k.replace(/[^A-Z0-9]/g, '')
-              if (cleanK === cleanPk) return r[k]
-            }
-          }
-          return null
-        }
-
-        const nome = getVal(row, ['NOME'])
+        const nome = getVal(['NOME'])
         if (!allowIncomplete && (!nome || String(nome).trim() === '')) {
           addError(rowNum, 'A coluna NOME é obrigatória.', row)
           continue
         }
 
-        const email = String(getVal(row, ['EMAIL']) || '').trim()
+        const email = String(getVal(['EMAIL']) || '').trim()
         if (!email) {
           addError(rowNum, 'A coluna EMAIL é obrigatória para importação de usuários.', row)
           continue
         }
 
-        const rawCpf = String(getVal(row, ['CPF']) || '').trim()
+        const rawCpf = String(getVal(['CPF']) || '').trim()
         let cpf = rawCpf
         const cpfDigits = rawCpf.replace(/\D/g, '')
         if (cpfDigits.length === 11) {
@@ -445,7 +517,7 @@ Deno.serve(async (req: Request) => {
         }
 
         let depId = null
-        const depCode = String(getVal(row, ['DEPARTAMENTOCODIGO', 'DEPARTAMENTO']) || '').trim()
+        const depCode = String(getVal(['DEPARTAMENTOCODIGO', 'DEPARTAMENTO']) || '').trim()
         if (depCode) {
           const { data: dep } = await supabase
             .from('departments')
@@ -464,7 +536,7 @@ Deno.serve(async (req: Request) => {
         const action = row['_action'] || 'insert'
         const existingId = row['_existingId']
 
-        const perfil = String(getVal(row, ['PERFIL', 'ROLE']) || 'collaborator').toLowerCase()
+        const perfil = String(getVal(['PERFIL', 'ROLE']) || 'collaborator').toLowerCase()
         const validRoles = ['admin', 'supervisor', 'collaborator', 'client_user']
         const roleToInsert = validRoles.includes(perfil) ? perfil : 'collaborator'
 
@@ -519,9 +591,9 @@ Deno.serve(async (req: Request) => {
               deleted_at: null,
             }
 
-            const telefoneVal = getVal(row, ['TELEFONE', 'CELULAR'])
-            const enderecoVal = getVal(row, ['ENDERECO', 'END'])
-            const obsVal = getVal(row, ['OBSERVACOES', 'OBS'])
+            const telefoneVal = getVal(['TELEFONE', 'CELULAR'])
+            const enderecoVal = getVal(['ENDERECO', 'END'])
+            const obsVal = getVal(['OBSERVACOES', 'OBS'])
 
             if (telefoneVal !== null && telefoneVal !== undefined)
               updatePayload.phone = String(telefoneVal).trim() || null
@@ -599,7 +671,7 @@ Deno.serve(async (req: Request) => {
               name: String(nome),
               role: roleToInsert,
               cpf: cpf || null,
-              phone: String(getVal(row, ['TELEFONE', 'CELULAR']) || '') || null,
+              phone: String(getVal(['TELEFONE', 'CELULAR']) || '') || null,
               department_id: depId || null,
               admin_id: user.id,
             },
@@ -629,8 +701,8 @@ Deno.serve(async (req: Request) => {
             await supabaseAdmin
               .from('cadastro_usuarios')
               .update({
-                address: String(getVal(row, ['ENDERECO', 'END']) || '') || null,
-                observations: String(getVal(row, ['OBSERVACOES', 'OBS']) || '') || null,
+                address: String(getVal(['ENDERECO', 'END']) || '') || null,
+                observations: String(getVal(['OBSERVACOES', 'OBS']) || '') || null,
               })
               .eq('id', profile.id)
 
@@ -760,21 +832,10 @@ Deno.serve(async (req: Request) => {
       for (let i = 0; i < records.length; i++) {
         const row = records[i]
         const rowNum = i + 1
+        const getVal = createRowAccessor(row)
 
-        const getVal = (r: any, possibleKeys: string[]) => {
-          const keys = Object.keys(r)
-          for (const pk of possibleKeys) {
-            const cleanPk = pk.replace(/[^A-Z0-9]/g, '')
-            for (const k of keys) {
-              const cleanK = k.replace(/[^A-Z0-9]/g, '')
-              if (cleanK === cleanPk) return r[k]
-            }
-          }
-          return null
-        }
-
-        const empresa = getVal(row, ['EMPRESA'])
-        const contaContabil = getVal(row, ['CONTACONTABIL', 'CONTA_CONTABIL'])
+        const empresa = getVal(['EMPRESA'])
+        const contaContabil = getVal(['CONTACONTABIL', 'CONTA_CONTABIL'])
 
         let orgId = organizationId
         if (!orgId) {
@@ -795,9 +856,9 @@ Deno.serve(async (req: Request) => {
         }
 
         const rawAccountNumber = String(
-          getVal(row, ['NROCONTA', 'NUMERODACONTA', 'CONTA', 'NUMERO']) || '',
+          getVal(['NROCONTA', 'NUMERODACONTA', 'CONTA', 'NUMERO']) || '',
         ).trim()
-        const rawCheckDigit = String(getVal(row, ['DIGITOCONTA', 'DIGITO', 'DV']) || '').trim()
+        const rawCheckDigit = String(getVal(['DIGITOCONTA', 'DIGITO', 'DV']) || '').trim()
 
         const normalizedAcc = normalizeAcc(rawAccountNumber)
         const normalizedDigit = normalizeAcc(rawCheckDigit)
@@ -815,12 +876,12 @@ Deno.serve(async (req: Request) => {
         toInsertBankAccounts.push({
           organization_id: orgId,
           account_code: String(contaContabil || ''),
-          account_type: String(getVal(row, ['CODCAIXA', 'TIPODECONTA', 'TIPO']) || ''),
-          description: String(getVal(row, ['DESCRICAO', 'NOME']) || ''),
-          bank_code: String(getVal(row, ['NUMBANCO', 'BANCO', 'CODBANCO']) || ''),
-          agency: String(getVal(row, ['NUMAGENCIA', 'AGENCIA']) || ''),
+          account_type: String(getVal(['CODCAIXA', 'TIPODECONTA', 'TIPO']) || ''),
+          description: String(getVal(['DESCRICAO', 'NOME']) || ''),
+          bank_code: String(getVal(['NUMBANCO', 'BANCO', 'CODBANCO']) || ''),
+          agency: String(getVal(['NUMAGENCIA', 'AGENCIA']) || ''),
           account_number: rawAccountNumber,
-          classification: String(getVal(row, ['CLASSIFICACAO']) || ''),
+          classification: String(getVal(['CLASSIFICACAO']) || ''),
           check_digit: rawCheckDigit,
           company_name: String(empresa || ''),
         })
@@ -832,25 +893,17 @@ Deno.serve(async (req: Request) => {
         const { error: insErr } = await supabaseAdmin.from('bank_accounts').insert(chunk)
         if (insErr) {
           chunk.forEach((c: any) => {
-            addError(0, `Erro na inserção em lote: ${insErr.message} - Conta: ${c.account_number}`, c)
+            addError(
+              0,
+              `Erro na inserção em lote: ${insErr.message} - Conta: ${c.account_number}`,
+              c,
+            )
           })
         } else {
           inserted += chunk.length
         }
       }
     } else if (type === 'COST_CENTERS') {
-      const getVal = (r: any, possibleKeys: string[]) => {
-        const keys = Object.keys(r)
-        for (const pk of possibleKeys) {
-          const cleanPk = pk.replace(/[^A-Z0-9]/g, '')
-          for (const k of keys) {
-            const cleanK = k.replace(/[^A-Z0-9]/g, '')
-            if (cleanK === cleanPk) return r[k]
-          }
-        }
-        return null
-      }
-
       if (organizationId && !validOrgs.has(organizationId)) {
         throw new Error('A empresa selecionada é inválida ou você não tem permissão.')
       }
@@ -860,7 +913,8 @@ Deno.serve(async (req: Request) => {
       for (let i = 0; i < records.length; i++) {
         const row = records[i]
         const rowNum = row._originalIndex || (payload.offset || 0) + i + 1
-        const empresa = getVal(row, ['EMPRESA'])
+        const getVal = createRowAccessor(row)
+        const empresa = getVal(['EMPRESA'])
 
         let orgId = organizationId
         if (!orgId) {
@@ -870,7 +924,11 @@ Deno.serve(async (req: Request) => {
           }
           orgId = orgMap.get(String(empresa).trim().toLowerCase())
           if (!orgId) {
-            addError(rowNum, `A empresa "${empresa}" não foi encontrada na sua conta. (Obrigatório)`, row)
+            addError(
+              rowNum,
+              `A empresa "${empresa}" não foi encontrada na sua conta. (Obrigatório)`,
+              row,
+            )
             continue
           }
         }
@@ -878,7 +936,7 @@ Deno.serve(async (req: Request) => {
         if (!recordsByOrg.has(orgId)) {
           recordsByOrg.set(orgId, [])
         }
-        recordsByOrg.get(orgId)!.push({ row, rowNum })
+        recordsByOrg.get(orgId)!.push({ row, rowNum, getVal })
       }
 
       let totalToInsert = 0
@@ -887,7 +945,7 @@ Deno.serve(async (req: Request) => {
       const simulationDetails = []
 
       for (const [orgId, orgRecords] of recordsByOrg.entries()) {
-        if (!orgId) continue;
+        if (!orgId) continue
 
         let existingCCs: any[] = []
         let fetchHasMoreCC = true
@@ -911,7 +969,7 @@ Deno.serve(async (req: Request) => {
         }
 
         const ccCodeMap = new Map<string, any>()
-        existingCCs.forEach(cc => {
+        existingCCs.forEach((cc) => {
           if (cc.code) ccCodeMap.set(cc.code.trim(), cc)
         })
 
@@ -938,7 +996,7 @@ Deno.serve(async (req: Request) => {
 
         const tgaNameMap = new Map<string, string>()
         const tgaCodeMap = new Map<string, string>()
-        existingTga.forEach(tga => {
+        existingTga.forEach((tga) => {
           if (tga.nome) tgaNameMap.set(tga.nome.trim().toLowerCase(), tga.id)
           if (tga.codigo) tgaCodeMap.set(tga.codigo.trim().toUpperCase(), tga.id)
         })
@@ -948,9 +1006,9 @@ Deno.serve(async (req: Request) => {
         const processedIds = new Set<string>()
 
         for (const item of orgRecords) {
-          const { row, rowNum } = item
-          const code = getVal(row, ['COD', 'CODIGO'])
-          const description = getVal(row, ['DESCRICAO', 'NOME'])
+          const { row, rowNum, getVal } = item
+          const code = getVal(['COD', 'CODIGO'])
+          const description = getVal(['DESCRICAO', 'NOME'])
 
           if (!allowIncomplete && (!code || String(code).trim() === '')) {
             addError(rowNum, 'A coluna Código está vazia.', row)
@@ -974,13 +1032,17 @@ Deno.serve(async (req: Request) => {
             parentId = parent?.id
 
             if (!parentId && !allowIncomplete) {
-              addError(rowNum, `Centro de custo pai "${parentCode}" não encontrado para hierarquia.`, row)
+              addError(
+                rowNum,
+                `Centro de custo pai "${parentCode}" não encontrado para hierarquia.`,
+                row,
+              )
               continue
             }
           }
 
           let tipoTgaId = null
-          const strTipoTga = String(getVal(row, ['TIPOTGA']) || '').trim()
+          const strTipoTga = String(getVal(['TIPOTGA']) || '').trim()
           if (strTipoTga) {
             const byName = tgaNameMap.get(strTipoTga.toLowerCase())
             const byCode = tgaCodeMap.get(strTipoTga.toUpperCase())
@@ -998,34 +1060,34 @@ Deno.serve(async (req: Request) => {
             code: strCode,
             description: String(description || ''),
             parent_id: parentId || null,
-            type_tga: String(getVal(row, ['TIPO']) || ''),
+            type_tga: String(getVal(['TIPO']) || ''),
             tipo_tga_id: tipoTgaId,
-            fixed_variable: String(getVal(row, ['FIXOOUVARIAVEL', 'FIXO_VARIAVEL']) || ''),
-            classification: String(getVal(row, ['CLASSIFICACAO']) || ''),
-            operational: String(getVal(row, ['OPERACIONAL']) || ''),
-            tipo_lcto: String(getVal(row, ['TIPOLCTO', 'TIPO_LCTO']) || ''),
-            contabiliza: String(getVal(row, ['CONTABILIZA']) || ''),
-            observacoes: String(getVal(row, ['OBSERVACOES']) || ''),
+            fixed_variable: String(getVal(['FIXOOUVARIAVEL', 'FIXO_VARIAVEL']) || ''),
+            classification: String(getVal(['CLASSIFICACAO']) || ''),
+            operational: String(getVal(['OPERACIONAL']) || ''),
+            tipo_lcto: String(getVal(['TIPOLCTO', 'TIPO_LCTO']) || ''),
+            contabiliza: String(getVal(['CONTABILIZA']) || ''),
+            observacoes: String(getVal(['OBSERVACOES']) || ''),
           }
 
           const existing = ccCodeMap.get(strCode)
 
           if (existing) {
-             if (existing.is_temp) {
-                addError(rowNum, `Centro de Custo duplicado na planilha: "${strCode}".`, row)
-             } else {
-                if (mode !== 'INSERT_ONLY') {
-                   toUpdate.push({ ...payloadData, id: existing.id })
-                   processedIds.add(existing.id)
-                   ccCodeMap.set(strCode, { ...existing, is_temp: true })
-                } else {
-                   processedIds.add(existing.id)
-                }
-             }
+            if (existing.is_temp) {
+              addError(rowNum, `Centro de Custo duplicado na planilha: "${strCode}".`, row)
+            } else {
+              if (mode !== 'INSERT_ONLY') {
+                toUpdate.push({ ...payloadData, id: existing.id })
+                processedIds.add(existing.id)
+                ccCodeMap.set(strCode, { ...existing, is_temp: true })
+              } else {
+                processedIds.add(existing.id)
+              }
+            }
           } else {
-             const newId = crypto.randomUUID()
-             ccCodeMap.set(strCode, { id: newId, is_temp: true })
-             toInsert.push({ ...payloadData, id: newId })
+            const newId = crypto.randomUUID()
+            ccCodeMap.set(strCode, { id: newId, is_temp: true })
+            toInsert.push({ ...payloadData, id: newId })
           }
         }
 
@@ -1079,30 +1141,30 @@ Deno.serve(async (req: Request) => {
             const chunk = toUpdate.slice(i, i + 500)
             const { error: updErr } = await supabaseAdmin.from('cost_centers').upsert(chunk)
             if (updErr) {
-               chunk.forEach((c: any) => {
-                  addError(0, `Erro na atualização em lote: ${updErr.message} - Código: ${c.code}`, c)
-               })
+              chunk.forEach((c: any) => {
+                addError(0, `Erro na atualização em lote: ${updErr.message} - Código: ${c.code}`, c)
+              })
             }
           }
-          
+
           inserted += toInsert.length + toUpdate.length
         }
       }
 
       if (simulation) {
-         return new Response(
-           JSON.stringify({
-             simulation: true,
-             totalToInsert,
-             totalToUpdate,
-             totalToDelete,
-             details: simulationDetails,
-             errors,
-           }),
-           {
-             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-           }
-         )
+        return new Response(
+          JSON.stringify({
+            simulation: true,
+            totalToInsert,
+            totalToUpdate,
+            totalToDelete,
+            details: simulationDetails,
+            errors,
+          }),
+          {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          },
+        )
       }
     } else if (type === 'CHART_ACCOUNTS') {
       if (organizationId && !validOrgs.has(organizationId)) {
@@ -1113,7 +1175,8 @@ Deno.serve(async (req: Request) => {
       for (let i = 0; i < records.length; i++) {
         const row = records[i]
         const rowNum = i + 1
-        const empresa = row['EMPRESA']
+        const getVal = createRowAccessor(row)
+        const empresa = getVal(['EMPRESA'])
 
         let orgId = organizationId
         if (!orgId) {
@@ -1130,7 +1193,7 @@ Deno.serve(async (req: Request) => {
         }
 
         if (!recordsByOrg.has(orgId)) recordsByOrg.set(orgId, [])
-        recordsByOrg.get(orgId)!.push({ row, rowNum })
+        recordsByOrg.get(orgId)!.push({ row, rowNum, getVal })
       }
 
       let totalToInsert = 0
@@ -1194,20 +1257,9 @@ Deno.serve(async (req: Request) => {
         const parsedRows = []
 
         for (const item of orgRecords) {
-          const row = item.row
-          const getVal = (r: any, possibleKeys: string[]) => {
-            const keys = Object.keys(r)
-            for (const pk of possibleKeys) {
-              const cleanPk = pk.replace(/[^A-Z0-9]/g, '')
-              for (const k of keys) {
-                const cleanK = k.replace(/[^A-Z0-9]/g, '')
-                if (cleanK === cleanPk) return r[k]
-              }
-            }
-            return null
-          }
+          const { row, rowNum, getVal } = item
 
-          const code = getVal(row, [
+          const code = getVal([
             'CODIGOREDUZIDO',
             'CODIGO',
             'REDUZIDO',
@@ -1217,7 +1269,7 @@ Deno.serve(async (req: Request) => {
             'CODIGOCONTA',
             'CONTAREDUZIDA',
           ])
-          const name = getVal(row, [
+          const name = getVal([
             'NOMEDACONTA',
             'NOME',
             'DESCRICAO',
@@ -1226,8 +1278,8 @@ Deno.serve(async (req: Request) => {
             'NOMECONTA',
             'DESCRICAOCONTA',
           ])
-          const accountType = getVal(row, ['TIPODECONTA', 'TIPO', 'GRUPOCONTABIL', 'TIPOCONTA'])
-          const classification = getVal(row, [
+          const accountType = getVal(['TIPODECONTA', 'TIPO', 'GRUPOCONTABIL', 'TIPOCONTA'])
+          const classification = getVal([
             'CLASSIFICACAO',
             'CONTACONTABIL',
             'MASCARA',
@@ -1237,16 +1289,11 @@ Deno.serve(async (req: Request) => {
             'CLASSIFICACAOCONTA',
             'MASCARACONTA',
           ])
-          const nature = getVal(row, ['NATUREZA', 'NATUREZACONTA'])
-          const accountBehavior = getVal(row, [
-            'COMPORTAMENTO',
-            'TIPOLANCAMENTO',
-            'TIPOCOMPORTAMENTO',
-          ])
+          const nature = getVal(['NATUREZA', 'NATUREZACONTA'])
+          const accountBehavior = getVal(['COMPORTAMENTO', 'TIPOLANCAMENTO', 'TIPOCOMPORTAMENTO'])
 
           const isEmpty = (v: any) => v === null || v === undefined || String(v).trim() === ''
 
-          // Silently skip rows that are completely empty in the main account fields (likely separator/page rows from ERPs)
           if (isEmpty(code) && isEmpty(name)) {
             continue
           }
@@ -1271,8 +1318,7 @@ Deno.serve(async (req: Request) => {
           const strCode = String(code || '').trim()
           let strClass = String(classification || '').trim()
 
-          // Se tiver máscara explícita (ex: mascara_parametro = 9.9.99.99.99)
-          const maskStr = getVal(row, ['MASCARAPARAMETRO', 'MASCARARELATORIO', 'FORMATO'])
+          const maskStr = getVal(['MASCARAPARAMETRO', 'MASCARARELATORIO', 'FORMATO'])
           if (maskStr && strClass && !strClass.includes('.')) {
             let formatted = ''
             let charIndex = 0
@@ -1290,11 +1336,9 @@ Deno.serve(async (req: Request) => {
                 }
               }
             }
-            // Remove trailing dots se houver
             strClass = formatted.replace(/[\.\-]+$/, '')
           }
 
-          // Aplicar máscara inferida se estiver sem pontos e não formatou acima
           if (strClass && !strClass.includes('.')) {
             const knownMasks = Array.from(detectedMasks)
             const matchedMask = knownMasks.find(
@@ -1491,7 +1535,9 @@ Deno.serve(async (req: Request) => {
       }
 
       const existingTgaSet = new Set(
-        existingTgas.map((t: any) => `${t.organization_id || 'null'}-${String(t.codigo).trim().toUpperCase()}`)
+        existingTgas.map(
+          (t: any) => `${t.organization_id || 'null'}-${String(t.codigo).trim().toUpperCase()}`,
+        ),
       )
 
       const toInsertTga = []
@@ -1499,24 +1545,13 @@ Deno.serve(async (req: Request) => {
       for (let i = 0; i < records.length; i++) {
         const row = records[i]
         const rowNum = i + 1
+        const getVal = createRowAccessor(row)
 
-        const getVal = (r: any, possibleKeys: string[]) => {
-          const keys = Object.keys(r)
-          for (const pk of possibleKeys) {
-            const cleanPk = pk.replace(/[^A-Z0-9]/g, '')
-            for (const k of keys) {
-              const cleanK = k.replace(/[^A-Z0-9]/g, '')
-              if (cleanK === cleanPk) return r[k]
-            }
-          }
-          return null
-        }
-
-        const empresa = getVal(row, ['EMPRESA'])
-        const codigo = getVal(row, ['CODIGO', 'COD'])
-        const nome = getVal(row, ['NOME', 'DESCRICAO'])
-        const abreviacao = getVal(row, ['ABREVIACAO', 'SIGLA'])
-        const observacoes = getVal(row, ['OBSERVACOES', 'OBS'])
+        const empresa = getVal(['EMPRESA'])
+        const codigo = getVal(['CODIGO', 'COD'])
+        const nome = getVal(['NOME', 'DESCRICAO'])
+        const abreviacao = getVal(['ABREVIACAO', 'SIGLA'])
+        const observacoes = getVal(['OBSERVACOES', 'OBS'])
 
         let orgId = organizationId
         if (!orgId) {
@@ -1571,27 +1606,16 @@ Deno.serve(async (req: Request) => {
       if (organizationId && !validOrgs.has(organizationId)) {
         throw new Error('A empresa selecionada é inválida ou você não tem permissão.')
       }
-      
+
       const recordsByOrg = new Map<string, any[]>()
-      
+
       for (let i = 0; i < records.length; i++) {
         const row = records[i]
         const rowNum = i + 1
-        
-        const getVal = (r: any, possibleKeys: string[]) => {
-          const keys = Object.keys(r)
-          for (const pk of possibleKeys) {
-            const cleanPk = pk.replace(/[^A-Z0-9]/g, '')
-            for (const k of keys) {
-              const cleanK = k.replace(/[^A-Z0-9]/g, '')
-              if (cleanK === cleanPk) return r[k]
-            }
-          }
-          return null
-        }
+        const getVal = createRowAccessor(row)
 
-        const empresa = getVal(row, ['EMPRESA'])
-        
+        const empresa = getVal(['EMPRESA'])
+
         let orgId = organizationId
         if (!orgId) {
           if (!allowIncomplete && (!empresa || String(empresa).trim() === '')) {
@@ -1601,7 +1625,11 @@ Deno.serve(async (req: Request) => {
 
           orgId = empresa ? orgMap.get(String(empresa).trim().toLowerCase()) : null
           if (!orgId) {
-            addError(rowNum, `A empresa "${empresa}" não foi encontrada na sua conta. (Obrigatório)`, row)
+            addError(
+              rowNum,
+              `A empresa "${empresa}" não foi encontrada na sua conta. (Obrigatório)`,
+              row,
+            )
             continue
           }
         }
@@ -1612,7 +1640,7 @@ Deno.serve(async (req: Request) => {
 
       for (const [orgId, orgRecords] of recordsByOrg.entries()) {
         if (!orgId) continue
-        
+
         let existingCCs: any[] = []
         let fetchHasMore = true
         let fetchPage = 0
@@ -1623,7 +1651,7 @@ Deno.serve(async (req: Request) => {
             .eq('organization_id', orgId)
             .is('deleted_at', null)
             .range(fetchPage * 1000, (fetchPage + 1) * 1000 - 1)
-            
+
           if (errCC) throw new Error(`Erro ao buscar centros de custo: ${errCC.message}`)
           if (pageData && pageData.length > 0) {
             existingCCs.push(...pageData)
@@ -1634,10 +1662,10 @@ Deno.serve(async (req: Request) => {
           }
         }
         const ccMap = new Map<string, string>()
-        existingCCs.forEach(cc => {
+        existingCCs.forEach((cc) => {
           if (cc.code) ccMap.set(cc.code.trim().toUpperCase(), cc.id)
         })
-        
+
         let existingCAs: any[] = []
         fetchHasMore = true
         fetchPage = 0
@@ -1648,7 +1676,7 @@ Deno.serve(async (req: Request) => {
             .eq('organization_id', orgId)
             .is('deleted_at', null)
             .range(fetchPage * 1000, (fetchPage + 1) * 1000 - 1)
-            
+
           if (errCA) throw new Error(`Erro ao buscar contas contábeis: ${errCA.message}`)
           if (pageData && pageData.length > 0) {
             existingCAs.push(...pageData)
@@ -1659,10 +1687,10 @@ Deno.serve(async (req: Request) => {
           }
         }
         const caMap = new Map<string, string>()
-        existingCAs.forEach(ca => {
+        existingCAs.forEach((ca) => {
           if (ca.account_code) caMap.set(ca.account_code.trim().toUpperCase(), ca.id)
         })
-        
+
         let existingMappings: any[] = []
         fetchHasMore = true
         fetchPage = 0
@@ -1672,7 +1700,7 @@ Deno.serve(async (req: Request) => {
             .select('id, cost_center_id, chart_account_id')
             .eq('organization_id', orgId)
             .range(fetchPage * 1000, (fetchPage + 1) * 1000 - 1)
-            
+
           if (errMap) throw new Error(`Erro ao buscar mapeamentos existentes: ${errMap.message}`)
           if (pageData && pageData.length > 0) {
             existingMappings.push(...pageData)
@@ -1683,21 +1711,35 @@ Deno.serve(async (req: Request) => {
           }
         }
         const existingMappingsByCC = new Map<string, any>()
-        existingMappings.forEach(m => {
+        existingMappings.forEach((m) => {
           if (m.cost_center_id) existingMappingsByCC.set(m.cost_center_id, m)
         })
-        
+
         const toInsert: any[] = []
         const toUpdate: any[] = []
         const processedCCIds = new Set<string>()
-        
+
         for (const item of orgRecords) {
           const { row, rowNum, getVal } = item
-          
-          const centroCusto = getVal(row, ['CENTROCUSTO', 'CENTRODECUSTO', 'CODIGOCENTROCUSTO', 'CODIGOTGA', 'TGA', 'COD', 'CC'])
-          const contaContabil = getVal(row, ['CONTACONTABIL', 'CODIGOREDUZIDO', 'REDUZIDO', 'CONTA', 'CODCONTABIL'])
-          const tipoMapeamento = getVal(row, ['TIPOMAPEAMENTO', 'TIPO'])
-          
+
+          const centroCusto = getVal([
+            'CENTROCUSTO',
+            'CENTRODECUSTO',
+            'CODIGOCENTROCUSTO',
+            'CODIGOTGA',
+            'TGA',
+            'COD',
+            'CC',
+          ])
+          const contaContabil = getVal([
+            'CONTACONTABIL',
+            'CODIGOREDUZIDO',
+            'REDUZIDO',
+            'CONTA',
+            'CODCONTABIL',
+          ])
+          const tipoMapeamento = getVal(['TIPOMAPEAMENTO', 'TIPO'])
+
           if (!allowIncomplete && (!centroCusto || String(centroCusto).trim() === '')) {
             addError(rowNum, 'A coluna Centro de Custo está vazia.', row)
             continue
@@ -1706,33 +1748,41 @@ Deno.serve(async (req: Request) => {
             addError(rowNum, 'A coluna Conta Contábil está vazia.', row)
             continue
           }
-          
-          const strCentroCusto = String(centroCusto || '').trim().toUpperCase()
-          const strContaContabil = String(contaContabil || '').trim().toUpperCase()
-          
+
+          const strCentroCusto = String(centroCusto || '')
+            .trim()
+            .toUpperCase()
+          const strContaContabil = String(contaContabil || '')
+            .trim()
+            .toUpperCase()
+
           const ccId = ccMap.get(strCentroCusto)
           if (!ccId && !allowIncomplete) {
             addError(rowNum, `Centro de Custo "${strCentroCusto}" não encontrado.`, row)
             continue
           }
-          
+
           const caId = caMap.get(strContaContabil)
           if (!caId && !allowIncomplete) {
             addError(rowNum, `Conta Contábil "${strContaContabil}" não encontrada.`, row)
             continue
           }
-          
+
           if (ccId && caId) {
             if (processedCCIds.has(ccId)) {
               addError(rowNum, `Centro de custo "${strCentroCusto}" duplicado na planilha.`, row)
               continue
             }
             processedCCIds.add(ccId)
-            
+
             const existing = existingMappingsByCC.get(ccId)
             if (existing) {
               if (mode === 'INSERT_ONLY') {
-                addError(rowNum, `O mapeamento para o centro de custo "${strCentroCusto}" já existe.`, row)
+                addError(
+                  rowNum,
+                  `O mapeamento para o centro de custo "${strCentroCusto}" já existe.`,
+                  row,
+                )
                 continue
               } else {
                 toUpdate.push({
@@ -1760,7 +1810,7 @@ Deno.serve(async (req: Request) => {
             })
           }
         }
-        
+
         let toDeleteIds: string[] = []
         if (mode === 'REPLACE') {
           toDeleteIds = existingMappings
@@ -1770,7 +1820,10 @@ Deno.serve(async (req: Request) => {
 
         if (toDeleteIds.length > 0) {
           for (let i = 0; i < toDeleteIds.length; i += 500) {
-            await supabaseAdmin.from('account_mapping').delete().in('id', toDeleteIds.slice(i, i + 500))
+            await supabaseAdmin
+              .from('account_mapping')
+              .delete()
+              .in('id', toDeleteIds.slice(i, i + 500))
           }
         }
 
@@ -1802,28 +1855,17 @@ Deno.serve(async (req: Request) => {
       if (organizationId && !validOrgs.has(organizationId)) {
         throw new Error('A empresa selecionada é inválida ou você não tem permissão.')
       }
-      
+
       const recordsByOrg = new Map<string, any[]>()
-      
+
       for (let i = 0; i < records.length; i++) {
         const row = records[i]
         const rowNum = i + 1
-        
-        const getVal = (r: any, possibleKeys: string[]) => {
-          const keys = Object.keys(r)
-          for (const pk of possibleKeys) {
-            const cleanPk = pk.replace(/[^A-Z0-9]/g, '')
-            for (const k of keys) {
-              const cleanK = k.replace(/[^A-Z0-9]/g, '')
-              if (cleanK === cleanPk) return r[k]
-            }
-          }
-          return null
-        }
-        
-        const empresa = getVal(row, ['EMPRESA'])
+        const getVal = createRowAccessor(row)
+
+        const empresa = getVal(['EMPRESA'])
         let orgId = organizationId
-        
+
         if (!orgId) {
           if (!allowIncomplete && (!empresa || String(empresa).trim() === '')) {
             addError(rowNum, 'A coluna Empresa está vazia e nenhuma empresa foi selecionada.', row)
@@ -1831,18 +1873,22 @@ Deno.serve(async (req: Request) => {
           }
           orgId = empresa ? orgMap.get(String(empresa).trim().toLowerCase()) : null
           if (!orgId) {
-            addError(rowNum, `A empresa "${empresa}" não foi encontrada na sua conta. (Obrigatório)`, row)
+            addError(
+              rowNum,
+              `A empresa "${empresa}" não foi encontrada na sua conta. (Obrigatório)`,
+              row,
+            )
             continue
           }
         }
-        
+
         if (!recordsByOrg.has(orgId)) recordsByOrg.set(orgId, [])
         recordsByOrg.get(orgId)!.push({ row, rowNum, getVal })
       }
-      
+
       for (const [orgId, orgRecords] of recordsByOrg.entries()) {
         if (!orgId) continue
-        
+
         let existingCCs: any[] = []
         let fetchHasMore = true
         let fetchPage = 0
@@ -1853,7 +1899,7 @@ Deno.serve(async (req: Request) => {
             .eq('organization_id', orgId)
             .is('deleted_at', null)
             .range(fetchPage * 1000, (fetchPage + 1) * 1000 - 1)
-            
+
           if (errCC) throw new Error(`Erro ao buscar centros de custo: ${errCC.message}`)
           if (pageData && pageData.length > 0) {
             existingCCs.push(...pageData)
@@ -1864,10 +1910,10 @@ Deno.serve(async (req: Request) => {
           }
         }
         const ccMap = new Map<string, string>()
-        existingCCs.forEach(cc => {
+        existingCCs.forEach((cc) => {
           if (cc.code) ccMap.set(cc.code.trim().toUpperCase(), cc.id)
         })
-        
+
         let existingCAs: any[] = []
         fetchHasMore = true
         fetchPage = 0
@@ -1878,7 +1924,7 @@ Deno.serve(async (req: Request) => {
             .eq('organization_id', orgId)
             .is('deleted_at', null)
             .range(fetchPage * 1000, (fetchPage + 1) * 1000 - 1)
-            
+
           if (errCA) throw new Error(`Erro ao buscar contas contábeis: ${errCA.message}`)
           if (pageData && pageData.length > 0) {
             existingCAs.push(...pageData)
@@ -1889,162 +1935,125 @@ Deno.serve(async (req: Request) => {
           }
         }
         const caMap = new Map<string, string>()
-        existingCAs.forEach(ca => {
+        existingCAs.forEach((ca) => {
           if (ca.account_code) caMap.set(ca.account_code.trim().toUpperCase(), ca.id)
         })
-        
+
         const datesToFetch = new Set<string>()
         for (const item of orgRecords) {
-           const { row, getVal } = item
-           const data = getVal(row, ['DATA'])
-           if (data) {
-              const numVal = Number(data)
-              if (!isNaN(numVal) && String(data).trim() !== '' && numVal > 10000 && numVal < 100000) {
-                 const excelDate = new Date(Math.round((numVal - 25569) * 86400 * 1000))
-                 if (!isNaN(excelDate.getTime())) {
-                    datesToFetch.add(excelDate.toISOString().split('T')[0])
-                 }
-              } else if (typeof data === 'string' && data.includes('/')) {
-                 const parts = data.split('/')
-                 if (parts.length === 3) {
-                    const year = parts[2].length === 2 ? `20${parts[2]}` : parts[2]
-                    const parsed = new Date(`${year}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}T12:00:00Z`)
-                    if (!isNaN(parsed.getTime())) datesToFetch.add(parsed.toISOString().split('T')[0])
-                 }
-              } else {
-                 const parsed = new Date(data)
-                 if (!isNaN(parsed.getTime()) && parsed.getFullYear() >= 1900 && parsed.getFullYear() <= 2100) {
-                    datesToFetch.add(parsed.toISOString().split('T')[0])
-                 }
-              }
-           }
+          const { row, getVal } = item
+          const data = getVal(['DATA'])
+          let parsedDate = safeParseDate(data)
+          if (parsedDate) {
+            datesToFetch.add(parsedDate)
+          }
         }
-        
+
         const existingFMs = new Set<string>()
         if (datesToFetch.size > 0) {
-           const dateArray = Array.from(datesToFetch)
-           for (let i = 0; i < dateArray.length; i += 100) {
-              const chunkDates = dateArray.slice(i, i + 100)
-              let fmPage = 0
-              let fmHasMore = true
-              while (fmHasMore) {
-                 const { data: fmData, error: errFM } = await supabase
-                   .from('financial_movements')
-                   .select('id, movement_date, amount, cost_center_id')
-                   .eq('organization_id', orgId)
-                   .in('movement_date', chunkDates)
-                   .range(fmPage * 1000, (fmPage + 1) * 1000 - 1)
-                 
-                 if (errFM) throw new Error(`Erro ao buscar movimentos existentes: ${errFM.message}`)
-                 if (fmData && fmData.length > 0) {
-                    fmData.forEach(fm => {
-                       existingFMs.add(`${fm.movement_date}|${fm.amount}|${fm.cost_center_id || 'null'}`)
-                    })
-                    fmPage++
-                    if (fmData.length < 1000) fmHasMore = false
-                 } else {
-                    fmHasMore = false
-                 }
+          const dateArray = Array.from(datesToFetch)
+          for (let i = 0; i < dateArray.length; i += 100) {
+            const chunkDates = dateArray.slice(i, i + 100)
+            let fmPage = 0
+            let fmHasMore = true
+            while (fmHasMore) {
+              const { data: fmData, error: errFM } = await supabase
+                .from('financial_movements')
+                .select('id, movement_date, amount, cost_center_id')
+                .eq('organization_id', orgId)
+                .in('movement_date', chunkDates)
+                .range(fmPage * 1000, (fmPage + 1) * 1000 - 1)
+
+              if (errFM) throw new Error(`Erro ao buscar movimentos existentes: ${errFM.message}`)
+              if (fmData && fmData.length > 0) {
+                fmData.forEach((fm) => {
+                  existingFMs.add(`${fm.movement_date}|${fm.amount}|${fm.cost_center_id || 'null'}`)
+                })
+                fmPage++
+                if (fmData.length < 1000) fmHasMore = false
+              } else {
+                fmHasMore = false
               }
-           }
+            }
+          }
         }
-        
+
         const toInsertFM: any[] = []
         const toInsertAE: any[] = []
-        
+
         for (const item of orgRecords) {
           const { row, rowNum, getVal } = item
-          
-          const data = getVal(row, ['DATA'])
-          const descricao = getVal(row, ['DESCRICAO', 'HISTORICO'])
-          const valorRaw = getVal(row, ['VALOR'])
-          const centroCusto = getVal(row, ['CENTROCUSTO'])
-          const contaDebito = getVal(row, ['CONTADEBITO', 'DEBITO'])
-          const contaCredito = getVal(row, ['CONTACREDITO', 'CREDITO'])
-          
+
+          const data = getVal(['DATA'])
+          const descricao = getVal(['DESCRICAO', 'HISTORICO'])
+          const valorRaw = getVal(['VALOR'])
+          const centroCusto = getVal(['CENTROCUSTO'])
+          const contaDebito = getVal(['CONTADEBITO', 'DEBITO'])
+          const contaCredito = getVal(['CONTACREDITO', 'CREDITO'])
+
           if (!allowIncomplete && (!data || String(data).trim() === '')) {
             addError(rowNum, 'A coluna Data está vazia.', row)
             continue
           }
-          
-          let parsedDate = new Date()
-          let formattedDate = parsedDate.toISOString().split('T')[0]
-          if (data) {
-            const numVal = Number(data)
-            if (!isNaN(numVal) && String(data).trim() !== '' && numVal > 10000 && numVal < 100000) {
-              const excelDate = new Date(Math.round((numVal - 25569) * 86400 * 1000))
-              if (!isNaN(excelDate.getTime())) {
-                parsedDate = excelDate
-                formattedDate = excelDate.toISOString().split('T')[0]
-              }
-            } else if (typeof data === 'string' && data.includes('/')) {
-              const parts = data.split('/')
-              if (parts.length === 3) {
-                const year = parts[2].length === 2 ? `20${parts[2]}` : parts[2]
-                parsedDate = new Date(`${year}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}T12:00:00Z`)
-                if (!isNaN(parsedDate.getTime())) {
-                  formattedDate = parsedDate.toISOString().split('T')[0]
-                } else if (!allowIncomplete) {
-                  addError(rowNum, 'A coluna DATA possui formato inválido.', row)
-                  continue
-                }
-              }
-            } else {
-              const parsed = new Date(data)
-              const year = parsed.getFullYear()
-              if (isNaN(parsed.getTime()) || year < 1900 || year > 2100) {
-                if (!allowIncomplete) {
-                  addError(rowNum, 'A coluna DATA possui formato inválido ou ano fora do limite.', row)
-                  continue
-                }
-              } else {
-                parsedDate = parsed
-                formattedDate = parsedDate.toISOString().split('T')[0]
-              }
+
+          let formattedDate = safeParseDate(data)
+          if (!formattedDate) {
+            if (!allowIncomplete) {
+              addError(rowNum, 'A coluna DATA possui formato inválido ou ano fora do limite.', row)
+              continue
             }
+            formattedDate = new Date().toISOString().split('T')[0]
           }
-          
-          const valorStr = String(valorRaw || '0').replace(',', '.')
-          const valor = parseFloat(valorStr)
-          if (!allowIncomplete && isNaN(valor)) {
-            addError(rowNum, 'A coluna VALOR possui formato numérico inválido.', row)
-            continue
+
+          let valor = safeParseNum(valorRaw)
+          if (valor === null) {
+            if (!allowIncomplete) {
+              addError(rowNum, 'A coluna VALOR possui formato numérico inválido.', row)
+              continue
+            }
+            valor = 0
           }
-          
-          const strCentroCusto = String(centroCusto || '').trim().toUpperCase()
+
+          const strCentroCusto = String(centroCusto || '')
+            .trim()
+            .toUpperCase()
           const ccId = strCentroCusto ? ccMap.get(strCentroCusto) : null
-          
+
           if (!allowIncomplete && !ccId && strCentroCusto !== '') {
             addError(rowNum, `Centro de Custo "${strCentroCusto}" não encontrado.`, row)
             continue
           }
-          
-          const strContaDebito = String(contaDebito || '').trim().toUpperCase()
+
+          const strContaDebito = String(contaDebito || '')
+            .trim()
+            .toUpperCase()
           const debitId = strContaDebito ? caMap.get(strContaDebito) : null
-          
+
           if (!allowIncomplete && !debitId && strContaDebito !== '') {
             addError(rowNum, `Conta Débito "${strContaDebito}" não encontrada.`, row)
             continue
           }
-          
-          const strContaCredito = String(contaCredito || '').trim().toUpperCase()
+
+          const strContaCredito = String(contaCredito || '')
+            .trim()
+            .toUpperCase()
           const creditId = strContaCredito ? caMap.get(strContaCredito) : null
-          
+
           if (!allowIncomplete && !creditId && strContaCredito !== '') {
             addError(rowNum, `Conta Crédito "${strContaCredito}" não encontrada.`, row)
             continue
           }
-          
-          const amt = isNaN(valor) ? 0 : valor
+
+          const amt = valor
           const fmKey = `${formattedDate}|${amt}|${ccId || 'null'}`
-          
+
           if (existingFMs.has(fmKey)) {
-             addError(rowNum, `Lançamento já existe com mesma data, valor e centro de custo.`, row)
-             continue
+            addError(rowNum, `Lançamento já existe com mesma data, valor e centro de custo.`, row)
+            continue
           }
-          
+
           const fmId = crypto.randomUUID()
-          
+
           toInsertFM.push({
             id: fmId,
             organization_id: orgId,
@@ -2054,7 +2063,7 @@ Deno.serve(async (req: Request) => {
             cost_center_id: ccId || null,
             status: 'Concluído',
           })
-          
+
           toInsertAE.push({
             organization_id: orgId,
             entry_date: formattedDate,
@@ -2064,29 +2073,29 @@ Deno.serve(async (req: Request) => {
             credit_account_id: creditId || null,
             status: 'Concluído',
           })
-          
+
           existingFMs.add(fmKey)
         }
-        
+
         for (let i = 0; i < toInsertFM.length; i += 500) {
           const chunkFM = toInsertFM.slice(i, i + 500)
           const chunkAE = toInsertAE.slice(i, i + 500)
-          
+
           const { error: fmErr } = await supabaseAdmin.from('financial_movements').insert(chunkFM)
           if (fmErr) {
-             chunkFM.forEach((c: any) => {
-                addError(0, `Erro na inserção de movimento em lote: ${fmErr.message}`, c)
-             })
-             continue
+            chunkFM.forEach((c: any) => {
+              addError(0, `Erro na inserção de movimento em lote: ${fmErr.message}`, c)
+            })
+            continue
           }
-          
+
           const { error: aeErr } = await supabaseAdmin.from('accounting_entries').insert(chunkAE)
           if (aeErr) {
-             chunkAE.forEach((c: any) => {
-                addError(0, `Erro na inserção contábil em lote: ${aeErr.message}`, c)
-             })
+            chunkAE.forEach((c: any) => {
+              addError(0, `Erro na inserção contábil em lote: ${aeErr.message}`, c)
+            })
           } else {
-             inserted += chunkFM.length
+            inserted += chunkFM.length
           }
         }
       }
@@ -2103,101 +2112,43 @@ Deno.serve(async (req: Request) => {
       for (let i = 0; i < records.length; i++) {
         const row = records[i]
         const rowNum = i + 1
+        const getVal = createRowAccessor(row)
 
-        const getVal = (r: any, possibleKeys: string[]) => {
-          const keys = Object.keys(r)
-          for (const pk of possibleKeys) {
-            const cleanPk = pk.replace(/[^A-Z0-9]/g, '')
-            for (const k of keys) {
-              const cleanK = k.replace(/[^A-Z0-9]/g, '')
-              if (cleanK === cleanPk) return r[k]
-            }
-          }
-          return null
-        }
-
-        const parseDate = (val: any) => {
-          if (val === null || val === undefined || val === '') return null
-          
-          const numVal = Number(val)
-          if (!isNaN(numVal) && String(val).trim() !== '' && numVal > 10000 && numVal < 100000) {
-            const date = new Date(Math.round((numVal - 25569) * 86400 * 1000))
-            if (!isNaN(date.getTime())) {
-              return date.toISOString().split('T')[0]
-            }
-          }
-
-          if (typeof val === 'string') {
-            const clean = val.trim()
-            if (clean.includes('/')) {
-              const parts = clean.split('/')
-              if (parts.length === 3) {
-                const year = parts[2].length === 2 ? `20${parts[2]}` : parts[2]
-                return `${year}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`
-              }
-            }
-            if (clean.includes('-')) {
-              const parts = clean.split('-')
-              if (parts.length === 3 && parts[0].length <= 2) {
-                const year = parts[2].length === 2 ? `20${parts[2]}` : parts[2]
-                return `${year}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`
-              }
-            }
-          }
-
-          const d = new Date(val)
-          if (isNaN(d.getTime())) return null
-          
-          const year = d.getFullYear()
-          if (year < 1900 || year > 2100) return null
-
-          return d.toISOString().split('T')[0]
-        }
-
-        const parseNum = (val: any) => {
-          if (val === null || val === undefined || val === '') return null
-          if (typeof val === 'number') return val
-          const str = String(val).replace(/\./g, '').replace(',', '.')
-          const parsed = parseFloat(str)
-          if (isNaN(parsed)) return null
-          return parsed
-        }
-
-        const rawDataEmissao = getVal(row, ['DATAEMISSAO', 'EMISSAO'])
-        const dataEmissao = parseDate(rawDataEmissao)
-        const valor = parseNum(getVal(row, ['VALOR']))
+        const rawDataEmissao = getVal(['DATAEMISSAO', 'EMISSAO'])
+        const dataEmissao = safeParseDate(rawDataEmissao)
+        const valor = safeParseNum(getVal(['VALOR']))
 
         toInsert.push({
           organization_id: orgId,
-          compensado: String(getVal(row, ['COMPENSADO']) || ''),
-          tipo_operacao: String(getVal(row, ['TIPOOPERACAO', 'TIPO']) || ''),
+          compensado: String(getVal(['COMPENSADO']) || ''),
+          tipo_operacao: String(getVal(['TIPOOPERACAO', 'TIPO']) || ''),
           data_emissao: dataEmissao,
-          dt_compens: parseDate(getVal(row, ['DTCOMPENS', 'COMPENSACAO'])),
-          conta_caixa: String(getVal(row, ['CONTACAIXA']) || ''),
-          nome_caixa: String(getVal(row, ['NOMECAIXA']) || ''),
-          conta_caixa_destino: String(getVal(row, ['CONTACAIXADESTINO']) || ''),
-          forma_pagto: String(getVal(row, ['FORMAPAGTO', 'PAGAMENTO']) || ''),
-          c_custo: String(getVal(row, ['CCUSTO', 'CENTROCUSTO']) || ''),
-          descricao_c_custo: String(getVal(row, ['DESCRICAOCCUSTO']) || ''),
+          dt_compens: safeParseDate(getVal(['DTCOMPENS', 'COMPENSACAO'])),
+          conta_caixa: String(getVal(['CONTACAIXA']) || ''),
+          nome_caixa: String(getVal(['NOMECAIXA']) || ''),
+          conta_caixa_destino: String(getVal(['CONTACAIXADESTINO']) || ''),
+          forma_pagto: String(getVal(['FORMAPAGTO', 'PAGAMENTO']) || ''),
+          c_custo: String(getVal(['CCUSTO', 'CENTROCUSTO']) || ''),
+          descricao_c_custo: String(getVal(['DESCRICAOCCUSTO']) || ''),
           valor: valor,
-          valor_liquido: parseNum(getVal(row, ['VALORLIQUIDO'])),
-          n_documento: String(getVal(row, ['NDOCUMENTO', 'DOCUMENTO']) || ''),
-          nome_cli_fornec: String(getVal(row, ['NOMECLIFORNEC', 'CLIFORNEC']) || ''),
-          historico: String(getVal(row, ['HISTORICO', 'DESCRICAO']) || ''),
-          fp: String(getVal(row, ['FP']) || ''),
-          n_cheque: String(getVal(row, ['NCHEQUE', 'CHEQUE']) || ''),
-          data_vencto: parseDate(getVal(row, ['DATAVENCTO', 'VENCTO', 'VENCIMENTO'])),
-          nominal_a: String(getVal(row, ['NOMINALA', 'NOMINAL']) || ''),
-          emitente_cheque: String(getVal(row, ['EMITENTECHEQUE', 'EMITENTE']) || ''),
-          cnpj_cpf: String(getVal(row, ['CNPJCPF', 'CNPJ', 'CPF']) || ''),
-          n_extrato: String(getVal(row, ['NEXTRATO', 'EXTRATO']) || ''),
-          filial: String(getVal(row, ['FILIAL']) || ''),
-          data_canc: parseDate(getVal(row, ['DATACANC', 'CANCELAMENTO'])),
-          data_estorno: parseDate(getVal(row, ['DATAESTORNO', 'ESTORNO'])),
-          banco: String(getVal(row, ['BANCO']) || ''),
-          c_corrente: String(getVal(row, ['CCORRENTE', 'CONTACORRENTE']) || ''),
-          cod_cli_for: String(getVal(row, ['CODCLIFOR']) || ''),
-          departamento: String(getVal(row, ['DEPARTAMENTO']) || ''),
+          valor_liquido: safeParseNum(getVal(['VALORLIQUIDO'])),
+          n_documento: String(getVal(['NDOCUMENTO', 'DOCUMENTO']) || ''),
+          nome_cli_fornec: String(getVal(['NOMECLIFORNEC', 'CLIFORNEC']) || ''),
+          historico: String(getVal(['HISTORICO', 'DESCRICAO']) || ''),
+          fp: String(getVal(['FP']) || ''),
+          n_cheque: String(getVal(['NCHEQUE', 'CHEQUE']) || ''),
+          data_vencto: safeParseDate(getVal(['DATAVENCTO', 'VENCTO', 'VENCIMENTO'])),
+          nominal_a: String(getVal(['NOMINALA', 'NOMINAL']) || ''),
+          emitente_cheque: String(getVal(['EMITENTECHEQUE', 'EMITENTE']) || ''),
+          cnpj_cpf: String(getVal(['CNPJCPF', 'CNPJ', 'CPF']) || ''),
+          n_extrato: String(getVal(['NEXTRATO', 'EXTRATO']) || ''),
+          filial: String(getVal(['FILIAL']) || ''),
+          data_canc: safeParseDate(getVal(['DATACANC', 'CANCELAMENTO'])),
+          data_estorno: safeParseDate(getVal(['DATAESTORNO', 'ESTORNO'])),
+          banco: String(getVal(['BANCO']) || ''),
+          c_corrente: String(getVal(['CCORRENTE', 'CONTACORRENTE']) || ''),
+          cod_cli_for: String(getVal(['CODCLIFOR']) || ''),
+          departamento: String(getVal(['DEPARTAMENTO']) || ''),
           status: 'Pendente',
         })
       }
@@ -2220,7 +2171,8 @@ Deno.serve(async (req: Request) => {
         user_id: user.id,
         import_type: type,
         file_name: fileName || 'Importação via CSV',
-        total_records: typeof payload.totalRecords === 'number' ? payload.totalRecords : records.length,
+        total_records:
+          typeof payload.totalRecords === 'number' ? payload.totalRecords : records.length,
         success_count: inserted,
         error_count: rejected,
         status: 'Completed',
