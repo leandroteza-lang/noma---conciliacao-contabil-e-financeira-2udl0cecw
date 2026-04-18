@@ -452,36 +452,62 @@ export default function Import() {
     }
 
     setIsImporting(true)
-    setImportProgress(30)
+    setImportProgress(10)
 
     try {
       const {
         data: { session },
       } = await supabase.auth.getSession()
 
-      const { data, error } = await supabase.functions.invoke('import-data', {
-        body: {
-          records: validationInfo.validRecords,
-          type: importType,
-          fileName: file?.name || 'Importação',
-          allowIncomplete: allowIncomplete,
-        },
-        headers: session
-          ? {
-              Authorization: `Bearer ${session.access_token}`,
-            }
-          : undefined,
-      })
+      const CHUNK_SIZE = 100
+      const validRecords = validationInfo.validRecords
+      const totalRecords = validRecords.length
+      let totalInserted = 0
+      let totalRejected = 0
+      const allErrors: ImportError[] = []
 
-      if (error) throw new Error(error.message || 'Erro desconhecido ao chamar a função')
-      if (data?.error) throw new Error(data.error)
+      for (let offset = 0; offset < totalRecords; offset += CHUNK_SIZE) {
+        const chunk = validRecords.slice(offset, offset + CHUNK_SIZE)
+        const { data, error } = await supabase.functions.invoke('import-data', {
+          body: {
+            records: chunk,
+            type: importType,
+            fileName: file?.name || 'Importação',
+            allowIncomplete,
+            offset,
+            totalRecords,
+            skipHistory: offset + CHUNK_SIZE < totalRecords,
+          },
+          headers: session
+            ? {
+                Authorization: `Bearer ${session.access_token}`,
+              }
+            : undefined,
+        })
+
+        if (error) throw new Error(error.message || 'Erro desconhecido ao chamar a função')
+        if (data?.error) throw new Error(data.error)
+
+        totalInserted += data.inserted || 0
+        totalRejected += data.rejected || 0
+        if (Array.isArray(data.errors)) allErrors.push(...data.errors)
+
+        const done = Math.min(offset + chunk.length, totalRecords)
+        setImportProgress(Math.round((done / totalRecords) * 100))
+      }
+
+      const finalResult: ImportResult = {
+        inserted: totalInserted,
+        rejected: totalRejected,
+        errors: allErrors,
+      }
 
       setImportProgress(100)
-      setImportResult(data)
+      setImportResult(finalResult)
 
       toast({
         title: 'Processamento Finalizado',
-        description: `${data.inserted} registros inseridos, ${data.rejected} rejeitados.`,
+        description: `${finalResult.inserted} registros inseridos, ${finalResult.rejected} rejeitados.`,
       })
     } catch (err: any) {
       toast({
