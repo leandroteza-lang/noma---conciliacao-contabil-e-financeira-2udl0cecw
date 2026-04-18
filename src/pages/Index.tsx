@@ -17,7 +17,6 @@ import { Search, Plus, Upload, Download, Building2, Filter, Trash2, Sparkles } f
 import { useNavigate } from 'react-router-dom'
 import { ImportBankAccountsModal } from '@/components/ImportBankAccountsModal'
 import { SmartMappingModal } from '@/components/SmartMappingModal'
-import { AccountCombobox } from '@/components/AccountCombobox'
 
 export default function Index() {
   const [accounts, setAccounts] = useState<any[]>([])
@@ -25,10 +24,8 @@ export default function Index() {
   const [search, setSearch] = useState('')
   const [companyFilter, setCompanyFilter] = useState('ALL')
   const [typeFilter, setTypeFilter] = useState('ALL')
-  const [accountFilter, setAccountFilter] = useState<string | null>(null)
 
   const [companies, setCompanies] = useState<any[]>([])
-  const [chartAccounts, setChartAccounts] = useState<any[]>([])
   const [selectedAccounts, setSelectedAccounts] = useState<string[]>([])
 
   const [isFormOpen, setIsFormOpen] = useState(false)
@@ -89,41 +86,6 @@ export default function Index() {
       setLoading(false)
     }
   }
-
-  const fetchChartAccounts = async () => {
-    let allData: any[] = []
-    let fetchHasMore = true
-    let fetchPage = 0
-
-    while (fetchHasMore) {
-      let query = supabase
-        .from('chart_of_accounts')
-        .select('id, account_code, account_name, classification')
-        .is('deleted_at', null)
-        .order('classification')
-        .range(fetchPage * 1000, (fetchPage + 1) * 1000 - 1)
-
-      if (companyFilter !== 'ALL') {
-        query = query.eq('organization_id', companyFilter)
-      }
-
-      const { data } = await query
-      if (data && data.length > 0) {
-        allData.push(...data)
-        fetchPage++
-        if (data.length < 1000) fetchHasMore = false
-      } else {
-        fetchHasMore = false
-      }
-    }
-
-    setChartAccounts(allData)
-  }
-
-  useEffect(() => {
-    setAccountFilter(null)
-    fetchChartAccounts()
-  }, [companyFilter])
 
   const handleSaveAccount = async (data: any) => {
     try {
@@ -268,27 +230,7 @@ export default function Index() {
     const matchesCompany = companyFilter === 'ALL' || acc.organization_id === companyFilter
     const matchesType = typeFilter === 'ALL' || acc.account_type === typeFilter
 
-    let matchesAccount = true
-    if (accountFilter) {
-      const selectedChartAccount = chartAccounts.find((ca) => ca.id === accountFilter)
-      if (selectedChartAccount) {
-        const accCode = acc.account_code?.trim().toLowerCase()
-        const accClass = acc.classification?.trim().toLowerCase()
-        const selCode = selectedChartAccount.account_code?.trim().toLowerCase()
-        const selClass = selectedChartAccount.classification?.trim().toLowerCase()
-
-        matchesAccount = !!(
-          (accCode && selCode && accCode === selCode) ||
-          (accCode && selClass && accCode === selClass) ||
-          (accClass && selClass && accClass === selClass) ||
-          (accClass && selCode && accClass === selCode)
-        )
-      } else {
-        matchesAccount = false
-      }
-    }
-
-    return matchesSearch && matchesCompany && matchesType && matchesAccount
+    return matchesSearch && matchesCompany && matchesType
   })
 
   const handleSort = (key: string) => {
@@ -428,15 +370,6 @@ export default function Index() {
                 <SelectItem value="OUTROS">OUTROS</SelectItem>
               </SelectContent>
             </Select>
-          </div>
-          <div className="w-full">
-            <AccountCombobox
-              accounts={chartAccounts}
-              value={accountFilter}
-              onChange={setAccountFilter}
-              onClear={() => setAccountFilter(null)}
-              placeholder="Filtrar por Conta Contábil..."
-            />
           </div>
         </div>
       </div>
