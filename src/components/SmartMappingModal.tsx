@@ -39,36 +39,43 @@ export function SmartMappingModal({ isOpen, onClose, onApply, accounts, companie
       const result = []
       for (const acc of accounts) {
         const descTokens = getTokens(acc.description)
-        const matchedCompanies = []
+        const descLower = (acc.description || '').toLowerCase()
+
+        let bestCompanyId = null
+        let maxScore = 0
+
         for (const comp of companies) {
+          let score = 0
           const compNameLower = comp.name.toLowerCase()
-          const descLower = (acc.description || '').toLowerCase()
+          const compTokens = getTokens(comp.name)
 
           if (
             descLower &&
             compNameLower &&
             (descLower.includes(compNameLower) || compNameLower.includes(descLower))
           ) {
-            matchedCompanies.push(comp)
-            continue
+            score += 1000
           }
 
-          const compTokens = getTokens(comp.name)
-          const hasMatch = compTokens.some((ct) => descTokens.includes(ct))
-          if (hasMatch && !matchedCompanies.find((c) => c.id === comp.id)) {
-            matchedCompanies.push(comp)
+          const matchedTokens = compTokens.filter((ct) => descTokens.includes(ct))
+          score += matchedTokens.length * 10
+
+          if (matchedTokens.includes('noma') && compNameLower.includes('noma parts')) {
+            score += 5
+          }
+
+          if (score > 0 && score > maxScore) {
+            maxScore = score
+            bestCompanyId = comp.id
           }
         }
 
-        const newMatches = matchedCompanies.filter((c) => c.id !== acc.organization_id)
-
-        if (newMatches.length > 0) {
+        if (bestCompanyId && bestCompanyId !== acc.organization_id) {
           result.push({
             accountId: acc.id,
             description: acc.description,
             currentCompany: acc.organizations?.name || 'Sem empresa vinculada',
-            matches: newMatches,
-            selectedCompanyId: newMatches[0].id,
+            selectedCompanyId: bestCompanyId,
             apply: true,
           })
         }
@@ -112,15 +119,15 @@ export function SmartMappingModal({ isOpen, onClose, onApply, accounts, companie
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex-1 overflow-hidden flex flex-col mt-2">
+        <div className="flex-1 min-h-0 flex flex-col mt-2">
           {items.length === 0 ? (
             <div className="flex flex-col items-center justify-center p-8 text-center text-muted-foreground h-40 bg-muted/30 rounded-lg border border-dashed">
               <Building2 className="w-8 h-8 mb-4 opacity-50" />
               <p>Nenhuma nova sugestão de mapeamento encontrada para as contas atuais.</p>
             </div>
           ) : (
-            <ScrollArea className="flex-1 pr-4 -mr-4">
-              <div className="space-y-3 pr-4">
+            <ScrollArea className="h-full pr-4 -mr-4">
+              <div className="space-y-3 pb-4">
                 {items.map((item) => (
                   <div
                     key={item.accountId}
@@ -160,18 +167,13 @@ export function SmartMappingModal({ isOpen, onClose, onApply, accounts, companie
                           <SelectValue placeholder="Selecione a empresa" />
                         </SelectTrigger>
                         <SelectContent>
-                          {item.matches.map((comp: any) => (
+                          {companies.map((comp: any) => (
                             <SelectItem key={comp.id} value={comp.id}>
                               {comp.name}
                             </SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
-                      {item.matches.length > 1 && (
-                        <p className="text-[10px] text-amber-600 mt-1 ml-1">
-                          Múltiplas opções encontradas. Verifique a seleção.
-                        </p>
-                      )}
                     </div>
                   </div>
                 ))}
@@ -180,7 +182,7 @@ export function SmartMappingModal({ isOpen, onClose, onApply, accounts, companie
           )}
         </div>
 
-        <DialogFooter className="mt-6 border-t pt-4">
+        <DialogFooter className="mt-4 border-t pt-4">
           <Button variant="ghost" onClick={onClose}>
             Cancelar
           </Button>
