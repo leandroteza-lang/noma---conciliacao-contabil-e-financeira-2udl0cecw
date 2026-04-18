@@ -1,29 +1,8 @@
 import { useState, useEffect, useMemo } from 'react'
-import { Card, CardContent, CardHeader } from '@/components/ui/card'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Checkbox } from '@/components/ui/checkbox'
 import { supabase } from '@/lib/supabase/client'
 import { useAuth } from '@/hooks/use-auth'
-import { format } from 'date-fns'
-import { ptBR } from 'date-fns/locale'
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-  DialogDescription,
-} from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import {
   Select,
   SelectContent,
@@ -32,21 +11,31 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import {
-  Search,
-  Map as MapIcon,
-  Trash2,
-  Upload,
-  Loader2,
-  ArrowRight,
-  ArrowUpDown,
-  ChevronUp,
-  ChevronDown,
-} from 'lucide-react'
-import { toast } from '@/hooks/use-toast'
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Loader2, Search, Upload, Trash2, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react'
+import { useToast } from '@/hooks/use-toast'
 import { ImportErpFinancialModal } from '@/components/ImportErpFinancialModal'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { cn } from '@/lib/utils'
 
-const erpColumns = [
+const COLUMNS = [
   { key: 'compensado', label: 'Compensado' },
   { key: 'tipo_operacao', label: 'Tipo Operação' },
   { key: 'data_emissao', label: 'Data Emissão', type: 'date' },
@@ -79,162 +68,64 @@ const erpColumns = [
 ]
 
 export default function FinancialMovements() {
-  const [movements, setMovements] = useState<any[]>([])
+  const { user } = useAuth()
+  const { toast } = useToast()
+
+  const [data, setData] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
-  const [searchTerm, setSearchTerm] = useState('')
-  const [chartAccounts, setChartAccounts] = useState<any[]>([])
-  const [mappingModalOpen, setMappingModalOpen] = useState(false)
-  const [selectedMovement, setSelectedMovement] = useState<any>(null)
-  const [selectedAccountId, setSelectedAccountId] = useState('')
-  const [importModalOpen, setImportModalOpen] = useState(false)
+  const [orgs, setOrgs] = useState<{ id: string; name: string }[]>([])
+  const [selectedOrg, setSelectedOrg] = useState<string>('all')
+  const [search, setSearch] = useState('')
+
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(
     null,
   )
-  const [selectedRows, setSelectedRows] = useState<string[]>([])
+  const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set())
 
-  const { user } = useAuth()
+  const [isImportOpen, setIsImportOpen] = useState(false)
+  const [isDeleteAllOpen, setIsDeleteAllOpen] = useState(false)
+  const [isDeleteSelectedOpen, setIsDeleteSelectedOpen] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
 
-  const fetchMovements = async () => {
+  const fetchData = async () => {
+    if (!user) return
     setLoading(true)
-    const { data, error } = await supabase
-      .from('erp_financial_movements' as any)
-      .select('*, chart_of_accounts(account_name, account_code)')
+
+    // Fetch Orgs
+    const { data: orgsData } = await supabase
+      .from('organizations')
+      .select('id, name')
       .is('deleted_at', null)
-      .order('created_at', { ascending: false })
+
+    if (orgsData) {
+      setOrgs(orgsData)
+    }
+
+    // Fetch Movements
+    let query = supabase.from('erp_financial_movements').select('*').is('deleted_at', null)
+
+    if (selectedOrg && selectedOrg !== 'all') {
+      query = query.eq('organization_id', selectedOrg)
+    }
+
+    // Limit to 5000 to prevent browser crash
+    query = query.limit(5000).order('created_at', { ascending: false })
+
+    const { data: movementsData, error } = await query
 
     if (error) {
-      toast({
-        title: 'Erro ao carregar movimentos',
-        description: error.message,
-        variant: 'destructive',
-      })
+      toast({ title: 'Erro ao buscar dados', description: error.message, variant: 'destructive' })
     } else {
-      setMovements(data || [])
+      setData(movementsData || [])
     }
+
+    setSelectedRows(new Set())
     setLoading(false)
   }
 
-  const fetchChartAccounts = async () => {
-    const { data, error } = await supabase
-      .from('chart_of_accounts')
-      .select('id, account_code, account_name')
-      .is('deleted_at', null)
-      .order('account_code', { ascending: true })
-
-    if (!error && data) {
-      setChartAccounts(data)
-    }
-  }
-
   useEffect(() => {
-    if (user) {
-      fetchMovements()
-      fetchChartAccounts()
-    }
-  }, [user])
-
-  const handleMapAccount = async () => {
-    if (!selectedMovement || !selectedAccountId) return
-
-    const { error } = await supabase
-      .from('erp_financial_movements' as any)
-      .update({
-        mapped_account_id: selectedAccountId,
-        status: 'Mapeado',
-      })
-      .eq('id', selectedMovement.id)
-
-    if (error) {
-      toast({ title: 'Erro ao mapear conta', description: error.message, variant: 'destructive' })
-    } else {
-      toast({ title: 'Sucesso', description: 'Movimento mapeado com sucesso' })
-      setMappingModalOpen(false)
-      setSelectedMovement(null)
-      setSelectedAccountId('')
-      fetchMovements()
-    }
-  }
-
-  const handleDelete = async (id: string) => {
-    if (!confirm('Deseja realmente excluir este movimento?')) return
-
-    const { error } = await supabase
-      .from('erp_financial_movements' as any)
-      .update({ deleted_at: new Date().toISOString(), deleted_by: user?.id })
-      .eq('id', id)
-
-    if (error) {
-      toast({ title: 'Erro', description: error.message, variant: 'destructive' })
-    } else {
-      toast({ title: 'Sucesso', description: 'Movimento excluído com sucesso' })
-      setSelectedRows((prev) => prev.filter((rId) => rId !== id))
-      fetchMovements()
-    }
-  }
-
-  const handleDeleteSelected = async () => {
-    if (!confirm(`Deseja excluir os ${selectedRows.length} registros selecionados?`)) return
-
-    setLoading(true)
-    let hasError = false
-    for (let i = 0; i < selectedRows.length; i += 500) {
-      const chunk = selectedRows.slice(i, i + 500)
-      const { error } = await supabase
-        .from('erp_financial_movements' as any)
-        .update({ deleted_at: new Date().toISOString(), deleted_by: user?.id })
-        .in('id', chunk)
-      if (error) hasError = true
-    }
-
-    if (hasError) {
-      toast({
-        title: 'Aviso',
-        description: 'Alguns registros selecionados podem não ter sido excluídos.',
-        variant: 'destructive',
-      })
-    } else {
-      toast({ title: 'Sucesso', description: 'Registros excluídos com sucesso' })
-    }
-
-    setSelectedRows([])
-    fetchMovements()
-  }
-
-  const handleDeleteAll = async () => {
-    if (
-      !confirm(
-        'Deseja realmente EXCLUIR TODOS os registros importados? Esta ação não pode ser desfeita.',
-      )
-    )
-      return
-
-    const allIds = movements.map((m) => m.id)
-    if (allIds.length === 0) return
-
-    setLoading(true)
-    let hasError = false
-    for (let i = 0; i < allIds.length; i += 500) {
-      const chunk = allIds.slice(i, i + 500)
-      const { error } = await supabase
-        .from('erp_financial_movements' as any)
-        .update({ deleted_at: new Date().toISOString(), deleted_by: user?.id })
-        .in('id', chunk)
-      if (error) hasError = true
-    }
-
-    if (hasError) {
-      toast({
-        title: 'Aviso',
-        description: 'Alguns registros podem não ter sido excluídos.',
-        variant: 'destructive',
-      })
-    } else {
-      toast({ title: 'Sucesso', description: 'Todos os registros foram excluídos' })
-    }
-
-    setSelectedRows([])
-    fetchMovements()
-  }
+    fetchData()
+  }, [user, selectedOrg])
 
   const handleSort = (key: string) => {
     let direction: 'asc' | 'desc' = 'asc'
@@ -244,388 +135,344 @@ export default function FinancialMovements() {
     setSortConfig({ key, direction })
   }
 
-  const filteredMovements = movements.filter(
-    (m) =>
-      m.historico?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      m.c_custo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      m.nome_cli_fornec?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      m.conta_caixa?.toLowerCase().includes(searchTerm.toLowerCase()),
-  )
+  const formatValue = (value: any, type?: string) => {
+    if (value === null || value === undefined) return ''
+    if (type === 'currency') {
+      return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(
+        Number(value),
+      )
+    }
+    if (type === 'date') {
+      const [year, month, day] = value.split('T')[0].split('-')
+      if (year && month && day) return `${day}/${month}/${year}`
+      return value
+    }
+    return String(value)
+  }
 
-  const sortedMovements = useMemo(() => {
-    let sortableItems = [...filteredMovements]
-    if (sortConfig !== null) {
-      sortableItems.sort((a, b) => {
-        let aValue = a[sortConfig.key]
-        let bValue = b[sortConfig.key]
+  const filteredAndSortedData = useMemo(() => {
+    let result = [...data]
 
-        if (sortConfig.key === 'chart_of_accounts') {
-          aValue = a.chart_of_accounts?.account_name ?? ''
-          bValue = b.chart_of_accounts?.account_name ?? ''
+    if (search) {
+      const lowerSearch = search.toLowerCase()
+      result = result.filter(
+        (row) =>
+          (row.nome_cli_fornec && row.nome_cli_fornec.toLowerCase().includes(lowerSearch)) ||
+          (row.historico && row.historico.toLowerCase().includes(lowerSearch)) ||
+          (row.n_documento && row.n_documento.toLowerCase().includes(lowerSearch)),
+      )
+    }
+
+    if (sortConfig) {
+      result.sort((a, b) => {
+        const valA = a[sortConfig.key]
+        const valB = b[sortConfig.key]
+
+        if (valA === null || valA === undefined) return sortConfig.direction === 'asc' ? -1 : 1
+        if (valB === null || valB === undefined) return sortConfig.direction === 'asc' ? 1 : -1
+
+        if (typeof valA === 'number' && typeof valB === 'number') {
+          return sortConfig.direction === 'asc' ? valA - valB : valB - valA
         }
 
-        if (aValue === null || aValue === undefined) aValue = ''
-        if (bValue === null || bValue === undefined) bValue = ''
+        const strA = String(valA).toLowerCase()
+        const strB = String(valB).toLowerCase()
 
-        if (typeof aValue === 'number' && typeof bValue === 'number') {
-          return sortConfig.direction === 'asc' ? aValue - bValue : bValue - aValue
-        }
-
-        if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1
-        if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1
+        if (strA < strB) return sortConfig.direction === 'asc' ? -1 : 1
+        if (strA > strB) return sortConfig.direction === 'asc' ? 1 : -1
         return 0
       })
     }
-    return sortableItems
-  }, [filteredMovements, sortConfig])
+
+    return result
+  }, [data, search, sortConfig])
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
-      setSelectedRows(sortedMovements.map((m) => m.id))
+      setSelectedRows(new Set(filteredAndSortedData.map((r) => r.id)))
     } else {
-      setSelectedRows([])
+      setSelectedRows(new Set())
     }
   }
 
   const handleSelectRow = (id: string, checked: boolean) => {
+    const newSelected = new Set(selectedRows)
     if (checked) {
-      setSelectedRows((prev) => [...prev, id])
+      newSelected.add(id)
     } else {
-      setSelectedRows((prev) => prev.filter((rId) => rId !== id))
+      newSelected.delete(id)
+    }
+    setSelectedRows(newSelected)
+  }
+
+  const handleDeleteAll = async () => {
+    setIsDeleting(true)
+    try {
+      let query = supabase
+        .from('erp_financial_movements')
+        .update({ deleted_at: new Date().toISOString() })
+        .is('deleted_at', null)
+      if (selectedOrg !== 'all') {
+        query = query.eq('organization_id', selectedOrg)
+      } else {
+        const orgIds = orgs.map((o) => o.id)
+        query = query.in('organization_id', orgIds)
+      }
+
+      const { error } = await query
+      if (error) throw error
+
+      toast({ title: 'Sucesso', description: 'Todos os registros foram excluídos.' })
+      fetchData()
+    } catch (err: any) {
+      toast({ title: 'Erro ao excluir', description: err.message, variant: 'destructive' })
+    } finally {
+      setIsDeleting(false)
+      setIsDeleteAllOpen(false)
     }
   }
 
+  const handleDeleteSelected = async () => {
+    if (selectedRows.size === 0) return
+    setIsDeleting(true)
+    try {
+      const ids = Array.from(selectedRows)
+      for (let i = 0; i < ids.length; i += 500) {
+        const chunk = ids.slice(i, i + 500)
+        const { error } = await supabase
+          .from('erp_financial_movements')
+          .update({ deleted_at: new Date().toISOString() })
+          .in('id', chunk)
+        if (error) throw error
+      }
+
+      toast({ title: 'Sucesso', description: `${selectedRows.size} registros foram excluídos.` })
+      fetchData()
+    } catch (err: any) {
+      toast({ title: 'Erro ao excluir', description: err.message, variant: 'destructive' })
+    } finally {
+      setIsDeleting(false)
+      setIsDeleteSelectedOpen(false)
+    }
+  }
+
+  const allSelected =
+    filteredAndSortedData.length > 0 && selectedRows.size === filteredAndSortedData.length
+  const someSelected = selectedRows.size > 0 && selectedRows.size < filteredAndSortedData.length
+
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="flex flex-col h-[calc(100vh-4rem)] p-6 space-y-4">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-red-600">
+          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
             Movimento Financeiro TGA
           </h1>
-          <p className="text-muted-foreground">
-            Importe, visualize e mapeie movimentos financeiros vindos do seu ERP.
-          </p>
+          <p className="text-slate-500 text-sm">Gerencie os dados financeiros importados do ERP.</p>
         </div>
-        <div className="flex items-center gap-2 flex-wrap">
-          {selectedRows.length > 0 && (
-            <Button
-              onClick={handleDeleteSelected}
-              variant="destructive"
-              className="gap-2 h-9 shadow-sm"
-            >
-              <Trash2 className="w-4 h-4" />
-              Excluir Selecionados ({selectedRows.length})
-            </Button>
-          )}
-          {movements.length > 0 && (
-            <Button
-              onClick={handleDeleteAll}
-              variant="outline"
-              className="gap-2 border-destructive text-destructive hover:bg-destructive hover:text-white h-9 shadow-sm"
-            >
-              <Trash2 className="w-4 h-4" />
-              Excluir Todos
+        <div className="flex flex-wrap items-center gap-2">
+          {selectedRows.size > 0 && (
+            <Button variant="destructive" onClick={() => setIsDeleteSelectedOpen(true)}>
+              <Trash2 className="h-4 w-4 mr-2" /> Excluir ({selectedRows.size})
             </Button>
           )}
           <Button
-            onClick={() => setImportModalOpen(true)}
-            className="gap-2 bg-red-600 hover:bg-red-700 text-white shadow-sm h-9"
+            variant="outline"
+            className="text-red-600 hover:text-red-700 hover:bg-red-50"
+            onClick={() => setIsDeleteAllOpen(true)}
           >
-            <Upload className="w-4 h-4" />
-            Importar Planilha ERP
+            <Trash2 className="h-4 w-4 mr-2" /> Excluir Tudo
+          </Button>
+          <Button
+            className="bg-red-600 hover:bg-red-700 text-white"
+            onClick={() => setIsImportOpen(true)}
+          >
+            <Upload className="h-4 w-4 mr-2" /> Importar Planilha
           </Button>
         </div>
       </div>
 
-      <Card className="border-border/50 shadow-sm">
-        <CardHeader className="flex flex-row items-center justify-between pb-2">
-          <div className="flex items-center space-x-2 w-full max-w-md relative">
-            <Search className="w-4 h-4 text-muted-foreground absolute left-3" />
-            <Input
-              placeholder="Buscar por histórico, fornecedor ou C. Custo..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-9 w-full bg-background border-border/50 h-9"
-            />
+      <div className="flex flex-col sm:flex-row gap-4 items-center bg-white p-3 rounded-lg border shadow-sm">
+        <div className="w-full sm:w-64">
+          <Select value={selectedOrg} onValueChange={setSelectedOrg}>
+            <SelectTrigger>
+              <SelectValue placeholder="Todas as Empresas" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas as Empresas</SelectItem>
+              {orgs.map((org) => (
+                <SelectItem key={org.id} value={org.id}>
+                  {org.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="relative w-full sm:w-96">
+          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" />
+          <Input
+            placeholder="Buscar por cliente, documento ou histórico..."
+            className="pl-9"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
+        <div className="ml-auto text-sm text-slate-500 font-medium">
+          {filteredAndSortedData.length} registros
+        </div>
+      </div>
+
+      <div className="flex-1 bg-white border rounded-lg shadow-sm overflow-hidden flex flex-col">
+        {loading ? (
+          <div className="flex-1 flex items-center justify-center">
+            <Loader2 className="h-8 w-8 animate-spin text-red-600" />
           </div>
-        </CardHeader>
-        <CardContent>
-          <div className="rounded-md border border-border/50 bg-card shadow-sm">
-            <Table wrapperClassName="max-h-[600px]">
-              <TableHeader className="bg-muted/50 sticky top-0 z-20 shadow-sm">
-                <TableRow>
-                  <TableHead className="w-[40px] px-2 py-1 h-8">
-                    <Checkbox
-                      checked={
-                        sortedMovements.length > 0 && selectedRows.length === sortedMovements.length
-                      }
-                      onCheckedChange={handleSelectAll}
-                      aria-label="Selecionar todos"
-                    />
+        ) : filteredAndSortedData.length === 0 ? (
+          <div className="flex-1 flex flex-col items-center justify-center text-slate-500 p-8 text-center">
+            <div className="h-16 w-16 bg-slate-100 rounded-full flex items-center justify-center mb-4">
+              <Search className="h-8 w-8 text-slate-400" />
+            </div>
+            <p className="text-lg font-medium text-slate-900 mb-1">Nenhum registro encontrado</p>
+            <p>Tente ajustar os filtros ou importe uma nova planilha.</p>
+          </div>
+        ) : (
+          <ScrollArea className="flex-1 relative">
+            <Table className="relative w-max min-w-full border-collapse">
+              <TableHeader className="sticky top-0 bg-slate-100 z-20 shadow-sm">
+                <TableRow className="hover:bg-transparent">
+                  <TableHead className="w-10 px-2 py-1 sticky left-0 bg-slate-100 z-30 shadow-[1px_0_0_#e2e8f0]">
+                    <div className="flex justify-center">
+                      <Checkbox
+                        checked={allSelected ? true : someSelected ? 'indeterminate' : false}
+                        onCheckedChange={handleSelectAll}
+                      />
+                    </div>
                   </TableHead>
-                  {erpColumns.map((col) => (
+                  {COLUMNS.map((col) => (
                     <TableHead
                       key={col.key}
-                      className="whitespace-nowrap font-semibold px-2 py-1 h-8 cursor-pointer hover:bg-muted/80 transition-colors select-none"
+                      className="whitespace-nowrap px-2 py-1 h-8 text-xs font-semibold text-slate-700 border-x border-slate-200 cursor-pointer select-none hover:bg-slate-200 transition-colors"
                       onClick={() => handleSort(col.key)}
                     >
                       <div className="flex items-center gap-1">
                         {col.label}
                         {sortConfig?.key === col.key ? (
                           sortConfig.direction === 'asc' ? (
-                            <ChevronUp className="w-3 h-3" />
+                            <ArrowUp className="h-3 w-3" />
                           ) : (
-                            <ChevronDown className="w-3 h-3" />
+                            <ArrowDown className="h-3 w-3" />
                           )
                         ) : (
-                          <ArrowUpDown className="w-3 h-3 opacity-30" />
+                          <ArrowUpDown className="h-3 w-3 opacity-20" />
                         )}
                       </div>
                     </TableHead>
                   ))}
-                  <TableHead
-                    className="whitespace-nowrap font-semibold text-center px-2 py-1 h-8 cursor-pointer hover:bg-muted/80 transition-colors select-none"
-                    onClick={() => handleSort('status')}
-                  >
-                    <div className="flex items-center justify-center gap-1">
-                      Status
-                      {sortConfig?.key === 'status' ? (
-                        sortConfig.direction === 'asc' ? (
-                          <ChevronUp className="w-3 h-3" />
-                        ) : (
-                          <ChevronDown className="w-3 h-3" />
-                        )
-                      ) : (
-                        <ArrowUpDown className="w-3 h-3 opacity-30" />
-                      )}
-                    </div>
-                  </TableHead>
-                  <TableHead
-                    className="whitespace-nowrap font-semibold px-2 py-1 h-8 cursor-pointer hover:bg-muted/80 transition-colors select-none"
-                    onClick={() => handleSort('chart_of_accounts')}
-                  >
-                    <div className="flex items-center gap-1">
-                      DE/PARA Contábil
-                      {sortConfig?.key === 'chart_of_accounts' ? (
-                        sortConfig.direction === 'asc' ? (
-                          <ChevronUp className="w-3 h-3" />
-                        ) : (
-                          <ChevronDown className="w-3 h-3" />
-                        )
-                      ) : (
-                        <ArrowUpDown className="w-3 h-3 opacity-30" />
-                      )}
-                    </div>
-                  </TableHead>
-                  <TableHead className="whitespace-nowrap font-semibold text-right sticky right-0 bg-muted/50 z-30 shadow-[-4px_0_10px_-4px_rgba(0,0,0,0.1)] px-2 py-1 h-8">
-                    Ações
-                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {loading ? (
-                  <TableRow>
+                {filteredAndSortedData.map((row, idx) => (
+                  <TableRow
+                    key={row.id}
+                    className={cn(
+                      'hover:bg-slate-50 transition-colors group cursor-default',
+                      idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/50',
+                      selectedRows.has(row.id) && 'bg-blue-50 hover:bg-blue-50',
+                    )}
+                  >
                     <TableCell
-                      colSpan={erpColumns.length + 4}
-                      className="h-32 text-center text-muted-foreground"
+                      className="px-2 py-1 border border-slate-100 sticky left-0 z-10 shadow-[1px_0_0_#f1f5f9] group-hover:shadow-[1px_0_0_#e2e8f0] transition-colors"
+                      style={{ backgroundColor: 'inherit' }}
                     >
-                      <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2 text-red-600" />
-                      Carregando movimentos...
-                    </TableCell>
-                  </TableRow>
-                ) : sortedMovements.length === 0 ? (
-                  <TableRow>
-                    <TableCell
-                      colSpan={erpColumns.length + 4}
-                      className="h-32 text-center text-muted-foreground"
-                    >
-                      Nenhum movimento encontrado. Importe uma planilha para começar.
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  sortedMovements.map((m) => (
-                    <TableRow key={m.id} className="hover:bg-muted/30 transition-colors group h-8">
-                      <TableCell className="px-2 py-1 text-xs">
+                      <div className="flex justify-center">
                         <Checkbox
-                          checked={selectedRows.includes(m.id)}
-                          onCheckedChange={(checked) => handleSelectRow(m.id, !!checked)}
-                          aria-label="Selecionar linha"
+                          checked={selectedRows.has(row.id)}
+                          onCheckedChange={(c) => handleSelectRow(row.id, !!c)}
                         />
+                      </div>
+                    </TableCell>
+                    {COLUMNS.map((col) => (
+                      <TableCell
+                        key={col.key}
+                        className="px-2 py-1 text-xs border border-slate-100 whitespace-nowrap truncate max-w-[200px]"
+                        title={String(row[col.key] || '')}
+                      >
+                        {formatValue(row[col.key], col.type)}
                       </TableCell>
-                      {erpColumns.map((col) => (
-                        <TableCell
-                          key={col.key}
-                          className="whitespace-nowrap max-w-[200px] truncate px-2 py-1 text-xs"
-                          title={String(m[col.key] || '')}
-                        >
-                          {col.type === 'date'
-                            ? m[col.key]
-                              ? format(new Date(m[col.key]), 'dd/MM/yyyy', { locale: ptBR })
-                              : '-'
-                            : col.type === 'currency'
-                              ? m[col.key]?.toLocaleString('pt-BR', {
-                                  style: 'currency',
-                                  currency: 'BRL',
-                                }) || '-'
-                              : m[col.key] || '-'}
-                        </TableCell>
-                      ))}
-                      <TableCell className="text-center px-2 py-1">
-                        <Badge
-                          variant={m.status === 'Mapeado' ? 'default' : 'secondary'}
-                          className={cn(
-                            'text-[10px] px-1.5 py-0 h-4 font-medium',
-                            m.status === 'Mapeado'
-                              ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200 border-emerald-200'
-                              : 'bg-amber-100 text-amber-800 hover:bg-amber-200 border-amber-200',
-                          )}
-                        >
-                          {m.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="max-w-[200px] truncate px-2 py-1 text-xs">
-                        {m.chart_of_accounts ? (
-                          <div className="flex items-center gap-1 font-medium text-emerald-700">
-                            <ArrowRight className="w-3 h-3" />
-                            <span title={m.chart_of_accounts.account_name}>
-                              {m.chart_of_accounts.account_code} -{' '}
-                              {m.chart_of_accounts.account_name}
-                            </span>
-                          </div>
-                        ) : (
-                          <span className="text-muted-foreground/60 italic flex items-center gap-1">
-                            <ArrowRight className="w-3 h-3" /> Não vinculado
-                          </span>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-right sticky right-0 bg-card group-hover:bg-muted/30 transition-colors z-10 shadow-[-4px_0_10px_-4px_rgba(0,0,0,0.05)] px-2 py-1">
-                        <div className="flex justify-end gap-1 bg-inherit">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-6 px-2 text-blue-600 hover:text-blue-700 hover:bg-blue-50 text-xs"
-                            onClick={() => {
-                              setSelectedMovement(m)
-                              setSelectedAccountId(m.mapped_account_id || '')
-                              setMappingModalOpen(true)
-                            }}
-                            title="Mapear Conta Contábil"
-                          >
-                            <MapIcon className="w-3 h-3 mr-1.5" />
-                            Mapear
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleDelete(m.id)}
-                            title="Excluir"
-                            className="h-6 w-6 text-destructive hover:text-destructive hover:bg-destructive/10"
-                          >
-                            <Trash2 className="w-3 h-3" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
+                    ))}
+                  </TableRow>
+                ))}
               </TableBody>
             </Table>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Dialog open={mappingModalOpen} onOpenChange={setMappingModalOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Mapear Movimento (DE/PARA)</DialogTitle>
-            <DialogDescription>
-              Vincule este movimento do ERP a uma Conta Contábil do sistema.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            {selectedMovement && (
-              <div className="bg-muted/50 p-4 rounded-lg space-y-3 text-sm border border-border/50">
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <span className="text-muted-foreground block text-xs uppercase tracking-wider mb-1">
-                      Histórico
-                    </span>
-                    <span className="font-medium line-clamp-2" title={selectedMovement.historico}>
-                      {selectedMovement.historico || '-'}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground block text-xs uppercase tracking-wider mb-1">
-                      Valor
-                    </span>
-                    <span className="font-medium text-red-600">
-                      {selectedMovement.valor?.toLocaleString('pt-BR', {
-                        style: 'currency',
-                        currency: 'BRL',
-                      })}
-                    </span>
-                  </div>
-                </div>
-                <div>
-                  <span className="text-muted-foreground block text-xs uppercase tracking-wider mb-1">
-                    Conta/Caixa ERP (DE)
-                  </span>
-                  <span className="font-medium">
-                    {selectedMovement.conta_caixa} - {selectedMovement.nome_caixa}
-                  </span>
-                </div>
-              </div>
-            )}
-
-            <div className="flex items-center justify-center py-2">
-              <div className="bg-red-600/10 p-2 rounded-full">
-                <ArrowRight className="w-5 h-5 text-red-600" />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-semibold text-foreground">Conta Contábil (PARA)</label>
-              <Select value={selectedAccountId} onValueChange={setSelectedAccountId}>
-                <SelectTrigger className="w-full border-border/50">
-                  <SelectValue placeholder="Selecione a conta contábil..." />
-                </SelectTrigger>
-                <SelectContent className="max-h-[300px]">
-                  {chartAccounts.map((acc) => (
-                    <SelectItem key={acc.id} value={acc.id} className="cursor-pointer">
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono text-xs bg-red-600/10 text-red-600 px-1.5 py-0.5 rounded">
-                          {acc.account_code}
-                        </span>
-                        <span className="truncate max-w-[250px] font-medium">
-                          {acc.account_name}
-                        </span>
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setMappingModalOpen(false)}>
-              Cancelar
-            </Button>
-            <Button
-              onClick={handleMapAccount}
-              disabled={!selectedAccountId}
-              className="bg-red-600 hover:bg-red-700 text-white"
-            >
-              Confirmar Vínculo
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+            <ScrollBar orientation="horizontal" />
+          </ScrollArea>
+        )}
+      </div>
 
       <ImportErpFinancialModal
-        open={importModalOpen}
-        onOpenChange={setImportModalOpen}
-        onImportSuccess={fetchMovements}
+        open={isImportOpen}
+        onOpenChange={setIsImportOpen}
+        onImportSuccess={fetchData}
       />
+
+      <AlertDialog open={isDeleteAllOpen} onOpenChange={setIsDeleteAllOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir todos os registros?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação excluirá todos os registros na empresa atual. Esta ação não pode ser
+              desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault()
+                handleDeleteAll()
+              }}
+              className="bg-red-600 hover:bg-red-700 text-white"
+              disabled={isDeleting}
+            >
+              {isDeleting ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <Trash2 className="h-4 w-4 mr-2" />
+              )}
+              Excluir Tudo
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={isDeleteSelectedOpen} onOpenChange={setIsDeleteSelectedOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir registros selecionados?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Você está prestes a excluir {selectedRows.size} registro(s). Esta ação não pode ser
+              desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault()
+                handleDeleteSelected()
+              }}
+              className="bg-red-600 hover:bg-red-700 text-white"
+              disabled={isDeleting}
+            >
+              {isDeleting ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <Trash2 className="h-4 w-4 mr-2" />
+              )}
+              Excluir Selecionados
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

@@ -268,12 +268,15 @@ Deno.serve(async (req: Request) => {
           const workbook = XLSX.read(bytes, { type: 'array', sheets: [targetSheet] })
           const worksheet = workbook.Sheets[targetSheet]
           rawRecords = XLSX.utils.sheet_to_json(worksheet, { defval: '' })
-        }
+          }
 
-        records = rawRecords.map((r: any, index: number) => {
-          const normalized: any = {}
-          normalized._originalIndex = index + 1
-          for (const key in r) {
+          if (typeof payload.offset === 'number' && typeof payload.limit === 'number') {
+            rawRecords = rawRecords.slice(payload.offset, payload.offset + payload.limit)
+          }
+
+          records = rawRecords.map((r: any, index: number) => {
+            const normalized: any = {}
+            normalized._originalIndex = (payload.offset || 0) + index + 1          for (const key in r) {
             const mappedKey = columnMapping[key] || key;
             const cleanKey = mappedKey
               .normalize('NFD')
@@ -296,9 +299,6 @@ Deno.serve(async (req: Request) => {
           })
         }
 
-        if (typeof payload.offset === 'number' && typeof payload.limit === 'number') {
-          records = records.slice(payload.offset, payload.offset + payload.limit)
-        }
       } catch (err: any) {
         throw new Error('Erro ao processar o arquivo: ' + err.message)
       }
@@ -2086,8 +2086,8 @@ Deno.serve(async (req: Request) => {
         })
       }
 
-      for (let i = 0; i < toInsert.length; i += 500) {
-        const chunk = toInsert.slice(i, i + 500)
+      for (let i = 0; i < toInsert.length; i += 100) {
+        const chunk = toInsert.slice(i, i + 100)
         const { error: insErr } = await supabaseAdmin.from('erp_financial_movements').insert(chunk)
         if (insErr) {
           chunk.forEach((c: any) => {

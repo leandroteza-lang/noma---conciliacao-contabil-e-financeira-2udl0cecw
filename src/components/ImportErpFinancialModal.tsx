@@ -93,6 +93,8 @@ export function ImportErpFinancialModal({
   const [selectedOrg, setSelectedOrg] = useState<string>('')
   const [allowIncomplete, setAllowIncomplete] = useState(true)
   const [result, setResult] = useState<{ inserted: number; errors: any[] } | null>(null)
+  const [totalRecords, setTotalRecords] = useState(0)
+  const [progress, setProgress] = useState(0)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -149,6 +151,7 @@ export function ImportErpFinancialModal({
       setSheets(data.sheets || [])
       setHeaders(data.headers || [])
       setPreviewRows(data.previewRows || [])
+      setTotalRecords(data.totalRecords || 0)
 
       if (!sheet && data.sheets?.length > 0) {
         setSelectedSheet(data.sheets[0])
@@ -198,6 +201,7 @@ export function ImportErpFinancialModal({
     }
 
     setLoading(true)
+    setProgress(0)
     const columnMapping: Record<string, string> = {}
     Object.entries(mapping).forEach(([expected, fileCol]) => {
       if (fileCol && fileCol !== 'none') {
@@ -206,30 +210,49 @@ export function ImportErpFinancialModal({
     })
 
     try {
-      const { data, error } = await supabase.functions.invoke('import-data', {
-        body: {
-          type: 'ERP_FINANCIAL_MOVEMENTS',
-          fileBase64,
-          fileName: file?.name,
-          sheetName: selectedSheet,
-          columnMapping,
-          organizationId: selectedOrg,
-          allowIncomplete,
-          mode: 'INSERT_ONLY',
-        },
-      })
+      const CHUNK_SIZE = 2000
+      let totalInserted = 0
+      const allErrors: any[] = []
+      const total = totalRecords || 1
 
-      if (error) {
-        const errMsg =
-          error.message === 'Edge Function returned a non-2xx status code'
-            ? 'Erro de comunicação com o servidor. A planilha pode ser muito grande ou estar mal formatada.'
-            : error.message
-        throw new Error(errMsg)
+      for (let offset = 0; offset < total; offset += CHUNK_SIZE) {
+        setProgress(Math.min(Math.round((offset / total) * 100), 99))
+
+        const { data, error } = await supabase.functions.invoke('import-data', {
+          body: {
+            type: 'ERP_FINANCIAL_MOVEMENTS',
+            fileBase64,
+            fileName: file?.name,
+            sheetName: selectedSheet,
+            columnMapping,
+            organizationId: selectedOrg,
+            allowIncomplete,
+            mode: 'INSERT_ONLY',
+            offset,
+            limit: CHUNK_SIZE,
+            skipHistory: offset + CHUNK_SIZE < total,
+            totalRecords: total,
+          },
+        })
+
+        if (error) {
+          throw new Error(
+            error.message === 'Edge Function returned a non-2xx status code'
+              ? 'Erro de comunicação. A planilha pode ser muito grande ou estar mal formatada.'
+              : error.message,
+          )
+        }
+
+        if (data?.error) throw new Error(data.error)
+
+        totalInserted += data.inserted || 0
+        if (data.errors && Array.isArray(data.errors)) {
+          allErrors.push(...data.errors)
+        }
       }
 
-      if (data?.error) throw new Error(data.error)
-
-      setResult(data)
+      setProgress(100)
+      setResult({ inserted: totalInserted, errors: allErrors })
       setStep(3)
       onImportSuccess()
     } catch (err: any) {
@@ -239,8 +262,9 @@ export function ImportErpFinancialModal({
         description: err.message || 'Ocorreu um erro inesperado durante o processamento.',
         variant: 'destructive',
       })
+    } finally {
+      setLoading(false)
     }
-    setLoading(false)
   }
 
   return (
@@ -446,14 +470,19 @@ export function ImportErpFinancialModal({
                 <Button
                   onClick={handleImport}
                   disabled={loading || !selectedOrg}
-                  className="bg-red-600 hover:bg-red-700 text-white"
+                  className="bg-red-600 hover:bg-red-700 text-white min-w-[140px]"
                 >
                   {loading ? (
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      {progress}%
+                    </>
                   ) : (
-                    <ArrowRight className="h-4 w-4 mr-2" />
+                    <>
+                      <ArrowRight className="h-4 w-4 mr-2" />
+                      Importar Dados
+                    </>
                   )}
-                  Importar Dados
                 </Button>
               )}
             </>
