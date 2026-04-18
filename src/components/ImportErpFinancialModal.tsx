@@ -354,7 +354,9 @@ export function ImportErpFinancialModal({ open, onOpenChange, onImportSuccess }:
     try {
       const d = new Date(val)
       if (!isNaN(d.getTime())) return d.toISOString().split('T')[0]
-    } catch (e) {}
+    } catch (e) {
+      // ignore invalid dates
+    }
     return null
   }
 
@@ -509,7 +511,13 @@ export function ImportErpFinancialModal({ open, onOpenChange, onImportSuccess }:
             val =
               val !== null && val !== undefined
                 ? String(val)
-                    .replace(/[\u0000-\u0008\u000B-\u000C\u000E-\u001F\u007F-\u009F]/g, '')
+                    .replace(
+                      new RegExp(
+                        '[\\u0000-\\u0008\\u000B-\\u000C\\u000E-\\u001F\\u007F-\\u009F]',
+                        'g',
+                      ),
+                      '',
+                    )
                     .trim()
                 : ''
           }
