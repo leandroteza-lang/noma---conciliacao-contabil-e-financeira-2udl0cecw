@@ -86,7 +86,9 @@ export default function FinancialMovements() {
             if (parsed.id === data.id) {
               setElapsedSeconds(parsed.elapsed)
             }
-          } catch (e) {}
+          } catch (e) {
+            // Ignore parse errors
+          }
         }
       }
     }
