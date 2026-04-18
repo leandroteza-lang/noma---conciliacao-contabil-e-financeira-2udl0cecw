@@ -1,0 +1,183 @@
+import { useEffect, useState } from 'react'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import * as z from 'zod'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { supabase } from '@/lib/supabase/client'
+
+const schema = z.object({
+  organization_id: z.string().min(1, 'Selecione uma empresa'),
+  account_code: z.string().optional(),
+  description: z.string().min(1, 'Campo obrigatório'),
+  bank_code: z.string().optional(),
+  agency: z.string().optional(),
+  account_number: z.string().optional(),
+  check_digit: z.string().optional(),
+  account_type: z.string().optional(),
+  classification: z.string().optional(),
+})
+
+type FormData = z.infer<typeof schema>
+
+export function BankAccountFormModal({ isOpen, onClose, onSave, initialData }: any) {
+  const [organizations, setOrganizations] = useState<any[]>([])
+
+  useEffect(() => {
+    const fetchOrgs = async () => {
+      const { data } = await supabase
+        .from('organizations')
+        .select('id, name')
+        .is('deleted_at', null)
+        .order('name')
+      if (data) setOrganizations(data)
+    }
+    if (isOpen) fetchOrgs()
+  }, [isOpen])
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+    setValue,
+    reset,
+    watch,
+  } = useForm<FormData>({
+    resolver: zodResolver(schema),
+    defaultValues: {
+      organization_id: '',
+      account_code: '',
+      description: '',
+      bank_code: '',
+      agency: '',
+      account_number: '',
+      check_digit: '',
+      account_type: '',
+      classification: '',
+    },
+  })
+
+  useEffect(() => {
+    if (isOpen && initialData) {
+      reset({
+        organization_id: initialData.organization_id || '',
+        account_code: initialData.account_code || '',
+        description: initialData.description || '',
+        bank_code: initialData.bank_code || '',
+        agency: initialData.agency || '',
+        account_number: initialData.account_number || '',
+        check_digit: initialData.check_digit || '',
+        account_type: initialData.account_type || '',
+        classification: initialData.classification || '',
+      })
+    } else if (isOpen) {
+      reset({
+        organization_id: '',
+        account_code: '',
+        description: '',
+        bank_code: '',
+        agency: '',
+        account_number: '',
+        check_digit: '',
+        account_type: '',
+        classification: '',
+      })
+    }
+  }, [isOpen, initialData, reset])
+
+  const handleFormSubmit = (data: FormData) => {
+    const org = organizations.find((o) => o.id === data.organization_id)
+    onSave({ ...data, company_name: org?.name })
+  }
+
+  return (
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="sm:max-w-[600px]">
+        <DialogHeader>
+          <DialogTitle>{initialData ? 'Editar Conta Bancária' : 'Nova Conta Bancária'}</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-4 py-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2 col-span-2">
+              <Label>Empresa</Label>
+              <Select
+                value={watch('organization_id')}
+                onValueChange={(val) => setValue('organization_id', val)}
+              >
+                <SelectTrigger className={errors.organization_id ? 'border-red-500' : ''}>
+                  <SelectValue placeholder="Selecione a empresa..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {organizations.map((org) => (
+                    <SelectItem key={org.id} value={org.id}>
+                      {org.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2 col-span-2">
+              <Label>Descrição da Conta</Label>
+              <Input
+                {...register('description')}
+                placeholder="Ex: Conta Corrente Itaú"
+                className={errors.description ? 'border-red-500' : ''}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Conta Contábil</Label>
+              <Input {...register('account_code')} placeholder="Ex: 101" />
+            </div>
+            <div className="space-y-2">
+              <Label>Classificação</Label>
+              <Input {...register('classification')} placeholder="Ex: 1.1.01.02.001" />
+            </div>
+            <div className="space-y-2">
+              <Label>Código do Banco</Label>
+              <Input {...register('bank_code')} placeholder="Ex: 341" />
+            </div>
+            <div className="space-y-2">
+              <Label>Tipo de Conta</Label>
+              <Input {...register('account_type')} placeholder="Ex: Corrente" />
+            </div>
+            <div className="space-y-2">
+              <Label>Agência</Label>
+              <Input {...register('agency')} placeholder="Ex: 1234" />
+            </div>
+            <div className="grid grid-cols-[1fr_80px] gap-2">
+              <div className="space-y-2">
+                <Label>Número da Conta</Label>
+                <Input {...register('account_number')} placeholder="Ex: 12345" />
+              </div>
+              <div className="space-y-2">
+                <Label>Dígito</Label>
+                <Input {...register('check_digit')} placeholder="Ex: 6" />
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="ghost" onClick={onClose}>
+              Cancelar
+            </Button>
+            <Button type="submit">Salvar</Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  )
+}
