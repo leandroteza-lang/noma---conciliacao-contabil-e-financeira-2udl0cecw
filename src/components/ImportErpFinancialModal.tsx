@@ -236,17 +236,29 @@ export function ImportErpFinancialModal({ open, onOpenChange, onImportSuccess }:
         const normalizedHeaders = data.headers.map((h: string) => normalizeText(h))
         const usedTargets = new Set<string>()
 
+        let savedMapping: Record<string, string> = {}
+        try {
+          savedMapping = JSON.parse(localStorage.getItem('erpColumnMapping') || '{}')
+        } catch (e) {}
+
         data.headers.forEach((header: string, idx: number) => {
           const nh = normalizedHeaders[idx]
           if (!nh) return
           let matchedErpCol = ''
 
+          // 0. Check saved mapping first
+          if (savedMapping[header] && !usedTargets.has(savedMapping[header])) {
+            matchedErpCol = savedMapping[header]
+          }
+
           // 1. Exact match in synonyms
-          for (const [erpCol, synonyms] of Object.entries(ERP_COLUMNS_SYNONYMS)) {
-            if (usedTargets.has(erpCol)) continue
-            if (synonyms.includes(nh)) {
-              matchedErpCol = erpCol
-              break
+          if (!matchedErpCol) {
+            for (const [erpCol, synonyms] of Object.entries(ERP_COLUMNS_SYNONYMS)) {
+              if (usedTargets.has(erpCol)) continue
+              if (synonyms.includes(nh)) {
+                matchedErpCol = erpCol
+                break
+              }
             }
           }
 
@@ -307,6 +319,9 @@ export function ImportErpFinancialModal({ open, onOpenChange, onImportSuccess }:
 
     setLoading(true)
     try {
+      // Save mapping preference
+      localStorage.setItem('erpColumnMapping', JSON.stringify(columnMapping))
+
       const path = `${user?.id}_${Date.now()}_${file.name}`
       const { error: uploadErr } = await supabase.storage.from('imports').upload(path, file)
 
@@ -314,14 +329,34 @@ export function ImportErpFinancialModal({ open, onOpenChange, onImportSuccess }:
 
       setFilePath(path)
 
+      const { data: history, error: historyErr } = await supabase
+        .from('import_history')
+        .insert({
+          user_id: user?.id,
+          import_type: 'ERP_FINANCIAL_MOVEMENTS',
+          file_name: file.name,
+          file_path: path,
+          status: 'Processing',
+          organization_id: selectedOrg,
+          total_records: 0,
+        })
+        .select()
+        .single()
+
+      if (historyErr) throw historyErr
+
       const { error } = await supabase.functions.invoke('import-data', {
         body: {
-          action: 'START_BACKGROUND',
+          action: 'PROCESS_BACKGROUND',
+          importId: history.id,
           type: 'ERP_FINANCIAL_MOVEMENTS',
           filePath: path,
           fileName: file.name,
           organizationId: selectedOrg,
           columnMapping,
+          offset: 0,
+          limit: 2000,
+          userId: user?.id,
         },
       })
 
