@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase/client'
 import { useAuth } from '@/hooks/use-auth'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import {
   Table,
   TableBody,
@@ -27,6 +27,7 @@ import {
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
+  Columns,
 } from 'lucide-react'
 import {
   Select,
@@ -35,6 +36,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { ImportErpFinancialModal } from '@/components/ImportErpFinancialModal'
 import { Progress } from '@/components/ui/progress'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
@@ -88,6 +97,32 @@ export default function FinancialMovements() {
   const [editForm, setEditForm] = useState<any>({})
   const [activeImport, setActiveImport] = useState<any>(null)
   const [elapsedSeconds, setElapsedSeconds] = useState(0)
+
+  const defaultVisibleColumns = tableHeaders.reduce(
+    (acc, h) => ({ ...acc, [h.key]: true }),
+    {} as Record<string, boolean>,
+  )
+
+  const [visibleColumns, setVisibleColumns] = useState<Record<string, boolean>>(() => {
+    const saved = localStorage.getItem('fin_mov_visible_cols')
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved)
+        return { ...defaultVisibleColumns, ...parsed }
+      } catch (e) {
+        // ignore parse error
+      }
+    }
+    return defaultVisibleColumns
+  })
+
+  useEffect(() => {
+    localStorage.setItem('fin_mov_visible_cols', JSON.stringify(visibleColumns))
+  }, [visibleColumns])
+
+  const toggleColumn = (key: string) => {
+    setVisibleColumns((prev) => ({ ...prev, [key]: !prev[key] }))
+  }
 
   const formatTime = (seconds: number) => {
     const m = Math.floor(Math.max(0, seconds) / 60)
@@ -284,6 +319,7 @@ export default function FinancialMovements() {
   }, [user, page, search, pageSize, sortColumn, sortDirection])
 
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize))
+  const visibleCount = tableHeaders.filter((h) => visibleColumns[h.key] !== false).length + 1
 
   return (
     <div className="p-6 space-y-6 max-w-[1600px] mx-auto animate-fade-in-up">
@@ -408,8 +444,40 @@ export default function FinancialMovements() {
               />
             </div>
             <div className="flex flex-wrap items-center gap-3 xl:ml-auto bg-white p-1.5 rounded-md border shadow-sm">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7 text-xs flex items-center gap-1.5 px-2"
+                  >
+                    <Columns className="h-3.5 w-3.5" />
+                    <span className="hidden sm:inline">Colunas</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56 max-h-[60vh] overflow-y-auto">
+                  <DropdownMenuLabel>Visibilidade das Colunas</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  {tableHeaders.map((h) => (
+                    <DropdownMenuCheckboxItem
+                      key={h.key}
+                      checked={visibleColumns[h.key] !== false}
+                      onCheckedChange={() => toggleColumn(h.key)}
+                      className="text-xs cursor-pointer"
+                      onSelect={(e) => e.preventDefault()}
+                    >
+                      {h.label}
+                    </DropdownMenuCheckboxItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              <div className="hidden sm:block w-px h-4 bg-slate-200 mx-1"></div>
+
               <div className="flex items-center gap-2 text-xs">
-                <span className="text-slate-500 whitespace-nowrap">Por página:</span>
+                <span className="text-slate-500 whitespace-nowrap hidden sm:inline">
+                  Por página:
+                </span>
                 <Select
                   value={pageSize.toString()}
                   onValueChange={(v) => {
@@ -432,9 +500,11 @@ export default function FinancialMovements() {
               <div className="hidden sm:block w-px h-4 bg-slate-200 mx-1"></div>
               <div className="flex items-center gap-2 text-xs text-slate-500 whitespace-nowrap">
                 <span>
-                  Página {page + 1} de {totalPages}
+                  Pág {page + 1} de {totalPages}
                 </span>
-                <span className="font-semibold text-slate-700">({totalCount} regs)</span>
+                <span className="font-semibold text-slate-700 hidden sm:inline">
+                  ({totalCount} regs)
+                </span>
               </div>
               <div className="flex items-center gap-1">
                 <Button
@@ -484,30 +554,32 @@ export default function FinancialMovements() {
           >
             <TableHeader>
               <TableRow className="bg-slate-50 hover:bg-slate-50 border-b">
-                {tableHeaders.map((h) => (
-                  <TableHead
-                    key={h.key}
-                    className={cn(
-                      'h-8 px-2 py-1 text-xs font-semibold text-slate-600 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 select-none transition-colors border-r last:border-r-0',
-                      h.className,
-                    )}
-                    onClick={() => handleSort(h.key)}
-                  >
-                    <div
+                {tableHeaders
+                  .filter((h) => visibleColumns[h.key] !== false)
+                  .map((h) => (
+                    <TableHead
+                      key={h.key}
                       className={cn(
-                        'flex items-center',
-                        h.align === 'right'
-                          ? 'justify-end'
-                          : h.align === 'center'
-                            ? 'justify-center'
-                            : 'justify-start',
+                        'h-8 px-2 py-1 text-xs font-semibold text-slate-600 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 select-none transition-colors border-r last:border-r-0',
+                        h.className,
                       )}
+                      onClick={() => handleSort(h.key)}
                     >
-                      {h.label}
-                      {renderSortIcon(h.key)}
-                    </div>
-                  </TableHead>
-                ))}
+                      <div
+                        className={cn(
+                          'flex items-center',
+                          h.align === 'right'
+                            ? 'justify-end'
+                            : h.align === 'center'
+                              ? 'justify-center'
+                              : 'justify-start',
+                        )}
+                      >
+                        {h.label}
+                        {renderSortIcon(h.key)}
+                      </div>
+                    </TableHead>
+                  ))}
                 <TableHead className="h-8 px-2 py-1 text-xs font-semibold text-slate-600 whitespace-nowrap text-center border-r last:border-r-0">
                   Ações
                 </TableHead>
@@ -516,13 +588,13 @@ export default function FinancialMovements() {
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={31} className="text-center h-48">
+                  <TableCell colSpan={visibleCount} className="text-center h-48">
                     <Loader2 className="h-6 w-6 animate-spin mx-auto text-primary" />
                   </TableCell>
                 </TableRow>
               ) : data.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={31} className="text-center h-48 text-slate-500">
+                  <TableCell colSpan={visibleCount} className="text-center h-48 text-slate-500">
                     Nenhum movimento financeiro encontrado.
                   </TableCell>
                 </TableRow>
@@ -540,265 +612,327 @@ export default function FinancialMovements() {
                       key={row.id}
                       className="hover:bg-slate-50/80 transition-colors border-b"
                     >
-                      <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 border-r">
-                        {row.compensado || '-'}
-                      </TableCell>
-                      <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 border-r">
-                        {row.tipo_operacao || '-'}
-                      </TableCell>
-                      <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 border-r">
-                        {editingId === row.id ? (
-                          <Input
-                            type="date"
-                            className="h-6 text-xs px-1.5 w-32"
-                            value={editForm.data_emissao || ''}
-                            onChange={(e) =>
-                              setEditForm({ ...editForm, data_emissao: e.target.value })
-                            }
-                          />
-                        ) : (
-                          <span className={!row.data_emissao ? 'text-red-500 font-bold' : ''}>
-                            {row.data_emissao ? formatDate(row.data_emissao) : 'Indisponível'}
-                          </span>
-                        )}
-                      </TableCell>
-                      <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 border-r">
-                        {formatDate(row.dt_compens)}
-                      </TableCell>
-                      <TableCell
-                        className="px-2 py-1.5 text-xs text-slate-600 max-w-[150px] truncate border-r"
-                        title={row.conta_caixa || ''}
-                      >
-                        {editingId === row.id ? (
-                          <Input
-                            className="h-6 text-xs px-1.5 w-28"
-                            value={editForm.conta_caixa || ''}
-                            onChange={(e) =>
-                              setEditForm({ ...editForm, conta_caixa: e.target.value })
-                            }
-                          />
-                        ) : (
-                          row.conta_caixa || '-'
-                        )}
-                      </TableCell>
-                      <TableCell
-                        className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 max-w-[150px] truncate border-r"
-                        title={row.nome_caixa}
-                      >
-                        {row.nome_caixa || '-'}
-                      </TableCell>
-                      <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 border-r">
-                        {row.conta_caixa_destino || '-'}
-                      </TableCell>
-                      <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 border-r">
-                        {editingId === row.id ? (
-                          <Input
-                            className="h-6 text-xs px-1.5 w-24"
-                            value={editForm.forma_pagto || ''}
-                            onChange={(e) =>
-                              setEditForm({ ...editForm, forma_pagto: e.target.value })
-                            }
-                          />
-                        ) : (
-                          row.forma_pagto || '-'
-                        )}
-                      </TableCell>
-                      <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 border-r">
-                        {editingId === row.id ? (
-                          <Input
-                            className="h-6 text-xs px-1.5 w-24"
-                            value={editForm.c_custo || ''}
-                            onChange={(e) => setEditForm({ ...editForm, c_custo: e.target.value })}
-                          />
-                        ) : (
-                          <span className={!row.c_custo ? 'text-red-500 font-bold' : ''}>
-                            {row.c_custo || 'Sem C. Custo'}
-                          </span>
-                        )}
-                      </TableCell>
-                      <TableCell
-                        className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 max-w-[150px] truncate border-r"
-                        title={row.descricao_c_custo}
-                      >
-                        {row.descricao_c_custo || '-'}
-                      </TableCell>
-                      <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-right text-slate-600 border-r">
-                        {row.valor !== null
-                          ? new Intl.NumberFormat('pt-BR', {
-                              style: 'currency',
-                              currency: 'BRL',
-                            }).format(row.valor)
-                          : '-'}
-                      </TableCell>
-                      <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-right font-semibold text-slate-900 border-r">
-                        {editingId === row.id ? (
-                          <Input
-                            type="number"
-                            step="0.01"
-                            className="h-6 text-xs px-1.5 w-28 text-right ml-auto"
-                            value={editForm.valor_liquido || ''}
-                            onChange={(e) =>
-                              setEditForm({
-                                ...editForm,
-                                valor_liquido: parseFloat(e.target.value),
-                              })
-                            }
-                          />
-                        ) : (
-                          <span
-                            className={row.valor_liquido === null ? 'text-red-500 font-bold' : ''}
-                          >
-                            {row.valor_liquido !== null
-                              ? new Intl.NumberFormat('pt-BR', {
-                                  style: 'currency',
-                                  currency: 'BRL',
-                                }).format(row.valor_liquido)
-                              : 'R$ 0,00'}
-                          </span>
-                        )}
-                      </TableCell>
-                      <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap font-medium text-slate-700 border-r">
-                        {editingId === row.id ? (
-                          <Input
-                            className="h-6 text-xs px-1.5 w-28"
-                            value={editForm.n_documento || ''}
-                            onChange={(e) =>
-                              setEditForm({ ...editForm, n_documento: e.target.value })
-                            }
-                          />
-                        ) : (
-                          row.n_documento || '-'
-                        )}
-                      </TableCell>
-                      <TableCell
-                        className="px-2 py-1.5 text-xs text-slate-600 max-w-[200px] truncate border-r"
-                        title={row.nome_cli_fornec}
-                      >
-                        {editingId === row.id ? (
-                          <Input
-                            className="h-6 text-xs px-1.5"
-                            value={editForm.nome_cli_fornec || ''}
-                            onChange={(e) =>
-                              setEditForm({ ...editForm, nome_cli_fornec: e.target.value })
-                            }
-                          />
-                        ) : (
-                          row.nome_cli_fornec || '-'
-                        )}
-                      </TableCell>
-                      <TableCell
-                        className="px-2 py-1.5 text-xs text-slate-600 max-w-[250px] truncate border-r"
-                        title={row.historico}
-                      >
-                        {editingId === row.id ? (
-                          <Input
-                            className="h-6 text-xs px-1.5"
-                            value={editForm.historico || ''}
-                            onChange={(e) =>
-                              setEditForm({ ...editForm, historico: e.target.value })
-                            }
-                          />
-                        ) : (
-                          row.historico || '-'
-                        )}
-                      </TableCell>
-                      <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 border-r">
-                        {row.fp || '-'}
-                      </TableCell>
-                      <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 border-r">
-                        {row.n_cheque || '-'}
-                      </TableCell>
-                      <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 border-r">
-                        {editingId === row.id ? (
-                          <Input
-                            type="date"
-                            className="h-6 text-xs px-1.5 w-32"
-                            value={editForm.data_vencto || ''}
-                            onChange={(e) =>
-                              setEditForm({ ...editForm, data_vencto: e.target.value })
-                            }
-                          />
-                        ) : (
-                          <span>{row.data_vencto ? formatDate(row.data_vencto) : '-'}</span>
-                        )}
-                      </TableCell>
-                      <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 border-r">
-                        {row.nominal_a || '-'}
-                      </TableCell>
-                      <TableCell
-                        className="px-2 py-1.5 text-xs text-slate-600 max-w-[150px] truncate border-r"
-                        title={row.emitente_cheque}
-                      >
-                        {row.emitente_cheque || '-'}
-                      </TableCell>
-                      <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 border-r">
-                        {row.cnpj_cpf || '-'}
-                      </TableCell>
-                      <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 border-r">
-                        {row.n_extrato || '-'}
-                      </TableCell>
-                      <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 border-r">
-                        {row.filial || '-'}
-                      </TableCell>
-                      <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 border-r">
-                        {formatDate(row.data_canc)}
-                      </TableCell>
-                      <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 border-r">
-                        {formatDate(row.data_estorno)}
-                      </TableCell>
-                      <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 border-r">
-                        {editingId === row.id ? (
-                          <Input
-                            className="h-6 text-xs px-1.5 w-24"
-                            value={editForm.banco || ''}
-                            onChange={(e) => setEditForm({ ...editForm, banco: e.target.value })}
-                          />
-                        ) : (
-                          row.banco || '-'
-                        )}
-                      </TableCell>
-                      <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 border-r">
-                        {row.c_corrente || '-'}
-                      </TableCell>
-                      <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 border-r">
-                        {row.cod_cli_for || '-'}
-                      </TableCell>
-                      <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 border-r">
-                        {row.departamento || '-'}
-                      </TableCell>
-                      <TableCell className="px-2 py-1.5 text-xs text-center border-r">
-                        {isMissing ? (
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-red-100 text-red-800 border border-red-200 cursor-help">
-                                Dados Incompletos
-                              </span>
-                            </TooltipTrigger>
-                            <TooltipContent className="bg-red-50 border-red-200 text-red-900 shadow-md">
-                              <p className="font-semibold mb-1">Campos ausentes:</p>
-                              <ul className="list-disc pl-4 text-xs">
-                                {missingFields.map((f) => (
-                                  <li key={f}>{f}</li>
-                                ))}
-                              </ul>
-                            </TooltipContent>
-                          </Tooltip>
-                        ) : (
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-800 border border-amber-200 cursor-help">
-                                {row.status || 'Pendente'}
-                              </span>
-                            </TooltipTrigger>
-                            <TooltipContent className="bg-slate-800 text-white border-slate-700 shadow-md">
-                              <p className="text-xs max-w-[200px]">
-                                O registro foi importado com sucesso, mas ainda não foi conciliado
-                                ou exportado.
-                              </p>
-                            </TooltipContent>
-                          </Tooltip>
-                        )}
-                      </TableCell>
+                      {visibleColumns['compensado'] !== false && (
+                        <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 border-r">
+                          {row.compensado || '-'}
+                        </TableCell>
+                      )}
+                      {visibleColumns['tipo_operacao'] !== false && (
+                        <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 border-r">
+                          {row.tipo_operacao || '-'}
+                        </TableCell>
+                      )}
+                      {visibleColumns['data_emissao'] !== false && (
+                        <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 border-r">
+                          {editingId === row.id ? (
+                            <Input
+                              type="date"
+                              className="h-6 text-xs px-1.5 w-32"
+                              value={editForm.data_emissao || ''}
+                              onChange={(e) =>
+                                setEditForm({ ...editForm, data_emissao: e.target.value })
+                              }
+                            />
+                          ) : (
+                            <span className={!row.data_emissao ? 'text-red-500 font-bold' : ''}>
+                              {row.data_emissao ? formatDate(row.data_emissao) : 'Indisponível'}
+                            </span>
+                          )}
+                        </TableCell>
+                      )}
+                      {visibleColumns['dt_compens'] !== false && (
+                        <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 border-r">
+                          {formatDate(row.dt_compens)}
+                        </TableCell>
+                      )}
+                      {visibleColumns['conta_caixa'] !== false && (
+                        <TableCell
+                          className="px-2 py-1.5 text-xs text-slate-600 max-w-[150px] truncate border-r"
+                          title={row.conta_caixa || ''}
+                        >
+                          {editingId === row.id ? (
+                            <Input
+                              className="h-6 text-xs px-1.5 w-28"
+                              value={editForm.conta_caixa || ''}
+                              onChange={(e) =>
+                                setEditForm({ ...editForm, conta_caixa: e.target.value })
+                              }
+                            />
+                          ) : (
+                            row.conta_caixa || '-'
+                          )}
+                        </TableCell>
+                      )}
+                      {visibleColumns['nome_caixa'] !== false && (
+                        <TableCell
+                          className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 max-w-[150px] truncate border-r"
+                          title={row.nome_caixa}
+                        >
+                          {row.nome_caixa || '-'}
+                        </TableCell>
+                      )}
+                      {visibleColumns['conta_caixa_destino'] !== false && (
+                        <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 border-r">
+                          {row.conta_caixa_destino || '-'}
+                        </TableCell>
+                      )}
+                      {visibleColumns['forma_pagto'] !== false && (
+                        <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 border-r">
+                          {editingId === row.id ? (
+                            <Input
+                              className="h-6 text-xs px-1.5 w-24"
+                              value={editForm.forma_pagto || ''}
+                              onChange={(e) =>
+                                setEditForm({ ...editForm, forma_pagto: e.target.value })
+                              }
+                            />
+                          ) : (
+                            row.forma_pagto || '-'
+                          )}
+                        </TableCell>
+                      )}
+                      {visibleColumns['c_custo'] !== false && (
+                        <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 border-r">
+                          {editingId === row.id ? (
+                            <Input
+                              className="h-6 text-xs px-1.5 w-24"
+                              value={editForm.c_custo || ''}
+                              onChange={(e) =>
+                                setEditForm({ ...editForm, c_custo: e.target.value })
+                              }
+                            />
+                          ) : (
+                            <span className={!row.c_custo ? 'text-red-500 font-bold' : ''}>
+                              {row.c_custo || 'Sem C. Custo'}
+                            </span>
+                          )}
+                        </TableCell>
+                      )}
+                      {visibleColumns['descricao_c_custo'] !== false && (
+                        <TableCell
+                          className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 max-w-[150px] truncate border-r"
+                          title={row.descricao_c_custo}
+                        >
+                          {row.descricao_c_custo || '-'}
+                        </TableCell>
+                      )}
+                      {visibleColumns['valor'] !== false && (
+                        <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-right text-slate-600 border-r">
+                          {row.valor !== null
+                            ? new Intl.NumberFormat('pt-BR', {
+                                style: 'currency',
+                                currency: 'BRL',
+                              }).format(row.valor)
+                            : '-'}
+                        </TableCell>
+                      )}
+                      {visibleColumns['valor_liquido'] !== false && (
+                        <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-right font-semibold text-slate-900 border-r">
+                          {editingId === row.id ? (
+                            <Input
+                              type="number"
+                              step="0.01"
+                              className="h-6 text-xs px-1.5 w-28 text-right ml-auto"
+                              value={editForm.valor_liquido || ''}
+                              onChange={(e) =>
+                                setEditForm({
+                                  ...editForm,
+                                  valor_liquido: parseFloat(e.target.value),
+                                })
+                              }
+                            />
+                          ) : (
+                            <span
+                              className={row.valor_liquido === null ? 'text-red-500 font-bold' : ''}
+                            >
+                              {row.valor_liquido !== null
+                                ? new Intl.NumberFormat('pt-BR', {
+                                    style: 'currency',
+                                    currency: 'BRL',
+                                  }).format(row.valor_liquido)
+                                : 'R$ 0,00'}
+                            </span>
+                          )}
+                        </TableCell>
+                      )}
+                      {visibleColumns['n_documento'] !== false && (
+                        <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap font-medium text-slate-700 border-r">
+                          {editingId === row.id ? (
+                            <Input
+                              className="h-6 text-xs px-1.5 w-28"
+                              value={editForm.n_documento || ''}
+                              onChange={(e) =>
+                                setEditForm({ ...editForm, n_documento: e.target.value })
+                              }
+                            />
+                          ) : (
+                            row.n_documento || '-'
+                          )}
+                        </TableCell>
+                      )}
+                      {visibleColumns['nome_cli_fornec'] !== false && (
+                        <TableCell
+                          className="px-2 py-1.5 text-xs text-slate-600 max-w-[200px] truncate border-r"
+                          title={row.nome_cli_fornec}
+                        >
+                          {editingId === row.id ? (
+                            <Input
+                              className="h-6 text-xs px-1.5"
+                              value={editForm.nome_cli_fornec || ''}
+                              onChange={(e) =>
+                                setEditForm({ ...editForm, nome_cli_fornec: e.target.value })
+                              }
+                            />
+                          ) : (
+                            row.nome_cli_fornec || '-'
+                          )}
+                        </TableCell>
+                      )}
+                      {visibleColumns['historico'] !== false && (
+                        <TableCell
+                          className="px-2 py-1.5 text-xs text-slate-600 max-w-[250px] truncate border-r"
+                          title={row.historico}
+                        >
+                          {editingId === row.id ? (
+                            <Input
+                              className="h-6 text-xs px-1.5"
+                              value={editForm.historico || ''}
+                              onChange={(e) =>
+                                setEditForm({ ...editForm, historico: e.target.value })
+                              }
+                            />
+                          ) : (
+                            row.historico || '-'
+                          )}
+                        </TableCell>
+                      )}
+                      {visibleColumns['fp'] !== false && (
+                        <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 border-r">
+                          {row.fp || '-'}
+                        </TableCell>
+                      )}
+                      {visibleColumns['n_cheque'] !== false && (
+                        <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 border-r">
+                          {row.n_cheque || '-'}
+                        </TableCell>
+                      )}
+                      {visibleColumns['data_vencto'] !== false && (
+                        <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 border-r">
+                          {editingId === row.id ? (
+                            <Input
+                              type="date"
+                              className="h-6 text-xs px-1.5 w-32"
+                              value={editForm.data_vencto || ''}
+                              onChange={(e) =>
+                                setEditForm({ ...editForm, data_vencto: e.target.value })
+                              }
+                            />
+                          ) : (
+                            <span>{row.data_vencto ? formatDate(row.data_vencto) : '-'}</span>
+                          )}
+                        </TableCell>
+                      )}
+                      {visibleColumns['nominal_a'] !== false && (
+                        <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 border-r">
+                          {row.nominal_a || '-'}
+                        </TableCell>
+                      )}
+                      {visibleColumns['emitente_cheque'] !== false && (
+                        <TableCell
+                          className="px-2 py-1.5 text-xs text-slate-600 max-w-[150px] truncate border-r"
+                          title={row.emitente_cheque}
+                        >
+                          {row.emitente_cheque || '-'}
+                        </TableCell>
+                      )}
+                      {visibleColumns['cnpj_cpf'] !== false && (
+                        <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 border-r">
+                          {row.cnpj_cpf || '-'}
+                        </TableCell>
+                      )}
+                      {visibleColumns['n_extrato'] !== false && (
+                        <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 border-r">
+                          {row.n_extrato || '-'}
+                        </TableCell>
+                      )}
+                      {visibleColumns['filial'] !== false && (
+                        <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 border-r">
+                          {row.filial || '-'}
+                        </TableCell>
+                      )}
+                      {visibleColumns['data_canc'] !== false && (
+                        <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 border-r">
+                          {formatDate(row.data_canc)}
+                        </TableCell>
+                      )}
+                      {visibleColumns['data_estorno'] !== false && (
+                        <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 border-r">
+                          {formatDate(row.data_estorno)}
+                        </TableCell>
+                      )}
+                      {visibleColumns['banco'] !== false && (
+                        <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 border-r">
+                          {editingId === row.id ? (
+                            <Input
+                              className="h-6 text-xs px-1.5 w-24"
+                              value={editForm.banco || ''}
+                              onChange={(e) => setEditForm({ ...editForm, banco: e.target.value })}
+                            />
+                          ) : (
+                            row.banco || '-'
+                          )}
+                        </TableCell>
+                      )}
+                      {visibleColumns['c_corrente'] !== false && (
+                        <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 border-r">
+                          {row.c_corrente || '-'}
+                        </TableCell>
+                      )}
+                      {visibleColumns['cod_cli_for'] !== false && (
+                        <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 border-r">
+                          {row.cod_cli_for || '-'}
+                        </TableCell>
+                      )}
+                      {visibleColumns['departamento'] !== false && (
+                        <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 border-r">
+                          {row.departamento || '-'}
+                        </TableCell>
+                      )}
+                      {visibleColumns['status'] !== false && (
+                        <TableCell className="px-2 py-1.5 text-xs text-center border-r">
+                          {isMissing ? (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-red-100 text-red-800 border border-red-200 cursor-help">
+                                  Dados Incompletos
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent className="bg-red-50 border-red-200 text-red-900 shadow-md">
+                                <p className="font-semibold mb-1">Campos ausentes:</p>
+                                <ul className="list-disc pl-4 text-xs">
+                                  {missingFields.map((f) => (
+                                    <li key={f}>{f}</li>
+                                  ))}
+                                </ul>
+                              </TooltipContent>
+                            </Tooltip>
+                          ) : (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-800 border border-amber-200 cursor-help">
+                                  {row.status || 'Pendente'}
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent className="bg-slate-800 text-white border-slate-700 shadow-md">
+                                <p className="text-xs max-w-[200px]">
+                                  O registro foi importado com sucesso, mas ainda não foi conciliado
+                                  ou exportado.
+                                </p>
+                              </TooltipContent>
+                            </Tooltip>
+                          )}
+                        </TableCell>
+                      )}
                       <TableCell className="px-2 py-1.5 text-xs text-center border-r last:border-r-0">
                         {editingId === row.id ? (
                           <div className="flex items-center justify-center gap-1">
@@ -866,7 +1000,7 @@ export default function FinancialMovements() {
               >
                 <ArrowLeft className="h-3 w-3 mr-1" /> Anterior
               </Button>
-              <span className="text-xs font-medium text-slate-600 px-2">
+              <span className="text-xs font-medium text-slate-600 px-2 hidden sm:inline">
                 Página {page + 1} de {totalPages}
               </span>
               <Button
