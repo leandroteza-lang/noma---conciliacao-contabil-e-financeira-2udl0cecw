@@ -20,6 +20,7 @@ import {
   ChevronsLeft,
   ChevronsRight,
   Columns,
+  FilterX,
 } from 'lucide-react'
 import {
   DropdownMenu,
@@ -59,6 +60,14 @@ export default function Index() {
   const [search, setSearch] = useState('')
   const [totalCount, setTotalCount] = useState(0)
 
+  const [filterOrg, setFilterOrg] = useState('all')
+  const [filterBank, setFilterBank] = useState('all')
+  const [filterType, setFilterType] = useState('all')
+
+  const [orgs, setOrgs] = useState<{ id: string; name: string }[]>([])
+  const [banks, setBanks] = useState<string[]>([])
+  const [types, setTypes] = useState<string[]>([])
+
   const defaultCols = tableHeaders.reduce(
     (acc, h) => ({ ...acc, [h.key]: true }),
     {} as Record<string, boolean>,
@@ -79,6 +88,31 @@ export default function Index() {
   const invertColumns = () =>
     setVisibleColumns((p) => tableHeaders.reduce((acc, h) => ({ ...acc, [h.key]: !p[h.key] }), {}))
 
+  const fetchFilterOptions = async () => {
+    if (!user) return
+    const { data: orgData } = await supabase
+      .from('organizations')
+      .select('id, name')
+      .is('deleted_at', null)
+      .order('name')
+    if (orgData) setOrgs(orgData)
+
+    const { data: accData } = await supabase
+      .from('bank_accounts')
+      .select('bank_code, account_type')
+      .is('deleted_at', null)
+    if (accData) {
+      const uniqueBanks = Array.from(
+        new Set(accData.map((a) => a.bank_code).filter(Boolean)),
+      ) as string[]
+      const uniqueTypes = Array.from(
+        new Set(accData.map((a) => a.account_type).filter(Boolean)),
+      ) as string[]
+      setBanks(uniqueBanks.sort())
+      setTypes(uniqueTypes.sort())
+    }
+  }
+
   const fetchData = async () => {
     if (!user) return
     setLoading(true)
@@ -94,6 +128,18 @@ export default function Index() {
       )
     }
 
+    if (filterOrg !== 'all') {
+      query = query.eq('organization_id', filterOrg)
+    }
+
+    if (filterBank !== 'all') {
+      query = query.eq('bank_code', filterBank)
+    }
+
+    if (filterType !== 'all') {
+      query = query.eq('account_type', filterType)
+    }
+
     const {
       data: res,
       count,
@@ -107,8 +153,12 @@ export default function Index() {
   }
 
   useEffect(() => {
+    fetchFilterOptions()
+  }, [user])
+
+  useEffect(() => {
     fetchData()
-  }, [user, page, pageSize, search])
+  }, [user, page, pageSize, search, filterOrg, filterBank, filterType])
 
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize))
   const visibleCount = tableHeaders.filter((h) => visibleColumns[h.key] !== false).length
@@ -125,21 +175,101 @@ export default function Index() {
       </div>
 
       <Card className="shadow-sm border-slate-200">
-        <CardHeader className="pb-3 border-b bg-slate-50/50 flex flex-col gap-3">
-          <div className="flex flex-col xl:flex-row items-start xl:items-center gap-4 w-full">
-            <div className="relative flex-1 w-full max-w-md">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-              <Input
-                placeholder="Buscar por descrição, empresa ou conta..."
-                className="pl-9 bg-white"
-                value={search}
-                onChange={(e) => {
-                  setSearch(e.target.value)
+        <CardHeader className="pb-3 border-b bg-slate-50/50 flex flex-col gap-4">
+          <div className="flex flex-col xl:flex-row items-start xl:items-center justify-between gap-4 w-full">
+            <div className="flex flex-wrap items-center gap-3 w-full xl:w-auto">
+              <div className="relative flex-1 min-w-[200px] max-w-md">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                <Input
+                  placeholder="Buscar por descrição, empresa ou conta..."
+                  className="pl-9 bg-white h-9 text-xs"
+                  value={search}
+                  onChange={(e) => {
+                    setSearch(e.target.value)
+                    setPage(0)
+                  }}
+                />
+              </div>
+
+              <Select
+                value={filterOrg}
+                onValueChange={(v) => {
+                  setFilterOrg(v)
                   setPage(0)
                 }}
-              />
+              >
+                <SelectTrigger className="w-[180px] h-9 text-xs bg-white">
+                  <SelectValue placeholder="Empresa" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas as Empresas</SelectItem>
+                  {orgs.map((o) => (
+                    <SelectItem key={o.id} value={o.id}>
+                      {o.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Select
+                value={filterBank}
+                onValueChange={(v) => {
+                  setFilterBank(v)
+                  setPage(0)
+                }}
+              >
+                <SelectTrigger className="w-[150px] h-9 text-xs bg-white">
+                  <SelectValue placeholder="Banco" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos os Bancos</SelectItem>
+                  {banks.map((b) => (
+                    <SelectItem key={b} value={b}>
+                      {b}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Select
+                value={filterType}
+                onValueChange={(v) => {
+                  setFilterType(v)
+                  setPage(0)
+                }}
+              >
+                <SelectTrigger className="w-[160px] h-9 text-xs bg-white">
+                  <SelectValue placeholder="Tipo de Conta" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos os Tipos</SelectItem>
+                  {types.map((t) => (
+                    <SelectItem key={t} value={t}>
+                      {t}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              {(filterOrg !== 'all' || filterBank !== 'all' || filterType !== 'all' || search) && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-9 px-2 text-xs text-slate-500 hover:text-slate-700"
+                  onClick={() => {
+                    setFilterOrg('all')
+                    setFilterBank('all')
+                    setFilterType('all')
+                    setSearch('')
+                    setPage(0)
+                  }}
+                >
+                  <FilterX className="h-4 w-4 mr-1.5" /> Limpar
+                </Button>
+              )}
             </div>
-            <div className="flex flex-wrap items-center gap-3 xl:ml-auto bg-white p-1.5 rounded-md border shadow-sm">
+
+            <div className="flex flex-wrap items-center gap-3 bg-white p-1.5 rounded-md border shadow-sm w-full xl:w-auto">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button
