@@ -164,6 +164,22 @@ export default function FinancialMovements() {
     }
   }
 
+  const updateWithRetry = async (ids: string[], retries = 3) => {
+    if (!user) return { error: new Error('Usuário não autenticado') }
+    for (let attempt = 1; attempt <= retries; attempt++) {
+      const { error } = await supabase
+        .from('erp_financial_movements')
+        .update({ deleted_at: new Date().toISOString(), deleted_by: user.id })
+        .in('id', ids)
+
+      if (!error) return { error: null }
+      if (attempt === retries) return { error }
+
+      await new Promise((res) => setTimeout(res, 1000 * attempt))
+    }
+    return { error: new Error('Falha após múltiplas tentativas') }
+  }
+
   const startBulkDelete = async () => {
     if (!user) return
     setDeleteModalOpen(false)
@@ -195,7 +211,7 @@ export default function FinancialMovements() {
 
     try {
       let processed = 0
-      const chunkSize = 1000
+      const chunkSize = 150 // Reduzido para evitar URI Too Long (Bad Request)
 
       while (true) {
         const { data, error: fetchErr } = await supabase
@@ -208,10 +224,8 @@ export default function FinancialMovements() {
         if (!data || data.length === 0) break
 
         const ids = data.map((d) => d.id)
-        const { error: updateErr } = await supabase
-          .from('erp_financial_movements')
-          .update({ deleted_at: new Date().toISOString(), deleted_by: user.id })
-          .in('id', ids)
+
+        const { error: updateErr } = await updateWithRetry(ids)
 
         if (updateErr) throw updateErr
 
@@ -246,13 +260,10 @@ export default function FinancialMovements() {
 
     setIsDeleting(true)
     try {
-      const chunkSize = 500
+      const chunkSize = 150
       for (let i = 0; i < selectedIds.length; i += chunkSize) {
         const chunk = selectedIds.slice(i, i + chunkSize)
-        const { error } = await supabase
-          .from('erp_financial_movements')
-          .update({ deleted_at: new Date().toISOString(), deleted_by: user.id })
-          .in('id', chunk)
+        const { error } = await updateWithRetry(chunk)
         if (error) throw error
       }
       toast.success(`${selectedIds.length} registros excluídos com sucesso!`)
