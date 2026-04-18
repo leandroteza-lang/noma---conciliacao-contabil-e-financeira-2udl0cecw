@@ -135,19 +135,34 @@ export default function FinancialMovements() {
         .from('import_history')
         .select('*')
         .eq('import_type', 'ERP_FINANCIAL_MOVEMENTS')
-        .eq('status', 'Processing')
+        .in('status', ['Processing', 'Error', 'Completed'])
         .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle()
 
-      setActiveImport(data)
-
-      if (!data && activeImport) {
-        fetchData()
-        toast({
-          title: 'Importação Concluída',
-          description: 'Os dados foram processados com sucesso.',
-        })
+      if (data && data.status === 'Processing') {
+        setActiveImport(data)
+      } else {
+        if (activeImport && data) {
+          if (data.status === 'Completed') {
+            toast({
+              title: 'Importação Concluída',
+              description: `Processados ${data.processed_records} registros com sucesso.`,
+            })
+          } else if (data.status === 'Error') {
+            toast({
+              title: 'Erro na Importação',
+              description:
+                'O processamento foi interrompido com erros. Verifique os logs se houver falhas.',
+              variant: 'destructive',
+            })
+          }
+          setActiveImport(null)
+          fetchData()
+        } else if (activeImport && !data) {
+          setActiveImport(null)
+          fetchData()
+        }
       }
     }, 3000)
     return () => clearInterval(interval)
