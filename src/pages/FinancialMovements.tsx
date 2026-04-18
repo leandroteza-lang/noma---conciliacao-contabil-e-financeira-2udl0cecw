@@ -885,7 +885,7 @@ export default function FinancialMovements() {
         <CardContent className="p-0 bg-white">
           <Table
             wrapperClassName="transform scale-y-[-1] overflow-x-auto overflow-y-hidden"
-            className="transform scale-y-[-1]"
+            className="transform scale-y-[-1] w-full min-w-max"
           >
             <TableHeader>
               <TableRow className="bg-slate-50 hover:bg-slate-50 border-b">
