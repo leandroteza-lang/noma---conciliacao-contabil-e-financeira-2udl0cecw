@@ -141,6 +141,23 @@ export default function FinancialMovements() {
     setVisibleColumns((prev) => ({ ...prev, [key]: !prev[key] }))
   }
 
+  const selectAllColumns = () => {
+    setVisibleColumns(tableHeaders.reduce((acc, h) => ({ ...acc, [h.key]: true }), {}))
+  }
+
+  const selectNoColumns = () => {
+    setVisibleColumns(tableHeaders.reduce((acc, h) => ({ ...acc, [h.key]: false }), {}))
+  }
+
+  const invertColumns = () => {
+    setVisibleColumns((prev) =>
+      tableHeaders.reduce(
+        (acc, h) => ({ ...acc, [h.key]: prev[h.key] === false ? true : false }),
+        {},
+      ),
+    )
+  }
+
   const formatTime = (seconds: number) => {
     const m = Math.floor(Math.max(0, seconds) / 60)
       .toString()
@@ -738,8 +755,43 @@ export default function FinancialMovements() {
                     <span className="hidden sm:inline">Colunas</span>
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56 max-h-[60vh] overflow-y-auto">
+                <DropdownMenuContent align="end" className="w-64 max-h-[60vh] overflow-y-auto">
                   <DropdownMenuLabel>Visibilidade das Colunas</DropdownMenuLabel>
+                  <div className="flex items-center justify-between px-2 pb-2 gap-1">
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      className="h-6 px-2 text-[10px] flex-1"
+                      onClick={(e) => {
+                        e.preventDefault()
+                        selectAllColumns()
+                      }}
+                    >
+                      Todos
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      className="h-6 px-2 text-[10px] flex-1"
+                      onClick={(e) => {
+                        e.preventDefault()
+                        selectNoColumns()
+                      }}
+                    >
+                      Nenhum
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      className="h-6 px-2 text-[10px] flex-1"
+                      onClick={(e) => {
+                        e.preventDefault()
+                        invertColumns()
+                      }}
+                    >
+                      Inverter
+                    </Button>
+                  </div>
                   <DropdownMenuSeparator />
                   {tableHeaders.map((h) => (
                     <DropdownMenuCheckboxItem
