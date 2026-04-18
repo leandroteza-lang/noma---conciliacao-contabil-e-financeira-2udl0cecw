@@ -37,7 +37,10 @@ Deno.serve(async (req: Request) => {
     const payload = await req.json()
     requestPayload = payload
 
-    if ((payload.action === 'PROCESS_BACKGROUND' || payload.action === 'PROCESS_CHUNK') && payload.userId) {
+    if (
+      (payload.action === 'PROCESS_BACKGROUND' || payload.action === 'PROCESS_CHUNK') &&
+      payload.userId
+    ) {
       user = { id: payload.userId }
     } else {
       const userResponse = await fetch(`${supabaseUrl}/auth/v1/user`, {
@@ -57,7 +60,7 @@ Deno.serve(async (req: Request) => {
     }
 
     const supabase =
-      (payload.action === 'PROCESS_BACKGROUND' || payload.action === 'PROCESS_CHUNK')
+      payload.action === 'PROCESS_BACKGROUND' || payload.action === 'PROCESS_CHUNK'
         ? supabaseAdmin
         : createClient(supabaseUrl, supabaseKey, {
             global: { headers: { Authorization: authHeader } },
@@ -249,6 +252,7 @@ Deno.serve(async (req: Request) => {
                 const cleanKey = mappedKey
                   .normalize('NFD')
                   .replace(/[\u0300-\u036f]/g, '')
+                  .replace(/[^A-Z0-9]/gi, '')
                   .toUpperCase()
                   .trim()
 
@@ -666,6 +670,7 @@ Deno.serve(async (req: Request) => {
           const cleanKey = mappedKey
             .normalize('NFD')
             .replace(/[\u0300-\u036f]/g, '')
+            .replace(/[^A-Z0-9]/gi, '')
             .toUpperCase()
             .trim()
 
@@ -2684,20 +2689,23 @@ Deno.serve(async (req: Request) => {
         EdgeRuntime.waitUntil(
           (async () => {
             try {
-              const resNext = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/import-data`, {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  Authorization: `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+              const resNext = await fetch(
+                `${Deno.env.get('SUPABASE_URL')}/functions/v1/import-data`,
+                {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+                  },
+                  body: JSON.stringify({
+                    ...payload,
+                    chunkIndex: nextChunk,
+                    inserted: newInserted,
+                    rejected: newRejected,
+                    errors: newErrors,
+                  }),
                 },
-                body: JSON.stringify({
-                  ...payload,
-                  chunkIndex: nextChunk,
-                  inserted: newInserted,
-                  rejected: newRejected,
-                  errors: newErrors,
-                }),
-              })
+              )
               if (!resNext.ok) {
                 const errText = await resNext.text()
                 throw new Error(`HTTP ${resNext.status}: ${errText}`)
@@ -2711,7 +2719,10 @@ Deno.serve(async (req: Request) => {
                   .from('import_history')
                   .update({
                     status: 'Error',
-                    errors_list: [...newErrors, { error: `Falha ao iniciar próximo chunk: ${e.message}` }].slice(0, 100),
+                    errors_list: [
+                      ...newErrors,
+                      { error: `Falha ao iniciar próximo chunk: ${e.message}` },
+                    ].slice(0, 100),
                   })
                   .eq('id', payload.importId)
               }
@@ -2766,20 +2777,23 @@ Deno.serve(async (req: Request) => {
         EdgeRuntime.waitUntil(
           (async () => {
             try {
-              const resNextBg = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/import-data`, {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  Authorization: `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+              const resNextBg = await fetch(
+                `${Deno.env.get('SUPABASE_URL')}/functions/v1/import-data`,
+                {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+                  },
+                  body: JSON.stringify({
+                    ...payload,
+                    offset: nextOffset,
+                    inserted: newInserted,
+                    rejected: newRejected,
+                    errors: newErrors,
+                  }),
                 },
-                body: JSON.stringify({
-                  ...payload,
-                  offset: nextOffset,
-                  inserted: newInserted,
-                  rejected: newRejected,
-                  errors: newErrors,
-                }),
-              })
+              )
               if (!resNextBg.ok) {
                 const errText = await resNextBg.text()
                 throw new Error(`HTTP ${resNextBg.status}: ${errText}`)
@@ -2793,7 +2807,10 @@ Deno.serve(async (req: Request) => {
                   .from('import_history')
                   .update({
                     status: 'Error',
-                    errors_list: [...newErrors, { error: `Falha ao iniciar próximo chunk bg: ${e.message}` }].slice(0, 100),
+                    errors_list: [
+                      ...newErrors,
+                      { error: `Falha ao iniciar próximo chunk bg: ${e.message}` },
+                    ].slice(0, 100),
                   })
                   .eq('id', payload.importId)
               }
@@ -2826,7 +2843,11 @@ Deno.serve(async (req: Request) => {
   } catch (err: any) {
     if (req.method === 'POST') {
       try {
-        if ((requestPayload.action === 'PROCESS_BACKGROUND' || requestPayload.action === 'PROCESS_CHUNK') && requestPayload.importId) {
+        if (
+          (requestPayload.action === 'PROCESS_BACKGROUND' ||
+            requestPayload.action === 'PROCESS_CHUNK') &&
+          requestPayload.importId
+        ) {
           const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
           if (supabaseServiceKey) {
             const supabaseAdmin = createClient(Deno.env.get('SUPABASE_URL')!, supabaseServiceKey)
