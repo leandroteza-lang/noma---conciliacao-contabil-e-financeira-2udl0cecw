@@ -55,35 +55,35 @@ import { cn } from '@/lib/utils'
 
 const tableHeaders = [
   { label: 'Empresa', key: 'empresa' },
-  { label: 'Compensado', key: 'compensado' },
-  { label: 'Tipo Op.', key: 'tipo_operacao' },
-  { label: 'Data Emissão', key: 'data_emissao' },
-  { label: 'Dt Compens.', key: 'dt_compens' },
-  { label: 'Conta/Caixa', key: 'conta_caixa' },
+  { label: 'Compensado', key: 'compensado', align: 'center' },
+  { label: 'Tipo Op.', key: 'tipo_operacao', align: 'center' },
+  { label: 'Data Emissão', key: 'data_emissao', align: 'center' },
+  { label: 'Dt Compens.', key: 'dt_compens', align: 'center' },
+  { label: 'Conta/Caixa', key: 'conta_caixa', align: 'center' },
   { label: 'Nome Caixa', key: 'nome_caixa' },
-  { label: 'Conta/Caixa Destino', key: 'conta_caixa_destino' },
+  { label: 'Conta/Caixa Destino', key: 'conta_caixa_destino', align: 'center' },
   { label: 'Forma Pagto', key: 'forma_pagto' },
   { label: 'C.Custo', key: 'c_custo' },
   { label: 'Descrição C.Custo', key: 'descricao_c_custo', className: 'min-w-[150px]' },
-  { label: 'Valor', key: 'valor', align: 'right' },
-  { label: 'Valor Líquido', key: 'valor_liquido', align: 'right' },
+  { label: 'Valor', key: 'valor', align: 'center' },
+  { label: 'Valor Líquido', key: 'valor_liquido', align: 'center' },
   { label: 'Nº Documento', key: 'n_documento' },
   { label: 'Nome Cli/Fornec', key: 'nome_cli_fornec' },
   { label: 'Histórico', key: 'historico', className: 'min-w-[200px]' },
-  { label: 'FP', key: 'fp' },
+  { label: 'FP', key: 'fp', align: 'center' },
   { label: 'Nº Cheque', key: 'n_cheque' },
-  { label: 'Data Vencto', key: 'data_vencto' },
+  { label: 'Data Vencto', key: 'data_vencto', align: 'center' },
   { label: 'Nominal a', key: 'nominal_a' },
   { label: 'Emitente Cheque', key: 'emitente_cheque' },
   { label: 'CNPJ/CPF', key: 'cnpj_cpf' },
-  { label: 'Nº Extrato', key: 'n_extrato' },
-  { label: 'Filial', key: 'filial' },
-  { label: 'Data Canc.', key: 'data_canc' },
-  { label: 'Data Estorno', key: 'data_estorno' },
-  { label: 'Banco', key: 'banco' },
+  { label: 'Nº Extrato', key: 'n_extrato', align: 'center' },
+  { label: 'Filial', key: 'filial', align: 'center' },
+  { label: 'Data Canc.', key: 'data_canc', align: 'center' },
+  { label: 'Data Estorno', key: 'data_estorno', align: 'center' },
+  { label: 'Banco', key: 'banco', align: 'center' },
   { label: 'C.Corrente', key: 'c_corrente' },
   { label: 'Cód.Cli/For', key: 'cod_cli_for' },
-  { label: 'Departamento', key: 'departamento' },
+  { label: 'Departamento', key: 'departamento', align: 'center' },
   { label: 'Status', key: 'status', align: 'center' },
 ]
 
@@ -983,17 +983,17 @@ export default function FinancialMovements() {
                         </TableCell>
                       )}
                       {visibleColumns['compensado'] !== false && (
-                        <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 border-r">
+                        <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 text-center border-r">
                           {row.compensado || '-'}
                         </TableCell>
                       )}
                       {visibleColumns['tipo_operacao'] !== false && (
-                        <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 border-r">
+                        <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 text-center border-r">
                           {row.tipo_operacao || '-'}
                         </TableCell>
                       )}
                       {visibleColumns['data_emissao'] !== false && (
-                        <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 border-r">
+                        <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 text-center border-r">
                           {editingId === row.id ? (
                             <Input
                               type="date"
@@ -1011,13 +1011,13 @@ export default function FinancialMovements() {
                         </TableCell>
                       )}
                       {visibleColumns['dt_compens'] !== false && (
-                        <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 border-r">
+                        <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 text-center border-r">
                           {formatDate(row.dt_compens)}
                         </TableCell>
                       )}
                       {visibleColumns['conta_caixa'] !== false && (
                         <TableCell
-                          className="px-2 py-1.5 text-xs text-slate-600 max-w-[150px] truncate border-r"
+                          className="px-2 py-1.5 text-xs text-slate-600 text-center max-w-[150px] truncate border-r"
                           title={row.conta_caixa || ''}
                         >
                           {editingId === row.id ? (
@@ -1042,7 +1042,7 @@ export default function FinancialMovements() {
                         </TableCell>
                       )}
                       {visibleColumns['conta_caixa_destino'] !== false && (
-                        <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 border-r">
+                        <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 text-center border-r">
                           {row.conta_caixa_destino || '-'}
                         </TableCell>
                       )}
@@ -1087,7 +1087,7 @@ export default function FinancialMovements() {
                         </TableCell>
                       )}
                       {visibleColumns['valor'] !== false && (
-                        <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-right text-slate-600 border-r">
+                        <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-center text-slate-600 border-r">
                           {row.valor !== null
                             ? new Intl.NumberFormat('pt-BR', {
                                 style: 'currency',
@@ -1097,12 +1097,12 @@ export default function FinancialMovements() {
                         </TableCell>
                       )}
                       {visibleColumns['valor_liquido'] !== false && (
-                        <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-right font-semibold text-slate-900 border-r">
+                        <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-center font-semibold text-slate-900 border-r">
                           {editingId === row.id ? (
                             <Input
                               type="number"
                               step="0.01"
-                              className="h-6 text-xs px-1.5 w-28 text-right ml-auto"
+                              className="h-6 text-xs px-1.5 w-28 text-center mx-auto"
                               value={editForm.valor_liquido || ''}
                               onChange={(e) =>
                                 setEditForm({
@@ -1177,7 +1177,7 @@ export default function FinancialMovements() {
                         </TableCell>
                       )}
                       {visibleColumns['fp'] !== false && (
-                        <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 border-r">
+                        <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 text-center border-r">
                           {row.fp || '-'}
                         </TableCell>
                       )}
@@ -1187,7 +1187,7 @@ export default function FinancialMovements() {
                         </TableCell>
                       )}
                       {visibleColumns['data_vencto'] !== false && (
-                        <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 border-r">
+                        <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 text-center border-r">
                           {editingId === row.id ? (
                             <Input
                               type="date"
@@ -1221,27 +1221,27 @@ export default function FinancialMovements() {
                         </TableCell>
                       )}
                       {visibleColumns['n_extrato'] !== false && (
-                        <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 border-r">
+                        <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 text-center border-r">
                           {row.n_extrato || '-'}
                         </TableCell>
                       )}
                       {visibleColumns['filial'] !== false && (
-                        <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 border-r">
+                        <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 text-center border-r">
                           {row.filial || '-'}
                         </TableCell>
                       )}
                       {visibleColumns['data_canc'] !== false && (
-                        <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 border-r">
+                        <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 text-center border-r">
                           {formatDate(row.data_canc)}
                         </TableCell>
                       )}
                       {visibleColumns['data_estorno'] !== false && (
-                        <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 border-r">
+                        <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 text-center border-r">
                           {formatDate(row.data_estorno)}
                         </TableCell>
                       )}
                       {visibleColumns['banco'] !== false && (
-                        <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 border-r">
+                        <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 text-center border-r">
                           {editingId === row.id ? (
                             <Input
                               className="h-6 text-xs px-1.5 w-24"
@@ -1264,7 +1264,7 @@ export default function FinancialMovements() {
                         </TableCell>
                       )}
                       {visibleColumns['departamento'] !== false && (
-                        <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 border-r">
+                        <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 text-center border-r">
                           {row.departamento || '-'}
                         </TableCell>
                       )}
