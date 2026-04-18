@@ -37,10 +37,7 @@ Deno.serve(async (req: Request) => {
     const payload = await req.json()
     requestPayload = payload
 
-    if (
-      (payload.action === 'PROCESS_BACKGROUND' || payload.action === 'PROCESS_CHUNK') &&
-      payload.userId
-    ) {
+    if ((payload.action === 'PROCESS_BACKGROUND' || payload.action === 'PROCESS_CHUNK') && payload.userId) {
       user = { id: payload.userId }
     } else {
       const userResponse = await fetch(`${supabaseUrl}/auth/v1/user`, {
@@ -60,7 +57,7 @@ Deno.serve(async (req: Request) => {
     }
 
     const supabase =
-      payload.action === 'PROCESS_BACKGROUND' || payload.action === 'PROCESS_CHUNK'
+      (payload.action === 'PROCESS_BACKGROUND' || payload.action === 'PROCESS_CHUNK')
         ? supabaseAdmin
         : createClient(supabaseUrl, supabaseKey, {
             global: { headers: { Authorization: authHeader } },
@@ -2787,11 +2784,7 @@ Deno.serve(async (req: Request) => {
   } catch (err: any) {
     if (req.method === 'POST') {
       try {
-        if (
-          (requestPayload.action === 'PROCESS_BACKGROUND' ||
-            requestPayload.action === 'PROCESS_CHUNK') &&
-          requestPayload.importId
-        ) {
+        if ((requestPayload.action === 'PROCESS_BACKGROUND' || requestPayload.action === 'PROCESS_CHUNK') && requestPayload.importId) {
           const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
           if (supabaseServiceKey) {
             const supabaseAdmin = createClient(Deno.env.get('SUPABASE_URL')!, supabaseServiceKey)
