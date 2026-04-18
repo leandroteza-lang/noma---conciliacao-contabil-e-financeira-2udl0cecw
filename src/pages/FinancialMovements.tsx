@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import {
   Table,
@@ -11,6 +11,7 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Checkbox } from '@/components/ui/checkbox'
 import { supabase } from '@/lib/supabase/client'
 import { useAuth } from '@/hooks/use-auth'
 import { format } from 'date-fns'
@@ -30,9 +31,20 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Search, Map as MapIcon, Trash2, Upload, Loader2, ArrowRight } from 'lucide-react'
+import {
+  Search,
+  Map as MapIcon,
+  Trash2,
+  Upload,
+  Loader2,
+  ArrowRight,
+  ArrowUpDown,
+  ChevronUp,
+  ChevronDown,
+} from 'lucide-react'
 import { toast } from '@/hooks/use-toast'
 import { ImportErpFinancialModal } from '@/components/ImportErpFinancialModal'
+import { cn } from '@/lib/utils'
 
 const erpColumns = [
   { key: 'compensado', label: 'Compensado' },
@@ -75,6 +87,10 @@ export default function FinancialMovements() {
   const [selectedMovement, setSelectedMovement] = useState<any>(null)
   const [selectedAccountId, setSelectedAccountId] = useState('')
   const [importModalOpen, setImportModalOpen] = useState(false)
+  const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(
+    null,
+  )
+  const [selectedRows, setSelectedRows] = useState<string[]>([])
 
   const { user } = useAuth()
 
@@ -151,8 +167,81 @@ export default function FinancialMovements() {
       toast({ title: 'Erro', description: error.message, variant: 'destructive' })
     } else {
       toast({ title: 'Sucesso', description: 'Movimento excluído com sucesso' })
+      setSelectedRows((prev) => prev.filter((rId) => rId !== id))
       fetchMovements()
     }
+  }
+
+  const handleDeleteSelected = async () => {
+    if (!confirm(`Deseja excluir os ${selectedRows.length} registros selecionados?`)) return
+
+    setLoading(true)
+    let hasError = false
+    for (let i = 0; i < selectedRows.length; i += 500) {
+      const chunk = selectedRows.slice(i, i + 500)
+      const { error } = await supabase
+        .from('erp_financial_movements' as any)
+        .update({ deleted_at: new Date().toISOString(), deleted_by: user?.id })
+        .in('id', chunk)
+      if (error) hasError = true
+    }
+
+    if (hasError) {
+      toast({
+        title: 'Aviso',
+        description: 'Alguns registros selecionados podem não ter sido excluídos.',
+        variant: 'destructive',
+      })
+    } else {
+      toast({ title: 'Sucesso', description: 'Registros excluídos com sucesso' })
+    }
+
+    setSelectedRows([])
+    fetchMovements()
+  }
+
+  const handleDeleteAll = async () => {
+    if (
+      !confirm(
+        'Deseja realmente EXCLUIR TODOS os registros importados? Esta ação não pode ser desfeita.',
+      )
+    )
+      return
+
+    const allIds = movements.map((m) => m.id)
+    if (allIds.length === 0) return
+
+    setLoading(true)
+    let hasError = false
+    for (let i = 0; i < allIds.length; i += 500) {
+      const chunk = allIds.slice(i, i + 500)
+      const { error } = await supabase
+        .from('erp_financial_movements' as any)
+        .update({ deleted_at: new Date().toISOString(), deleted_by: user?.id })
+        .in('id', chunk)
+      if (error) hasError = true
+    }
+
+    if (hasError) {
+      toast({
+        title: 'Aviso',
+        description: 'Alguns registros podem não ter sido excluídos.',
+        variant: 'destructive',
+      })
+    } else {
+      toast({ title: 'Sucesso', description: 'Todos os registros foram excluídos' })
+    }
+
+    setSelectedRows([])
+    fetchMovements()
+  }
+
+  const handleSort = (key: string) => {
+    let direction: 'asc' | 'desc' = 'asc'
+    if (sortConfig && sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc'
+    }
+    setSortConfig({ key, direction })
   }
 
   const filteredMovements = movements.filter(
@@ -162,6 +251,49 @@ export default function FinancialMovements() {
       m.nome_cli_fornec?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       m.conta_caixa?.toLowerCase().includes(searchTerm.toLowerCase()),
   )
+
+  const sortedMovements = useMemo(() => {
+    let sortableItems = [...filteredMovements]
+    if (sortConfig !== null) {
+      sortableItems.sort((a, b) => {
+        let aValue = a[sortConfig.key]
+        let bValue = b[sortConfig.key]
+
+        if (sortConfig.key === 'chart_of_accounts') {
+          aValue = a.chart_of_accounts?.account_name ?? ''
+          bValue = b.chart_of_accounts?.account_name ?? ''
+        }
+
+        if (aValue === null || aValue === undefined) aValue = ''
+        if (bValue === null || bValue === undefined) bValue = ''
+
+        if (typeof aValue === 'number' && typeof bValue === 'number') {
+          return sortConfig.direction === 'asc' ? aValue - bValue : bValue - aValue
+        }
+
+        if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1
+        if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1
+        return 0
+      })
+    }
+    return sortableItems
+  }, [filteredMovements, sortConfig])
+
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedRows(sortedMovements.map((m) => m.id))
+    } else {
+      setSelectedRows([])
+    }
+  }
+
+  const handleSelectRow = (id: string, checked: boolean) => {
+    if (checked) {
+      setSelectedRows((prev) => [...prev, id])
+    } else {
+      setSelectedRows((prev) => prev.filter((rId) => rId !== id))
+    }
+  }
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -174,10 +306,30 @@ export default function FinancialMovements() {
             Importe, visualize e mapeie movimentos financeiros vindos do seu ERP.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          {selectedRows.length > 0 && (
+            <Button
+              onClick={handleDeleteSelected}
+              variant="destructive"
+              className="gap-2 h-9 shadow-sm"
+            >
+              <Trash2 className="w-4 h-4" />
+              Excluir Selecionados ({selectedRows.length})
+            </Button>
+          )}
+          {movements.length > 0 && (
+            <Button
+              onClick={handleDeleteAll}
+              variant="outline"
+              className="gap-2 border-destructive text-destructive hover:bg-destructive hover:text-white h-9 shadow-sm"
+            >
+              <Trash2 className="w-4 h-4" />
+              Excluir Todos
+            </Button>
+          )}
           <Button
             onClick={() => setImportModalOpen(true)}
-            className="gap-2 bg-red-600 hover:bg-red-700 text-white"
+            className="gap-2 bg-red-600 hover:bg-red-700 text-white shadow-sm h-9"
           >
             <Upload className="w-4 h-4" />
             Importar Planilha ERP
@@ -193,133 +345,191 @@ export default function FinancialMovements() {
               placeholder="Buscar por histórico, fornecedor ou C. Custo..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-9 w-full bg-background border-border/50"
+              className="pl-9 w-full bg-background border-border/50 h-9"
             />
           </div>
         </CardHeader>
         <CardContent>
-          <div className="rounded-md border border-border/50 overflow-hidden bg-card">
-            <div className="overflow-x-auto max-h-[600px] relative">
-              <Table>
-                <TableHeader className="bg-muted/50 sticky top-0 z-20 shadow-sm">
-                  <TableRow>
-                    {erpColumns.map((col) => (
-                      <TableHead key={col.key} className="whitespace-nowrap font-semibold">
+          <div className="rounded-md border border-border/50 bg-card shadow-sm">
+            <Table wrapperClassName="max-h-[600px]">
+              <TableHeader className="bg-muted/50 sticky top-0 z-20 shadow-sm">
+                <TableRow>
+                  <TableHead className="w-[40px] px-2 py-1 h-8">
+                    <Checkbox
+                      checked={
+                        sortedMovements.length > 0 && selectedRows.length === sortedMovements.length
+                      }
+                      onCheckedChange={handleSelectAll}
+                      aria-label="Selecionar todos"
+                    />
+                  </TableHead>
+                  {erpColumns.map((col) => (
+                    <TableHead
+                      key={col.key}
+                      className="whitespace-nowrap font-semibold px-2 py-1 h-8 cursor-pointer hover:bg-muted/80 transition-colors select-none"
+                      onClick={() => handleSort(col.key)}
+                    >
+                      <div className="flex items-center gap-1">
                         {col.label}
-                      </TableHead>
-                    ))}
-                    <TableHead className="whitespace-nowrap font-semibold text-center">
-                      Status
-                    </TableHead>
-                    <TableHead className="whitespace-nowrap font-semibold">
-                      DE/PARA Contábil
-                    </TableHead>
-                    <TableHead className="whitespace-nowrap font-semibold text-right sticky right-0 bg-muted/50 z-30 shadow-[-4px_0_10px_-4px_rgba(0,0,0,0.1)]">
-                      Ações
-                    </TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {loading ? (
-                    <TableRow>
-                      <TableCell
-                        colSpan={erpColumns.length + 3}
-                        className="h-32 text-center text-muted-foreground"
-                      >
-                        <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2 text-red-600" />
-                        Carregando movimentos...
-                      </TableCell>
-                    </TableRow>
-                  ) : filteredMovements.length === 0 ? (
-                    <TableRow>
-                      <TableCell
-                        colSpan={erpColumns.length + 3}
-                        className="h-32 text-center text-muted-foreground"
-                      >
-                        Nenhum movimento encontrado. Importe uma planilha para começar.
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    filteredMovements.map((m) => (
-                      <TableRow key={m.id} className="hover:bg-muted/30 transition-colors group">
-                        {erpColumns.map((col) => (
-                          <TableCell
-                            key={col.key}
-                            className="whitespace-nowrap max-w-[200px] truncate"
-                            title={String(m[col.key] || '')}
-                          >
-                            {col.type === 'date'
-                              ? m[col.key]
-                                ? format(new Date(m[col.key]), 'dd/MM/yyyy', { locale: ptBR })
-                                : '-'
-                              : col.type === 'currency'
-                                ? m[col.key]?.toLocaleString('pt-BR', {
-                                    style: 'currency',
-                                    currency: 'BRL',
-                                  }) || '-'
-                                : m[col.key] || '-'}
-                          </TableCell>
-                        ))}
-                        <TableCell className="text-center">
-                          <Badge
-                            variant={m.status === 'Mapeado' ? 'default' : 'secondary'}
-                            className={
-                              m.status === 'Mapeado'
-                                ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200 border-emerald-200'
-                                : 'bg-amber-100 text-amber-800 hover:bg-amber-200 border-amber-200'
-                            }
-                          >
-                            {m.status}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="max-w-[200px] truncate">
-                          {m.chart_of_accounts ? (
-                            <div className="flex items-center gap-1.5 text-sm font-medium text-emerald-700">
-                              <ArrowRight className="w-3.5 h-3.5" />
-                              <span title={m.chart_of_accounts.account_name}>
-                                {m.chart_of_accounts.account_code} -{' '}
-                                {m.chart_of_accounts.account_name}
-                              </span>
-                            </div>
+                        {sortConfig?.key === col.key ? (
+                          sortConfig.direction === 'asc' ? (
+                            <ChevronUp className="w-3 h-3" />
                           ) : (
-                            <span className="text-sm text-muted-foreground/60 italic flex items-center gap-1.5">
-                              <ArrowRight className="w-3.5 h-3.5" /> Não vinculado
-                            </span>
+                            <ChevronDown className="w-3 h-3" />
+                          )
+                        ) : (
+                          <ArrowUpDown className="w-3 h-3 opacity-30" />
+                        )}
+                      </div>
+                    </TableHead>
+                  ))}
+                  <TableHead
+                    className="whitespace-nowrap font-semibold text-center px-2 py-1 h-8 cursor-pointer hover:bg-muted/80 transition-colors select-none"
+                    onClick={() => handleSort('status')}
+                  >
+                    <div className="flex items-center justify-center gap-1">
+                      Status
+                      {sortConfig?.key === 'status' ? (
+                        sortConfig.direction === 'asc' ? (
+                          <ChevronUp className="w-3 h-3" />
+                        ) : (
+                          <ChevronDown className="w-3 h-3" />
+                        )
+                      ) : (
+                        <ArrowUpDown className="w-3 h-3 opacity-30" />
+                      )}
+                    </div>
+                  </TableHead>
+                  <TableHead
+                    className="whitespace-nowrap font-semibold px-2 py-1 h-8 cursor-pointer hover:bg-muted/80 transition-colors select-none"
+                    onClick={() => handleSort('chart_of_accounts')}
+                  >
+                    <div className="flex items-center gap-1">
+                      DE/PARA Contábil
+                      {sortConfig?.key === 'chart_of_accounts' ? (
+                        sortConfig.direction === 'asc' ? (
+                          <ChevronUp className="w-3 h-3" />
+                        ) : (
+                          <ChevronDown className="w-3 h-3" />
+                        )
+                      ) : (
+                        <ArrowUpDown className="w-3 h-3 opacity-30" />
+                      )}
+                    </div>
+                  </TableHead>
+                  <TableHead className="whitespace-nowrap font-semibold text-right sticky right-0 bg-muted/50 z-30 shadow-[-4px_0_10px_-4px_rgba(0,0,0,0.1)] px-2 py-1 h-8">
+                    Ações
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {loading ? (
+                  <TableRow>
+                    <TableCell
+                      colSpan={erpColumns.length + 4}
+                      className="h-32 text-center text-muted-foreground"
+                    >
+                      <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2 text-red-600" />
+                      Carregando movimentos...
+                    </TableCell>
+                  </TableRow>
+                ) : sortedMovements.length === 0 ? (
+                  <TableRow>
+                    <TableCell
+                      colSpan={erpColumns.length + 4}
+                      className="h-32 text-center text-muted-foreground"
+                    >
+                      Nenhum movimento encontrado. Importe uma planilha para começar.
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  sortedMovements.map((m) => (
+                    <TableRow key={m.id} className="hover:bg-muted/30 transition-colors group h-8">
+                      <TableCell className="px-2 py-1 text-xs">
+                        <Checkbox
+                          checked={selectedRows.includes(m.id)}
+                          onCheckedChange={(checked) => handleSelectRow(m.id, !!checked)}
+                          aria-label="Selecionar linha"
+                        />
+                      </TableCell>
+                      {erpColumns.map((col) => (
+                        <TableCell
+                          key={col.key}
+                          className="whitespace-nowrap max-w-[200px] truncate px-2 py-1 text-xs"
+                          title={String(m[col.key] || '')}
+                        >
+                          {col.type === 'date'
+                            ? m[col.key]
+                              ? format(new Date(m[col.key]), 'dd/MM/yyyy', { locale: ptBR })
+                              : '-'
+                            : col.type === 'currency'
+                              ? m[col.key]?.toLocaleString('pt-BR', {
+                                  style: 'currency',
+                                  currency: 'BRL',
+                                }) || '-'
+                              : m[col.key] || '-'}
+                        </TableCell>
+                      ))}
+                      <TableCell className="text-center px-2 py-1">
+                        <Badge
+                          variant={m.status === 'Mapeado' ? 'default' : 'secondary'}
+                          className={cn(
+                            'text-[10px] px-1.5 py-0 h-4 font-medium',
+                            m.status === 'Mapeado'
+                              ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200 border-emerald-200'
+                              : 'bg-amber-100 text-amber-800 hover:bg-amber-200 border-amber-200',
                           )}
-                        </TableCell>
-                        <TableCell className="text-right sticky right-0 bg-card group-hover:bg-muted/30 transition-colors z-10 shadow-[-4px_0_10px_-4px_rgba(0,0,0,0.05)]">
-                          <div className="flex justify-end gap-1 bg-inherit">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-8 px-2 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                              onClick={() => {
-                                setSelectedMovement(m)
-                                setSelectedAccountId(m.mapped_account_id || '')
-                                setMappingModalOpen(true)
-                              }}
-                              title="Mapear Conta Contábil"
-                            >
-                              <MapIcon className="w-4 h-4 mr-1.5" />
-                              Mapear
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleDelete(m.id)}
-                              title="Excluir"
-                              className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
+                        >
+                          {m.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="max-w-[200px] truncate px-2 py-1 text-xs">
+                        {m.chart_of_accounts ? (
+                          <div className="flex items-center gap-1 font-medium text-emerald-700">
+                            <ArrowRight className="w-3 h-3" />
+                            <span title={m.chart_of_accounts.account_name}>
+                              {m.chart_of_accounts.account_code} -{' '}
+                              {m.chart_of_accounts.account_name}
+                            </span>
                           </div>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </div>
+                        ) : (
+                          <span className="text-muted-foreground/60 italic flex items-center gap-1">
+                            <ArrowRight className="w-3 h-3" /> Não vinculado
+                          </span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right sticky right-0 bg-card group-hover:bg-muted/30 transition-colors z-10 shadow-[-4px_0_10px_-4px_rgba(0,0,0,0.05)] px-2 py-1">
+                        <div className="flex justify-end gap-1 bg-inherit">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 px-2 text-blue-600 hover:text-blue-700 hover:bg-blue-50 text-xs"
+                            onClick={() => {
+                              setSelectedMovement(m)
+                              setSelectedAccountId(m.mapped_account_id || '')
+                              setMappingModalOpen(true)
+                            }}
+                            title="Mapear Conta Contábil"
+                          >
+                            <MapIcon className="w-3 h-3 mr-1.5" />
+                            Mapear
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleDelete(m.id)}
+                            title="Excluir"
+                            className="h-6 w-6 text-destructive hover:text-destructive hover:bg-destructive/10"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
           </div>
         </CardContent>
       </Card>
