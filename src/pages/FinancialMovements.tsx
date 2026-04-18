@@ -17,7 +17,6 @@ import {
   Search,
   ArrowLeft,
   ArrowRight,
-  BarChart3,
   UploadCloud,
   CheckCircle2,
   AlertCircle,
@@ -37,9 +36,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { ImportErpFinancialModal } from '@/components/ImportErpFinancialModal'
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart'
 import { Progress } from '@/components/ui/progress'
-import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, CartesianGrid } from 'recharts'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
 
@@ -87,7 +84,6 @@ export default function FinancialMovements() {
   const [sortColumn, setSortColumn] = useState<string>('data_emissao')
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc')
   const [isImportOpen, setIsImportOpen] = useState(false)
-  const [chartData, setChartData] = useState<any[]>([])
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editForm, setEditForm] = useState<any>({})
   const [activeImport, setActiveImport] = useState<any>(null)
@@ -218,7 +214,6 @@ export default function FinancialMovements() {
             if (data.status === 'Completed' || data.status === 'Error') {
               clearInterval(interval)
               clearInterval(timerInterval)
-              fetchChart()
               setElapsedSeconds((prev) => {
                 localStorage.setItem(
                   'last_import_time_erp_fin',
@@ -283,33 +278,6 @@ export default function FinancialMovements() {
     if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`
     return new Date(dateStr).toLocaleDateString('pt-BR')
   }
-
-  const fetchChart = async () => {
-    if (!user) return
-    const { data: all } = await supabase
-      .from('erp_financial_movements')
-      .select('data_emissao, valor')
-      .is('deleted_at', null)
-      .order('data_emissao', { ascending: true })
-      .limit(1000)
-
-    if (all) {
-      const agg = all.reduce((acc: any, row) => {
-        const date = row.data_emissao
-          ? row.data_emissao.split('-').slice(0, 2).join('/')
-          : 'Sem data'
-        if (!acc[date]) acc[date] = 0
-        acc[date] += Number(row.valor || 0)
-        return acc
-      }, {})
-      const cData = Object.keys(agg).map((k) => ({ date: k, value: agg[k] }))
-      setChartData(cData.slice(-12))
-    }
-  }
-
-  useEffect(() => {
-    fetchChart()
-  }, [user])
 
   useEffect(() => {
     fetchData()
@@ -423,48 +391,6 @@ export default function FinancialMovements() {
           Importar Planilha
         </Button>
       </div>
-
-      {chartData.length > 0 && (
-        <Card className="shadow-sm border-slate-200">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-semibold flex items-center gap-2 text-slate-700">
-              <BarChart3 className="h-4 w-4 text-primary" />
-              Volume de Movimentação Financeira (R$)
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="h-[240px] pt-4">
-            <ChartContainer
-              config={{ value: { label: 'Valor (R$)', color: 'hsl(var(--primary))' } }}
-            >
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={chartData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                  <XAxis
-                    dataKey="date"
-                    fontSize={12}
-                    tickLine={false}
-                    axisLine={false}
-                    tickMargin={10}
-                  />
-                  <YAxis
-                    fontSize={12}
-                    tickLine={false}
-                    axisLine={false}
-                    tickFormatter={(v) => `R$ ${v}`}
-                  />
-                  <ChartTooltip content={<ChartTooltipContent />} />
-                  <Bar
-                    dataKey="value"
-                    fill="var(--color-value)"
-                    radius={[4, 4, 0, 0]}
-                    maxBarSize={50}
-                  />
-                </BarChart>
-              </ResponsiveContainer>
-            </ChartContainer>
-          </CardContent>
-        </Card>
-      )}
 
       <Card className="shadow-sm border-slate-200">
         <CardHeader className="pb-3 border-b bg-slate-50/50 flex flex-col gap-3">
