@@ -23,6 +23,7 @@ import {
   RotateCcw,
   Target,
   Copy,
+  Globe,
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
@@ -757,22 +758,10 @@ export default function ChartAccounts() {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem
-                onClick={() => handleExport('browser')}
+                onClick={() => handleExport('txt')}
                 className="cursor-pointer gap-2"
               >
-                <FileText className="h-4 w-4" /> Abrir no Browser
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => handleExport('pdf')}
-                className="cursor-pointer gap-2"
-              >
-                <FileText className="h-4 w-4" /> PDF
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => handleExport('excel')}
-                className="cursor-pointer gap-2"
-              >
-                <FileSpreadsheet className="h-4 w-4 text-green-600" /> Excel (XLSX)
+                <FileText className="h-4 w-4 text-slate-500" /> TXT
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={() => handleExport('csv')}
@@ -781,10 +770,22 @@ export default function ChartAccounts() {
                 <FileText className="h-4 w-4 text-blue-600" /> CSV
               </DropdownMenuItem>
               <DropdownMenuItem
-                onClick={() => handleExport('txt')}
+                onClick={() => handleExport('excel')}
                 className="cursor-pointer gap-2"
               >
-                <FileText className="h-4 w-4 text-gray-600" /> TXT
+                <FileSpreadsheet className="h-4 w-4 text-emerald-600" /> Excel (XLSX)
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => handleExport('pdf')}
+                className="cursor-pointer gap-2"
+              >
+                <FileText className="h-4 w-4 text-red-500" /> PDF
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => handleExport('browser')}
+                className="cursor-pointer gap-2"
+              >
+                <Globe className="h-4 w-4 text-indigo-500" /> Abrir no Browser
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
