@@ -140,13 +140,6 @@ export function ImportMappingModal({
     setProgress(0)
     setResults(null)
 
-    const progressInterval = setInterval(() => {
-      setProgress((prev) => {
-        if (prev >= 90) return 90
-        return prev + 10
-      })
-    }, 500)
-
     try {
       const reader = new FileReader()
       reader.onload = async (e) => {
@@ -159,54 +152,114 @@ export function ImportMappingModal({
             data: { session },
           } = await supabase.auth.getSession()
 
-          const { data, error } = await supabase.functions.invoke('import-data', {
+          setProgress(5)
+          const parseRes = await supabase.functions.invoke('import-data', {
             body: {
+              action: 'PARSE_ALL',
               type: 'MAPPINGS',
               fileName: file.name,
               fileBase64: base64,
-              organizationId: selectedOrg,
               sheetName: selectedSheet,
-              mode: importMode,
             },
             headers: session ? { Authorization: `Bearer ${session.access_token}` } : undefined,
           })
 
-          if (error) throw error
-          if (data.error) throw new Error(data.error)
+          if (parseRes.error) throw parseRes.error
+          if (parseRes.data?.error) throw new Error(parseRes.data.error)
+
+          const allRecords = parseRes.data?.records || []
+          const totalRecords = allRecords.length
+
+          if (totalRecords === 0) {
+            toast.info('Nenhum registro encontrado na planilha.')
+            setLoading(false)
+            return
+          }
+
+          const CHUNK_SIZE = 1000
+          let inserted = 0
+          let rejected = 0
+          let errors: any[] = []
+
+          for (let i = 0; i < totalRecords; i += CHUNK_SIZE) {
+            const chunk = allRecords.slice(i, i + CHUNK_SIZE)
+
+            const {
+              data: { session: currentSession },
+            } = await supabase.auth.getSession()
+            const chunkMode =
+              i === 0 ? importMode : importMode === 'REPLACE' ? 'UPDATE' : importMode
+
+            const chunkRes = await supabase.functions.invoke('import-data', {
+              body: {
+                type: 'MAPPINGS',
+                fileName: file.name,
+                organizationId: selectedOrg,
+                mode: chunkMode,
+                records: chunk,
+                offset: i,
+                skipHistory: true,
+              },
+              headers: currentSession
+                ? { Authorization: `Bearer ${currentSession.access_token}` }
+                : undefined,
+            })
+
+            if (chunkRes.error) throw chunkRes.error
+            if (chunkRes.data?.error) throw new Error(chunkRes.data.error)
+
+            inserted += chunkRes.data?.inserted || 0
+            rejected += chunkRes.data?.rejected || 0
+            if (chunkRes.data?.errors) {
+              errors = [...errors, ...chunkRes.data.errors]
+            }
+
+            setProgress(Math.min(100, Math.round(((i + CHUNK_SIZE) / totalRecords) * 100)))
+          }
 
           setProgress(100)
-          setResults(data)
+          setResults({ inserted, rejected, errors })
 
-          if (data.inserted > 0 || data.rejected > 0) {
+          const { data: userData } = await supabase.auth.getUser()
+          if (userData?.user) {
+            await supabase.from('import_history').insert({
+              user_id: userData.user.id,
+              import_type: 'MAPPINGS',
+              file_name: file.name,
+              total_records: totalRecords,
+              success_count: inserted,
+              error_count: rejected,
+              status: 'Completed',
+            })
+          }
+
+          if (inserted > 0 || rejected > 0) {
             onSuccess?.()
           }
 
-          if (data.inserted > 0) {
-            toast.success(`${data.inserted} mapeamentos importados com sucesso!`)
-            if (data.rejected === 0) {
+          if (inserted > 0) {
+            toast.success(`${inserted} mapeamentos importados com sucesso!`)
+            if (rejected === 0) {
               setTimeout(() => onOpenChange(false), 2000)
             }
-          } else if (data.rejected > 0) {
-            toast.warning(`Importação finalizada com ${data.rejected} rejeições.`)
+          } else if (rejected > 0) {
+            toast.warning(`Importação finalizada com ${rejected} rejeições.`)
           } else {
             toast.info('Nenhum registro foi importado.')
           }
         } catch (err: any) {
           toast.error('Erro na importação: ' + err.message)
         } finally {
-          clearInterval(progressInterval)
           setLoading(false)
         }
       }
       reader.onerror = () => {
         toast.error('Erro ao ler o arquivo.')
-        clearInterval(progressInterval)
         setLoading(false)
       }
       reader.readAsDataURL(file)
     } catch (err: any) {
       toast.error('Erro ao processar arquivo: ' + err.message)
-      clearInterval(progressInterval)
       setLoading(false)
     }
   }
