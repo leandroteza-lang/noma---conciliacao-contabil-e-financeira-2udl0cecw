@@ -81,13 +81,27 @@ export function BankAccountFormModal({ isOpen, onClose, onSave, initialData }: a
   useEffect(() => {
     if (organizationId) {
       const fetchAccounts = async () => {
-        const { data } = await supabase
-          .from('chart_of_accounts')
-          .select('id, account_code, account_name, classification')
-          .eq('organization_id', organizationId)
-          .is('deleted_at', null)
-          .order('classification')
-        if (data) setChartAccounts(data)
+        let allAccounts: any[] = []
+        let page = 0
+        let hasMore = true
+        while (hasMore) {
+          const { data } = await supabase
+            .from('chart_of_accounts')
+            .select('id, account_code, account_name, classification')
+            .eq('organization_id', organizationId)
+            .is('deleted_at', null)
+            .order('classification')
+            .range(page * 1000, (page + 1) * 1000 - 1)
+
+          if (data && data.length > 0) {
+            allAccounts = [...allAccounts, ...data]
+            page++
+            if (data.length < 1000) hasMore = false
+          } else {
+            hasMore = false
+          }
+        }
+        setChartAccounts(allAccounts)
       }
       fetchAccounts()
     } else {

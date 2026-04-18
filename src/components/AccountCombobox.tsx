@@ -62,6 +62,7 @@ export function AccountCombobox({
             .select('*')
             .eq('organization_id', orgId)
             .is('deleted_at', null)
+            .order('classification')
             .range(page * 1000, (page + 1) * 1000 - 1)
 
           if (data && data.length > 0) {
