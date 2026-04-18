@@ -12,9 +12,19 @@ import {
 } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Loader2, Search, ArrowLeft, ArrowRight, BarChart3, UploadCloud } from 'lucide-react'
+import {
+  Loader2,
+  Search,
+  ArrowLeft,
+  ArrowRight,
+  BarChart3,
+  UploadCloud,
+  CheckCircle2,
+  AlertCircle,
+} from 'lucide-react'
 import { ImportErpFinancialModal } from '@/components/ImportErpFinancialModal'
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart'
+import { Progress } from '@/components/ui/progress'
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, CartesianGrid } from 'recharts'
 
 export default function FinancialMovements() {
@@ -28,7 +38,81 @@ export default function FinancialMovements() {
   const [chartData, setChartData] = useState<any[]>([])
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editForm, setEditForm] = useState<any>({})
+  const [activeImport, setActiveImport] = useState<any>(null)
   const pageSize = 15
+
+  const fetchActiveImport = async () => {
+    if (!user) return
+    const { data } = await supabase
+      .from('import_history')
+      .select('*')
+      .eq('user_id', user.id)
+      .eq('import_type', 'ERP_FINANCIAL_MOVEMENTS')
+      .in('status', ['Processing', 'Pending'])
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    if (data) {
+      setActiveImport(data)
+    }
+  }
+
+  const fetchDataSilent = async () => {
+    if (!user) return
+    let query = supabase
+      .from('erp_financial_movements')
+      .select('*', { count: 'exact' })
+      .is('deleted_at', null)
+      .order('data_emissao', { ascending: false })
+
+    if (search) {
+      query = query.or(
+        `historico.ilike.%${search}%,nome_cli_fornec.ilike.%${search}%,c_custo.ilike.%${search}%`,
+      )
+    }
+
+    const {
+      data: result,
+      count,
+      error,
+    } = await query.range(page * pageSize, (page + 1) * pageSize - 1)
+    if (!error && result) {
+      setData(result)
+      setTotalCount(count || 0)
+    }
+  }
+
+  useEffect(() => {
+    fetchActiveImport()
+  }, [user])
+
+  useEffect(() => {
+    let interval: any
+    if (activeImport && ['Processing', 'Pending'].includes(activeImport.status)) {
+      interval = setInterval(async () => {
+        if (!user) return
+        const { data } = await supabase
+          .from('import_history')
+          .select('*')
+          .eq('id', activeImport.id)
+          .single()
+
+        if (data) {
+          setActiveImport(data)
+          fetchDataSilent()
+          if (data.status === 'Completed' || data.status === 'Error') {
+            clearInterval(interval)
+            fetchChart()
+            setTimeout(() => setActiveImport(null), 8000)
+          }
+        }
+      }, 3000)
+    }
+    return () => {
+      if (interval) clearInterval(interval)
+    }
+  }, [activeImport?.status, activeImport?.id, user, page, search])
 
   const fetchData = async () => {
     if (!user) return
@@ -87,6 +171,76 @@ export default function FinancialMovements() {
 
   return (
     <div className="p-6 space-y-6 max-w-[1600px] mx-auto animate-fade-in-up">
+      {activeImport && (
+        <Card
+          className={`shadow-sm border ${activeImport.status === 'Error' ? 'border-red-200 bg-red-50/50' : activeImport.status === 'Completed' ? 'border-green-200 bg-green-50/50' : 'border-blue-200 bg-blue-50/50'}`}
+        >
+          <CardContent className="p-4 flex flex-col gap-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                {activeImport.status === 'Processing' || activeImport.status === 'Pending' ? (
+                  <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
+                ) : activeImport.status === 'Error' ? (
+                  <AlertCircle className="h-5 w-5 text-red-600" />
+                ) : (
+                  <CheckCircle2 className="h-5 w-5 text-green-600" />
+                )}
+                <span className="font-medium text-slate-800">
+                  {activeImport.status === 'Processing' &&
+                    activeImport.total_records === 0 &&
+                    'Lendo e preparando arquivo...'}
+                  {activeImport.status === 'Processing' &&
+                    activeImport.total_records > 0 &&
+                    'Processando importação...'}
+                  {activeImport.status === 'Pending' && 'Aguardando processamento...'}
+                  {activeImport.status === 'Error' && 'Erro na importação'}
+                  {activeImport.status === 'Completed' && 'Importação concluída com sucesso!'}
+                </span>
+              </div>
+              <span className="text-sm font-medium text-slate-600">
+                {activeImport.total_records > 0
+                  ? `${activeImport.processed_records || 0} / ${activeImport.total_records} registros (${Math.round(((activeImport.processed_records || 0) / activeImport.total_records) * 100)}%)`
+                  : 'Iniciando...'}
+              </span>
+            </div>
+
+            <Progress
+              value={
+                activeImport.total_records > 0
+                  ? ((activeImport.processed_records || 0) / activeImport.total_records) * 100
+                  : 0
+              }
+              className={`h-2 ${activeImport.status === 'Error' ? 'bg-red-100 [&>div]:bg-red-600' : activeImport.status === 'Completed' ? 'bg-green-100 [&>div]:bg-green-600' : 'bg-blue-100 [&>div]:bg-blue-600'}`}
+            />
+
+            {activeImport.status === 'Processing' && (
+              <p className="text-xs text-slate-500">
+                Isso pode levar alguns minutos dependendo do tamanho do arquivo. Você pode continuar
+                usando o sistema. A grade será atualizada automaticamente.
+              </p>
+            )}
+
+            {activeImport.status === 'Error' &&
+              activeImport.errors_list &&
+              activeImport.errors_list.length > 0 && (
+                <div className="text-xs text-red-600 mt-1 max-h-20 overflow-y-auto bg-red-100 p-2 rounded">
+                  <p className="font-semibold mb-1">Últimos erros encontrados:</p>
+                  <ul className="list-disc pl-4">
+                    {activeImport.errors_list.slice(0, 3).map((err: any, idx: number) => (
+                      <li key={idx}>
+                        Linha {err.row}: {err.error}
+                      </li>
+                    ))}
+                    {activeImport.errors_list.length > 3 && (
+                      <li>... e mais {activeImport.errors_list.length - 3} erros.</li>
+                    )}
+                  </ul>
+                </div>
+              )}
+          </CardContent>
+        </Card>
+      )}
+
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-slate-900">
@@ -398,8 +552,7 @@ export default function FinancialMovements() {
         onOpenChange={setIsImportOpen}
         onImportSuccess={() => {
           setPage(0)
-          fetchData()
-          fetchChart()
+          fetchActiveImport()
         }}
       />
     </div>
