@@ -2642,10 +2642,11 @@ Deno.serve(async (req: Request) => {
         p_org_id: orgId,
         p_import_id: payload.importId || null,
         p_records: records,
+        p_mode: mode || 'INSERT_ONLY',
       }
 
       const { data: res, error: rpcErr } = await supabaseAdmin.rpc(
-        'import_erp_movements_batch',
+        'import_erp_movements_batch_v2',
         rpcPayload,
       )
       if (rpcErr) {

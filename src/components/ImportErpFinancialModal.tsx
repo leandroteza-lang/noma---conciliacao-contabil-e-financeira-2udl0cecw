@@ -18,7 +18,9 @@ import {
 import { supabase } from '@/lib/supabase/client'
 import { useAuth } from '@/hooks/use-auth'
 import { useToast } from '@/hooks/use-toast'
-import { Loader2, UploadCloud, CheckCircle2 } from 'lucide-react'
+import { Loader2, UploadCloud, CheckCircle2, Settings2 } from 'lucide-react'
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
+import { Label } from '@/components/ui/label'
 import {
   Table,
   TableBody,
@@ -43,6 +45,7 @@ export function ImportErpFinancialModal({ open, onOpenChange, onImportSuccess }:
   const [selectedSheet, setSelectedSheet] = useState<string>('')
   const [columnMapping, setColumnMapping] = useState<Record<string, string>>({})
   const [filePath, setFilePath] = useState<string>('')
+  const [importMode, setImportMode] = useState<'INSERT_ONLY' | 'UPDATE'>('INSERT_ONLY')
 
   const normalizeText = (text: string) =>
     String(text || '')
@@ -578,6 +581,7 @@ export function ImportErpFinancialModal({ open, onOpenChange, onImportSuccess }:
           totalChunks: totalChunks,
           totalRecords: normalizedRecords.length,
           organizationId: selectedOrg,
+          mode: importMode,
           userId: user?.id,
           inserted: 0,
           rejected: 0,
@@ -678,6 +682,38 @@ export function ImportErpFinancialModal({ open, onOpenChange, onImportSuccess }:
                   </SelectContent>
                 </Select>
               </div>
+            </div>
+
+            <div className="border rounded-lg bg-white p-4">
+              <h3 className="font-medium mb-3 text-sm flex items-center gap-2">
+                <Settings2 className="h-4 w-4 text-slate-500" /> Opções de Importação
+              </h3>
+              <RadioGroup
+                value={importMode}
+                onValueChange={(v: any) => setImportMode(v)}
+                className="flex flex-col gap-3"
+              >
+                <div className="flex items-start space-x-3">
+                  <RadioGroupItem value="INSERT_ONLY" id="mode-insert" className="mt-1" />
+                  <Label htmlFor="mode-insert" className="font-normal cursor-pointer leading-snug">
+                    <span className="font-medium block text-slate-900">Importar somente novos</span>
+                    <span className="text-slate-500 text-xs">
+                      O sistema ignora registros que já existem na base (com o mesmo Nº Extrato, Nº
+                      Documento, Valor e Centro de Custo).
+                    </span>
+                  </Label>
+                </div>
+                <div className="flex items-start space-x-3">
+                  <RadioGroupItem value="UPDATE" id="mode-update" className="mt-1" />
+                  <Label htmlFor="mode-update" className="font-normal cursor-pointer leading-snug">
+                    <span className="font-medium block text-slate-900">Substituir tudo</span>
+                    <span className="text-slate-500 text-xs">
+                      O sistema atualiza os registros existentes com as novas informações e insere
+                      os registros novos.
+                    </span>
+                  </Label>
+                </div>
+              </RadioGroup>
             </div>
 
             <div className="border rounded-lg bg-white overflow-hidden flex flex-col h-48">
