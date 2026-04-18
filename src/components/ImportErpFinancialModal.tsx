@@ -231,6 +231,9 @@ export function ImportErpFinancialModal({
   const fetchPreview = async (b64: string, name: string, sheet: string) => {
     setLoading(true)
     try {
+      const { data: sessionData } = await supabase.auth.getSession()
+      const token = sessionData?.session?.access_token
+
       const { data, error } = await supabase.functions.invoke('import-data', {
         body: {
           action: 'PARSE_ALL',
@@ -239,6 +242,7 @@ export function ImportErpFinancialModal({
           sheetName: sheet,
           type: 'ERP_FINANCIAL_MOVEMENTS',
         },
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
       })
       if (error) throw error
       if (data.error) throw new Error(data.error)
@@ -308,7 +312,7 @@ export function ImportErpFinancialModal({
     })
 
     try {
-      const CHUNK_SIZE = 2000
+      const CHUNK_SIZE = 1000
       let totalInserted = 0
       const allErrors: any[] = []
       const total = totalRecords || 1
@@ -317,6 +321,9 @@ export function ImportErpFinancialModal({
         setProgress(Math.min(Math.round((offset / total) * 100), 99))
 
         const chunkRecords = allRecords.slice(offset, offset + CHUNK_SIZE)
+
+        const { data: sessionData } = await supabase.auth.getSession()
+        const token = sessionData?.session?.access_token
 
         const { data, error } = await supabase.functions.invoke('import-data', {
           body: {
@@ -332,6 +339,7 @@ export function ImportErpFinancialModal({
             skipHistory: offset + CHUNK_SIZE < total,
             totalRecords: total,
           },
+          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
         })
 
         if (error) {
