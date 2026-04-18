@@ -2654,7 +2654,11 @@ Deno.serve(async (req: Request) => {
           } else if (orgs && orgs.length > 0) {
             orgId = orgs[0].id
           } else {
-            addError(rowNum, 'Nenhuma empresa associada ao usuário para realizar a importação.', row)
+            addError(
+              rowNum,
+              'Nenhuma empresa associada ao usuário para realizar a importação.',
+              row,
+            )
             continue
           }
         }

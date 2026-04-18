@@ -51,6 +51,9 @@ import {
 import { ImportErpFinancialModal } from '@/components/ImportErpFinancialModal'
 import { Progress } from '@/components/ui/progress'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Label } from '@/components/ui/label'
+import { Filter } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const tableHeaders = [
@@ -105,6 +108,67 @@ export default function FinancialMovements() {
   const [refreshKey, setRefreshKey] = useState(0)
 
   const [selectedIds, setSelectedIds] = useState<string[]>([])
+
+  const [filters, setFilters] = useState({
+    empresa: 'all',
+    conta: 'all',
+    tipo: 'all',
+    status: 'all',
+  })
+
+  const [filterOptions, setFilterOptions] = useState({
+    empresas: [] as { id: string; name: string }[],
+    contas: [] as string[],
+    tipos: [] as string[],
+  })
+
+  const hasActiveFilters =
+    filters.empresa !== 'all' ||
+    filters.conta !== 'all' ||
+    filters.tipo !== 'all' ||
+    filters.status !== 'all'
+
+  const clearFilters = () => {
+    setFilters({
+      empresa: 'all',
+      conta: 'all',
+      tipo: 'all',
+      status: 'all',
+    })
+    setPage(0)
+  }
+
+  const loadFilterOptions = async () => {
+    if (!user) return
+    const { data: orgs } = await supabase
+      .from('organizations')
+      .select('id, name')
+      .is('deleted_at', null)
+      .order('name')
+
+    const { data: movs } = await supabase
+      .from('erp_financial_movements')
+      .select('conta_caixa, tipo_operacao')
+      .is('deleted_at', null)
+      .limit(5000)
+
+    const uniqueContas = Array.from(
+      new Set(movs?.map((m) => m.conta_caixa).filter(Boolean) as string[]),
+    ).sort()
+    const uniqueTipos = Array.from(
+      new Set(movs?.map((m) => m.tipo_operacao).filter(Boolean) as string[]),
+    ).sort()
+
+    setFilterOptions({
+      empresas: orgs || [],
+      contas: uniqueContas,
+      tipos: uniqueTipos,
+    })
+  }
+
+  useEffect(() => {
+    loadFilterOptions()
+  }, [user, refreshKey])
   const [deleteModalOpen, setDeleteModalOpen] = useState(false)
   const [deleteMode, setDeleteMode] = useState<'selected' | 'all' | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
@@ -376,6 +440,19 @@ export default function FinancialMovements() {
       )
     }
 
+    if (filters.empresa !== 'all') {
+      query = query.eq('organization_id', filters.empresa)
+    }
+    if (filters.conta !== 'all') {
+      query = query.eq('conta_caixa', filters.conta)
+    }
+    if (filters.tipo !== 'all') {
+      query = query.eq('tipo_operacao', filters.tipo)
+    }
+    if (filters.status !== 'all') {
+      query = query.eq('status', filters.status)
+    }
+
     const {
       data: result,
       count,
@@ -449,6 +526,7 @@ export default function FinancialMovements() {
     pageSize,
     sortColumn,
     sortDirection,
+    filters,
   ])
 
   const fetchData = async () => {
@@ -467,6 +545,19 @@ export default function FinancialMovements() {
       query = query.or(
         `historico.ilike.%${search}%,nome_cli_fornec.ilike.%${search}%,c_custo.ilike.%${search}%`,
       )
+    }
+
+    if (filters.empresa !== 'all') {
+      query = query.eq('organization_id', filters.empresa)
+    }
+    if (filters.conta !== 'all') {
+      query = query.eq('conta_caixa', filters.conta)
+    }
+    if (filters.tipo !== 'all') {
+      query = query.eq('tipo_operacao', filters.tipo)
+    }
+    if (filters.status !== 'all') {
+      query = query.eq('status', filters.status)
     }
 
     const {
@@ -490,7 +581,7 @@ export default function FinancialMovements() {
 
   useEffect(() => {
     fetchData()
-  }, [user, page, search, pageSize, sortColumn, sortDirection, refreshKey])
+  }, [user, page, search, pageSize, sortColumn, sortDirection, refreshKey, filters])
 
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize))
   const visibleCount = tableHeaders.filter((h) => visibleColumns[h.key] !== false).length + 2
@@ -753,6 +844,131 @@ export default function FinancialMovements() {
               />
             </div>
             <div className="flex flex-wrap items-center gap-3 xl:ml-auto bg-white p-1.5 rounded-md border shadow-sm">
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7 text-xs flex items-center gap-1.5 px-2 relative"
+                  >
+                    <Filter className="h-3.5 w-3.5" />
+                    <span className="hidden sm:inline">Filtros</span>
+                    {hasActiveFilters && (
+                      <span className="absolute -top-1 -right-1 flex h-3 w-3 items-center justify-center rounded-full bg-primary text-[8px] text-primary-foreground">
+                        {Object.values(filters).filter((v) => v !== 'all').length}
+                      </span>
+                    )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent align="end" className="w-80 p-4 flex flex-col gap-4">
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-semibold text-sm">Filtros Avançados</h4>
+                    {hasActiveFilters && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={clearFilters}
+                        className="h-6 text-xs px-2 text-slate-500 hover:text-slate-800"
+                      >
+                        Limpar todos
+                      </Button>
+                    )}
+                  </div>
+
+                  <div className="space-y-4">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Empresa</Label>
+                      <Select
+                        value={filters.empresa}
+                        onValueChange={(v) => {
+                          setFilters((p) => ({ ...p, empresa: v }))
+                          setPage(0)
+                        }}
+                      >
+                        <SelectTrigger className="h-8 text-xs">
+                          <SelectValue placeholder="Todas as empresas" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Todas as empresas</SelectItem>
+                          {filterOptions.empresas.map((e) => (
+                            <SelectItem key={e.id} value={e.id}>
+                              {e.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Conta/Caixa</Label>
+                      <Select
+                        value={filters.conta}
+                        onValueChange={(v) => {
+                          setFilters((p) => ({ ...p, conta: v }))
+                          setPage(0)
+                        }}
+                      >
+                        <SelectTrigger className="h-8 text-xs">
+                          <SelectValue placeholder="Todas as contas" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Todas as contas</SelectItem>
+                          {filterOptions.contas.map((c) => (
+                            <SelectItem key={c} value={c}>
+                              {c}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Tipo de Operação</Label>
+                      <Select
+                        value={filters.tipo}
+                        onValueChange={(v) => {
+                          setFilters((p) => ({ ...p, tipo: v }))
+                          setPage(0)
+                        }}
+                      >
+                        <SelectTrigger className="h-8 text-xs">
+                          <SelectValue placeholder="Todos os tipos" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Todos os tipos</SelectItem>
+                          {filterOptions.tipos.map((t) => (
+                            <SelectItem key={t} value={t}>
+                              {t}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Status</Label>
+                      <Select
+                        value={filters.status}
+                        onValueChange={(v) => {
+                          setFilters((p) => ({ ...p, status: v }))
+                          setPage(0)
+                        }}
+                      >
+                        <SelectTrigger className="h-8 text-xs">
+                          <SelectValue placeholder="Todos os status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Todos os status</SelectItem>
+                          <SelectItem value="Pendente">Pendente</SelectItem>
+                          <SelectItem value="Concluído">Concluído</SelectItem>
+                          <SelectItem value="Erro">Erro</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </PopoverContent>
+              </Popover>
+
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button
