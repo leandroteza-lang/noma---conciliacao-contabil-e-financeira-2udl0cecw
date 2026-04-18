@@ -107,6 +107,14 @@ export default function FinancialMovements() {
   const [deleteMode, setDeleteMode] = useState<'selected' | 'all' | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
 
+  const [deletionState, setDeletionState] = useState({
+    active: false,
+    progress: 0,
+    total: 0,
+    processed: 0,
+    status: 'Processing' as 'Processing' | 'Completed' | 'Error',
+  })
+
   const defaultVisibleColumns = tableHeaders.reduce(
     (acc, h) => ({ ...acc, [h.key]: true }),
     {} as Record<string, boolean>,
@@ -156,30 +164,98 @@ export default function FinancialMovements() {
     }
   }
 
+  const startBulkDelete = async () => {
+    if (!user) return
+    setDeleteModalOpen(false)
+    setDeleteMode(null)
+
+    const { count, error: countErr } = await supabase
+      .from('erp_financial_movements')
+      .select('id', { count: 'exact', head: true })
+      .is('deleted_at', null)
+
+    if (countErr) {
+      toast.error('Erro ao preparar exclusão: ' + countErr.message)
+      return
+    }
+
+    const accurateTotal = count || 0
+    if (accurateTotal === 0) {
+      toast.info('Nenhum registro para excluir.')
+      return
+    }
+
+    setDeletionState({
+      active: true,
+      progress: 0,
+      total: accurateTotal,
+      processed: 0,
+      status: 'Processing',
+    })
+
+    try {
+      let processed = 0
+      const chunkSize = 1000
+
+      while (true) {
+        const { data, error: fetchErr } = await supabase
+          .from('erp_financial_movements')
+          .select('id')
+          .is('deleted_at', null)
+          .limit(chunkSize)
+
+        if (fetchErr) throw fetchErr
+        if (!data || data.length === 0) break
+
+        const ids = data.map((d) => d.id)
+        const { error: updateErr } = await supabase
+          .from('erp_financial_movements')
+          .update({ deleted_at: new Date().toISOString(), deleted_by: user.id })
+          .in('id', ids)
+
+        if (updateErr) throw updateErr
+
+        processed += ids.length
+        setDeletionState((prev) => ({
+          ...prev,
+          processed,
+          progress:
+            accurateTotal > 0 ? Math.min(100, Math.round((processed / accurateTotal) * 100)) : 100,
+        }))
+      }
+
+      setDeletionState((prev) => ({ ...prev, status: 'Completed', progress: 100 }))
+      toast.success('Todos os registros foram excluídos com sucesso!')
+      setSelectedIds([])
+      setPage(0)
+      fetchData()
+    } catch (error: any) {
+      console.error('Erro na exclusão em lote:', error)
+      setDeletionState((prev) => ({ ...prev, status: 'Error' }))
+      toast.error('Erro ao excluir registros: ' + error.message)
+    }
+  }
+
   const handleDelete = async () => {
     if (!user || !deleteMode) return
+
+    if (deleteMode === 'all') {
+      await startBulkDelete()
+      return
+    }
+
     setIsDeleting(true)
     try {
-      if (deleteMode === 'all') {
+      const chunkSize = 500
+      for (let i = 0; i < selectedIds.length; i += chunkSize) {
+        const chunk = selectedIds.slice(i, i + chunkSize)
         const { error } = await supabase
           .from('erp_financial_movements')
           .update({ deleted_at: new Date().toISOString(), deleted_by: user.id })
-          .is('deleted_at', null)
-
+          .in('id', chunk)
         if (error) throw error
-        toast.success('Todos os registros foram excluídos com sucesso!')
-      } else if (deleteMode === 'selected') {
-        const chunkSize = 500
-        for (let i = 0; i < selectedIds.length; i += chunkSize) {
-          const chunk = selectedIds.slice(i, i + chunkSize)
-          const { error } = await supabase
-            .from('erp_financial_movements')
-            .update({ deleted_at: new Date().toISOString(), deleted_by: user.id })
-            .in('id', chunk)
-          if (error) throw error
-        }
-        toast.success(`${selectedIds.length} registros excluídos com sucesso!`)
       }
+      toast.success(`${selectedIds.length} registros excluídos com sucesso!`)
       setSelectedIds([])
       setPage(0)
       await fetchData()
@@ -383,6 +459,65 @@ export default function FinancialMovements() {
   const visibleCount = tableHeaders.filter((h) => visibleColumns[h.key] !== false).length + 2
   return (
     <div className="p-6 space-y-6 max-w-[1600px] mx-auto animate-fade-in-up">
+      {deletionState.active && (
+        <Card
+          className={cn(
+            'shadow-sm border relative',
+            deletionState.status === 'Error'
+              ? 'border-red-200 bg-red-50/50'
+              : deletionState.status === 'Completed'
+                ? 'border-green-200 bg-green-50/50'
+                : 'border-orange-200 bg-orange-50/50',
+          )}
+        >
+          {['Completed', 'Error'].includes(deletionState.status) && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute top-2 right-2 h-6 w-6 rounded-full hover:bg-slate-200/50 text-slate-500"
+              onClick={() => setDeletionState((prev) => ({ ...prev, active: false }))}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          )}
+          <CardContent className="p-4 flex flex-col gap-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                {deletionState.status === 'Processing' ? (
+                  <Loader2 className="h-5 w-5 animate-spin text-orange-600" />
+                ) : deletionState.status === 'Error' ? (
+                  <AlertCircle className="h-5 w-5 text-red-600" />
+                ) : (
+                  <CheckCircle2 className="h-5 w-5 text-green-600" />
+                )}
+                <span className="font-medium text-slate-800">
+                  {deletionState.status === 'Processing' && 'Excluindo registros em lote...'}
+                  {deletionState.status === 'Error' && 'Erro na exclusão'}
+                  {deletionState.status === 'Completed' && 'Exclusão Concluída'}
+                </span>
+              </div>
+              <div className="flex items-center gap-4 text-sm font-medium text-slate-600">
+                <span>
+                  {deletionState.processed} / {deletionState.total} registros (
+                  {deletionState.progress}%)
+                </span>
+              </div>
+            </div>
+            <Progress
+              value={deletionState.progress}
+              className={cn(
+                'h-2',
+                deletionState.status === 'Error'
+                  ? 'bg-red-100 [&>div]:bg-red-600'
+                  : deletionState.status === 'Completed'
+                    ? 'bg-green-100 [&>div]:bg-green-600'
+                    : 'bg-orange-100 [&>div]:bg-orange-600',
+              )}
+            />
+          </CardContent>
+        </Card>
+      )}
+
       {activeImport && (
         <Card
           className={`shadow-sm border relative ${activeImport.status === 'Error' ? 'border-red-200 bg-red-50/50' : activeImport.status === 'Completed' ? 'border-green-200 bg-green-50/50' : 'border-blue-200 bg-blue-50/50'}`}
