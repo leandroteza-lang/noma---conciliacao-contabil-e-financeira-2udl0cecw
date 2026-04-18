@@ -737,50 +737,47 @@ Deno.serve(async (req: Request) => {
       })
     }
 
-    let userProfileId: string | null = null
+    let userProfileId: string | null = null;
     if (user && user.id) {
       const { data: profile } = await supabase
         .from('cadastro_usuarios')
         .select('id')
         .eq('user_id', user.id)
         .maybeSingle()
-      if (profile) userProfileId = profile.id
+      if (profile) userProfileId = profile.id;
     }
 
     const resolveOrganization = async (empresaName: any) => {
-      if (!empresaName || String(empresaName).trim() === '') return null
-      const cleanName = String(empresaName).trim()
-      const lowerName = cleanName.toLowerCase()
+      if (!empresaName || String(empresaName).trim() === '') return null;
+      const cleanName = String(empresaName).trim();
+      const lowerName = cleanName.toLowerCase();
+      
+      let orgId = orgMap.get(lowerName);
+      if (orgId) return orgId;
 
-      let orgId = orgMap.get(lowerName)
-      if (orgId) return orgId
-
-      const newOrgId = crypto.randomUUID()
+      const newOrgId = crypto.randomUUID();
       const { error: insErr } = await supabaseAdmin.from('organizations').insert({
         id: newOrgId,
         name: cleanName,
         user_id: user.id,
-        status: true,
-      })
+        status: true
+      });
 
       if (!insErr) {
-        orgMap.set(lowerName, newOrgId)
-        validOrgs.add(newOrgId)
-        if (orgs) orgs.push({ id: newOrgId, name: cleanName })
+        orgMap.set(lowerName, newOrgId);
+        validOrgs.add(newOrgId);
+        if (orgs) orgs.push({ id: newOrgId, name: cleanName });
 
         if (userProfileId) {
-          await supabaseAdmin
-            .from('cadastro_usuarios_companies')
-            .insert({
-              usuario_id: userProfileId,
-              organization_id: newOrgId,
-            })
-            .catch(() => {})
+          await supabaseAdmin.from('cadastro_usuarios_companies').insert({
+            usuario_id: userProfileId,
+            organization_id: newOrgId
+          }).catch(() => {});
         }
-        return newOrgId
+        return newOrgId;
       }
-      return null
-    }
+      return null;
+    };
 
     if (type === 'COMPANIES') {
       for (let i = 0; i < records.length; i++) {
@@ -1238,7 +1235,11 @@ Deno.serve(async (req: Request) => {
 
           orgId = await resolveOrganization(empresa)
           if (!orgId && empresa) {
-            addError(rowNum, `Erro ao resolver ou criar a empresa "${empresa}". (Obrigatório)`, row)
+            addError(
+              rowNum,
+              `Erro ao resolver ou criar a empresa "${empresa}". (Obrigatório)`,
+              row,
+            )
             continue
           }
         }
@@ -1318,7 +1319,11 @@ Deno.serve(async (req: Request) => {
           }
           orgId = await resolveOrganization(empresa)
           if (!orgId) {
-            addError(rowNum, `Erro ao resolver ou criar a empresa "${empresa}". (Obrigatório)`, row)
+            addError(
+              rowNum,
+              `Erro ao resolver ou criar a empresa "${empresa}". (Obrigatório)`,
+              row,
+            )
             continue
           }
         }
@@ -2048,7 +2053,11 @@ Deno.serve(async (req: Request) => {
 
           orgId = await resolveOrganization(empresa)
           if (!orgId && empresa) {
-            addError(rowNum, `Erro ao resolver ou criar a empresa "${empresa}". (Obrigatório)`, row)
+            addError(
+              rowNum,
+              `Erro ao resolver ou criar a empresa "${empresa}". (Obrigatório)`,
+              row,
+            )
             continue
           }
         }
@@ -2305,7 +2314,11 @@ Deno.serve(async (req: Request) => {
           }
           orgId = await resolveOrganization(empresa)
           if (!orgId && empresa) {
-            addError(rowNum, `Erro ao resolver ou criar a empresa "${empresa}". (Obrigatório)`, row)
+            addError(
+              rowNum,
+              `Erro ao resolver ou criar a empresa "${empresa}". (Obrigatório)`,
+              row,
+            )
             continue
           }
         }
@@ -2448,23 +2461,19 @@ Deno.serve(async (req: Request) => {
           let ccId = strCentroCusto ? ccMap.get(strCentroCusto) : null
 
           if (!ccId && strCentroCusto !== '') {
-            const newCcId = crypto.randomUUID()
+            const newCcId = crypto.randomUUID();
             const { error: insErr } = await supabaseAdmin.from('cost_centers').insert({
-              id: newCcId,
-              organization_id: orgId,
-              code: strCentroCusto,
-              description: strCentroCusto,
-            })
+                id: newCcId,
+                organization_id: orgId,
+                code: strCentroCusto,
+                description: strCentroCusto,
+            });
             if (!insErr) {
-              ccId = newCcId
-              ccMap.set(strCentroCusto, newCcId)
+                ccId = newCcId;
+                ccMap.set(strCentroCusto, newCcId);
             } else if (!allowIncomplete) {
-              addError(
-                rowNum,
-                `Centro de Custo "${strCentroCusto}" não encontrado e erro ao criar.`,
-                row,
-              )
-              continue
+                addError(rowNum, `Centro de Custo "${strCentroCusto}" não encontrado e erro ao criar.`, row);
+                continue;
             }
           }
 
@@ -2474,24 +2483,20 @@ Deno.serve(async (req: Request) => {
           let debitId = strContaDebito ? caMap.get(strContaDebito) : null
 
           if (!debitId && strContaDebito !== '') {
-            const newAccId = crypto.randomUUID()
+            const newAccId = crypto.randomUUID();
             const { error: insErr } = await supabaseAdmin.from('chart_of_accounts').insert({
-              id: newAccId,
-              organization_id: orgId,
-              account_code: strContaDebito,
-              account_name: strContaDebito,
-              classification: strContaDebito,
-            })
+                id: newAccId,
+                organization_id: orgId,
+                account_code: strContaDebito,
+                account_name: strContaDebito,
+                classification: strContaDebito
+            });
             if (!insErr) {
-              debitId = newAccId
-              caMap.set(strContaDebito, newAccId)
+                debitId = newAccId;
+                caMap.set(strContaDebito, newAccId);
             } else if (!allowIncomplete) {
-              addError(
-                rowNum,
-                `Conta Débito "${strContaDebito}" não encontrada e erro ao criar.`,
-                row,
-              )
-              continue
+                addError(rowNum, `Conta Débito "${strContaDebito}" não encontrada e erro ao criar.`, row);
+                continue;
             }
           }
 
@@ -2501,24 +2506,20 @@ Deno.serve(async (req: Request) => {
           let creditId = strContaCredito ? caMap.get(strContaCredito) : null
 
           if (!creditId && strContaCredito !== '') {
-            const newAccId = crypto.randomUUID()
+            const newAccId = crypto.randomUUID();
             const { error: insErr } = await supabaseAdmin.from('chart_of_accounts').insert({
-              id: newAccId,
-              organization_id: orgId,
-              account_code: strContaCredito,
-              account_name: strContaCredito,
-              classification: strContaCredito,
-            })
+                id: newAccId,
+                organization_id: orgId,
+                account_code: strContaCredito,
+                account_name: strContaCredito,
+                classification: strContaCredito
+            });
             if (!insErr) {
-              creditId = newAccId
-              caMap.set(strContaCredito, newAccId)
+                creditId = newAccId;
+                caMap.set(strContaCredito, newAccId);
             } else if (!allowIncomplete) {
-              addError(
-                rowNum,
-                `Conta Crédito "${strContaCredito}" não encontrada e erro ao criar.`,
-                row,
-              )
-              continue
+                addError(rowNum, `Conta Crédito "${strContaCredito}" não encontrada e erro ao criar.`, row);
+                continue;
             }
           }
 
