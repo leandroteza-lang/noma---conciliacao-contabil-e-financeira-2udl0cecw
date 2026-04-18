@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { supabase } from '@/lib/supabase/client'
 import {
   Dialog,
   DialogContent,
@@ -21,13 +22,25 @@ export function ChartAccountBulkEditModal({ isOpen, onClose, onSave, count }: an
   const [accountBehavior, setAccountBehavior] = useState('')
   const [nature, setNature] = useState('')
   const [accountType, setAccountType] = useState('')
+  const [organizationId, setOrganizationId] = useState('')
+  const [organizations, setOrganizations] = useState<any[]>([])
 
   useEffect(() => {
-    if (!isOpen) {
+    if (isOpen) {
+      supabase
+        .from('organizations')
+        .select('id, name')
+        .is('deleted_at', null)
+        .order('name')
+        .then(({ data }) => {
+          if (data) setOrganizations(data)
+        })
+    } else {
       setAccountLevel('')
       setAccountBehavior('')
       setNature('')
       setAccountType('')
+      setOrganizationId('')
     }
   }, [isOpen])
 
@@ -37,11 +50,12 @@ export function ChartAccountBulkEditModal({ isOpen, onClose, onSave, count }: an
     if (accountBehavior) payload.account_behavior = accountBehavior
     if (nature) payload.nature = nature
     if (accountType) payload.account_type = accountType
+    if (organizationId) payload.organization_id = organizationId
 
     onSave(payload)
   }
 
-  const hasChanges = accountLevel || accountBehavior || nature || accountType
+  const hasChanges = accountLevel || accountBehavior || nature || accountType || organizationId
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -104,6 +118,22 @@ export function ChartAccountBulkEditModal({ isOpen, onClose, onSave, count }: an
                 <SelectItem value="Patrimônio Líquido">Patrimônio Líquido</SelectItem>
                 <SelectItem value="Receita">Receita</SelectItem>
                 <SelectItem value="Despesa">Despesa</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Empresa</Label>
+            <Select value={organizationId} onValueChange={setOrganizationId}>
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione..." />
+              </SelectTrigger>
+              <SelectContent>
+                {organizations.map((org) => (
+                  <SelectItem key={org.id} value={org.id}>
+                    {org.name}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
