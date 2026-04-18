@@ -13,9 +13,10 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { useToast } from '@/hooks/use-toast'
-import { Search, Plus, Upload, Download, Building2, Filter, Trash2 } from 'lucide-react'
+import { Search, Plus, Upload, Download, Building2, Filter, Trash2, Sparkles } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { ImportBankAccountsModal } from '@/components/ImportBankAccountsModal'
+import { SmartMappingModal } from '@/components/SmartMappingModal'
 
 export default function Index() {
   const [accounts, setAccounts] = useState<any[]>([])
@@ -32,6 +33,7 @@ export default function Index() {
 
   const [isBulkEditOpen, setIsBulkEditOpen] = useState(false)
   const [isImportModalOpen, setIsImportModalOpen] = useState(false)
+  const [isSmartMappingOpen, setIsSmartMappingOpen] = useState(false)
 
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(100)
@@ -133,6 +135,29 @@ export default function Index() {
       fetchData()
     } catch (error: any) {
       toast({ title: 'Erro na edição em lote', description: error.message, variant: 'destructive' })
+    }
+  }
+
+  const handleSmartMappingApply = async (payload: any[]) => {
+    if (payload.length === 0) return
+    try {
+      toast({ title: 'Aplicando mapeamento inteligente...' })
+      const promises = payload.map((p) =>
+        supabase
+          .from('bank_accounts')
+          .update({ organization_id: p.organization_id })
+          .eq('id', p.id),
+      )
+      await Promise.all(promises)
+      toast({ title: 'Mapeamento aplicado com sucesso' })
+      setIsSmartMappingOpen(false)
+      fetchData()
+    } catch (error: any) {
+      toast({
+        title: 'Erro ao aplicar mapeamento',
+        description: error.message,
+        variant: 'destructive',
+      })
     }
   }
 
@@ -266,6 +291,9 @@ export default function Index() {
           <Button variant="outline" onClick={() => setIsImportModalOpen(true)}>
             <Upload className="w-4 h-4 mr-2" /> Importar em Lote
           </Button>
+          <Button variant="outline" onClick={() => setIsSmartMappingOpen(true)}>
+            <Sparkles className="w-4 h-4 mr-2 text-primary" /> Mapeamento Inteligente
+          </Button>
           <Button
             onClick={() => {
               setEditingAccount(null)
@@ -372,6 +400,14 @@ export default function Index() {
           setIsImportModalOpen(false)
           fetchData()
         }}
+      />
+
+      <SmartMappingModal
+        isOpen={isSmartMappingOpen}
+        onClose={() => setIsSmartMappingOpen(false)}
+        onApply={handleSmartMappingApply}
+        accounts={accounts}
+        companies={companies}
       />
     </div>
   )
