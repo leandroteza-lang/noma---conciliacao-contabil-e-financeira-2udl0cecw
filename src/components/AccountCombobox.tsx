@@ -50,45 +50,41 @@ export function AccountCombobox({
   useEffect(() => {
     let isMounted = true
 
-    if (accounts.length >= 1000) {
-      const orgId = accounts[0]?.organization_id
-      if (orgId) {
-        const fetchAll = async () => {
-          let all: Account[] = []
-          let page = 0
-          let hasMore = true
-          while (hasMore) {
-            const { data } = await supabase
-              .from('chart_of_accounts')
-              .select('*')
-              .eq('organization_id', orgId)
-              .is('deleted_at', null)
-              .range(page * 1000, (page + 1) * 1000 - 1)
+    const orgId = accounts[0]?.organization_id
+    if (orgId) {
+      const fetchAll = async () => {
+        let all: Account[] = []
+        let page = 0
+        let hasMore = true
+        while (hasMore) {
+          const { data } = await supabase
+            .from('chart_of_accounts')
+            .select('*')
+            .eq('organization_id', orgId)
+            .is('deleted_at', null)
+            .range(page * 1000, (page + 1) * 1000 - 1)
 
-            if (data && data.length > 0) {
-              all = [...all, ...data]
-              page++
-              if (data.length < 1000) hasMore = false
-            } else {
-              hasMore = false
-            }
-          }
-          if (isMounted) {
-            setLocalAccounts(all)
+          if (data && data.length > 0) {
+            all = [...all, ...data]
+            page++
+            if (data.length < 1000) hasMore = false
+          } else {
+            hasMore = false
           }
         }
-        fetchAll()
-        return () => {
-          isMounted = false
+        if (isMounted) {
+          setLocalAccounts(all)
         }
       }
+      fetchAll()
+    } else {
+      setLocalAccounts(accounts)
     }
 
-    setLocalAccounts(accounts)
     return () => {
       isMounted = false
     }
-  }, [accounts])
+  }, [accounts.length, accounts[0]?.organization_id])
 
   useEffect(() => {
     const allIds = new Set<string>()
@@ -106,7 +102,9 @@ export function AccountCombobox({
 
     const getSortKey = (a: Account) => (a.classification || a.account_code || '').trim()
 
-    const sorted = [...localAccounts].sort((a, b) => getSortKey(a).localeCompare(getSortKey(b)))
+    const sorted = [...localAccounts].sort((a, b) =>
+      getSortKey(a).localeCompare(getSortKey(b), undefined, { numeric: true }),
+    )
 
     sorted.forEach((node) => {
       let parentId: string | null = null
@@ -151,7 +149,9 @@ export function AccountCombobox({
     })
 
     cmap.forEach((children) => {
-      children.sort((a, b) => getSortKey(a).localeCompare(getSortKey(b)))
+      children.sort((a, b) =>
+        getSortKey(a).localeCompare(getSortKey(b), undefined, { numeric: true }),
+      )
     })
 
     return { roots: rts, childrenMap: cmap }
