@@ -359,10 +359,11 @@ export function ImportErpFinancialModal({ open, onOpenChange, onImportSuccess }:
       localStorage.setItem('erpColumnMapping', JSON.stringify(columnMapping))
 
       const path = `${user?.id}_${Date.now()}_${file.name}`
+      const uploadContentType =
+        file.type || (file.name.toLowerCase().endsWith('.csv') ? 'text/csv' : undefined)
       const { error: uploadErr } = await supabase.storage.from('imports').upload(path, file, {
         upsert: true,
-        contentType:
-          file.type || (file.name.toLowerCase().endsWith('.csv') ? 'text/csv' : undefined),
+        contentType: uploadContentType,
       })
 
       if (uploadErr) throw uploadErr
@@ -391,7 +392,12 @@ export function ImportErpFinancialModal({ open, onOpenChange, onImportSuccess }:
     } catch (err: any) {
       let errorMessage = err?.message || 'Erro desconhecido ao processar requisição.'
       if (err?.context) {
-        const errorBody = await err.context.json().catch(() => null)
+        const errorBody = await err.context
+          .json()
+          .catch((parseErr: any) => {
+            console.warn('Falha ao ler resposta de erro da função de importação', parseErr)
+            return null
+          })
         if (errorBody?.error) {
           errorMessage = errorBody.error
         }

@@ -753,14 +753,17 @@ Deno.serve(async (req: Request) => {
             }
           }
 
-          normalized[cleanKey] =
-            val !== null && val !== undefined
-              ? String(val)
-                  .replace(/[\u0000-\u0008\u000B-\u000C\u000E-\u001F\u007F-\u009F]/g, '')
-                  .trim()
-              : type === 'ERP_FINANCIAL_MOVEMENTS' && (ERP_DATE_COLS.has(cleanKey) || ERP_NUM_COLS.has(cleanKey))
-                ? null
-                : ''
+          const keepNullForErpField =
+            type === 'ERP_FINANCIAL_MOVEMENTS' &&
+            (ERP_DATE_COLS.has(cleanKey) || ERP_NUM_COLS.has(cleanKey))
+
+          if (val !== null && val !== undefined) {
+            normalized[cleanKey] = String(val)
+              .replace(/[\u0000-\u0008\u000B-\u000C\u000E-\u001F\u007F-\u009F]/g, '')
+              .trim()
+          } else {
+            normalized[cleanKey] = keepNullForErpField ? null : ''
+          }
         }
         return normalized
       })
