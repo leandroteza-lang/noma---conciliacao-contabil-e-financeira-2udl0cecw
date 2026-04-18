@@ -84,6 +84,7 @@ export default function FinancialMovements() {
 
   const [isImportOpen, setIsImportOpen] = useState(false)
   const [isDeleteAllOpen, setIsDeleteAllOpen] = useState(false)
+  const [activeImport, setActiveImport] = useState<any>(null)
   const [isDeleteSelectedOpen, setIsDeleteSelectedOpen] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
 
@@ -126,6 +127,31 @@ export default function FinancialMovements() {
   useEffect(() => {
     fetchData()
   }, [user, selectedOrg])
+
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      if (!user) return
+      const { data } = await supabase
+        .from('import_history')
+        .select('*')
+        .eq('import_type', 'ERP_FINANCIAL_MOVEMENTS')
+        .eq('status', 'Processing')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+
+      setActiveImport(data)
+
+      if (!data && activeImport) {
+        fetchData()
+        toast({
+          title: 'Importação Concluída',
+          description: 'Os dados foram processados com sucesso.',
+        })
+      }
+    }, 3000)
+    return () => clearInterval(interval)
+  }, [user, activeImport])
 
   const handleSort = (key: string) => {
     let direction: 'asc' | 'desc' = 'asc'
@@ -290,6 +316,28 @@ export default function FinancialMovements() {
           </Button>
         </div>
       </div>
+
+      {activeImport && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 shadow-sm animate-fade-in">
+          <div className="flex justify-between items-center mb-2">
+            <h3 className="font-semibold text-blue-900 flex items-center gap-2">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Importação em Andamento
+            </h3>
+            <span className="text-sm font-medium text-blue-700">
+              {activeImport.processed_records} / {activeImport.total_records} registros
+            </span>
+          </div>
+          <div className="w-full bg-blue-100 rounded-full h-2.5 overflow-hidden">
+            <div
+              className="bg-blue-600 h-2.5 rounded-full transition-all duration-500 ease-out"
+              style={{
+                width: `${Math.min(100, (activeImport.processed_records / Math.max(1, activeImport.total_records)) * 100)}%`,
+              }}
+            ></div>
+          </div>
+        </div>
+      )}
 
       <div className="flex flex-col sm:flex-row gap-4 items-center bg-white p-3 rounded-lg border shadow-sm">
         <div className="w-full sm:w-64">
