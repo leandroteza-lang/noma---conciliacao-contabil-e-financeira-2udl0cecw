@@ -101,18 +101,80 @@ export function ImportErpFinancialModal({ open, onOpenChange, onImportSuccess }:
 
       setLoading(true)
       try {
-        const path = `${user?.id}_${Date.now()}_${selectedFile.name}`
-        const { error: uploadErr } = await supabase.storage
-          .from('imports')
-          .upload(path, selectedFile)
-        if (uploadErr) throw uploadErr
+        let headers: string[] = []
+        let previewRows: any[] = []
+        let sheetNames: string[] = []
 
-        setFilePath(path)
+        if (selectedFile.name.endsWith('.csv')) {
+          const text = await selectedFile.slice(0, 1024 * 500).text() // Read first 500KB
+          const lines = text.split(/\r?\n/).filter((line) => line.trim() !== '')
+          if (lines.length > 0) {
+            const separator = lines[0].includes(';') ? ';' : ','
 
-        const { data, error } = await supabase.functions.invoke('import-data', {
-          body: { action: 'PREVIEW', filePath: path, fileName: selectedFile.name },
-        })
-        if (error) throw error
+            const splitLine = (str: string) => {
+              const result = []
+              let current = ''
+              let inQuotes = false
+              for (let i = 0; i < str.length; i++) {
+                const char = str[i]
+                if (char === '"') {
+                  inQuotes = !inQuotes
+                } else if (char === separator && !inQuotes) {
+                  result.push(current)
+                  current = ''
+                } else {
+                  current += char
+                }
+              }
+              result.push(current)
+              return result
+            }
+
+            headers = splitLine(lines[0]).map((h) => h.trim())
+
+            for (let i = 1; i < Math.min(lines.length, 6); i++) {
+              const values = splitLine(lines[i])
+              const row: any = {}
+              headers.forEach((h, idx) => {
+                row[h] = values[idx] !== undefined ? values[idx].trim() : ''
+              })
+              previewRows.push(row)
+            }
+            sheetNames = ['DADOS (CSV)']
+          }
+        } else {
+          const arrayBuffer = await selectedFile.arrayBuffer()
+          const XLSX = await import('xlsx')
+          const wb = XLSX.read(arrayBuffer, { type: 'array', cellDates: true })
+          sheetNames = wb.SheetNames
+          if (wb.SheetNames.length > 0) {
+            const firstSheet = wb.SheetNames[0]
+            const ws = wb.Sheets[firstSheet]
+            const raw = XLSX.utils.sheet_to_json(ws, { defval: '' })
+            if (raw.length > 0) {
+              headers = Object.keys(raw[0])
+              previewRows = raw.slice(0, 5).map((row: any) => {
+                const newRow: any = {}
+                for (const key in row) {
+                  let val = row[key]
+                  if (val instanceof Date) {
+                    val = val.toISOString().split('T')[0]
+                  } else {
+                    val = String(val).trim()
+                  }
+                  newRow[key.trim()] = val
+                }
+                return newRow
+              })
+            }
+          }
+        }
+
+        const data = {
+          sheets: sheetNames,
+          headers,
+          previewRows,
+        }
 
         setPreviewData(data)
 
@@ -135,7 +197,7 @@ export function ImportErpFinancialModal({ open, onOpenChange, onImportSuccess }:
         setStep(2)
       } catch (err: any) {
         toast({
-          title: 'Erro ao carregar arquivo',
+          title: 'Erro ao ler arquivo',
           description: err.message,
           variant: 'destructive',
         })
@@ -152,18 +214,31 @@ export function ImportErpFinancialModal({ open, onOpenChange, onImportSuccess }:
       return
     }
 
+    if (!file) {
+      toast({ title: 'Arquivo não encontrado', variant: 'destructive' })
+      return
+    }
+
     setLoading(true)
     try {
+      const path = `${user?.id}_${Date.now()}_${file.name}`
+      const { error: uploadErr } = await supabase.storage.from('imports').upload(path, file)
+
+      if (uploadErr) throw uploadErr
+
+      setFilePath(path)
+
       const { error } = await supabase.functions.invoke('import-data', {
         body: {
           action: 'START_BACKGROUND',
           type: 'ERP_FINANCIAL_MOVEMENTS',
-          filePath,
-          fileName: file?.name,
+          filePath: path,
+          fileName: file.name,
           organizationId: selectedOrg,
           columnMapping,
         },
       })
+
       if (error) throw error
 
       toast({
