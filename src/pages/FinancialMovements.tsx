@@ -237,8 +237,8 @@ export default function FinancialMovements() {
     setIsDeleting(true)
     try {
       const ids = Array.from(selectedRows)
-      for (let i = 0; i < ids.length; i += 500) {
-        const chunk = ids.slice(i, i + 500)
+      for (let i = 0; i < ids.length; i += 100) {
+        const chunk = ids.slice(i, i + 100)
         const { error } = await supabase
           .from('erp_financial_movements')
           .update({ deleted_at: new Date().toISOString() })
