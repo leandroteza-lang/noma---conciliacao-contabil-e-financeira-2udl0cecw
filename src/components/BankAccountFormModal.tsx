@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import * as z from 'zod'
@@ -19,18 +19,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from '@/components/ui/command'
-import { Check, ChevronsUpDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { supabase } from '@/lib/supabase/client'
+import { AccountCombobox } from '@/components/AccountCombobox'
 
 const schema = z.object({
   organization_id: z.string().min(1, 'Selecione uma empresa'),
@@ -49,7 +40,6 @@ type FormData = z.infer<typeof schema>
 export function BankAccountFormModal({ isOpen, onClose, onSave, initialData }: any) {
   const [organizations, setOrganizations] = useState<any[]>([])
   const [chartAccounts, setChartAccounts] = useState<any[]>([])
-  const [openChartAccount, setOpenChartAccount] = useState(false)
 
   useEffect(() => {
     const fetchOrgs = async () => {
@@ -96,7 +86,7 @@ export function BankAccountFormModal({ isOpen, onClose, onSave, initialData }: a
           .select('id, account_code, account_name, classification')
           .eq('organization_id', organizationId)
           .is('deleted_at', null)
-          .order('account_code')
+          .order('classification')
         if (data) setChartAccounts(data)
       }
       fetchAccounts()
@@ -104,6 +94,12 @@ export function BankAccountFormModal({ isOpen, onClose, onSave, initialData }: a
       setChartAccounts([])
     }
   }, [organizationId])
+
+  const selectedChartAccountId = useMemo(() => {
+    if (!accountCode) return undefined
+    const acc = chartAccounts.find((a) => a.account_code === accountCode)
+    return acc ? acc.id : undefined
+  }, [chartAccounts, accountCode])
 
   useEffect(() => {
     if (isOpen && initialData) {
@@ -172,65 +168,24 @@ export function BankAccountFormModal({ isOpen, onClose, onSave, initialData }: a
                 className={errors.description ? 'border-red-500' : ''}
               />
             </div>
-            <div className="space-y-2">
+            <div className="space-y-2 col-span-2">
               <Label>Conta Contábil</Label>
-              <Popover open={openChartAccount} onOpenChange={setOpenChartAccount}>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    role="combobox"
-                    aria-expanded={openChartAccount}
-                    className={cn(
-                      'w-full justify-between font-normal',
-                      errors.account_code ? 'border-red-500' : '',
-                    )}
-                    disabled={!organizationId}
-                  >
-                    <span className="truncate">
-                      {accountCode
-                        ? chartAccounts.find((account) => account.account_code === accountCode)
-                          ? `${chartAccounts.find((account) => account.account_code === accountCode)?.account_code} - ${chartAccounts.find((account) => account.account_code === accountCode)?.account_name}`
-                          : accountCode
-                        : 'Selecione uma conta...'}
-                    </span>
-                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent
-                  className="w-[var(--radix-popover-trigger-width)] p-0"
-                  align="start"
-                >
-                  <Command>
-                    <CommandInput placeholder="Buscar conta contábil..." />
-                    <CommandList>
-                      <CommandEmpty>Nenhuma conta encontrada.</CommandEmpty>
-                      <CommandGroup>
-                        {chartAccounts.map((account) => (
-                          <CommandItem
-                            key={account.id}
-                            value={`${account.account_code} ${account.account_name} ${account.classification}`}
-                            onSelect={() => {
-                              setValue('account_code', account.account_code)
-                              setOpenChartAccount(false)
-                            }}
-                          >
-                            <Check
-                              className={cn(
-                                'mr-2 h-4 w-4 shrink-0',
-                                accountCode === account.account_code ? 'opacity-100' : 'opacity-0',
-                              )}
-                            />
-                            <span className="truncate">
-                              {account.account_code} - {account.account_name}
-                              {account.classification && ` (${account.classification})`}
-                            </span>
-                          </CommandItem>
-                        ))}
-                      </CommandGroup>
-                    </CommandList>
-                  </Command>
-                </PopoverContent>
-              </Popover>
+              <div className={cn(errors.account_code ? 'border border-red-500 rounded-md' : '')}>
+                <AccountCombobox
+                  accounts={chartAccounts}
+                  value={selectedChartAccountId}
+                  onChange={(val) => {
+                    const acc = chartAccounts.find((a) => a.id === val)
+                    if (acc) setValue('account_code', acc.account_code)
+                  }}
+                  onClear={() => setValue('account_code', '')}
+                  placeholder="Selecione a conta contábil..."
+                  disabled={!organizationId}
+                />
+              </div>
+              {errors.account_code && (
+                <span className="text-xs text-red-500">{errors.account_code.message}</span>
+              )}
             </div>
             <div className="space-y-2">
               <Label>Classificação</Label>

@@ -17,6 +17,7 @@ import { Search, Plus, Upload, Download, Building2, Filter, Trash2, Sparkles } f
 import { useNavigate } from 'react-router-dom'
 import { ImportBankAccountsModal } from '@/components/ImportBankAccountsModal'
 import { SmartMappingModal } from '@/components/SmartMappingModal'
+import { AccountCombobox } from '@/components/AccountCombobox'
 
 export default function Index() {
   const [accounts, setAccounts] = useState<any[]>([])
@@ -24,8 +25,10 @@ export default function Index() {
   const [search, setSearch] = useState('')
   const [companyFilter, setCompanyFilter] = useState('ALL')
   const [typeFilter, setTypeFilter] = useState('ALL')
+  const [accountFilter, setAccountFilter] = useState<string | null>(null)
 
   const [companies, setCompanies] = useState<any[]>([])
+  const [chartAccounts, setChartAccounts] = useState<any[]>([])
   const [selectedAccounts, setSelectedAccounts] = useState<string[]>([])
 
   const [isFormOpen, setIsFormOpen] = useState(false)
@@ -71,6 +74,30 @@ export default function Index() {
       setLoading(false)
     }
   }
+
+  const fetchChartAccounts = async () => {
+    let query = supabase
+      .from('chart_of_accounts')
+      .select('id, account_code, account_name, classification')
+      .is('deleted_at', null)
+      .order('classification')
+
+    if (companyFilter !== 'ALL') {
+      query = query.eq('organization_id', companyFilter)
+    }
+
+    const { data } = await query
+    if (data) {
+      setChartAccounts(data)
+    } else {
+      setChartAccounts([])
+    }
+  }
+
+  useEffect(() => {
+    setAccountFilter(null)
+    fetchChartAccounts()
+  }, [companyFilter])
 
   const handleSaveAccount = async (data: any) => {
     try {
@@ -214,7 +241,18 @@ export default function Index() {
       acc.agency?.includes(search)
     const matchesCompany = companyFilter === 'ALL' || acc.organization_id === companyFilter
     const matchesType = typeFilter === 'ALL' || acc.account_type === typeFilter
-    return matchesSearch && matchesCompany && matchesType
+
+    let matchesAccount = true
+    if (accountFilter) {
+      const selectedChartAccount = chartAccounts.find((ca) => ca.id === accountFilter)
+      if (selectedChartAccount) {
+        matchesAccount = acc.account_code === selectedChartAccount.account_code
+      } else {
+        matchesAccount = false
+      }
+    }
+
+    return matchesSearch && matchesCompany && matchesType && matchesAccount
   })
 
   const handleSort = (key: string) => {
@@ -311,48 +349,59 @@ export default function Index() {
           <p className="text-sm text-muted-foreground">Busque por Descrição ou Filtre as contas.</p>
         </div>
 
-        <div className="flex flex-col md:flex-row gap-4">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-4 h-4" />
-            <Input
-              placeholder="Pesquisar..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-9 bg-background"
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-col md:flex-row gap-4">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-4 h-4" />
+              <Input
+                placeholder="Pesquisar..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-9 bg-background"
+              />
+            </div>
+            <Select value={companyFilter} onValueChange={setCompanyFilter}>
+              <SelectTrigger className="w-full md:w-[220px] bg-background">
+                <div className="flex items-center">
+                  <Building2 className="w-4 h-4 mr-2 text-muted-foreground" />
+                  <SelectValue placeholder="Todas Empresas" />
+                </div>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">Todas Empresas</SelectItem>
+                {companies.map((c) => (
+                  <SelectItem key={c.id} value={c.id}>
+                    {c.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={typeFilter} onValueChange={setTypeFilter}>
+              <SelectTrigger className="w-full md:w-[220px] bg-background">
+                <div className="flex items-center">
+                  <Filter className="w-4 h-4 mr-2 text-muted-foreground" />
+                  <SelectValue placeholder="Todos Tipos" />
+                </div>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">Todos Tipos</SelectItem>
+                <SelectItem value="CAIXA">CAIXA</SelectItem>
+                <SelectItem value="CORRENTE">CORRENTE</SelectItem>
+                <SelectItem value="POUPANÇA">POUPANÇA</SelectItem>
+                <SelectItem value="APLICAÇÕES">APLICAÇÕES</SelectItem>
+                <SelectItem value="OUTROS">OUTROS</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="w-full">
+            <AccountCombobox
+              accounts={chartAccounts}
+              value={accountFilter}
+              onChange={setAccountFilter}
+              onClear={() => setAccountFilter(null)}
+              placeholder="Filtrar por Conta Contábil..."
             />
           </div>
-          <Select value={companyFilter} onValueChange={setCompanyFilter}>
-            <SelectTrigger className="w-full md:w-[220px] bg-background">
-              <div className="flex items-center">
-                <Building2 className="w-4 h-4 mr-2 text-muted-foreground" />
-                <SelectValue placeholder="Todas Empresas" />
-              </div>
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="ALL">Todas Empresas</SelectItem>
-              {companies.map((c) => (
-                <SelectItem key={c.id} value={c.id}>
-                  {c.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select value={typeFilter} onValueChange={setTypeFilter}>
-            <SelectTrigger className="w-full md:w-[220px] bg-background">
-              <div className="flex items-center">
-                <Filter className="w-4 h-4 mr-2 text-muted-foreground" />
-                <SelectValue placeholder="Todos Tipos" />
-              </div>
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="ALL">Todos Tipos</SelectItem>
-              <SelectItem value="CAIXA">CAIXA</SelectItem>
-              <SelectItem value="CORRENTE">CORRENTE</SelectItem>
-              <SelectItem value="POUPANÇA">POUPANÇA</SelectItem>
-              <SelectItem value="APLICAÇÕES">APLICAÇÕES</SelectItem>
-              <SelectItem value="OUTROS">OUTROS</SelectItem>
-            </SelectContent>
-          </Select>
         </div>
       </div>
 

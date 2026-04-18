@@ -29,6 +29,7 @@ interface AccountComboboxProps {
   onChange: (value: string) => void
   onClear?: () => void
   placeholder?: string
+  disabled?: boolean
 }
 
 export function AccountCombobox({
@@ -37,6 +38,7 @@ export function AccountCombobox({
   onChange,
   onClear,
   placeholder = 'Selecionar conta...',
+  disabled = false,
 }: AccountComboboxProps) {
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState('')
@@ -256,15 +258,17 @@ export function AccountCombobox({
   }
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open && !disabled} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button
           variant="outline"
           role="combobox"
           aria-expanded={open}
+          disabled={disabled}
           className={cn(
             'w-full justify-between font-normal h-9 bg-white px-3 border-slate-200 shadow-sm hover:bg-slate-50',
             !selected && 'text-slate-500',
+            disabled && 'opacity-50 cursor-not-allowed bg-slate-50',
           )}
         >
           {selected ? (
