@@ -10,11 +10,7 @@ lerna-debug.log*
 node_modules
 dist
 dist-ssr
-dev-dist
-dev-dist-ssr
 *.local
-.pnpm-store
-.pnpm
 
 # Editor directories and files
 .vscode/*
@@ -27,10 +23,5 @@ dev-dist-ssr
 *.sln
 *.sw?
 
-# Evaluation screenshots
-screenshot.png
-.eslintcache
-.oxlintcache
-
-# Environment variables
-.env*
+# Supabase Edge Functions auto-managed files (prevents formatting errors)
+supabase/functions/deno.json

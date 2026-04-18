@@ -249,9 +249,12 @@ export function ImportErpFinancialModal({ open, onOpenChange, onImportSuccess }:
       onImportSuccess()
       onOpenChange(false)
     } catch (err: any) {
+      const errorMessage = err?.message || 'Erro desconhecido ao processar requisição.'
       toast({
         title: 'Erro ao iniciar importação',
-        description: err.message,
+        description: errorMessage.includes('non-2xx status')
+          ? 'O serviço de importação está temporariamente indisponível. Por favor, tente novamente em alguns instantes.'
+          : errorMessage,
         variant: 'destructive',
       })
     } finally {
