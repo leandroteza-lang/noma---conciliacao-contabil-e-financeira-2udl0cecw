@@ -16,6 +16,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command'
+import { Check, ChevronsUpDown } from 'lucide-react'
+import { cn } from '@/lib/utils'
 import { useToast } from '@/hooks/use-toast'
 import { supabase } from '@/lib/supabase/client'
 import { useAuditLog } from '@/hooks/use-audit-log'
@@ -38,6 +49,8 @@ export function BankAccountModal({
   const { toast } = useToast()
   const { logAction } = useAuditLog()
   const [isSaving, setIsSaving] = useState(false)
+  const [chartAccounts, setChartAccounts] = useState<any[]>([])
+  const [openChartAccount, setOpenChartAccount] = useState(false)
 
   const [formData, setFormData] = useState({
     organization_id: '',
@@ -50,6 +63,23 @@ export function BankAccountModal({
     account_type: '',
     classification: '',
   })
+
+  useEffect(() => {
+    if (formData.organization_id) {
+      const fetchAccounts = async () => {
+        const { data } = await supabase
+          .from('chart_of_accounts')
+          .select('id, account_code, account_name, classification')
+          .eq('organization_id', formData.organization_id)
+          .is('deleted_at', null)
+          .order('account_code')
+        if (data) setChartAccounts(data)
+      }
+      fetchAccounts()
+    } else {
+      setChartAccounts([])
+    }
+  }, [formData.organization_id])
 
   useEffect(() => {
     if (isOpen) {
@@ -208,10 +238,64 @@ export function BankAccountModal({
             </div>
             <div className="space-y-2">
               <Label>Conta Contábil</Label>
-              <Input
-                value={formData.account_code || ''}
-                onChange={(e) => setFormData({ ...formData, account_code: e.target.value })}
-              />
+              <Popover open={openChartAccount} onOpenChange={setOpenChartAccount}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={openChartAccount}
+                    className="w-full justify-between font-normal"
+                    disabled={!formData.organization_id}
+                  >
+                    <span className="truncate">
+                      {formData.account_code
+                        ? chartAccounts.find(
+                            (account) => account.account_code === formData.account_code,
+                          )
+                          ? `${chartAccounts.find((account) => account.account_code === formData.account_code)?.account_code} - ${chartAccounts.find((account) => account.account_code === formData.account_code)?.account_name}`
+                          : formData.account_code
+                        : 'Selecione uma conta...'}
+                    </span>
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent
+                  className="w-[var(--radix-popover-trigger-width)] p-0"
+                  align="start"
+                >
+                  <Command>
+                    <CommandInput placeholder="Buscar conta contábil..." />
+                    <CommandList>
+                      <CommandEmpty>Nenhuma conta encontrada.</CommandEmpty>
+                      <CommandGroup>
+                        {chartAccounts.map((account) => (
+                          <CommandItem
+                            key={account.id}
+                            value={`${account.account_code} ${account.account_name} ${account.classification}`}
+                            onSelect={() => {
+                              setFormData({ ...formData, account_code: account.account_code })
+                              setOpenChartAccount(false)
+                            }}
+                          >
+                            <Check
+                              className={cn(
+                                'mr-2 h-4 w-4 shrink-0',
+                                formData.account_code === account.account_code
+                                  ? 'opacity-100'
+                                  : 'opacity-0',
+                              )}
+                            />
+                            <span className="truncate">
+                              {account.account_code} - {account.account_name}
+                              {account.classification && ` (${account.classification})`}
+                            </span>
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
             </div>
             <div className="space-y-2">
               <Label>Descrição</Label>

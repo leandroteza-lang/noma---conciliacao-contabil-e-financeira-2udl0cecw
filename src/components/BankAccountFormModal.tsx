@@ -19,6 +19,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command'
+import { Check, ChevronsUpDown } from 'lucide-react'
+import { cn } from '@/lib/utils'
 import { supabase } from '@/lib/supabase/client'
 
 const schema = z.object({
@@ -37,6 +48,8 @@ type FormData = z.infer<typeof schema>
 
 export function BankAccountFormModal({ isOpen, onClose, onSave, initialData }: any) {
   const [organizations, setOrganizations] = useState<any[]>([])
+  const [chartAccounts, setChartAccounts] = useState<any[]>([])
+  const [openChartAccount, setOpenChartAccount] = useState(false)
 
   useEffect(() => {
     const fetchOrgs = async () => {
@@ -71,6 +84,26 @@ export function BankAccountFormModal({ isOpen, onClose, onSave, initialData }: a
       classification: '',
     },
   })
+
+  const organizationId = watch('organization_id')
+  const accountCode = watch('account_code')
+
+  useEffect(() => {
+    if (organizationId) {
+      const fetchAccounts = async () => {
+        const { data } = await supabase
+          .from('chart_of_accounts')
+          .select('id, account_code, account_name, classification')
+          .eq('organization_id', organizationId)
+          .is('deleted_at', null)
+          .order('account_code')
+        if (data) setChartAccounts(data)
+      }
+      fetchAccounts()
+    } else {
+      setChartAccounts([])
+    }
+  }, [organizationId])
 
   useEffect(() => {
     if (isOpen && initialData) {
@@ -141,7 +174,63 @@ export function BankAccountFormModal({ isOpen, onClose, onSave, initialData }: a
             </div>
             <div className="space-y-2">
               <Label>Conta Contábil</Label>
-              <Input {...register('account_code')} placeholder="Ex: 101" />
+              <Popover open={openChartAccount} onOpenChange={setOpenChartAccount}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={openChartAccount}
+                    className={cn(
+                      'w-full justify-between font-normal',
+                      errors.account_code ? 'border-red-500' : '',
+                    )}
+                    disabled={!organizationId}
+                  >
+                    <span className="truncate">
+                      {accountCode
+                        ? chartAccounts.find((account) => account.account_code === accountCode)
+                          ? `${chartAccounts.find((account) => account.account_code === accountCode)?.account_code} - ${chartAccounts.find((account) => account.account_code === accountCode)?.account_name}`
+                          : accountCode
+                        : 'Selecione uma conta...'}
+                    </span>
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent
+                  className="w-[var(--radix-popover-trigger-width)] p-0"
+                  align="start"
+                >
+                  <Command>
+                    <CommandInput placeholder="Buscar conta contábil..." />
+                    <CommandList>
+                      <CommandEmpty>Nenhuma conta encontrada.</CommandEmpty>
+                      <CommandGroup>
+                        {chartAccounts.map((account) => (
+                          <CommandItem
+                            key={account.id}
+                            value={`${account.account_code} ${account.account_name} ${account.classification}`}
+                            onSelect={() => {
+                              setValue('account_code', account.account_code)
+                              setOpenChartAccount(false)
+                            }}
+                          >
+                            <Check
+                              className={cn(
+                                'mr-2 h-4 w-4 shrink-0',
+                                accountCode === account.account_code ? 'opacity-100' : 'opacity-0',
+                              )}
+                            />
+                            <span className="truncate">
+                              {account.account_code} - {account.account_name}
+                              {account.classification && ` (${account.classification})`}
+                            </span>
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
             </div>
             <div className="space-y-2">
               <Label>Classificação</Label>
