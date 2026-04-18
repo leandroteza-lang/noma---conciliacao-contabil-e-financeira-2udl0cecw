@@ -161,7 +161,11 @@ export function ImportErpFinancialModal({ open, onOpenChange, onImportSuccess }:
         let sheetNames: string[] = []
 
         if (selectedFile.name.endsWith('.csv')) {
-          const text = await selectedFile.slice(0, 1024 * 500).text() // Read first 500KB
+          const bufferChunk = await selectedFile.slice(0, 1024 * 500).arrayBuffer() // Read first 500KB
+          let text = new TextDecoder('utf-8').decode(bufferChunk)
+          if (text.includes('\uFFFD')) {
+            text = new TextDecoder('iso-8859-1').decode(bufferChunk)
+          }
           const lines = text.split(/\r?\n/).filter((line) => line.trim() !== '')
           if (lines.length > 0) {
             const separator = lines[0].includes(';') ? ';' : ','
@@ -310,6 +314,70 @@ export function ImportErpFinancialModal({ open, onOpenChange, onImportSuccess }:
     }
   }
 
+  const safeParseDate = (val: any) => {
+    if (val === null || val === undefined || val === '') return null
+    const numVal = Number(val)
+    if (!isNaN(numVal) && String(val).trim() !== '' && numVal > 10000 && numVal < 100000) {
+      const date = new Date(Math.round((numVal - 25569) * 86400 * 1000))
+      if (!isNaN(date.getTime())) return date.toISOString().split('T')[0]
+    }
+    if (typeof val === 'string') {
+      let clean = val.trim()
+      if (clean.includes('T')) clean = clean.split('T')[0]
+
+      const ptBrMatch = clean.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/)
+      if (ptBrMatch) {
+        const day = parseInt(ptBrMatch[1], 10)
+        const month = parseInt(ptBrMatch[2], 10)
+        const year = parseInt(ptBrMatch[3], 10)
+        if (year >= 1900 && year <= 2100 && month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+          return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+        }
+      }
+
+      const ptBrShortMatch = clean.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{2})$/)
+      if (ptBrShortMatch) {
+        const day = parseInt(ptBrShortMatch[1], 10)
+        const month = parseInt(ptBrShortMatch[2], 10)
+        let year = parseInt(ptBrShortMatch[3], 10)
+        year = year < 50 ? 2000 + year : 1900 + year
+        if (month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+          return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+        }
+      }
+
+      const isoMatch = clean.match(/^(\d{4})[/-](\d{1,2})[/-](\d{1,2})$/)
+      if (isoMatch) {
+        return `${isoMatch[1]}-${String(isoMatch[2]).padStart(2, '0')}-${String(isoMatch[3]).padStart(2, '0')}`
+      }
+    }
+    try {
+      const d = new Date(val)
+      if (!isNaN(d.getTime())) return d.toISOString().split('T')[0]
+    } catch (e) {}
+    return null
+  }
+
+  const safeParseNum = (val: any) => {
+    if (val === null || val === undefined || val === '') return null
+    if (typeof val === 'number') return val
+    let str = String(val).trim()
+    if (/^-?\d+(\.\d+)?$/.test(str)) return parseFloat(str)
+    const commas = (str.match(/,/g) || []).length
+    const dots = (str.match(/\./g) || []).length
+    if (dots > 0 && commas > 0) {
+      const lastComma = str.lastIndexOf(',')
+      const lastDot = str.lastIndexOf('.')
+      if (lastComma > lastDot) str = str.replace(/\./g, '').replace(',', '.')
+      else str = str.replace(/,/g, '')
+    } else if (commas === 1 && dots === 0) str = str.replace(',', '.')
+    else if (commas > 1 && dots === 0) str = str.replace(/,/g, '')
+    else if (dots > 1 && commas === 0) str = str.replace(/\./g, '')
+    str = str.replace(/[^0-9.-]/g, '')
+    const parsed = parseFloat(str)
+    return isNaN(parsed) ? null : parsed
+  }
+
   const handleImport = async () => {
     if (!selectedOrg) {
       toast({ title: 'Selecione uma empresa', variant: 'destructive' })
@@ -323,34 +391,204 @@ export function ImportErpFinancialModal({ open, onOpenChange, onImportSuccess }:
 
     setLoading(true)
     try {
-      // Save mapping preference
       localStorage.setItem('erpColumnMapping', JSON.stringify(columnMapping))
 
-      const path = `${user?.id}_${Date.now()}_${file.name}`
-      const { error: uploadErr } = await supabase.storage.from('imports').upload(path, file)
+      toast({
+        title: 'Lendo arquivo...',
+        description: 'O arquivo está sendo lido e preparado no seu navegador. Por favor, aguarde.',
+      })
 
-      if (uploadErr) throw uploadErr
+      let rawRecords: any[] = []
 
-      setFilePath(path)
+      // 1. Parser Frontend
+      if (file.name.toLowerCase().endsWith('.csv')) {
+        const fileBuffer = await file.arrayBuffer()
+        let textContent = new TextDecoder('utf-8').decode(fileBuffer)
+        if (textContent.includes('\uFFFD')) {
+          textContent = new TextDecoder('iso-8859-1').decode(fileBuffer)
+        }
+        const firstLineLimit =
+          textContent.indexOf('\n') > -1
+            ? textContent.indexOf('\n')
+            : Math.min(textContent.length, 1000)
+        const firstLine = textContent.substring(0, firstLineLimit)
+        const delimiter =
+          (firstLine.match(/;/g) || []).length > (firstLine.match(/,/g) || []).length ? ';' : ','
 
+        let headers: string[] = []
+        let currentRow: string[] = []
+        let currentCell = ''
+        let inQuotes = false
+
+        for (let i = 0; i < textContent.length; i++) {
+          const char = textContent[i]
+          const nextChar = textContent[i + 1]
+          if (char === '"') {
+            if (inQuotes && nextChar === '"') {
+              currentCell += '"'
+              i++
+            } else {
+              inQuotes = !inQuotes
+            }
+          } else if (char === delimiter && !inQuotes) {
+            currentRow.push(currentCell)
+            currentCell = ''
+          } else if ((char === '\n' || (char === '\r' && nextChar === '\n')) && !inQuotes) {
+            if (char === '\r') i++
+            currentRow.push(currentCell)
+            if (headers.length === 0) {
+              headers = currentRow.map((h) => h.trim())
+            } else if (currentRow.some((c) => c.trim() !== '')) {
+              let rowObj: any = {}
+              for (let j = 0; j < headers.length; j++) {
+                rowObj[headers[j] || `COL${j}`] = currentRow[j] || ''
+              }
+              rawRecords.push(rowObj)
+            }
+            currentRow = []
+            currentCell = ''
+          } else {
+            currentCell += char
+          }
+        }
+        if (currentCell || currentRow.length > 0) {
+          currentRow.push(currentCell)
+          if (headers.length > 0 && currentRow.some((c) => c.trim() !== '')) {
+            let rowObj: any = {}
+            for (let j = 0; j < headers.length; j++) {
+              rowObj[headers[j] || `COL${j}`] = currentRow[j] || ''
+            }
+            rawRecords.push(rowObj)
+          }
+        }
+      } else {
+        const arrayBuffer = await file.arrayBuffer()
+        const XLSX = await import('xlsx')
+        const wb = XLSX.read(arrayBuffer, { type: 'array', cellDates: true })
+        const targetSheet = selectedSheet || previewData?.sheets?.[0] || wb.SheetNames[0]
+        const ws = wb.Sheets[targetSheet]
+        rawRecords = XLSX.utils.sheet_to_json(ws, { defval: '' })
+      }
+
+      // 2. Normalizar Registros
+      const dateCols = [
+        'DATAEMISSAO',
+        'EMISSAO',
+        'DTCOMPENS',
+        'COMPENSACAO',
+        'DATAVENCTO',
+        'VENCTO',
+        'VENCIMENTO',
+        'DATACANC',
+        'CANCELAMENTO',
+        'DATAESTORNO',
+        'ESTORNO',
+        'DATA',
+      ]
+      const numCols = ['VALOR', 'VALORLIQUIDO']
+
+      const normalizedRecords = rawRecords.map((r: any, index: number) => {
+        const normalized: any = {}
+        normalized._originalIndex = index + 1
+        for (const key in r) {
+          const mappedKey = columnMapping[key] || key
+          const cleanKey = mappedKey
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .replace(/[^A-Z0-9]/gi, '')
+            .toUpperCase()
+            .trim()
+
+          let val = r[key]
+          if (dateCols.includes(cleanKey)) {
+            val = safeParseDate(val) || ''
+          } else if (numCols.includes(cleanKey)) {
+            val = safeParseNum(val)
+            val = val !== null ? val : ''
+          } else {
+            val =
+              val !== null && val !== undefined
+                ? String(val)
+                    .replace(/[\u0000-\u0008\u000B-\u000C\u000E-\u001F\u007F-\u009F]/g, '')
+                    .trim()
+                : ''
+          }
+          normalized[cleanKey] = val
+        }
+        return normalized
+      })
+
+      // 3. Criar registro no banco de dados com a quantidade final de registros para evitar update bloqueado por RLS
+      const { data: history, error: historyError } = await supabase
+        .from('import_history')
+        .insert({
+          user_id: user?.id,
+          import_type: 'ERP_FINANCIAL_MOVEMENTS',
+          file_name: file.name,
+          status: 'Processing',
+          organization_id: selectedOrg,
+          total_records: normalizedRecords.length,
+        })
+        .select()
+        .single()
+
+      if (historyError) throw historyError
+
+      const CHUNK_SIZE = 2000
+      const totalChunks = Math.ceil(normalizedRecords.length / CHUNK_SIZE)
+
+      if (totalChunks === 0) {
+        toast({ title: 'Importação Concluída', description: 'Nenhum registro encontrado.' })
+        onImportSuccess()
+        onOpenChange(false)
+        return
+      }
+
+      toast({
+        title: 'Preparando envio',
+        description: `Enviando dados (${totalChunks} pacotes) para o servidor...`,
+      })
+
+      // 4. Upload de chunks para o storage
+      for (let i = 0; i < totalChunks; i += 5) {
+        const batch = []
+        for (let j = i; j < i + 5 && j < totalChunks; j++) {
+          const chunk = normalizedRecords.slice(j * CHUNK_SIZE, (j + 1) * CHUNK_SIZE)
+          batch.push(
+            supabase.storage
+              .from('imports')
+              .upload(`${history.id}/chunk_${j}.json`, JSON.stringify(chunk), {
+                contentType: 'application/json',
+                upsert: true,
+              }),
+          )
+        }
+        await Promise.all(batch)
+      }
+
+      // 5. Iniciar processo de chunks no backend
       const { error } = await supabase.functions.invoke('import-data', {
         body: {
-          action: 'START_BACKGROUND',
+          action: 'PROCESS_CHUNK',
+          importId: history.id,
           type: 'ERP_FINANCIAL_MOVEMENTS',
-          filePath: path,
-          fileName: file.name,
+          chunkIndex: 0,
+          totalChunks: totalChunks,
+          totalRecords: normalizedRecords.length,
           organizationId: selectedOrg,
-          columnMapping,
-          sheetName: selectedSheet || previewData?.sheets?.[0],
+          userId: user?.id,
+          inserted: 0,
+          rejected: 0,
+          errors: [],
         },
       })
 
       if (error) throw error
 
       toast({
-        title: 'Importação Iniciada',
+        title: 'Processamento Iniciado',
         description:
-          'O arquivo está sendo processado em segundo plano. Você pode continuar usando o sistema.',
+          'Os dados foram enviados para o servidor. Você pode continuar usando o sistema.',
       })
       onImportSuccess()
       onOpenChange(false)
