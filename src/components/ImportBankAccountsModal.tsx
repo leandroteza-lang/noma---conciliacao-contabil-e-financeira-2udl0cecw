@@ -331,6 +331,7 @@ export function ImportBankAccountsModal({ isOpen, onClose, onSuccess }: any) {
                       <SelectItem value="USE_SPREADSHEET">
                         Utilizar coluna 'EMPRESA' da planilha
                       </SelectItem>
+                      <SelectItem value="NO_ORG">Nenhuma Empresa (Sem Vínculo)</SelectItem>
                       {organizations.map((org) => (
                         <SelectItem key={org.id} value={org.id}>
                           {org.name}

@@ -1222,7 +1222,7 @@ Deno.serve(async (req: Request) => {
         }
       }
     } else if (type === 'BANK_ACCOUNTS') {
-      if (organizationId && !validOrgs.has(organizationId)) {
+      if (organizationId && organizationId !== 'NO_ORG' && !validOrgs.has(organizationId)) {
         throw new Error('A empresa selecionada é inválida ou você não tem permissão.')
       }
 
@@ -1234,23 +1234,23 @@ Deno.serve(async (req: Request) => {
         const getVal = createRowAccessor(row)
         const empresa = getVal(['EMPRESA'])
 
-        let orgId = organizationId
-        if (!orgId) {
-          if (!allowIncomplete && (!empresa || String(empresa).trim() === '')) {
-            addError(rowNum, 'A coluna Empresa está vazia e nenhuma empresa foi selecionada.', row)
-            continue
-          }
-          orgId = await resolveOrganization(empresa)
-          if (!orgId) {
-            addError(rowNum, `Erro ao resolver ou criar a empresa "${empresa}". (Obrigatório)`, row)
-            continue
+        let orgId = organizationId === 'NO_ORG' ? null : organizationId
+        if (organizationId !== 'NO_ORG' && !orgId) {
+          if (empresa && String(empresa).trim() !== '') {
+            orgId = await resolveOrganization(empresa)
+            if (!orgId) {
+              addError(rowNum, `Erro ao resolver ou criar a empresa "${empresa}".`, row)
+              continue
+            }
           }
         }
 
-        if (!recordsByOrg.has(orgId)) {
-          recordsByOrg.set(orgId, [])
+        const mapKey = orgId || 'NO_ORG'
+
+        if (!recordsByOrg.has(mapKey)) {
+          recordsByOrg.set(mapKey, [])
         }
-        recordsByOrg.get(orgId)!.push({ row, rowNum, getVal, empresa })
+        recordsByOrg.get(mapKey)!.push({ row, rowNum, getVal, empresa })
       }
 
       let totalToInsert = 0
@@ -1258,22 +1258,30 @@ Deno.serve(async (req: Request) => {
       let totalToDelete = 0
       const simulationDetails = []
 
-      for (const [orgId, orgRecords] of recordsByOrg.entries()) {
-        if (!orgId) continue
+      for (const [mapKey, orgRecords] of recordsByOrg.entries()) {
+        const orgId = mapKey === 'NO_ORG' ? null : mapKey
 
         let existingAccounts: any[] = []
         let fetchHasMore = true
         let fetchPage = 0
         while (fetchHasMore) {
-          const { data: pageData, error: existingAccError } = await supabase
-            .from('bank_accounts')
-            .select('*')
-            .eq('organization_id', orgId)
-            .is('deleted_at', null)
-            .range(fetchPage * 1000, (fetchPage + 1) * 1000 - 1)
+          let query = supabase.from('bank_accounts').select('*').is('deleted_at', null)
+
+          if (orgId) {
+            query = query.eq('organization_id', orgId)
+          } else {
+            query = query.is('organization_id', null)
+          }
+
+          const { data: pageData, error: existingAccError } = await query.range(
+            fetchPage * 1000,
+            (fetchPage + 1) * 1000 - 1,
+          )
 
           if (existingAccError) {
-            throw new Error('Erro ao buscar contas bancárias existentes: ' + existingAccError.message)
+            throw new Error(
+              'Erro ao buscar contas bancárias existentes: ' + existingAccError.message,
+            )
           }
 
           if (pageData && pageData.length > 0) {
@@ -1291,9 +1299,16 @@ Deno.serve(async (req: Request) => {
             .toUpperCase()
             .replace(/^0+/, '') || '0'
 
+        const normalizeAgency = (str: any) =>
+          String(str || '')
+            .replace(/[^0-9A-Z]/gi, '')
+            .toUpperCase() || ''
+
         const existingAccMap = new Map<string, any>()
         existingAccounts.forEach((a) => {
-          const key = normalizeAcc(a.account_number)
+          const acc = normalizeAcc(a.account_number)
+          const ag = normalizeAgency(a.agency)
+          const key = `${ag}-${acc}`
           existingAccMap.set(key, a)
         })
 
@@ -1304,13 +1319,15 @@ Deno.serve(async (req: Request) => {
         for (const item of orgRecords) {
           const { row, rowNum, getVal, empresa } = item
 
+          const rawAgency = String(getVal(['NUMAGENCIA', 'AGENCIA']) || '').trim()
           const rawAccountNumber = String(
             getVal(['NROCONTA', 'NUMERODACONTA', 'CONTA', 'NUMERO']) || '',
           ).trim()
           const rawCheckDigit = String(getVal(['DIGITOCONTA', 'DIGITO', 'DV']) || '').trim()
 
+          const normalizedAgency = normalizeAgency(rawAgency)
           const normalizedAcc = normalizeAcc(rawAccountNumber)
-          const accountKey = normalizedAcc
+          const accountKey = `${normalizedAgency}-${normalizedAcc}`
 
           const payloadData = {
             organization_id: orgId,
@@ -1318,7 +1335,7 @@ Deno.serve(async (req: Request) => {
             account_type: String(getVal(['CODCAIXA', 'TIPODECONTA', 'TIPO']) || ''),
             description: String(getVal(['DESCRICAO', 'NOME']) || ''),
             bank_code: String(getVal(['NUMBANCO', 'BANCO', 'CODBANCO']) || ''),
-            agency: String(getVal(['NUMAGENCIA', 'AGENCIA']) || ''),
+            agency: rawAgency,
             account_number: rawAccountNumber,
             classification: String(getVal(['CLASSIFICACAO']) || ''),
             check_digit: rawCheckDigit,
@@ -1329,7 +1346,11 @@ Deno.serve(async (req: Request) => {
 
           if (existing) {
             if (existing.is_temp) {
-              addError(rowNum, `Conta bancária duplicada na planilha: ${rawAccountNumber}`, row)
+              addError(
+                rowNum,
+                `Conta bancária duplicada na planilha (Agência ${rawAgency} Conta ${rawAccountNumber})`,
+                row,
+              )
             } else {
               if (mode !== 'INSERT_ONLY') {
                 toUpdate.push({ ...payloadData, id: existing.id, _rowNum: rowNum })
@@ -1384,7 +1405,11 @@ Deno.serve(async (req: Request) => {
             if (insErr) {
               console.error(`[BANK_ACCOUNTS] Insert error:`, insErr)
               chunk.forEach((c: any) => {
-                addError(c._rowNum, `Erro na inserção: ${insErr.message} - Conta: ${c.account_number}`, c)
+                addError(
+                  c._rowNum,
+                  `Erro na inserção: ${insErr.message} - Conta: ${c.account_number}`,
+                  c,
+                )
               })
             }
           }
@@ -1399,7 +1424,11 @@ Deno.serve(async (req: Request) => {
             if (updErr) {
               console.error(`[BANK_ACCOUNTS] Upsert error:`, updErr)
               chunk.forEach((c: any) => {
-                addError(c._rowNum, `Erro na atualização: ${updErr.message} - Conta: ${c.account_number}`, c)
+                addError(
+                  c._rowNum,
+                  `Erro na atualização: ${updErr.message} - Conta: ${c.account_number}`,
+                  c,
+                )
               })
             }
           }
@@ -2737,7 +2766,11 @@ Deno.serve(async (req: Request) => {
           } else if (orgs && orgs.length > 0) {
             orgId = orgs[0].id
           } else {
-            addError(rowNum, 'Nenhuma empresa associada ao usuário para realizar a importação.', row)
+            addError(
+              rowNum,
+              'Nenhuma empresa associada ao usuário para realizar a importação.',
+              row,
+            )
             continue
           }
         }
