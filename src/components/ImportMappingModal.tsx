@@ -35,6 +35,7 @@ export function ImportMappingModal({
   onSuccess,
 }: ImportMappingModalProps) {
   const [file, setFile] = useState<File | null>(null)
+  const [uploadedFilePath, setUploadedFilePath] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [previewLoading, setPreviewLoading] = useState(false)
 
@@ -77,61 +78,59 @@ export function ImportMappingModal({
     setFile(selectedFile)
     setSheets([])
     setSelectedSheet('')
+    setUploadedFilePath(null)
+    setPreviewInfo(null)
 
     if (selectedFile) {
       setPreviewLoading(true)
       try {
-        const reader = new FileReader()
-        reader.onload = async (event) => {
-          try {
-            const result = event.target?.result as string
-            if (!result) throw new Error('Falha ao ler o arquivo')
-            const base64 = result.split(',')[1]
+        const {
+          data: { session },
+        } = await supabase.auth.getSession()
+        if (!session) throw new Error('Sessão expirada. Faça login novamente.')
 
-            const {
-              data: { session },
-            } = await supabase.auth.getSession()
+        const fileExt = selectedFile.name.split('.').pop()
+        const filePath = `${session.user.id}/${Date.now()}_${selectedFile.name}`
 
-            const { data, error } = await supabase.functions.invoke('import-data', {
-              body: {
-                action: 'PREVIEW',
-                type: 'MAPPINGS',
-                fileName: selectedFile.name,
-                fileBase64: base64,
-              },
-              headers: session ? { Authorization: `Bearer ${session.access_token}` } : undefined,
-            })
+        const { error: uploadError } = await supabase.storage
+          .from('imports')
+          .upload(filePath, selectedFile, { upsert: true })
 
-            if (error) throw error
-            if (data?.error) throw new Error(data.error)
-            if (data?.sheets) {
-              setSheets(data.sheets)
-              if (data.sheets.length > 0) {
-                setSelectedSheet(data.sheets[0])
-              }
-              setPreviewInfo({
-                totalRecords: data.totalRecords,
-              })
-            }
-          } catch (err: any) {
-            toast.error('Erro ao ler abas da planilha: ' + err.message)
-          } finally {
-            setPreviewLoading(false)
+        if (uploadError)
+          throw new Error('Falha ao enviar arquivo para análise: ' + uploadError.message)
+
+        setUploadedFilePath(filePath)
+
+        const { data, error } = await supabase.functions.invoke('import-data', {
+          body: {
+            action: 'PREVIEW',
+            type: 'MAPPINGS',
+            fileName: selectedFile.name,
+            filePath: filePath,
+          },
+        })
+
+        if (error) throw error
+        if (data?.error) throw new Error(data.error)
+        if (data?.sheets) {
+          setSheets(data.sheets)
+          if (data.sheets.length > 0) {
+            setSelectedSheet(data.sheets[0])
           }
+          setPreviewInfo({
+            totalRecords: data.totalRecords,
+          })
         }
-        reader.onerror = () => {
-          toast.error('Erro ao ler o arquivo.')
-          setPreviewLoading(false)
-        }
-        reader.readAsDataURL(selectedFile)
-      } catch (err) {
+      } catch (err: any) {
+        toast.error('Erro ao ler abas da planilha: ' + err.message)
+      } finally {
         setPreviewLoading(false)
       }
     }
   }
 
   const handleUpload = async () => {
-    if (!file) return
+    if (!file || !uploadedFilePath) return
     if (!selectedOrg) {
       toast.error('Por favor, selecione uma empresa.')
       return
@@ -141,110 +140,71 @@ export function ImportMappingModal({
     setResults(null)
 
     try {
-      const reader = new FileReader()
-      reader.onload = async (e) => {
-        try {
-          const result = e.target?.result as string
-          if (!result) throw new Error('Falha ao ler o arquivo')
-          const base64 = result.split(',')[1]
+      const { data: jobData, error } = await supabase.functions.invoke('import-data', {
+        body: {
+          action: 'START_BACKGROUND',
+          type: 'MAPPINGS',
+          fileName: file.name,
+          filePath: uploadedFilePath,
+          sheetName: selectedSheet,
+          organizationId: selectedOrg,
+          mode: importMode,
+          totalRecords: previewInfo?.totalRecords || 0,
+        },
+      })
 
-          const {
-            data: { session },
-          } = await supabase.auth.getSession()
+      if (error) throw error
+      if (jobData?.error) throw new Error(jobData.error)
 
-          setProgress(5)
-          const totalRecords = previewInfo?.totalRecords || 0
+      const importId = jobData.importId
 
-          if (totalRecords === 0) {
-            toast.info('Nenhum registro encontrado na planilha.')
+      const pollInterval = setInterval(async () => {
+        const { data: job } = await supabase
+          .from('import_history')
+          .select(
+            'status, processed_records, total_records, success_count, error_count, errors_list',
+          )
+          .eq('id', importId)
+          .single()
+
+        if (job) {
+          const processed = job.processed_records || 0
+          const total = job.total_records || previewInfo?.totalRecords || 1
+          setProgress(Math.min(100, Math.round((processed / total) * 100)))
+
+          if (job.status === 'Completed' || job.status === 'Error') {
+            clearInterval(pollInterval)
+            setProgress(100)
+            setResults({
+              inserted: job.success_count || 0,
+              rejected: job.error_count || 0,
+              errors: job.errors_list || [],
+            })
             setLoading(false)
-            return
-          }
 
-          const CHUNK_SIZE = 500
-          let inserted = 0
-          let rejected = 0
-          let errors: any[] = []
-
-          for (let i = 0; i < totalRecords; i += CHUNK_SIZE) {
-            const {
-              data: { session: currentSession },
-            } = await supabase.auth.getSession()
-            const chunkMode =
-              i === 0 ? importMode : importMode === 'REPLACE' ? 'UPDATE' : importMode
-
-            const chunkRes = await supabase.functions.invoke('import-data', {
-              body: {
-                type: 'MAPPINGS',
-                fileName: file.name,
-                fileBase64: base64,
-                sheetName: selectedSheet,
-                organizationId: selectedOrg,
-                mode: chunkMode,
-                offset: i,
-                limit: CHUNK_SIZE,
-                skipHistory: true,
-              },
-              headers: currentSession
-                ? { Authorization: `Bearer ${currentSession.access_token}` }
-                : undefined,
-            })
-
-            if (chunkRes.error) throw chunkRes.error
-            if (chunkRes.data?.error) throw new Error(chunkRes.data.error)
-
-            inserted += chunkRes.data?.inserted || 0
-            rejected += chunkRes.data?.rejected || 0
-            if (chunkRes.data?.errors) {
-              errors = [...errors, ...chunkRes.data.errors]
+            if ((job.success_count || 0) > 0 || (job.error_count || 0) > 0) {
+              onSuccess?.()
             }
 
-            setProgress(Math.min(100, Math.round(((i + CHUNK_SIZE) / totalRecords) * 100)))
-          }
-
-          setProgress(100)
-          setResults({ inserted, rejected, errors })
-
-          const { data: userData } = await supabase.auth.getUser()
-          if (userData?.user) {
-            await supabase.from('import_history').insert({
-              user_id: userData.user.id,
-              import_type: 'MAPPINGS',
-              file_name: file.name,
-              total_records: totalRecords,
-              success_count: inserted,
-              error_count: rejected,
-              status: 'Completed',
-            })
-          }
-
-          if (inserted > 0 || rejected > 0) {
-            onSuccess?.()
-          }
-
-          if (inserted > 0) {
-            toast.success(`${inserted} mapeamentos importados com sucesso!`)
-            if (rejected === 0) {
-              setTimeout(() => onOpenChange(false), 2000)
+            if (job.status === 'Completed') {
+              if ((job.success_count || 0) > 0) {
+                toast.success(`${job.success_count} mapeamentos importados com sucesso!`)
+                if ((job.error_count || 0) === 0) {
+                  setTimeout(() => onOpenChange(false), 2000)
+                }
+              } else if ((job.error_count || 0) > 0) {
+                toast.warning(`Importação finalizada com ${job.error_count} rejeições.`)
+              } else {
+                toast.info('Nenhum registro foi importado.')
+              }
+            } else {
+              toast.error('Ocorreu um erro durante o processamento em background.')
             }
-          } else if (rejected > 0) {
-            toast.warning(`Importação finalizada com ${rejected} rejeições.`)
-          } else {
-            toast.info('Nenhum registro foi importado.')
           }
-        } catch (err: any) {
-          toast.error('Erro na importação: ' + err.message)
-        } finally {
-          setLoading(false)
         }
-      }
-      reader.onerror = () => {
-        toast.error('Erro ao ler o arquivo.')
-        setLoading(false)
-      }
-      reader.readAsDataURL(file)
+      }, 2000)
     } catch (err: any) {
-      toast.error('Erro ao processar arquivo: ' + err.message)
+      toast.error('Erro na importação: ' + err.message)
       setLoading(false)
     }
   }
@@ -252,6 +212,7 @@ export function ImportMappingModal({
   const reset = () => {
     setResults(null)
     setFile(null)
+    setUploadedFilePath(null)
     setSheets([])
     setSelectedSheet('')
     setPreviewInfo(null)
@@ -262,8 +223,8 @@ export function ImportMappingModal({
     <Dialog
       open={open}
       onOpenChange={(val) => {
-        if (!val) reset()
-        onOpenChange(val)
+        if (!val && !loading) reset()
+        if (!loading) onOpenChange(val)
       }}
     >
       <DialogContent className="sm:max-w-[500px]">
@@ -279,7 +240,7 @@ export function ImportMappingModal({
           <div className="space-y-4 py-4">
             <div className="grid w-full items-center gap-1.5">
               <Label htmlFor="org">Empresa</Label>
-              <Select value={selectedOrg} onValueChange={setSelectedOrg}>
+              <Select value={selectedOrg} onValueChange={setSelectedOrg} disabled={loading}>
                 <SelectTrigger id="org">
                   <SelectValue placeholder="Selecione a empresa" />
                 </SelectTrigger>
@@ -295,7 +256,7 @@ export function ImportMappingModal({
 
             <div className="grid w-full items-center gap-1.5 animate-in fade-in duration-300">
               <Label htmlFor="mode">Modo de Importação</Label>
-              <Select value={importMode} onValueChange={setImportMode}>
+              <Select value={importMode} onValueChange={setImportMode} disabled={loading}>
                 <SelectTrigger id="mode">
                   <SelectValue placeholder="Selecione o modo" />
                 </SelectTrigger>
@@ -315,7 +276,7 @@ export function ImportMappingModal({
                   type="file"
                   accept=".xlsx, .xls, .csv"
                   onChange={handleFileChange}
-                  disabled={previewLoading}
+                  disabled={previewLoading || loading}
                 />
                 {previewLoading && (
                   <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-slate-400" />
@@ -326,7 +287,7 @@ export function ImportMappingModal({
             {sheets.length > 0 && (
               <div className="grid w-full items-center gap-1.5 animate-in fade-in duration-300">
                 <Label htmlFor="sheet">Aba da Planilha</Label>
-                <Select value={selectedSheet} onValueChange={setSelectedSheet}>
+                <Select value={selectedSheet} onValueChange={setSelectedSheet} disabled={loading}>
                   <SelectTrigger id="sheet">
                     <SelectValue placeholder="Selecione a aba" />
                   </SelectTrigger>
@@ -354,8 +315,8 @@ export function ImportMappingModal({
                 </li>
               </ul>
               <p className="mt-3 text-xs opacity-80">
-                Outras colunas serão ignoradas. Linhas sem correspondência exata no banco serão
-                marcadas como rejeitadas.
+                Outras colunas serão ignoradas. Processamento assíncrono habilitado para suportar
+                alto volume de registros.
               </p>
             </div>
 
@@ -378,7 +339,7 @@ export function ImportMappingModal({
             {loading && (
               <div className="space-y-2 animate-in fade-in duration-300">
                 <div className="flex items-center justify-between text-sm text-slate-600">
-                  <span>Importando registros...</span>
+                  <span>Processando registros no servidor...</span>
                   <span className="font-medium">{progress}%</span>
                 </div>
                 <Progress value={progress} className="h-2" />
@@ -390,6 +351,7 @@ export function ImportMappingModal({
               onClick={handleUpload}
               disabled={
                 !file ||
+                !uploadedFilePath ||
                 !selectedOrg ||
                 (!selectedSheet && sheets.length > 0) ||
                 loading ||
