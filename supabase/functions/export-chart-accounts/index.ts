@@ -39,9 +39,9 @@ Deno.serve(async (req: Request) => {
     }
 
     if (format === 'csv') {
-      let csvContent = 'Empresa;Código Reduzido;Classificação;Nome;Nível;Tipo;Natureza\n'
+      let csvContent = 'Empresa;Código Reduzido;Classificação;Nome;Nível;Tipo;Natureza;Finalidade\n'
       data.forEach((r: any) => {
-        csvContent += `"${r['Empresa'] || ''}";"${r['Código Reduzido'] || ''}";"${r['Classificação'] || ''}";"${r['Nome'] || ''}";"${r['Nível'] || ''}";"${r['Tipo'] || ''}";"${r['Natureza'] || ''}"\n`
+        csvContent += `"${r['Empresa'] || ''}";"${r['Código Reduzido'] || ''}";"${r['Classificação'] || ''}";"${r['Nome'] || ''}";"${r['Nível'] || ''}";"${r['Tipo'] || ''}";"${r['Natureza'] || ''}";"${r['Finalidade'] || ''}"\n`
       })
       return new Response(JSON.stringify({ csv: csvContent }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -58,6 +58,7 @@ Deno.serve(async (req: Request) => {
         txtContent += `Nível: ${r['Nível'] || '-'}\n`
         txtContent += `Tipo: ${r['Tipo'] || '-'}\n`
         txtContent += `Natureza: ${r['Natureza'] || '-'}\n`
+        txtContent += `Finalidade: ${r['Finalidade'] || '-'}\n`
         txtContent += '-----------------------------------------\n'
       })
       return new Response(JSON.stringify({ txt: txtContent }), {
@@ -78,15 +79,31 @@ Deno.serve(async (req: Request) => {
         r['Nível'] || '-',
         r['Tipo'] || '-',
         r['Natureza'] || '-',
+        r['Finalidade'] || '-',
       ])
 
       autoTable(doc, {
         startY: 25,
-        head: [['Empresa', 'Cód. Reduzido', 'Classificação', 'Nome', 'Nível', 'Tipo', 'Natureza']],
+        head: [
+          [
+            'Empresa',
+            'Cód. Reduzido',
+            'Classificação',
+            'Nome',
+            'Nível',
+            'Tipo',
+            'Natureza',
+            'Finalidade',
+          ],
+        ],
         body: body,
         theme: 'grid',
         headStyles: { fillColor: [220, 38, 38] },
-        styles: { fontSize: 9 },
+        styles: { fontSize: 8 },
+        columnStyles: {
+          3: { cellWidth: 50 },
+          7: { cellWidth: 40 },
+        },
       })
 
       const pdf = doc.output('datauristring')

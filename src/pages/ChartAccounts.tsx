@@ -477,10 +477,11 @@ export default function ChartAccounts() {
           Empresa: acc.organization?.name || '-',
           'Código Reduzido': acc.account_code || '-',
           Classificação: acc.classification || '-',
-          Nome: acc.account_name,
+          Nome: acc.account_name || '-',
           Nível: acc.account_level || '-',
           Tipo: acc.account_behavior || '-',
           Natureza: acc.nature || acc.account_type || '-',
+          Finalidade: acc.purpose || '-',
         })),
       }
 
