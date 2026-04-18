@@ -9,6 +9,87 @@ const corsHeaders = {
     'authorization, x-client-info, x-supabase-client-platform, apikey, content-type',
 }
 
+class ValidationError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'ValidationError'
+  }
+}
+
+const normalizeKey = (value: string) =>
+  String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^A-Z0-9]/gi, '')
+    .toUpperCase()
+    .trim()
+
+const ERP_ALIAS_MAP: Record<string, string> = {
+  COMPENSADO: 'COMPENSADO',
+  STATUS: 'COMPENSADO',
+  TIPOOPERACAO: 'TIPOOPERACAO',
+  TIPO: 'TIPOOPERACAO',
+  OPERACAO: 'TIPOOPERACAO',
+  DATAEMISSAO: 'DATAEMISSAO',
+  EMISSAO: 'DATAEMISSAO',
+  DATA: 'DATAEMISSAO',
+  DTCOMPENS: 'DTCOMPENS',
+  COMPENSACAO: 'DTCOMPENS',
+  CONTACAIXA: 'CONTACAIXA',
+  CONTA: 'CONTACAIXA',
+  CAIXA: 'CONTACAIXA',
+  NOMECAIXA: 'NOMECAIXA',
+  CONTACAIXADESTINO: 'CONTACAIXADESTINO',
+  CONTADESTINO: 'CONTACAIXADESTINO',
+  CAIXADESTINO: 'CONTACAIXADESTINO',
+  FORMAPAGTO: 'FORMAPAGTO',
+  FORMAPAGAMENTO: 'FORMAPAGTO',
+  PAGAMENTO: 'FORMAPAGTO',
+  CCUSTO: 'CCUSTO',
+  CENTROCUSTO: 'CCUSTO',
+  DESCRICAOCCUSTO: 'DESCRICAOCCUSTO',
+  VALOR: 'VALOR',
+  VALORBRUTO: 'VALOR',
+  VALORLIQUIDO: 'VALORLIQUIDO',
+  LIQUIDO: 'VALORLIQUIDO',
+  NDOCUMENTO: 'NDOCUMENTO',
+  NUMERODOCUMENTO: 'NDOCUMENTO',
+  DOCUMENTO: 'NDOCUMENTO',
+  NOMECLIFORNEC: 'NOMECLIFORNEC',
+  NOMECLIENTEFORNECEDOR: 'NOMECLIFORNEC',
+  HISTORICO: 'HISTORICO',
+  FP: 'FP',
+  NCHEQUE: 'NCHEQUE',
+  NUMEROCHEQUE: 'NCHEQUE',
+  DATAVENCTO: 'DATAVENCTO',
+  VENCTO: 'DATAVENCTO',
+  VENCIMENTO: 'DATAVENCTO',
+  NOMINALA: 'NOMINALA',
+  EMITENTECHEQUE: 'EMITENTECHEQUE',
+  CNPJCPF: 'CNPJCPF',
+  NEXTRATO: 'NEXTRATO',
+  NUMEROEXTRATO: 'NEXTRATO',
+  FILIAL: 'FILIAL',
+  DATACANC: 'DATACANC',
+  CANCELAMENTO: 'DATACANC',
+  DATAESTORNO: 'DATAESTORNO',
+  ESTORNO: 'DATAESTORNO',
+  BANCO: 'BANCO',
+  CCORRENTE: 'CCORRENTE',
+  CONTACORRENTE: 'CCORRENTE',
+  CODCLIFOR: 'CODCLIFOR',
+  CODIGOCLIFOR: 'CODCLIFOR',
+  DEPARTAMENTO: 'DEPARTAMENTO',
+}
+
+const ERP_DATE_COLS = new Set(['DATAEMISSAO', 'DTCOMPENS', 'DATAVENCTO', 'DATACANC', 'DATAESTORNO'])
+const ERP_NUM_COLS = new Set(['VALOR', 'VALORLIQUIDO'])
+
+const toCanonicalErpKey = (mappedKey: string) => {
+  const cleanKey = normalizeKey(mappedKey)
+  return ERP_ALIAS_MAP[cleanKey] || cleanKey
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
@@ -68,6 +149,13 @@ Deno.serve(async (req: Request) => {
           })
 
     if (payload.action === 'START_BACKGROUND') {
+      if (
+        payload.type === 'ERP_FINANCIAL_MOVEMENTS' &&
+        (!payload.organizationId || payload.organizationId === 'USE_SPREADSHEET')
+      ) {
+        throw new ValidationError('organizationId é obrigatório para ERP_FINANCIAL_MOVEMENTS.')
+      }
+
       const { data: history, error: historyError } = await supabaseAdmin
         .from('import_history')
         .insert({
@@ -99,21 +187,6 @@ Deno.serve(async (req: Request) => {
 
             let isCsv = payload.fileName && payload.fileName.toLowerCase().endsWith('.csv')
             let rawRecords: any[] = []
-            const dateCols = [
-              'DATAEMISSAO',
-              'EMISSAO',
-              'DTCOMPENS',
-              'COMPENSACAO',
-              'DATAVENCTO',
-              'VENCTO',
-              'VENCIMENTO',
-              'DATACANC',
-              'CANCELAMENTO',
-              'DATAESTORNO',
-              'ESTORNO',
-              'DATA',
-            ]
-            const numCols = ['VALOR', 'VALORLIQUIDO']
 
             const safeParseDate = (val: any) => {
               if (val === null || val === undefined || val === '') return null
@@ -264,19 +337,20 @@ Deno.serve(async (req: Request) => {
               normalized._originalIndex = index + 1
               for (const key in r) {
                 const mappedKey = columnMapping[key] || key
-                const cleanKey = mappedKey
-                  .normalize('NFD')
-                  .replace(/[\u0300-\u036f]/g, '')
-                  .replace(/[^A-Z0-9]/gi, '')
-                  .toUpperCase()
-                  .trim()
+                const cleanKey =
+                  payload.type === 'ERP_FINANCIAL_MOVEMENTS'
+                    ? toCanonicalErpKey(mappedKey)
+                    : normalizeKey(mappedKey)
 
                 let val = r[key]
-                if (dateCols.includes(cleanKey)) {
-                  val = safeParseDate(val) || ''
-                } else if (numCols.includes(cleanKey)) {
-                  val = safeParseNum(val)
-                  val = val !== null ? val : ''
+                if (payload.type === 'ERP_FINANCIAL_MOVEMENTS' && ERP_DATE_COLS.has(cleanKey)) {
+                  val = safeParseDate(val)
+                } else if (
+                  payload.type === 'ERP_FINANCIAL_MOVEMENTS' &&
+                  ERP_NUM_COLS.has(cleanKey)
+                ) {
+                  const parsed = safeParseNum(val)
+                  val = parsed === null ? null : String(parsed)
                 } else {
                   val =
                     val !== null && val !== undefined
@@ -655,9 +729,6 @@ Deno.serve(async (req: Request) => {
     }
 
     if (Array.isArray(records) && payload.action !== 'PROCESS_CHUNK') {
-      const erpDateCols = ['DATAEMISSAO', 'DTCOMPENS', 'DATAVENCTO', 'DATACANC', 'DATAESTORNO']
-      const erpNumCols = ['VALOR', 'VALORLIQUIDO']
-
       records = records.map((r: any, index: number) => {
         if (r._originalIndex && Object.keys(r).some((k) => k === k.toUpperCase())) {
           return r // Already normalized
@@ -666,21 +737,19 @@ Deno.serve(async (req: Request) => {
         normalized._originalIndex = (payload.offset || 0) + index + 1
         for (const key in r) {
           const mappedKey = columnMapping[key] || key
-          const cleanKey = mappedKey
-            .normalize('NFD')
-            .replace(/[\u0300-\u036f]/g, '')
-            .replace(/[^A-Z0-9]/gi, '')
-            .toUpperCase()
-            .trim()
+          const cleanKey =
+            type === 'ERP_FINANCIAL_MOVEMENTS'
+              ? toCanonicalErpKey(mappedKey)
+              : normalizeKey(mappedKey)
 
           let val = r[key]
 
           if (type === 'ERP_FINANCIAL_MOVEMENTS') {
-            if (erpDateCols.includes(cleanKey)) {
-              val = safeParseDate(val) || ''
-            } else if (erpNumCols.includes(cleanKey)) {
+            if (ERP_DATE_COLS.has(cleanKey)) {
+              val = safeParseDate(val)
+            } else if (ERP_NUM_COLS.has(cleanKey)) {
               const num = safeParseNum(val)
-              val = num !== null ? num : ''
+              val = num !== null ? String(num) : null
             }
           }
 
@@ -689,7 +758,9 @@ Deno.serve(async (req: Request) => {
               ? String(val)
                   .replace(/[\u0000-\u0008\u000B-\u000C\u000E-\u001F\u007F-\u009F]/g, '')
                   .trim()
-              : ''
+              : type === 'ERP_FINANCIAL_MOVEMENTS' && (ERP_DATE_COLS.has(cleanKey) || ERP_NUM_COLS.has(cleanKey))
+                ? null
+                : ''
         }
         return normalized
       })
@@ -729,7 +800,7 @@ Deno.serve(async (req: Request) => {
     }
 
     if (!Array.isArray(records) || records.length === 0) {
-      throw new Error(
+      throw new ValidationError(
         'O formato dos dados é inválido ou a planilha está vazia. Uma lista de registros era esperada.',
       )
     }
@@ -2630,12 +2701,12 @@ Deno.serve(async (req: Request) => {
         }
       }
     } else if (type === 'ERP_FINANCIAL_MOVEMENTS') {
-      let orgId = organizationId
-      if (!orgId && orgs && orgs.length > 0) {
-        orgId = orgs[0].id
-      }
+      const orgId = organizationId
       if (!orgId) {
-        throw new Error('Nenhuma empresa associada ao usuário para realizar a importação.')
+        throw new ValidationError('organizationId é obrigatório para ERP_FINANCIAL_MOVEMENTS.')
+      }
+      if (validOrgs.size > 0 && !validOrgs.has(orgId)) {
+        throw new ValidationError('A empresa selecionada para importação é inválida para este usuário.')
       }
 
       const rpcPayload = {
@@ -2864,7 +2935,7 @@ Deno.serve(async (req: Request) => {
       }
     }
     return new Response(JSON.stringify({ error: err.message }), {
-      status: 200,
+      status: err?.name === 'ValidationError' ? 400 : 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
   }

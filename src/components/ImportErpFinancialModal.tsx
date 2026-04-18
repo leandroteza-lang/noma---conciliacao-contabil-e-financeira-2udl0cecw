@@ -42,7 +42,6 @@ export function ImportErpFinancialModal({ open, onOpenChange, onImportSuccess }:
   const [previewData, setPreviewData] = useState<any>(null)
   const [selectedSheet, setSelectedSheet] = useState<string>('')
   const [columnMapping, setColumnMapping] = useState<Record<string, string>>({})
-  const [filePath, setFilePath] = useState<string>('')
 
   const normalizeText = (text: string) =>
     String(text || '')
@@ -130,11 +129,93 @@ export function ImportErpFinancialModal({ open, onOpenChange, onImportSuccess }:
     'Departamento',
   ]
 
+  const sanitizeCellValue = (value: any) => {
+    if (value instanceof Date) {
+      return value.toISOString().split('T')[0]
+    }
+    return String(value ?? '').trim()
+  }
+
+  const getSheetPreview = (rows: any[]) => {
+    if (!rows.length) return { headers: [], previewRows: [] }
+    const headers = Object.keys(rows[0]).map((h) => h.trim())
+    const previewRows = rows.slice(0, 5).map((row: any) => {
+      const newRow: any = {}
+      headers.forEach((header) => {
+        newRow[header] = sanitizeCellValue(row[header])
+      })
+      return newRow
+    })
+    return { headers, previewRows }
+  }
+
+  const buildAutoMapping = (headers: string[]) => {
+    const initialMap: Record<string, string> = {}
+    const normalizedHeaders = headers.map((h: string) => normalizeText(h))
+    const usedTargets = new Set<string>()
+
+    let savedMapping: Record<string, string> = {}
+    try {
+      savedMapping = JSON.parse(localStorage.getItem('erpColumnMapping') || '{}')
+    } catch (e) {
+      console.warn('Failed to parse saved mapping', e)
+    }
+
+    headers.forEach((header: string, idx: number) => {
+      const nh = normalizedHeaders[idx]
+      if (!nh) return
+      let matchedErpCol = ''
+
+      if (savedMapping[header] && !usedTargets.has(savedMapping[header])) {
+        matchedErpCol = savedMapping[header]
+      }
+
+      if (!matchedErpCol) {
+        for (const [erpCol, synonyms] of Object.entries(ERP_COLUMNS_SYNONYMS)) {
+          if (usedTargets.has(erpCol)) continue
+          if (synonyms.includes(nh)) {
+            matchedErpCol = erpCol
+            break
+          }
+        }
+      }
+
+      if (!matchedErpCol) {
+        for (const [erpCol, synonyms] of Object.entries(ERP_COLUMNS_SYNONYMS)) {
+          if (usedTargets.has(erpCol)) continue
+          if (synonyms.some((syn) => nh.includes(syn) || syn.includes(nh))) {
+            matchedErpCol = erpCol
+            break
+          }
+        }
+      }
+
+      if (!matchedErpCol) {
+        for (const erpCol of ERP_COLUMNS) {
+          if (usedTargets.has(erpCol)) continue
+          const normErp = normalizeText(erpCol)
+          if (normErp === nh || normErp.includes(nh) || nh.includes(normErp)) {
+            matchedErpCol = erpCol
+            break
+          }
+        }
+      }
+
+      if (matchedErpCol) {
+        initialMap[header] = matchedErpCol
+        usedTargets.add(matchedErpCol)
+      }
+    })
+
+    return initialMap
+  }
+
   useEffect(() => {
     if (open) {
       setStep(1)
       setFile(null)
       setPreviewData(null)
+      setSelectedSheet('')
       setColumnMapping({})
       supabase
         .from('organizations')
@@ -159,6 +240,7 @@ export function ImportErpFinancialModal({ open, onOpenChange, onImportSuccess }:
         let headers: string[] = []
         let previewRows: any[] = []
         let sheetNames: string[] = []
+        let sheetDataByName: Record<string, { headers: string[]; previewRows: any[] }> = {}
 
         if (selectedFile.name.endsWith('.csv')) {
           const text = await selectedFile.slice(0, 1024 * 500).text() // Read first 500KB
@@ -196,105 +278,42 @@ export function ImportErpFinancialModal({ open, onOpenChange, onImportSuccess }:
               previewRows.push(row)
             }
             sheetNames = ['DADOS (CSV)']
+            sheetDataByName['DADOS (CSV)'] = { headers, previewRows }
           }
         } else {
           const arrayBuffer = await selectedFile.arrayBuffer()
           const XLSX = await import('xlsx')
           const wb = XLSX.read(arrayBuffer, { type: 'array', cellDates: true })
           sheetNames = wb.SheetNames
-          if (wb.SheetNames.length > 0) {
-            const firstSheet = wb.SheetNames[0]
-            const ws = wb.Sheets[firstSheet]
+          wb.SheetNames.forEach((sheetName) => {
+            const ws = wb.Sheets[sheetName]
             const raw = XLSX.utils.sheet_to_json(ws, { defval: '' })
-            if (raw.length > 0) {
-              headers = Object.keys(raw[0])
-              previewRows = raw.slice(0, 5).map((row: any) => {
-                const newRow: any = {}
-                for (const key in row) {
-                  let val = row[key]
-                  if (val instanceof Date) {
-                    val = val.toISOString().split('T')[0]
-                  } else {
-                    val = String(val).trim()
-                  }
-                  newRow[key.trim()] = val
-                }
-                return newRow
-              })
-            }
+            sheetDataByName[sheetName] = getSheetPreview(raw)
+          })
+          const defaultXlsxSheet = wb.SheetNames[0] || ''
+          if (defaultXlsxSheet) {
+            const defaultData = sheetDataByName[defaultXlsxSheet] || { headers: [], previewRows: [] }
+            headers = defaultData.headers
+            previewRows = defaultData.previewRows
           }
         }
 
+        if (sheetNames.length > 0 && !sheetDataByName[sheetNames[0]]) {
+          sheetDataByName[sheetNames[0]] = { headers, previewRows }
+        }
+
+        const defaultSheet = sheetNames[0] || ''
+        const defaultSheetData = sheetDataByName[defaultSheet] || { headers, previewRows }
         const data = {
           sheets: sheetNames,
-          headers,
-          previewRows,
+          headers: defaultSheetData.headers,
+          previewRows: defaultSheetData.previewRows,
+          sheetDataByName,
         }
 
         setPreviewData(data)
-        if (sheetNames.length > 0) setSelectedSheet(sheetNames[0])
-
-        const initialMap: Record<string, string> = {}
-        const normalizedHeaders = data.headers.map((h: string) => normalizeText(h))
-        const usedTargets = new Set<string>()
-
-        let savedMapping: Record<string, string> = {}
-        try {
-          savedMapping = JSON.parse(localStorage.getItem('erpColumnMapping') || '{}')
-        } catch (e) {
-          console.warn('Failed to parse saved mapping', e)
-        }
-
-        data.headers.forEach((header: string, idx: number) => {
-          const nh = normalizedHeaders[idx]
-          if (!nh) return
-          let matchedErpCol = ''
-
-          // 0. Check saved mapping first
-          if (savedMapping[header] && !usedTargets.has(savedMapping[header])) {
-            matchedErpCol = savedMapping[header]
-          }
-
-          // 1. Exact match in synonyms
-          if (!matchedErpCol) {
-            for (const [erpCol, synonyms] of Object.entries(ERP_COLUMNS_SYNONYMS)) {
-              if (usedTargets.has(erpCol)) continue
-              if (synonyms.includes(nh)) {
-                matchedErpCol = erpCol
-                break
-              }
-            }
-          }
-
-          // 2. Substring match in synonyms
-          if (!matchedErpCol) {
-            for (const [erpCol, synonyms] of Object.entries(ERP_COLUMNS_SYNONYMS)) {
-              if (usedTargets.has(erpCol)) continue
-              if (synonyms.some((syn) => nh.includes(syn) || syn.includes(nh))) {
-                matchedErpCol = erpCol
-                break
-              }
-            }
-          }
-
-          // 3. Fallback to ERP_COLUMNS text match
-          if (!matchedErpCol) {
-            for (const erpCol of ERP_COLUMNS) {
-              if (usedTargets.has(erpCol)) continue
-              const normErp = normalizeText(erpCol)
-              if (normErp === nh || normErp.includes(nh) || nh.includes(normErp)) {
-                matchedErpCol = erpCol
-                break
-              }
-            }
-          }
-
-          if (matchedErpCol) {
-            initialMap[header] = matchedErpCol
-            usedTargets.add(matchedErpCol)
-          }
-        })
-        setColumnMapping(initialMap)
+        setSelectedSheet(defaultSheet)
+        setColumnMapping(buildAutoMapping(defaultSheetData.headers))
 
         setStep(2)
       } catch (err: any) {
@@ -308,6 +327,19 @@ export function ImportErpFinancialModal({ open, onOpenChange, onImportSuccess }:
         setLoading(false)
       }
     }
+  }
+
+  const handleSheetChange = (sheet: string) => {
+    setSelectedSheet(sheet)
+    const selectedData = previewData?.sheetDataByName?.[sheet]
+    if (!selectedData) return
+
+    setPreviewData((prev: any) => ({
+      ...prev,
+      headers: selectedData.headers,
+      previewRows: selectedData.previewRows,
+    }))
+    setColumnMapping(buildAutoMapping(selectedData.headers))
   }
 
   const handleImport = async () => {
@@ -327,11 +359,13 @@ export function ImportErpFinancialModal({ open, onOpenChange, onImportSuccess }:
       localStorage.setItem('erpColumnMapping', JSON.stringify(columnMapping))
 
       const path = `${user?.id}_${Date.now()}_${file.name}`
-      const { error: uploadErr } = await supabase.storage.from('imports').upload(path, file)
+      const { error: uploadErr } = await supabase.storage.from('imports').upload(path, file, {
+        upsert: true,
+        contentType:
+          file.type || (file.name.toLowerCase().endsWith('.csv') ? 'text/csv' : undefined),
+      })
 
       if (uploadErr) throw uploadErr
-
-      setFilePath(path)
 
       const { error } = await supabase.functions.invoke('import-data', {
         body: {
@@ -355,12 +389,16 @@ export function ImportErpFinancialModal({ open, onOpenChange, onImportSuccess }:
       onImportSuccess()
       onOpenChange(false)
     } catch (err: any) {
-      const errorMessage = err?.message || 'Erro desconhecido ao processar requisição.'
+      let errorMessage = err?.message || 'Erro desconhecido ao processar requisição.'
+      if (err?.context) {
+        const errorBody = await err.context.json().catch(() => null)
+        if (errorBody?.error) {
+          errorMessage = errorBody.error
+        }
+      }
       toast({
         title: 'Erro ao iniciar importação',
-        description: errorMessage.includes('non-2xx status')
-          ? 'O serviço de importação está temporariamente indisponível. Por favor, tente novamente em alguns instantes.'
-          : errorMessage,
+        description: errorMessage,
         variant: 'destructive',
       })
     } finally {
@@ -410,7 +448,7 @@ export function ImportErpFinancialModal({ open, onOpenChange, onImportSuccess }:
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="text-sm font-medium mb-1 block">Aba da Planilha</label>
-                <Select value={selectedSheet} onValueChange={setSelectedSheet}>
+                <Select value={selectedSheet} onValueChange={handleSheetChange}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
