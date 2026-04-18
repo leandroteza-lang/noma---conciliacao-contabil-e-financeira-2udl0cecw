@@ -332,34 +332,91 @@ export default function FinancialMovements() {
               <TableHeader>
                 <TableRow className="bg-slate-50 hover:bg-slate-50">
                   <TableHead className="font-semibold text-slate-600 whitespace-nowrap">
+                    Filial
+                  </TableHead>
+                  <TableHead className="font-semibold text-slate-600 whitespace-nowrap">
+                    Tipo Op.
+                  </TableHead>
+                  <TableHead className="font-semibold text-slate-600 whitespace-nowrap">
                     Emissão
+                  </TableHead>
+                  <TableHead className="font-semibold text-slate-600 whitespace-nowrap">
+                    Compensação
                   </TableHead>
                   <TableHead className="font-semibold text-slate-600 whitespace-nowrap">
                     Vencimento
                   </TableHead>
                   <TableHead className="font-semibold text-slate-600 whitespace-nowrap">
+                    Cancelamento
+                  </TableHead>
+                  <TableHead className="font-semibold text-slate-600 whitespace-nowrap">
+                    Estorno
+                  </TableHead>
+                  <TableHead className="font-semibold text-slate-600 whitespace-nowrap">
                     Documento
                   </TableHead>
                   <TableHead className="font-semibold text-slate-600 whitespace-nowrap">
-                    Cliente/Fornecedor
+                    Cód. Cli/For
+                  </TableHead>
+                  <TableHead className="font-semibold text-slate-600 whitespace-nowrap">
+                    Cli/Fornecedor
+                  </TableHead>
+                  <TableHead className="font-semibold text-slate-600 whitespace-nowrap">
+                    CNPJ/CPF
                   </TableHead>
                   <TableHead className="font-semibold text-slate-600 whitespace-nowrap min-w-[200px]">
                     Histórico
                   </TableHead>
                   <TableHead className="font-semibold text-slate-600 whitespace-nowrap">
-                    Conta/Caixa
+                    Conta Caixa
+                  </TableHead>
+                  <TableHead className="font-semibold text-slate-600 whitespace-nowrap">
+                    Nome Caixa
+                  </TableHead>
+                  <TableHead className="font-semibold text-slate-600 whitespace-nowrap">
+                    C. Caixa Dest.
                   </TableHead>
                   <TableHead className="font-semibold text-slate-600 whitespace-nowrap">
                     Banco
                   </TableHead>
                   <TableHead className="font-semibold text-slate-600 whitespace-nowrap">
+                    C. Corrente
+                  </TableHead>
+                  <TableHead className="font-semibold text-slate-600 whitespace-nowrap">
                     F. Pagto
+                  </TableHead>
+                  <TableHead className="font-semibold text-slate-600 whitespace-nowrap">
+                    FP
+                  </TableHead>
+                  <TableHead className="font-semibold text-slate-600 whitespace-nowrap">
+                    N. Cheque
+                  </TableHead>
+                  <TableHead className="font-semibold text-slate-600 whitespace-nowrap">
+                    Nominal A
+                  </TableHead>
+                  <TableHead className="font-semibold text-slate-600 whitespace-nowrap">
+                    Emit. Cheque
+                  </TableHead>
+                  <TableHead className="font-semibold text-slate-600 whitespace-nowrap">
+                    N. Extrato
+                  </TableHead>
+                  <TableHead className="font-semibold text-slate-600 whitespace-nowrap">
+                    Depto.
                   </TableHead>
                   <TableHead className="font-semibold text-slate-600 whitespace-nowrap">
                     C. Custo
                   </TableHead>
+                  <TableHead className="font-semibold text-slate-600 whitespace-nowrap min-w-[150px]">
+                    Desc. C. Custo
+                  </TableHead>
+                  <TableHead className="text-right font-semibold text-slate-600 whitespace-nowrap">
+                    Valor Bruto
+                  </TableHead>
                   <TableHead className="text-right font-semibold text-slate-600 whitespace-nowrap">
                     Valor Líquido
+                  </TableHead>
+                  <TableHead className="font-semibold text-slate-600 whitespace-nowrap">
+                    Compensado
                   </TableHead>
                   <TableHead className="text-center font-semibold text-slate-600 whitespace-nowrap">
                     Status
@@ -372,13 +429,13 @@ export default function FinancialMovements() {
               <TableBody>
                 {loading ? (
                   <TableRow>
-                    <TableCell colSpan={12} className="text-center h-48">
+                    <TableCell colSpan={31} className="text-center h-48">
                       <Loader2 className="h-6 w-6 animate-spin mx-auto text-primary" />
                     </TableCell>
                   </TableRow>
                 ) : data.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={12} className="text-center h-48 text-slate-500">
+                    <TableCell colSpan={31} className="text-center h-48 text-slate-500">
                       Nenhum movimento financeiro encontrado.
                     </TableCell>
                   </TableRow>
@@ -393,6 +450,12 @@ export default function FinancialMovements() {
 
                     return (
                       <TableRow key={row.id} className="hover:bg-slate-50/80 transition-colors">
+                        <TableCell className="whitespace-nowrap text-slate-600">
+                          {row.filial || '-'}
+                        </TableCell>
+                        <TableCell className="whitespace-nowrap text-slate-600">
+                          {row.tipo_operacao || '-'}
+                        </TableCell>
                         <TableCell className="whitespace-nowrap text-slate-600">
                           {editingId === row.id ? (
                             <Input
@@ -410,6 +473,9 @@ export default function FinancialMovements() {
                           )}
                         </TableCell>
                         <TableCell className="whitespace-nowrap text-slate-600">
+                          {formatDate(row.dt_compens)}
+                        </TableCell>
+                        <TableCell className="whitespace-nowrap text-slate-600">
                           {editingId === row.id ? (
                             <Input
                               type="date"
@@ -423,6 +489,12 @@ export default function FinancialMovements() {
                             <span>{row.data_vencto ? formatDate(row.data_vencto) : '-'}</span>
                           )}
                         </TableCell>
+                        <TableCell className="whitespace-nowrap text-slate-600">
+                          {formatDate(row.data_canc)}
+                        </TableCell>
+                        <TableCell className="whitespace-nowrap text-slate-600">
+                          {formatDate(row.data_estorno)}
+                        </TableCell>
                         <TableCell className="font-medium text-slate-700 whitespace-nowrap">
                           {editingId === row.id ? (
                             <Input
@@ -435,6 +507,9 @@ export default function FinancialMovements() {
                           ) : (
                             row.n_documento || '-'
                           )}
+                        </TableCell>
+                        <TableCell className="whitespace-nowrap text-slate-600">
+                          {row.cod_cli_for || '-'}
                         </TableCell>
                         <TableCell
                           className="max-w-[200px] truncate text-slate-600"
@@ -451,6 +526,9 @@ export default function FinancialMovements() {
                           ) : (
                             row.nome_cli_fornec || '-'
                           )}
+                        </TableCell>
+                        <TableCell className="whitespace-nowrap text-slate-600">
+                          {row.cnpj_cpf || '-'}
                         </TableCell>
                         <TableCell
                           className="max-w-[250px] truncate text-slate-600"
@@ -470,20 +548,28 @@ export default function FinancialMovements() {
                         </TableCell>
                         <TableCell
                           className="max-w-[150px] truncate text-slate-600"
-                          title={`${row.conta_caixa || ''} ${row.nome_caixa || ''}`}
+                          title={`${row.conta_caixa || ''}`}
                         >
                           {editingId === row.id ? (
                             <Input
-                              className="h-8"
+                              className="h-8 w-28"
                               value={editForm.conta_caixa || ''}
                               onChange={(e) =>
                                 setEditForm({ ...editForm, conta_caixa: e.target.value })
                               }
                             />
                           ) : (
-                            `${row.conta_caixa || ''} ${row.nome_caixa ? `- ${row.nome_caixa}` : ''}`.trim() ||
-                            '-'
+                            row.conta_caixa || '-'
                           )}
+                        </TableCell>
+                        <TableCell
+                          className="whitespace-nowrap text-slate-600 max-w-[150px] truncate"
+                          title={row.nome_caixa}
+                        >
+                          {row.nome_caixa || '-'}
+                        </TableCell>
+                        <TableCell className="whitespace-nowrap text-slate-600">
+                          {row.conta_caixa_destino || '-'}
                         </TableCell>
                         <TableCell className="whitespace-nowrap text-slate-600">
                           {editingId === row.id ? (
@@ -497,6 +583,9 @@ export default function FinancialMovements() {
                           )}
                         </TableCell>
                         <TableCell className="whitespace-nowrap text-slate-600">
+                          {row.c_corrente || '-'}
+                        </TableCell>
+                        <TableCell className="whitespace-nowrap text-slate-600">
                           {editingId === row.id ? (
                             <Input
                               className="h-8 w-24"
@@ -508,6 +597,27 @@ export default function FinancialMovements() {
                           ) : (
                             row.forma_pagto || '-'
                           )}
+                        </TableCell>
+                        <TableCell className="whitespace-nowrap text-slate-600">
+                          {row.fp || '-'}
+                        </TableCell>
+                        <TableCell className="whitespace-nowrap text-slate-600">
+                          {row.n_cheque || '-'}
+                        </TableCell>
+                        <TableCell className="whitespace-nowrap text-slate-600">
+                          {row.nominal_a || '-'}
+                        </TableCell>
+                        <TableCell
+                          className="whitespace-nowrap text-slate-600 max-w-[150px] truncate"
+                          title={row.emitente_cheque}
+                        >
+                          {row.emitente_cheque || '-'}
+                        </TableCell>
+                        <TableCell className="whitespace-nowrap text-slate-600">
+                          {row.n_extrato || '-'}
+                        </TableCell>
+                        <TableCell className="whitespace-nowrap text-slate-600">
+                          {row.departamento || '-'}
                         </TableCell>
                         <TableCell className="text-slate-600 whitespace-nowrap">
                           {editingId === row.id ? (
@@ -523,6 +633,20 @@ export default function FinancialMovements() {
                               {row.c_custo || 'Sem C. Custo'}
                             </span>
                           )}
+                        </TableCell>
+                        <TableCell
+                          className="whitespace-nowrap text-slate-600 max-w-[150px] truncate"
+                          title={row.descricao_c_custo}
+                        >
+                          {row.descricao_c_custo || '-'}
+                        </TableCell>
+                        <TableCell className="text-right text-slate-600 whitespace-nowrap">
+                          {row.valor !== null
+                            ? new Intl.NumberFormat('pt-BR', {
+                                style: 'currency',
+                                currency: 'BRL',
+                              }).format(row.valor)
+                            : '-'}
                         </TableCell>
                         <TableCell className="text-right font-semibold text-slate-900 whitespace-nowrap">
                           {editingId === row.id ? (
@@ -550,6 +674,9 @@ export default function FinancialMovements() {
                                 : 'R$ 0,00'}
                             </span>
                           )}
+                        </TableCell>
+                        <TableCell className="whitespace-nowrap text-slate-600">
+                          {row.compensado || '-'}
                         </TableCell>
                         <TableCell className="text-center">
                           {isMissing ? (
