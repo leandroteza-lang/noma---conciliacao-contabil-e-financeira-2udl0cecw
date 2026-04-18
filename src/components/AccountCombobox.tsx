@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { Check, ChevronsUpDown, X, ChevronRight, ChevronDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -12,6 +12,7 @@ import {
   CommandList,
 } from '@/components/ui/command'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { supabase } from '@/lib/supabase/client'
 
 export interface Account {
   id: string
@@ -20,6 +21,7 @@ export interface Account {
   account_name?: string | null
   hierarchyPath?: string
   hierarchyArray?: any[]
+  organization_id?: string | null
   [key: string]: any
 }
 
@@ -43,8 +45,60 @@ export function AccountCombobox({
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState('')
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
+  const [localAccounts, setLocalAccounts] = useState<Account[]>(accounts)
 
-  const selected = useMemo(() => accounts.find((a) => a.id === value), [accounts, value])
+  useEffect(() => {
+    let isMounted = true
+
+    if (accounts.length >= 1000) {
+      const orgId = accounts[0]?.organization_id
+      if (orgId) {
+        const fetchAll = async () => {
+          let all: Account[] = []
+          let page = 0
+          let hasMore = true
+          while (hasMore) {
+            const { data } = await supabase
+              .from('chart_of_accounts')
+              .select('*')
+              .eq('organization_id', orgId)
+              .is('deleted_at', null)
+              .range(page * 1000, (page + 1) * 1000 - 1)
+
+            if (data && data.length > 0) {
+              all = [...all, ...data]
+              page++
+              if (data.length < 1000) hasMore = false
+            } else {
+              hasMore = false
+            }
+          }
+          if (isMounted) {
+            setLocalAccounts(all)
+          }
+        }
+        fetchAll()
+        return () => {
+          isMounted = false
+        }
+      }
+    }
+
+    setLocalAccounts(accounts)
+    return () => {
+      isMounted = false
+    }
+  }, [accounts])
+
+  useEffect(() => {
+    const allIds = new Set<string>()
+    localAccounts.forEach((a) => {
+      allIds.add(a.id)
+    })
+    setExpanded(allIds)
+  }, [localAccounts])
+
+  const selected = useMemo(() => localAccounts.find((a) => a.id === value), [localAccounts, value])
 
   const { roots, childrenMap } = useMemo(() => {
     const cmap = new Map<string, Account[]>()
@@ -52,7 +106,7 @@ export function AccountCombobox({
 
     const getSortKey = (a: Account) => (a.classification || a.account_code || '').trim()
 
-    const sorted = [...accounts].sort((a, b) => getSortKey(a).localeCompare(getSortKey(b)))
+    const sorted = [...localAccounts].sort((a, b) => getSortKey(a).localeCompare(getSortKey(b)))
 
     sorted.forEach((node) => {
       let parentId: string | null = null
@@ -101,7 +155,7 @@ export function AccountCombobox({
     })
 
     return { roots: rts, childrenMap: cmap }
-  }, [accounts])
+  }, [localAccounts])
 
   const toggleExpand = (id: string) => {
     setExpanded((prev) => {
@@ -209,7 +263,7 @@ export function AccountCombobox({
 
   const renderFlat = () => {
     const searchLower = search.toLowerCase()
-    const matches = accounts.filter((account) => {
+    const matches = localAccounts.filter((account) => {
       const searchString =
         `${account.account_code || ''} ${account.classification || ''} ${account.account_name || ''}`.toLowerCase()
       return searchString.includes(searchLower)
@@ -336,7 +390,7 @@ export function AccountCombobox({
                     type="button"
                     onClick={() => {
                       const allIds = new Set<string>()
-                      accounts.forEach((a) => {
+                      localAccounts.forEach((a) => {
                         if (childrenMap.has(a.id)) allIds.add(a.id)
                       })
                       setExpanded(allIds)
