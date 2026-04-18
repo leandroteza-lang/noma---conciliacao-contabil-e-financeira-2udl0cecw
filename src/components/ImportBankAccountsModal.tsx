@@ -480,24 +480,38 @@ export function ImportBankAccountsModal({ isOpen, onClose, onSuccess }: any) {
                 <p className="font-semibold text-sm">Simulação concluída com sucesso!</p>
               </div>
 
-              <div className="grid grid-cols-3 gap-4 border rounded-lg p-4">
+              <div className="grid grid-cols-4 gap-4 border rounded-lg p-4">
                 <div className="text-center">
                   <span className="text-2xl font-bold text-green-600">
                     {simulationData.totalToInsert || 0}
                   </span>
-                  <span className="block text-xs uppercase">Novos</span>
+                  <span className="block text-xs uppercase text-muted-foreground mt-1">Novos</span>
                 </div>
                 <div className="text-center border-l">
                   <span className="text-2xl font-bold text-blue-600">
                     {simulationData.totalToUpdate || 0}
                   </span>
-                  <span className="block text-xs uppercase">Atualizados</span>
+                  <span className="block text-xs uppercase text-muted-foreground mt-1">
+                    Atualizados
+                  </span>
                 </div>
                 <div className="text-center border-l">
                   <span className="text-2xl font-bold text-amber-600">
                     {simulationData.totalToDelete || 0}
                   </span>
-                  <span className="block text-xs uppercase">Removidos</span>
+                  <span className="block text-xs uppercase text-muted-foreground mt-1">
+                    Removidos
+                  </span>
+                </div>
+                <div className="text-center border-l">
+                  <span className="text-2xl font-bold text-purple-600">
+                    {simulationData.totalWithoutBankDetails || 0}
+                  </span>
+                  <span className="block text-[10px] uppercase text-muted-foreground mt-1 leading-tight">
+                    Sem Dados
+                    <br />
+                    Bancários
+                  </span>
                 </div>
               </div>
 

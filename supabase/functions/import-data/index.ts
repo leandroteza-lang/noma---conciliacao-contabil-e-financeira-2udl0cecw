@@ -812,12 +812,10 @@ Deno.serve(async (req: Request) => {
         if (orgs) orgs.push({ id: newOrgId, name: cleanName })
 
         if (userProfileId) {
-          await supabaseAdmin
-            .from('cadastro_usuarios_companies')
-            .insert({
-              usuario_id: userProfileId,
-              organization_id: newOrgId,
-            })
+          await supabaseAdmin.from('cadastro_usuarios_companies').insert({
+            usuario_id: userProfileId,
+            organization_id: newOrgId,
+          })
         }
         return newOrgId
       }
@@ -1280,7 +1278,7 @@ Deno.serve(async (req: Request) => {
           .replace(/[^0-9A-Z]/gi, '')
           .toUpperCase()
           .replace(/^0+/, '') || '0'
-          
+
       const normalizeAgency = (str: any) =>
         String(str || '')
           .replace(/[^0-9A-Z]/gi, '')
@@ -1290,17 +1288,28 @@ Deno.serve(async (req: Request) => {
       existingAccounts.forEach((a) => {
         const acc = normalizeAcc(a.account_number)
         const ag = normalizeAgency(a.agency)
-        const key = `${ag}-${acc}`
-        existingAccMap.set(key, a)
+        const desc = String(a.description || '')
+          .trim()
+          .toUpperCase()
+
+        if (ag === '' && acc === '0') {
+          if (desc) {
+            existingAccMap.set(`DESC-${desc}`, a)
+          }
+        } else {
+          existingAccMap.set(`${ag}-${acc}`, a)
+        }
       })
 
       const toInsert: any[] = []
       const toUpdate: any[] = []
       const processedIds = new Set<string>()
+      let totalWithoutBankDetails = 0
 
       for (const item of flatRecords) {
         const { row, rowNum, getVal, empresa, orgId } = item
 
+        const descriptionStr = String(getVal(['DESCRICAO', 'NOME']) || '').trim()
         const rawAgency = String(getVal(['NUMAGENCIA', 'AGENCIA']) || '').trim()
         const rawAccountNumber = String(
           getVal(['NROCONTA', 'NUMERODACONTA', 'CONTA', 'NUMERO']) || '',
@@ -1310,18 +1319,27 @@ Deno.serve(async (req: Request) => {
         const normalizedAgency = normalizeAgency(rawAgency)
         const normalizedAcc = normalizeAcc(rawAccountNumber)
 
-        if (!normalizedAgency && !normalizedAcc && !allowIncomplete) {
-           addError(rowNum, 'Agência e Conta estão vazios.', row)
-           continue
+        if (!normalizedAgency && normalizedAcc === '0' && !descriptionStr && !allowIncomplete) {
+          addError(rowNum, 'Agência, Conta e Descrição estão vazios.', row)
+          continue
         }
 
-        const accountKey = `${normalizedAgency}-${normalizedAcc}`
+        let accountKey = ''
+        if (normalizedAgency === '' && normalizedAcc === '0') {
+          if (!descriptionStr) {
+            addError(rowNum, 'Para contas sem Agência e Número, a Descrição é obrigatória.', row)
+            continue
+          }
+          accountKey = `DESC-${descriptionStr.toUpperCase()}`
+        } else {
+          accountKey = `${normalizedAgency}-${normalizedAcc}`
+        }
 
         const payloadData = {
           organization_id: orgId || null,
           account_code: String(getVal(['CONTACONTABIL', 'CONTA_CONTABIL']) || ''),
           account_type: String(getVal(['CODCAIXA', 'TIPODECONTA', 'TIPO']) || ''),
-          description: String(getVal(['DESCRICAO', 'NOME']) || ''),
+          description: descriptionStr,
           bank_code: String(getVal(['NUMBANCO', 'BANCO', 'CODBANCO']) || ''),
           agency: rawAgency,
           account_number: rawAccountNumber,
@@ -1334,12 +1352,25 @@ Deno.serve(async (req: Request) => {
 
         if (existing) {
           if (existing.is_temp) {
-            addError(rowNum, `Conta bancária duplicada na própria planilha (Agência ${rawAgency} Conta ${rawAccountNumber})`, row)
+            if (accountKey.startsWith('DESC-')) {
+              addError(
+                rowNum,
+                `Conta bancária duplicada na própria planilha (Descrição: ${descriptionStr})`,
+                row,
+              )
+            } else {
+              addError(
+                rowNum,
+                `Conta bancária duplicada na própria planilha (Agência ${rawAgency} Conta ${rawAccountNumber})`,
+                row,
+              )
+            }
           } else {
             if (mode !== 'INSERT_ONLY') {
               toUpdate.push({ ...payloadData, id: existing.id, _rowNum: rowNum })
               processedIds.add(existing.id)
               existingAccMap.set(accountKey, { ...existing, is_temp: true })
+              if (normalizedAgency === '' && normalizedAcc === '0') totalWithoutBankDetails++
             } else {
               processedIds.add(existing.id)
             }
@@ -1348,6 +1379,7 @@ Deno.serve(async (req: Request) => {
           const newId = crypto.randomUUID()
           existingAccMap.set(accountKey, { id: newId, is_temp: true })
           toInsert.push({ ...payloadData, id: newId, _rowNum: rowNum })
+          if (normalizedAgency === '' && normalizedAcc === '0') totalWithoutBankDetails++
         }
       }
 
@@ -1389,7 +1421,11 @@ Deno.serve(async (req: Request) => {
           if (insErr) {
             console.error(`[BANK_ACCOUNTS] Insert error:`, insErr)
             chunk.forEach((c: any) => {
-              addError(c._rowNum, `Erro na inserção: ${insErr.message} - Conta: ${c.account_number}`, c)
+              addError(
+                c._rowNum,
+                `Erro na inserção: ${insErr.message} - Conta: ${c.account_number}`,
+                c,
+              )
             })
           }
         }
@@ -1404,7 +1440,11 @@ Deno.serve(async (req: Request) => {
           if (updErr) {
             console.error(`[BANK_ACCOUNTS] Upsert error:`, updErr)
             chunk.forEach((c: any) => {
-              addError(c._rowNum, `Erro na atualização: ${updErr.message} - Conta: ${c.account_number}`, c)
+              addError(
+                c._rowNum,
+                `Erro na atualização: ${updErr.message} - Conta: ${c.account_number}`,
+                c,
+              )
             })
           }
         }
@@ -1419,6 +1459,7 @@ Deno.serve(async (req: Request) => {
             totalToInsert,
             totalToUpdate,
             totalToDelete,
+            totalWithoutBankDetails,
             details: simulationDetails,
             errors,
           }),
@@ -2741,7 +2782,11 @@ Deno.serve(async (req: Request) => {
           } else if (orgs && orgs.length > 0) {
             orgId = orgs[0].id
           } else {
-            addError(rowNum, 'Nenhuma empresa associada ao usuário para realizar a importação.', row)
+            addError(
+              rowNum,
+              'Nenhuma empresa associada ao usuário para realizar a importação.',
+              row,
+            )
             continue
           }
         }
