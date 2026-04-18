@@ -1,15 +1,7 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase/client'
 import { useAuth } from '@/hooks/use-auth'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   Table,
   TableBody,
@@ -18,524 +10,264 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area'
-import { Checkbox } from '@/components/ui/checkbox'
-import { Loader2, Search, Upload, Trash2, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react'
-import { useToast } from '@/hooks/use-toast'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Loader2, Search, ArrowLeft, ArrowRight, BarChart3, UploadCloud } from 'lucide-react'
 import { ImportErpFinancialModal } from '@/components/ImportErpFinancialModal'
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog'
-import { cn } from '@/lib/utils'
-
-const COLUMNS = [
-  { key: 'compensado', label: 'Compensado' },
-  { key: 'tipo_operacao', label: 'Tipo Operação' },
-  { key: 'data_emissao', label: 'Data Emissão', type: 'date' },
-  { key: 'dt_compens', label: 'Dt Compens.', type: 'date' },
-  { key: 'conta_caixa', label: 'Conta/Caixa' },
-  { key: 'nome_caixa', label: 'Nome Caixa' },
-  { key: 'conta_caixa_destino', label: 'Conta/Caixa Destino' },
-  { key: 'forma_pagto', label: 'Forma Pagto' },
-  { key: 'c_custo', label: 'C.Custo' },
-  { key: 'descricao_c_custo', label: 'Descrição C.Custo' },
-  { key: 'valor', label: 'Valor', type: 'currency' },
-  { key: 'valor_liquido', label: 'Valor Líquido', type: 'currency' },
-  { key: 'n_documento', label: 'Nº Documento' },
-  { key: 'nome_cli_fornec', label: 'Nome Cli/Fornec' },
-  { key: 'historico', label: 'Histórico' },
-  { key: 'fp', label: 'FP' },
-  { key: 'n_cheque', label: 'Nº Cheque' },
-  { key: 'data_vencto', label: 'Data Vencto', type: 'date' },
-  { key: 'nominal_a', label: 'Nominal a' },
-  { key: 'emitente_cheque', label: 'Emitente Cheque' },
-  { key: 'cnpj_cpf', label: 'CNPJ/CPF' },
-  { key: 'n_extrato', label: 'Nº Extrato' },
-  { key: 'filial', label: 'Filial' },
-  { key: 'data_canc', label: 'Data Canc.', type: 'date' },
-  { key: 'data_estorno', label: 'Data Estorno', type: 'date' },
-  { key: 'banco', label: 'Banco' },
-  { key: 'c_corrente', label: 'C.Corrente' },
-  { key: 'cod_cli_for', label: 'Cód.Cli/For' },
-  { key: 'departamento', label: 'Departamento' },
-]
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart'
+import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, CartesianGrid } from 'recharts'
 
 export default function FinancialMovements() {
   const { user } = useAuth()
-  const { toast } = useToast()
-
   const [data, setData] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
-  const [orgs, setOrgs] = useState<{ id: string; name: string }[]>([])
-  const [selectedOrg, setSelectedOrg] = useState<string>('all')
+  const [page, setPage] = useState(0)
   const [search, setSearch] = useState('')
-
-  const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(
-    null,
-  )
-  const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set())
-
+  const [totalCount, setTotalCount] = useState(0)
   const [isImportOpen, setIsImportOpen] = useState(false)
-  const [isDeleteAllOpen, setIsDeleteAllOpen] = useState(false)
-  const [activeImport, setActiveImport] = useState<any>(null)
-  const [isDeleteSelectedOpen, setIsDeleteSelectedOpen] = useState(false)
-  const [isDeleting, setIsDeleting] = useState(false)
+  const [chartData, setChartData] = useState<any[]>([])
+  const pageSize = 15
 
   const fetchData = async () => {
     if (!user) return
     setLoading(true)
-
-    // Fetch Orgs
-    const { data: orgsData } = await supabase
-      .from('organizations')
-      .select('id, name')
+    let query = supabase
+      .from('erp_financial_movements')
+      .select('*', { count: 'exact' })
       .is('deleted_at', null)
+      .order('data_emissao', { ascending: false })
 
-    if (orgsData) {
-      setOrgs(orgsData)
+    if (search) {
+      query = query.or(
+        `historico.ilike.%${search}%,nome_cli_fornec.ilike.%${search}%,c_custo.ilike.%${search}%`,
+      )
     }
 
-    // Fetch Movements
-    let query = supabase.from('erp_financial_movements').select('*').is('deleted_at', null)
-
-    if (selectedOrg && selectedOrg !== 'all') {
-      query = query.eq('organization_id', selectedOrg)
+    const {
+      data: result,
+      count,
+      error,
+    } = await query.range(page * pageSize, (page + 1) * pageSize - 1)
+    if (!error && result) {
+      setData(result)
+      setTotalCount(count || 0)
     }
-
-    // Limit to 5000 to prevent browser crash
-    query = query.limit(5000).order('created_at', { ascending: false })
-
-    const { data: movementsData, error } = await query
-
-    if (error) {
-      toast({ title: 'Erro ao buscar dados', description: error.message, variant: 'destructive' })
-    } else {
-      setData(movementsData || [])
-    }
-
-    setSelectedRows(new Set())
     setLoading(false)
+  }
+
+  const fetchChart = async () => {
+    if (!user) return
+    const { data: all } = await supabase
+      .from('erp_financial_movements')
+      .select('data_emissao, valor')
+      .is('deleted_at', null)
+      .order('data_emissao', { ascending: true })
+      .limit(1000)
+
+    if (all) {
+      const agg = all.reduce((acc: any, row) => {
+        const date = row.data_emissao
+          ? row.data_emissao.split('-').slice(0, 2).join('/')
+          : 'Sem data'
+        if (!acc[date]) acc[date] = 0
+        acc[date] += Number(row.valor || 0)
+        return acc
+      }, {})
+      const cData = Object.keys(agg).map((k) => ({ date: k, value: agg[k] }))
+      setChartData(cData.slice(-12))
+    }
   }
 
   useEffect(() => {
     fetchData()
-  }, [user, selectedOrg])
-
-  useEffect(() => {
-    const interval = setInterval(async () => {
-      if (!user) return
-      const { data } = await supabase
-        .from('import_history')
-        .select('*')
-        .eq('import_type', 'ERP_FINANCIAL_MOVEMENTS')
-        .in('status', ['Processing', 'Error', 'Completed'])
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle()
-
-      if (data && data.status === 'Processing') {
-        setActiveImport(data)
-      } else {
-        if (activeImport && data) {
-          if (data.status === 'Completed') {
-            toast({
-              title: 'Importação Concluída',
-              description: `Processados ${data.processed_records} registros com sucesso.`,
-            })
-          } else if (data.status === 'Error') {
-            toast({
-              title: 'Erro na Importação',
-              description:
-                'O processamento foi interrompido com erros. Verifique os logs se houver falhas.',
-              variant: 'destructive',
-            })
-          }
-          setActiveImport(null)
-          fetchData()
-        } else if (activeImport && !data) {
-          setActiveImport(null)
-          fetchData()
-        }
-      }
-    }, 3000)
-    return () => clearInterval(interval)
-  }, [user, activeImport])
-
-  const handleSort = (key: string) => {
-    let direction: 'asc' | 'desc' = 'asc'
-    if (sortConfig && sortConfig.key === key && sortConfig.direction === 'asc') {
-      direction = 'desc'
-    }
-    setSortConfig({ key, direction })
-  }
-
-  const formatValue = (value: any, type?: string) => {
-    if (value === null || value === undefined) return ''
-    if (type === 'currency') {
-      return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(
-        Number(value),
-      )
-    }
-    if (type === 'date') {
-      const [year, month, day] = value.split('T')[0].split('-')
-      if (year && month && day) return `${day}/${month}/${year}`
-      return value
-    }
-    return String(value)
-  }
-
-  const filteredAndSortedData = useMemo(() => {
-    let result = [...data]
-
-    if (search) {
-      const lowerSearch = search.toLowerCase()
-      result = result.filter(
-        (row) =>
-          (row.nome_cli_fornec && row.nome_cli_fornec.toLowerCase().includes(lowerSearch)) ||
-          (row.historico && row.historico.toLowerCase().includes(lowerSearch)) ||
-          (row.n_documento && row.n_documento.toLowerCase().includes(lowerSearch)),
-      )
-    }
-
-    if (sortConfig) {
-      result.sort((a, b) => {
-        const valA = a[sortConfig.key]
-        const valB = b[sortConfig.key]
-
-        if (valA === null || valA === undefined) return sortConfig.direction === 'asc' ? -1 : 1
-        if (valB === null || valB === undefined) return sortConfig.direction === 'asc' ? 1 : -1
-
-        if (typeof valA === 'number' && typeof valB === 'number') {
-          return sortConfig.direction === 'asc' ? valA - valB : valB - valA
-        }
-
-        const strA = String(valA).toLowerCase()
-        const strB = String(valB).toLowerCase()
-
-        if (strA < strB) return sortConfig.direction === 'asc' ? -1 : 1
-        if (strA > strB) return sortConfig.direction === 'asc' ? 1 : -1
-        return 0
-      })
-    }
-
-    return result
-  }, [data, search, sortConfig])
-
-  const handleSelectAll = (checked: boolean) => {
-    if (checked) {
-      setSelectedRows(new Set(filteredAndSortedData.map((r) => r.id)))
-    } else {
-      setSelectedRows(new Set())
-    }
-  }
-
-  const handleSelectRow = (id: string, checked: boolean) => {
-    const newSelected = new Set(selectedRows)
-    if (checked) {
-      newSelected.add(id)
-    } else {
-      newSelected.delete(id)
-    }
-    setSelectedRows(newSelected)
-  }
-
-  const handleDeleteAll = async () => {
-    setIsDeleting(true)
-    try {
-      let query = supabase
-        .from('erp_financial_movements')
-        .update({ deleted_at: new Date().toISOString() })
-        .is('deleted_at', null)
-      if (selectedOrg !== 'all') {
-        query = query.eq('organization_id', selectedOrg)
-      } else {
-        const orgIds = orgs.map((o) => o.id)
-        query = query.in('organization_id', orgIds)
-      }
-
-      const { error } = await query
-      if (error) throw error
-
-      toast({ title: 'Sucesso', description: 'Todos os registros foram excluídos.' })
-      fetchData()
-    } catch (err: any) {
-      toast({ title: 'Erro ao excluir', description: err.message, variant: 'destructive' })
-    } finally {
-      setIsDeleting(false)
-      setIsDeleteAllOpen(false)
-    }
-  }
-
-  const handleDeleteSelected = async () => {
-    if (selectedRows.size === 0) return
-    setIsDeleting(true)
-    try {
-      const ids = Array.from(selectedRows)
-      for (let i = 0; i < ids.length; i += 100) {
-        const chunk = ids.slice(i, i + 100)
-        const { error } = await supabase
-          .from('erp_financial_movements')
-          .update({ deleted_at: new Date().toISOString() })
-          .in('id', chunk)
-        if (error) throw error
-      }
-
-      toast({ title: 'Sucesso', description: `${selectedRows.size} registros foram excluídos.` })
-      fetchData()
-    } catch (err: any) {
-      toast({ title: 'Erro ao excluir', description: err.message, variant: 'destructive' })
-    } finally {
-      setIsDeleting(false)
-      setIsDeleteSelectedOpen(false)
-    }
-  }
-
-  const allSelected =
-    filteredAndSortedData.length > 0 && selectedRows.size === filteredAndSortedData.length
-  const someSelected = selectedRows.size > 0 && selectedRows.size < filteredAndSortedData.length
+    fetchChart()
+  }, [user, page, search])
 
   return (
-    <div className="flex flex-col h-[calc(100vh-4rem)] p-6 space-y-4">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+    <div className="p-6 space-y-6 max-w-[1600px] mx-auto animate-fade-in-up">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
+          <h1 className="text-3xl font-bold tracking-tight text-slate-900">
             Movimento Financeiro TGA
           </h1>
-          <p className="text-slate-500 text-sm">Gerencie os dados financeiros importados do ERP.</p>
+          <p className="text-slate-500 mt-1">
+            Gestão, visualização e conciliação de lançamentos do ERP
+          </p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          {selectedRows.size > 0 && (
-            <Button variant="destructive" onClick={() => setIsDeleteSelectedOpen(true)}>
-              <Trash2 className="h-4 w-4 mr-2" /> Excluir ({selectedRows.size})
-            </Button>
-          )}
-          <Button
-            variant="outline"
-            className="text-red-600 hover:text-red-700 hover:bg-red-50"
-            onClick={() => setIsDeleteAllOpen(true)}
-          >
-            <Trash2 className="h-4 w-4 mr-2" /> Excluir Tudo
-          </Button>
-          <Button
-            className="bg-red-600 hover:bg-red-700 text-white"
-            onClick={() => setIsImportOpen(true)}
-          >
-            <Upload className="h-4 w-4 mr-2" /> Importar Planilha
-          </Button>
-        </div>
+        <Button onClick={() => setIsImportOpen(true)} className="shadow-sm">
+          <UploadCloud className="mr-2 h-4 w-4" />
+          Importar Planilha
+        </Button>
       </div>
 
-      {activeImport && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 shadow-sm animate-fade-in">
-          <div className="flex justify-between items-center mb-2">
-            <h3 className="font-semibold text-blue-900 flex items-center gap-2">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Importação em Andamento
-            </h3>
-            <span className="text-sm font-medium text-blue-700">
-              {activeImport.processed_records} / {activeImport.total_records} registros
-            </span>
-          </div>
-          <div className="w-full bg-blue-100 rounded-full h-2.5 overflow-hidden">
-            <div
-              className="bg-blue-600 h-2.5 rounded-full transition-all duration-500 ease-out"
-              style={{
-                width: `${Math.min(100, (activeImport.processed_records / Math.max(1, activeImport.total_records)) * 100)}%`,
-              }}
-            ></div>
-          </div>
-        </div>
+      {chartData.length > 0 && (
+        <Card className="shadow-sm border-slate-200">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2 text-slate-700">
+              <BarChart3 className="h-4 w-4 text-primary" />
+              Volume de Movimentação Financeira (R$)
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="h-[240px] pt-4">
+            <ChartContainer
+              config={{ value: { label: 'Valor (R$)', color: 'hsl(var(--primary))' } }}
+            >
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={chartData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                  <XAxis
+                    dataKey="date"
+                    fontSize={12}
+                    tickLine={false}
+                    axisLine={false}
+                    tickMargin={10}
+                  />
+                  <YAxis
+                    fontSize={12}
+                    tickLine={false}
+                    axisLine={false}
+                    tickFormatter={(v) => `R$ ${v}`}
+                  />
+                  <ChartTooltip content={<ChartTooltipContent />} />
+                  <Bar
+                    dataKey="value"
+                    fill="var(--color-value)"
+                    radius={[4, 4, 0, 0]}
+                    maxBarSize={50}
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            </ChartContainer>
+          </CardContent>
+        </Card>
       )}
 
-      <div className="flex flex-col sm:flex-row gap-4 items-center bg-white p-3 rounded-lg border shadow-sm">
-        <div className="w-full sm:w-64">
-          <Select value={selectedOrg} onValueChange={setSelectedOrg}>
-            <SelectTrigger>
-              <SelectValue placeholder="Todas as Empresas" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todas as Empresas</SelectItem>
-              {orgs.map((org) => (
-                <SelectItem key={org.id} value={org.id}>
-                  {org.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="relative w-full sm:w-96">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" />
-          <Input
-            placeholder="Buscar por cliente, documento ou histórico..."
-            className="pl-9"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-        </div>
-        <div className="ml-auto text-sm text-slate-500 font-medium">
-          {filteredAndSortedData.length} registros
-        </div>
-      </div>
-
-      <div className="flex-1 bg-white border rounded-lg shadow-sm overflow-hidden flex flex-col">
-        {loading ? (
-          <div className="flex-1 flex items-center justify-center">
-            <Loader2 className="h-8 w-8 animate-spin text-red-600" />
-          </div>
-        ) : filteredAndSortedData.length === 0 ? (
-          <div className="flex-1 flex flex-col items-center justify-center text-slate-500 p-8 text-center">
-            <div className="h-16 w-16 bg-slate-100 rounded-full flex items-center justify-center mb-4">
-              <Search className="h-8 w-8 text-slate-400" />
+      <Card className="shadow-sm border-slate-200">
+        <CardHeader className="pb-3 border-b bg-slate-50/50">
+          <div className="flex items-center gap-4">
+            <div className="relative flex-1 max-w-md">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+              <Input
+                placeholder="Buscar por histórico, cliente ou centro de custo..."
+                className="pl-9 bg-white"
+                value={search}
+                onChange={(e) => {
+                  setSearch(e.target.value)
+                  setPage(0)
+                }}
+              />
             </div>
-            <p className="text-lg font-medium text-slate-900 mb-1">Nenhum registro encontrado</p>
-            <p>Tente ajustar os filtros ou importe uma nova planilha.</p>
+            <div className="text-sm font-medium text-slate-500 ml-auto bg-white px-3 py-1 rounded-md border">
+              {totalCount} registros
+            </div>
           </div>
-        ) : (
-          <ScrollArea className="flex-1 relative">
-            <Table className="relative w-max min-w-full border-collapse">
-              <TableHeader className="sticky top-0 bg-slate-100 z-20 shadow-sm">
-                <TableRow className="hover:bg-transparent">
-                  <TableHead className="w-10 px-2 py-1 sticky left-0 bg-slate-100 z-30 shadow-[1px_0_0_#e2e8f0]">
-                    <div className="flex justify-center">
-                      <Checkbox
-                        checked={allSelected ? true : someSelected ? 'indeterminate' : false}
-                        onCheckedChange={handleSelectAll}
-                      />
-                    </div>
+        </CardHeader>
+        <CardContent className="p-0">
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-slate-50 hover:bg-slate-50">
+                  <TableHead className="font-semibold text-slate-600">Emissão</TableHead>
+                  <TableHead className="font-semibold text-slate-600">Documento</TableHead>
+                  <TableHead className="font-semibold text-slate-600">Cliente/Fornecedor</TableHead>
+                  <TableHead className="font-semibold text-slate-600">Histórico</TableHead>
+                  <TableHead className="font-semibold text-slate-600">C. Custo</TableHead>
+                  <TableHead className="text-right font-semibold text-slate-600">
+                    Valor Líquido
                   </TableHead>
-                  {COLUMNS.map((col) => (
-                    <TableHead
-                      key={col.key}
-                      className="whitespace-nowrap px-2 py-1 h-8 text-xs font-semibold text-slate-700 border-x border-slate-200 cursor-pointer select-none hover:bg-slate-200 transition-colors"
-                      onClick={() => handleSort(col.key)}
-                    >
-                      <div className="flex items-center gap-1">
-                        {col.label}
-                        {sortConfig?.key === col.key ? (
-                          sortConfig.direction === 'asc' ? (
-                            <ArrowUp className="h-3 w-3" />
-                          ) : (
-                            <ArrowDown className="h-3 w-3" />
-                          )
-                        ) : (
-                          <ArrowUpDown className="h-3 w-3 opacity-20" />
-                        )}
-                      </div>
-                    </TableHead>
-                  ))}
+                  <TableHead className="text-center font-semibold text-slate-600">Status</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredAndSortedData.map((row, idx) => (
-                  <TableRow
-                    key={row.id}
-                    className={cn(
-                      'hover:bg-slate-50 transition-colors group cursor-default',
-                      idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/50',
-                      selectedRows.has(row.id) && 'bg-blue-50 hover:bg-blue-50',
-                    )}
-                  >
-                    <TableCell
-                      className="px-2 py-1 border border-slate-100 sticky left-0 z-10 shadow-[1px_0_0_#f1f5f9] group-hover:shadow-[1px_0_0_#e2e8f0] transition-colors"
-                      style={{ backgroundColor: 'inherit' }}
-                    >
-                      <div className="flex justify-center">
-                        <Checkbox
-                          checked={selectedRows.has(row.id)}
-                          onCheckedChange={(c) => handleSelectRow(row.id, !!c)}
-                        />
-                      </div>
+                {loading ? (
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center h-48">
+                      <Loader2 className="h-6 w-6 animate-spin mx-auto text-primary" />
                     </TableCell>
-                    {COLUMNS.map((col) => (
-                      <TableCell
-                        key={col.key}
-                        className="px-2 py-1 text-xs border border-slate-100 whitespace-nowrap truncate max-w-[200px]"
-                        title={String(row[col.key] || '')}
-                      >
-                        {formatValue(row[col.key], col.type)}
-                      </TableCell>
-                    ))}
                   </TableRow>
-                ))}
+                ) : data.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center h-48 text-slate-500">
+                      Nenhum movimento financeiro encontrado.
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  data.map((row) => (
+                    <TableRow key={row.id} className="hover:bg-slate-50/80 transition-colors">
+                      <TableCell className="whitespace-nowrap text-slate-600">
+                        {row.data_emissao
+                          ? new Date(row.data_emissao).toLocaleDateString('pt-BR')
+                          : '-'}
+                      </TableCell>
+                      <TableCell className="font-medium text-slate-700">
+                        {row.n_documento || '-'}
+                      </TableCell>
+                      <TableCell
+                        className="max-w-[200px] truncate text-slate-600"
+                        title={row.nome_cli_fornec}
+                      >
+                        {row.nome_cli_fornec || '-'}
+                      </TableCell>
+                      <TableCell
+                        className="max-w-[250px] truncate text-slate-600"
+                        title={row.historico}
+                      >
+                        {row.historico || '-'}
+                      </TableCell>
+                      <TableCell className="text-slate-600">{row.c_custo || '-'}</TableCell>
+                      <TableCell className="text-right font-semibold text-slate-900">
+                        {new Intl.NumberFormat('pt-BR', {
+                          style: 'currency',
+                          currency: 'BRL',
+                        }).format(row.valor_liquido || 0)}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 border border-amber-200">
+                          {row.status || 'Pendente'}
+                        </span>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
               </TableBody>
             </Table>
-            <ScrollBar orientation="horizontal" />
-          </ScrollArea>
-        )}
-      </div>
+          </div>
+
+          <div className="flex items-center justify-between p-4 border-t bg-slate-50/50">
+            <Button
+              variant="outline"
+              size="sm"
+              className="bg-white"
+              onClick={() => setPage((p) => Math.max(0, p - 1))}
+              disabled={page === 0 || loading}
+            >
+              <ArrowLeft className="h-4 w-4 mr-2" /> Anterior
+            </Button>
+            <span className="text-sm font-medium text-slate-600">
+              Página {page + 1} de {Math.ceil(totalCount / pageSize) || 1}
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              className="bg-white"
+              onClick={() => setPage((p) => p + 1)}
+              disabled={(page + 1) * pageSize >= totalCount || loading}
+            >
+              Próxima <ArrowRight className="h-4 w-4 ml-2" />
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
 
       <ImportErpFinancialModal
         open={isImportOpen}
         onOpenChange={setIsImportOpen}
-        onImportSuccess={fetchData}
+        onImportSuccess={() => {
+          setPage(0)
+          fetchData()
+          fetchChart()
+        }}
       />
-
-      <AlertDialog open={isDeleteAllOpen} onOpenChange={setIsDeleteAllOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Excluir todos os registros?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Esta ação excluirá todos os registros na empresa atual. Esta ação não pode ser
-              desfeita.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={(e) => {
-                e.preventDefault()
-                handleDeleteAll()
-              }}
-              className="bg-red-600 hover:bg-red-700 text-white"
-              disabled={isDeleting}
-            >
-              {isDeleting ? (
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-              ) : (
-                <Trash2 className="h-4 w-4 mr-2" />
-              )}
-              Excluir Tudo
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      <AlertDialog open={isDeleteSelectedOpen} onOpenChange={setIsDeleteSelectedOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Excluir registros selecionados?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Você está prestes a excluir {selectedRows.size} registro(s). Esta ação não pode ser
-              desfeita.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={(e) => {
-                e.preventDefault()
-                handleDeleteSelected()
-              }}
-              className="bg-red-600 hover:bg-red-700 text-white"
-              disabled={isDeleting}
-            >
-              {isDeleting ? (
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-              ) : (
-                <Trash2 className="h-4 w-4 mr-2" />
-              )}
-              Excluir Selecionados
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   )
 }

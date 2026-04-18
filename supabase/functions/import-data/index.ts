@@ -37,7 +37,10 @@ Deno.serve(async (req: Request) => {
     const payload = await req.json()
     requestPayload = payload
 
-    if ((payload.action === 'PROCESS_BACKGROUND' || payload.action === 'PROCESS_CHUNK') && payload.userId) {
+    if (
+      (payload.action === 'PROCESS_BACKGROUND' || payload.action === 'PROCESS_CHUNK') &&
+      payload.userId
+    ) {
       user = { id: payload.userId }
     } else {
       const userResponse = await fetch(`${supabaseUrl}/auth/v1/user`, {
@@ -57,7 +60,7 @@ Deno.serve(async (req: Request) => {
     }
 
     const supabase =
-      (payload.action === 'PROCESS_BACKGROUND' || payload.action === 'PROCESS_CHUNK')
+      payload.action === 'PROCESS_BACKGROUND' || payload.action === 'PROCESS_CHUNK'
         ? supabaseAdmin
         : createClient(supabaseUrl, supabaseKey, {
             global: { headers: { Authorization: authHeader } },
@@ -303,7 +306,7 @@ Deno.serve(async (req: Request) => {
               }
             }
 
-            await fetch(`${supabaseUrl}/functions/v1/import-data`, {
+            const response = await fetch(`${supabaseUrl}/functions/v1/import-data`, {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
@@ -327,6 +330,10 @@ Deno.serve(async (req: Request) => {
                 errors: [],
               }),
             })
+            if (!response.ok) {
+              const errText = await response.text()
+              throw new Error(`Erro ao iniciar chunk 0: ${response.status} - ${errText}`)
+            }
           } catch (e: any) {
             console.error('Fast background process error:', e)
             await supabaseAdmin
@@ -2642,10 +2649,18 @@ Deno.serve(async (req: Request) => {
       )
       if (rpcErr) {
         addError(0, `Erro RPC: ${rpcErr.message}`, {})
-      } else if (res && res.success === false) {
-        addError(0, `Erro RPC: ${res.error}`, {})
-      } else {
-        inserted += records.length
+      } else if (res) {
+        if (res.success === false) {
+          addError(0, `Erro RPC: ${res.error}`, {})
+        } else {
+          inserted += res.inserted || 0
+          rejected += res.rejected || 0
+          if (res.errors && Array.isArray(res.errors)) {
+            res.errors.forEach((err: any) => {
+              addError(err.row || 0, err.error, {})
+            })
+          }
+        }
       }
     }
 
@@ -2672,22 +2687,43 @@ Deno.serve(async (req: Request) => {
         EdgeRuntime.waitUntil(
           (async () => {
             try {
-              await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/import-data`, {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  Authorization: `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+              const resNext = await fetch(
+                `${Deno.env.get('SUPABASE_URL')}/functions/v1/import-data`,
+                {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+                  },
+                  body: JSON.stringify({
+                    ...payload,
+                    chunkIndex: nextChunk,
+                    inserted: newInserted,
+                    rejected: newRejected,
+                    errors: newErrors,
+                  }),
                 },
-                body: JSON.stringify({
-                  ...payload,
-                  chunkIndex: nextChunk,
-                  inserted: newInserted,
-                  rejected: newRejected,
-                  errors: newErrors,
-                }),
-              })
-            } catch (e) {
+              )
+              if (!resNext.ok) {
+                const errText = await resNext.text()
+                throw new Error(`HTTP ${resNext.status}: ${errText}`)
+              }
+            } catch (e: any) {
               console.error('Error triggering next chunk:', e)
+              const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+              if (supabaseServiceKey) {
+                const adminClient = createClient(Deno.env.get('SUPABASE_URL')!, supabaseServiceKey)
+                await adminClient
+                  .from('import_history')
+                  .update({
+                    status: 'Error',
+                    errors_list: [
+                      ...newErrors,
+                      { error: `Falha ao iniciar próximo chunk: ${e.message}` },
+                    ].slice(0, 100),
+                  })
+                  .eq('id', payload.importId)
+              }
             }
           })(),
         )
@@ -2739,22 +2775,43 @@ Deno.serve(async (req: Request) => {
         EdgeRuntime.waitUntil(
           (async () => {
             try {
-              await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/import-data`, {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  Authorization: `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+              const resNextBg = await fetch(
+                `${Deno.env.get('SUPABASE_URL')}/functions/v1/import-data`,
+                {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+                  },
+                  body: JSON.stringify({
+                    ...payload,
+                    offset: nextOffset,
+                    inserted: newInserted,
+                    rejected: newRejected,
+                    errors: newErrors,
+                  }),
                 },
-                body: JSON.stringify({
-                  ...payload,
-                  offset: nextOffset,
-                  inserted: newInserted,
-                  rejected: newRejected,
-                  errors: newErrors,
-                }),
-              })
-            } catch (e) {
+              )
+              if (!resNextBg.ok) {
+                const errText = await resNextBg.text()
+                throw new Error(`HTTP ${resNextBg.status}: ${errText}`)
+              }
+            } catch (e: any) {
               console.error('Error triggering next background chunk:', e)
+              const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+              if (supabaseServiceKey) {
+                const adminClient = createClient(Deno.env.get('SUPABASE_URL')!, supabaseServiceKey)
+                await adminClient
+                  .from('import_history')
+                  .update({
+                    status: 'Error',
+                    errors_list: [
+                      ...newErrors,
+                      { error: `Falha ao iniciar próximo chunk bg: ${e.message}` },
+                    ].slice(0, 100),
+                  })
+                  .eq('id', payload.importId)
+              }
             }
           })(),
         )
@@ -2784,7 +2841,11 @@ Deno.serve(async (req: Request) => {
   } catch (err: any) {
     if (req.method === 'POST') {
       try {
-        if ((requestPayload.action === 'PROCESS_BACKGROUND' || requestPayload.action === 'PROCESS_CHUNK') && requestPayload.importId) {
+        if (
+          (requestPayload.action === 'PROCESS_BACKGROUND' ||
+            requestPayload.action === 'PROCESS_CHUNK') &&
+          requestPayload.importId
+        ) {
           const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
           if (supabaseServiceKey) {
             const supabaseAdmin = createClient(Deno.env.get('SUPABASE_URL')!, supabaseServiceKey)
