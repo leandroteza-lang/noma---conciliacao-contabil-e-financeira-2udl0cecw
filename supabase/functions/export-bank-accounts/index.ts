@@ -39,7 +39,7 @@ Deno.serve(async (req: Request) => {
     }
 
     if (format === 'csv') {
-      let csvContent = 'Empresa;Conta Contábil;Descrição;Banco;Agência;Número\n'
+      let csvContent = 'Empresa;Conta Contábil;Descrição;Banco;Agência;Conta\n'
       data.forEach((r: any) => {
         csvContent += `"${r['Empresa'] || ''}";"${r['Conta Contábil'] || ''}";"${r['Descrição'] || ''}";"${r['Banco'] || ''}";"${r['Agência'] || ''}";"${r['Número'] || ''}"\n`
       })
@@ -56,7 +56,8 @@ Deno.serve(async (req: Request) => {
         txtContent += `Conta Contábil: ${r['Conta Contábil'] || '-'}\n`
         txtContent += `Descrição: ${r['Descrição'] || '-'}\n`
         txtContent += `Banco: ${r['Banco'] || '-'}\n`
-        txtContent += `Agência / Conta: ${r['Agência'] || '-'} / ${r['Número'] || '-'}\n`
+        txtContent += `Agência: ${r['Agência'] || '-'}\n`
+        txtContent += `Conta: ${r['Número'] || '-'}\n`
         txtContent += '-----------------------------------------\n'
       })
       return new Response(JSON.stringify({ txt: txtContent }), {
@@ -74,12 +75,13 @@ Deno.serve(async (req: Request) => {
         r['Conta Contábil'] || '-',
         r['Descrição'] || '-',
         r['Banco'] || '-',
-        `${r['Agência'] || '-'} / ${r['Número'] || '-'}`,
+        r['Agência'] || '-',
+        r['Número'] || '-',
       ])
 
       autoTable(doc, {
         startY: 25,
-        head: [['Empresa', 'Conta Contábil', 'Descrição', 'Banco', 'Agência / Conta']],
+        head: [['Empresa', 'Conta Contábil', 'Descrição', 'Banco', 'Agência', 'Conta']],
         body: body,
         theme: 'grid',
         headStyles: { fillColor: [220, 38, 38] },

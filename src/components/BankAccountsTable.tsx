@@ -17,9 +17,14 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from '@/components/ui/pagination'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Label } from '@/components/ui/label'
 
 export function BankAccountsTable({
-  accounts,
+  accounts = [],
+  selectedAccounts = [],
+  onToggleSelect = () => {},
+  onToggleSelectAll = () => {},
   loading,
   onEdit,
   onDelete,
@@ -46,24 +51,48 @@ export function BankAccountsTable({
     )
   }
 
+  const selectableAccounts = accounts.filter((a: any) => !a.pending_deletion)
+  const isAllSelected =
+    selectableAccounts.length > 0 && selectedAccounts.length === selectableAccounts.length
+
   return (
     <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
       {isMobile ? (
         <div className="space-y-3">
+          {selectableAccounts.length > 0 && (
+            <div className="flex items-center gap-2 px-1 pb-2">
+              <Checkbox
+                checked={isAllSelected}
+                onCheckedChange={onToggleSelectAll}
+                id="select-all-mobile"
+              />
+              <Label htmlFor="select-all-mobile" className="text-sm font-medium cursor-pointer">
+                Selecionar todos
+              </Label>
+            </div>
+          )}
           {accounts.map((acc: any) => (
             <Card
               key={acc.id}
-              className={`overflow-hidden transition-all ${acc.pending_deletion ? 'opacity-50' : ''}`}
+              className={`overflow-hidden transition-all ${acc.pending_deletion ? 'opacity-50' : ''} ${selectedAccounts.includes(acc.id) ? 'border-primary ring-1 ring-primary/20' : ''}`}
             >
               <CardContent className="p-4 space-y-3">
                 <div className="flex justify-between items-start">
-                  <div>
-                    <h3 className="font-semibold text-base">
-                      {acc.description || 'Sem descrição'}
-                    </h3>
-                    <div className="flex items-center text-sm text-muted-foreground mt-1">
-                      <Building2 className="w-3 h-3 mr-1" />{' '}
-                      {acc.organizations?.name || acc.company_name}
+                  <div className="flex items-start gap-3">
+                    <Checkbox
+                      checked={selectedAccounts.includes(acc.id)}
+                      onCheckedChange={() => onToggleSelect(acc.id)}
+                      disabled={acc.pending_deletion}
+                      className="mt-1"
+                    />
+                    <div>
+                      <h3 className="font-semibold text-base">
+                        {acc.description || 'Sem descrição'}
+                      </h3>
+                      <div className="flex items-center text-sm text-muted-foreground mt-1">
+                        <Building2 className="w-3 h-3 mr-1" />{' '}
+                        {acc.organizations?.name || acc.company_name}
+                      </div>
                     </div>
                   </div>
                   <span className="bg-primary/10 text-primary text-xs px-2 py-1 rounded-full font-medium">
@@ -85,7 +114,7 @@ export function BankAccountsTable({
                     {acc.check_digit ? `-${acc.check_digit}` : ''}
                   </div>
                   <div>
-                    <span className="text-muted-foreground block text-xs">C. Contábil</span>
+                    <span className="text-muted-foreground block text-xs">Conta Contábil</span>
                     {acc.account_code || '-'}
                   </div>
                   <div>
@@ -122,13 +151,20 @@ export function BankAccountsTable({
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/50">
+                <TableHead className="p-2 w-[40px] text-center">
+                  <Checkbox
+                    checked={isAllSelected}
+                    onCheckedChange={onToggleSelectAll}
+                    aria-label="Selecionar todos"
+                  />
+                </TableHead>
                 <TableHead className="p-2">Empresa</TableHead>
+                <TableHead className="p-2">Conta Contábil</TableHead>
                 <TableHead className="p-2">Descrição</TableHead>
                 <TableHead className="p-2">Banco</TableHead>
                 <TableHead className="p-2">Agência</TableHead>
                 <TableHead className="p-2">Conta</TableHead>
-                <TableHead className="p-2">C. Contábil</TableHead>
-                <TableHead className="p-2">Tipo de Conta</TableHead>
+                <TableHead className="p-2">Tipo</TableHead>
                 <TableHead className="p-2">Classificação</TableHead>
                 <TableHead className="text-right p-2">Ações</TableHead>
               </TableRow>
@@ -137,14 +173,23 @@ export function BankAccountsTable({
               {accounts.map((acc: any) => (
                 <TableRow
                   key={acc.id}
-                  className={`transition-opacity ${acc.pending_deletion ? 'opacity-50 bg-secondary/20' : 'hover:bg-muted/30'}`}
+                  className={`transition-opacity ${acc.pending_deletion ? 'opacity-50 bg-secondary/20' : 'hover:bg-muted/30'} ${selectedAccounts.includes(acc.id) ? 'bg-muted/50' : ''}`}
                 >
+                  <TableCell className="p-2 text-center">
+                    <Checkbox
+                      checked={selectedAccounts.includes(acc.id)}
+                      onCheckedChange={() => onToggleSelect(acc.id)}
+                      disabled={acc.pending_deletion}
+                      aria-label={`Selecionar conta ${acc.description}`}
+                    />
+                  </TableCell>
                   <TableCell className="p-2">
                     <div className="flex items-center gap-2">
                       <Building2 className="h-4 w-4 text-muted-foreground" />
                       {acc.organizations?.name || acc.company_name}
                     </div>
                   </TableCell>
+                  <TableCell className="p-2 font-mono text-sm">{acc.account_code || '-'}</TableCell>
                   <TableCell className="p-2 font-medium">{acc.description}</TableCell>
                   <TableCell className="p-2">{acc.bank_code || '-'}</TableCell>
                   <TableCell className="p-2">{acc.agency || '-'}</TableCell>
@@ -152,7 +197,6 @@ export function BankAccountsTable({
                     {acc.account_number || '-'}
                     {acc.check_digit ? `-${acc.check_digit}` : ''}
                   </TableCell>
-                  <TableCell className="p-2 font-mono text-sm">{acc.account_code || '-'}</TableCell>
                   <TableCell className="p-2">
                     <span className="bg-primary/10 text-primary text-xs px-2.5 py-0.5 rounded-full font-medium whitespace-nowrap">
                       {acc.account_type || '-'}
