@@ -1222,55 +1222,17 @@ Deno.serve(async (req: Request) => {
         }
       }
     } else if (type === 'BANK_ACCOUNTS') {
-      let existingAccounts: any[] = []
-      let fetchHasMore = true
-      let fetchPage = 0
-      while (fetchHasMore) {
-        const { data: pageData, error: existingAccError } = await supabase
-          .from('bank_accounts')
-          .select('id, organization_id, account_number, check_digit')
-          .is('deleted_at', null)
-          .range(fetchPage * 1000, (fetchPage + 1) * 1000 - 1)
-
-        if (existingAccError) {
-          throw new Error('Erro ao buscar contas bancárias existentes: ' + existingAccError.message)
-        }
-
-        if (pageData && pageData.length > 0) {
-          existingAccounts.push(...pageData)
-          fetchPage++
-          if (pageData.length < 1000) fetchHasMore = false
-        } else {
-          fetchHasMore = false
-        }
-      }
-
-      const normalizeAcc = (str: any) =>
-        String(str || '')
-          .replace(/[^0-9A-Z]/gi, '')
-          .toUpperCase()
-          .replace(/^0+/, '') || '0'
-
-      const existingAccSet = new Set(
-        existingAccounts?.map(
-          (a: any) =>
-            `${a.organization_id}-${normalizeAcc(a.account_number)}-${normalizeAcc(a.check_digit)}`,
-        ) || [],
-      )
-
       if (organizationId && !validOrgs.has(organizationId)) {
         throw new Error('A empresa selecionada é inválida ou você não tem permissão.')
       }
 
-      const toInsertBankAccounts = []
+      const recordsByOrg = new Map<string, any[]>()
 
       for (let i = 0; i < records.length; i++) {
         const row = records[i]
         const rowNum = row._originalIndex || (payload.offset || 0) + i + 1
         const getVal = createRowAccessor(row)
-
         const empresa = getVal(['EMPRESA'])
-        const contaContabil = getVal(['CONTACONTABIL', 'CONTA_CONTABIL'])
 
         let orgId = organizationId
         if (!orgId) {
@@ -1278,67 +1240,203 @@ Deno.serve(async (req: Request) => {
             addError(rowNum, 'A coluna Empresa está vazia e nenhuma empresa foi selecionada.', row)
             continue
           }
-
           orgId = await resolveOrganization(empresa)
-          if (!orgId && empresa) {
+          if (!orgId) {
             addError(rowNum, `Erro ao resolver ou criar a empresa "${empresa}". (Obrigatório)`, row)
             continue
           }
         }
 
-        const rawAccountNumber = String(
-          getVal(['NROCONTA', 'NUMERODACONTA', 'CONTA', 'NUMERO']) || '',
-        ).trim()
-        const rawCheckDigit = String(getVal(['DIGITOCONTA', 'DIGITO', 'DV']) || '').trim()
-
-        const normalizedAcc = normalizeAcc(rawAccountNumber)
-        const normalizedDigit = normalizeAcc(rawCheckDigit)
-        const accountKey = `${orgId}-${normalizedAcc}-${normalizedDigit}`
-
-        if (existingAccSet.has(accountKey)) {
-          addError(
-            rowNum,
-            `A Conta Bancária com número "${rawAccountNumber}" e dígito "${rawCheckDigit}" já está cadastrada para esta empresa.`,
-            row,
-          )
-          continue
+        if (!recordsByOrg.has(orgId)) {
+          recordsByOrg.set(orgId, [])
         }
-
-        toInsertBankAccounts.push({
-          organization_id: orgId,
-          account_code: String(contaContabil || ''),
-          account_type: String(getVal(['CODCAIXA', 'TIPODECONTA', 'TIPO']) || ''),
-          description: String(getVal(['DESCRICAO', 'NOME']) || ''),
-          bank_code: String(getVal(['NUMBANCO', 'BANCO', 'CODBANCO']) || ''),
-          agency: String(getVal(['NUMAGENCIA', 'AGENCIA']) || ''),
-          account_number: rawAccountNumber,
-          classification: String(getVal(['CLASSIFICACAO']) || ''),
-          check_digit: rawCheckDigit,
-          company_name: String(empresa || ''),
-          _rowNum: rowNum,
-        })
-        existingAccSet.add(accountKey)
+        recordsByOrg.get(orgId)!.push({ row, rowNum, getVal, empresa })
       }
 
-      for (let i = 0; i < toInsertBankAccounts.length; i += 100) {
-        const chunk = toInsertBankAccounts.slice(i, i + 100)
-        const dbChunk = chunk.map((c) => {
-          const { _rowNum, ...rest } = c
-          return rest
-        })
-        const { error: insErr } = await supabaseAdmin.from('bank_accounts').insert(dbChunk)
-        if (insErr) {
-          console.error(`[BANK_ACCOUNTS] Insert error:`, insErr)
-          chunk.forEach((c: any) => {
-            addError(
-              c._rowNum,
-              `Erro na inserção: ${insErr.message} - Conta: ${c.account_number}`,
-              c,
+      let totalToInsert = 0
+      let totalToUpdate = 0
+      let totalToDelete = 0
+      const simulationDetails = []
+
+      for (const [orgId, orgRecords] of recordsByOrg.entries()) {
+        if (!orgId) continue
+
+        let existingAccounts: any[] = []
+        let fetchHasMore = true
+        let fetchPage = 0
+        while (fetchHasMore) {
+          const { data: pageData, error: existingAccError } = await supabase
+            .from('bank_accounts')
+            .select('*')
+            .eq('organization_id', orgId)
+            .is('deleted_at', null)
+            .range(fetchPage * 1000, (fetchPage + 1) * 1000 - 1)
+
+          if (existingAccError) {
+            throw new Error(
+              'Erro ao buscar contas bancárias existentes: ' + existingAccError.message,
             )
-          })
-        } else {
-          inserted += chunk.length
+          }
+
+          if (pageData && pageData.length > 0) {
+            existingAccounts.push(...pageData)
+            fetchPage++
+            if (pageData.length < 1000) fetchHasMore = false
+          } else {
+            fetchHasMore = false
+          }
         }
+
+        const normalizeAcc = (str: any) =>
+          String(str || '')
+            .replace(/[^0-9A-Z]/gi, '')
+            .toUpperCase()
+            .replace(/^0+/, '') || '0'
+
+        const existingAccMap = new Map<string, any>()
+        existingAccounts.forEach((a) => {
+          const key = `${normalizeAcc(a.account_number)}-${normalizeAcc(a.check_digit)}`
+          existingAccMap.set(key, a)
+        })
+
+        const toInsert: any[] = []
+        const toUpdate: any[] = []
+        const processedIds = new Set<string>()
+
+        for (const item of orgRecords) {
+          const { row, rowNum, getVal, empresa } = item
+
+          const rawAccountNumber = String(
+            getVal(['NROCONTA', 'NUMERODACONTA', 'CONTA', 'NUMERO']) || '',
+          ).trim()
+          const rawCheckDigit = String(getVal(['DIGITOCONTA', 'DIGITO', 'DV']) || '').trim()
+
+          const normalizedAcc = normalizeAcc(rawAccountNumber)
+          const normalizedDigit = normalizeAcc(rawCheckDigit)
+          const accountKey = `${normalizedAcc}-${normalizedDigit}`
+
+          const payloadData = {
+            organization_id: orgId,
+            account_code: String(getVal(['CONTACONTABIL', 'CONTA_CONTABIL']) || ''),
+            account_type: String(getVal(['CODCAIXA', 'TIPODECONTA', 'TIPO']) || ''),
+            description: String(getVal(['DESCRICAO', 'NOME']) || ''),
+            bank_code: String(getVal(['NUMBANCO', 'BANCO', 'CODBANCO']) || ''),
+            agency: String(getVal(['NUMAGENCIA', 'AGENCIA']) || ''),
+            account_number: rawAccountNumber,
+            classification: String(getVal(['CLASSIFICACAO']) || ''),
+            check_digit: rawCheckDigit,
+            company_name: String(empresa || ''),
+          }
+
+          const existing = existingAccMap.get(accountKey)
+
+          if (existing) {
+            if (existing.is_temp) {
+              addError(
+                rowNum,
+                `Conta bancária duplicada na planilha: ${rawAccountNumber}-${rawCheckDigit}`,
+                row,
+              )
+            } else {
+              if (mode !== 'INSERT_ONLY') {
+                toUpdate.push({ ...payloadData, id: existing.id, _rowNum: rowNum })
+                processedIds.add(existing.id)
+                existingAccMap.set(accountKey, { ...existing, is_temp: true })
+              } else {
+                processedIds.add(existing.id)
+              }
+            }
+          } else {
+            const newId = crypto.randomUUID()
+            existingAccMap.set(accountKey, { id: newId, is_temp: true })
+            toInsert.push({ ...payloadData, id: newId, _rowNum: rowNum })
+          }
+        }
+
+        let toDeleteIds: string[] = []
+        if (mode === 'REPLACE') {
+          toDeleteIds = existingAccounts
+            .filter((c: any) => !processedIds.has(c.id))
+            .map((c: any) => c.id)
+        }
+
+        totalToInsert += toInsert.length
+        totalToUpdate += toUpdate.length
+        totalToDelete += toDeleteIds.length
+
+        simulationDetails.push({
+          orgId,
+          toInsert: toInsert.length,
+          toUpdate: toUpdate.length,
+          toDelete: toDeleteIds.length,
+        })
+
+        if (!simulation) {
+          if (toDeleteIds.length > 0) {
+            for (let i = 0; i < toDeleteIds.length; i += 100) {
+              await supabaseAdmin
+                .from('bank_accounts')
+                .update({ deleted_at: new Date().toISOString(), deleted_by: user.id })
+                .in('id', toDeleteIds.slice(i, i + 100))
+            }
+          }
+
+          for (let i = 0; i < toInsert.length; i += 100) {
+            const chunk = toInsert.slice(i, i + 100)
+            const dbChunk = chunk.map((c: any) => {
+              const { _rowNum, ...rest } = c
+              return rest
+            })
+            const { error: insErr } = await supabaseAdmin.from('bank_accounts').insert(dbChunk)
+            if (insErr) {
+              console.error(`[BANK_ACCOUNTS] Insert error:`, insErr)
+              chunk.forEach((c: any) => {
+                addError(
+                  c._rowNum,
+                  `Erro na inserção: ${insErr.message} - Conta: ${c.account_number}`,
+                  c,
+                )
+              })
+            }
+          }
+
+          for (let i = 0; i < toUpdate.length; i += 100) {
+            const chunk = toUpdate.slice(i, i + 100)
+            const dbChunk = chunk.map((c: any) => {
+              const { _rowNum, ...rest } = c
+              return rest
+            })
+            const { error: updErr } = await supabaseAdmin.from('bank_accounts').upsert(dbChunk)
+            if (updErr) {
+              console.error(`[BANK_ACCOUNTS] Upsert error:`, updErr)
+              chunk.forEach((c: any) => {
+                addError(
+                  c._rowNum,
+                  `Erro na atualização: ${updErr.message} - Conta: ${c.account_number}`,
+                  c,
+                )
+              })
+            }
+          }
+
+          inserted += toInsert.length + toUpdate.length
+        }
+      }
+
+      if (simulation) {
+        return new Response(
+          JSON.stringify({
+            simulation: true,
+            totalToInsert,
+            totalToUpdate,
+            totalToDelete,
+            details: simulationDetails,
+            errors,
+          }),
+          {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          },
+        )
       }
     } else if (type === 'COST_CENTERS') {
       if (organizationId && !validOrgs.has(organizationId)) {
@@ -2654,7 +2752,11 @@ Deno.serve(async (req: Request) => {
           } else if (orgs && orgs.length > 0) {
             orgId = orgs[0].id
           } else {
-            addError(rowNum, 'Nenhuma empresa associada ao usuário para realizar a importação.', row)
+            addError(
+              rowNum,
+              'Nenhuma empresa associada ao usuário para realizar a importação.',
+              row,
+            )
             continue
           }
         }

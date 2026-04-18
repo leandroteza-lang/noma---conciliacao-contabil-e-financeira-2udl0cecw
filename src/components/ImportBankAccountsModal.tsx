@@ -246,7 +246,7 @@ export function ImportBankAccountsModal({ isOpen, onClose, onSuccess }: any) {
           type: 'BANK_ACCOUNTS',
           fileName: file.name,
           fileBase64: fileBase64,
-          allowIncomplete: false,
+          allowIncomplete: true,
           mode: mode,
           simulation: isSimulation,
           organizationId: selectedOrgId === 'USE_SPREADSHEET' ? null : selectedOrgId,
