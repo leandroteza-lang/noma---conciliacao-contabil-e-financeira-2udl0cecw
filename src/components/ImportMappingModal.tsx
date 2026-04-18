@@ -170,7 +170,12 @@ export function ImportMappingModal({
         if (job) {
           const processed = job.processed_records || 0
           const total = job.total_records || previewInfo?.totalRecords || 1
-          setProgress(Math.min(100, Math.round((processed / total) * 100)))
+
+          if (job.status === 'Saving to Database') {
+            setProgress(99)
+          } else {
+            setProgress(Math.min(100, Math.round((processed / total) * 100)))
+          }
 
           if (job.status === 'Completed' || job.status === 'Error') {
             clearInterval(pollInterval)
@@ -198,7 +203,12 @@ export function ImportMappingModal({
                 toast.info('Nenhum registro foi importado.')
               }
             } else {
-              toast.error('Ocorreu um erro durante o processamento em background.')
+              const errors = job.errors_list || []
+              const msg =
+                errors.length > 0
+                  ? errors[0].error
+                  : 'Ocorreu um erro durante o processamento em background.'
+              toast.error(`Falha na importação: ${msg}`)
             }
           }
         }
@@ -339,7 +349,11 @@ export function ImportMappingModal({
             {loading && (
               <div className="space-y-2 animate-in fade-in duration-300">
                 <div className="flex items-center justify-between text-sm text-slate-600">
-                  <span>Processando registros no servidor...</span>
+                  <span>
+                    {progress === 99
+                      ? 'Salvando dados no banco de dados...'
+                      : 'Processando registros no servidor...'}
+                  </span>
                   <span className="font-medium">{progress}%</span>
                 </div>
                 <Progress value={progress} className="h-2" />
