@@ -2634,39 +2634,66 @@ Deno.serve(async (req: Request) => {
         }
       }
     } else if (type === 'ERP_FINANCIAL_MOVEMENTS') {
-      let orgId = organizationId
-      if (!orgId && orgs && orgs.length > 0) {
-        orgId = orgs[0].id
-      }
-      if (!orgId) {
-        throw new Error('Nenhuma empresa associada ao usuário para realizar a importação.')
+      const recordsByOrg = new Map<string, any[]>()
+
+      for (let i = 0; i < records.length; i++) {
+        const row = records[i]
+        const rowNum = row._originalIndex || (payload.offset || 0) + i + 1
+        const getVal = createRowAccessor(row)
+
+        const empresa = getVal(['EMPRESA'])
+        let orgId = organizationId
+
+        if (!orgId) {
+          if (empresa && String(empresa).trim() !== '') {
+            orgId = await resolveOrganization(empresa)
+            if (!orgId) {
+              addError(rowNum, `Erro ao resolver ou criar a empresa "${empresa}".`, row)
+              continue
+            }
+          } else if (orgs && orgs.length > 0) {
+            orgId = orgs[0].id
+          } else {
+            addError(
+              rowNum,
+              'Nenhuma empresa associada ao usuário para realizar a importação.',
+              row,
+            )
+            continue
+          }
+        }
+
+        if (!recordsByOrg.has(orgId)) recordsByOrg.set(orgId, [])
+        recordsByOrg.get(orgId)!.push(row)
       }
 
-      const rpcPayload = {
-        p_org_id: orgId,
-        p_import_id: payload.importId || null,
-        p_records: records,
-        p_mode: mode || 'INSERT_ONLY',
-      }
+      for (const [orgId, orgRecords] of recordsByOrg.entries()) {
+        const rpcPayload = {
+          p_org_id: orgId,
+          p_import_id: payload.importId || null,
+          p_records: orgRecords,
+          p_mode: mode || 'INSERT_ONLY',
+        }
 
-      const { data: res, error: rpcErr } = await supabaseAdmin.rpc(
-        'import_erp_movements_batch_v2',
-        rpcPayload,
-      )
-      if (rpcErr) {
-        addError(0, `Erro RPC: ${rpcErr.message}`, {})
-      } else if (res) {
-        if (res.success === false) {
-          addError(0, `Erro RPC: ${res.error}`, {})
-        } else {
-          inserted += res.inserted || 0
-          rejected += res.rejected || 0
-          ignored += res.ignored || 0
-          updated += res.updated || 0
-          if (res.errors && Array.isArray(res.errors)) {
-            res.errors.forEach((err: any) => {
-              addError(err.row || 0, err.error, {})
-            })
+        const { data: res, error: rpcErr } = await supabaseAdmin.rpc(
+          'import_erp_movements_batch_v2',
+          rpcPayload,
+        )
+        if (rpcErr) {
+          addError(0, `Erro RPC: ${rpcErr.message}`, {})
+        } else if (res) {
+          if (res.success === false) {
+            addError(0, `Erro RPC: ${res.error}`, {})
+          } else {
+            inserted += res.inserted || 0
+            rejected += res.rejected || 0
+            ignored += res.ignored || 0
+            updated += res.updated || 0
+            if (res.errors && Array.isArray(res.errors)) {
+              res.errors.forEach((err: any) => {
+                addError(err.row || 0, err.error, {})
+              })
+            }
           }
         }
       }
