@@ -45,6 +45,42 @@ export function ImportBankAccountsModal({ isOpen, onClose, onSuccess }: any) {
     if (isOpen) fetchOrgs()
   }, [isOpen])
 
+  const downloadTemplate = () => {
+    const headers = [
+      'EMPRESA',
+      'CONTACONTABIL',
+      'TIPODECONTA',
+      'DESCRICAO',
+      'BANCO',
+      'AGENCIA',
+      'CONTA',
+      'DIGITO',
+      'CLASSIFICACAO',
+    ]
+    const example = [
+      'MINHA EMPRESA LTDA',
+      '1.1.1.01.0001',
+      'CORRENTE',
+      'CONTA PRINCIPAL',
+      '341',
+      '0001',
+      '12345',
+      '6',
+      'B',
+    ]
+
+    const csvContent = '\uFEFF' + headers.join(';') + '\n' + example.join(';')
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = 'modelo_importacao_contas_bancarias.csv'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+  }
+
   const reset = () => {
     setFile(null)
     setSimulationData(null)
@@ -173,6 +209,11 @@ export function ImportBankAccountsModal({ isOpen, onClose, onSuccess }: any) {
           {step === 'UPLOAD' && (
             <>
               <div className="space-y-4">
+                <div className="flex justify-end">
+                  <Button variant="outline" size="sm" onClick={downloadTemplate}>
+                    <Download className="w-4 h-4 mr-2" /> Baixar Modelo Padrão
+                  </Button>
+                </div>
                 <div className="space-y-3">
                   <Label>Empresa de Destino</Label>
                   <Select value={selectedOrgId} onValueChange={setSelectedOrgId}>

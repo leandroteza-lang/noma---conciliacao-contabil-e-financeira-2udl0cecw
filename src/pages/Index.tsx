@@ -13,8 +13,9 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { useToast } from '@/hooks/use-toast'
-import { Search, Plus, Upload, Download, Building2, Filter } from 'lucide-react'
+import { Search, Plus, Upload, Download, Building2, Filter, Trash2 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
+import { ImportBankAccountsModal } from '@/components/ImportBankAccountsModal'
 
 export default function Index() {
   const [accounts, setAccounts] = useState<any[]>([])
@@ -30,6 +31,7 @@ export default function Index() {
   const [editingAccount, setEditingAccount] = useState<any>(null)
 
   const [isBulkEditOpen, setIsBulkEditOpen] = useState(false)
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false)
 
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 10
@@ -98,6 +100,23 @@ export default function Index() {
       fetchData()
     } catch (error: any) {
       toast({ title: 'Erro ao excluir conta', description: error.message, variant: 'destructive' })
+    }
+  }
+
+  const handleBulkDelete = async () => {
+    if (!confirm(`Deseja realmente excluir as ${selectedAccounts.length} contas selecionadas?`))
+      return
+    try {
+      const { error } = await supabase
+        .from('bank_accounts')
+        .update({ deleted_at: new Date().toISOString() })
+        .in('id', selectedAccounts)
+      if (error) throw error
+      toast({ title: `${selectedAccounts.length} contas excluídas com sucesso` })
+      setSelectedAccounts([])
+      fetchData()
+    } catch (error: any) {
+      toast({ title: 'Erro ao excluir contas', description: error.message, variant: 'destructive' })
     }
   }
 
@@ -201,14 +220,19 @@ export default function Index() {
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {selectedAccounts.length > 0 && (
-            <Button variant="secondary" onClick={() => setIsBulkEditOpen(true)}>
-              Editar Selecionados ({selectedAccounts.length})
-            </Button>
+            <>
+              <Button variant="secondary" onClick={() => setIsBulkEditOpen(true)}>
+                Editar Selecionados ({selectedAccounts.length})
+              </Button>
+              <Button variant="destructive" onClick={handleBulkDelete}>
+                <Trash2 className="w-4 h-4 mr-2" /> Excluir Selecionados ({selectedAccounts.length})
+              </Button>
+            </>
           )}
           <Button variant="outline" onClick={handleExport}>
             <Download className="w-4 h-4 mr-2" /> Exportar
           </Button>
-          <Button variant="outline" onClick={() => navigate('/import')}>
+          <Button variant="outline" onClick={() => setIsImportModalOpen(true)}>
             <Upload className="w-4 h-4 mr-2" /> Importar em Lote
           </Button>
           <Button
@@ -301,6 +325,15 @@ export default function Index() {
         onClose={() => setIsBulkEditOpen(false)}
         onSave={handleBulkEdit}
         count={selectedAccounts.length}
+      />
+
+      <ImportBankAccountsModal
+        isOpen={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+        onSuccess={() => {
+          setIsImportModalOpen(false)
+          fetchData()
+        }}
       />
     </div>
   )
