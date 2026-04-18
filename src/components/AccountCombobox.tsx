@@ -47,30 +47,44 @@ export function AccountCombobox({
   const { roots, childrenMap } = useMemo(() => {
     const cmap = new Map<string, Account[]>()
     const rts: Account[] = []
-    const sorted = [...accounts].sort((a, b) =>
-      (a.classification || '').localeCompare(b.classification || ''),
-    )
+
+    const getSortKey = (a: Account) => (a.classification || a.account_code || '').trim()
+
+    const sorted = [...accounts].sort((a, b) => getSortKey(a).localeCompare(getSortKey(b)))
 
     sorted.forEach((node) => {
       let parentId: string | null = null
       let maxLen = -1
-      const nClass = node.classification || ''
 
-      sorted.forEach((p) => {
-        if (p.id === node.id) return
-        const pClass = p.classification || ''
-        // Detect hierarchy by prefix. Ensure it breaks at dot or dash if they exist.
-        if (
-          pClass &&
-          nClass.startsWith(pClass) &&
-          (!nClass.includes('.') || nClass[pClass.length] === '.' || nClass[pClass.length] === '-')
-        ) {
-          if (pClass.length > maxLen) {
-            maxLen = pClass.length
-            parentId = p.id
+      const nClass = getSortKey(node)
+
+      if (nClass) {
+        sorted.forEach((p) => {
+          if (p.id === node.id) return
+          const pClass = getSortKey(p)
+
+          if (!pClass) return
+
+          if (nClass.startsWith(pClass) && nClass !== pClass) {
+            const hasSeparator = nClass.includes('.') || nClass.includes('-')
+            let isValidPrefix = false
+
+            if (hasSeparator) {
+              const nextChar = nClass[pClass.length]
+              if (nextChar === '.' || nextChar === '-' || nextChar === undefined) {
+                isValidPrefix = true
+              }
+            } else {
+              isValidPrefix = true
+            }
+
+            if (isValidPrefix && pClass.length > maxLen) {
+              maxLen = pClass.length
+              parentId = p.id
+            }
           }
-        }
-      })
+        })
+      }
 
       if (parentId) {
         if (!cmap.has(parentId)) cmap.set(parentId, [])
@@ -78,6 +92,10 @@ export function AccountCombobox({
       } else {
         rts.push(node)
       }
+    })
+
+    cmap.forEach((children) => {
+      children.sort((a, b) => getSortKey(a).localeCompare(getSortKey(b)))
     })
 
     return { roots: rts, childrenMap: cmap }
@@ -135,12 +153,12 @@ export function AccountCombobox({
             >
               {hasChildren ? (
                 isExpanded ? (
-                  <ChevronDown className="h-4 w-4" />
+                  <ChevronDown className="h-4 w-4 text-slate-600" />
                 ) : (
-                  <ChevronRight className="h-4 w-4" />
+                  <ChevronRight className="h-4 w-4 text-slate-600" />
                 )
               ) : (
-                <div className="w-1.5 h-1.5 rounded-full bg-slate-400" />
+                <div className="w-1.5 h-1.5 rounded-full bg-slate-300" />
               )}
             </div>
 
@@ -173,7 +191,7 @@ export function AccountCombobox({
             <Check
               className={cn(
                 'h-4 w-4 shrink-0 transition-opacity',
-                value === node.id ? 'opacity-100 text-blue-600' : 'opacity-0',
+                value === node.id ? 'opacity-100 text-indigo-600' : 'opacity-0',
               )}
             />
           </div>
@@ -204,7 +222,7 @@ export function AccountCombobox({
           <Check
             className={cn(
               'mr-1 h-4 w-4 shrink-0',
-              value === account.id ? 'opacity-100 text-blue-600' : 'opacity-0',
+              value === account.id ? 'opacity-100 text-indigo-600' : 'opacity-0',
             )}
           />
           <div className="flex items-center gap-2 truncate flex-1">
@@ -299,7 +317,7 @@ export function AccountCombobox({
           }}
         >
           <CommandInput
-            placeholder="Buscar conta por código, classif. ou nome..."
+            placeholder="Buscar conta..."
             className="h-9 text-sm"
             value={search}
             onValueChange={setSearch}
@@ -311,7 +329,13 @@ export function AccountCombobox({
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
-                    onClick={() => setExpanded(new Set(accounts.map((a) => a.id)))}
+                    onClick={() => {
+                      const allIds = new Set<string>()
+                      accounts.forEach((a) => {
+                        if (childrenMap.has(a.id)) allIds.add(a.id)
+                      })
+                      setExpanded(allIds)
+                    }}
                     className="text-[10px] uppercase font-bold tracking-wider text-slate-400 hover:text-indigo-600 transition-colors"
                   >
                     Expandir Todos
