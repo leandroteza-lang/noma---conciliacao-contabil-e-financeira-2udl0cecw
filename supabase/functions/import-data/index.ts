@@ -258,10 +258,12 @@ Deno.serve(async (req: Request) => {
                 const rawRecords = XLSX.utils.sheet_to_json(sheet, { defval: '' })
                 totalRecords = rawRecords.length
 
+                const bgColMapping: Record<string, string> = payload.columnMapping || {}
                 const normalizedRecords = rawRecords.map((r: any) => {
                   const norm: any = {}
                   for (const key in r) {
-                    const cleanKey = key
+                    const mappedKey = bgColMapping[key] || key
+                    const cleanKey = mappedKey
                       .trim()
                       .replace(/[^A-Z0-9]/gi, '')
                       .toUpperCase()

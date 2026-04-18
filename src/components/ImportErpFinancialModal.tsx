@@ -119,7 +119,7 @@ export function ImportErpFinancialModal({
     }
   }, [open])
 
-  const [allRecords, setAllRecords] = useState<any[]>([])
+  const [_allRecords, setAllRecords] = useState<any[]>([])
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0]
@@ -302,8 +302,14 @@ export function ImportErpFinancialModal({
       return
     }
 
+    if (!file) {
+      toast({ title: 'Atenção', description: 'Nenhum arquivo selecionado.', variant: 'destructive' })
+      return
+    }
+
     setLoading(true)
     setProgress(0)
+
     const columnMapping: Record<string, string> = {}
     Object.entries(mapping).forEach(([expected, fileCol]) => {
       if (fileCol && fileCol !== 'none') {
@@ -312,56 +318,44 @@ export function ImportErpFinancialModal({
     })
 
     try {
-      const CHUNK_SIZE = 1000
-      let totalInserted = 0
-      const allErrors: any[] = []
-      const total = totalRecords || 1
+      // 1. Upload file to the imports bucket
+      const filePath = `${selectedOrg}/${Date.now()}_${file.name}`
+      const { error: uploadError } = await supabase.storage
+        .from('imports')
+        .upload(filePath, file, { upsert: true })
+      if (uploadError) throw new Error('Erro ao enviar arquivo: ' + uploadError.message)
+      setProgress(40)
 
-      for (let offset = 0; offset < total; offset += CHUNK_SIZE) {
-        setProgress(Math.min(Math.round((offset / total) * 100), 99))
+      // 2. Trigger background processing
+      const { data: sessionData } = await supabase.auth.getSession()
+      const token = sessionData?.session?.access_token
 
-        const chunkRecords = allRecords.slice(offset, offset + CHUNK_SIZE)
+      const { data, error } = await supabase.functions.invoke('import-data', {
+        body: {
+          action: 'START_BACKGROUND',
+          type: 'ERP_FINANCIAL_MOVEMENTS',
+          filePath,
+          fileName: file.name,
+          sheetName: selectedSheet,
+          organizationId: selectedOrg,
+          columnMapping,
+          mode: 'INSERT_ONLY',
+          totalRecords,
+          allowIncomplete,
+        },
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      })
 
-        const { data: sessionData } = await supabase.auth.getSession()
-        const token = sessionData?.session?.access_token
-
-        const { data, error } = await supabase.functions.invoke('import-data', {
-          body: {
-            type: 'ERP_FINANCIAL_MOVEMENTS',
-            records: chunkRecords,
-            fileName: file?.name,
-            sheetName: selectedSheet,
-            columnMapping,
-            organizationId: selectedOrg,
-            allowIncomplete,
-            mode: 'INSERT_ONLY',
-            offset,
-            skipHistory: offset + CHUNK_SIZE < total,
-            totalRecords: total,
-          },
-          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-        })
-
-        if (error) {
-          throw new Error(
-            error.message === 'Edge Function returned a non-2xx status code'
-              ? 'Erro de comunicação. A planilha pode ser muito grande ou estar mal formatada.'
-              : error.message,
-          )
-        }
-
-        if (data?.error) throw new Error(data.error)
-
-        totalInserted += data.inserted || 0
-        if (data.errors && Array.isArray(data.errors)) {
-          allErrors.push(...data.errors)
-        }
-      }
+      if (error) throw new Error(error.message)
+      if (data?.error) throw new Error(data.error)
 
       setProgress(100)
-      setResult({ inserted: totalInserted, errors: allErrors })
-      setStep(3)
+      toast({
+        title: 'Importação iniciada',
+        description: `${totalRecords} registros sendo processados em segundo plano. Acompanhe o progresso na página.`,
+      })
       onImportSuccess()
+      onOpenChange(false)
     } catch (err: any) {
       console.error('Import error:', err)
       toast({

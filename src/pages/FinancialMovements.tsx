@@ -20,6 +20,7 @@ import {
 } from '@/components/ui/table'
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area'
 import { Checkbox } from '@/components/ui/checkbox'
+import { Progress } from '@/components/ui/progress'
 import { Loader2, Search, Upload, Trash2, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { ImportErpFinancialModal } from '@/components/ImportErpFinancialModal'
@@ -86,6 +87,45 @@ export default function FinancialMovements() {
   const [isDeleteAllOpen, setIsDeleteAllOpen] = useState(false)
   const [isDeleteSelectedOpen, setIsDeleteSelectedOpen] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+
+  type ActiveImport = {
+    id: string
+    status: string
+    processed_records: number
+    total_records: number
+    file_name: string | null
+  }
+  const [activeImport, setActiveImport] = useState<ActiveImport | null>(null)
+
+  useEffect(() => {
+    const intervalId = setInterval(async () => {
+      const cutoff = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString()
+      let query = supabase
+        .from('import_history')
+        .select('id, status, processed_records, total_records, file_name')
+        .eq('import_type', 'ERP_FINANCIAL_MOVEMENTS')
+        .not('status', 'in', '("Completed","Error")')
+        .gte('created_at', cutoff)
+        .order('created_at', { ascending: false })
+        .limit(1)
+
+      if (selectedOrg && selectedOrg !== 'all') {
+        query = query.eq('organization_id', selectedOrg)
+      }
+
+      const { data } = await query
+      if (data && data.length > 0) {
+        setActiveImport(data[0] as ActiveImport)
+      } else {
+        setActiveImport((prev) => {
+          if (prev !== null) fetchData()
+          return null
+        })
+      }
+    }, 3000)
+
+    return () => clearInterval(intervalId)
+  }, [selectedOrg])
 
   const fetchData = async () => {
     if (!user) return
@@ -320,6 +360,28 @@ export default function FinancialMovements() {
           {filteredAndSortedData.length} registros
         </div>
       </div>
+
+      {activeImport && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 flex flex-col gap-1.5">
+          <div className="flex items-center justify-between text-sm">
+            <span className="font-medium text-blue-800 flex items-center gap-2">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Importando {activeImport.file_name || 'planilha'}...
+            </span>
+            <span className="text-blue-600 text-xs">
+              {activeImport.processed_records ?? 0} / {activeImport.total_records ?? '?'} registros
+            </span>
+          </div>
+          <Progress
+            value={
+              activeImport.total_records
+                ? Math.round(((activeImport.processed_records ?? 0) / activeImport.total_records) * 100)
+                : 0
+            }
+            className="h-2 bg-blue-100"
+          />
+        </div>
+      )}
 
       <div className="flex-1 bg-white border rounded-lg shadow-sm overflow-hidden flex flex-col">
         {loading ? (
