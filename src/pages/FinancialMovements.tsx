@@ -22,6 +22,7 @@ import {
   CheckCircle2,
   AlertCircle,
   Clock,
+  X,
 } from 'lucide-react'
 import { ImportErpFinancialModal } from '@/components/ImportErpFinancialModal'
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart'
@@ -52,6 +53,13 @@ export default function FinancialMovements() {
     return `${m}:${s}`
   }
 
+  const dismissImport = () => {
+    if (activeImport) {
+      localStorage.setItem('dismissed_import_erp_fin', activeImport.id)
+    }
+    setActiveImport(null)
+  }
+
   const fetchActiveImport = async () => {
     if (!user) return
     const { data } = await supabase
@@ -59,13 +67,28 @@ export default function FinancialMovements() {
       .select('*')
       .eq('user_id', user.id)
       .eq('import_type', 'ERP_FINANCIAL_MOVEMENTS')
-      .in('status', ['Processing', 'Pending'])
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle()
 
     if (data) {
+      const dismissedId = localStorage.getItem('dismissed_import_erp_fin')
+      if (dismissedId === data.id && (data.status === 'Completed' || data.status === 'Error')) {
+        return
+      }
+
       setActiveImport(data)
+      if (data.status === 'Completed' || data.status === 'Error') {
+        const saved = localStorage.getItem('last_import_time_erp_fin')
+        if (saved) {
+          try {
+            const parsed = JSON.parse(saved)
+            if (parsed.id === data.id) {
+              setElapsedSeconds(parsed.elapsed)
+            }
+          } catch (e) {}
+        }
+      }
     }
   }
 
@@ -127,7 +150,13 @@ export default function FinancialMovements() {
               clearInterval(interval)
               clearInterval(timerInterval)
               fetchChart()
-              setTimeout(() => setActiveImport(null), 8000)
+              setElapsedSeconds((prev) => {
+                localStorage.setItem(
+                  'last_import_time_erp_fin',
+                  JSON.stringify({ id: data.id, elapsed: prev }),
+                )
+                return prev
+              })
             }
           }
         }, 3000)
@@ -208,8 +237,18 @@ export default function FinancialMovements() {
     <div className="p-6 space-y-6 max-w-[1600px] mx-auto animate-fade-in-up">
       {activeImport && (
         <Card
-          className={`shadow-sm border ${activeImport.status === 'Error' ? 'border-red-200 bg-red-50/50' : activeImport.status === 'Completed' ? 'border-green-200 bg-green-50/50' : 'border-blue-200 bg-blue-50/50'}`}
+          className={`shadow-sm border relative ${activeImport.status === 'Error' ? 'border-red-200 bg-red-50/50' : activeImport.status === 'Completed' ? 'border-green-200 bg-green-50/50' : 'border-blue-200 bg-blue-50/50'}`}
         >
+          {['Completed', 'Error'].includes(activeImport.status) && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute top-2 right-2 h-6 w-6 rounded-full hover:bg-slate-200/50 text-slate-500"
+              onClick={dismissImport}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          )}
           <CardContent className="p-4 flex flex-col gap-3">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="flex items-center gap-2">
@@ -228,8 +267,9 @@ export default function FinancialMovements() {
                     activeImport.total_records > 0 &&
                     'Processando importação...'}
                   {activeImport.status === 'Pending' && 'Aguardando processamento...'}
-                  {activeImport.status === 'Error' && 'Erro na importação'}
-                  {activeImport.status === 'Completed' && 'Importação concluída com sucesso!'}
+                  {activeImport.status === 'Error' && 'Última Importação: Erro'}
+                  {activeImport.status === 'Completed' &&
+                    'Última Importação: Concluída com sucesso'}
                 </span>
               </div>
               <div className="flex items-center gap-4 text-sm font-medium text-slate-600">
