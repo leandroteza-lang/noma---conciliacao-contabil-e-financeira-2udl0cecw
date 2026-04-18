@@ -26,6 +26,7 @@ import { ImportErpFinancialModal } from '@/components/ImportErpFinancialModal'
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart'
 import { Progress } from '@/components/ui/progress'
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, CartesianGrid } from 'recharts'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 
 export default function FinancialMovements() {
   const { user } = useAuth()
@@ -139,6 +140,13 @@ export default function FinancialMovements() {
       setTotalCount(count || 0)
     }
     setLoading(false)
+  }
+
+  const formatDate = (dateStr: string | null | undefined) => {
+    if (!dateStr) return '-'
+    const parts = dateStr.split('T')[0].split('-')
+    if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`
+    return new Date(dateStr).toLocaleDateString('pt-BR')
   }
 
   const fetchChart = async () => {
@@ -323,35 +331,66 @@ export default function FinancialMovements() {
             <Table>
               <TableHeader>
                 <TableRow className="bg-slate-50 hover:bg-slate-50">
-                  <TableHead className="font-semibold text-slate-600">Emissão</TableHead>
-                  <TableHead className="font-semibold text-slate-600">Documento</TableHead>
-                  <TableHead className="font-semibold text-slate-600">Cliente/Fornecedor</TableHead>
-                  <TableHead className="font-semibold text-slate-600">Histórico</TableHead>
-                  <TableHead className="font-semibold text-slate-600">C. Custo</TableHead>
-                  <TableHead className="text-right font-semibold text-slate-600">
+                  <TableHead className="font-semibold text-slate-600 whitespace-nowrap">
+                    Emissão
+                  </TableHead>
+                  <TableHead className="font-semibold text-slate-600 whitespace-nowrap">
+                    Vencimento
+                  </TableHead>
+                  <TableHead className="font-semibold text-slate-600 whitespace-nowrap">
+                    Documento
+                  </TableHead>
+                  <TableHead className="font-semibold text-slate-600 whitespace-nowrap">
+                    Cliente/Fornecedor
+                  </TableHead>
+                  <TableHead className="font-semibold text-slate-600 whitespace-nowrap min-w-[200px]">
+                    Histórico
+                  </TableHead>
+                  <TableHead className="font-semibold text-slate-600 whitespace-nowrap">
+                    Conta/Caixa
+                  </TableHead>
+                  <TableHead className="font-semibold text-slate-600 whitespace-nowrap">
+                    Banco
+                  </TableHead>
+                  <TableHead className="font-semibold text-slate-600 whitespace-nowrap">
+                    F. Pagto
+                  </TableHead>
+                  <TableHead className="font-semibold text-slate-600 whitespace-nowrap">
+                    C. Custo
+                  </TableHead>
+                  <TableHead className="text-right font-semibold text-slate-600 whitespace-nowrap">
                     Valor Líquido
                   </TableHead>
-                  <TableHead className="text-center font-semibold text-slate-600">Status</TableHead>
-                  <TableHead className="text-center font-semibold text-slate-600">Ações</TableHead>
+                  <TableHead className="text-center font-semibold text-slate-600 whitespace-nowrap">
+                    Status
+                  </TableHead>
+                  <TableHead className="text-center font-semibold text-slate-600 whitespace-nowrap">
+                    Ações
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {loading ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center h-48">
+                    <TableCell colSpan={12} className="text-center h-48">
                       <Loader2 className="h-6 w-6 animate-spin mx-auto text-primary" />
                     </TableCell>
                   </TableRow>
                 ) : data.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center h-48 text-slate-500">
+                    <TableCell colSpan={12} className="text-center h-48 text-slate-500">
                       Nenhum movimento financeiro encontrado.
                     </TableCell>
                   </TableRow>
                 ) : (
                   data.map((row) => {
-                    const isMissing =
-                      !row.data_emissao || !row.c_custo || row.valor_liquido === null
+                    const missingFields = []
+                    if (!row.data_emissao) missingFields.push('Data de Emissão')
+                    if (!row.c_custo) missingFields.push('Centro de Custo')
+                    if (row.valor_liquido === null || row.valor_liquido === undefined)
+                      missingFields.push('Valor Líquido')
+                    const isMissing = missingFields.length > 0
+
                     return (
                       <TableRow key={row.id} className="hover:bg-slate-50/80 transition-colors">
                         <TableCell className="whitespace-nowrap text-slate-600">
@@ -366,16 +405,28 @@ export default function FinancialMovements() {
                             />
                           ) : (
                             <span className={!row.data_emissao ? 'text-red-500 font-bold' : ''}>
-                              {row.data_emissao
-                                ? new Date(row.data_emissao).toLocaleDateString('pt-BR')
-                                : 'Data Indisponível'}
+                              {row.data_emissao ? formatDate(row.data_emissao) : 'Indisponível'}
                             </span>
                           )}
                         </TableCell>
-                        <TableCell className="font-medium text-slate-700">
+                        <TableCell className="whitespace-nowrap text-slate-600">
                           {editingId === row.id ? (
                             <Input
-                              className="h-8"
+                              type="date"
+                              className="h-8 w-36 px-2"
+                              value={editForm.data_vencto || ''}
+                              onChange={(e) =>
+                                setEditForm({ ...editForm, data_vencto: e.target.value })
+                              }
+                            />
+                          ) : (
+                            <span>{row.data_vencto ? formatDate(row.data_vencto) : '-'}</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="font-medium text-slate-700 whitespace-nowrap">
+                          {editingId === row.id ? (
+                            <Input
+                              className="h-8 w-28"
                               value={editForm.n_documento || ''}
                               onChange={(e) =>
                                 setEditForm({ ...editForm, n_documento: e.target.value })
@@ -417,7 +468,48 @@ export default function FinancialMovements() {
                             row.historico || '-'
                           )}
                         </TableCell>
-                        <TableCell className="text-slate-600">
+                        <TableCell
+                          className="max-w-[150px] truncate text-slate-600"
+                          title={`${row.conta_caixa || ''} ${row.nome_caixa || ''}`}
+                        >
+                          {editingId === row.id ? (
+                            <Input
+                              className="h-8"
+                              value={editForm.conta_caixa || ''}
+                              onChange={(e) =>
+                                setEditForm({ ...editForm, conta_caixa: e.target.value })
+                              }
+                            />
+                          ) : (
+                            `${row.conta_caixa || ''} ${row.nome_caixa ? `- ${row.nome_caixa}` : ''}` ||
+                            '-'
+                          )}
+                        </TableCell>
+                        <TableCell className="whitespace-nowrap text-slate-600">
+                          {editingId === row.id ? (
+                            <Input
+                              className="h-8 w-24"
+                              value={editForm.banco || ''}
+                              onChange={(e) => setEditForm({ ...editForm, banco: e.target.value })}
+                            />
+                          ) : (
+                            row.banco || '-'
+                          )}
+                        </TableCell>
+                        <TableCell className="whitespace-nowrap text-slate-600">
+                          {editingId === row.id ? (
+                            <Input
+                              className="h-8 w-24"
+                              value={editForm.forma_pagto || ''}
+                              onChange={(e) =>
+                                setEditForm({ ...editForm, forma_pagto: e.target.value })
+                              }
+                            />
+                          ) : (
+                            row.forma_pagto || '-'
+                          )}
+                        </TableCell>
+                        <TableCell className="text-slate-600 whitespace-nowrap">
                           {editingId === row.id ? (
                             <Input
                               className="h-8 w-24"
@@ -432,12 +524,12 @@ export default function FinancialMovements() {
                             </span>
                           )}
                         </TableCell>
-                        <TableCell className="text-right font-semibold text-slate-900">
+                        <TableCell className="text-right font-semibold text-slate-900 whitespace-nowrap">
                           {editingId === row.id ? (
                             <Input
                               type="number"
                               step="0.01"
-                              className="h-8 w-24 text-right"
+                              className="h-8 w-28 text-right ml-auto"
                               value={editForm.valor_liquido || ''}
                               onChange={(e) =>
                                 setEditForm({
@@ -460,11 +552,37 @@ export default function FinancialMovements() {
                           )}
                         </TableCell>
                         <TableCell className="text-center">
-                          <span
-                            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${isMissing ? 'bg-red-100 text-red-800 border border-red-200' : 'bg-amber-100 text-amber-800 border border-amber-200'}`}
-                          >
-                            {isMissing ? 'Dados Incompletos' : row.status || 'Pendente'}
-                          </span>
+                          {isMissing ? (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-800 border border-red-200 cursor-help">
+                                  Dados Incompletos
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent className="bg-red-50 border-red-200 text-red-900 shadow-md">
+                                <p className="font-semibold mb-1">Campos ausentes:</p>
+                                <ul className="list-disc pl-4 text-xs">
+                                  {missingFields.map((f) => (
+                                    <li key={f}>{f}</li>
+                                  ))}
+                                </ul>
+                              </TooltipContent>
+                            </Tooltip>
+                          ) : (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 border border-amber-200 cursor-help">
+                                  {row.status || 'Pendente'}
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent className="bg-slate-800 text-white border-slate-700 shadow-md">
+                                <p className="text-xs max-w-[200px]">
+                                  O registro foi importado com sucesso, mas ainda não foi conciliado
+                                  ou exportado.
+                                </p>
+                              </TooltipContent>
+                            </Tooltip>
+                          )}
                         </TableCell>
                         <TableCell className="text-center">
                           {editingId === row.id ? (
