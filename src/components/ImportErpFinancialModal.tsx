@@ -43,6 +43,60 @@ export function ImportErpFinancialModal({ open, onOpenChange, onImportSuccess }:
   const [columnMapping, setColumnMapping] = useState<Record<string, string>>({})
   const [filePath, setFilePath] = useState<string>('')
 
+  const normalizeText = (text: string) =>
+    String(text || '')
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9]/g, '')
+
+  const ERP_COLUMNS_SYNONYMS: Record<string, string[]> = {
+    Compensado: ['compensado', 'status'],
+    'Tipo Operação': ['tipooperacao', 'tipo', 'operacao', 'tipodeoperacao', 'tipolancamento'],
+    'Data Emissão': ['dataemissao', 'emissao', 'datadeemissao', 'dtemissao', 'data', 'dataemiss'],
+    'Dt Compens.': ['dtcompens', 'datacompensacao', 'compensacao', 'datadecompensacao'],
+    'Conta/Caixa': ['contacaixa', 'conta', 'caixa', 'codigoconta'],
+    'Nome Caixa': ['nomecaixa', 'nomedocaixa', 'descricaocaixa', 'banco', 'caixanome'],
+    'Conta/Caixa Destino': ['contacaixadestino', 'contadestino', 'caixadestino', 'destino'],
+    'Forma Pagto': [
+      'formapagto',
+      'formapagamento',
+      'pagamento',
+      'tipopagamento',
+      'formadepagamento',
+    ],
+    'C.Custo': ['ccusto', 'centrocusto', 'centrodecusto', 'cc', 'codigocentrocusto', 'centro'],
+    'Descrição C.Custo': ['descricaoccusto', 'descricaocentrocusto', 'nomecentrocusto', 'desccc'],
+    Valor: ['valor', 'vlr', 'valorbruto', 'val', 'vlrbruto', 'saida', 'entrada'],
+    'Valor Líquido': ['valorliquido', 'vlrliquido', 'liquido'],
+    'Nº Documento': ['ndocumento', 'documento', 'numerodocumento', 'numdoc', 'doc'],
+    'Nome Cli/Fornec': [
+      'nomeclifornec',
+      'cliente',
+      'fornecedor',
+      'nomecliente',
+      'nomefornecedor',
+      'cliforn',
+      'favorecido',
+      'razaosocial',
+    ],
+    Histórico: ['historico', 'descricao', 'obs', 'observacao', 'hist', 'detalhe'],
+    FP: ['fp'],
+    'Nº Cheque': ['ncheque', 'numerocheque', 'cheque', 'numcheque'],
+    'Data Vencto': ['datavencto', 'vencimento', 'datavencimento', 'vencto', 'dtvencto', 'datavenc'],
+    'Nominal a': ['nominala', 'nominal', 'beneficiario'],
+    'Emitente Cheque': ['emitentecheque', 'emitente'],
+    'CNPJ/CPF': ['cnpjcpf', 'cnpj', 'cpf', 'documentofederal', 'docfederal', 'documento'],
+    'Nº Extrato': ['nextrato', 'extrato', 'numeroextrato'],
+    Filial: ['filial', 'empresa', 'loja', 'unidade'],
+    'Data Canc.': ['datacanc', 'datacancelamento', 'cancelamento', 'dtcanc'],
+    'Data Estorno': ['dataestorno', 'estorno', 'dtestorno'],
+    Banco: ['banco', 'instituicao', 'codbanco'],
+    'C.Corrente': ['ccorrente', 'contacorrente', 'corrente'],
+    'Cód.Cli/For': ['codclifor', 'codigocliente', 'codigofornecedor', 'codcliente'],
+    Departamento: ['departamento', 'depto', 'setor', 'area'],
+  }
+
   const ERP_COLUMNS = [
     'Compensado',
     'Tipo Operação',
@@ -179,17 +233,49 @@ export function ImportErpFinancialModal({ open, onOpenChange, onImportSuccess }:
         setPreviewData(data)
 
         const initialMap: Record<string, string> = {}
-        const normalizedHeaders = data.headers.map((h: string) =>
-          h.toLowerCase().replace(/[^a-z0-9]/g, ''),
-        )
+        const normalizedHeaders = data.headers.map((h: string) => normalizeText(h))
+        const usedTargets = new Set<string>()
 
-        ERP_COLUMNS.forEach((erpCol) => {
-          const normErp = erpCol.toLowerCase().replace(/[^a-z0-9]/g, '')
-          const matchIdx = normalizedHeaders.findIndex(
-            (nh: string) => normErp.includes(nh) || nh.includes(normErp),
-          )
-          if (matchIdx !== -1) {
-            initialMap[data.headers[matchIdx]] = erpCol
+        data.headers.forEach((header: string, idx: number) => {
+          const nh = normalizedHeaders[idx]
+          if (!nh) return
+          let matchedErpCol = ''
+
+          // 1. Exact match in synonyms
+          for (const [erpCol, synonyms] of Object.entries(ERP_COLUMNS_SYNONYMS)) {
+            if (usedTargets.has(erpCol)) continue
+            if (synonyms.includes(nh)) {
+              matchedErpCol = erpCol
+              break
+            }
+          }
+
+          // 2. Substring match in synonyms
+          if (!matchedErpCol) {
+            for (const [erpCol, synonyms] of Object.entries(ERP_COLUMNS_SYNONYMS)) {
+              if (usedTargets.has(erpCol)) continue
+              if (synonyms.some((syn) => nh.includes(syn) || syn.includes(nh))) {
+                matchedErpCol = erpCol
+                break
+              }
+            }
+          }
+
+          // 3. Fallback to ERP_COLUMNS text match
+          if (!matchedErpCol) {
+            for (const erpCol of ERP_COLUMNS) {
+              if (usedTargets.has(erpCol)) continue
+              const normErp = normalizeText(erpCol)
+              if (normErp === nh || normErp.includes(nh) || nh.includes(normErp)) {
+                matchedErpCol = erpCol
+                break
+              }
+            }
+          }
+
+          if (matchedErpCol) {
+            initialMap[header] = matchedErpCol
+            usedTargets.add(matchedErpCol)
           }
         })
         setColumnMapping(initialMap)
