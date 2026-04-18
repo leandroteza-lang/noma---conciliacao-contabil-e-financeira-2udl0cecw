@@ -145,7 +145,9 @@ Deno.serve(async (req: Request) => {
               try {
                 const d = new Date(val)
                 if (!isNaN(d.getTime())) return d.toISOString().split('T')[0]
-              } catch (e) {}
+              } catch (e) {
+                // Ignore invalid dates
+              }
               return null
             }
 
@@ -420,7 +422,9 @@ Deno.serve(async (req: Request) => {
             return d.toISOString().split('T')[0]
           }
         }
-      } catch (e) {}
+      } catch (e) {
+        // Ignore invalid dates
+      }
 
       return null
     }
@@ -2679,7 +2683,9 @@ Deno.serve(async (req: Request) => {
                   errors: newErrors,
                 }),
               })
-            } catch (e) {}
+            } catch (e) {
+              console.error('Error triggering next chunk:', e)
+            }
           })(),
         )
       } else {
@@ -2788,7 +2794,9 @@ Deno.serve(async (req: Request) => {
             })
             .eq('id', payload.importId)
         }
-      } catch (e) {}
+      } catch (e) {
+        console.error('Error updating import history on fail:', e)
+      }
     }
     return new Response(JSON.stringify({ error: err.message }), {
       status: 200,

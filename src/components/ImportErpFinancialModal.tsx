@@ -40,6 +40,7 @@ export function ImportErpFinancialModal({ open, onOpenChange, onImportSuccess }:
 
   const [loading, setLoading] = useState(false)
   const [previewData, setPreviewData] = useState<any>(null)
+  const [selectedSheet, setSelectedSheet] = useState<string>('')
   const [columnMapping, setColumnMapping] = useState<Record<string, string>>({})
   const [filePath, setFilePath] = useState<string>('')
 
@@ -231,6 +232,7 @@ export function ImportErpFinancialModal({ open, onOpenChange, onImportSuccess }:
         }
 
         setPreviewData(data)
+        if (sheetNames.length > 0) setSelectedSheet(sheetNames[0])
 
         const initialMap: Record<string, string> = {}
         const normalizedHeaders = data.headers.map((h: string) => normalizeText(h))
@@ -331,34 +333,15 @@ export function ImportErpFinancialModal({ open, onOpenChange, onImportSuccess }:
 
       setFilePath(path)
 
-      const { data: history, error: historyErr } = await supabase
-        .from('import_history')
-        .insert({
-          user_id: user?.id,
-          import_type: 'ERP_FINANCIAL_MOVEMENTS',
-          file_name: file.name,
-          file_path: path,
-          status: 'Processing',
-          organization_id: selectedOrg,
-          total_records: 0,
-        })
-        .select()
-        .single()
-
-      if (historyErr) throw historyErr
-
       const { error } = await supabase.functions.invoke('import-data', {
         body: {
-          action: 'PROCESS_BACKGROUND',
-          importId: history.id,
+          action: 'START_BACKGROUND',
           type: 'ERP_FINANCIAL_MOVEMENTS',
           filePath: path,
           fileName: file.name,
           organizationId: selectedOrg,
           columnMapping,
-          offset: 0,
-          limit: 2000,
-          userId: user?.id,
+          sheetName: selectedSheet || previewData?.sheets?.[0],
         },
       })
 
@@ -427,7 +410,7 @@ export function ImportErpFinancialModal({ open, onOpenChange, onImportSuccess }:
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="text-sm font-medium mb-1 block">Aba da Planilha</label>
-                <Select defaultValue={previewData.sheets[0]}>
+                <Select value={selectedSheet} onValueChange={setSelectedSheet}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
