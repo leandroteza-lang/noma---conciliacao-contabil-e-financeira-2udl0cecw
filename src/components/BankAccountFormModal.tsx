@@ -145,7 +145,19 @@ export function BankAccountFormModal({ isOpen, onClose, onSave, initialData }: a
             </div>
             <div className="space-y-2">
               <Label>Classificação</Label>
-              <Input {...register('classification')} placeholder="Ex: 1.1.01.02.001" />
+              <Select
+                value={watch('classification') || 'NONE'}
+                onValueChange={(val) => setValue('classification', val === 'NONE' ? '' : val)}
+              >
+                <SelectTrigger className={errors.classification ? 'border-red-500' : ''}>
+                  <SelectValue placeholder="Selecione..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="NONE">Selecione...</SelectItem>
+                  <SelectItem value="B">B</SelectItem>
+                  <SelectItem value="C">C</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-2">
               <Label>Código do Banco</Label>
@@ -153,7 +165,22 @@ export function BankAccountFormModal({ isOpen, onClose, onSave, initialData }: a
             </div>
             <div className="space-y-2">
               <Label>Tipo de Conta</Label>
-              <Input {...register('account_type')} placeholder="Ex: Corrente" />
+              <Select
+                value={watch('account_type') || 'NONE'}
+                onValueChange={(val) => setValue('account_type', val === 'NONE' ? '' : val)}
+              >
+                <SelectTrigger className={errors.account_type ? 'border-red-500' : ''}>
+                  <SelectValue placeholder="Selecione..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="NONE">Selecione...</SelectItem>
+                  <SelectItem value="CAIXA">CAIXA</SelectItem>
+                  <SelectItem value="CORRENTE">CORRENTE</SelectItem>
+                  <SelectItem value="POUPANÇA">POUPANÇA</SelectItem>
+                  <SelectItem value="APLICAÇÕES">APLICAÇÕES</SelectItem>
+                  <SelectItem value="OUTROS">OUTROS</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-2">
               <Label>Agência</Label>
