@@ -90,11 +90,6 @@ export function BankAccountBulkEditModal({ isOpen, onClose, onSave, count }: any
                 <SelectItem value="Poupança">Poupança</SelectItem>
                 <SelectItem value="Caixa">Caixa</SelectItem>
                 <SelectItem value="Aplicação">Aplicação</SelectItem>
-                <SelectItem value="5">5</SelectItem>
-                <SelectItem value="6">6</SelectItem>
-                <SelectItem value="7">7</SelectItem>
-                <SelectItem value="08">08</SelectItem>
-                <SelectItem value="14">14</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -110,9 +105,6 @@ export function BankAccountBulkEditModal({ isOpen, onClose, onSave, count }: any
                 <SelectItem value="Operacional">Operacional</SelectItem>
                 <SelectItem value="Investimento">Investimento</SelectItem>
                 <SelectItem value="Financiamento">Financiamento</SelectItem>
-                <SelectItem value="A">A</SelectItem>
-                <SelectItem value="B">B</SelectItem>
-                <SelectItem value="C">C</SelectItem>
               </SelectContent>
             </Select>
           </div>
