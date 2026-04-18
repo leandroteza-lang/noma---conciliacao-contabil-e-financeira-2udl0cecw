@@ -12,8 +12,25 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { useToast } from '@/hooks/use-toast'
-import { Search, Plus, Upload, Download, Building2, Filter, Trash2, Sparkles } from 'lucide-react'
+import {
+  Search,
+  Plus,
+  Upload,
+  Download,
+  Building2,
+  Filter,
+  Trash2,
+  Sparkles,
+  FileText,
+  FileSpreadsheet,
+} from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { ImportBankAccountsModal } from '@/components/ImportBankAccountsModal'
 import { SmartMappingModal } from '@/components/SmartMappingModal'
@@ -197,9 +214,17 @@ export default function Index() {
     }
   }
 
-  const handleExport = async () => {
+  const handleExport = async (formatType: 'pdf' | 'excel' | 'browser' | 'csv' | 'txt') => {
     try {
-      toast({ title: 'Gerando exportação...' })
+      toast({ title: 'Aguarde', description: 'Gerando exportação...' })
+
+      let win: Window | null = null
+      if (formatType === 'browser') {
+        win = window.open('', '_blank')
+        if (win) {
+          win.document.write('Gerando relatório, aguarde...')
+        }
+      }
 
       const exportData = sortedAccounts.map((acc) => ({
         Empresa: acc.organizations?.name || acc.company_name || '',
@@ -213,12 +238,15 @@ export default function Index() {
       }))
 
       const { data, error } = await supabase.functions.invoke('export-bank-accounts', {
-        body: { format: 'excel', data: exportData },
+        body: { format: formatType === 'browser' ? 'pdf' : formatType, data: exportData },
       })
 
-      if (error) throw error
+      if (error) {
+        if (win) win.close()
+        throw error
+      }
 
-      if (data?.excel) {
+      if (formatType === 'excel' && data?.excel) {
         const byteCharacters = atob(data.excel)
         const byteNumbers = new Array(byteCharacters.length)
         for (let i = 0; i < byteCharacters.length; i++) {
@@ -236,8 +264,46 @@ export default function Index() {
         a.click()
         document.body.removeChild(a)
         URL.revokeObjectURL(url)
-        toast({ title: 'Exportação concluída' })
+      } else if (formatType === 'csv' && data?.csv) {
+        const blob = new Blob([data.csv], { type: 'text/csv;charset=utf-8;' })
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = 'contas_bancarias.csv'
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+        URL.revokeObjectURL(url)
+      } else if (formatType === 'txt' && data?.txt) {
+        const blob = new Blob([data.txt], { type: 'text/plain;charset=utf-8;' })
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = 'contas_bancarias.txt'
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+        URL.revokeObjectURL(url)
+      } else if (formatType === 'pdf' && data?.pdf) {
+        const a = document.createElement('a')
+        a.href = data.pdf
+        a.download = 'contas_bancarias.pdf'
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+      } else if (formatType === 'browser' && data?.pdf) {
+        if (win) {
+          win.document.open()
+          win.document.write(
+            `<iframe src="${data.pdf}" frameborder="0" style="border:0; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100%; position:absolute;" allowfullscreen></iframe>`,
+          )
+          win.document.close()
+        }
+      } else {
+        if (win) win.close()
       }
+
+      toast({ title: 'Sucesso', description: 'Exportação concluída' })
     } catch (error: any) {
       toast({ title: 'Erro ao exportar', description: error.message, variant: 'destructive' })
     }
@@ -322,9 +388,45 @@ export default function Index() {
               </Button>
             </>
           )}
-          <Button variant="outline" onClick={handleExport}>
-            <Download className="w-4 h-4 mr-2" /> Exportar
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline">
+                <Download className="w-4 h-4 mr-2" /> Exportar
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                onClick={() => handleExport('txt')}
+                className="cursor-pointer gap-2"
+              >
+                <FileText className="w-4 h-4" /> TXT
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => handleExport('csv')}
+                className="cursor-pointer gap-2"
+              >
+                <FileText className="w-4 h-4" /> CSV
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => handleExport('excel')}
+                className="cursor-pointer gap-2"
+              >
+                <FileSpreadsheet className="w-4 h-4" /> Excel (XLSX)
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => handleExport('pdf')}
+                className="cursor-pointer gap-2"
+              >
+                <FileText className="w-4 h-4" /> PDF
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => handleExport('browser')}
+                className="cursor-pointer gap-2"
+              >
+                <FileText className="w-4 h-4" /> Abrir no Browser
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           <Button variant="outline" onClick={() => setIsImportModalOpen(true)}>
             <Upload className="w-4 h-4 mr-2" /> Importar em Lote
           </Button>

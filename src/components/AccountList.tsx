@@ -337,7 +337,7 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
     }
   }
 
-  const handleExport = async (formatType: 'pdf' | 'excel' | 'browser') => {
+  const handleExport = async (formatType: 'pdf' | 'excel' | 'browser' | 'csv' | 'txt') => {
     try {
       toast({ title: 'Aguarde', description: 'Gerando relatório...' })
 
@@ -382,7 +382,7 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
 
       const result = await res.json()
 
-      if (formatType === 'excel') {
+      if (formatType === 'excel' && result.excel) {
         const binaryString = atob(result.excel)
         const bytes = new Uint8Array(binaryString.length)
         for (let i = 0; i < binaryString.length; i++) bytes[i] = binaryString.charCodeAt(i)
@@ -393,20 +393,39 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
         link.href = URL.createObjectURL(blob)
         link.download = 'contas.xlsx'
         link.click()
-      } else if (formatType === 'browser') {
+      } else if (formatType === 'csv' && result.csv) {
+        const blob = new Blob([result.csv], { type: 'text/csv;charset=utf-8;' })
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = 'contas.csv'
+        a.click()
+        URL.revokeObjectURL(url)
+      } else if (formatType === 'txt' && result.txt) {
+        const blob = new Blob([result.txt], { type: 'text/plain;charset=utf-8;' })
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = 'contas.txt'
+        a.click()
+        URL.revokeObjectURL(url)
+      } else if (formatType === 'browser' && result.pdf) {
         if (win) {
           win.document.open()
           win.document.write(
-            `<iframe src="${result.pdf}" frameborder="0" style="border:0; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100%;" allowfullscreen></iframe>`,
+            `<iframe src="${result.pdf}" frameborder="0" style="border:0; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100%; position:absolute;" allowfullscreen></iframe>`,
           )
           win.document.close()
         }
-      } else {
+      } else if (formatType === 'pdf' && result.pdf) {
         const link = document.createElement('a')
         link.href = result.pdf
         link.download = 'contas.pdf'
         link.click()
+      } else {
+        if (win) win.close()
       }
+
       toast({ title: 'Sucesso', description: 'Relatório gerado com sucesso!' })
     } catch (err: any) {
       toast({ title: 'Erro', description: err.message, variant: 'destructive' })
@@ -562,10 +581,22 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem
-                onClick={() => handleExport('browser')}
+                onClick={() => handleExport('txt')}
                 className="cursor-pointer gap-2"
               >
-                <FileText className="h-4 w-4" /> Abrir no Browser
+                <FileText className="h-4 w-4" /> TXT
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => handleExport('csv')}
+                className="cursor-pointer gap-2"
+              >
+                <FileText className="h-4 w-4" /> CSV
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => handleExport('excel')}
+                className="cursor-pointer gap-2"
+              >
+                <FileSpreadsheet className="h-4 w-4" /> Excel (XLSX)
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={() => handleExport('pdf')}
@@ -574,10 +605,10 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
                 <FileText className="h-4 w-4" /> PDF
               </DropdownMenuItem>
               <DropdownMenuItem
-                onClick={() => handleExport('excel')}
+                onClick={() => handleExport('browser')}
                 className="cursor-pointer gap-2"
               >
-                <FileSpreadsheet className="h-4 w-4" /> Excel (XLSX)
+                <FileText className="h-4 w-4" /> Abrir no Browser
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
