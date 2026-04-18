@@ -102,6 +102,7 @@ export function ImportErpFinancialModal({
       setStep(1)
       setFile(null)
       setFileBase64('')
+      setAllRecords([])
       setMapping({})
       setResult(null)
       setSelectedOrg('')
@@ -118,19 +119,113 @@ export function ImportErpFinancialModal({
     }
   }, [open])
 
+  const [allRecords, setAllRecords] = useState<any[]>([])
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0]
     if (!f) return
     setFile(f)
-    const reader = new FileReader()
-    reader.onload = async (evt) => {
-      const result = evt.target?.result as string
-      if (!result) return
-      const b64 = result.split(',')[1]
-      setFileBase64(b64)
-      await fetchPreview(b64, f.name, '')
+
+    const isCsv = f.name.toLowerCase().endsWith('.csv')
+    if (isCsv) {
+      const readWithEncoding = (encoding: string) => {
+        const reader = new FileReader()
+        reader.onload = (evt) => {
+          const text = evt.target?.result as string
+          if (!text) return
+
+          if (encoding === 'utf-8' && text.includes('\uFFFD')) {
+            readWithEncoding('iso-8859-1')
+            return
+          }
+
+          const delimiter = text.split(';').length > text.split(',').length ? ';' : ','
+          const rows: string[][] = []
+          let currentRow: string[] = []
+          let currentCell = ''
+          let inQuotes = false
+
+          for (let i = 0; i < text.length; i++) {
+            const char = text[i]
+            const nextChar = text[i + 1]
+
+            if (char === '"') {
+              if (inQuotes && nextChar === '"') {
+                currentCell += '"'
+                i++
+              } else {
+                inQuotes = !inQuotes
+              }
+            } else if (char === delimiter && !inQuotes) {
+              currentRow.push(currentCell)
+              currentCell = ''
+            } else if ((char === '\n' || (char === '\r' && nextChar === '\n')) && !inQuotes) {
+              if (char === '\r') i++
+              currentRow.push(currentCell)
+              if (currentRow.some((c) => c.trim() !== '')) rows.push(currentRow)
+              currentRow = []
+              currentCell = ''
+            } else {
+              currentCell += char
+            }
+          }
+          if (currentCell || currentRow.length > 0) {
+            currentRow.push(currentCell)
+            if (currentRow.some((c) => c.trim() !== '')) rows.push(currentRow)
+          }
+
+          let rawRecords: any[] = []
+          if (rows.length > 0) {
+            const headers = rows[0].map((h) => h.trim())
+            for (let i = 1; i < rows.length; i++) {
+              const values = rows[i].map((v) => v.trim())
+              const row: any = {}
+              headers.forEach((h, idx) => {
+                row[h] = values[idx] || ''
+              })
+              rawRecords.push(row)
+            }
+          }
+
+          setSheets(['CSV Data'])
+          setSelectedSheet('CSV Data')
+          const hdrs = rawRecords.length > 0 ? Object.keys(rawRecords[0]) : []
+          setHeaders(hdrs)
+          setAllRecords(rawRecords)
+          setPreviewRows(rawRecords.slice(0, 3))
+          setTotalRecords(rawRecords.length)
+
+          const autoMap: Record<string, string> = {}
+          hdrs.forEach((h: string) => {
+            const cleanH = h
+              .normalize('NFD')
+              .replace(/[\u0300-\u036f]/g, '')
+              .toUpperCase()
+              .trim()
+              .replace(/[^A-Z0-9]/g, '')
+            const match = EXPECTED_FIELDS.find((ef) => {
+              const cleanEf = ef.key.replace(/[^A-Z0-9]/g, '')
+              return cleanH === cleanEf || cleanH.includes(cleanEf) || cleanEf.includes(cleanH)
+            })
+            if (match) autoMap[match.key] = h
+          })
+          setMapping(autoMap)
+          setStep(2)
+        }
+        reader.readAsText(f, encoding)
+      }
+      readWithEncoding('utf-8')
+    } else {
+      const reader = new FileReader()
+      reader.onload = async (evt) => {
+        const result = evt.target?.result as string
+        if (!result) return
+        const b64 = result.split(',')[1]
+        setFileBase64(b64)
+        await fetchPreview(b64, f.name, '')
+      }
+      reader.readAsDataURL(f)
     }
-    reader.readAsDataURL(f)
   }
 
   const fetchPreview = async (b64: string, name: string, sheet: string) => {
@@ -138,7 +233,7 @@ export function ImportErpFinancialModal({
     try {
       const { data, error } = await supabase.functions.invoke('import-data', {
         body: {
-          action: 'PREVIEW',
+          action: 'PARSE_ALL',
           fileBase64: b64,
           fileName: name,
           sheetName: sheet,
@@ -150,7 +245,10 @@ export function ImportErpFinancialModal({
 
       setSheets(data.sheets || [])
       setHeaders(data.headers || [])
-      setPreviewRows(data.previewRows || [])
+      if (data.records) {
+        setAllRecords(data.records)
+        setPreviewRows(data.records.slice(0, 3))
+      }
       setTotalRecords(data.totalRecords || 0)
 
       if (!sheet && data.sheets?.length > 0) {
@@ -218,10 +316,12 @@ export function ImportErpFinancialModal({
       for (let offset = 0; offset < total; offset += CHUNK_SIZE) {
         setProgress(Math.min(Math.round((offset / total) * 100), 99))
 
+        const chunkRecords = allRecords.slice(offset, offset + CHUNK_SIZE)
+
         const { data, error } = await supabase.functions.invoke('import-data', {
           body: {
             type: 'ERP_FINANCIAL_MOVEMENTS',
-            fileBase64,
+            records: chunkRecords,
             fileName: file?.name,
             sheetName: selectedSheet,
             columnMapping,
@@ -229,7 +329,6 @@ export function ImportErpFinancialModal({
             allowIncomplete,
             mode: 'INSERT_ONLY',
             offset,
-            limit: CHUNK_SIZE,
             skipHistory: offset + CHUNK_SIZE < total,
             totalRecords: total,
           },
