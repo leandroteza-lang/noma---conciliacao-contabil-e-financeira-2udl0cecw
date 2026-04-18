@@ -1266,22 +1266,17 @@ Deno.serve(async (req: Request) => {
         let fetchPage = 0
         while (fetchHasMore) {
           let query = supabase.from('bank_accounts').select('*').is('deleted_at', null)
-
+          
           if (orgId) {
             query = query.eq('organization_id', orgId)
           } else {
             query = query.is('organization_id', null)
           }
 
-          const { data: pageData, error: existingAccError } = await query.range(
-            fetchPage * 1000,
-            (fetchPage + 1) * 1000 - 1,
-          )
+          const { data: pageData, error: existingAccError } = await query.range(fetchPage * 1000, (fetchPage + 1) * 1000 - 1)
 
           if (existingAccError) {
-            throw new Error(
-              'Erro ao buscar contas bancárias existentes: ' + existingAccError.message,
-            )
+            throw new Error('Erro ao buscar contas bancárias existentes: ' + existingAccError.message)
           }
 
           if (pageData && pageData.length > 0) {
@@ -1298,7 +1293,7 @@ Deno.serve(async (req: Request) => {
             .replace(/[^0-9A-Z]/gi, '')
             .toUpperCase()
             .replace(/^0+/, '') || '0'
-
+            
         const normalizeAgency = (str: any) =>
           String(str || '')
             .replace(/[^0-9A-Z]/gi, '')
@@ -1346,11 +1341,7 @@ Deno.serve(async (req: Request) => {
 
           if (existing) {
             if (existing.is_temp) {
-              addError(
-                rowNum,
-                `Conta bancária duplicada na planilha (Agência ${rawAgency} Conta ${rawAccountNumber})`,
-                row,
-              )
+              addError(rowNum, `Conta bancária duplicada na planilha (Agência ${rawAgency} Conta ${rawAccountNumber})`, row)
             } else {
               if (mode !== 'INSERT_ONLY') {
                 toUpdate.push({ ...payloadData, id: existing.id, _rowNum: rowNum })
@@ -1405,11 +1396,7 @@ Deno.serve(async (req: Request) => {
             if (insErr) {
               console.error(`[BANK_ACCOUNTS] Insert error:`, insErr)
               chunk.forEach((c: any) => {
-                addError(
-                  c._rowNum,
-                  `Erro na inserção: ${insErr.message} - Conta: ${c.account_number}`,
-                  c,
-                )
+                addError(c._rowNum, `Erro na inserção: ${insErr.message} - Conta: ${c.account_number}`, c)
               })
             }
           }
@@ -1424,11 +1411,7 @@ Deno.serve(async (req: Request) => {
             if (updErr) {
               console.error(`[BANK_ACCOUNTS] Upsert error:`, updErr)
               chunk.forEach((c: any) => {
-                addError(
-                  c._rowNum,
-                  `Erro na atualização: ${updErr.message} - Conta: ${c.account_number}`,
-                  c,
-                )
+                addError(c._rowNum, `Erro na atualização: ${updErr.message} - Conta: ${c.account_number}`, c)
               })
             }
           }
@@ -2766,11 +2749,7 @@ Deno.serve(async (req: Request) => {
           } else if (orgs && orgs.length > 0) {
             orgId = orgs[0].id
           } else {
-            addError(
-              rowNum,
-              'Nenhuma empresa associada ao usuário para realizar a importação.',
-              row,
-            )
+            addError(rowNum, 'Nenhuma empresa associada ao usuário para realizar a importação.', row)
             continue
           }
         }
