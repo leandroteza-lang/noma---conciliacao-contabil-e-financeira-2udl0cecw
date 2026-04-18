@@ -88,6 +88,10 @@ export function ImportMappingModal({
             if (!result) throw new Error('Falha ao ler o arquivo')
             const base64 = result.split(',')[1]
 
+            const {
+              data: { session },
+            } = await supabase.auth.getSession()
+
             const { data, error } = await supabase.functions.invoke('import-data', {
               body: {
                 action: 'PREVIEW',
@@ -95,6 +99,7 @@ export function ImportMappingModal({
                 fileName: selectedFile.name,
                 fileBase64: base64,
               },
+              headers: session ? { Authorization: `Bearer ${session.access_token}` } : undefined,
             })
 
             if (error) throw error
@@ -150,6 +155,10 @@ export function ImportMappingModal({
           if (!result) throw new Error('Falha ao ler o arquivo')
           const base64 = result.split(',')[1]
 
+          const {
+            data: { session },
+          } = await supabase.auth.getSession()
+
           const { data, error } = await supabase.functions.invoke('import-data', {
             body: {
               type: 'MAPPINGS',
@@ -159,6 +168,7 @@ export function ImportMappingModal({
               sheetName: selectedSheet,
               mode: importMode,
             },
+            headers: session ? { Authorization: `Bearer ${session.access_token}` } : undefined,
           })
 
           if (error) throw error

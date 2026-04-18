@@ -33,15 +33,18 @@ Deno.serve(async (req: Request) => {
     data.forEach((r: any) => {
       flatData.push({
         ...r,
-        isHierarchyRow: false
+        isHierarchyRow: false,
       })
       if (r.isExpanded && r.hierarchyArray && r.hierarchyArray.length > 0) {
         flatData.push({
           isHierarchyHeader: true,
-          ccCode: '', ccDesc: '↳ Raiz Hierárquica da Conta Vinculada',
-          caCode: '', caDesc: '',
-          status: '', level: r.level + 1,
-          observations: ''
+          ccCode: '',
+          ccDesc: '↳ Raiz Hierárquica da Conta Vinculada',
+          caCode: '',
+          caDesc: '',
+          status: '',
+          level: r.level + 1,
+          observations: '',
         })
         r.hierarchyArray.forEach((node: any) => {
           const code = node.classification || node.account_code || ''
@@ -55,7 +58,7 @@ Deno.serve(async (req: Request) => {
             nodeLevel,
             isSyntheticNode: node.account_level === 'Sintética',
             level: r.level + 1,
-            observations: ''
+            observations: '',
           })
         })
       }
@@ -67,23 +70,24 @@ Deno.serve(async (req: Request) => {
           return {
             'Centro de Custo': r.ccDesc,
             'Conta Contábil': '',
-            'Status': '',
-            'Observações': ''
+            Status: '',
+            Observações: '',
           }
         }
         if (r.isHierarchyRow) {
           return {
             'Centro de Custo': '',
             'Conta Contábil': `   ${r.caCode} - ${r.caDesc}`,
-            'Status': '',
-            'Observações': ''
+            Status: '',
+            Observações: '',
           }
         }
         return {
-          'Centro de Custo': `${'  '.repeat(r.level)}${r.isSynthetic ? '[S]' : '[A]'} ${r.ccCode} - ${r.ccDesc}`.trim(),
+          'Centro de Custo':
+            `${'  '.repeat(r.level)}${r.isSynthetic ? '[S]' : '[A]'} ${r.ccCode} - ${r.ccDesc}`.trim(),
           'Conta Contábil': r.mapped ? `${r.caCode} - ${r.caDesc}` : 'Não vinculado',
-          'Status': r.Status,
-          'Observações': r.observations || ''
+          Status: r.Status,
+          Observações: r.observations || '',
         }
       })
       const worksheet = XLSX.utils.json_to_sheet(exportExcelData)
@@ -139,41 +143,62 @@ Deno.serve(async (req: Request) => {
       const getRowStyle = (r: any) => {
         if (r.isSynthetic) {
           switch (r.level) {
-            case 0: return 'background-color: #1e1b4b; color: #ffffff;'
-            case 1: return 'background-color: #312e81; color: #ffffff;'
-            case 2: return 'background-color: #3730a3; color: #ffffff;'
-            case 3: return 'background-color: #e0e7ff; color: #1e1b4b;'
-            default: return 'background-color: #f8fafc; color: #1e293b;'
+            case 0:
+              return 'background-color: #1e1b4b; color: #ffffff;'
+            case 1:
+              return 'background-color: #312e81; color: #ffffff;'
+            case 2:
+              return 'background-color: #3730a3; color: #ffffff;'
+            case 3:
+              return 'background-color: #e0e7ff; color: #1e1b4b;'
+            default:
+              return 'background-color: #f8fafc; color: #1e293b;'
           }
         }
         if (!r.mapped) {
-          return r.rowIndex % 2 === 0 ? 'background-color: rgba(254, 243, 199, 0.4); color: #334155;' : 'background-color: rgba(254, 243, 199, 0.7); color: #334155;'
+          return r.rowIndex % 2 === 0
+            ? 'background-color: rgba(254, 243, 199, 0.4); color: #334155;'
+            : 'background-color: rgba(254, 243, 199, 0.7); color: #334155;'
         }
         if (r.ccPendingDeletion) {
           return 'background-color: rgba(254, 226, 226, 0.5); color: #64748b;'
         }
-        return r.rowIndex % 2 === 0 ? 'background-color: #ffffff; color: #334155;' : 'background-color: #dbeefc; color: #1e293b;'
+        return r.rowIndex % 2 === 0
+          ? 'background-color: #ffffff; color: #334155;'
+          : 'background-color: #dbeefc; color: #1e293b;'
       }
 
       const getHierarchyNodeStyle = (nodeLevel: number, isSyntheticNode: boolean) => {
-        if (!isSyntheticNode) return 'background-color: #ffffff; color: #334155; border-bottom: 1px solid #f1f5f9;'
+        if (!isSyntheticNode)
+          return 'background-color: #ffffff; color: #334155; border-bottom: 1px solid #f1f5f9;'
         switch (nodeLevel) {
-          case 1: return 'background-color: #1e1b4b; color: #ffffff; font-weight: 700; border-bottom: 1px solid rgba(255,255,255,0.1);'
-          case 2: return 'background-color: #312e81; color: #ffffff; font-weight: 600; border-bottom: 1px solid rgba(255,255,255,0.1);'
-          case 3: return 'background-color: #3730a3; color: #ffffff; font-weight: 500; border-bottom: 1px solid rgba(255,255,255,0.1);'
-          case 4: return 'background-color: #e0e7ff; color: #1e1b4b; font-weight: 500; border-bottom: 1px solid #c7d2fe;'
-          default: return 'background-color: #f8fafc; color: #1e293b; font-weight: 500; border-bottom: 1px solid #e2e8f0;'
+          case 1:
+            return 'background-color: #1e1b4b; color: #ffffff; font-weight: 700; border-bottom: 1px solid rgba(255,255,255,0.1);'
+          case 2:
+            return 'background-color: #312e81; color: #ffffff; font-weight: 600; border-bottom: 1px solid rgba(255,255,255,0.1);'
+          case 3:
+            return 'background-color: #3730a3; color: #ffffff; font-weight: 500; border-bottom: 1px solid rgba(255,255,255,0.1);'
+          case 4:
+            return 'background-color: #e0e7ff; color: #1e1b4b; font-weight: 500; border-bottom: 1px solid #c7d2fe;'
+          default:
+            return 'background-color: #f8fafc; color: #1e293b; font-weight: 500; border-bottom: 1px solid #e2e8f0;'
         }
       }
 
       const getHierarchyBadgeStyle = (nodeLevel: number, isSyntheticNode: boolean) => {
-        if (!isSyntheticNode) return 'background-color: #f1f5f9; color: #475569; border: 1px solid #e2e8f0;'
+        if (!isSyntheticNode)
+          return 'background-color: #f1f5f9; color: #475569; border: 1px solid #e2e8f0;'
         switch (nodeLevel) {
-          case 1: return 'background-color: #312e81; color: #ffffff; border: 1px solid #3730a3;'
-          case 2: return 'background-color: #3730a3; color: #ffffff; border: 1px solid #4338ca;'
-          case 3: return 'background-color: #4338ca; color: #ffffff; border: 1px solid #4f46e5;'
-          case 4: return 'background-color: #c7d2fe; color: #1e1b4b; border: 1px solid #a5b4fc;'
-          default: return 'background-color: #e2e8f0; color: #1e293b; border: 1px solid #cbd5e1;'
+          case 1:
+            return 'background-color: #312e81; color: #ffffff; border: 1px solid #3730a3;'
+          case 2:
+            return 'background-color: #3730a3; color: #ffffff; border: 1px solid #4338ca;'
+          case 3:
+            return 'background-color: #4338ca; color: #ffffff; border: 1px solid #4f46e5;'
+          case 4:
+            return 'background-color: #c7d2fe; color: #1e1b4b; border: 1px solid #a5b4fc;'
+          default:
+            return 'background-color: #e2e8f0; color: #1e293b; border: 1px solid #cbd5e1;'
         }
       }
 
@@ -261,7 +286,9 @@ Deno.serve(async (req: Request) => {
         </tr>
       </thead>
       <tbody>
-        ${data.map((r: any) => `
+        ${data
+          .map(
+            (r: any) => `
           <tr style="${getRowStyle(r)}">
             <td>
               <div style="display: flex; align-items: center; gap: 8px; padding-left: ${r.level * 20}px">
@@ -271,30 +298,42 @@ Deno.serve(async (req: Request) => {
               </div>
             </td>
             <td>
-              ${r.isSynthetic ? '' : r.mapped ? `
+              ${
+                r.isSynthetic
+                  ? ''
+                  : r.mapped
+                    ? `
                 <div style="display: flex; flex-direction: column; gap: 4px;">
                   <div style="display: flex; align-items: center; gap: 8px;">
                     <span class="ca-badge">${r.caCode}</span>
                     <span>${r.caDesc}</span>
                   </div>
-                  ${r.isExpanded && r.hierarchyArray && r.hierarchyArray.length > 0 ? `
+                  ${
+                    r.isExpanded && r.hierarchyArray && r.hierarchyArray.length > 0
+                      ? `
                     <div class="hierarchy-container">
                       <div class="hierarchy-header">Raiz Hierárquica</div>
-                      ${r.hierarchyArray.map((node: any) => {
-                        const code = node.classification || node.account_code || ''
-                        const nodeLevel = (code.match(/\./g) || []).length + 1
-                        const isSyn = node.account_level === 'Sintética'
-                        return `
+                      ${r.hierarchyArray
+                        .map((node: any) => {
+                          const code = node.classification || node.account_code || ''
+                          const nodeLevel = (code.match(/\./g) || []).length + 1
+                          const isSyn = node.account_level === 'Sintética'
+                          return `
                           <div class="hierarchy-node" style="${getHierarchyNodeStyle(nodeLevel, isSyn)}">
                             <span class="hierarchy-badge" style="${getHierarchyBadgeStyle(nodeLevel, isSyn)}">${code}</span>
                             <span style="font-size: 11px;">${node.account_name}</span>
                           </div>
                         `
-                      }).join('')}
+                        })
+                        .join('')}
                     </div>
-                  ` : ''}
+                  `
+                      : ''
+                  }
                 </div>
-              ` : '<span style="color: #94a3b8; font-style: italic;">Não vinculado</span>'}
+              `
+                    : '<span style="color: #94a3b8; font-style: italic;">Não vinculado</span>'
+              }
             </td>
             <td style="text-align: center;">
               ${r.isSynthetic ? '-' : `<span class="${r.mapped ? 'status-mapped' : 'status-pending'}">${r.Status}</span>`}
@@ -303,7 +342,9 @@ Deno.serve(async (req: Request) => {
               <span style="font-size: 11px; color: #475569;">${r.observations || ''}</span>
             </td>
           </tr>
-        `).join('')}
+        `,
+          )
+          .join('')}
       </tbody>
     </table>
   </div>
@@ -317,87 +358,102 @@ Deno.serve(async (req: Request) => {
 
     if (format === 'pdf') {
       const doc = new jsPDF('landscape')
-      
+
       doc.setFontSize(18)
       doc.setTextColor(15, 23, 42)
       doc.text('Relatório de Mapeamento DE/PARA', 14, 20)
-      
+
       doc.setFontSize(10)
       doc.setTextColor(100, 116, 139)
-      doc.text(`Gerado em ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR')}`, 280 - 14, 20, { align: 'right' })
+      doc.text(
+        `Gerado em ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR')}`,
+        280 - 14,
+        20,
+        { align: 'right' },
+      )
 
       const body = flatData.map((r: any) => {
         if (r.isHierarchyHeader) {
-          return [
-            { content: `${'  '.repeat(r.level)} ↳ ${r.ccDesc}`, colSpan: 4 }
-          ]
+          return [{ content: `${'  '.repeat(r.level)} ↳ ${r.ccDesc}`, colSpan: 4 }]
         }
         if (r.isHierarchyRow) {
-          return [
-            '',
-            { content: ' ' },
-            '',
-            ''
-          ]
+          return ['', { content: ' ' }, '', '']
         }
         return [
           { content: ' ' },
           { content: ' ' },
           { content: ' ' },
-          { content: r.observations || ' ' }
+          { content: r.observations || ' ' },
         ]
       })
 
       autoTable(doc, {
         startY: 28,
-        head: [['DE: Centro de Custo TGA', 'PARA: Conta Contábil Vinculada', 'Status', 'Observações']],
+        head: [
+          ['DE: Centro de Custo TGA', 'PARA: Conta Contábil Vinculada', 'Status', 'Observações'],
+        ],
         body: body,
         theme: 'grid',
-        headStyles: { 
+        headStyles: {
           fillColor: [30, 27, 75],
           textColor: [255, 255, 255],
           fontStyle: 'bold',
-          halign: 'left'
+          halign: 'left',
         },
         columnStyles: {
           0: { cellWidth: 100 },
           1: { cellWidth: 100 },
           2: { cellWidth: 25, halign: 'center' },
-          3: { cellWidth: 45 }
+          3: { cellWidth: 45 },
         },
-        styles: { 
+        styles: {
           fontSize: 8,
           cellPadding: 3,
           lineColor: [226, 232, 240],
           lineWidth: 0.1,
-          minCellHeight: 8
+          minCellHeight: 8,
         },
         willDrawCell: function (cellData: any) {
           const rowData = flatData[cellData.row.index]
-          if (!rowData) return;
+          if (!rowData) return
 
           if (cellData.section === 'body') {
             if (rowData.isHierarchyHeader) {
               cellData.cell.styles.fillColor = [248, 250, 252]
               cellData.cell.styles.textColor = [100, 116, 139]
               cellData.cell.styles.fontStyle = 'bold'
-              return;
+              return
             }
 
             if (rowData.isHierarchyRow) {
               if (rowData.isSyntheticNode) {
                 switch (rowData.nodeLevel) {
-                  case 1: cellData.cell.styles.fillColor = [30, 27, 75]; cellData.cell.styles.textColor = [255, 255, 255]; break;
-                  case 2: cellData.cell.styles.fillColor = [49, 46, 129]; cellData.cell.styles.textColor = [255, 255, 255]; break;
-                  case 3: cellData.cell.styles.fillColor = [55, 48, 163]; cellData.cell.styles.textColor = [255, 255, 255]; break;
-                  case 4: cellData.cell.styles.fillColor = [224, 231, 255]; cellData.cell.styles.textColor = [30, 27, 75]; break;
-                  default: cellData.cell.styles.fillColor = [248, 250, 252]; cellData.cell.styles.textColor = [30, 41, 59]; break;
+                  case 1:
+                    cellData.cell.styles.fillColor = [30, 27, 75]
+                    cellData.cell.styles.textColor = [255, 255, 255]
+                    break
+                  case 2:
+                    cellData.cell.styles.fillColor = [49, 46, 129]
+                    cellData.cell.styles.textColor = [255, 255, 255]
+                    break
+                  case 3:
+                    cellData.cell.styles.fillColor = [55, 48, 163]
+                    cellData.cell.styles.textColor = [255, 255, 255]
+                    break
+                  case 4:
+                    cellData.cell.styles.fillColor = [224, 231, 255]
+                    cellData.cell.styles.textColor = [30, 27, 75]
+                    break
+                  default:
+                    cellData.cell.styles.fillColor = [248, 250, 252]
+                    cellData.cell.styles.textColor = [30, 41, 59]
+                    break
                 }
               } else {
                 cellData.cell.styles.fillColor = [255, 255, 255]
                 cellData.cell.styles.textColor = [51, 65, 85]
               }
-              return;
+              return
             }
 
             if (rowData.isSynthetic) {
@@ -425,13 +481,15 @@ Deno.serve(async (req: Request) => {
               }
             } else {
               if (!rowData.mapped) {
-                cellData.cell.styles.fillColor = rowData.rowIndex % 2 === 0 ? [255, 251, 235] : [254, 243, 199]
+                cellData.cell.styles.fillColor =
+                  rowData.rowIndex % 2 === 0 ? [255, 251, 235] : [254, 243, 199]
                 cellData.cell.styles.textColor = [51, 65, 85]
               } else if (rowData.ccPendingDeletion) {
                 cellData.cell.styles.fillColor = [254, 242, 242]
                 cellData.cell.styles.textColor = [100, 116, 139]
               } else {
-                cellData.cell.styles.fillColor = rowData.rowIndex % 2 === 0 ? [255, 255, 255] : [219, 238, 252]
+                cellData.cell.styles.fillColor =
+                  rowData.rowIndex % 2 === 0 ? [255, 255, 255] : [219, 238, 252]
                 cellData.cell.styles.textColor = [51, 65, 85]
               }
             }
@@ -439,206 +497,256 @@ Deno.serve(async (req: Request) => {
         },
         didDrawCell: function (data: any) {
           const rowData = flatData[data.row.index]
-          if (!rowData) return;
-          const doc = data.doc;
+          if (!rowData) return
+          const doc = data.doc
 
           if (data.section === 'body') {
-            const isDarkBg = rowData.isSynthetic && rowData.level <= 2;
-            const textCol = data.cell.styles.textColor;
-            const bgCol = data.cell.styles.fillColor;
+            const isDarkBg = rowData.isSynthetic && rowData.level <= 2
+            const textCol = data.cell.styles.textColor
+            const bgCol = data.cell.styles.fillColor
 
             if (data.column.index === 0 && !rowData.isHierarchyHeader && !rowData.isHierarchyRow) {
-              const startX = data.cell.x + 3 + (rowData.level * 4);
-              const centerY = data.cell.y + (data.cell.height / 2);
-              
-              const badgeText = rowData.isSynthetic ? 'S' : 'A';
-              
-              doc.setFontSize(7);
-              doc.setFont('helvetica', 'bold');
-              
-              let badgeBg = [255, 255, 255];
-              let badgeTextCol = [0, 0, 0];
-              let badgeBorder = null;
-              
+              const startX = data.cell.x + 3 + rowData.level * 4
+              const centerY = data.cell.y + data.cell.height / 2
+
+              const badgeText = rowData.isSynthetic ? 'S' : 'A'
+
+              doc.setFontSize(7)
+              doc.setFont('helvetica', 'bold')
+
+              let badgeBg = [255, 255, 255]
+              let badgeTextCol = [0, 0, 0]
+              let badgeBorder = null
+
               if (rowData.isSynthetic) {
                 if (isDarkBg) {
-                  badgeBg = [bgCol[0] + (255-bgCol[0])*0.2, bgCol[1] + (255-bgCol[1])*0.2, bgCol[2] + (255-bgCol[2])*0.2];
-                  badgeTextCol = [255, 255, 255];
+                  badgeBg = [
+                    bgCol[0] + (255 - bgCol[0]) * 0.2,
+                    bgCol[1] + (255 - bgCol[1]) * 0.2,
+                    bgCol[2] + (255 - bgCol[2]) * 0.2,
+                  ]
+                  badgeTextCol = [255, 255, 255]
                 } else {
-                  badgeBg = [Math.max(bgCol[0]-20, 0), Math.max(bgCol[1]-20, 0), Math.max(bgCol[2]-20, 0)];
-                  badgeTextCol = textCol;
+                  badgeBg = [
+                    Math.max(bgCol[0] - 20, 0),
+                    Math.max(bgCol[1] - 20, 0),
+                    Math.max(bgCol[2] - 20, 0),
+                  ]
+                  badgeTextCol = textCol
                 }
               } else {
-                badgeBg = [239, 246, 255];
-                badgeTextCol = [37, 99, 235];
-                badgeBorder = [191, 219, 254];
+                badgeBg = [239, 246, 255]
+                badgeTextCol = [37, 99, 235]
+                badgeBorder = [191, 219, 254]
               }
-              
-              const badgeWidth = 4.5;
-              const badgeHeight = 4;
-              
-              doc.setFillColor(badgeBg[0], badgeBg[1], badgeBg[2]);
+
+              const badgeWidth = 4.5
+              const badgeHeight = 4
+
+              doc.setFillColor(badgeBg[0], badgeBg[1], badgeBg[2])
               if (badgeBorder) {
-                doc.setDrawColor(badgeBorder[0], badgeBorder[1], badgeBorder[2]);
-                doc.setLineWidth(0.1);
-                doc.roundedRect(startX, centerY - 2, badgeWidth, badgeHeight, 0.5, 0.5, 'FD');
+                doc.setDrawColor(badgeBorder[0], badgeBorder[1], badgeBorder[2])
+                doc.setLineWidth(0.1)
+                doc.roundedRect(startX, centerY - 2, badgeWidth, badgeHeight, 0.5, 0.5, 'FD')
               } else {
-                doc.roundedRect(startX, centerY - 2, badgeWidth, badgeHeight, 0.5, 0.5, 'F');
+                doc.roundedRect(startX, centerY - 2, badgeWidth, badgeHeight, 0.5, 0.5, 'F')
               }
-              
-              doc.setTextColor(badgeTextCol[0], badgeTextCol[1], badgeTextCol[2]);
-              doc.text(badgeText, startX + badgeWidth/2, centerY + 1.2, { align: 'center' });
-              
-              const codeX = startX + badgeWidth + 2;
-              doc.setFontSize(8);
-              doc.setFont('helvetica', 'bold');
-              doc.setTextColor(textCol[0], textCol[1], textCol[2]);
-              doc.text(rowData.ccCode || '', codeX, centerY + 1.2);
-              
-              const codeWidth = doc.getTextWidth(rowData.ccCode || '');
-              doc.setFont('helvetica', 'normal');
-              const maxDescWidth = data.cell.width - (codeX - data.cell.x) - codeWidth - 4;
-              let descText = rowData.ccDesc || '';
+
+              doc.setTextColor(badgeTextCol[0], badgeTextCol[1], badgeTextCol[2])
+              doc.text(badgeText, startX + badgeWidth / 2, centerY + 1.2, { align: 'center' })
+
+              const codeX = startX + badgeWidth + 2
+              doc.setFontSize(8)
+              doc.setFont('helvetica', 'bold')
+              doc.setTextColor(textCol[0], textCol[1], textCol[2])
+              doc.text(rowData.ccCode || '', codeX, centerY + 1.2)
+
+              const codeWidth = doc.getTextWidth(rowData.ccCode || '')
+              doc.setFont('helvetica', 'normal')
+              const maxDescWidth = data.cell.width - (codeX - data.cell.x) - codeWidth - 4
+              let descText = rowData.ccDesc || ''
               if (doc.getTextWidth(descText) > maxDescWidth) {
-                 while(descText.length > 0 && doc.getTextWidth(descText + '...') > maxDescWidth) {
-                    descText = descText.slice(0, -1);
-                 }
-                 descText += '...';
+                while (descText.length > 0 && doc.getTextWidth(descText + '...') > maxDescWidth) {
+                  descText = descText.slice(0, -1)
+                }
+                descText += '...'
               }
-              doc.text(descText, codeX + codeWidth + 2, centerY + 1.2);
+              doc.text(descText, codeX + codeWidth + 2, centerY + 1.2)
             }
-            
+
             if (data.column.index === 1) {
               if (rowData.isHierarchyRow) {
-                const startX = data.cell.x + 8;
-                const centerY = data.cell.y + (data.cell.height / 2);
-                
-                const isSyn = rowData.isSyntheticNode;
-                const nodeLevel = rowData.nodeLevel;
-                
-                let badgeBg = [241, 245, 249]; let badgeTextCol = [71, 85, 105]; let badgeBorder = [226, 232, 240];
+                const startX = data.cell.x + 8
+                const centerY = data.cell.y + data.cell.height / 2
+
+                const isSyn = rowData.isSyntheticNode
+                const nodeLevel = rowData.nodeLevel
+
+                let badgeBg = [241, 245, 249]
+                let badgeTextCol = [71, 85, 105]
+                let badgeBorder = [226, 232, 240]
                 if (isSyn) {
                   switch (nodeLevel) {
-                    case 1: badgeBg = [49, 46, 129]; badgeTextCol = [255, 255, 255]; badgeBorder = [55, 48, 163]; break;
-                    case 2: badgeBg = [55, 48, 163]; badgeTextCol = [255, 255, 255]; badgeBorder = [67, 56, 202]; break;
-                    case 3: badgeBg = [67, 56, 202]; badgeTextCol = [255, 255, 255]; badgeBorder = [79, 70, 229]; break;
-                    case 4: badgeBg = [199, 210, 254]; badgeTextCol = [30, 27, 75]; badgeBorder = [165, 180, 252]; break;
-                    default: badgeBg = [226, 232, 240]; badgeTextCol = [30, 41, 59]; badgeBorder = [203, 213, 225]; break;
+                    case 1:
+                      badgeBg = [49, 46, 129]
+                      badgeTextCol = [255, 255, 255]
+                      badgeBorder = [55, 48, 163]
+                      break
+                    case 2:
+                      badgeBg = [55, 48, 163]
+                      badgeTextCol = [255, 255, 255]
+                      badgeBorder = [67, 56, 202]
+                      break
+                    case 3:
+                      badgeBg = [67, 56, 202]
+                      badgeTextCol = [255, 255, 255]
+                      badgeBorder = [79, 70, 229]
+                      break
+                    case 4:
+                      badgeBg = [199, 210, 254]
+                      badgeTextCol = [30, 27, 75]
+                      badgeBorder = [165, 180, 252]
+                      break
+                    default:
+                      badgeBg = [226, 232, 240]
+                      badgeTextCol = [30, 41, 59]
+                      badgeBorder = [203, 213, 225]
+                      break
                   }
                 }
-                
-                doc.setFontSize(7);
-                doc.setFont('helvetica', 'bold');
-                const badgeText = rowData.caCode || '';
-                const badgeWidth = doc.getTextWidth(badgeText) + 3;
-                const badgeHeight = 4.5;
-                
-                doc.setFillColor(badgeBg[0], badgeBg[1], badgeBg[2]);
-                doc.setDrawColor(badgeBorder[0], badgeBorder[1], badgeBorder[2]);
-                doc.setLineWidth(0.1);
-                doc.roundedRect(startX, centerY - 2.25, badgeWidth, badgeHeight, 0.5, 0.5, 'FD');
-                
-                doc.setTextColor(badgeTextCol[0], badgeTextCol[1], badgeTextCol[2]);
-                doc.text(badgeText, startX + badgeWidth/2, centerY + 1.2, { align: 'center' });
-                
-                doc.setFontSize(8);
-                doc.setFont('helvetica', 'normal');
-                doc.setTextColor(textCol[0], textCol[1], textCol[2]);
-                
-                const maxDescWidth = data.cell.width - (startX + badgeWidth + 2 - data.cell.x) - 2;
-                let descText = rowData.caDesc || '';
+
+                doc.setFontSize(7)
+                doc.setFont('helvetica', 'bold')
+                const badgeText = rowData.caCode || ''
+                const badgeWidth = doc.getTextWidth(badgeText) + 3
+                const badgeHeight = 4.5
+
+                doc.setFillColor(badgeBg[0], badgeBg[1], badgeBg[2])
+                doc.setDrawColor(badgeBorder[0], badgeBorder[1], badgeBorder[2])
+                doc.setLineWidth(0.1)
+                doc.roundedRect(startX, centerY - 2.25, badgeWidth, badgeHeight, 0.5, 0.5, 'FD')
+
+                doc.setTextColor(badgeTextCol[0], badgeTextCol[1], badgeTextCol[2])
+                doc.text(badgeText, startX + badgeWidth / 2, centerY + 1.2, { align: 'center' })
+
+                doc.setFontSize(8)
+                doc.setFont('helvetica', 'normal')
+                doc.setTextColor(textCol[0], textCol[1], textCol[2])
+
+                const maxDescWidth = data.cell.width - (startX + badgeWidth + 2 - data.cell.x) - 2
+                let descText = rowData.caDesc || ''
                 if (doc.getTextWidth(descText) > maxDescWidth) {
-                   while(descText.length > 0 && doc.getTextWidth(descText + '...') > maxDescWidth) {
-                      descText = descText.slice(0, -1);
-                   }
-                   descText += '...';
-                }
-                doc.text(descText, startX + badgeWidth + 2, centerY + 1.2);
-              } 
-              else if (!rowData.isHierarchyHeader && !rowData.isSynthetic) {
-                const startX = data.cell.x + 3;
-                const centerY = data.cell.y + (data.cell.height / 2);
-                
-                if (rowData.mapped) {
-                  doc.setFontSize(7);
-                  doc.setFont('helvetica', 'bold');
-                  const badgeText = rowData.caCode || '';
-                  const badgeWidth = doc.getTextWidth(badgeText) + 3;
-                  const badgeHeight = 4.5;
-                  
-                  doc.setFillColor(30, 27, 75);
-                  doc.roundedRect(startX, centerY - 2.25, badgeWidth, badgeHeight, 0.5, 0.5, 'F');
-                  
-                  doc.setTextColor(255, 255, 255);
-                  doc.text(badgeText, startX + badgeWidth/2, centerY + 1.2, { align: 'center' });
-                  
-                  doc.setFontSize(8);
-                  doc.setFont('helvetica', 'normal');
-                  doc.setTextColor(textCol[0], textCol[1], textCol[2]);
-                  
-                  const maxDescWidth = data.cell.width - (startX + badgeWidth + 2 - data.cell.x) - 2;
-                  let descText = rowData.caDesc || '';
-                  if (doc.getTextWidth(descText) > maxDescWidth) {
-                     while(descText.length > 0 && doc.getTextWidth(descText + '...') > maxDescWidth) {
-                        descText = descText.slice(0, -1);
-                     }
-                     descText += '...';
+                  while (descText.length > 0 && doc.getTextWidth(descText + '...') > maxDescWidth) {
+                    descText = descText.slice(0, -1)
                   }
-                  doc.text(descText, startX + badgeWidth + 2, centerY + 1.2);
+                  descText += '...'
+                }
+                doc.text(descText, startX + badgeWidth + 2, centerY + 1.2)
+              } else if (!rowData.isHierarchyHeader && !rowData.isSynthetic) {
+                const startX = data.cell.x + 3
+                const centerY = data.cell.y + data.cell.height / 2
+
+                if (rowData.mapped) {
+                  doc.setFontSize(7)
+                  doc.setFont('helvetica', 'bold')
+                  const badgeText = rowData.caCode || ''
+                  const badgeWidth = doc.getTextWidth(badgeText) + 3
+                  const badgeHeight = 4.5
+
+                  doc.setFillColor(30, 27, 75)
+                  doc.roundedRect(startX, centerY - 2.25, badgeWidth, badgeHeight, 0.5, 0.5, 'F')
+
+                  doc.setTextColor(255, 255, 255)
+                  doc.text(badgeText, startX + badgeWidth / 2, centerY + 1.2, { align: 'center' })
+
+                  doc.setFontSize(8)
+                  doc.setFont('helvetica', 'normal')
+                  doc.setTextColor(textCol[0], textCol[1], textCol[2])
+
+                  const maxDescWidth = data.cell.width - (startX + badgeWidth + 2 - data.cell.x) - 2
+                  let descText = rowData.caDesc || ''
+                  if (doc.getTextWidth(descText) > maxDescWidth) {
+                    while (
+                      descText.length > 0 &&
+                      doc.getTextWidth(descText + '...') > maxDescWidth
+                    ) {
+                      descText = descText.slice(0, -1)
+                    }
+                    descText += '...'
+                  }
+                  doc.text(descText, startX + badgeWidth + 2, centerY + 1.2)
                 } else {
-                  doc.setFontSize(8);
-                  doc.setFont('helvetica', 'italic');
-                  doc.setTextColor(148, 163, 184);
-                  doc.text('Não vinculado', startX, centerY + 1.2);
+                  doc.setFontSize(8)
+                  doc.setFont('helvetica', 'italic')
+                  doc.setTextColor(148, 163, 184)
+                  doc.text('Não vinculado', startX, centerY + 1.2)
                 }
               }
             }
-            
-            if (data.column.index === 2 && !rowData.isHierarchyHeader && !rowData.isHierarchyRow && !rowData.isSynthetic) {
-              const startX = data.cell.x + (data.cell.width / 2);
-              const centerY = data.cell.y + (data.cell.height / 2);
-              
-              doc.setFontSize(7);
-              doc.setFont('helvetica', 'bold');
-              const badgeText = rowData.Status || '';
-              const badgeWidth = doc.getTextWidth(badgeText) + 6;
-              const badgeHeight = 5;
-              
+
+            if (
+              data.column.index === 2 &&
+              !rowData.isHierarchyHeader &&
+              !rowData.isHierarchyRow &&
+              !rowData.isSynthetic
+            ) {
+              const startX = data.cell.x + data.cell.width / 2
+              const centerY = data.cell.y + data.cell.height / 2
+
+              doc.setFontSize(7)
+              doc.setFont('helvetica', 'bold')
+              const badgeText = rowData.Status || ''
+              const badgeWidth = doc.getTextWidth(badgeText) + 6
+              const badgeHeight = 5
+
               if (rowData.mapped) {
-                doc.setFillColor(236, 253, 245);
-                doc.setDrawColor(167, 243, 208);
-                doc.setTextColor(5, 150, 105);
+                doc.setFillColor(236, 253, 245)
+                doc.setDrawColor(167, 243, 208)
+                doc.setTextColor(5, 150, 105)
               } else {
-                doc.setFillColor(255, 251, 235);
-                doc.setDrawColor(253, 230, 138);
-                doc.setTextColor(180, 83, 9);
+                doc.setFillColor(255, 251, 235)
+                doc.setDrawColor(253, 230, 138)
+                doc.setTextColor(180, 83, 9)
               }
-              
-              doc.setLineWidth(0.1);
-              doc.roundedRect(startX - badgeWidth/2, centerY - 2.5, badgeWidth, badgeHeight, 2.5, 2.5, 'FD');
-              doc.text(badgeText, startX, centerY + 1.2, { align: 'center' });
+
+              doc.setLineWidth(0.1)
+              doc.roundedRect(
+                startX - badgeWidth / 2,
+                centerY - 2.5,
+                badgeWidth,
+                badgeHeight,
+                2.5,
+                2.5,
+                'FD',
+              )
+              doc.text(badgeText, startX, centerY + 1.2, { align: 'center' })
             }
-            
-            if (data.column.index === 3 && !rowData.isHierarchyHeader && !rowData.isHierarchyRow && !rowData.isSynthetic) {
-              const startX = data.cell.x + 3;
-              const centerY = data.cell.y + (data.cell.height / 2);
-              
-              doc.setFontSize(8);
-              doc.setFont('helvetica', 'normal');
-              doc.setTextColor(textCol[0], textCol[1], textCol[2]);
-              
-              const maxDescWidth = data.cell.width - 6;
-              let descText = rowData.observations || '';
+
+            if (
+              data.column.index === 3 &&
+              !rowData.isHierarchyHeader &&
+              !rowData.isHierarchyRow &&
+              !rowData.isSynthetic
+            ) {
+              const startX = data.cell.x + 3
+              const centerY = data.cell.y + data.cell.height / 2
+
+              doc.setFontSize(8)
+              doc.setFont('helvetica', 'normal')
+              doc.setTextColor(textCol[0], textCol[1], textCol[2])
+
+              const maxDescWidth = data.cell.width - 6
+              let descText = rowData.observations || ''
               if (doc.getTextWidth(descText) > maxDescWidth) {
-                 while(descText.length > 0 && doc.getTextWidth(descText + '...') > maxDescWidth) {
-                    descText = descText.slice(0, -1);
-                 }
-                 descText += '...';
+                while (descText.length > 0 && doc.getTextWidth(descText + '...') > maxDescWidth) {
+                  descText = descText.slice(0, -1)
+                }
+                descText += '...'
               }
-              doc.text(descText, startX, centerY + 1.2);
+              doc.text(descText, startX, centerY + 1.2)
             }
           }
-        }
+        },
       })
 
       const pdf = doc.output('datauristring')
