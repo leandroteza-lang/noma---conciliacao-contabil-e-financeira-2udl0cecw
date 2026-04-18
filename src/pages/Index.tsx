@@ -26,6 +26,7 @@ export default function Index() {
   const [typeFilter, setTypeFilter] = useState('ALL')
 
   const [companies, setCompanies] = useState<any[]>([])
+  const [chartAccounts, setChartAccounts] = useState<any[]>([])
   const [selectedAccounts, setSelectedAccounts] = useState<string[]>([])
 
   const [isFormOpen, setIsFormOpen] = useState(false)
@@ -80,6 +81,26 @@ export default function Index() {
       }
 
       setAccounts(allAccs)
+
+      let allChartAccs: any[] = []
+      let fetchCHasMore = true
+      let fetchCPage = 0
+      while (fetchCHasMore) {
+        const { data: ca } = await supabase
+          .from('chart_of_accounts')
+          .select('*')
+          .is('deleted_at', null)
+          .range(fetchCPage * 1000, (fetchCPage + 1) * 1000 - 1)
+
+        if (ca && ca.length > 0) {
+          allChartAccs.push(...ca)
+          fetchCPage++
+          if (ca.length < 1000) fetchCHasMore = false
+        } else {
+          fetchCHasMore = false
+        }
+      }
+      setChartAccounts(allChartAccs)
     } catch (error) {
       console.error(error)
     } finally {
@@ -376,6 +397,7 @@ export default function Index() {
 
       <BankAccountsTable
         accounts={paginatedAccounts}
+        chartAccounts={chartAccounts}
         selectedAccounts={selectedAccounts}
         onToggleSelect={toggleSelect}
         onToggleSelectAll={toggleSelectAll}

@@ -1,3 +1,4 @@
+import { Fragment, useState } from 'react'
 import {
   Table,
   TableBody,
@@ -19,6 +20,9 @@ import {
   ArrowDown,
   ChevronsLeft,
   ChevronsRight,
+  ChevronDown,
+  ChevronUp,
+  Network,
 } from 'lucide-react'
 import { useIsMobile } from '@/hooks/use-mobile'
 import {
@@ -40,6 +44,7 @@ import {
 
 export function BankAccountsTable({
   accounts = [],
+  chartAccounts = [],
   selectedAccounts = [],
   onToggleSelect = () => {},
   onToggleSelectAll = () => {},
@@ -55,6 +60,25 @@ export function BankAccountsTable({
   onItemsPerPageChange = () => {},
 }: any) {
   const isMobile = useIsMobile()
+  const [expandedRows, setExpandedRows] = useState<string[]>([])
+
+  const toggleRow = (id: string) => {
+    setExpandedRows((prev) => (prev.includes(id) ? prev.filter((r) => r !== id) : [...prev, id]))
+  }
+
+  const expandAll = () => setExpandedRows(accounts.map((a: any) => a.id))
+  const collapseAll = () => setExpandedRows([])
+  const expandAnalytical = () => {
+    const analiticos = accounts
+      .filter((a: any) => {
+        const ca = chartAccounts.find(
+          (c: any) => c.account_code === a.account_code && c.organization_id === a.organization_id,
+        )
+        return ca?.account_level === 'Analítica'
+      })
+      .map((a: any) => a.id)
+    setExpandedRows(analiticos)
+  }
 
   const SortIcon = ({ columnKey }: { columnKey: string }) => {
     if (sortConfig?.key !== columnKey)
@@ -89,6 +113,18 @@ export function BankAccountsTable({
 
   return (
     <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <div className="flex flex-wrap items-center justify-end gap-2 px-1">
+        <Button variant="outline" size="sm" onClick={expandAll} className="bg-background">
+          <Network className="w-4 h-4 mr-2" /> Expandir Todos
+        </Button>
+        <Button variant="outline" size="sm" onClick={expandAnalytical} className="bg-background">
+          Expandir Analítico
+        </Button>
+        <Button variant="outline" size="sm" onClick={collapseAll} className="bg-background">
+          Recolher Todos
+        </Button>
+      </div>
+
       {isMobile ? (
         <div className="space-y-3">
           {selectableAccounts.length > 0 && (
@@ -103,80 +139,193 @@ export function BankAccountsTable({
               </Label>
             </div>
           )}
-          {accounts.map((acc: any) => (
-            <Card
-              key={acc.id}
-              className={`overflow-hidden transition-all ${acc.pending_deletion ? 'opacity-50' : ''} ${selectedAccounts.includes(acc.id) ? 'border-primary ring-1 ring-primary/20' : ''}`}
-            >
-              <CardContent className="p-4 space-y-3">
-                <div className="flex justify-between items-start">
-                  <div className="flex items-start gap-3">
-                    <Checkbox
-                      checked={selectedAccounts.includes(acc.id)}
-                      onCheckedChange={() => onToggleSelect(acc.id)}
-                      disabled={acc.pending_deletion}
-                      className="mt-1"
-                    />
-                    <div>
-                      <h3 className="font-semibold text-base">
-                        {acc.description || 'Sem descrição'}
-                      </h3>
-                      <div className="flex items-center text-sm text-muted-foreground mt-1">
-                        <Building2 className="w-3 h-3 mr-1" />{' '}
-                        {acc.organizations?.name || acc.company_name}
+          {accounts.map((acc: any) => {
+            const isExpanded = expandedRows.includes(acc.id)
+            let hierarchy: any[] = []
+            if (isExpanded && acc.account_code) {
+              const account = chartAccounts.find(
+                (ca: any) =>
+                  ca.account_code === acc.account_code &&
+                  ca.organization_id === acc.organization_id,
+              )
+              if (account && account.classification) {
+                hierarchy = chartAccounts
+                  .filter(
+                    (ca: any) =>
+                      ca.organization_id === acc.organization_id &&
+                      ca.classification &&
+                      account.classification.startsWith(ca.classification),
+                  )
+                  .sort((a: any, b: any) => a.classification.length - b.classification.length)
+              }
+            }
+
+            return (
+              <Card
+                key={acc.id}
+                className={`overflow-hidden transition-all ${acc.pending_deletion ? 'opacity-50' : ''} ${selectedAccounts.includes(acc.id) ? 'border-primary ring-1 ring-primary/20' : ''}`}
+              >
+                <CardContent className="p-4 space-y-3">
+                  <div className="flex justify-between items-start">
+                    <div className="flex items-start gap-3">
+                      <Checkbox
+                        checked={selectedAccounts.includes(acc.id)}
+                        onCheckedChange={() => onToggleSelect(acc.id)}
+                        disabled={acc.pending_deletion}
+                        className="mt-1"
+                      />
+                      <div>
+                        <h3 className="font-semibold text-base">
+                          {acc.description || 'Sem descrição'}
+                        </h3>
+                        <div className="flex items-center text-sm text-muted-foreground mt-1">
+                          <Building2 className="w-3 h-3 mr-1" />{' '}
+                          {acc.organizations?.name || acc.company_name}
+                        </div>
                       </div>
                     </div>
+                    <span className="bg-primary/10 text-primary text-xs px-2 py-1 rounded-full font-medium">
+                      {acc.account_type || 'N/A'}
+                    </span>
                   </div>
-                  <span className="bg-primary/10 text-primary text-xs px-2 py-1 rounded-full font-medium">
-                    {acc.account_type || 'N/A'}
-                  </span>
-                </div>
-                <div className="grid grid-cols-2 gap-2 text-sm bg-secondary/50 p-2 rounded-lg">
-                  <div>
-                    <span className="text-muted-foreground block text-xs">Banco</span>
-                    {acc.bank_code || '-'}
+                  <div className="grid grid-cols-2 gap-2 text-sm bg-secondary/50 p-2 rounded-lg">
+                    <div>
+                      <span className="text-muted-foreground block text-xs">Banco</span>
+                      {acc.bank_code || '-'}
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground block text-xs">Agência</span>
+                      {acc.agency || '-'}
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground block text-xs">Conta</span>
+                      {acc.account_number || '-'}
+                      {acc.check_digit ? `-${acc.check_digit}` : ''}
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground block text-xs">Conta Contábil</span>
+                      {acc.account_code || '-'}
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground block text-xs">Classificação</span>
+                      {acc.classification || '-'}
+                    </div>
                   </div>
-                  <div>
-                    <span className="text-muted-foreground block text-xs">Agência</span>
-                    {acc.agency || '-'}
+                  <div className="flex gap-2 pt-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex-1"
+                      onClick={() => toggleRow(acc.id)}
+                    >
+                      {isExpanded ? (
+                        <ChevronUp className="w-4 h-4 mr-2" />
+                      ) : (
+                        <ChevronDown className="w-4 h-4 mr-2" />
+                      )}
+                      {isExpanded ? 'Recolher' : 'Expandir'}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex-1"
+                      onClick={() => onEdit(acc)}
+                      disabled={acc.pending_deletion}
+                    >
+                      <Edit2 className="w-4 h-4 mr-2" /> Editar
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex-1 text-destructive hover:bg-destructive/10"
+                      onClick={() => onDelete(acc)}
+                      disabled={acc.pending_deletion}
+                    >
+                      <Trash2 className="w-4 h-4 mr-2" /> Excluir
+                    </Button>
                   </div>
-                  <div>
-                    <span className="text-muted-foreground block text-xs">Conta</span>
-                    {acc.account_number || '-'}
-                    {acc.check_digit ? `-${acc.check_digit}` : ''}
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground block text-xs">Conta Contábil</span>
-                    {acc.account_code || '-'}
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground block text-xs">Classificação</span>
-                    {acc.classification || '-'}
-                  </div>
-                </div>
-                <div className="flex gap-2 pt-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="flex-1"
-                    onClick={() => onEdit(acc)}
-                    disabled={acc.pending_deletion}
-                  >
-                    <Edit2 className="w-4 h-4 mr-2" /> Editar
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="flex-1 text-destructive hover:bg-destructive/10"
-                    onClick={() => onDelete(acc)}
-                    disabled={acc.pending_deletion}
-                  >
-                    <Trash2 className="w-4 h-4 mr-2" /> Excluir
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                  {isExpanded && (
+                    <div className="mt-3 p-2 bg-slate-50/50 dark:bg-slate-900/50 rounded-lg border">
+                      {hierarchy.length > 0 ? (
+                        <div className="border rounded-md overflow-hidden shadow-sm">
+                          <div className="bg-slate-100 dark:bg-slate-900 px-3 py-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider border-b">
+                            Raiz Hierárquica
+                          </div>
+                          <div className="flex flex-col">
+                            {hierarchy.map((node: any) => {
+                              const level = (node.classification.match(/\./g) || []).length + 1
+                              const isSyn = node.account_level === 'Sintética'
+
+                              let bgClass =
+                                'bg-white dark:bg-slate-950 text-slate-700 dark:text-slate-300'
+                              let borderClass = 'border-b border-slate-100 dark:border-slate-800'
+                              let badgeClass =
+                                'bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700'
+
+                              if (isSyn) {
+                                switch (level) {
+                                  case 1:
+                                    bgClass = 'bg-indigo-950 text-white font-semibold'
+                                    borderClass = 'border-b border-indigo-900/50'
+                                    badgeClass = 'bg-indigo-900 text-white border-indigo-800'
+                                    break
+                                  case 2:
+                                    bgClass = 'bg-indigo-900 text-white font-semibold'
+                                    borderClass = 'border-b border-indigo-800/50'
+                                    badgeClass = 'bg-indigo-800 text-white border-indigo-700'
+                                    break
+                                  case 3:
+                                    bgClass = 'bg-indigo-800 text-white font-medium'
+                                    borderClass = 'border-b border-indigo-700/50'
+                                    badgeClass = 'bg-indigo-700 text-white border-indigo-600'
+                                    break
+                                  case 4:
+                                    bgClass =
+                                      'bg-indigo-100 dark:bg-indigo-900/40 text-indigo-950 dark:text-indigo-200 font-medium'
+                                    borderClass =
+                                      'border-b border-indigo-200 dark:border-indigo-800'
+                                    badgeClass =
+                                      'bg-indigo-200 dark:bg-indigo-800 text-indigo-900 dark:text-indigo-100 border-indigo-300 dark:border-indigo-700'
+                                    break
+                                  default:
+                                    bgClass =
+                                      'bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200 font-medium'
+                                    borderClass = 'border-b border-slate-200 dark:border-slate-800'
+                                    badgeClass =
+                                      'bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700'
+                                    break
+                                }
+                              }
+
+                              return (
+                                <div
+                                  key={node.id}
+                                  className={`px-3 py-2 flex flex-col gap-1 ${bgClass} ${borderClass}`}
+                                >
+                                  <span
+                                    className={`font-mono text-[10px] px-1.5 py-0.5 rounded border self-start ${badgeClass}`}
+                                  >
+                                    {node.classification || node.account_code}
+                                  </span>
+                                  <span className="text-xs">{node.account_name}</span>
+                                </div>
+                              )
+                            })}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="text-xs text-muted-foreground p-3 text-center border border-dashed rounded-lg">
+                          {acc.account_code
+                            ? 'Conta contábil não encontrada no plano.'
+                            : 'Nenhuma conta contábil vinculada.'}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )
+          })}
         </div>
       ) : (
         <div className="border rounded-xl bg-card overflow-hidden">
@@ -254,75 +403,204 @@ export function BankAccountsTable({
                     Classificação <SortIcon columnKey="classification" />
                   </div>
                 </TableHead>
-                <TableHead className="text-right p-2">Ações</TableHead>
+                <TableHead className="text-right p-2 w-[180px]">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {accounts.map((acc: any) => (
-                <TableRow
-                  key={acc.id}
-                  className={`transition-opacity ${acc.pending_deletion ? 'opacity-50 bg-secondary/20' : 'hover:bg-muted/30'} ${selectedAccounts.includes(acc.id) ? 'bg-muted/50' : ''}`}
-                >
-                  <TableCell className="p-2 text-center">
-                    <Checkbox
-                      checked={selectedAccounts.includes(acc.id)}
-                      onCheckedChange={() => onToggleSelect(acc.id)}
-                      disabled={acc.pending_deletion}
-                      aria-label={`Selecionar conta ${acc.description}`}
-                    />
-                  </TableCell>
-                  <TableCell className="p-2">
-                    <div className="flex items-center gap-2">
-                      <Building2 className="h-4 w-4 text-muted-foreground" />
-                      {acc.organizations?.name || acc.company_name}
-                    </div>
-                  </TableCell>
-                  <TableCell className="p-2 font-mono text-sm">{acc.account_code || '-'}</TableCell>
-                  <TableCell className="p-2 font-medium">{acc.description}</TableCell>
-                  <TableCell className="p-2">{acc.bank_code || '-'}</TableCell>
-                  <TableCell className="p-2">{acc.agency || '-'}</TableCell>
-                  <TableCell className="p-2">
-                    {acc.account_number || '-'}
-                    {acc.check_digit ? `-${acc.check_digit}` : ''}
-                  </TableCell>
-                  <TableCell className="p-2">
-                    <span className="bg-primary/10 text-primary text-xs px-2.5 py-0.5 rounded-full font-medium whitespace-nowrap">
-                      {acc.account_type || '-'}
-                    </span>
-                  </TableCell>
-                  <TableCell className="p-2">
-                    {acc.classification ? (
-                      <span className="bg-secondary text-secondary-foreground text-xs px-2.5 py-0.5 rounded-full font-medium whitespace-nowrap">
-                        {acc.classification}
-                      </span>
-                    ) : (
-                      '-'
+              {accounts.map((acc: any) => {
+                const isExpanded = expandedRows.includes(acc.id)
+                let hierarchy: any[] = []
+                if (isExpanded && acc.account_code) {
+                  const account = chartAccounts.find(
+                    (ca: any) =>
+                      ca.account_code === acc.account_code &&
+                      ca.organization_id === acc.organization_id,
+                  )
+                  if (account && account.classification) {
+                    hierarchy = chartAccounts
+                      .filter(
+                        (ca: any) =>
+                          ca.organization_id === acc.organization_id &&
+                          ca.classification &&
+                          account.classification.startsWith(ca.classification),
+                      )
+                      .sort((a: any, b: any) => a.classification.length - b.classification.length)
+                  }
+                }
+
+                return (
+                  <Fragment key={acc.id}>
+                    <TableRow
+                      className={`transition-opacity ${acc.pending_deletion ? 'opacity-50 bg-secondary/20' : 'hover:bg-muted/30'} ${selectedAccounts.includes(acc.id) ? 'bg-muted/50' : ''}`}
+                    >
+                      <TableCell className="p-2 text-center">
+                        <Checkbox
+                          checked={selectedAccounts.includes(acc.id)}
+                          onCheckedChange={() => onToggleSelect(acc.id)}
+                          disabled={acc.pending_deletion}
+                          aria-label={`Selecionar conta ${acc.description}`}
+                        />
+                      </TableCell>
+                      <TableCell className="p-2">
+                        <div className="flex items-center gap-2">
+                          <Building2 className="h-4 w-4 text-muted-foreground" />
+                          {acc.organizations?.name || acc.company_name}
+                        </div>
+                      </TableCell>
+                      <TableCell className="p-2 font-mono text-sm">
+                        {acc.account_code || '-'}
+                      </TableCell>
+                      <TableCell className="p-2 font-medium">{acc.description}</TableCell>
+                      <TableCell className="p-2">{acc.bank_code || '-'}</TableCell>
+                      <TableCell className="p-2">{acc.agency || '-'}</TableCell>
+                      <TableCell className="p-2">
+                        {acc.account_number || '-'}
+                        {acc.check_digit ? `-${acc.check_digit}` : ''}
+                      </TableCell>
+                      <TableCell className="p-2">
+                        <span className="bg-primary/10 text-primary text-xs px-2.5 py-0.5 rounded-full font-medium whitespace-nowrap">
+                          {acc.account_type || '-'}
+                        </span>
+                      </TableCell>
+                      <TableCell className="p-2">
+                        {acc.classification ? (
+                          <span className="bg-secondary text-secondary-foreground text-xs px-2.5 py-0.5 rounded-full font-medium whitespace-nowrap">
+                            {acc.classification}
+                          </span>
+                        ) : (
+                          '-'
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right p-2">
+                        <div className="flex items-center justify-end gap-1">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-8 px-2"
+                            onClick={() => toggleRow(acc.id)}
+                          >
+                            {isExpanded ? (
+                              <ChevronUp className="w-4 h-4 mr-1" />
+                            ) : (
+                              <ChevronDown className="w-4 h-4 mr-1" />
+                            )}
+                            {isExpanded ? 'Recolher' : 'Expandir'}
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() => onEdit(acc)}
+                            disabled={acc.pending_deletion}
+                          >
+                            <Edit2 className="w-4 h-4 text-muted-foreground hover:text-primary" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() => onDelete(acc)}
+                            disabled={acc.pending_deletion}
+                          >
+                            <Trash2 className="w-4 h-4 text-muted-foreground hover:text-destructive" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                    {isExpanded && (
+                      <TableRow className="bg-muted/10 hover:bg-muted/10">
+                        <TableCell colSpan={10} className="p-0 border-b">
+                          <div className="p-4 pl-12 bg-slate-50/50 dark:bg-slate-900/50">
+                            {hierarchy.length > 0 ? (
+                              <div className="border rounded-lg overflow-hidden bg-white dark:bg-slate-950 shadow-sm max-w-4xl">
+                                <div className="bg-slate-100 dark:bg-slate-900 px-3 py-2 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider border-b">
+                                  Raiz Hierárquica
+                                </div>
+                                <div className="flex flex-col">
+                                  {hierarchy.map((node: any) => {
+                                    const level =
+                                      (node.classification.match(/\./g) || []).length + 1
+                                    const isSyn = node.account_level === 'Sintética'
+
+                                    let bgClass =
+                                      'bg-white dark:bg-slate-950 text-slate-700 dark:text-slate-300'
+                                    let borderClass =
+                                      'border-b border-slate-100 dark:border-slate-800'
+                                    let badgeClass =
+                                      'bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700'
+
+                                    if (isSyn) {
+                                      switch (level) {
+                                        case 1:
+                                          bgClass = 'bg-indigo-950 text-white font-semibold'
+                                          borderClass = 'border-b border-indigo-900/50'
+                                          badgeClass = 'bg-indigo-900 text-white border-indigo-800'
+                                          break
+                                        case 2:
+                                          bgClass = 'bg-indigo-900 text-white font-semibold'
+                                          borderClass = 'border-b border-indigo-800/50'
+                                          badgeClass = 'bg-indigo-800 text-white border-indigo-700'
+                                          break
+                                        case 3:
+                                          bgClass = 'bg-indigo-800 text-white font-medium'
+                                          borderClass = 'border-b border-indigo-700/50'
+                                          badgeClass = 'bg-indigo-700 text-white border-indigo-600'
+                                          break
+                                        case 4:
+                                          bgClass =
+                                            'bg-indigo-100 dark:bg-indigo-900/40 text-indigo-950 dark:text-indigo-200 font-medium'
+                                          borderClass =
+                                            'border-b border-indigo-200 dark:border-indigo-800'
+                                          badgeClass =
+                                            'bg-indigo-200 dark:bg-indigo-800 text-indigo-900 dark:text-indigo-100 border-indigo-300 dark:border-indigo-700'
+                                          break
+                                        default:
+                                          bgClass =
+                                            'bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200 font-medium'
+                                          borderClass =
+                                            'border-b border-slate-200 dark:border-slate-800'
+                                          badgeClass =
+                                            'bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700'
+                                          break
+                                      }
+                                    }
+
+                                    return (
+                                      <div
+                                        key={node.id}
+                                        className={`px-4 py-2.5 flex items-center gap-3 ${bgClass} ${borderClass} transition-colors`}
+                                      >
+                                        <span
+                                          className={`font-mono text-[11px] px-2 py-0.5 rounded border ${badgeClass}`}
+                                        >
+                                          {node.classification || node.account_code}
+                                        </span>
+                                        <span className="text-sm">{node.account_name}</span>
+                                        {node.account_code &&
+                                          node.account_code !== node.classification && (
+                                            <span className="text-xs opacity-60 ml-auto font-mono">
+                                              Cód: {node.account_code}
+                                            </span>
+                                          )}
+                                      </div>
+                                    )
+                                  })}
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="text-sm text-muted-foreground p-4 text-center border border-dashed rounded-lg max-w-4xl">
+                                {acc.account_code
+                                  ? 'Conta contábil não encontrada no plano de contas.'
+                                  : 'Nenhuma conta contábil vinculada.'}
+                              </div>
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
                     )}
-                  </TableCell>
-                  <TableCell className="text-right p-2">
-                    <div className="flex justify-end gap-1">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                        onClick={() => onEdit(acc)}
-                        disabled={acc.pending_deletion}
-                      >
-                        <Edit2 className="w-4 h-4 text-muted-foreground hover:text-primary" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                        onClick={() => onDelete(acc)}
-                        disabled={acc.pending_deletion}
-                      >
-                        <Trash2 className="w-4 h-4 text-muted-foreground hover:text-destructive" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
+                  </Fragment>
+                )
+              })}
             </TableBody>
           </Table>
         </div>
