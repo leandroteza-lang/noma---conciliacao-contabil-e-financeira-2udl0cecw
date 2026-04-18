@@ -481,7 +481,7 @@ export default function FinancialMovements() {
                               }
                             />
                           ) : (
-                            `${row.conta_caixa || ''} ${row.nome_caixa ? `- ${row.nome_caixa}` : ''}` ||
+                            `${row.conta_caixa || ''} ${row.nome_caixa ? `- ${row.nome_caixa}` : ''}`.trim() ||
                             '-'
                           )}
                         </TableCell>
