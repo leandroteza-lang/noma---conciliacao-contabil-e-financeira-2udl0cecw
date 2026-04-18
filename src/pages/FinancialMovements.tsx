@@ -26,6 +26,8 @@ export default function FinancialMovements() {
   const [totalCount, setTotalCount] = useState(0)
   const [isImportOpen, setIsImportOpen] = useState(false)
   const [chartData, setChartData] = useState<any[]>([])
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editForm, setEditForm] = useState<any>({})
   const pageSize = 15
 
   const fetchData = async () => {
@@ -176,58 +178,190 @@ export default function FinancialMovements() {
                     Valor Líquido
                   </TableHead>
                   <TableHead className="text-center font-semibold text-slate-600">Status</TableHead>
+                  <TableHead className="text-center font-semibold text-slate-600">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {loading ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center h-48">
+                    <TableCell colSpan={8} className="text-center h-48">
                       <Loader2 className="h-6 w-6 animate-spin mx-auto text-primary" />
                     </TableCell>
                   </TableRow>
                 ) : data.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center h-48 text-slate-500">
+                    <TableCell colSpan={8} className="text-center h-48 text-slate-500">
                       Nenhum movimento financeiro encontrado.
                     </TableCell>
                   </TableRow>
                 ) : (
-                  data.map((row) => (
-                    <TableRow key={row.id} className="hover:bg-slate-50/80 transition-colors">
-                      <TableCell className="whitespace-nowrap text-slate-600">
-                        {row.data_emissao
-                          ? new Date(row.data_emissao).toLocaleDateString('pt-BR')
-                          : '-'}
-                      </TableCell>
-                      <TableCell className="font-medium text-slate-700">
-                        {row.n_documento || '-'}
-                      </TableCell>
-                      <TableCell
-                        className="max-w-[200px] truncate text-slate-600"
-                        title={row.nome_cli_fornec}
-                      >
-                        {row.nome_cli_fornec || '-'}
-                      </TableCell>
-                      <TableCell
-                        className="max-w-[250px] truncate text-slate-600"
-                        title={row.historico}
-                      >
-                        {row.historico || '-'}
-                      </TableCell>
-                      <TableCell className="text-slate-600">{row.c_custo || '-'}</TableCell>
-                      <TableCell className="text-right font-semibold text-slate-900">
-                        {new Intl.NumberFormat('pt-BR', {
-                          style: 'currency',
-                          currency: 'BRL',
-                        }).format(row.valor_liquido || 0)}
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 border border-amber-200">
-                          {row.status || 'Pendente'}
-                        </span>
-                      </TableCell>
-                    </TableRow>
-                  ))
+                  data.map((row) => {
+                    const isMissing =
+                      !row.data_emissao || !row.c_custo || row.valor_liquido === null
+                    return (
+                      <TableRow key={row.id} className="hover:bg-slate-50/80 transition-colors">
+                        <TableCell className="whitespace-nowrap text-slate-600">
+                          {editingId === row.id ? (
+                            <Input
+                              type="date"
+                              className="h-8 w-36 px-2"
+                              value={editForm.data_emissao || ''}
+                              onChange={(e) =>
+                                setEditForm({ ...editForm, data_emissao: e.target.value })
+                              }
+                            />
+                          ) : (
+                            <span className={!row.data_emissao ? 'text-red-500 font-bold' : ''}>
+                              {row.data_emissao
+                                ? new Date(row.data_emissao).toLocaleDateString('pt-BR')
+                                : 'Data Indisponível'}
+                            </span>
+                          )}
+                        </TableCell>
+                        <TableCell className="font-medium text-slate-700">
+                          {editingId === row.id ? (
+                            <Input
+                              className="h-8"
+                              value={editForm.n_documento || ''}
+                              onChange={(e) =>
+                                setEditForm({ ...editForm, n_documento: e.target.value })
+                              }
+                            />
+                          ) : (
+                            row.n_documento || '-'
+                          )}
+                        </TableCell>
+                        <TableCell
+                          className="max-w-[200px] truncate text-slate-600"
+                          title={row.nome_cli_fornec}
+                        >
+                          {editingId === row.id ? (
+                            <Input
+                              className="h-8"
+                              value={editForm.nome_cli_fornec || ''}
+                              onChange={(e) =>
+                                setEditForm({ ...editForm, nome_cli_fornec: e.target.value })
+                              }
+                            />
+                          ) : (
+                            row.nome_cli_fornec || '-'
+                          )}
+                        </TableCell>
+                        <TableCell
+                          className="max-w-[250px] truncate text-slate-600"
+                          title={row.historico}
+                        >
+                          {editingId === row.id ? (
+                            <Input
+                              className="h-8"
+                              value={editForm.historico || ''}
+                              onChange={(e) =>
+                                setEditForm({ ...editForm, historico: e.target.value })
+                              }
+                            />
+                          ) : (
+                            row.historico || '-'
+                          )}
+                        </TableCell>
+                        <TableCell className="text-slate-600">
+                          {editingId === row.id ? (
+                            <Input
+                              className="h-8 w-24"
+                              value={editForm.c_custo || ''}
+                              onChange={(e) =>
+                                setEditForm({ ...editForm, c_custo: e.target.value })
+                              }
+                            />
+                          ) : (
+                            <span className={!row.c_custo ? 'text-red-500 font-bold' : ''}>
+                              {row.c_custo || 'Sem C. Custo'}
+                            </span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right font-semibold text-slate-900">
+                          {editingId === row.id ? (
+                            <Input
+                              type="number"
+                              step="0.01"
+                              className="h-8 w-24 text-right"
+                              value={editForm.valor_liquido || ''}
+                              onChange={(e) =>
+                                setEditForm({
+                                  ...editForm,
+                                  valor_liquido: parseFloat(e.target.value),
+                                })
+                              }
+                            />
+                          ) : (
+                            <span
+                              className={row.valor_liquido === null ? 'text-red-500 font-bold' : ''}
+                            >
+                              {row.valor_liquido !== null
+                                ? new Intl.NumberFormat('pt-BR', {
+                                    style: 'currency',
+                                    currency: 'BRL',
+                                  }).format(row.valor_liquido)
+                                : 'R$ 0,00'}
+                            </span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <span
+                            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${isMissing ? 'bg-red-100 text-red-800 border border-red-200' : 'bg-amber-100 text-amber-800 border border-amber-200'}`}
+                          >
+                            {isMissing ? 'Dados Incompletos' : row.status || 'Pendente'}
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-center">
+                          {editingId === row.id ? (
+                            <div className="flex items-center justify-center gap-2">
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-8 text-green-600 font-semibold hover:text-green-700"
+                                onClick={async () => {
+                                  const { error } = await supabase
+                                    .from('erp_financial_movements')
+                                    .update(editForm)
+                                    .eq('id', row.id)
+                                  if (!error) {
+                                    setData(
+                                      data.map((d) =>
+                                        d.id === row.id ? { ...d, ...editForm } : d,
+                                      ),
+                                    )
+                                    setEditingId(null)
+                                  }
+                                }}
+                              >
+                                Salvar
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-8 text-red-600 hover:text-red-700"
+                                onClick={() => setEditingId(null)}
+                              >
+                                Cancelar
+                              </Button>
+                            </div>
+                          ) : (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="text-xs"
+                              onClick={() => {
+                                setEditingId(row.id)
+                                setEditForm(row)
+                              }}
+                            >
+                              Editar
+                            </Button>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })
                 )}
               </TableBody>
             </Table>
