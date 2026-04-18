@@ -239,7 +239,9 @@ export function ImportErpFinancialModal({ open, onOpenChange, onImportSuccess }:
         let savedMapping: Record<string, string> = {}
         try {
           savedMapping = JSON.parse(localStorage.getItem('erpColumnMapping') || '{}')
-        } catch (e) {}
+        } catch (e) {
+          console.warn('Failed to parse saved mapping', e)
+        }
 
         data.headers.forEach((header: string, idx: number) => {
           const nh = normalizedHeaders[idx]
