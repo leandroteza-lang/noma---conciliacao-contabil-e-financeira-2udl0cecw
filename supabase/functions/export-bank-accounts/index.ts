@@ -39,9 +39,9 @@ Deno.serve(async (req: Request) => {
     }
 
     if (format === 'csv') {
-      let csvContent = 'Empresa;Conta Contábil;Descrição;Banco;Agência;Conta\n'
+      let csvContent = 'Empresa;Conta Contábil;Descrição;Banco;Agência;Conta;Tipo;Classificação\n'
       data.forEach((r: any) => {
-        csvContent += `"${r['Empresa'] || ''}";"${r['Conta Contábil'] || ''}";"${r['Descrição'] || ''}";"${r['Banco'] || ''}";"${r['Agência'] || ''}";"${r['Número'] || ''}"\n`
+        csvContent += `"${r['Empresa'] || ''}";"${r['Conta Contábil'] || ''}";"${r['Descrição'] || ''}";"${r['Banco'] || ''}";"${r['Agência'] || ''}";"${r['Número'] || r['Conta'] || ''}";"${r['Tipo'] || ''}";"${r['Classificação'] || ''}"\n`
       })
       return new Response(JSON.stringify({ csv: csvContent }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -57,7 +57,9 @@ Deno.serve(async (req: Request) => {
         txtContent += `Descrição: ${r['Descrição'] || '-'}\n`
         txtContent += `Banco: ${r['Banco'] || '-'}\n`
         txtContent += `Agência: ${r['Agência'] || '-'}\n`
-        txtContent += `Conta: ${r['Número'] || '-'}\n`
+        txtContent += `Conta: ${r['Número'] || r['Conta'] || '-'}\n`
+        txtContent += `Tipo: ${r['Tipo'] || '-'}\n`
+        txtContent += `Classificação: ${r['Classificação'] || '-'}\n`
         txtContent += '-----------------------------------------\n'
       })
       return new Response(JSON.stringify({ txt: txtContent }), {
@@ -65,7 +67,7 @@ Deno.serve(async (req: Request) => {
       })
     }
 
-    if (format === 'pdf') {
+    if (format === 'pdf' || format === 'browser') {
       const doc = new jsPDF('landscape')
       doc.setFontSize(16)
       doc.text('Relatório de Contas Bancárias', 14, 20)
@@ -76,16 +78,29 @@ Deno.serve(async (req: Request) => {
         r['Descrição'] || '-',
         r['Banco'] || '-',
         r['Agência'] || '-',
-        r['Número'] || '-',
+        r['Número'] || r['Conta'] || '-',
+        r['Tipo'] || '-',
+        r['Classificação'] || '-',
       ])
 
       autoTable(doc, {
         startY: 25,
-        head: [['Empresa', 'Conta Contábil', 'Descrição', 'Banco', 'Agência', 'Conta']],
+        head: [
+          [
+            'Empresa',
+            'Conta Contábil',
+            'Descrição',
+            'Banco',
+            'Agência',
+            'Conta',
+            'Tipo',
+            'Classificação',
+          ],
+        ],
         body: body,
         theme: 'grid',
         headStyles: { fillColor: [220, 38, 38] },
-        styles: { fontSize: 9 },
+        styles: { fontSize: 8 },
       })
 
       const pdf = doc.output('datauristring')
