@@ -41,12 +41,15 @@ const TableFooter = React.forwardRef<
 ))
 TableFooter.displayName = 'TableFooter'
 
-const TableRow = React.forwardRef<HTMLTableRowElement, React.HTMLAttributes<HTMLTableRowElement>>(
-  ({ className, ...props }, ref) => (
-    <tr
-      ref={ref}
-      className={cn(
-        'border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted',
+const TableRow = React.forwardRef<
+  HTMLTableRowElement,
+  React.HTMLAttributes<HTMLTableRowElement> & { disableZebra?: boolean }
+>(({ className, disableZebra, ...props }, ref) => (
+  <tr
+    ref={ref}
+    className={cn(
+      'border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted',
+      !disableZebra && [
         'odd:bg-white dark:odd:bg-transparent',
         'even:bg-[#800000] even:text-white even:font-bold hover:even:bg-[#800000]/90',
         '[&:nth-child(even)>td]:text-white [&:nth-child(even)>td]:font-bold',
@@ -55,12 +58,12 @@ const TableRow = React.forwardRef<HTMLTableRowElement, React.HTMLAttributes<HTML
         '[&:nth-child(even)>td_button:hover]:bg-white/20 [&:nth-child(even)>td_button:hover_svg]:text-white',
         '[&:nth-child(even)>td_span.bg-primary\\/10]:bg-white/20 [&:nth-child(even)>td_span.bg-primary\\/10]:text-white',
         '[&:nth-child(even)>td_span.bg-secondary]:bg-white/20 [&:nth-child(even)>td_span.bg-secondary]:text-white',
-        className,
-      )}
-      {...props}
-    />
-  ),
-)
+      ],
+      className,
+    )}
+    {...props}
+  />
+))
 TableRow.displayName = 'TableRow'
 
 const TableHead = React.forwardRef<

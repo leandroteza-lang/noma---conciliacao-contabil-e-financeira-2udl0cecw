@@ -294,17 +294,14 @@ export default function ChartAccounts() {
     const level = (code.match(/\./g) || []).length + 1
 
     if (acc.account_level === 'Sintética') {
-      if (level === 1)
-        return '!bg-indigo-950 font-bold !text-white hover:!bg-indigo-900 border-none'
-      if (level === 2)
-        return '!bg-blue-800 font-semibold !text-white hover:!bg-blue-700 border-none'
-      if (level === 3) return '!bg-blue-500 font-medium !text-white hover:!bg-blue-400 border-none'
-      if (level === 4)
-        return '!bg-blue-200 font-medium !text-blue-950 hover:!bg-blue-300 border-none'
-      return '!bg-blue-50 font-medium !text-blue-900 hover:!bg-blue-100 border-none'
+      if (level === 1) return 'bg-indigo-950 font-bold text-white hover:bg-indigo-900 border-none'
+      if (level === 2) return 'bg-blue-800 font-semibold text-white hover:bg-blue-700 border-none'
+      if (level === 3) return 'bg-blue-500 font-medium text-white hover:bg-blue-400 border-none'
+      if (level === 4) return 'bg-blue-200 font-medium text-blue-950 hover:bg-blue-300 border-none'
+      return 'bg-blue-50 font-medium text-blue-900 hover:bg-blue-100 border-none'
     }
 
-    return '!bg-white font-normal !text-slate-700 hover:!bg-slate-50 border-b-slate-100'
+    return 'bg-white font-normal text-slate-700 hover:bg-slate-50 border-b-slate-100'
   }
 
   const handleSaveAccount = async (data: any) => {
@@ -1054,7 +1051,7 @@ export default function ChartAccounts() {
           <div className="rounded-md border overflow-x-auto">
             <Table className="[&_td]:p-1.5 [&_td]:px-2 [&_th]:p-1.5 [&_th]:px-2 text-xs">
               <TableHeader className="bg-slate-50/80">
-                <TableRow>
+                <TableRow disableZebra>
                   <TableHead className="w-10 text-center">
                     <Checkbox
                       checked={
@@ -1107,7 +1104,7 @@ export default function ChartAccounts() {
               </TableHeader>
               <TableBody>
                 {loading ? (
-                  <TableRow>
+                  <TableRow disableZebra>
                     <TableCell colSpan={9} className="h-24 text-center">
                       Carregando plano de contas...
                     </TableCell>
@@ -1118,7 +1115,7 @@ export default function ChartAccounts() {
                     const level = (code.match(/\./g) || []).length + 1
 
                     return (
-                      <TableRow key={acc.id} className={getRowClassName(acc)}>
+                      <TableRow key={acc.id} className={getRowClassName(acc)} disableZebra>
                         <TableCell className="text-center">
                           <Checkbox
                             checked={selectedIds.includes(acc.id)}
@@ -1246,7 +1243,7 @@ export default function ChartAccounts() {
                     )
                   })
                 ) : (
-                  <TableRow>
+                  <TableRow disableZebra>
                     <TableCell colSpan={9} className="h-24 text-center">
                       Nenhuma conta contábil encontrada.
                     </TableCell>
