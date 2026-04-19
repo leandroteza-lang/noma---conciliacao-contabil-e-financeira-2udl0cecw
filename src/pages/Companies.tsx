@@ -751,7 +751,7 @@ export default function Companies() {
               <Table>
                 <TableHeader className="bg-slate-50">
                   <TableRow>
-                    <TableHead className="w-12 text-center py-0.5 px-2">
+                    <TableHead className="w-12 text-center py-2 px-2 text-black font-bold text-[14px]">
                       <Checkbox
                         checked={
                           paginatedOrgs.length > 0 && selectedIds.length === paginatedOrgs.length
@@ -763,7 +763,7 @@ export default function Companies() {
                       />
                     </TableHead>
                     <TableHead
-                      className="cursor-pointer hover:bg-slate-100 transition-colors py-0.5 px-2"
+                      className="cursor-pointer hover:bg-slate-100 transition-colors py-2 px-2 text-black font-bold text-[14px]"
                       onClick={() => handleSort('name')}
                     >
                       <div className="flex items-center gap-2">
@@ -771,7 +771,7 @@ export default function Companies() {
                       </div>
                     </TableHead>
                     <TableHead
-                      className="cursor-pointer hover:bg-slate-100 transition-colors py-0.5 px-2"
+                      className="cursor-pointer hover:bg-slate-100 transition-colors py-2 px-2 text-black font-bold text-[14px]"
                       onClick={() => handleSort('cnpj')}
                     >
                       <div className="flex items-center gap-2">
@@ -779,7 +779,7 @@ export default function Companies() {
                       </div>
                     </TableHead>
                     <TableHead
-                      className="cursor-pointer hover:bg-slate-100 transition-colors py-0.5 px-2"
+                      className="cursor-pointer hover:bg-slate-100 transition-colors py-2 px-2 text-black font-bold text-[14px]"
                       onClick={() => handleSort('email')}
                     >
                       <div className="flex items-center gap-2">
@@ -787,7 +787,7 @@ export default function Companies() {
                       </div>
                     </TableHead>
                     <TableHead
-                      className="cursor-pointer hover:bg-slate-100 transition-colors py-0.5 px-2"
+                      className="cursor-pointer hover:bg-slate-100 transition-colors py-2 px-2 text-black font-bold text-[14px]"
                       onClick={() => handleSort('status')}
                     >
                       <div className="flex items-center gap-2">
@@ -795,14 +795,16 @@ export default function Companies() {
                       </div>
                     </TableHead>
                     <TableHead
-                      className="cursor-pointer hover:bg-slate-100 transition-colors py-0.5 px-2"
+                      className="cursor-pointer hover:bg-slate-100 transition-colors py-2 px-2 text-black font-bold text-[14px]"
                       onClick={() => handleSort('created_at')}
                     >
                       <div className="flex items-center gap-2">
                         Criado em <ArrowUpDown className="h-3 w-3 text-slate-400" />
                       </div>
                     </TableHead>
-                    <TableHead className="text-right py-0.5 px-2">Ações</TableHead>
+                    <TableHead className="text-right py-2 px-2 text-black font-bold text-[14px]">
+                      Ações
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
