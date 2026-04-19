@@ -751,7 +751,7 @@ export default function Companies() {
               <Table>
                 <TableHeader className="bg-slate-50">
                   <TableRow>
-                    <TableHead className="w-12 text-center">
+                    <TableHead className="w-12 text-center py-0.5 px-2">
                       <Checkbox
                         checked={
                           paginatedOrgs.length > 0 && selectedIds.length === paginatedOrgs.length
@@ -763,7 +763,7 @@ export default function Companies() {
                       />
                     </TableHead>
                     <TableHead
-                      className="cursor-pointer hover:bg-slate-100 transition-colors"
+                      className="cursor-pointer hover:bg-slate-100 transition-colors py-0.5 px-2"
                       onClick={() => handleSort('name')}
                     >
                       <div className="flex items-center gap-2">
@@ -771,7 +771,7 @@ export default function Companies() {
                       </div>
                     </TableHead>
                     <TableHead
-                      className="cursor-pointer hover:bg-slate-100 transition-colors"
+                      className="cursor-pointer hover:bg-slate-100 transition-colors py-0.5 px-2"
                       onClick={() => handleSort('cnpj')}
                     >
                       <div className="flex items-center gap-2">
@@ -779,7 +779,7 @@ export default function Companies() {
                       </div>
                     </TableHead>
                     <TableHead
-                      className="cursor-pointer hover:bg-slate-100 transition-colors"
+                      className="cursor-pointer hover:bg-slate-100 transition-colors py-0.5 px-2"
                       onClick={() => handleSort('email')}
                     >
                       <div className="flex items-center gap-2">
@@ -787,7 +787,7 @@ export default function Companies() {
                       </div>
                     </TableHead>
                     <TableHead
-                      className="cursor-pointer hover:bg-slate-100 transition-colors"
+                      className="cursor-pointer hover:bg-slate-100 transition-colors py-0.5 px-2"
                       onClick={() => handleSort('status')}
                     >
                       <div className="flex items-center gap-2">
@@ -795,20 +795,20 @@ export default function Companies() {
                       </div>
                     </TableHead>
                     <TableHead
-                      className="cursor-pointer hover:bg-slate-100 transition-colors"
+                      className="cursor-pointer hover:bg-slate-100 transition-colors py-0.5 px-2"
                       onClick={() => handleSort('created_at')}
                     >
                       <div className="flex items-center gap-2">
                         Criado em <ArrowUpDown className="h-3 w-3 text-slate-400" />
                       </div>
                     </TableHead>
-                    <TableHead className="text-right">Ações</TableHead>
+                    <TableHead className="text-right py-0.5 px-2">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {paginatedOrgs.map((org) => (
                     <TableRow key={org.id} className="hover:bg-slate-50/50">
-                      <TableCell className="py-2 px-4 text-center">
+                      <TableCell className="py-0.5 px-2 text-center">
                         <Checkbox
                           checked={selectedIds.includes(org.id)}
                           onCheckedChange={(checked) => {
@@ -817,9 +817,9 @@ export default function Companies() {
                           }}
                         />
                       </TableCell>
-                      <TableCell className="py-2 px-4 font-medium">
+                      <TableCell className="py-0.5 px-2 font-medium">
                         <div className="flex items-center gap-2">
-                          <div className="h-7 w-7 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center shrink-0 text-[10px] font-bold">
+                          <div className="h-6 w-6 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center shrink-0 text-[9px] font-bold">
                             {org.name.substring(0, 2).toUpperCase()}
                           </div>
                           <div>
@@ -832,7 +832,7 @@ export default function Companies() {
                           </div>
                         </div>
                       </TableCell>
-                      <TableCell className="py-2 px-4">
+                      <TableCell className="py-0.5 px-2">
                         <div className="text-[13px]">
                           {org.cnpj && (
                             <p>
@@ -848,47 +848,47 @@ export default function Companies() {
                           )}
                         </div>
                       </TableCell>
-                      <TableCell className="py-2 px-4">
+                      <TableCell className="py-0.5 px-2">
                         <div className="text-[13px] text-slate-600">
                           {org.email && <p>{org.email}</p>}
                           {org.phone && <p>{org.phone}</p>}
                           {!org.email && !org.phone && <span className="text-slate-400">-</span>}
                         </div>
                       </TableCell>
-                      <TableCell className="py-2 px-4">
+                      <TableCell className="py-0.5 px-2">
                         <Badge
                           variant={org.status ? 'default' : 'secondary'}
                           className={
                             org.status
-                              ? 'bg-green-100 text-green-800 text-[11px] h-5'
-                              : 'bg-slate-100 text-slate-600 text-[11px] h-5'
+                              ? 'bg-green-100 text-green-800 text-[10px] h-4 py-0'
+                              : 'bg-slate-100 text-slate-600 text-[10px] h-4 py-0'
                           }
                         >
                           {org.status ? 'Ativo' : 'Inativo'}
                         </Badge>
                       </TableCell>
-                      <TableCell className="py-2 px-4 text-[13px] text-slate-500">
+                      <TableCell className="py-0.5 px-2 text-[13px] text-slate-500">
                         {org.created_at
                           ? format(new Date(org.created_at), 'dd/MM/yyyy', { locale: ptBR })
                           : '-'}
                       </TableCell>
-                      <TableCell className="py-2 px-4 text-right">
+                      <TableCell className="py-0.5 px-2 text-right">
                         <div className="flex items-center justify-end gap-1">
                           <Button
                             variant="ghost"
                             size="icon"
                             onClick={() => openModal(org)}
-                            className="h-8 w-8 text-slate-500 hover:text-blue-600"
+                            className="h-6 w-6 text-slate-500 hover:text-blue-600"
                           >
-                            <Edit className="h-4 w-4" />
+                            <Edit className="h-3 w-3" />
                           </Button>
                           <Button
                             variant="ghost"
                             size="icon"
                             onClick={() => handleDelete(org.id)}
-                            className="h-8 w-8 text-slate-500 hover:text-red-600 hover:bg-red-50"
+                            className="h-6 w-6 text-slate-500 hover:text-red-600 hover:bg-red-50"
                           >
-                            <Trash2 className="h-4 w-4" />
+                            <Trash2 className="h-3 w-3" />
                           </Button>
                         </div>
                       </TableCell>

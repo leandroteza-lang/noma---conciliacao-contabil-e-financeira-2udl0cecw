@@ -93,41 +93,43 @@ export default function TgaAccountTypes() {
           <Table>
             <TableHeader className="bg-slate-50 dark:bg-slate-800">
               <TableRow>
-                <TableHead>Código</TableHead>
-                <TableHead>Nome</TableHead>
-                <TableHead>Abreviação</TableHead>
-                <TableHead>Empresa</TableHead>
-                <TableHead className="w-[100px] text-center">Ações</TableHead>
+                <TableHead className="py-0.5 px-2 h-7">Código</TableHead>
+                <TableHead className="py-0.5 px-2 h-7">Nome</TableHead>
+                <TableHead className="py-0.5 px-2 h-7">Abreviação</TableHead>
+                <TableHead className="py-0.5 px-2 h-7">Empresa</TableHead>
+                <TableHead className="w-[100px] text-center py-0.5 px-2 h-7">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center py-8">
+                  <TableCell colSpan={5} className="text-center py-4">
                     Carregando...
                   </TableCell>
                 </TableRow>
               ) : filtered.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center py-8 text-slate-500">
+                  <TableCell colSpan={5} className="text-center py-4 text-slate-500">
                     Nenhum registro encontrado
                   </TableCell>
                 </TableRow>
               ) : (
                 filtered.map((row) => (
                   <TableRow key={row.id}>
-                    <TableCell className="font-medium">{row.codigo}</TableCell>
-                    <TableCell>{row.nome}</TableCell>
-                    <TableCell>{row.abreviacao || '-'}</TableCell>
-                    <TableCell>{row.organizations?.name || 'Geral'}</TableCell>
-                    <TableCell className="text-center">
+                    <TableCell className="font-medium py-0.5 px-2">{row.codigo}</TableCell>
+                    <TableCell className="py-0.5 px-2">{row.nome}</TableCell>
+                    <TableCell className="py-0.5 px-2">{row.abreviacao || '-'}</TableCell>
+                    <TableCell className="py-0.5 px-2">
+                      {row.organizations?.name || 'Geral'}
+                    </TableCell>
+                    <TableCell className="text-center py-0.5 px-2">
                       <Button
                         variant="ghost"
                         size="icon"
                         onClick={() => handleDelete(row.id)}
-                        className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                        className="h-6 w-6 text-red-500 hover:text-red-700 hover:bg-red-50"
                       >
-                        <Trash2 className="h-4 w-4" />
+                        <Trash2 className="h-3 w-3" />
                       </Button>
                     </TableCell>
                   </TableRow>

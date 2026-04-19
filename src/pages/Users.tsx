@@ -342,7 +342,7 @@ export default function Users() {
         <Table>
           <TableHeader className="bg-muted/50">
             <TableRow>
-              <TableHead className="w-[40px] text-center py-2">
+              <TableHead className="w-[40px] text-center py-0.5 px-2">
                 <Checkbox
                   checked={selectedUsers.length === sortedUsers.length && sortedUsers.length > 0}
                   onCheckedChange={(checked) => {
@@ -352,7 +352,7 @@ export default function Users() {
                 />
               </TableHead>
               <TableHead
-                className="cursor-pointer select-none py-2"
+                className="cursor-pointer select-none py-0.5 px-2"
                 onClick={() => toggleSort('name')}
               >
                 <div className="flex items-center">
@@ -360,7 +360,7 @@ export default function Users() {
                 </div>
               </TableHead>
               <TableHead
-                className="cursor-pointer select-none py-2"
+                className="cursor-pointer select-none py-0.5 px-2"
                 onClick={() => toggleSort('email')}
               >
                 <div className="flex items-center">
@@ -368,7 +368,7 @@ export default function Users() {
                 </div>
               </TableHead>
               <TableHead
-                className="cursor-pointer select-none py-2"
+                className="cursor-pointer select-none py-0.5 px-2"
                 onClick={() => toggleSort('cpf')}
               >
                 <div className="flex items-center">
@@ -376,7 +376,7 @@ export default function Users() {
                 </div>
               </TableHead>
               <TableHead
-                className="cursor-pointer select-none py-2"
+                className="cursor-pointer select-none py-0.5 px-2"
                 onClick={() => toggleSort('role')}
               >
                 <div className="flex items-center">
@@ -384,7 +384,7 @@ export default function Users() {
                 </div>
               </TableHead>
               <TableHead
-                className="cursor-pointer select-none py-2"
+                className="cursor-pointer select-none py-0.5 px-2"
                 onClick={() => toggleSort('department')}
               >
                 <div className="flex items-center">
@@ -392,26 +392,26 @@ export default function Users() {
                 </div>
               </TableHead>
               <TableHead
-                className="cursor-pointer select-none py-2"
+                className="cursor-pointer select-none py-0.5 px-2"
                 onClick={() => toggleSort('status')}
               >
                 <div className="flex items-center">
                   Status <SortIcon field="status" />
                 </div>
               </TableHead>
-              <TableHead className="w-[100px] text-right py-2">Ações</TableHead>
+              <TableHead className="w-[100px] text-right py-0.5 px-2">Ações</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={8} className="text-center h-32">
+                <TableCell colSpan={8} className="text-center h-24">
                   Carregando usuários...
                 </TableCell>
               </TableRow>
             ) : sortedUsers.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8} className="text-center h-32 text-muted-foreground">
+                <TableCell colSpan={8} className="text-center h-24 text-muted-foreground">
                   Nenhum usuário encontrado.
                 </TableCell>
               </TableRow>
@@ -421,7 +421,7 @@ export default function Users() {
                   key={user.id}
                   className={selectedUsers.includes(user.id) ? 'bg-muted/50' : ''}
                 >
-                  <TableCell className="text-center py-2">
+                  <TableCell className="text-center py-0.5 px-2">
                     <Checkbox
                       checked={selectedUsers.includes(user.id)}
                       onCheckedChange={(checked) => {
@@ -430,11 +430,13 @@ export default function Users() {
                       }}
                     />
                   </TableCell>
-                  <TableCell className="font-medium py-2">{user.name}</TableCell>
-                  <TableCell className="text-muted-foreground py-2">{user.email}</TableCell>
-                  <TableCell className="text-muted-foreground py-2">{user.cpf || '-'}</TableCell>
-                  <TableCell className="py-2">
-                    <Badge variant="outline" className="font-normal">
+                  <TableCell className="font-medium py-0.5 px-2">{user.name}</TableCell>
+                  <TableCell className="text-muted-foreground py-0.5 px-2">{user.email}</TableCell>
+                  <TableCell className="text-muted-foreground py-0.5 px-2">
+                    {user.cpf || '-'}
+                  </TableCell>
+                  <TableCell className="py-0.5 px-2">
+                    <Badge variant="outline" className="font-normal h-5 text-[11px]">
                       {user.role === 'admin'
                         ? 'Administrador'
                         : user.role === 'supervisor'
@@ -444,55 +446,55 @@ export default function Users() {
                             : 'Colaborador'}
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-muted-foreground py-2">
+                  <TableCell className="text-muted-foreground py-0.5 px-2">
                     {user.departments?.name || '-'}
                   </TableCell>
-                  <TableCell className="py-2">
+                  <TableCell className="py-0.5 px-2">
                     {user.approval_status === 'pending' ? (
                       <Badge
                         variant="secondary"
-                        className="bg-amber-100 text-amber-800 hover:bg-amber-100 dark:bg-amber-900/30 dark:text-amber-300"
+                        className="bg-amber-100 text-amber-800 hover:bg-amber-100 dark:bg-amber-900/30 dark:text-amber-300 h-5 text-[11px]"
                       >
                         Pendente de Aprovação
                       </Badge>
                     ) : user.status ? (
                       <Badge
                         variant="secondary"
-                        className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-300"
+                        className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-300 h-5 text-[11px]"
                       >
                         Ativo
                       </Badge>
                     ) : (
                       <Badge
                         variant="secondary"
-                        className="bg-slate-100 text-slate-800 hover:bg-slate-100 dark:bg-slate-800 dark:text-slate-300"
+                        className="bg-slate-100 text-slate-800 hover:bg-slate-100 dark:bg-slate-800 dark:text-slate-300 h-5 text-[11px]"
                       >
                         Inativo
                       </Badge>
                     )}
                   </TableCell>
-                  <TableCell className="text-right py-2">
+                  <TableCell className="text-right py-0.5 px-2">
                     <div className="flex items-center justify-end gap-1">
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/20"
+                        className="h-6 w-6 text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/20"
                         title="Editar"
                         onClick={() => {
                           setUserToEdit(user)
                           setIsEditUserModalOpen(true)
                         }}
                       >
-                        <Edit className="h-4 w-4" />
+                        <Edit className="h-3 w-3" />
                       </Button>
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
+                        className="h-6 w-6 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
                         onClick={() => handleDelete(user.id)}
                         title="Excluir"
                       >
-                        <Trash className="h-4 w-4" />
+                        <Trash className="h-3 w-3" />
                       </Button>
                     </div>
                   </TableCell>
