@@ -600,22 +600,22 @@ function ExpandableRow({
                   <Table>
                     <TableHeader className="bg-muted/30">
                       <TableRow disableZebra className="hover:bg-transparent">
-                        <TableHead className="w-[30%] font-semibold text-xs uppercase tracking-wider">
+                        <TableHead className="w-[30%] font-bold text-[14px] text-black dark:text-white uppercase tracking-wider">
                           <div className="flex items-center gap-1">
                             Campo <ArrowUpDown className="h-3 w-3 opacity-50" />
                           </div>
                         </TableHead>
-                        <TableHead className="w-[30%] font-semibold text-xs uppercase tracking-wider">
+                        <TableHead className="w-[30%] font-bold text-[14px] text-black dark:text-white uppercase tracking-wider">
                           <div className="flex items-center gap-1">
                             Antes <ArrowUpDown className="h-3 w-3 opacity-50" />
                           </div>
                         </TableHead>
-                        <TableHead className="w-[30%] font-semibold text-xs uppercase tracking-wider">
+                        <TableHead className="w-[30%] font-bold text-[14px] text-black dark:text-white uppercase tracking-wider">
                           <div className="flex items-center gap-1">
                             Depois <ArrowUpDown className="h-3 w-3 opacity-50" />
                           </div>
                         </TableHead>
-                        <TableHead className="w-[10%] font-semibold text-xs uppercase tracking-wider text-center">
+                        <TableHead className="w-[10%] font-bold text-[14px] text-black dark:text-white uppercase tracking-wider text-center">
                           Mudança
                         </TableHead>
                       </TableRow>
@@ -708,15 +708,15 @@ const SortableHead = ({ label, sortKey, currentSort, requestSort }: any) => {
   const isActive = currentSort?.key === sortKey
   return (
     <TableHead
-      className="font-semibold cursor-pointer hover:bg-muted/50 transition-colors group select-none whitespace-nowrap"
+      className="cursor-pointer hover:bg-muted/50 transition-colors group select-none whitespace-nowrap"
       onClick={() => requestSort(sortKey)}
     >
-      <div className="flex items-center gap-1 text-[13px] text-muted-foreground">
+      <div className="flex items-center gap-1 text-[14px] font-bold text-black dark:text-white">
         {label}
         <ArrowUpDown
           className={cn(
             'h-3 w-3 opacity-0 group-hover:opacity-50 transition-opacity',
-            isActive && 'opacity-100 text-foreground',
+            isActive && 'opacity-100 text-black dark:text-white',
           )}
         />
       </div>
@@ -1255,14 +1255,15 @@ export default function CentralAuditoria() {
                         aria-label="Selecionar todos"
                       />
                       <div
-                        className="flex items-center gap-1 text-[13px] text-muted-foreground font-semibold cursor-pointer hover:text-foreground transition-colors group select-none"
+                        className="flex items-center gap-1 text-[14px] text-black dark:text-white font-bold cursor-pointer hover:text-black/80 dark:hover:text-white/80 transition-colors group select-none"
                         onClick={() => handleSort('created_at')}
                       >
                         Data/Hora{' '}
                         <ArrowUpDown
                           className={cn(
                             'h-3 w-3 opacity-0 group-hover:opacity-50 transition-opacity',
-                            sortConfig?.key === 'created_at' && 'opacity-100 text-foreground',
+                            sortConfig?.key === 'created_at' &&
+                              'opacity-100 text-black dark:text-white',
                           )}
                         />
                       </div>
@@ -1304,7 +1305,7 @@ export default function CentralAuditoria() {
                     currentSort={sortConfig}
                     requestSort={handleSort}
                   />
-                  <TableHead className="text-right pr-4 text-[13px] text-muted-foreground font-semibold">
+                  <TableHead className="text-right pr-4 text-[14px] text-black dark:text-white font-bold">
                     Ações
                   </TableHead>
                 </TableRow>
