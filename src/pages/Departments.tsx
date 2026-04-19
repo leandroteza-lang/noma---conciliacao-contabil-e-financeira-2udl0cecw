@@ -57,6 +57,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { format } from 'date-fns'
+import { cn } from '@/lib/utils'
 
 const schema = z.object({
   code: z.string().optional(),
@@ -616,11 +617,14 @@ export default function Departments() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {paginated.map((item) => (
+                  {paginated.map((item, index) => (
                     <TableRow
                       key={item.id}
                       disableZebra
-                      className="hover:bg-muted/50 h-8 whitespace-nowrap text-xs transition-colors"
+                      className={cn(
+                        'hover:bg-muted/50 h-8 whitespace-nowrap text-xs transition-colors',
+                        index % 2 !== 0 ? 'bg-slate-50 dark:bg-slate-800/40' : 'bg-background',
+                      )}
                     >
                       {canDelete && (
                         <TableCell className="py-1 px-2 text-center">
