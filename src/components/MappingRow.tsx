@@ -20,39 +20,23 @@ export const MappingRow = memo(function MappingRow({
   onMap,
   onRemove,
 }: any) {
-  const getRowStyle = (cc: any, idx: number) => {
+  const getRowStyle = (cc: any) => {
     if (cc.isSynthetic) {
-      switch (cc.level) {
-        case 0:
-          return 'bg-indigo-950 font-bold text-white hover:bg-indigo-900'
-        case 1:
-          return 'bg-indigo-900 font-semibold text-white hover:bg-indigo-800'
-        case 2:
-          return 'bg-indigo-800 font-medium text-white hover:bg-indigo-700'
-        case 3:
-          return 'bg-indigo-100 font-medium text-indigo-950 hover:bg-indigo-200'
-        default:
-          return 'bg-slate-50 font-medium text-slate-800 hover:bg-slate-100'
-      }
+      const code = cc.code || ''
+      const level = (code.match(/\./g) || []).length + 1
+
+      if (level === 1) return 'bg-indigo-950 font-bold text-white'
+      if (level === 2) return 'bg-blue-800 font-semibold text-white'
+      if (level === 3) return 'bg-blue-500 font-medium text-white'
+      if (level === 4) return 'bg-blue-200 font-medium text-blue-950'
+      return 'bg-blue-50 font-medium text-blue-900'
     }
 
-    if (!cc.mappingId) {
-      return idx % 2 === 0
-        ? 'bg-amber-50/20 font-normal text-slate-700 hover:bg-amber-50/40'
-        : 'bg-amber-50/60 font-normal text-slate-700 hover:bg-amber-50/80'
-    }
-
-    if (cc.ccPendingDeletion) {
-      return 'bg-red-50/50 font-normal text-slate-500 opacity-70'
-    }
-
-    return idx % 2 === 0
-      ? 'bg-white font-normal text-slate-700 hover:bg-slate-50'
-      : 'bg-[#dbeefc] font-normal text-slate-800 hover:bg-[#d0e9f9]'
+    return 'bg-white font-normal text-slate-700'
   }
 
   return (
-    <TableRow className={cn('transition-colors border-b border-slate-100', getRowStyle(cc, index))}>
+    <TableRow className={cn('transition-colors border-b border-slate-100', getRowStyle(cc))}>
       <TableCell className="p-1.5 px-4 w-[40px] border-r border-slate-200/40 align-middle text-center">
         {!cc.isSynthetic && (
           <div className="flex justify-center">
@@ -110,7 +94,7 @@ export const MappingRow = memo(function MappingRow({
                 onClick={() => onToggleGroup(cc.id)}
                 className={cn(
                   'h-8 px-3 text-xs font-medium transition-colors border-0',
-                  cc.level <= 2
+                  ((cc.code || '').match(/\./g) || []).length + 1 <= 3
                     ? 'bg-white/10 text-white hover:bg-white/20 hover:text-white'
                     : 'bg-black/5 text-blue-950 hover:bg-black/10 hover:text-blue-950',
                 )}
@@ -258,25 +242,25 @@ export const MappingRow = memo(function MappingRow({
                       const code = node.classification || node.account_code || ''
                       const level = (code.match(/\./g) || []).length + 1
 
-                      let rowClass = 'bg-white font-normal text-slate-700 hover:bg-slate-50'
+                      let rowClass = 'bg-white font-normal text-slate-700'
                       let badgeClass = 'bg-slate-100 text-slate-600 border-slate-200'
 
                       if (node.account_level === 'Sintética') {
                         if (level === 1) {
-                          rowClass = 'bg-indigo-950 font-bold text-white hover:bg-indigo-900'
+                          rowClass = 'bg-indigo-950 font-bold text-white'
                           badgeClass = 'bg-indigo-900 text-white border-indigo-800'
                         } else if (level === 2) {
-                          rowClass = 'bg-indigo-900 font-semibold text-white hover:bg-indigo-800'
-                          badgeClass = 'bg-indigo-800 text-white border-indigo-700'
+                          rowClass = 'bg-blue-800 font-semibold text-white'
+                          badgeClass = 'bg-blue-700 text-white border-blue-600'
                         } else if (level === 3) {
-                          rowClass = 'bg-indigo-800 font-medium text-white hover:bg-indigo-700'
-                          badgeClass = 'bg-indigo-700 text-white border-indigo-600'
+                          rowClass = 'bg-blue-500 font-medium text-white'
+                          badgeClass = 'bg-blue-600 text-white border-blue-500'
                         } else if (level === 4) {
-                          rowClass = 'bg-indigo-100 font-medium text-indigo-950 hover:bg-indigo-200'
-                          badgeClass = 'bg-indigo-200 text-indigo-950 border-indigo-300'
+                          rowClass = 'bg-blue-200 font-medium text-blue-950'
+                          badgeClass = 'bg-blue-300 text-blue-950 border-blue-400'
                         } else {
-                          rowClass = 'bg-slate-50 font-medium text-slate-800 hover:bg-slate-100'
-                          badgeClass = 'bg-slate-200 text-slate-800 border-slate-300'
+                          rowClass = 'bg-blue-50 font-medium text-blue-900'
+                          badgeClass = 'bg-blue-200 text-blue-900 border-blue-300'
                         }
                       }
 
