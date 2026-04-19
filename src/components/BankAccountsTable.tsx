@@ -332,7 +332,7 @@ export function BankAccountsTable({
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/50">
-                <TableHead className="p-2 w-[40px] text-center">
+                <TableHead className="p-1 px-2 w-[40px] text-center">
                   <Checkbox
                     checked={isAllSelected}
                     onCheckedChange={onToggleSelectAll}
@@ -340,7 +340,7 @@ export function BankAccountsTable({
                   />
                 </TableHead>
                 <TableHead
-                  className="p-2 cursor-pointer select-none hover:bg-muted/50 transition-colors group"
+                  className="p-1 px-2 cursor-pointer select-none hover:bg-muted/50 transition-colors group"
                   onClick={() => onSort('company_name')}
                 >
                   <div className="flex items-center">
@@ -348,7 +348,7 @@ export function BankAccountsTable({
                   </div>
                 </TableHead>
                 <TableHead
-                  className="p-2 cursor-pointer select-none hover:bg-muted/50 transition-colors group"
+                  className="p-1 px-2 cursor-pointer select-none hover:bg-muted/50 transition-colors group"
                   onClick={() => onSort('account_code')}
                 >
                   <div className="flex items-center">
@@ -356,7 +356,7 @@ export function BankAccountsTable({
                   </div>
                 </TableHead>
                 <TableHead
-                  className="p-2 cursor-pointer select-none hover:bg-muted/50 transition-colors group"
+                  className="p-1 px-2 cursor-pointer select-none hover:bg-muted/50 transition-colors group"
                   onClick={() => onSort('description')}
                 >
                   <div className="flex items-center">
@@ -364,7 +364,7 @@ export function BankAccountsTable({
                   </div>
                 </TableHead>
                 <TableHead
-                  className="p-2 cursor-pointer select-none hover:bg-muted/50 transition-colors group"
+                  className="p-1 px-2 cursor-pointer select-none hover:bg-muted/50 transition-colors group"
                   onClick={() => onSort('bank_code')}
                 >
                   <div className="flex items-center">
@@ -372,7 +372,7 @@ export function BankAccountsTable({
                   </div>
                 </TableHead>
                 <TableHead
-                  className="p-2 cursor-pointer select-none hover:bg-muted/50 transition-colors group"
+                  className="p-1 px-2 cursor-pointer select-none hover:bg-muted/50 transition-colors group"
                   onClick={() => onSort('agency')}
                 >
                   <div className="flex items-center">
@@ -380,7 +380,7 @@ export function BankAccountsTable({
                   </div>
                 </TableHead>
                 <TableHead
-                  className="p-2 cursor-pointer select-none hover:bg-muted/50 transition-colors group"
+                  className="p-1 px-2 cursor-pointer select-none hover:bg-muted/50 transition-colors group"
                   onClick={() => onSort('account_number')}
                 >
                   <div className="flex items-center">
@@ -388,7 +388,7 @@ export function BankAccountsTable({
                   </div>
                 </TableHead>
                 <TableHead
-                  className="p-2 cursor-pointer select-none hover:bg-muted/50 transition-colors group"
+                  className="p-1 px-2 cursor-pointer select-none hover:bg-muted/50 transition-colors group"
                   onClick={() => onSort('account_type')}
                 >
                   <div className="flex items-center">
@@ -396,19 +396,20 @@ export function BankAccountsTable({
                   </div>
                 </TableHead>
                 <TableHead
-                  className="p-2 cursor-pointer select-none hover:bg-muted/50 transition-colors group"
+                  className="p-1 px-2 cursor-pointer select-none hover:bg-muted/50 transition-colors group"
                   onClick={() => onSort('classification')}
                 >
                   <div className="flex items-center">
                     Classificação <SortIcon columnKey="classification" />
                   </div>
                 </TableHead>
-                <TableHead className="text-right p-2 w-[180px]">Ações</TableHead>
+                <TableHead className="text-right p-1 px-2 w-[180px]">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {accounts.map((acc: any) => {
+              {accounts.map((acc: any, index: number) => {
                 const isExpanded = expandedRows.includes(acc.id)
+                const isEven = index % 2 !== 0
                 let hierarchy: any[] = []
                 if (isExpanded && acc.account_code) {
                   const account = chartAccounts.find(
@@ -431,78 +432,95 @@ export function BankAccountsTable({
                 return (
                   <Fragment key={acc.id}>
                     <TableRow
-                      className={`transition-opacity ${acc.pending_deletion ? 'opacity-50 bg-secondary/20' : 'hover:bg-muted/30'} ${selectedAccounts.includes(acc.id) ? 'bg-muted/50' : ''}`}
+                      className={`transition-opacity group/row ${isEven ? 'bg-[#800000] text-white font-bold hover:bg-[#600000]' : ''} ${acc.pending_deletion ? 'opacity-50 bg-secondary/20' : 'hover:bg-muted/30'} ${selectedAccounts.includes(acc.id) ? 'bg-muted/50' : ''}`}
                     >
-                      <TableCell className="p-2 text-center">
+                      <TableCell className="p-1 px-2 text-center">
                         <Checkbox
                           checked={selectedAccounts.includes(acc.id)}
                           onCheckedChange={() => onToggleSelect(acc.id)}
                           disabled={acc.pending_deletion}
                           aria-label={`Selecionar conta ${acc.description}`}
+                          className={
+                            isEven
+                              ? 'border-white data-[state=checked]:bg-white data-[state=checked]:text-[#800000]'
+                              : ''
+                          }
                         />
                       </TableCell>
-                      <TableCell className="p-2">
+                      <TableCell className="p-1 px-2">
                         <div className="flex items-center gap-2">
-                          <Building2 className="h-4 w-4 text-muted-foreground" />
+                          <Building2
+                            className={`h-4 w-4 ${isEven ? 'text-white/80' : 'text-muted-foreground'}`}
+                          />
                           {acc.organizations?.name || acc.company_name}
                         </div>
                       </TableCell>
-                      <TableCell className="p-2 font-mono text-sm">
+                      <TableCell className="p-1 px-2 font-mono text-sm">
                         {acc.account_code || '-'}
                       </TableCell>
-                      <TableCell className="p-2 font-medium">{acc.description}</TableCell>
-                      <TableCell className="p-2">{acc.bank_code || '-'}</TableCell>
-                      <TableCell className="p-2">{acc.agency || '-'}</TableCell>
-                      <TableCell className="p-2">
+                      <TableCell className={`p-1 px-2 ${isEven ? 'font-bold' : 'font-medium'}`}>
+                        {acc.description}
+                      </TableCell>
+                      <TableCell className="p-1 px-2">{acc.bank_code || '-'}</TableCell>
+                      <TableCell className="p-1 px-2">{acc.agency || '-'}</TableCell>
+                      <TableCell className="p-1 px-2">
                         {acc.account_number || '-'}
                         {acc.check_digit ? `-${acc.check_digit}` : ''}
                       </TableCell>
-                      <TableCell className="p-2">
-                        <span className="bg-primary/10 text-primary text-xs px-2.5 py-0.5 rounded-full font-medium whitespace-nowrap">
+                      <TableCell className="p-1 px-2">
+                        <span
+                          className={`${isEven ? 'bg-white/20 text-white' : 'bg-primary/10 text-primary'} text-[11px] px-2 py-0.5 rounded-full font-bold whitespace-nowrap`}
+                        >
                           {acc.account_type || '-'}
                         </span>
                       </TableCell>
-                      <TableCell className="p-2">
+                      <TableCell className="p-1 px-2">
                         {acc.classification ? (
-                          <span className="bg-secondary text-secondary-foreground text-xs px-2.5 py-0.5 rounded-full font-medium whitespace-nowrap">
+                          <span
+                            className={`${isEven ? 'bg-white/20 text-white' : 'bg-secondary text-secondary-foreground'} text-[11px] px-2 py-0.5 rounded-full font-bold whitespace-nowrap`}
+                          >
                             {acc.classification}
                           </span>
                         ) : (
                           '-'
                         )}
                       </TableCell>
-                      <TableCell className="text-right p-2">
+                      <TableCell className="text-right p-1 px-2">
                         <div className="flex items-center justify-end gap-1">
                           <Button
                             variant="outline"
                             size="sm"
-                            className="h-8 px-2"
+                            className={`h-7 text-xs px-2 ${isEven ? 'border-white/40 text-white bg-transparent hover:bg-white/20 hover:text-white' : ''}`}
                             onClick={() => toggleRow(acc.id)}
                           >
                             {isExpanded ? (
-                              <ChevronUp className="w-4 h-4 mr-1" />
+                              <ChevronUp className="w-3 h-3 mr-1" />
                             ) : (
-                              <ChevronDown className="w-4 h-4 mr-1" />
+                              <ChevronDown className="w-3 h-3 mr-1" />
                             )}
                             {isExpanded ? 'Recolher' : 'Expandir'}
                           </Button>
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-8 w-8"
+                            className={`h-7 w-7 ${isEven ? 'text-white hover:bg-white/20 hover:text-white' : ''}`}
                             onClick={() => onEdit(acc)}
                             disabled={acc.pending_deletion}
                           >
-                            <Edit2 className="w-4 h-4 text-muted-foreground hover:text-primary" />
+                            <Edit2
+                              className={`w-3.5 h-3.5 ${isEven ? 'text-white hover:text-white' : 'text-muted-foreground hover:text-primary'}`}
+                            />
                           </Button>
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-8 w-8"
+                            className={`h-7 w-7 ${isEven ? 'text-white hover:bg-red-950 hover:text-white' : ''}`}
                             onClick={() => onDelete(acc)}
                             disabled={acc.pending_deletion}
                           >
-                            <Trash2 className="w-4 h-4 text-muted-foreground hover:text-destructive" />
+                            <Trash2
+                              className={`w-3.5 h-3.5 ${isEven ? 'text-white hover:text-white' : 'text-muted-foreground hover:text-destructive'}`}
+                            />
                           </Button>
                         </div>
                       </TableCell>
