@@ -29,50 +29,73 @@ import Layout from './components/Layout'
 import Landing from './pages/Landing'
 import { AuthProvider } from './hooks/use-auth'
 import { ThemeProvider } from './components/ThemeProvider'
+import { useEffect } from 'react'
 import { GlobalNotifications } from './components/GlobalNotifications'
 import { ShareQueryModal } from './components/ShareQueryModal'
 
-const App = () => (
-  <ThemeProvider defaultMode="dark" defaultColorTheme="default" storageKey="gc-theme">
-    <BrowserRouter future={{ v7_startTransition: false, v7_relativeSplatPath: false }}>
-      <AuthProvider>
-        <GlobalNotifications />
-        <ShareQueryModal />
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <Routes>
-            <Route path="/login" element={<Login />} />
-            <Route path="/signup" element={<Signup />} />
-            <Route path="/forgot-password" element={<ForgotPassword />} />
-            <Route path="/reset-password" element={<ResetPassword />} />
-            <Route path="/" element={<Landing />} />
-            <Route path="/consulta/:id" element={<SharedQuery />} />
-            <Route element={<Layout />}>
-              <Route path="/app" element={<Index />} />
-              <Route path="/empresas" element={<Companies />} />
-              <Route path="/departamentos" element={<Departments />} />
-              <Route path="/usuarios" element={<Users />} />
-              <Route path="/import" element={<Import />} />
-              <Route path="/mapeamento" element={<Mapping />} />
-              <Route path="/lancamentos" element={<Entries />} />
-              <Route path="/movimento-financeiro" element={<FinancialMovements />} />
-              <Route path="/centros-de-custo" element={<CostCenters />} />
-              <Route path="/plano-de-contas" element={<ChartAccounts />} />
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/analises" element={<Analysis />} />
-              <Route path="/aprovacoes" element={<Approvals />} />
-              <Route path="/tipo-conta-tga" element={<TgaAccountTypes />} />
-              <Route path="/compartilhamentos" element={<SharedQueriesList />} />
-              <Route path="/auditoria/usuarios" element={<AuditoriaUsuarios />} />
-              <Route path="/auditoria/central" element={<Central />} />
-            </Route>
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </TooltipProvider>
-      </AuthProvider>
-    </BrowserRouter>
-  </ThemeProvider>
-)
+const App = () => {
+  useEffect(() => {
+    const style = document.createElement('style')
+    style.innerHTML = `
+      .even\\:bg-\\[\\#00BFFF\\]:nth-child(even),
+      .bg-\\[\\#00BFFF\\],
+      .even\\:bg-deepskyblue:nth-child(even),
+      .bg-deepskyblue,
+      [class*="bg-[#00BFFF]"],
+      [class*="bg-deepskyblue"],
+      [style*="#00BFFF"],
+      [style*="rgb(0, 191, 255)"],
+      [style*="rgb(0,191,255)"],
+      [style*="DeepSkyBlue"],
+      [style*="deepskyblue"] {
+        background-color: #7FFFD4 !important;
+      }
+    `
+    document.head.appendChild(style)
+  }, [])
+
+  return (
+    <ThemeProvider defaultMode="dark" defaultColorTheme="default" storageKey="gc-theme">
+      <BrowserRouter future={{ v7_startTransition: false, v7_relativeSplatPath: false }}>
+        <AuthProvider>
+          <GlobalNotifications />
+          <ShareQueryModal />
+          <TooltipProvider>
+            <Toaster />
+            <Sonner />
+            <Routes>
+              <Route path="/login" element={<Login />} />
+              <Route path="/signup" element={<Signup />} />
+              <Route path="/forgot-password" element={<ForgotPassword />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
+              <Route path="/" element={<Landing />} />
+              <Route path="/consulta/:id" element={<SharedQuery />} />
+              <Route element={<Layout />}>
+                <Route path="/app" element={<Index />} />
+                <Route path="/empresas" element={<Companies />} />
+                <Route path="/departamentos" element={<Departments />} />
+                <Route path="/usuarios" element={<Users />} />
+                <Route path="/import" element={<Import />} />
+                <Route path="/mapeamento" element={<Mapping />} />
+                <Route path="/lancamentos" element={<Entries />} />
+                <Route path="/movimento-financeiro" element={<FinancialMovements />} />
+                <Route path="/centros-de-custo" element={<CostCenters />} />
+                <Route path="/plano-de-contas" element={<ChartAccounts />} />
+                <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/analises" element={<Analysis />} />
+                <Route path="/aprovacoes" element={<Approvals />} />
+                <Route path="/tipo-conta-tga" element={<TgaAccountTypes />} />
+                <Route path="/compartilhamentos" element={<SharedQueriesList />} />
+                <Route path="/auditoria/usuarios" element={<AuditoriaUsuarios />} />
+                <Route path="/auditoria/central" element={<Central />} />
+              </Route>
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </TooltipProvider>
+        </AuthProvider>
+      </BrowserRouter>
+    </ThemeProvider>
+  )
+}
 
 export default App
