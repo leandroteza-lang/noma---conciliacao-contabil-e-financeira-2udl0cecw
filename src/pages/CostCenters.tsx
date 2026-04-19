@@ -290,7 +290,7 @@ export default function CostCenters() {
   const renderSortableHeader = (label: any, key: string, className?: string) => (
     <TableHead
       className={cn(
-        'cursor-pointer hover:bg-slate-100 transition-colors select-none h-12 px-2 text-xs',
+        'cursor-pointer hover:bg-slate-200 transition-colors select-none h-12 px-2 text-sm font-bold text-black',
         className,
       )}
       onClick={() => handleSort(key)}
@@ -1189,7 +1189,7 @@ export default function CostCenters() {
         <CardContent>
           <div className="rounded-md border overflow-x-auto">
             <Table>
-              <TableHeader className="bg-muted/50 whitespace-nowrap">
+              <TableHeader className="bg-slate-100 whitespace-nowrap border-b-2 border-slate-200">
                 <TableRow>
                   <TableHead className="w-12 text-center h-12 px-2">
                     <Checkbox
@@ -1220,7 +1220,7 @@ export default function CostCenters() {
                   )}
                   {renderSortableHeader('Classificação', 'classification')}
                   {renderSortableHeader('Contabiliza', 'contabiliza', 'min-w-[200px]')}
-                  <TableHead className="text-right sticky right-0 bg-slate-100 z-10 shadow-[-4px_0_6px_-4px_rgba(0,0,0,0.1)] h-12 px-2 text-xs">
+                  <TableHead className="text-right sticky right-0 bg-slate-100 z-10 shadow-[-4px_0_6px_-4px_rgba(0,0,0,0.1)] h-12 px-2 text-sm font-bold text-black">
                     Ação
                   </TableHead>
                 </TableRow>

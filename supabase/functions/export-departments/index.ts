@@ -175,7 +175,7 @@ Deno.serve(async (req: Request) => {
             .map((r: any, index: number) => {
               const isEven = index % 2 === 1
               const rowClass = isEven ? 'row-even' : 'row-odd'
-              
+
               return `
             <tr class="${rowClass}">
               <td class="main-text">${r.code || '-'}</td>
@@ -212,11 +212,7 @@ Deno.serve(async (req: Request) => {
         { align: 'right' },
       )
 
-      const body = data.map((r: any) => [
-        r.code || '-',
-        String(r.name || '-'),
-        r.created_at || '-'
-      ])
+      const body = data.map((r: any) => [r.code || '-', String(r.name || '-'), r.created_at || '-'])
 
       autoTable(doc, {
         startY: 28,
