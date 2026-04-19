@@ -294,14 +294,17 @@ export default function ChartAccounts() {
     const level = (code.match(/\./g) || []).length + 1
 
     if (acc.account_level === 'Sintética') {
-      if (level === 1) return 'bg-indigo-950 font-bold text-white hover:bg-indigo-900'
-      if (level === 2) return 'bg-blue-800 font-semibold text-white hover:bg-blue-700'
-      if (level === 3) return 'bg-blue-500 font-medium text-white hover:bg-blue-400'
-      if (level === 4) return 'bg-blue-200 font-medium text-blue-950 hover:bg-blue-300'
-      return 'bg-blue-50 font-medium text-blue-900 hover:bg-blue-100'
+      if (level === 1)
+        return '!bg-indigo-950 font-bold !text-white hover:!bg-indigo-900 border-none'
+      if (level === 2)
+        return '!bg-blue-800 font-semibold !text-white hover:!bg-blue-700 border-none'
+      if (level === 3) return '!bg-blue-500 font-medium !text-white hover:!bg-blue-400 border-none'
+      if (level === 4)
+        return '!bg-blue-200 font-medium !text-blue-950 hover:!bg-blue-300 border-none'
+      return '!bg-blue-50 font-medium !text-blue-900 hover:!bg-blue-100 border-none'
     }
 
-    return 'bg-white font-normal text-slate-700 hover:bg-slate-50'
+    return '!bg-white font-normal !text-slate-700 hover:!bg-slate-50 border-b-slate-100'
   }
 
   const handleSaveAccount = async (data: any) => {
@@ -1125,9 +1128,9 @@ export default function ChartAccounts() {
                             }}
                             className={cn(
                               acc.account_level === 'Sintética' && level <= 3
-                                ? 'border-white/70 data-[state=checked]:bg-white data-[state=checked]:text-indigo-950'
+                                ? 'border-white/70 data-[state=checked]:!bg-white data-[state=checked]:!text-indigo-950'
                                 : acc.account_level === 'Sintética' && level === 4
-                                  ? 'border-blue-950/50 data-[state=checked]:bg-blue-950 data-[state=checked]:text-white'
+                                  ? 'border-blue-950/50 data-[state=checked]:!bg-blue-950 data-[state=checked]:!text-white'
                                   : '',
                             )}
                           />
@@ -1214,10 +1217,10 @@ export default function ChartAccounts() {
                               className={cn(
                                 'h-7 w-7 opacity-70 hover:opacity-100 transition-colors',
                                 level <= 3 && acc.account_level === 'Sintética'
-                                  ? 'hover:bg-white/20 text-white'
+                                  ? 'hover:bg-white/20 !text-white'
                                   : acc.account_level === 'Sintética' && level === 4
-                                    ? 'hover:bg-black/10 hover:text-blue-800 text-blue-900'
-                                    : 'hover:bg-black/5 hover:text-blue-600 text-slate-500',
+                                    ? 'hover:bg-black/10 hover:!text-blue-800 !text-blue-900'
+                                    : 'hover:bg-black/5 hover:!text-blue-600 !text-slate-500',
                               )}
                             >
                               <Pencil className="h-3.5 w-3.5" />
@@ -1229,10 +1232,10 @@ export default function ChartAccounts() {
                               className={cn(
                                 'h-7 w-7 opacity-70 hover:opacity-100 transition-colors',
                                 level <= 3 && acc.account_level === 'Sintética'
-                                  ? 'hover:bg-white/20 text-white'
+                                  ? 'hover:bg-white/20 !text-white'
                                   : acc.account_level === 'Sintética' && level === 4
-                                    ? 'hover:bg-black/10 hover:text-red-600 text-blue-900'
-                                    : 'hover:bg-black/5 hover:text-red-600 text-slate-500',
+                                    ? 'hover:bg-black/10 hover:!text-red-600 !text-blue-900'
+                                    : 'hover:bg-black/5 hover:!text-red-600 !text-slate-500',
                               )}
                             >
                               <Trash2 className="h-3.5 w-3.5" />
