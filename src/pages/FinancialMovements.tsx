@@ -1129,7 +1129,7 @@ export default function FinancialMovements() {
                     <TableHead
                       key={h.key}
                       className={cn(
-                        'h-8 px-2 py-1 text-xs font-semibold text-slate-600 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 select-none transition-colors border-r last:border-r-0',
+                        'h-8 px-2 py-1 text-sm font-bold text-black whitespace-nowrap cursor-pointer hover:bg-slate-200/50 select-none transition-colors border-r last:border-r-0',
                         h.className,
                       )}
                       onClick={() => handleSort(h.key)}
@@ -1149,7 +1149,7 @@ export default function FinancialMovements() {
                       </div>
                     </TableHead>
                   ))}
-                <TableHead className="h-8 px-2 py-1 text-xs font-semibold text-slate-600 whitespace-nowrap text-center border-r last:border-r-0">
+                <TableHead className="h-8 px-2 py-1 text-sm font-bold text-black whitespace-nowrap text-center border-r last:border-r-0">
                   Ações
                 </TableHead>
               </TableRow>
