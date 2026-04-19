@@ -477,6 +477,7 @@ function ExpandableRow({
   return (
     <>
       <TableRow
+        disableZebra
         className={cn('hover:bg-muted/50 transition-colors group', expanded && 'bg-muted/30')}
       >
         <TableCell>
@@ -555,7 +556,7 @@ function ExpandableRow({
         </TableCell>
       </TableRow>
       {expanded && (
-        <TableRow className="bg-muted/5 hover:bg-muted/5">
+        <TableRow disableZebra className="bg-muted/5 hover:bg-muted/5">
           <TableCell colSpan={8} className="p-0 border-b-0">
             <div className="px-14 py-4 border-b border-border/50 animate-fade-in-down">
               <div className="flex items-center gap-2 mb-4">
@@ -598,7 +599,7 @@ function ExpandableRow({
                 <div className="rounded-md border border-border bg-background shadow-sm overflow-hidden w-full max-w-4xl">
                   <Table>
                     <TableHeader className="bg-muted/30">
-                      <TableRow className="hover:bg-transparent">
+                      <TableRow disableZebra className="hover:bg-transparent">
                         <TableHead className="w-[30%] font-semibold text-xs uppercase tracking-wider">
                           <div className="flex items-center gap-1">
                             Campo <ArrowUpDown className="h-3 w-3 opacity-50" />
@@ -650,7 +651,7 @@ function ExpandableRow({
                           return true
                         })
                         .map((detail) => (
-                          <TableRow key={detail.id} className="hover:bg-muted/30">
+                          <TableRow disableZebra key={detail.id} className="hover:bg-muted/30">
                             <TableCell className="font-medium text-foreground text-sm">
                               {translateField(detail.field_name)}
                             </TableCell>
@@ -1245,7 +1246,7 @@ export default function CentralAuditoria() {
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
-                <TableRow className="bg-muted/30 hover:bg-muted/30 border-b-2">
+                <TableRow disableZebra className="bg-muted/30 hover:bg-muted/30 border-b-2">
                   <TableHead className="w-[180px] py-3">
                     <div className="flex items-center gap-3">
                       <Checkbox
@@ -1311,7 +1312,7 @@ export default function CentralAuditoria() {
               <TableBody>
                 {loading ? (
                   Array.from({ length: 5 }).map((_, i) => (
-                    <TableRow key={`skeleton-${i}`}>
+                    <TableRow disableZebra key={`skeleton-${i}`}>
                       <TableCell>
                         <div className="flex items-center gap-3">
                           <Skeleton className="h-4 w-4 rounded" />
@@ -1359,7 +1360,7 @@ export default function CentralAuditoria() {
                     />
                   ))
                 ) : (
-                  <TableRow>
+                  <TableRow disableZebra>
                     <TableCell colSpan={8} className="h-32 text-center">
                       <div className="flex flex-col items-center justify-center text-muted-foreground">
                         <Search className="h-8 w-8 mb-2 opacity-50" />
