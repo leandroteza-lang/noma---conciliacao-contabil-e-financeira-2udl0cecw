@@ -223,19 +223,26 @@ Deno.serve(async (req: Request) => {
             .map((r: any, index: number) => {
               const isEven = index % 2 === 1
               const rowClass = isEven ? 'row-even' : 'row-odd'
-              
-              const perfil = r.role === 'admin' ? 'Administrador' : r.role === 'supervisor' ? 'Supervisor' : r.role === 'client_user' ? 'Usuário Cliente' : 'Colaborador';
-              
-              let statusText = 'Inativo';
-              let statusClass = 'status-inactive';
+
+              const perfil =
+                r.role === 'admin'
+                  ? 'Administrador'
+                  : r.role === 'supervisor'
+                    ? 'Supervisor'
+                    : r.role === 'client_user'
+                      ? 'Usuário Cliente'
+                      : 'Colaborador'
+
+              let statusText = 'Inativo'
+              let statusClass = 'status-inactive'
               if (r.approval_status === 'pending') {
-                statusText = 'Pendente de Aprovação';
-                statusClass = 'status-pending';
+                statusText = 'Pendente de Aprovação'
+                statusClass = 'status-pending'
               } else if (r.status) {
-                statusText = 'Ativo';
-                statusClass = 'status-active';
+                statusText = 'Ativo'
+                statusClass = 'status-active'
               }
-              
+
               return `
             <tr class="${rowClass}">
               <td class="main-text">${r.name || '-'}</td>
@@ -293,7 +300,7 @@ Deno.serve(async (req: Request) => {
           r.cpf || '-',
           perfil,
           r.departments?.name || r.department || '-',
-          status
+          status,
         ]
       })
 
@@ -311,7 +318,7 @@ Deno.serve(async (req: Request) => {
           halign: 'left',
           fontSize: 11, // larger font
         },
-        styles: { 
+        styles: {
           fontSize: 9,
           cellPadding: 4,
         },
@@ -327,7 +334,7 @@ Deno.serve(async (req: Request) => {
               data.cell.styles.textColor = [15, 23, 42] // darker text for main column could be set via column index
               data.cell.styles.fontStyle = 'normal'
             }
-            
+
             // Adjust specific column text color if needed for odd rows
             if (!isEven && data.column.index === 0) {
               data.cell.styles.textColor = [15, 23, 42] // name main color

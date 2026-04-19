@@ -47,28 +47,6 @@ Deno.serve(async (req: Request) => {
       })
     }
 
-    if (format === 'pdf') {
-      const doc = new jsPDF()
-      doc.setFontSize(16)
-      doc.text('Relatório de Departamentos', 14, 20)
-
-      const body = data.map((r: any) => [r.code || '-', String(r.name || '-'), r.created_at || '-'])
-
-      autoTable(doc, {
-        startY: 25,
-        head: [['Código', 'Nome', 'Data Criação']],
-        body: body,
-        theme: 'grid',
-        headStyles: { fillColor: [220, 38, 38] },
-        styles: { fontSize: 10 },
-      })
-
-      const pdf = doc.output('datauristring')
-      return new Response(JSON.stringify({ pdf }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      })
-    }
-
     if (format === 'csv') {
       let csvContent = 'Código;Nome;Data Criação\n'
       data.forEach((r: any) => {
@@ -92,7 +70,191 @@ Deno.serve(async (req: Request) => {
       })
     }
 
-    throw new Error('Formato inválido. Use "excel", "pdf", "csv" ou "txt".')
+    if (format === 'browser') {
+      const html = `
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Relatório de Departamentos</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+    body { 
+      font-family: 'Inter', system-ui, sans-serif; 
+      background-color: #f8fafc; 
+      margin: 0; 
+      padding: 24px; 
+      color: #0f172a; 
+      -webkit-font-smoothing: antialiased;
+    }
+    .container { 
+      max-width: 1200px; 
+      margin: 0 auto; 
+      background: white; 
+      border-radius: 12px; 
+      box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); 
+      overflow: hidden; 
+    }
+    .header { 
+      padding: 24px; 
+      border-bottom: 1px solid #e2e8f0; 
+      display: flex; 
+      justify-content: space-between; 
+      align-items: center; 
+      background: white;
+    }
+    .header h1 { margin: 0 0 4px 0; font-size: 24px; font-weight: 700; color: #0f172a; }
+    .header p { margin: 0; color: #64748b; font-size: 14px; }
+    .print-btn {
+      background-color: #1e1b4b; color: white; border: none; padding: 10px 20px;
+      border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 14px;
+    }
+    @media print {
+      body { background-color: white; padding: 0; }
+      .container { box-shadow: none; border-radius: 0; max-width: 100%; border: none; }
+      .print-btn { display: none; }
+      * {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+    }
+    .table-container {
+      padding: 24px;
+    }
+    .styled-table { 
+      width: 100%; 
+      border-collapse: collapse;
+      border: 2px solid #800000;
+      border-radius: 6px;
+      overflow: hidden;
+    }
+    th { 
+      background-color: #f8fafc; 
+      color: #000000; 
+      padding: 8px 16px; 
+      text-align: left; 
+      font-size: 15px; 
+      font-weight: bold; 
+      border-bottom: 1px solid #e2e8f0; 
+    }
+    td { 
+      padding: 6px 16px; 
+      font-size: 13px; 
+      vertical-align: middle; 
+      border: none;
+    }
+    
+    .row-odd { background-color: #ffffff; color: #64748b; }
+    .row-even { background-color: #800000; color: #ffffff; font-weight: bold; }
+    
+    .row-odd td.main-text { color: #0f172a; font-weight: 500; }
+    .row-even td.main-text { color: #ffffff; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div>
+        <h1>Relatório de Departamentos</h1>
+        <p>Gerado em ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR')}</p>
+      </div>
+      <button class="print-btn" onclick="window.print()">Imprimir</button>
+    </div>
+    <div class="table-container">
+      <table class="styled-table">
+        <thead>
+          <tr>
+            <th>Código</th>
+            <th>Nome</th>
+            <th>Data Criação</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${data
+            .map((r: any, index: number) => {
+              const isEven = index % 2 === 1
+              const rowClass = isEven ? 'row-even' : 'row-odd'
+
+              return `
+            <tr class="${rowClass}">
+              <td class="main-text">${r.code || '-'}</td>
+              <td class="main-text">${r.name || '-'}</td>
+              <td>${r.created_at || '-'}</td>
+            </tr>
+          `
+            })
+            .join('')}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</body>
+</html>
+      `
+      return new Response(JSON.stringify({ html }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+
+    if (format === 'pdf') {
+      const doc = new jsPDF() // Portrait
+      doc.setFontSize(18)
+      doc.setTextColor(15, 23, 42)
+      doc.text('Relatório de Departamentos', 14, 20)
+
+      doc.setFontSize(10)
+      doc.setTextColor(100, 116, 139)
+      doc.text(
+        `Gerado em ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR')}`,
+        200 - 14,
+        20,
+        { align: 'right' },
+      )
+
+      const body = data.map((r: any) => [r.code || '-', String(r.name || '-'), r.created_at || '-'])
+
+      autoTable(doc, {
+        startY: 28,
+        head: [['Código', 'Nome', 'Data Criação']],
+        body: body,
+        theme: 'plain',
+        tableLineWidth: 0.5,
+        tableLineColor: [128, 0, 0], // Outer border
+        headStyles: {
+          fillColor: [248, 250, 252],
+          textColor: [0, 0, 0], // black header
+          fontStyle: 'bold',
+          halign: 'left',
+          fontSize: 11,
+        },
+        styles: {
+          fontSize: 9,
+          cellPadding: 3, // Thinner rows style excel
+        },
+        didParseCell: function (data: any) {
+          if (data.section === 'body') {
+            const isZebra = data.row.index % 2 !== 0
+            if (isZebra) {
+              data.cell.styles.fillColor = [128, 0, 0] // maroon zebra
+              data.cell.styles.textColor = [255, 255, 255]
+              data.cell.styles.fontStyle = 'bold'
+            } else {
+              data.cell.styles.fillColor = [255, 255, 255]
+              data.cell.styles.textColor = [15, 23, 42]
+              data.cell.styles.fontStyle = 'normal'
+            }
+          }
+        },
+      })
+
+      const pdf = doc.output('datauristring')
+      return new Response(JSON.stringify({ pdf }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+
+    throw new Error('Formato inválido. Use "excel", "pdf", "csv", "txt" ou "browser".')
   } catch (err: any) {
     return new Response(JSON.stringify({ error: err.message }), {
       status: 400,

@@ -383,7 +383,7 @@ export default function Departments() {
     }
   }
 
-  const handleExport = async (formatType: 'pdf' | 'excel' | 'csv' | 'txt') => {
+  const handleExport = async (formatType: 'pdf' | 'excel' | 'csv' | 'txt' | 'browser') => {
     try {
       toast({ title: 'Aguarde', description: 'Gerando relatório...' })
       const session = await supabase.auth.getSession()
@@ -405,7 +405,13 @@ export default function Departments() {
       )
       if (!res.ok) throw new Error('Falha ao exportar')
       const result = await res.json()
-      if (formatType === 'excel') {
+      if (formatType === 'browser') {
+        const newWindow = window.open('', '_blank')
+        if (newWindow) {
+          newWindow.document.write(result.html)
+          newWindow.document.close()
+        }
+      } else if (formatType === 'excel') {
         const binaryString = atob(result.excel)
         const bytes = new Uint8Array(binaryString.length)
         for (let i = 0; i < binaryString.length; i++) bytes[i] = binaryString.charCodeAt(i)
@@ -480,6 +486,12 @@ export default function Departments() {
                 className="cursor-pointer gap-2"
               >
                 <FileText className="h-4 w-4 text-gray-500" /> TXT
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => handleExport('browser')}
+                className="cursor-pointer gap-2"
+              >
+                <FileText className="h-4 w-4 text-orange-500" /> Visualizar (Browser)
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -575,9 +587,9 @@ export default function Departments() {
             <div className="rounded-md border-2 border-[#800000] overflow-hidden overflow-x-auto">
               <Table>
                 <TableHeader className="bg-[#f8fafc] dark:bg-slate-900 border-b border-[#e2e8f0] dark:border-slate-800">
-                  <TableRow disableZebra className="h-10 border-none hover:bg-transparent">
+                  <TableRow disableZebra className="h-7 border-none hover:bg-transparent">
                     {canDelete && (
-                      <TableHead className="w-12 text-center py-2 px-3 text-[15px] font-bold text-black dark:text-white">
+                      <TableHead className="w-12 text-center py-1 px-3 text-[15px] font-bold text-black dark:text-white">
                         <Checkbox
                           checked={paginated.length > 0 && selectedIds.length === paginated.length}
                           onCheckedChange={(checked) => {
@@ -588,7 +600,7 @@ export default function Departments() {
                       </TableHead>
                     )}
                     <TableHead
-                      className="cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-800 py-2 px-3 text-[15px] font-bold text-black dark:text-white"
+                      className="cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-800 py-1 px-3 text-[15px] font-bold text-black dark:text-white"
                       onClick={() => handleSort('code')}
                     >
                       <div className="flex items-center gap-2">
@@ -596,7 +608,7 @@ export default function Departments() {
                       </div>
                     </TableHead>
                     <TableHead
-                      className="cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-800 py-2 px-3 text-[15px] font-bold text-black dark:text-white"
+                      className="cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-800 py-1 px-3 text-[15px] font-bold text-black dark:text-white"
                       onClick={() => handleSort('name')}
                     >
                       <div className="flex items-center gap-2">
@@ -604,7 +616,7 @@ export default function Departments() {
                       </div>
                     </TableHead>
                     <TableHead
-                      className="cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-800 py-2 px-3 text-[15px] font-bold text-black dark:text-white"
+                      className="cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-800 py-1 px-3 text-[15px] font-bold text-black dark:text-white"
                       onClick={() => handleSort('created_at')}
                     >
                       <div className="flex items-center gap-2">
@@ -612,7 +624,7 @@ export default function Departments() {
                       </div>
                     </TableHead>
                     {(canEdit || canDelete) && (
-                      <TableHead className="text-right py-2 px-3 text-[15px] font-bold text-black dark:text-white">
+                      <TableHead className="text-right py-1 px-3 text-[15px] font-bold text-black dark:text-white">
                         Ações
                       </TableHead>
                     )}
@@ -626,14 +638,14 @@ export default function Departments() {
                         key={item.id}
                         disableZebra
                         className={cn(
-                          'h-10 whitespace-nowrap text-sm transition-colors border-none',
+                          'h-7 whitespace-nowrap text-sm transition-colors border-none',
                           isZebra
                             ? 'bg-[#800000] hover:bg-[#800000]/90 text-white font-bold'
                             : 'bg-white dark:bg-background hover:bg-slate-50 dark:hover:bg-muted/50 text-slate-700 dark:text-slate-300 font-medium',
                         )}
                       >
                         {canDelete && (
-                          <TableCell className="py-2 px-3 text-center">
+                          <TableCell className="py-1 px-3 text-center">
                             <Checkbox
                               checked={selectedIds.includes(item.id)}
                               onCheckedChange={(checked) => {
@@ -649,7 +661,7 @@ export default function Departments() {
                         )}
                         <TableCell
                           className={cn(
-                            'py-2 px-3',
+                            'py-1 px-3',
                             isZebra
                               ? 'text-white font-bold'
                               : 'text-slate-900 dark:text-slate-100 font-medium',
@@ -659,7 +671,7 @@ export default function Departments() {
                         </TableCell>
                         <TableCell
                           className={cn(
-                            'py-2 px-3',
+                            'py-1 px-3',
                             isZebra ? 'text-white font-bold' : 'text-slate-900 dark:text-slate-100',
                           )}
                         >
@@ -667,14 +679,14 @@ export default function Departments() {
                         </TableCell>
                         <TableCell
                           className={cn(
-                            'py-2 px-3 text-[13px]',
+                            'py-1 px-3 text-[13px]',
                             isZebra ? 'text-white font-bold' : 'text-slate-500 dark:text-slate-400',
                           )}
                         >
                           {item.created_at ? format(new Date(item.created_at), 'dd/MM/yyyy') : '-'}
                         </TableCell>
                         {(canEdit || canDelete) && (
-                          <TableCell className="py-2 px-3 text-right">
+                          <TableCell className="py-1 px-3 text-right">
                             <div className="flex items-center justify-end gap-1">
                               {canEdit && (
                                 <Button
@@ -682,13 +694,13 @@ export default function Departments() {
                                   size="icon"
                                   onClick={() => openModal(item)}
                                   className={cn(
-                                    'h-8 w-8',
+                                    'h-6 w-6',
                                     isZebra
                                       ? 'text-white hover:text-[#800000] hover:bg-white'
                                       : 'text-slate-500 hover:text-primary hover:bg-primary/10',
                                   )}
                                 >
-                                  <Edit className="h-4 w-4" />
+                                  <Edit className="h-3.5 w-3.5" />
                                 </Button>
                               )}
                               {canDelete && (
@@ -697,13 +709,13 @@ export default function Departments() {
                                   size="icon"
                                   onClick={() => handleDelete(item.id)}
                                   className={cn(
-                                    'h-8 w-8',
+                                    'h-6 w-6',
                                     isZebra
                                       ? 'text-white hover:text-[#800000] hover:bg-white'
                                       : 'text-slate-500 hover:text-destructive hover:bg-destructive/10',
                                   )}
                                 >
-                                  <Trash2 className="h-4 w-4" />
+                                  <Trash2 className="h-3.5 w-3.5" />
                                 </Button>
                               )}
                             </div>
