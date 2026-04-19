@@ -139,12 +139,21 @@ export default function Users() {
     return 0
   })
 
-  const handleExport = async (formatType: 'excel' | 'pdf' | 'csv' | 'txt') => {
+  const handleExport = async (formatType: 'excel' | 'pdf' | 'csv' | 'txt' | 'browser') => {
     try {
       const { data, error } = await supabase.functions.invoke('export-users', {
         body: { format: formatType, data: sortedUsers },
       })
       if (error) throw error
+
+      if (formatType === 'browser') {
+        const newWindow = window.open('', '_blank')
+        if (newWindow) {
+          newWindow.document.write(data.html)
+          newWindow.document.close()
+        }
+        return
+      }
 
       let linkUrl = ''
       let downloadName = `Usuarios_${format(new Date(), 'ddMMyyyy')}`
@@ -292,6 +301,9 @@ export default function Users() {
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => handleExport('txt')}>
                 <FileText className="w-4 h-4 mr-2 text-gray-600" /> TXT
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleExport('browser')}>
+                <Search className="w-4 h-4 mr-2 text-purple-600" /> Visualizar / Imprimir
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
