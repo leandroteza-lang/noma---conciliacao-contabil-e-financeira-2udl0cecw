@@ -1259,6 +1259,7 @@ export default function CostCenters() {
 
                     return (
                       <TableRow
+                        disableZebra
                         key={cc.id}
                         className={cn('whitespace-nowrap transition-colors text-xs h-8', rowClass)}
                       >
