@@ -626,7 +626,7 @@ export default function Departments() {
                         className={cn(
                           'h-8 whitespace-nowrap text-xs transition-colors',
                           isZebra
-                            ? 'bg-[#800000]/10 hover:bg-[#800000]/20 dark:bg-[#800000]/20 dark:hover:bg-[#800000]/30'
+                            ? 'bg-[#800000] hover:bg-[#800000]/90 text-white font-bold'
                             : 'bg-background hover:bg-muted/50',
                         )}
                       >
@@ -638,13 +638,17 @@ export default function Departments() {
                                 if (checked) setSelectedIds((prev) => [...prev, item.id])
                                 else setSelectedIds((prev) => prev.filter((id) => id !== item.id))
                               }}
+                              className={cn(
+                                isZebra &&
+                                  'border-white data-[state=checked]:bg-white data-[state=checked]:text-[#800000]',
+                              )}
                             />
                           </TableCell>
                         )}
                         <TableCell
                           className={cn(
                             'py-1 px-2 font-medium',
-                            isZebra ? 'text-[#800000] dark:text-[#ffb3b3]' : 'text-foreground/80',
+                            isZebra ? 'text-white font-bold' : 'text-foreground/80',
                           )}
                         >
                           {item.code}
@@ -652,7 +656,7 @@ export default function Departments() {
                         <TableCell
                           className={cn(
                             'py-1 px-2',
-                            isZebra ? 'text-[#800000] dark:text-[#ffb3b3]' : 'text-foreground',
+                            isZebra ? 'text-white font-bold' : 'text-foreground',
                           )}
                         >
                           {item.name}
@@ -660,9 +664,7 @@ export default function Departments() {
                         <TableCell
                           className={cn(
                             'py-1 px-2 text-[12px]',
-                            isZebra
-                              ? 'text-[#800000]/80 dark:text-[#ffb3b3]/80'
-                              : 'text-muted-foreground',
+                            isZebra ? 'text-white font-bold' : 'text-muted-foreground',
                           )}
                         >
                           {item.created_at ? format(new Date(item.created_at), 'dd/MM/yyyy') : '-'}
@@ -678,7 +680,7 @@ export default function Departments() {
                                   className={cn(
                                     'h-6 w-6',
                                     isZebra
-                                      ? 'text-[#800000] hover:text-[#800000] hover:bg-[#800000]/20 dark:text-[#ffb3b3] dark:hover:bg-[#ffb3b3]/20'
+                                      ? 'text-white hover:text-[#800000] hover:bg-white'
                                       : 'text-muted-foreground hover:text-primary hover:bg-primary/10',
                                   )}
                                 >
@@ -693,7 +695,7 @@ export default function Departments() {
                                   className={cn(
                                     'h-6 w-6',
                                     isZebra
-                                      ? 'text-[#800000] hover:text-[#800000] hover:bg-[#800000]/20 dark:text-[#ffb3b3] dark:hover:bg-[#ffb3b3]/20'
+                                      ? 'text-white hover:text-[#800000] hover:bg-white'
                                       : 'text-muted-foreground hover:text-destructive hover:bg-destructive/10',
                                   )}
                                 >
