@@ -1113,7 +1113,7 @@ export default function FinancialMovements() {
             className="transform scale-y-[-1] w-full min-w-max"
           >
             <TableHeader>
-              <TableRow className="bg-slate-50 hover:bg-slate-50 border-b">
+              <TableRow disableZebra className="bg-slate-50 hover:bg-slate-50 border-b">
                 <TableHead className="w-[40px] px-2 py-1 border-r text-center align-middle">
                   <div className="flex items-center justify-center">
                     <Checkbox
@@ -1156,13 +1156,13 @@ export default function FinancialMovements() {
             </TableHeader>
             <TableBody>
               {loading ? (
-                <TableRow>
+                <TableRow disableZebra>
                   <TableCell colSpan={visibleCount} className="text-center h-48">
                     <Loader2 className="h-6 w-6 animate-spin mx-auto text-primary" />
                   </TableCell>
                 </TableRow>
               ) : data.length === 0 ? (
-                <TableRow>
+                <TableRow disableZebra>
                   <TableCell colSpan={visibleCount} className="text-center h-48 text-slate-500">
                     Nenhum movimento financeiro encontrado.
                   </TableCell>
@@ -1178,6 +1178,7 @@ export default function FinancialMovements() {
 
                   return (
                     <TableRow
+                      disableZebra
                       key={row.id}
                       className="hover:bg-slate-50/80 transition-colors border-b"
                     >
