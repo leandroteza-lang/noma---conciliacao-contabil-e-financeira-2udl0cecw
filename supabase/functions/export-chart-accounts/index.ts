@@ -84,15 +84,26 @@ Deno.serve(async (req: Request) => {
 
       autoTable(doc, {
         startY: 25,
-        head: [['Empresa', 'Cód. Reduzido', 'Classificação', 'Nome', 'Nível', 'Tipo', 'Natureza', 'Finalidade']],
+        head: [
+          [
+            'Empresa',
+            'Cód. Reduzido',
+            'Classificação',
+            'Nome',
+            'Nível',
+            'Tipo',
+            'Natureza',
+            'Finalidade',
+          ],
+        ],
         body: body,
         theme: 'grid',
         headStyles: { fillColor: [220, 38, 38] },
         styles: { fontSize: 8 },
         columnStyles: {
           3: { cellWidth: 50 },
-          7: { cellWidth: 40 }
-        }
+          7: { cellWidth: 40 },
+        },
       })
 
       const pdf = doc.output('datauristring')
