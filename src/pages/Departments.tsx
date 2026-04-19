@@ -574,9 +574,9 @@ export default function Departments() {
             <div className="rounded-md border-0 overflow-x-auto">
               <Table>
                 <TableHeader className="bg-muted/50">
-                  <TableRow>
+                  <TableRow disableZebra className="h-8 text-xs">
                     {canDelete && (
-                      <TableHead className="w-12 text-center">
+                      <TableHead className="w-12 text-center py-1 px-2 h-8">
                         <Checkbox
                           checked={paginated.length > 0 && selectedIds.length === paginated.length}
                           onCheckedChange={(checked) => {
@@ -587,7 +587,7 @@ export default function Departments() {
                       </TableHead>
                     )}
                     <TableHead
-                      className="cursor-pointer hover:bg-muted"
+                      className="cursor-pointer hover:bg-muted py-1 px-2 h-8"
                       onClick={() => handleSort('code')}
                     >
                       <div className="flex items-center gap-2">
@@ -595,7 +595,7 @@ export default function Departments() {
                       </div>
                     </TableHead>
                     <TableHead
-                      className="cursor-pointer hover:bg-muted"
+                      className="cursor-pointer hover:bg-muted py-1 px-2 h-8"
                       onClick={() => handleSort('name')}
                     >
                       <div className="flex items-center gap-2">
@@ -603,21 +603,27 @@ export default function Departments() {
                       </div>
                     </TableHead>
                     <TableHead
-                      className="cursor-pointer hover:bg-muted"
+                      className="cursor-pointer hover:bg-muted py-1 px-2 h-8"
                       onClick={() => handleSort('created_at')}
                     >
                       <div className="flex items-center gap-2">
                         Criado em <ArrowUpDown className="h-3 w-3 text-muted-foreground" />
                       </div>
                     </TableHead>
-                    {(canEdit || canDelete) && <TableHead className="text-right">Ações</TableHead>}
+                    {(canEdit || canDelete) && (
+                      <TableHead className="text-right py-1 px-2 h-8">Ações</TableHead>
+                    )}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {paginated.map((item) => (
-                    <TableRow key={item.id} className="hover:bg-muted/50">
+                    <TableRow
+                      key={item.id}
+                      disableZebra
+                      className="hover:bg-muted/50 h-8 whitespace-nowrap text-xs transition-colors"
+                    >
                       {canDelete && (
-                        <TableCell className="p-2 text-center">
+                        <TableCell className="py-1 px-2 text-center">
                           <Checkbox
                             checked={selectedIds.includes(item.id)}
                             onCheckedChange={(checked) => {
@@ -627,24 +633,24 @@ export default function Departments() {
                           />
                         </TableCell>
                       )}
-                      <TableCell className="p-2 font-medium text-foreground/80">
+                      <TableCell className="py-1 px-2 font-medium text-foreground/80">
                         {item.code}
                       </TableCell>
-                      <TableCell className="p-2 text-foreground">{item.name}</TableCell>
-                      <TableCell className="p-2 text-[13px] text-muted-foreground">
+                      <TableCell className="py-1 px-2 text-foreground">{item.name}</TableCell>
+                      <TableCell className="py-1 px-2 text-[12px] text-muted-foreground">
                         {item.created_at ? format(new Date(item.created_at), 'dd/MM/yyyy') : '-'}
                       </TableCell>
                       {(canEdit || canDelete) && (
-                        <TableCell className="p-2 text-right">
+                        <TableCell className="py-1 px-2 text-right">
                           <div className="flex items-center justify-end gap-1">
                             {canEdit && (
                               <Button
                                 variant="ghost"
                                 size="icon"
                                 onClick={() => openModal(item)}
-                                className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary/10"
+                                className="h-6 w-6 text-muted-foreground hover:text-primary hover:bg-primary/10"
                               >
-                                <Edit className="h-4 w-4" />
+                                <Edit className="h-3.5 w-3.5" />
                               </Button>
                             )}
                             {canDelete && (
@@ -652,9 +658,9 @@ export default function Departments() {
                                 variant="ghost"
                                 size="icon"
                                 onClick={() => handleDelete(item.id)}
-                                className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                                className="h-6 w-6 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
                               >
-                                <Trash2 className="h-4 w-4" />
+                                <Trash2 className="h-3.5 w-3.5" />
                               </Button>
                             )}
                           </div>
