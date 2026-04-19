@@ -20,7 +20,7 @@ export const MappingRow = memo(function MappingRow({
   onMap,
   onRemove,
 }: any) {
-  const getRowStyle = (cc: any) => {
+  const getRowStyle = (cc: any, index?: number) => {
     if (cc.isSynthetic) {
       const code = cc.code || ''
       const level = (code.match(/\./g) || []).length + 1
@@ -36,7 +36,10 @@ export const MappingRow = memo(function MappingRow({
   }
 
   return (
-    <TableRow className={cn('transition-colors border-b border-slate-100', getRowStyle(cc))}>
+    <TableRow
+      disableZebra
+      className={cn('transition-colors border-b border-slate-100', getRowStyle(cc, index))}
+    >
       <TableCell className="p-1.5 px-4 w-[40px] border-r border-slate-200/40 align-middle text-center">
         {!cc.isSynthetic && (
           <div className="flex justify-center">
