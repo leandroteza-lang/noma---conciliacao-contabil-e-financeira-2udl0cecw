@@ -11,7 +11,7 @@
     "send-email": 11,
     "export-bank-accounts": 14,
     "export-chart-accounts": 15,
-    "export-tga-accounts": 11,
+    "export-tga-accounts": 12,
     "chat": 24,
     "audit-log": 18,
     "cleanup-audit-logs": 5,
