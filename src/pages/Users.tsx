@@ -56,7 +56,7 @@ import * as XLSX from 'xlsx'
 import { format } from 'date-fns'
 import { useAuditLog } from '@/hooks/use-audit-log'
 import { useAuth } from '@/hooks/use-auth'
-import { isValidCPF, formatCPF } from '@/lib/utils'
+import { cn, isValidCPF, formatCPF } from '@/lib/utils'
 
 type SortField = 'name' | 'email' | 'cpf' | 'role' | 'department' | 'status'
 
@@ -419,7 +419,10 @@ export default function Users() {
               sortedUsers.map((user) => (
                 <TableRow
                   key={user.id}
-                  className={selectedUsers.includes(user.id) ? 'bg-muted/50' : ''}
+                  className={cn(
+                    'group/row even:bg-[#800000] even:text-white even:font-bold hover:even:bg-[#800000]/90',
+                    selectedUsers.includes(user.id) ? 'bg-muted/50' : '',
+                  )}
                 >
                   <TableCell className="text-center py-0.5 px-2">
                     <Checkbox
@@ -428,15 +431,21 @@ export default function Users() {
                         if (checked) setSelectedUsers([...selectedUsers, user.id])
                         else setSelectedUsers(selectedUsers.filter((id) => id !== user.id))
                       }}
+                      className="group-even/row:border-white group-even/row:data-[state=checked]:bg-white group-even/row:data-[state=checked]:text-[#800000]"
                     />
                   </TableCell>
                   <TableCell className="font-medium py-0.5 px-2">{user.name}</TableCell>
-                  <TableCell className="text-muted-foreground py-0.5 px-2">{user.email}</TableCell>
-                  <TableCell className="text-muted-foreground py-0.5 px-2">
+                  <TableCell className="text-muted-foreground group-even/row:text-white group-even/row:font-bold py-0.5 px-2">
+                    {user.email}
+                  </TableCell>
+                  <TableCell className="text-muted-foreground group-even/row:text-white group-even/row:font-bold py-0.5 px-2">
                     {user.cpf || '-'}
                   </TableCell>
                   <TableCell className="py-0.5 px-2">
-                    <Badge variant="outline" className="font-normal h-5 text-[11px]">
+                    <Badge
+                      variant="outline"
+                      className="font-normal h-5 text-[11px] group-even/row:text-white group-even/row:font-bold group-even/row:border-white group-even/row:bg-transparent"
+                    >
                       {user.role === 'admin'
                         ? 'Administrador'
                         : user.role === 'supervisor'
@@ -446,7 +455,7 @@ export default function Users() {
                             : 'Colaborador'}
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-muted-foreground py-0.5 px-2">
+                  <TableCell className="text-muted-foreground group-even/row:text-white group-even/row:font-bold py-0.5 px-2">
                     {user.departments?.name || '-'}
                   </TableCell>
                   <TableCell className="py-0.5 px-2">
@@ -478,7 +487,7 @@ export default function Users() {
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-6 w-6 text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/20"
+                        className="h-6 w-6 text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/20 group-even/row:text-white group-even/row:hover:text-blue-100 group-even/row:hover:bg-white/20"
                         title="Editar"
                         onClick={() => {
                           setUserToEdit(user)
@@ -490,7 +499,7 @@ export default function Users() {
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-6 w-6 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
+                        className="h-6 w-6 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 group-even/row:text-white group-even/row:hover:text-red-100 group-even/row:hover:bg-white/20"
                         onClick={() => handleDelete(user.id)}
                         title="Excluir"
                       >
