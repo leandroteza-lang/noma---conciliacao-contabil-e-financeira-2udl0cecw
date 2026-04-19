@@ -617,61 +617,95 @@ export default function Departments() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {paginated.map((item, index) => (
-                    <TableRow
-                      key={item.id}
-                      disableZebra
-                      className={cn(
-                        'hover:bg-muted/50 h-8 whitespace-nowrap text-xs transition-colors',
-                        index % 2 !== 0 ? 'bg-slate-50 dark:bg-slate-800/40' : 'bg-background',
-                      )}
-                    >
-                      {canDelete && (
-                        <TableCell className="py-1 px-2 text-center">
-                          <Checkbox
-                            checked={selectedIds.includes(item.id)}
-                            onCheckedChange={(checked) => {
-                              if (checked) setSelectedIds((prev) => [...prev, item.id])
-                              else setSelectedIds((prev) => prev.filter((id) => id !== item.id))
-                            }}
-                          />
+                  {paginated.map((item, index) => {
+                    const isZebra = index % 2 !== 0
+                    return (
+                      <TableRow
+                        key={item.id}
+                        disableZebra
+                        className={cn(
+                          'h-8 whitespace-nowrap text-xs transition-colors',
+                          isZebra
+                            ? 'bg-[#800000]/10 hover:bg-[#800000]/20 dark:bg-[#800000]/20 dark:hover:bg-[#800000]/30'
+                            : 'bg-background hover:bg-muted/50',
+                        )}
+                      >
+                        {canDelete && (
+                          <TableCell className="py-1 px-2 text-center">
+                            <Checkbox
+                              checked={selectedIds.includes(item.id)}
+                              onCheckedChange={(checked) => {
+                                if (checked) setSelectedIds((prev) => [...prev, item.id])
+                                else setSelectedIds((prev) => prev.filter((id) => id !== item.id))
+                              }}
+                            />
+                          </TableCell>
+                        )}
+                        <TableCell
+                          className={cn(
+                            'py-1 px-2 font-medium',
+                            isZebra ? 'text-[#800000] dark:text-[#ffb3b3]' : 'text-foreground/80',
+                          )}
+                        >
+                          {item.code}
                         </TableCell>
-                      )}
-                      <TableCell className="py-1 px-2 font-medium text-foreground/80">
-                        {item.code}
-                      </TableCell>
-                      <TableCell className="py-1 px-2 text-foreground">{item.name}</TableCell>
-                      <TableCell className="py-1 px-2 text-[12px] text-muted-foreground">
-                        {item.created_at ? format(new Date(item.created_at), 'dd/MM/yyyy') : '-'}
-                      </TableCell>
-                      {(canEdit || canDelete) && (
-                        <TableCell className="py-1 px-2 text-right">
-                          <div className="flex items-center justify-end gap-1">
-                            {canEdit && (
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => openModal(item)}
-                                className="h-6 w-6 text-muted-foreground hover:text-primary hover:bg-primary/10"
-                              >
-                                <Edit className="h-3.5 w-3.5" />
-                              </Button>
-                            )}
-                            {canDelete && (
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => handleDelete(item.id)}
-                                className="h-6 w-6 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                              >
-                                <Trash2 className="h-3.5 w-3.5" />
-                              </Button>
-                            )}
-                          </div>
+                        <TableCell
+                          className={cn(
+                            'py-1 px-2',
+                            isZebra ? 'text-[#800000] dark:text-[#ffb3b3]' : 'text-foreground',
+                          )}
+                        >
+                          {item.name}
                         </TableCell>
-                      )}
-                    </TableRow>
-                  ))}
+                        <TableCell
+                          className={cn(
+                            'py-1 px-2 text-[12px]',
+                            isZebra
+                              ? 'text-[#800000]/80 dark:text-[#ffb3b3]/80'
+                              : 'text-muted-foreground',
+                          )}
+                        >
+                          {item.created_at ? format(new Date(item.created_at), 'dd/MM/yyyy') : '-'}
+                        </TableCell>
+                        {(canEdit || canDelete) && (
+                          <TableCell className="py-1 px-2 text-right">
+                            <div className="flex items-center justify-end gap-1">
+                              {canEdit && (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => openModal(item)}
+                                  className={cn(
+                                    'h-6 w-6',
+                                    isZebra
+                                      ? 'text-[#800000] hover:text-[#800000] hover:bg-[#800000]/20 dark:text-[#ffb3b3] dark:hover:bg-[#ffb3b3]/20'
+                                      : 'text-muted-foreground hover:text-primary hover:bg-primary/10',
+                                  )}
+                                >
+                                  <Edit className="h-3.5 w-3.5" />
+                                </Button>
+                              )}
+                              {canDelete && (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => handleDelete(item.id)}
+                                  className={cn(
+                                    'h-6 w-6',
+                                    isZebra
+                                      ? 'text-[#800000] hover:text-[#800000] hover:bg-[#800000]/20 dark:text-[#ffb3b3] dark:hover:bg-[#ffb3b3]/20'
+                                      : 'text-muted-foreground hover:text-destructive hover:bg-destructive/10',
+                                  )}
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </Button>
+                              )}
+                            </div>
+                          </TableCell>
+                        )}
+                      </TableRow>
+                    )
+                  })}
                 </TableBody>
               </Table>
             </div>
