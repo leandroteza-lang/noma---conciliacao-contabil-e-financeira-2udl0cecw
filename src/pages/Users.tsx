@@ -338,11 +338,11 @@ export default function Users() {
         )}
       </div>
 
-      <div className="border rounded-md bg-card/20">
+      <div className="border-2 border-[#800000] rounded-md bg-card/20 overflow-hidden">
         <Table>
           <TableHeader className="bg-muted/50">
-            <TableRow>
-              <TableHead className="w-[40px] text-center py-0.5 px-2">
+            <TableRow className="border-0 hover:bg-transparent">
+              <TableHead className="w-[40px] text-center py-2 px-2 text-black dark:text-white font-bold text-[15px]">
                 <Checkbox
                   checked={selectedUsers.length === sortedUsers.length && sortedUsers.length > 0}
                   onCheckedChange={(checked) => {
@@ -352,7 +352,7 @@ export default function Users() {
                 />
               </TableHead>
               <TableHead
-                className="cursor-pointer select-none py-0.5 px-2"
+                className="cursor-pointer select-none py-2 px-2 text-black dark:text-white font-bold text-[15px]"
                 onClick={() => toggleSort('name')}
               >
                 <div className="flex items-center">
@@ -360,7 +360,7 @@ export default function Users() {
                 </div>
               </TableHead>
               <TableHead
-                className="cursor-pointer select-none py-0.5 px-2"
+                className="cursor-pointer select-none py-2 px-2 text-black dark:text-white font-bold text-[15px]"
                 onClick={() => toggleSort('email')}
               >
                 <div className="flex items-center">
@@ -368,7 +368,7 @@ export default function Users() {
                 </div>
               </TableHead>
               <TableHead
-                className="cursor-pointer select-none py-0.5 px-2"
+                className="cursor-pointer select-none py-2 px-2 text-black dark:text-white font-bold text-[15px]"
                 onClick={() => toggleSort('cpf')}
               >
                 <div className="flex items-center">
@@ -376,7 +376,7 @@ export default function Users() {
                 </div>
               </TableHead>
               <TableHead
-                className="cursor-pointer select-none py-0.5 px-2"
+                className="cursor-pointer select-none py-2 px-2 text-black dark:text-white font-bold text-[15px]"
                 onClick={() => toggleSort('role')}
               >
                 <div className="flex items-center">
@@ -384,7 +384,7 @@ export default function Users() {
                 </div>
               </TableHead>
               <TableHead
-                className="cursor-pointer select-none py-0.5 px-2"
+                className="cursor-pointer select-none py-2 px-2 text-black dark:text-white font-bold text-[15px]"
                 onClick={() => toggleSort('department')}
               >
                 <div className="flex items-center">
@@ -392,25 +392,27 @@ export default function Users() {
                 </div>
               </TableHead>
               <TableHead
-                className="cursor-pointer select-none py-0.5 px-2"
+                className="cursor-pointer select-none py-2 px-2 text-black dark:text-white font-bold text-[15px]"
                 onClick={() => toggleSort('status')}
               >
                 <div className="flex items-center">
                   Status <SortIcon field="status" />
                 </div>
               </TableHead>
-              <TableHead className="w-[100px] text-right py-0.5 px-2">Ações</TableHead>
+              <TableHead className="w-[100px] text-right py-2 px-2 text-black dark:text-white font-bold text-[15px]">
+                Ações
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {loading ? (
-              <TableRow>
+              <TableRow className="border-0">
                 <TableCell colSpan={8} className="text-center h-24">
                   Carregando usuários...
                 </TableCell>
               </TableRow>
             ) : sortedUsers.length === 0 ? (
-              <TableRow>
+              <TableRow className="border-0">
                 <TableCell colSpan={8} className="text-center h-24 text-muted-foreground">
                   Nenhum usuário encontrado.
                 </TableCell>
@@ -420,7 +422,7 @@ export default function Users() {
                 <TableRow
                   key={user.id}
                   className={cn(
-                    'group/row even:bg-[#800000] even:text-white even:font-bold hover:even:bg-[#800000]/90',
+                    'border-0 group/row even:bg-[#800000] even:text-white even:font-bold hover:even:bg-[#800000]/90',
                     selectedUsers.includes(user.id) ? 'bg-muted/50' : '',
                   )}
                 >
