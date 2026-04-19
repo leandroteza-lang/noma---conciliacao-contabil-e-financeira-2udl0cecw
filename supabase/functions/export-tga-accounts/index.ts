@@ -178,7 +178,7 @@ Deno.serve(async (req: Request) => {
             .map((r: any, index: number) => {
               const isEven = index % 2 === 1
               const rowClass = isEven ? 'row-even' : 'row-odd'
-              
+
               return `
             <tr class="${rowClass}">
               <td class="main-text">${r.codigo || '-'}</td>
