@@ -444,6 +444,17 @@ export default function Index() {
         </div>
       </div>
 
+      <style>{`
+        .bank-accounts-table-wrapper th {
+          color: #000 !important;
+          font-weight: bold !important;
+          font-size: 15px !important;
+        }
+        .dark .bank-accounts-table-wrapper th {
+          color: #fff !important;
+        }
+      `}</style>
+
       <div className="bg-card border rounded-xl p-5 space-y-4 shadow-sm">
         <div>
           <h2 className="font-semibold text-lg">Filtros</h2>
@@ -497,29 +508,31 @@ export default function Index() {
         </div>
       </div>
 
-      <BankAccountsTable
-        accounts={paginatedAccounts}
-        chartAccounts={chartAccounts}
-        selectedAccounts={selectedAccounts}
-        onToggleSelect={toggleSelect}
-        onToggleSelectAll={toggleSelectAll}
-        loading={loading}
-        onEdit={(acc: any) => {
-          setEditingAccount(acc)
-          setIsFormOpen(true)
-        }}
-        onDelete={handleDeleteAccount}
-        currentPage={currentPage}
-        totalPages={totalPages}
-        onPageChange={setCurrentPage}
-        sortConfig={sortConfig}
-        onSort={handleSort}
-        itemsPerPage={itemsPerPage}
-        onItemsPerPageChange={(v: number) => {
-          setItemsPerPage(v)
-          setCurrentPage(1)
-        }}
-      />
+      <div className="bank-accounts-table-wrapper">
+        <BankAccountsTable
+          accounts={paginatedAccounts}
+          chartAccounts={chartAccounts}
+          selectedAccounts={selectedAccounts}
+          onToggleSelect={toggleSelect}
+          onToggleSelectAll={toggleSelectAll}
+          loading={loading}
+          onEdit={(acc: any) => {
+            setEditingAccount(acc)
+            setIsFormOpen(true)
+          }}
+          onDelete={handleDeleteAccount}
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={setCurrentPage}
+          sortConfig={sortConfig}
+          onSort={handleSort}
+          itemsPerPage={itemsPerPage}
+          onItemsPerPageChange={(v: number) => {
+            setItemsPerPage(v)
+            setCurrentPage(1)
+          }}
+        />
+      </div>
 
       <BankAccountFormModal
         isOpen={isFormOpen}

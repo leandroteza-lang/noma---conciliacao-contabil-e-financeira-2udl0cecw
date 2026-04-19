@@ -637,7 +637,7 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/50">
-              <TableHead className="w-12 text-center p-2">
+              <TableHead className="w-12 text-center p-2 text-black dark:text-white font-bold text-[15px]">
                 <Checkbox
                   checked={
                     sortedAccounts.length > 0 && selectedIds.length === sortedAccounts.length
@@ -649,7 +649,7 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
                 />
               </TableHead>
               <TableHead
-                className="w-[180px] cursor-pointer hover:bg-muted p-2"
+                className="w-[180px] cursor-pointer hover:bg-muted p-2 text-black dark:text-white font-bold text-[15px]"
                 onClick={() => handleSort('organization_id')}
               >
                 <div className="flex items-center gap-2">
@@ -657,7 +657,7 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
                 </div>
               </TableHead>
               <TableHead
-                className="cursor-pointer hover:bg-muted p-2"
+                className="cursor-pointer hover:bg-muted p-2 text-black dark:text-white font-bold text-[15px]"
                 onClick={() => handleSort('contaContabil')}
               >
                 <div className="flex items-center gap-2">
@@ -665,7 +665,7 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
                 </div>
               </TableHead>
               <TableHead
-                className="cursor-pointer hover:bg-muted p-2"
+                className="cursor-pointer hover:bg-muted p-2 text-black dark:text-white font-bold text-[15px]"
                 onClick={() => handleSort('descricao')}
               >
                 <div className="flex items-center gap-2">
@@ -673,7 +673,7 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
                 </div>
               </TableHead>
               <TableHead
-                className="cursor-pointer hover:bg-muted p-2"
+                className="cursor-pointer hover:bg-muted p-2 text-black dark:text-white font-bold text-[15px]"
                 onClick={() => handleSort('banco')}
               >
                 <div className="flex items-center gap-2">
@@ -681,7 +681,7 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
                 </div>
               </TableHead>
               <TableHead
-                className="cursor-pointer hover:bg-muted p-2"
+                className="cursor-pointer hover:bg-muted p-2 text-black dark:text-white font-bold text-[15px]"
                 onClick={() => handleSort('agencia')}
               >
                 <div className="flex items-center gap-2">
@@ -689,7 +689,7 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
                 </div>
               </TableHead>
               <TableHead
-                className="cursor-pointer hover:bg-muted p-2"
+                className="cursor-pointer hover:bg-muted p-2 text-black dark:text-white font-bold text-[15px]"
                 onClick={() => handleSort('numeroConta')}
               >
                 <div className="flex items-center gap-2">
@@ -697,7 +697,7 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
                 </div>
               </TableHead>
               <TableHead
-                className="cursor-pointer hover:bg-muted p-2"
+                className="cursor-pointer hover:bg-muted p-2 text-black dark:text-white font-bold text-[15px]"
                 onClick={() => handleSort('digitoConta')}
               >
                 <div className="flex items-center gap-2">
@@ -705,7 +705,7 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
                 </div>
               </TableHead>
               <TableHead
-                className="cursor-pointer hover:bg-muted p-2"
+                className="cursor-pointer hover:bg-muted p-2 text-black dark:text-white font-bold text-[15px]"
                 onClick={() => handleSort('tipoConta')}
               >
                 <div className="flex items-center gap-2">
@@ -713,14 +713,16 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
                 </div>
               </TableHead>
               <TableHead
-                className="cursor-pointer hover:bg-muted p-2"
+                className="cursor-pointer hover:bg-muted p-2 text-black dark:text-white font-bold text-[15px]"
                 onClick={() => handleSort('classificacao')}
               >
                 <div className="flex items-center gap-2">
                   Classificação <ArrowUpDown className="h-3 w-3 text-muted-foreground" />
                 </div>
               </TableHead>
-              <TableHead className="text-right p-2">Ações</TableHead>
+              <TableHead className="text-right p-2 text-black dark:text-white font-bold text-[15px]">
+                Ações
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
