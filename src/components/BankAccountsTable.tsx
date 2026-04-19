@@ -508,7 +508,7 @@ export function BankAccountsTable({
                       </TableCell>
                     </TableRow>
                     {isExpanded && (
-                      <TableRow className="bg-muted/10 hover:bg-muted/10">
+                      <TableRow className="!bg-muted/10 hover:!bg-muted/10 [&>td]:!text-foreground [&>td]:!font-normal [&_.text-muted-foreground]:!text-muted-foreground">
                         <TableCell colSpan={10} className="p-0 border-b">
                           <div className="p-4 pl-12 bg-slate-50/50 dark:bg-slate-900/50">
                             {hierarchy.length > 0 ? (
