@@ -1,7 +1,17 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts'
 import { jsPDF } from 'npm:jspdf@2.5.1'
-import autoTable from 'npm:jspdf-autotable@3.8.2'
+import autoTablePkg from 'npm:jspdf-autotable@3.8.2'
 import * as XLSX from 'npm:xlsx@0.18.5'
+
+const autoTable =
+  typeof autoTablePkg === 'function' ? autoTablePkg : (autoTablePkg as any).default || autoTablePkg
+
+if (typeof globalThis.window === 'undefined') {
+  ;(globalThis as any).window = globalThis
+}
+if (typeof globalThis.document === 'undefined') {
+  ;(globalThis as any).document = { createElement: () => ({}) }
+}
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -168,7 +178,7 @@ Deno.serve(async (req: Request) => {
             .map((r: any, index: number) => {
               const isEven = index % 2 === 1
               const rowClass = isEven ? 'row-even' : 'row-odd'
-              
+
               return `
             <tr class="${rowClass}">
               <td class="main-text">${r.codigo || '-'}</td>
