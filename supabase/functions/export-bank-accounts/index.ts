@@ -85,18 +85,7 @@ Deno.serve(async (req: Request) => {
 
       autoTable(doc, {
         startY: 25,
-        head: [
-          [
-            'Empresa',
-            'Conta Contábil',
-            'Descrição',
-            'Banco',
-            'Agência',
-            'Conta',
-            'Tipo',
-            'Classificação',
-          ],
-        ],
+        head: [['Empresa', 'Conta Contábil', 'Descrição', 'Banco', 'Agência', 'Conta', 'Tipo', 'Classificação']],
         body: body,
         theme: 'grid',
         headStyles: { fillColor: [220, 38, 38] },
