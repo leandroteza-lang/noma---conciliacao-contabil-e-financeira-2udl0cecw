@@ -295,10 +295,10 @@ export default function ChartAccounts() {
 
     if (acc.account_level === 'Sintética') {
       if (level === 1) return 'bg-indigo-950 font-bold text-white hover:bg-indigo-900'
-      if (level === 2) return 'bg-blue-800 font-semibold text-white hover:bg-blue-700'
-      if (level === 3) return 'bg-blue-500 font-medium text-white hover:bg-blue-400'
-      if (level === 4) return 'bg-blue-200 font-medium text-blue-950 hover:bg-blue-300'
-      return 'bg-blue-50 font-medium text-blue-900 hover:bg-blue-100'
+      if (level === 2) return 'bg-indigo-900 font-semibold text-white hover:bg-indigo-800'
+      if (level === 3) return 'bg-indigo-800 font-medium text-white hover:bg-indigo-700'
+      if (level === 4) return 'bg-indigo-100 font-medium text-indigo-950 hover:bg-indigo-200'
+      return 'bg-slate-50 font-medium text-slate-800 hover:bg-slate-100'
     }
 
     return 'bg-white font-normal text-slate-700 hover:bg-slate-50'
@@ -1125,7 +1125,7 @@ export default function ChartAccounts() {
                             }}
                             className={cn(
                               acc.account_level === 'Sintética' && level <= 3
-                                ? 'border-white/70 data-[state=checked]:bg-white data-[state=checked]:text-blue-900'
+                                ? 'border-white/70 data-[state=checked]:bg-white data-[state=checked]:text-indigo-900'
                                 : '',
                             )}
                           />
@@ -1211,7 +1211,7 @@ export default function ChartAccounts() {
                                 'h-7 w-7 opacity-70 hover:opacity-100 transition-colors',
                                 level <= 3 && acc.account_level === 'Sintética'
                                   ? 'hover:bg-white/20 text-white'
-                                  : 'hover:bg-black/5 hover:text-blue-600 text-slate-500',
+                                  : 'hover:bg-black/5 hover:text-indigo-600 text-slate-500',
                               )}
                             >
                               <Pencil className="h-3.5 w-3.5" />
