@@ -294,10 +294,10 @@ export default function ChartAccounts() {
     const level = (code.match(/\./g) || []).length + 1
 
     if (acc.account_level === 'Sintética') {
-      if (level === 1) return 'bg-indigo-950 font-bold text-white hover:bg-indigo-900'
-      if (level === 2) return 'bg-indigo-900 font-semibold text-white hover:bg-indigo-800'
-      if (level === 3) return 'bg-indigo-800 font-medium text-white hover:bg-indigo-700'
-      if (level === 4) return 'bg-indigo-100 font-medium text-indigo-950 hover:bg-indigo-200'
+      if (level === 1) return 'bg-[#2c1e5b] font-bold text-white hover:bg-[#2c1e5b]/90'
+      if (level === 2) return 'bg-[#393fc5] font-semibold text-white hover:bg-[#393fc5]/90'
+      if (level === 3) return 'bg-[#5f8bfa] font-medium text-white hover:bg-[#5f8bfa]/90'
+      if (level === 4) return 'bg-[#d2e3fc] font-medium text-[#2c1e5b] hover:bg-[#d2e3fc]/90'
       return 'bg-slate-50 font-medium text-slate-800 hover:bg-slate-100'
     }
 
@@ -1131,17 +1131,17 @@ export default function ChartAccounts() {
                           />
                         </TableCell>
                         <TableCell className="whitespace-nowrap">
-                          <div className="flex items-center gap-1.5 opacity-80">
+                          <div className="flex items-center gap-1.5">
                             <Building2 className="h-3 w-3 opacity-60 shrink-0" />
                             <span className="truncate max-w-[100px]">
                               {acc.organization?.name || '-'}
                             </span>
                           </div>
                         </TableCell>
-                        <TableCell className="font-medium whitespace-nowrap opacity-80">
+                        <TableCell className="font-medium whitespace-nowrap">
                           {acc.account_code || '-'}
                         </TableCell>
-                        <TableCell className="font-medium whitespace-nowrap opacity-90">
+                        <TableCell className="font-medium whitespace-nowrap">
                           {acc.classification || '-'}
                         </TableCell>
                         <TableCell className="whitespace-nowrap">
@@ -1166,7 +1166,9 @@ export default function ChartAccounts() {
                               className={cn(
                                 'text-[10px] font-medium border-transparent shadow-sm rounded-full px-2.5',
                                 acc.account_level === 'Sintética'
-                                  ? 'bg-blue-100 text-blue-800'
+                                  ? level <= 3
+                                    ? 'bg-white text-[#393fc5]'
+                                    : 'bg-blue-100 text-blue-800'
                                   : 'bg-emerald-100 text-emerald-800',
                               )}
                             >
@@ -1189,11 +1191,11 @@ export default function ChartAccounts() {
                             </Badge>
                           )}
                         </TableCell>
-                        <TableCell className="whitespace-nowrap truncate max-w-[140px] opacity-80">
+                        <TableCell className="whitespace-nowrap truncate max-w-[140px]">
                           {acc.nature || acc.account_type || '-'}
                         </TableCell>
                         <TableCell
-                          className="truncate max-w-[150px] opacity-60 italic"
+                          className="truncate max-w-[150px] italic opacity-80"
                           title={acc.purpose}
                         >
                           {acc.purpose || '-'}
