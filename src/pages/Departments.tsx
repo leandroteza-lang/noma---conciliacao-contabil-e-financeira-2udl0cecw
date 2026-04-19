@@ -572,12 +572,12 @@ export default function Departments() {
               <p>Nenhum departamento encontrado.</p>
             </div>
           ) : (
-            <div className="rounded-md border-0 overflow-x-auto">
+            <div className="rounded-md border-2 border-[#800000] overflow-hidden overflow-x-auto">
               <Table>
-                <TableHeader className="bg-muted/50">
-                  <TableRow disableZebra className="h-8 text-xs">
+                <TableHeader className="bg-[#f8fafc] dark:bg-slate-900 border-b border-[#e2e8f0] dark:border-slate-800">
+                  <TableRow disableZebra className="h-10 border-none hover:bg-transparent">
                     {canDelete && (
-                      <TableHead className="w-12 text-center py-1 px-2 h-8">
+                      <TableHead className="w-12 text-center py-2 px-3 text-[15px] font-bold text-black dark:text-white">
                         <Checkbox
                           checked={paginated.length > 0 && selectedIds.length === paginated.length}
                           onCheckedChange={(checked) => {
@@ -588,31 +588,33 @@ export default function Departments() {
                       </TableHead>
                     )}
                     <TableHead
-                      className="cursor-pointer hover:bg-muted py-1 px-2 h-8"
+                      className="cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-800 py-2 px-3 text-[15px] font-bold text-black dark:text-white"
                       onClick={() => handleSort('code')}
                     >
                       <div className="flex items-center gap-2">
-                        Código <ArrowUpDown className="h-3 w-3 text-muted-foreground" />
+                        Código <ArrowUpDown className="h-4 w-4 text-slate-500" />
                       </div>
                     </TableHead>
                     <TableHead
-                      className="cursor-pointer hover:bg-muted py-1 px-2 h-8"
+                      className="cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-800 py-2 px-3 text-[15px] font-bold text-black dark:text-white"
                       onClick={() => handleSort('name')}
                     >
                       <div className="flex items-center gap-2">
-                        Nome <ArrowUpDown className="h-3 w-3 text-muted-foreground" />
+                        Nome <ArrowUpDown className="h-4 w-4 text-slate-500" />
                       </div>
                     </TableHead>
                     <TableHead
-                      className="cursor-pointer hover:bg-muted py-1 px-2 h-8"
+                      className="cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-800 py-2 px-3 text-[15px] font-bold text-black dark:text-white"
                       onClick={() => handleSort('created_at')}
                     >
                       <div className="flex items-center gap-2">
-                        Criado em <ArrowUpDown className="h-3 w-3 text-muted-foreground" />
+                        Criado em <ArrowUpDown className="h-4 w-4 text-slate-500" />
                       </div>
                     </TableHead>
                     {(canEdit || canDelete) && (
-                      <TableHead className="text-right py-1 px-2 h-8">Ações</TableHead>
+                      <TableHead className="text-right py-2 px-3 text-[15px] font-bold text-black dark:text-white">
+                        Ações
+                      </TableHead>
                     )}
                   </TableRow>
                 </TableHeader>
@@ -624,14 +626,14 @@ export default function Departments() {
                         key={item.id}
                         disableZebra
                         className={cn(
-                          'h-8 whitespace-nowrap text-xs transition-colors',
+                          'h-10 whitespace-nowrap text-sm transition-colors border-none',
                           isZebra
                             ? 'bg-[#800000] hover:bg-[#800000]/90 text-white font-bold'
-                            : 'bg-background hover:bg-muted/50',
+                            : 'bg-white dark:bg-background hover:bg-slate-50 dark:hover:bg-muted/50 text-slate-700 dark:text-slate-300 font-medium',
                         )}
                       >
                         {canDelete && (
-                          <TableCell className="py-1 px-2 text-center">
+                          <TableCell className="py-2 px-3 text-center">
                             <Checkbox
                               checked={selectedIds.includes(item.id)}
                               onCheckedChange={(checked) => {
@@ -647,30 +649,32 @@ export default function Departments() {
                         )}
                         <TableCell
                           className={cn(
-                            'py-1 px-2 font-medium',
-                            isZebra ? 'text-white font-bold' : 'text-foreground/80',
+                            'py-2 px-3',
+                            isZebra
+                              ? 'text-white font-bold'
+                              : 'text-slate-900 dark:text-slate-100 font-medium',
                           )}
                         >
                           {item.code}
                         </TableCell>
                         <TableCell
                           className={cn(
-                            'py-1 px-2',
-                            isZebra ? 'text-white font-bold' : 'text-foreground',
+                            'py-2 px-3',
+                            isZebra ? 'text-white font-bold' : 'text-slate-900 dark:text-slate-100',
                           )}
                         >
                           {item.name}
                         </TableCell>
                         <TableCell
                           className={cn(
-                            'py-1 px-2 text-[12px]',
-                            isZebra ? 'text-white font-bold' : 'text-muted-foreground',
+                            'py-2 px-3 text-[13px]',
+                            isZebra ? 'text-white font-bold' : 'text-slate-500 dark:text-slate-400',
                           )}
                         >
                           {item.created_at ? format(new Date(item.created_at), 'dd/MM/yyyy') : '-'}
                         </TableCell>
                         {(canEdit || canDelete) && (
-                          <TableCell className="py-1 px-2 text-right">
+                          <TableCell className="py-2 px-3 text-right">
                             <div className="flex items-center justify-end gap-1">
                               {canEdit && (
                                 <Button
@@ -678,13 +682,13 @@ export default function Departments() {
                                   size="icon"
                                   onClick={() => openModal(item)}
                                   className={cn(
-                                    'h-6 w-6',
+                                    'h-8 w-8',
                                     isZebra
                                       ? 'text-white hover:text-[#800000] hover:bg-white'
-                                      : 'text-muted-foreground hover:text-primary hover:bg-primary/10',
+                                      : 'text-slate-500 hover:text-primary hover:bg-primary/10',
                                   )}
                                 >
-                                  <Edit className="h-3.5 w-3.5" />
+                                  <Edit className="h-4 w-4" />
                                 </Button>
                               )}
                               {canDelete && (
@@ -693,13 +697,13 @@ export default function Departments() {
                                   size="icon"
                                   onClick={() => handleDelete(item.id)}
                                   className={cn(
-                                    'h-6 w-6',
+                                    'h-8 w-8',
                                     isZebra
                                       ? 'text-white hover:text-[#800000] hover:bg-white'
-                                      : 'text-muted-foreground hover:text-destructive hover:bg-destructive/10',
+                                      : 'text-slate-500 hover:text-destructive hover:bg-destructive/10',
                                   )}
                                 >
-                                  <Trash2 className="h-3.5 w-3.5" />
+                                  <Trash2 className="h-4 w-4" />
                                 </Button>
                               )}
                             </div>
