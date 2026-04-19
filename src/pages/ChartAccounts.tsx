@@ -289,19 +289,21 @@ export default function ChartAccounts() {
     }
   }, [user])
 
-  const getRowClassName = (acc: ChartAccount) => {
+  const getRowClassName = (acc: ChartAccount, index: number) => {
     const code = acc.classification || acc.account_code || ''
     const level = (code.match(/\./g) || []).length + 1
 
     if (acc.account_level === 'Sintética') {
-      if (level === 1) return 'bg-[#2c1e5b] font-bold text-white hover:bg-[#2c1e5b]/90'
-      if (level === 2) return 'bg-[#393fc5] font-semibold text-white hover:bg-[#393fc5]/90'
-      if (level === 3) return 'bg-[#5f8bfa] font-medium text-white hover:bg-[#5f8bfa]/90'
-      if (level === 4) return 'bg-[#d2e3fc] font-medium text-[#2c1e5b] hover:bg-[#d2e3fc]/90'
-      return 'bg-slate-50 font-medium text-slate-800 hover:bg-slate-100'
+      if (level === 1) return 'bg-[#450a0a] font-bold text-white hover:bg-[#450a0a]/90'
+      if (level === 2) return 'bg-[#7f1d1d] font-semibold text-white hover:bg-[#7f1d1d]/90'
+      if (level === 3) return 'bg-[#991b1b] font-medium text-white hover:bg-[#991b1b]/90'
+      if (level === 4) return 'bg-[#b91c1c] font-medium text-white hover:bg-[#b91c1c]/90'
+      return 'bg-[#fecaca] font-medium text-[#450a0a] hover:bg-[#fca5a5]'
     }
 
-    return 'bg-white font-normal text-slate-700 hover:bg-slate-50'
+    return index % 2 === 0
+      ? 'bg-white font-normal text-slate-700 hover:bg-slate-50'
+      : 'bg-[#fafafa] font-normal text-slate-700 hover:bg-[#f5f5f5]'
   }
 
   const handleSaveAccount = async (data: any) => {
@@ -1049,7 +1051,7 @@ export default function ChartAccounts() {
         </CardHeader>
         <CardContent>
           <div className="rounded-md border overflow-x-auto">
-            <Table className="[&_td]:p-2 [&_th]:p-2 text-xs">
+            <Table className="[&_td]:p-1.5 [&_td]:px-2 [&_th]:p-1.5 [&_th]:px-2 text-xs">
               <TableHeader className="bg-slate-50/80">
                 <TableRow>
                   <TableHead className="w-10 text-center">
@@ -1110,12 +1112,12 @@ export default function ChartAccounts() {
                     </TableCell>
                   </TableRow>
                 ) : paginatedData.length > 0 ? (
-                  paginatedData.map((acc) => {
+                  paginatedData.map((acc, index) => {
                     const code = acc.classification || acc.account_code || ''
                     const level = (code.match(/\./g) || []).length + 1
 
                     return (
-                      <TableRow key={acc.id} className={getRowClassName(acc)}>
+                      <TableRow key={acc.id} className={getRowClassName(acc, index)}>
                         <TableCell className="text-center">
                           <Checkbox
                             checked={selectedIds.includes(acc.id)}
@@ -1124,8 +1126,8 @@ export default function ChartAccounts() {
                               else setSelectedIds((prev) => prev.filter((id) => id !== acc.id))
                             }}
                             className={cn(
-                              acc.account_level === 'Sintética' && level <= 3
-                                ? 'border-white/70 data-[state=checked]:bg-white data-[state=checked]:text-indigo-900'
+                              acc.account_level === 'Sintética' && level <= 4
+                                ? 'border-white/70 data-[state=checked]:bg-white data-[state=checked]:text-[#7f1d1d]'
                                 : '',
                             )}
                           />
@@ -1166,9 +1168,9 @@ export default function ChartAccounts() {
                               className={cn(
                                 'text-[10px] font-medium border-transparent shadow-sm rounded-full px-2.5',
                                 acc.account_level === 'Sintética'
-                                  ? level <= 3
-                                    ? 'bg-white text-[#393fc5]'
-                                    : 'bg-blue-100 text-blue-800'
+                                  ? level <= 4
+                                    ? 'bg-white text-[#7f1d1d]'
+                                    : 'bg-red-100 text-red-800'
                                   : 'bg-emerald-100 text-emerald-800',
                               )}
                             >
@@ -1211,9 +1213,9 @@ export default function ChartAccounts() {
                               }}
                               className={cn(
                                 'h-7 w-7 opacity-70 hover:opacity-100 transition-colors',
-                                level <= 3 && acc.account_level === 'Sintética'
+                                level <= 4 && acc.account_level === 'Sintética'
                                   ? 'hover:bg-white/20 text-white'
-                                  : 'hover:bg-black/5 hover:text-indigo-600 text-slate-500',
+                                  : 'hover:bg-black/5 hover:text-[#7f1d1d] text-slate-500',
                               )}
                             >
                               <Pencil className="h-3.5 w-3.5" />
@@ -1224,7 +1226,7 @@ export default function ChartAccounts() {
                               onClick={() => handleDelete(acc)}
                               className={cn(
                                 'h-7 w-7 opacity-70 hover:opacity-100 transition-colors',
-                                level <= 3 && acc.account_level === 'Sintética'
+                                level <= 4 && acc.account_level === 'Sintética'
                                   ? 'hover:bg-white/20 text-white'
                                   : 'hover:bg-black/5 hover:text-red-600 text-slate-500',
                               )}
