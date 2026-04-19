@@ -751,10 +751,10 @@ export default function Companies() {
               <p>Nenhuma empresa encontrada.</p>
             </div>
           ) : (
-            <div className="rounded-md border-0 overflow-x-auto">
+            <div className="rounded-md border-2 border-[#800000] overflow-hidden">
               <Table>
-                <TableHeader className="bg-slate-50">
-                  <TableRow>
+                <TableHeader className="bg-slate-50 [&_tr]:border-0">
+                  <TableRow className="border-0">
                     <TableHead className="w-12 text-center py-2 px-2 text-black font-bold text-[14px]">
                       <Checkbox
                         checked={
@@ -819,8 +819,8 @@ export default function Companies() {
                         key={org.id}
                         className={
                           isEven
-                            ? 'bg-[#800000] text-white font-bold hover:bg-[#800000]/90'
-                            : 'hover:bg-slate-50/50'
+                            ? 'bg-[#800000] text-white font-bold hover:bg-[#800000]/90 border-0'
+                            : 'hover:bg-slate-50/50 border-0'
                         }
                       >
                         <TableCell className="py-0.5 px-2 text-center">
