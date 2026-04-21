@@ -90,7 +90,9 @@ export function GlobalNotifications() {
           }
         } else if (table === 'pending_changes') {
           if (eventType === 'INSERT' && newRecord.status === 'pending') {
-            playSound()
+            if (newRecord.entity_type !== 'organizations' && newRecord.entity_type !== 'Empresas') {
+              playSound()
+            }
             toast.success('Nova Aprovação Pendente!', {
               description: 'Uma nova alteração ou criação foi enviada para revisão.',
               duration: 10000,
@@ -101,7 +103,9 @@ export function GlobalNotifications() {
             newRecord.status === 'pending' &&
             oldRecord?.status !== 'pending'
           ) {
-            playSound()
+            if (newRecord.entity_type !== 'organizations' && newRecord.entity_type !== 'Empresas') {
+              playSound()
+            }
             toast.success('Nova Aprovação Pendente!', {
               description: 'Uma nova alteração ou criação foi enviada para revisão.',
               duration: 10000,

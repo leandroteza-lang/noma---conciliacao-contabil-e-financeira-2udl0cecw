@@ -346,13 +346,18 @@ export default function Companies() {
       }
 
       if (editingId) {
-        const { error } = await supabase
-          .from('organizations')
-          .update(data)
-          .eq('id', editingId)
-          .eq('user_id', user.id)
+        const { error } = await supabase.from('pending_changes').insert({
+          entity_type: 'organizations',
+          entity_id: editingId,
+          proposed_changes: data,
+          status: 'pending',
+          requested_by: user.id,
+        })
         if (error) throw error
-        toast({ title: 'Sucesso', description: 'Empresa atualizada com sucesso!' })
+        toast({
+          title: 'Enviado para Aprovação',
+          description: 'A alteração foi solicitada e aguarda aprovação do administrador.',
+        })
       } else {
         const { error } = await supabase
           .from('organizations')
