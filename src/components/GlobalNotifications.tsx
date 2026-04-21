@@ -1,32 +1,36 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useCallback } from 'react'
 import { useAuth } from '@/hooks/use-auth'
 import { supabase } from '@/lib/supabase/client'
 import { toast } from 'sonner'
 
 export function GlobalNotifications() {
   const { user, role } = useAuth() as any
-  const audioRef = useRef<HTMLAudioElement | null>(null)
   const notifiedQueriesRef = useRef<Set<string>>(new Set())
   const notifiedDeletionsRef = useRef<Set<string>>(new Set())
 
-  useEffect(() => {
-    const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3')
-    audio.load()
-    audioRef.current = audio
+  const playSound = useCallback(() => {
+    try {
+      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext
+      if (AudioContextClass) {
+        const ctx = new AudioContextClass()
+        const osc = ctx.createOscillator()
+        const gainNode = ctx.createGain()
+        osc.connect(gainNode)
+        gainNode.connect(ctx.destination)
+        osc.type = 'sine'
+        osc.frequency.setValueAtTime(880, ctx.currentTime) // A5 note
+        gainNode.gain.setValueAtTime(0.1, ctx.currentTime)
+        osc.start()
+        gainNode.gain.exponentialRampToValueAtTime(0.00001, ctx.currentTime + 0.3)
+        osc.stop(ctx.currentTime + 0.3)
+      }
+    } catch (e) {
+      console.error('Audio play failed:', e)
+    }
   }, [])
 
   useEffect(() => {
     if (!user) return
-
-    const playSound = () => {
-      if (audioRef.current) {
-        audioRef.current.currentTime = 0
-        const playPromise = audioRef.current.play()
-        if (playPromise !== undefined) {
-          playPromise.catch((e) => console.error('Audio play failed:', e))
-        }
-      }
-    }
 
     const fetchNotifiedQueries = async () => {
       const { data } = await supabase
@@ -195,7 +199,7 @@ export function GlobalNotifications() {
       supabase.removeChannel(channel)
       if (adminChannel) supabase.removeChannel(adminChannel)
     }
-  }, [user, role])
+  }, [user, role, playSound])
 
   return null
 }
