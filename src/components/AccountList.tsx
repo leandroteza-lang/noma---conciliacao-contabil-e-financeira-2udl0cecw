@@ -727,7 +727,10 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
           </TableHeader>
           <TableBody>
             {sortedAccounts.map((acc) => (
-              <TableRow key={acc.id} className="group hover:bg-muted/50">
+              <TableRow
+                key={acc.id}
+                className="border-0 group/row odd:bg-white dark:odd:bg-transparent even:bg-[#800000] even:text-white even:font-bold hover:even:bg-[#800000]/90 hover:bg-muted/50"
+              >
                 <TableCell className="text-center p-2">
                   <Checkbox
                     checked={selectedIds.includes(acc.id)}

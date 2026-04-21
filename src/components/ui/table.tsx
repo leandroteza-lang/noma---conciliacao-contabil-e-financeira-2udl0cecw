@@ -45,8 +45,7 @@ const TableRow = React.forwardRef<
   HTMLTableRowElement,
   React.HTMLAttributes<HTMLTableRowElement> & { disableZebra?: boolean; customZebraColor?: string }
 >(({ className, disableZebra, customZebraColor, ...props }, ref) => {
-  const isListagemContas = typeof window !== 'undefined' && window.location.pathname === '/app'
-  const applyDeepSkyBlue = isListagemContas || customZebraColor === '#00BFFF'
+  const applyDeepSkyBlue = customZebraColor === '#00BFFF'
 
   return (
     <tr

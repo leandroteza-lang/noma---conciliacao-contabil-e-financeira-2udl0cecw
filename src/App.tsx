@@ -29,31 +29,10 @@ import Layout from './components/Layout'
 import Landing from './pages/Landing'
 import { AuthProvider } from './hooks/use-auth'
 import { ThemeProvider } from './components/ThemeProvider'
-import { useEffect } from 'react'
 import { GlobalNotifications } from './components/GlobalNotifications'
 import { ShareQueryModal } from './components/ShareQueryModal'
 
 const App = () => {
-  useEffect(() => {
-    const style = document.createElement('style')
-    style.innerHTML = `
-      .even\\:bg-\\[\\#00BFFF\\]:nth-child(even),
-      .bg-\\[\\#00BFFF\\],
-      .even\\:bg-deepskyblue:nth-child(even),
-      .bg-deepskyblue,
-      [class*="bg-[#00BFFF]"],
-      [class*="bg-deepskyblue"],
-      [style*="#00BFFF"],
-      [style*="rgb(0, 191, 255)"],
-      [style*="rgb(0,191,255)"],
-      [style*="DeepSkyBlue"],
-      [style*="deepskyblue"] {
-        background-color: #7FFFD4 !important;
-      }
-    `
-    document.head.appendChild(style)
-  }, [])
-
   return (
     <ThemeProvider defaultMode="dark" defaultColorTheme="default" storageKey="gc-theme">
       <BrowserRouter future={{ v7_startTransition: false, v7_relativeSplatPath: false }}>
