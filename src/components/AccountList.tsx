@@ -140,7 +140,7 @@ function EditableCell({
         onChange={(e) => setTempVal(e.target.value)}
         onBlur={handleBlur}
         onKeyDown={handleKeyDown}
-        className="w-full text-sm border border-primary/50 rounded p-1 outline-none ring-2 ring-primary/20 bg-background text-foreground"
+        className="w-full text-[11px] border border-primary/50 rounded p-1 outline-none ring-2 ring-primary/20 bg-background text-foreground"
       >
         <option value="">Selecione...</option>
         {organizations.map((org: Organization) => (
@@ -159,7 +159,7 @@ function EditableCell({
       onChange={(e) => setTempVal(e.target.value)}
       onBlur={handleBlur}
       onKeyDown={handleKeyDown}
-      className="h-7 py-1 px-2 text-sm border-primary/50 focus-visible:ring-primary min-w-[100px]"
+      className="h-7 py-1 px-2 text-[11px] border-primary/50 focus-visible:ring-primary min-w-[100px]"
     />
   )
 }
@@ -755,7 +755,7 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
                 ).map((field) => (
                   <TableCell
                     key={field}
-                    className={cn('p-2', field === 'contaContabil' ? 'font-mono text-xs' : '')}
+                    className={cn('p-2 text-[11px]', field === 'contaContabil' ? 'font-mono' : '')}
                   >
                     <EditableCell
                       value={acc[field]}
@@ -816,10 +816,9 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
                     <div
                       key={field}
                       className={cn(
-                        'flex items-center gap-2',
-                        field === 'descricao' && 'font-bold text-lg',
-                        field === 'contaContabil' && 'font-mono text-xs text-muted-foreground',
-                        (field === 'tipoConta' || field === 'classificacao') && 'text-sm',
+                        'flex items-center gap-2 text-[11px]',
+                        field === 'descricao' && 'font-bold text-[13px]',
+                        field === 'contaContabil' && 'font-mono text-muted-foreground',
                       )}
                     >
                       {(field === 'tipoConta' || field === 'classificacao') && (

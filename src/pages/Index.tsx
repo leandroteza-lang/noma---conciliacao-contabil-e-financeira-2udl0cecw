@@ -453,6 +453,17 @@ export default function Index() {
         .dark .bank-accounts-table-wrapper th {
           color: #fff !important;
         }
+        .bank-accounts-table-wrapper td {
+          font-size: 11px !important;
+        }
+        .bank-accounts-table-wrapper td input,
+        .bank-accounts-table-wrapper td select {
+          font-size: 11px !important;
+        }
+        .bank-accounts-table-wrapper td .badge,
+        .bank-accounts-table-wrapper td [class*="bg-"] {
+          font-size: 11px !important;
+        }
       `}</style>
 
       <div className="bg-card border rounded-xl p-5 space-y-4 shadow-sm">
