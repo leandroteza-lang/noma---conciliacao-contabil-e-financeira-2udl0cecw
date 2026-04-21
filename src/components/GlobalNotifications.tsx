@@ -11,6 +11,7 @@ export function GlobalNotifications() {
 
   useEffect(() => {
     const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3')
+    audio.load()
     audioRef.current = audio
   }, [])
 
@@ -20,7 +21,10 @@ export function GlobalNotifications() {
     const playSound = () => {
       if (audioRef.current) {
         audioRef.current.currentTime = 0
-        audioRef.current.play().catch((e) => console.error('Audio play failed:', e))
+        const playPromise = audioRef.current.play()
+        if (playPromise !== undefined) {
+          playPromise.catch((e) => console.error('Audio play failed:', e))
+        }
       }
     }
 
@@ -76,22 +80,65 @@ export function GlobalNotifications() {
 
     let adminChannel: any = null
     if (role === 'admin') {
-      const handlePendingDeletion = (payload: any) => {
+      const handleRealtimeEvent = (payload: any) => {
+        const { table, eventType, new: newRecord, old: oldRecord } = payload
+
+        // Sempre notifica para atualizar os badges e listas
         window.dispatchEvent(new CustomEvent('refresh-approvals-badge'))
 
-        if (payload.eventType === 'UPDATE' && payload.new) {
-          const isPending = payload.new.pending_deletion === true && !payload.new.deleted_at
-          const isTrash = payload.new.deleted_at !== null
+        if (table === 'pending_changes') {
+          if (eventType === 'INSERT' && newRecord.status === 'pending') {
+            playSound()
+            toast.success('Nova Aprovação Pendente!', {
+              description: 'Uma nova alteração ou criação foi enviada para revisão.',
+              duration: 10000,
+              icon: '🔔',
+            })
+          } else if (
+            eventType === 'UPDATE' &&
+            newRecord.status === 'pending' &&
+            oldRecord?.status !== 'pending'
+          ) {
+            playSound()
+            toast.success('Nova Aprovação Pendente!', {
+              description: 'Uma nova alteração ou criação foi enviada para revisão.',
+              duration: 10000,
+              icon: '🔔',
+            })
+          }
+        } else if (table === 'cadastro_usuarios') {
+          if (eventType === 'INSERT' && newRecord.approval_status === 'pending') {
+            playSound()
+            toast.success('Novo Usuário Pendente!', {
+              description: 'Um novo usuário solicitou acesso.',
+              duration: 10000,
+              icon: '🔔',
+            })
+          } else if (
+            eventType === 'UPDATE' &&
+            newRecord.approval_status === 'pending' &&
+            oldRecord?.approval_status !== 'pending'
+          ) {
+            playSound()
+            toast.success('Novo Usuário Pendente!', {
+              description: 'Um novo usuário solicitou acesso.',
+              duration: 10000,
+              icon: '🔔',
+            })
+          }
+        }
+
+        // Lógica de exclusão/lixeira
+        if (eventType === 'UPDATE' && newRecord) {
+          const isPending = newRecord.pending_deletion === true && !newRecord.deleted_at
+          const isTrash = newRecord.deleted_at !== null
 
           if (isPending || isTrash) {
-            const id = payload.new.id
+            const id = newRecord.id
             if (!notifiedDeletionsRef.current.has(id)) {
               notifiedDeletionsRef.current.add(id)
-
               playSound()
-
-              const isDesvinculacao = payload.table === 'account_mapping'
-
+              const isDesvinculacao = table === 'account_mapping'
               toast.success(
                 isTrash
                   ? 'Item na Lixeira!'
@@ -109,9 +156,9 @@ export function GlobalNotifications() {
                 },
               )
             }
-          } else if (payload.new.pending_deletion === false && !payload.new.deleted_at) {
-            if (payload.new.id) {
-              notifiedDeletionsRef.current.delete(payload.new.id)
+          } else if (newRecord.pending_deletion === false && !newRecord.deleted_at) {
+            if (newRecord.id) {
+              notifiedDeletionsRef.current.delete(newRecord.id)
             }
           }
         }
@@ -119,81 +166,6 @@ export function GlobalNotifications() {
 
       adminChannel = supabase.channel(
         `admin_notifications_${Math.random().toString(36).substring(2, 9)}`,
-      )
-
-      adminChannel.on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'pending_changes',
-        },
-        (payload: any) => {
-          if (payload.new.status === 'pending') {
-            playSound()
-            toast.success('Nova Aprovação Pendente!', {
-              description: 'Uma nova alteração ou criação foi enviada para revisão.',
-              duration: 10000,
-              icon: '🔔',
-            })
-            window.dispatchEvent(new CustomEvent('refresh-approvals-badge'))
-          }
-        },
-      )
-
-      adminChannel.on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'pending_changes',
-        },
-        (payload: any) => {
-          if (payload.new.status === 'pending' && payload.old?.status !== 'pending') {
-            playSound()
-            toast.success('Nova Aprovação Pendente!', {
-              description: 'Uma nova alteração ou criação foi enviada para revisão.',
-              duration: 10000,
-              icon: '🔔',
-            })
-            window.dispatchEvent(new CustomEvent('refresh-approvals-badge'))
-          }
-        },
-      )
-
-      adminChannel.on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'cadastro_usuarios' },
-        (payload: any) => {
-          if (payload.new.approval_status === 'pending') {
-            playSound()
-            toast.success('Novo Usuário Pendente!', {
-              description: 'Um novo usuário solicitou acesso.',
-              duration: 10000,
-              icon: '🔔',
-            })
-            window.dispatchEvent(new CustomEvent('refresh-approvals-badge'))
-          }
-        },
-      )
-
-      adminChannel.on(
-        'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'cadastro_usuarios' },
-        (payload: any) => {
-          if (
-            payload.new.approval_status === 'pending' &&
-            payload.old?.approval_status !== 'pending'
-          ) {
-            playSound()
-            toast.success('Novo Usuário Pendente!', {
-              description: 'Um novo usuário solicitou acesso.',
-              duration: 10000,
-              icon: '🔔',
-            })
-            window.dispatchEvent(new CustomEvent('refresh-approvals-badge'))
-          }
-        },
       )
 
       const realtimeTables = [
@@ -205,13 +177,14 @@ export function GlobalNotifications() {
         'tipo_conta_tga',
         'cadastro_usuarios',
         'account_mapping',
+        'pending_changes',
       ]
 
       realtimeTables.forEach((table) => {
         adminChannel.on(
           'postgres_changes',
           { event: '*', schema: 'public', table },
-          handlePendingDeletion,
+          handleRealtimeEvent,
         )
       })
 

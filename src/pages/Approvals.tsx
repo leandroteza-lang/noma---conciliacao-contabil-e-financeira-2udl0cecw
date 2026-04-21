@@ -561,7 +561,15 @@ export default function Approvals() {
 
   useEffect(() => {
     fetchPendingItems()
+
+    const handleRefresh = () => {
+      fetchPendingItems()
+    }
+
+    window.addEventListener('refresh-approvals-badge', handleRefresh)
+    return () => window.removeEventListener('refresh-approvals-badge', handleRefresh)
   }, [role])
+
   useEffect(() => {
     setSelectedIds([])
   }, [activeTab])
