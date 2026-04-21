@@ -10,22 +10,11 @@ export function GlobalNotifications() {
 
   const playSound = useCallback(() => {
     try {
-      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext
-      if (AudioContextClass) {
-        const ctx = new AudioContextClass()
-        const osc = ctx.createOscillator()
-        const gainNode = ctx.createGain()
-        osc.connect(gainNode)
-        gainNode.connect(ctx.destination)
-        osc.type = 'sine'
-        osc.frequency.setValueAtTime(880, ctx.currentTime) // A5 note
-        gainNode.gain.setValueAtTime(0.1, ctx.currentTime)
-        osc.start()
-        gainNode.gain.exponentialRampToValueAtTime(0.00001, ctx.currentTime + 0.3)
-        osc.stop(ctx.currentTime + 0.3)
-      }
+      const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3')
+      audio.volume = 1.0
+      audio.play().catch((e) => console.error('Audio play failed:', e))
     } catch (e) {
-      console.error('Audio play failed:', e)
+      console.error('Audio setup failed:', e)
     }
   }, [])
 
