@@ -79,7 +79,16 @@ export function GlobalNotifications() {
         // Sempre notifica para atualizar os badges e listas
         window.dispatchEvent(new CustomEvent('refresh-approvals-badge'))
 
-        if (table === 'pending_changes') {
+        if (table === 'organizations') {
+          if (eventType === 'INSERT') {
+            // Notificação visual sem aviso sonoro, conforme solicitado
+            toast.success('Nova Empresa Cadastrada!', {
+              description: 'Uma nova empresa foi adicionada ao sistema.',
+              duration: 10000,
+              icon: '🏢',
+            })
+          }
+        } else if (table === 'pending_changes') {
           if (eventType === 'INSERT' && newRecord.status === 'pending') {
             playSound()
             toast.success('Nova Aprovação Pendente!', {
