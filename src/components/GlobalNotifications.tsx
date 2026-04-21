@@ -90,9 +90,7 @@ export function GlobalNotifications() {
           }
         } else if (table === 'pending_changes') {
           if (eventType === 'INSERT' && newRecord.status === 'pending') {
-            if (newRecord.entity_type !== 'organizations' && newRecord.entity_type !== 'Empresas') {
-              playSound()
-            }
+            playSound()
             toast.success('Nova Aprovação Pendente!', {
               description: 'Uma nova alteração ou criação foi enviada para revisão.',
               duration: 10000,
@@ -103,9 +101,7 @@ export function GlobalNotifications() {
             newRecord.status === 'pending' &&
             oldRecord?.status !== 'pending'
           ) {
-            if (newRecord.entity_type !== 'organizations' && newRecord.entity_type !== 'Empresas') {
-              playSound()
-            }
+            playSound()
             toast.success('Nova Aprovação Pendente!', {
               description: 'Uma nova alteração ou criação foi enviada para revisão.',
               duration: 10000,
@@ -143,7 +139,13 @@ export function GlobalNotifications() {
             const id = newRecord.id
             if (!notifiedDeletionsRef.current.has(id)) {
               notifiedDeletionsRef.current.add(id)
-              playSound()
+
+              if (table === 'organizations' && isTrash) {
+                // Não reproduzir som na efetivação da exclusão de empresa, mantendo apenas a notificação visual
+              } else {
+                playSound()
+              }
+
               const isDesvinculacao = table === 'account_mapping'
               toast.success(
                 isTrash
