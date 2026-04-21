@@ -562,8 +562,4 @@ export default function Index() {
         onClose={() => setIsSmartMappingOpen(false)}
         onApply={handleSmartMappingApply}
         accounts={accounts}
-        companies={companies}
-      />
-    </div>
-  )
-}
+   
