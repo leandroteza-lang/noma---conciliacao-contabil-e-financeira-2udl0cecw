@@ -508,7 +508,7 @@ export default function Index() {
         </div>
       </div>
 
-      <div className="bank-accounts-table-wrapper">
+      <div className="bank-accounts-table-wrapper border-4 border-[#800000] rounded-lg overflow-hidden">
         <BankAccountsTable
           accounts={paginatedAccounts}
           chartAccounts={chartAccounts}
