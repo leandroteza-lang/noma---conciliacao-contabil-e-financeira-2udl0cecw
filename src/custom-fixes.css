@@ -1,0 +1,7 @@
+/* Ajuste na coluna tipo na linha zebra que tem fundo branco para ficar com a mesma configuracao de classificacao */
+tr.group\/row:nth-child(odd) td:nth-child(8) .inline-flex,
+tr.group\/row:nth-child(odd) td:nth-child(8) [class*='bg-'] {
+  background-color: #e2e8f0 !important;
+  color: #334155 !important;
+  border-color: transparent !important;
+}

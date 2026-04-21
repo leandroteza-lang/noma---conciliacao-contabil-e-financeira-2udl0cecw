@@ -31,6 +31,7 @@ import { AuthProvider } from './hooks/use-auth'
 import { ThemeProvider } from './components/ThemeProvider'
 import { GlobalNotifications } from './components/GlobalNotifications'
 import { ShareQueryModal } from './components/ShareQueryModal'
+import './custom-fixes.css'
 
 const App = () => {
   return (
