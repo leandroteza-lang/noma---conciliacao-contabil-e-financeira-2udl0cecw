@@ -812,12 +812,10 @@ Deno.serve(async (req: Request) => {
         if (orgs) orgs.push({ id: newOrgId, name: cleanName })
 
         if (userProfileId) {
-          await supabaseAdmin
-            .from('cadastro_usuarios_companies')
-            .insert({
-              usuario_id: userProfileId,
-              organization_id: newOrgId,
-            })
+          await supabaseAdmin.from('cadastro_usuarios_companies').insert({
+            usuario_id: userProfileId,
+            organization_id: newOrgId,
+          })
         }
         return newOrgId
       }
@@ -1280,7 +1278,7 @@ Deno.serve(async (req: Request) => {
           .replace(/[^0-9A-Z]/gi, '')
           .toUpperCase()
           .replace(/^0+/, '') || '0'
-          
+
       const normalizeAgency = (str: any) =>
         String(str || '')
           .replace(/[^0-9A-Z]/gi, '')
@@ -1290,8 +1288,10 @@ Deno.serve(async (req: Request) => {
       existingAccounts.forEach((a) => {
         const acc = normalizeAcc(a.account_number)
         const ag = normalizeAgency(a.agency)
-        const desc = String(a.description || '').trim().toUpperCase()
-        
+        const desc = String(a.description || '')
+          .trim()
+          .toUpperCase()
+
         if (ag === '' && acc === '0') {
           if (desc) {
             existingAccMap.set(`DESC-${desc}`, a)
@@ -1320,8 +1320,8 @@ Deno.serve(async (req: Request) => {
         const normalizedAcc = normalizeAcc(rawAccountNumber)
 
         if (!normalizedAgency && normalizedAcc === '0' && !descriptionStr && !allowIncomplete) {
-           addError(rowNum, 'Agência, Conta e Descrição estão vazios.', row)
-           continue
+          addError(rowNum, 'Agência, Conta e Descrição estão vazios.', row)
+          continue
         }
 
         let accountKey = ''
@@ -1353,9 +1353,17 @@ Deno.serve(async (req: Request) => {
         if (existing) {
           if (existing.is_temp) {
             if (accountKey.startsWith('DESC-')) {
-              addError(rowNum, `Conta bancária duplicada na própria planilha (Descrição: ${descriptionStr})`, row)
+              addError(
+                rowNum,
+                `Conta bancária duplicada na própria planilha (Descrição: ${descriptionStr})`,
+                row,
+              )
             } else {
-              addError(rowNum, `Conta bancária duplicada na própria planilha (Agência ${rawAgency} Conta ${rawAccountNumber})`, row)
+              addError(
+                rowNum,
+                `Conta bancária duplicada na própria planilha (Agência ${rawAgency} Conta ${rawAccountNumber})`,
+                row,
+              )
             }
           } else {
             if (mode !== 'INSERT_ONLY') {
@@ -1413,7 +1421,11 @@ Deno.serve(async (req: Request) => {
           if (insErr) {
             console.error(`[BANK_ACCOUNTS] Insert error:`, insErr)
             chunk.forEach((c: any) => {
-              addError(c._rowNum, `Erro na inserção: ${insErr.message} - Conta: ${c.account_number}`, c)
+              addError(
+                c._rowNum,
+                `Erro na inserção: ${insErr.message} - Conta: ${c.account_number}`,
+                c,
+              )
             })
           }
         }
@@ -1428,7 +1440,11 @@ Deno.serve(async (req: Request) => {
           if (updErr) {
             console.error(`[BANK_ACCOUNTS] Upsert error:`, updErr)
             chunk.forEach((c: any) => {
-              addError(c._rowNum, `Erro na atualização: ${updErr.message} - Conta: ${c.account_number}`, c)
+              addError(
+                c._rowNum,
+                `Erro na atualização: ${updErr.message} - Conta: ${c.account_number}`,
+                c,
+              )
             })
           }
         }
@@ -2766,7 +2782,11 @@ Deno.serve(async (req: Request) => {
           } else if (orgs && orgs.length > 0) {
             orgId = orgs[0].id
           } else {
-            addError(rowNum, 'Nenhuma empresa associada ao usuário para realizar a importação.', row)
+            addError(
+              rowNum,
+              'Nenhuma empresa associada ao usuário para realizar a importação.',
+              row,
+            )
             continue
           }
         }

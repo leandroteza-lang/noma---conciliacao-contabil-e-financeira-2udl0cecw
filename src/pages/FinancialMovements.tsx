@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useMemo } from 'react'
 import { supabase } from '@/lib/supabase/client'
 import { useAuth } from '@/hooks/use-auth'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
@@ -84,6 +84,143 @@ import {
   SheetDescription,
 } from '@/components/ui/sheet'
 
+const formatMonthYear = (dateStr: string) => {
+  if (!dateStr) return 'Sem Data'
+  const parts = dateStr.split('T')[0].split('-')
+  if (parts.length >= 3) return `${parts[1]}/${parts[0]}`
+  return 'Sem Data'
+}
+
+function SummaryTable({
+  data,
+  primaryKeyFn,
+  secondaryKeyFn,
+}: {
+  data: any[]
+  primaryKeyFn: (r: any) => string
+  secondaryKeyFn: (r: any) => string
+}) {
+  const aggregated = useMemo(() => {
+    const map = new Map<
+      string,
+      { name: string; pos: number; neg: number; diff: number; items: Map<string, any> }
+    >()
+    for (const row of data) {
+      const pKey = primaryKeyFn(row)
+      const sKey = secondaryKeyFn(row)
+      const val = Number(row.valor_liquido || 0)
+
+      if (!map.has(pKey)) {
+        map.set(pKey, { name: pKey, pos: 0, neg: 0, diff: 0, items: new Map() })
+      }
+      const pGroup = map.get(pKey)!
+
+      if (!pGroup.items.has(sKey)) {
+        pGroup.items.set(sKey, { name: sKey, pos: 0, neg: 0, diff: 0 })
+      }
+      const sGroup = pGroup.items.get(sKey)!
+
+      if (val > 0) {
+        pGroup.pos += val
+        sGroup.pos += val
+      } else {
+        pGroup.neg += val
+        sGroup.neg += val
+      }
+      pGroup.diff += val
+      sGroup.diff += val
+    }
+
+    const result = Array.from(map.values()).map((p) => ({
+      ...p,
+      items: Array.from(p.items.values()).sort((a, b) => {
+        const aIsDate = /^\d{2}\/\d{4}$/.test(a.name)
+        const bIsDate = /^\d{2}\/\d{4}$/.test(b.name)
+        if (aIsDate && bIsDate) {
+          const [am, ay] = a.name.split('/')
+          const [bm, by] = b.name.split('/')
+          if (ay !== by) return parseInt(ay) - parseInt(by)
+          return parseInt(am) - parseInt(bm)
+        }
+        return a.name.localeCompare(b.name)
+      }),
+    }))
+
+    result.sort((a, b) => {
+      const aIsDate = /^\d{2}\/\d{4}$/.test(a.name)
+      const bIsDate = /^\d{2}\/\d{4}$/.test(b.name)
+      if (aIsDate && bIsDate) {
+        const [am, ay] = a.name.split('/')
+        const [bm, by] = b.name.split('/')
+        if (ay !== by) return parseInt(ay) - parseInt(by)
+        return parseInt(am) - parseInt(bm)
+      }
+      return a.name.localeCompare(b.name)
+    })
+    return result
+  }, [data, primaryKeyFn, secondaryKeyFn])
+
+  const formatVal = (v: number) =>
+    new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v)
+
+  return (
+    <Table className="w-full text-xs">
+      <TableHeader className="sticky top-0 z-10 bg-slate-50 shadow-sm border-b">
+        <TableRow>
+          <TableHead className="w-[40%] font-bold text-slate-800">Agrupamento</TableHead>
+          <TableHead className="text-right font-bold text-emerald-600">Entradas (+)</TableHead>
+          <TableHead className="text-right font-bold text-rose-600">Saídas (-)</TableHead>
+          <TableHead className="text-right font-bold text-blue-600">Diferença</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {aggregated.map((group) => (
+          <React.Fragment key={group.name}>
+            <TableRow className="bg-slate-100 font-bold hover:bg-slate-200/50 transition-colors border-b-slate-200">
+              <TableCell className="py-2.5">{group.name}</TableCell>
+              <TableCell className="text-right text-emerald-700 py-2.5">
+                {formatVal(group.pos)}
+              </TableCell>
+              <TableCell className="text-right text-rose-700 py-2.5">
+                {formatVal(group.neg)}
+              </TableCell>
+              <TableCell className="text-right text-blue-700 py-2.5">
+                {formatVal(group.diff)}
+              </TableCell>
+            </TableRow>
+            {group.items.map((item) => (
+              <TableRow
+                key={item.name}
+                className="border-b border-slate-100 last:border-0 hover:bg-slate-50 transition-colors"
+              >
+                <TableCell className="pl-6 py-2 text-slate-600 before:content-['└'] before:mr-2 before:text-slate-400 font-medium">
+                  {item.name}
+                </TableCell>
+                <TableCell className="text-right py-2 text-emerald-600/80">
+                  {formatVal(item.pos)}
+                </TableCell>
+                <TableCell className="text-right py-2 text-rose-600/80">
+                  {formatVal(item.neg)}
+                </TableCell>
+                <TableCell className="text-right font-semibold py-2 text-slate-700">
+                  {formatVal(item.diff)}
+                </TableCell>
+              </TableRow>
+            ))}
+          </React.Fragment>
+        ))}
+        {aggregated.length === 0 && (
+          <TableRow>
+            <TableCell colSpan={4} className="text-center py-8 text-slate-500">
+              Nenhum dado para resumir.
+            </TableCell>
+          </TableRow>
+        )}
+      </TableBody>
+    </Table>
+  )
+}
+
 const tableHeaders = [
   { label: 'Prontidão', key: 'prontidao', align: 'center' },
   { label: 'Empresa', key: 'empresa' },
@@ -138,6 +275,7 @@ export default function FinancialMovements() {
 
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [totals, setTotals] = useState({ valor: 0, valor_liquido: 0 })
+  const [summaryData, setSummaryData] = useState<any[]>([])
 
   const [filters, setFilters] = useState<Record<string, string[]>>({})
   const [activeTab, setActiveTab] = useState('grade')
@@ -804,7 +942,9 @@ export default function FinancialMovements() {
 
     let totalsQuery = supabase
       .from('erp_financial_movements')
-      .select('valor, valor_liquido')
+      .select(
+        'valor, valor_liquido, data_emissao, conta_caixa, c_custo, organization_id, mapped_account_id',
+      )
       .is('deleted_at', null)
       .limit(100000)
     totalsQuery = applyQueryFilters(totalsQuery)
@@ -856,8 +996,27 @@ export default function FinancialMovements() {
     }
 
     if (totalsData) {
-      const sumV = totalsData.reduce((acc, curr) => acc + (Number(curr.valor) || 0), 0)
-      const sumVL = totalsData.reduce((acc, curr) => acc + (Number(curr.valor_liquido) || 0), 0)
+      let finalTotalsData = totalsData
+      if (filters['prontidao'] && filters['prontidao'].length > 0) {
+        finalTotalsData = finalTotalsData.filter((row) => {
+          const missing =
+            !row.data_emissao ||
+            !row.c_custo ||
+            row.valor_liquido === null ||
+            row.valor_liquido === undefined
+          let statusText = 'Pendente'
+          if (missing) statusText = 'Incompleto'
+          else if (getMappedAccount(row)) statusText = 'Mapeado'
+          return filters['prontidao'].includes(statusText)
+        })
+      }
+      setSummaryData(finalTotalsData)
+
+      const sumV = finalTotalsData.reduce((acc, curr) => acc + (Number(curr.valor) || 0), 0)
+      const sumVL = finalTotalsData.reduce(
+        (acc, curr) => acc + (Number(curr.valor_liquido) || 0),
+        0,
+      )
       setTotals({ valor: sumV, valor_liquido: sumVL })
     }
   }
@@ -943,7 +1102,9 @@ export default function FinancialMovements() {
 
     let totalsQuery = supabase
       .from('erp_financial_movements')
-      .select('valor, valor_liquido')
+      .select(
+        'valor, valor_liquido, data_emissao, conta_caixa, c_custo, organization_id, mapped_account_id',
+      )
       .is('deleted_at', null)
       .limit(100000)
     totalsQuery = applyQueryFilters(totalsQuery)
@@ -995,8 +1156,27 @@ export default function FinancialMovements() {
     }
 
     if (totalsData) {
-      const sumV = totalsData.reduce((acc, curr) => acc + (Number(curr.valor) || 0), 0)
-      const sumVL = totalsData.reduce((acc, curr) => acc + (Number(curr.valor_liquido) || 0), 0)
+      let finalTotalsData = totalsData
+      if (filters['prontidao'] && filters['prontidao'].length > 0) {
+        finalTotalsData = finalTotalsData.filter((row) => {
+          const missing =
+            !row.data_emissao ||
+            !row.c_custo ||
+            row.valor_liquido === null ||
+            row.valor_liquido === undefined
+          let statusText = 'Pendente'
+          if (missing) statusText = 'Incompleto'
+          else if (getMappedAccount(row)) statusText = 'Mapeado'
+          return filters['prontidao'].includes(statusText)
+        })
+      }
+      setSummaryData(finalTotalsData)
+
+      const sumV = finalTotalsData.reduce((acc, curr) => acc + (Number(curr.valor) || 0), 0)
+      const sumVL = finalTotalsData.reduce(
+        (acc, curr) => acc + (Number(curr.valor_liquido) || 0),
+        0,
+      )
       setTotals({ valor: sumV, valor_liquido: sumVL })
     }
 
@@ -1345,6 +1525,9 @@ export default function FinancialMovements() {
         <TabsList className="bg-slate-100/80 p-1 w-full sm:w-auto flex overflow-x-auto justify-start border border-slate-200">
           <TabsTrigger value="grade" className="whitespace-nowrap">
             Grade de Movimentos
+          </TabsTrigger>
+          <TabsTrigger value="resumo" className="whitespace-nowrap">
+            Resumo Consolidado
           </TabsTrigger>
           <TabsTrigger value="bridge" className="whitespace-nowrap">
             Accounting Bridge
@@ -2623,6 +2806,74 @@ export default function FinancialMovements() {
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="resumo" className="m-0 animate-in fade-in-up duration-500">
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+            <Card className="shadow-sm border-slate-200">
+              <CardHeader className="bg-slate-50/50 border-b pb-3 pt-4">
+                <h2 className="text-base font-bold text-slate-800">
+                  Financeiro (Mês ➔ Conta/Caixa)
+                </h2>
+              </CardHeader>
+              <CardContent className="p-0">
+                <div className="h-[500px] overflow-y-auto custom-scrollbar">
+                  <SummaryTable
+                    data={summaryData}
+                    primaryKeyFn={(r) => formatMonthYear(r.data_emissao)}
+                    secondaryKeyFn={(r) => r.conta_caixa || 'Sem Conta'}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="shadow-sm border-slate-200">
+              <CardHeader className="bg-slate-50/50 border-b pb-3 pt-4">
+                <h2 className="text-base font-bold text-slate-800">
+                  Financeiro (Conta/Caixa ➔ Mês)
+                </h2>
+              </CardHeader>
+              <CardContent className="p-0">
+                <div className="h-[500px] overflow-y-auto custom-scrollbar">
+                  <SummaryTable
+                    data={summaryData}
+                    primaryKeyFn={(r) => r.conta_caixa || 'Sem Conta'}
+                    secondaryKeyFn={(r) => formatMonthYear(r.data_emissao)}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="shadow-sm border-slate-200">
+              <CardHeader className="bg-slate-50/50 border-b pb-3 pt-4">
+                <h2 className="text-base font-bold text-slate-800">Custos (Mês ➔ C. Custo)</h2>
+              </CardHeader>
+              <CardContent className="p-0">
+                <div className="h-[500px] overflow-y-auto custom-scrollbar">
+                  <SummaryTable
+                    data={summaryData}
+                    primaryKeyFn={(r) => formatMonthYear(r.data_emissao)}
+                    secondaryKeyFn={(r) => r.c_custo || 'Sem C. Custo'}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="shadow-sm border-slate-200">
+              <CardHeader className="bg-slate-50/50 border-b pb-3 pt-4">
+                <h2 className="text-base font-bold text-slate-800">Custos (C. Custo ➔ Mês)</h2>
+              </CardHeader>
+              <CardContent className="p-0">
+                <div className="h-[500px] overflow-y-auto custom-scrollbar">
+                  <SummaryTable
+                    data={summaryData}
+                    primaryKeyFn={(r) => r.c_custo || 'Sem C. Custo'}
+                    secondaryKeyFn={(r) => formatMonthYear(r.data_emissao)}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
 
         <TabsContent value="bridge" className="m-0 animate-in fade-in-up duration-500">
