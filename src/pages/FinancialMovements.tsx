@@ -35,6 +35,8 @@ import {
   MoreVertical,
   ArrowRight as ArrowRightIcon,
   ChevronsUpDown,
+  ChevronRight,
+  ChevronDown,
 } from 'lucide-react'
 import { Checkbox } from '@/components/ui/checkbox'
 import { toast } from 'sonner'
@@ -617,8 +619,9 @@ export default function FinancialMovements() {
   }
 
   const [filterOptions, setFilterOptions] = useState<
-    Record<string, { label: string; value: string }[]>
+    Record<string, { label: string; value: string; isParent?: boolean; parent?: string }[]>
   >({})
+  const [expandedDateGroups, setExpandedDateGroups] = useState<Record<string, boolean>>({})
   const hasActiveFilters = Object.values(filters).some((arr) => arr && arr.length > 0)
 
   const clearFilters = () => {
@@ -697,22 +700,44 @@ export default function FinancialMovements() {
 
       if (movs) {
         if (dateCols.includes(h.key)) {
-          const uniqueMonths = Array.from(
+          const uniqueDates = Array.from(
             new Set(
               movs
                 .map((m) => {
                   const val = m[h.key]
                   if (!val) return null
-                  return String(val).substring(0, 7)
+                  return String(val).substring(0, 10)
                 })
                 .filter(Boolean),
             ),
           ).sort((a, b) => (b as string).localeCompare(a as string))
 
-          options[h.key] = uniqueMonths.map((ym) => {
-            const [y, m] = (ym as string).split('-')
-            return { label: `${m}/${y}`, value: ym as string }
+          const grouped: Record<string, string[]> = {}
+          uniqueDates.forEach((d) => {
+            const ym = (d as string).substring(0, 7)
+            if (!grouped[ym]) grouped[ym] = []
+            grouped[ym].push(d as string)
           })
+
+          const dateOptions: {
+            label: string
+            value: string
+            isParent?: boolean
+            parent?: string
+          }[] = []
+
+          Object.keys(grouped)
+            .sort((a, b) => b.localeCompare(a))
+            .forEach((ym) => {
+              const [y, m] = ym.split('-')
+              dateOptions.push({ label: `${m}/${y}`, value: ym, isParent: true })
+              grouped[ym].forEach((d) => {
+                const [dy, dm, dd] = d.split('-')
+                dateOptions.push({ label: `${dd}/${dm}/${dy}`, value: d, parent: ym })
+              })
+            })
+
+          options[h.key] = dateOptions
         } else {
           const uniqueVals = Array.from(
             new Set(
@@ -998,12 +1023,16 @@ export default function FinancialMovements() {
             q = q.or(orParts.join(','))
           }
         } else if (dateCols.includes(key)) {
-          const orParts = values.map((ym) => {
-            const [y, m] = ym.split('-')
-            const startDate = `${ym}-01`
-            const lastDay = new Date(Date.UTC(parseInt(y), parseInt(m), 0)).getUTCDate()
-            const endDate = `${ym}-${String(lastDay).padStart(2, '0')}`
-            return `and(${key}.gte.${startDate},${key}.lte.${endDate})`
+          const orParts = values.map((val) => {
+            if (val.length === 7) {
+              const [y, m] = val.split('-')
+              const startDate = `${val}-01`
+              const lastDay = new Date(Date.UTC(parseInt(y), parseInt(m), 0)).getUTCDate()
+              const endDate = `${val}-${String(lastDay).padStart(2, '0')}`
+              return `and(${key}.gte.${startDate},${key}.lte.${endDate})`
+            } else {
+              return `${key}.eq.${val}`
+            }
           })
           q = q.or(orParts.join(','))
         } else {
@@ -2129,6 +2158,13 @@ export default function FinancialMovements() {
                                         </CommandEmpty>
                                         <CommandGroup>
                                           {options.map((opt) => {
+                                            if (
+                                              opt.parent &&
+                                              !expandedDateGroups[`${h.key}-${opt.parent}`]
+                                            ) {
+                                              return null
+                                            }
+
                                             const isSelected = filters[h.key]?.includes(opt.value)
                                             return (
                                               <CommandItem
@@ -2144,11 +2180,38 @@ export default function FinancialMovements() {
                                                   }))
                                                   setPage(0)
                                                 }}
-                                                className="text-xs cursor-pointer"
+                                                className={cn(
+                                                  'text-xs cursor-pointer',
+                                                  opt.parent ? 'pl-6' : '',
+                                                )}
                                               >
+                                                {opt.isParent && (
+                                                  <div
+                                                    className="mr-1 flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-sm hover:bg-slate-200"
+                                                    onPointerDown={(e) => e.stopPropagation()}
+                                                    onClick={(e) => {
+                                                      e.stopPropagation()
+                                                      e.preventDefault()
+                                                      setExpandedDateGroups((prev) => ({
+                                                        ...prev,
+                                                        [`${h.key}-${opt.value}`]:
+                                                          !prev[`${h.key}-${opt.value}`],
+                                                      }))
+                                                    }}
+                                                  >
+                                                    {expandedDateGroups[`${h.key}-${opt.value}`] ? (
+                                                      <ChevronDown className="h-3 w-3" />
+                                                    ) : (
+                                                      <ChevronRight className="h-3 w-3" />
+                                                    )}
+                                                  </div>
+                                                )}
+                                                {!opt.isParent && opt.parent && (
+                                                  <div className="w-4 mr-1 flex-shrink-0"></div>
+                                                )}
                                                 <div
                                                   className={cn(
-                                                    'mr-2 flex h-3 w-3 items-center justify-center rounded-sm border border-primary',
+                                                    'mr-2 flex h-3 w-3 flex-shrink-0 items-center justify-center rounded-sm border border-primary',
                                                     isSelected
                                                       ? 'bg-primary text-primary-foreground'
                                                       : 'opacity-50 [&_svg]:invisible',
