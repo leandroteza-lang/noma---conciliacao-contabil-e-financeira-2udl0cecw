@@ -1831,16 +1831,16 @@ export default function FinancialMovements() {
                       <DraggablePopoverContent title="Filtros">
                         <Tabs defaultValue="filters" className="w-full">
                           <div className="px-4 pt-4 pb-2 border-b">
-                            <TabsList className="w-full grid grid-cols-2">
+                            <TabsList className="w-full grid grid-cols-2 bg-slate-100 p-1">
                               <TabsTrigger
                                 value="filters"
-                                className="data-[state=active]:bg-[#800000] data-[state=active]:text-white font-bold data-[state=active]:hover:bg-[#800000]/90 transition-colors"
+                                className="bg-[#800000]/60 text-white font-bold hover:bg-[#800000]/80 data-[state=active]:bg-[#800000] data-[state=active]:text-white data-[state=inactive]:text-white transition-colors"
                               >
                                 Filtros
                               </TabsTrigger>
                               <TabsTrigger
                                 value="saved"
-                                className="data-[state=active]:bg-[#800000] data-[state=active]:text-white font-bold data-[state=active]:hover:bg-[#800000]/90 transition-colors"
+                                className="bg-[#800000]/60 text-white font-bold hover:bg-[#800000]/80 data-[state=active]:bg-[#800000] data-[state=active]:text-white data-[state=inactive]:text-white transition-colors"
                               >
                                 Salvos
                               </TabsTrigger>
@@ -2056,16 +2056,16 @@ export default function FinancialMovements() {
                       <DraggablePopoverContent title="Configuração de Colunas">
                         <Tabs defaultValue="columns" className="w-full">
                           <div className="px-4 pt-4 pb-2 border-b">
-                            <TabsList className="w-full grid grid-cols-2">
+                            <TabsList className="w-full grid grid-cols-2 bg-slate-100 p-1">
                               <TabsTrigger
                                 value="columns"
-                                className="data-[state=active]:bg-[#800000] data-[state=active]:text-white font-bold data-[state=active]:hover:bg-[#800000]/90 transition-colors"
+                                className="bg-[#800000]/60 text-white font-bold hover:bg-[#800000]/80 data-[state=active]:bg-[#800000] data-[state=active]:text-white data-[state=inactive]:text-white transition-colors"
                               >
                                 Colunas
                               </TabsTrigger>
                               <TabsTrigger
                                 value="saved"
-                                className="data-[state=active]:bg-[#800000] data-[state=active]:text-white font-bold data-[state=active]:hover:bg-[#800000]/90 transition-colors"
+                                className="bg-[#800000]/60 text-white font-bold hover:bg-[#800000]/80 data-[state=active]:bg-[#800000] data-[state=active]:text-white data-[state=inactive]:text-white transition-colors"
                               >
                                 Salvas
                               </TabsTrigger>
