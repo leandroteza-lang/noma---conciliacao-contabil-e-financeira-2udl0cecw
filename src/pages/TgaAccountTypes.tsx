@@ -385,14 +385,14 @@ export default function TgaAccountTypes() {
                       className="group-even/row:border-white group-even/row:data-[state=checked]:bg-white group-even/row:data-[state=checked]:text-[#800000]"
                     />
                   </TableCell>
-                  <TableCell className="font-medium py-0.5 px-2">{item.codigo}</TableCell>
-                  <TableCell className="text-muted-foreground group-even/row:text-white group-even/row:font-bold py-0.5 px-2">
+                  <TableCell className="font-bold text-[11px] py-0.5 px-2">{item.codigo}</TableCell>
+                  <TableCell className="text-muted-foreground group-even/row:text-white font-bold text-[11px] py-0.5 px-2">
                     {item.nome}
                   </TableCell>
-                  <TableCell className="text-muted-foreground group-even/row:text-white group-even/row:font-bold py-0.5 px-2">
+                  <TableCell className="text-muted-foreground group-even/row:text-white font-bold text-[11px] py-0.5 px-2">
                     {item.abreviacao || '-'}
                   </TableCell>
-                  <TableCell className="text-muted-foreground group-even/row:text-white group-even/row:font-bold py-0.5 px-2">
+                  <TableCell className="text-muted-foreground group-even/row:text-white font-bold text-[11px] py-0.5 px-2">
                     {item.organizations?.name || 'Geral'}
                   </TableCell>
                   <TableCell className="text-right py-0.5 px-2">

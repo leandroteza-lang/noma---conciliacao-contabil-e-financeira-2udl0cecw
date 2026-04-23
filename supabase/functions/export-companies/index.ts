@@ -168,11 +168,15 @@ Deno.serve(async (req: Request) => {
           .map((r: any, index: number) => {
             const isEven = index % 2 === 1
             const rowClass = isEven ? 'row-even' : 'row-odd'
-            const statusClass = r.status 
-              ? (isEven ? 'status-active-even' : 'status-active-odd') 
-              : (isEven ? 'status-inactive-even' : 'status-inactive-odd')
+            const statusClass = r.status
+              ? isEven
+                ? 'status-active-even'
+                : 'status-active-odd'
+              : isEven
+                ? 'status-inactive-even'
+                : 'status-inactive-odd'
             const docLabelClass = isEven ? 'doc-label-even' : 'doc-label-odd'
-            
+
             return `
           <tr class="${rowClass}">
             <td>
@@ -229,10 +233,14 @@ Deno.serve(async (req: Request) => {
 
       const body = data.map((r: any) => [
         r.name + (r.address ? `\n${r.address}` : ''),
-        (r.cnpj ? `CNPJ: ${r.cnpj}` : '') + (r.cnpj && r.cpf ? '\n' : '') + (r.cpf ? `CPF: ${r.cpf}` : (!r.cnpj && !r.cpf ? '-' : '')),
-        (r.email || '') + (r.email && r.phone ? '\n' : '') + (r.phone || (!r.email && !r.phone ? '-' : '')),
+        (r.cnpj ? `CNPJ: ${r.cnpj}` : '') +
+          (r.cnpj && r.cpf ? '\n' : '') +
+          (r.cpf ? `CPF: ${r.cpf}` : !r.cnpj && !r.cpf ? '-' : ''),
+        (r.email || '') +
+          (r.email && r.phone ? '\n' : '') +
+          (r.phone || (!r.email && !r.phone ? '-' : '')),
         r.status ? 'Ativo' : 'Inativo',
-        r.created_at || '-'
+        r.created_at || '-',
       ])
 
       autoTable(doc, {
@@ -246,7 +254,7 @@ Deno.serve(async (req: Request) => {
           fontStyle: 'bold',
           halign: 'left',
         },
-        styles: { 
+        styles: {
           fontSize: 9,
           cellPadding: 4,
           lineColor: [226, 232, 240],
