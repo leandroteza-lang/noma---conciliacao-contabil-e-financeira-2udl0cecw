@@ -742,6 +742,7 @@ export default function FinancialMovements() {
 
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize))
   const visibleCount = tableHeaders.filter((h) => visibleColumns[h.key] !== false).length + 2
+  const hiddenColumnsCount = tableHeaders.filter((h) => visibleColumns[h.key] === false).length
 
   return (
     <div className="p-6 space-y-6 max-w-[1600px] mx-auto animate-fade-in-up">
@@ -1214,10 +1215,15 @@ export default function FinancialMovements() {
                   <Button
                     variant="outline"
                     size="sm"
-                    className="h-7 text-xs flex items-center gap-1.5 px-2"
+                    className="h-7 text-xs flex items-center gap-1.5 px-2 relative"
                   >
                     <Columns className="h-3.5 w-3.5" />
                     <span className="hidden sm:inline">Colunas</span>
+                    {hiddenColumnsCount > 0 && (
+                      <span className="absolute -top-1 -right-1 flex h-3 w-3 items-center justify-center rounded-full bg-primary text-[8px] text-primary-foreground">
+                        {hiddenColumnsCount}
+                      </span>
+                    )}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent align="end" className="w-80 p-0 flex flex-col">
@@ -1230,6 +1236,19 @@ export default function FinancialMovements() {
                     </div>
 
                     <TabsContent value="columns" className="m-0 p-4 space-y-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <h4 className="font-semibold text-sm">Gerenciar Colunas</h4>
+                        {hiddenColumnsCount > 0 && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={selectAllColumns}
+                            className="h-6 text-xs px-2 text-slate-500 hover:text-slate-800"
+                          >
+                            Restaurar padrão
+                          </Button>
+                        )}
+                      </div>
                       <div className="flex items-center justify-between gap-1 mb-2">
                         <Button
                           variant="secondary"
