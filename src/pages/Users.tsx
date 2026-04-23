@@ -434,7 +434,7 @@ export default function Users() {
                 <TableRow
                   key={user.id}
                   className={cn(
-                    'border-0 group/row even:bg-[#800000] even:text-white even:font-bold hover:even:bg-[#800000]/90',
+                    'border-0 group/row text-[11px] font-bold text-black dark:text-white even:bg-[#800000] even:text-white even:font-bold hover:even:bg-[#800000]/90',
                     selectedUsers.includes(user.id) ? 'bg-muted/50' : '',
                   )}
                 >
@@ -445,20 +445,16 @@ export default function Users() {
                         if (checked) setSelectedUsers([...selectedUsers, user.id])
                         else setSelectedUsers(selectedUsers.filter((id) => id !== user.id))
                       }}
-                      className="group-even/row:border-white group-even/row:data-[state=checked]:bg-white group-even/row:data-[state=checked]:text-[#800000]"
+                      className="border-black dark:border-white data-[state=checked]:bg-black dark:data-[state=checked]:bg-white data-[state=checked]:text-white dark:data-[state=checked]:text-black group-even/row:border-white group-even/row:data-[state=checked]:bg-white group-even/row:data-[state=checked]:text-[#800000]"
                     />
                   </TableCell>
-                  <TableCell className="font-medium py-0.5 px-2">{user.name}</TableCell>
-                  <TableCell className="text-muted-foreground group-even/row:text-white group-even/row:font-bold py-0.5 px-2">
-                    {user.email}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground group-even/row:text-white group-even/row:font-bold py-0.5 px-2">
-                    {user.cpf || '-'}
-                  </TableCell>
+                  <TableCell className="py-0.5 px-2">{user.name}</TableCell>
+                  <TableCell className="py-0.5 px-2">{user.email}</TableCell>
+                  <TableCell className="py-0.5 px-2">{user.cpf || '-'}</TableCell>
                   <TableCell className="py-0.5 px-2">
                     <Badge
                       variant="outline"
-                      className="font-normal h-5 text-[11px] group-even/row:text-white group-even/row:font-bold group-even/row:border-white group-even/row:bg-transparent"
+                      className="font-bold text-black dark:text-white border-black dark:border-white h-5 text-[11px] group-even/row:text-white group-even/row:border-white group-even/row:bg-transparent"
                     >
                       {user.role === 'admin'
                         ? 'Administrador'
@@ -469,28 +465,26 @@ export default function Users() {
                             : 'Colaborador'}
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-muted-foreground group-even/row:text-white group-even/row:font-bold py-0.5 px-2">
-                    {user.departments?.name || '-'}
-                  </TableCell>
+                  <TableCell className="py-0.5 px-2">{user.departments?.name || '-'}</TableCell>
                   <TableCell className="py-0.5 px-2">
                     {user.approval_status === 'pending' ? (
                       <Badge
                         variant="secondary"
-                        className="bg-amber-100 text-amber-800 hover:bg-amber-100 dark:bg-amber-900/30 dark:text-amber-300 h-5 text-[11px]"
+                        className="bg-amber-100 text-amber-800 font-bold hover:bg-amber-100 dark:bg-amber-900/30 dark:text-amber-300 h-5 text-[11px]"
                       >
                         Pendente de Aprovação
                       </Badge>
                     ) : user.status ? (
                       <Badge
                         variant="secondary"
-                        className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-300 h-5 text-[11px]"
+                        className="bg-emerald-100 text-emerald-800 font-bold hover:bg-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-300 h-5 text-[11px]"
                       >
                         Ativo
                       </Badge>
                     ) : (
                       <Badge
                         variant="secondary"
-                        className="bg-slate-100 text-slate-800 hover:bg-slate-100 dark:bg-slate-800 dark:text-slate-300 h-5 text-[11px]"
+                        className="bg-slate-100 text-slate-800 font-bold hover:bg-slate-100 dark:bg-slate-800 dark:text-slate-300 h-5 text-[11px]"
                       >
                         Inativo
                       </Badge>
