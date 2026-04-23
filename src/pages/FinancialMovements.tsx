@@ -194,6 +194,47 @@ export default function FinancialMovements() {
   })
   const [newFilterName, setNewFilterName] = useState('')
 
+  const [savedColumns, setSavedColumns] = useState<any[]>(() => {
+    const saved = localStorage.getItem('fin_mov_saved_columns')
+    if (saved) {
+      try {
+        return JSON.parse(saved)
+      } catch (e) {
+        return []
+      }
+    }
+    return []
+  })
+  const [newColumnPresetName, setNewColumnPresetName] = useState('')
+
+  const saveCurrentColumns = () => {
+    if (!newColumnPresetName.trim()) {
+      toast.error('Informe um nome para a preferência de colunas.')
+      return
+    }
+    const newPreset = {
+      id: crypto.randomUUID(),
+      name: newColumnPresetName,
+      columns: { ...visibleColumns },
+    }
+    const updated = [...savedColumns, newPreset]
+    setSavedColumns(updated)
+    localStorage.setItem('fin_mov_saved_columns', JSON.stringify(updated))
+    setNewColumnPresetName('')
+    toast.success('Preferência de colunas salva com sucesso!')
+  }
+
+  const applySavedColumns = (sc: any) => {
+    setVisibleColumns(sc.columns)
+    toast.success(`Preferência "${sc.name}" aplicada.`)
+  }
+
+  const deleteSavedColumns = (id: string) => {
+    const updated = savedColumns.filter((c) => c.id !== id)
+    setSavedColumns(updated)
+    localStorage.setItem('fin_mov_saved_columns', JSON.stringify(updated))
+  }
+
   const [filterOptions, setFilterOptions] = useState({
     empresas: [] as { id: string; name: string }[],
     contas: [] as string[],
@@ -1213,8 +1254,8 @@ export default function FinancialMovements() {
                 </PopoverContent>
               </Popover>
 
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
+              <Popover>
+                <PopoverTrigger asChild>
                   <Button
                     variant="outline"
                     size="sm"
@@ -1223,58 +1264,116 @@ export default function FinancialMovements() {
                     <Columns className="h-3.5 w-3.5" />
                     <span className="hidden sm:inline">Colunas</span>
                   </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-64 max-h-[60vh] overflow-y-auto">
-                  <DropdownMenuLabel>Visibilidade das Colunas</DropdownMenuLabel>
-                  <div className="flex items-center justify-between px-2 pb-2 gap-1">
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      className="h-6 px-2 text-[10px] flex-1"
-                      onClick={(e) => {
-                        e.preventDefault()
-                        selectAllColumns()
-                      }}
-                    >
-                      Todos
-                    </Button>
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      className="h-6 px-2 text-[10px] flex-1"
-                      onClick={(e) => {
-                        e.preventDefault()
-                        selectNoColumns()
-                      }}
-                    >
-                      Nenhum
-                    </Button>
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      className="h-6 px-2 text-[10px] flex-1"
-                      onClick={(e) => {
-                        e.preventDefault()
-                        invertColumns()
-                      }}
-                    >
-                      Inverter
-                    </Button>
-                  </div>
-                  <DropdownMenuSeparator />
-                  {tableHeaders.map((h) => (
-                    <DropdownMenuCheckboxItem
-                      key={h.key}
-                      checked={visibleColumns[h.key] !== false}
-                      onCheckedChange={() => toggleColumn(h.key)}
-                      className="text-xs cursor-pointer"
-                      onSelect={(e) => e.preventDefault()}
-                    >
-                      {h.label}
-                    </DropdownMenuCheckboxItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
+                </PopoverTrigger>
+                <PopoverContent align="end" className="w-80 p-0 flex flex-col">
+                  <Tabs defaultValue="columns" className="w-full">
+                    <div className="px-4 pt-4 pb-2 border-b">
+                      <TabsList className="w-full grid grid-cols-2">
+                        <TabsTrigger value="columns">Colunas</TabsTrigger>
+                        <TabsTrigger value="saved">Salvas</TabsTrigger>
+                      </TabsList>
+                    </div>
+
+                    <TabsContent value="columns" className="m-0 p-4 space-y-4">
+                      <div className="flex items-center justify-between gap-1 mb-2">
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          className="h-6 px-2 text-[10px] flex-1"
+                          onClick={selectAllColumns}
+                        >
+                          Todos
+                        </Button>
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          className="h-6 px-2 text-[10px] flex-1"
+                          onClick={selectNoColumns}
+                        >
+                          Nenhum
+                        </Button>
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          className="h-6 px-2 text-[10px] flex-1"
+                          onClick={invertColumns}
+                        >
+                          Inverter
+                        </Button>
+                      </div>
+
+                      <div className="max-h-[40vh] overflow-y-auto space-y-1.5 pr-2">
+                        {tableHeaders.map((h) => (
+                          <div key={h.key} className="flex items-center space-x-2">
+                            <Checkbox
+                              id={`col-${h.key}`}
+                              checked={visibleColumns[h.key] !== false}
+                              onCheckedChange={() => toggleColumn(h.key)}
+                            />
+                            <Label
+                              htmlFor={`col-${h.key}`}
+                              className="text-xs font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                            >
+                              {h.label}
+                            </Label>
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="pt-4 border-t border-slate-200 mt-4 flex items-center gap-2">
+                        <Input
+                          value={newColumnPresetName}
+                          onChange={(e) => setNewColumnPresetName(e.target.value)}
+                          placeholder="Nome da visualização..."
+                          className="h-8 text-xs"
+                        />
+                        <Button
+                          size="sm"
+                          className="h-8 text-xs whitespace-nowrap"
+                          onClick={saveCurrentColumns}
+                        >
+                          <Save className="h-3.5 w-3.5 mr-1" />
+                          Salvar
+                        </Button>
+                      </div>
+                    </TabsContent>
+
+                    <TabsContent value="saved" className="m-0 p-4 max-h-[60vh] overflow-y-auto">
+                      <div className="space-y-2">
+                        {savedColumns.map((sc) => (
+                          <div
+                            key={sc.id}
+                            className="flex items-center justify-between p-2 border border-slate-200 bg-slate-50 hover:bg-slate-100 rounded-md text-sm transition-colors"
+                          >
+                            <span
+                              className="font-medium text-slate-700 cursor-pointer flex-1"
+                              onClick={() => applySavedColumns(sc)}
+                            >
+                              {sc.name}
+                            </span>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => deleteSavedColumns(sc.id)}
+                              className="h-6 w-6 text-slate-400 hover:text-red-600 hover:bg-red-50"
+                              title="Excluir visualização"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        ))}
+                        {savedColumns.length === 0 && (
+                          <div className="text-xs text-slate-500 text-center py-6">
+                            Nenhuma visualização salva ainda.
+                            <br />
+                            Configure as colunas e salve para acesso rápido.
+                          </div>
+                        )}
+                      </div>
+                    </TabsContent>
+                  </Tabs>
+                </PopoverContent>
+              </Popover>
 
               <div className="hidden sm:block w-px h-4 bg-slate-200 mx-1"></div>
 
