@@ -165,7 +165,11 @@ export default function FinancialMovements() {
         .from('cost_centers')
         .select('id, code, description, organization_id')
         .is('deleted_at', null),
-      supabase.from('account_mapping').select('cost_center_id, chart_account_id, organization_id'),
+      supabase
+        .from('account_mapping')
+        .select('cost_center_id, chart_account_id, organization_id')
+        .is('deleted_at', null)
+        .neq('pending_deletion', true),
     ])
     if (coa) setChartOfAccounts(coa)
     if (cc) setCostCenters(cc)
@@ -174,18 +178,26 @@ export default function FinancialMovements() {
 
   useEffect(() => {
     fetchAuxData()
-  }, [user])
+  }, [user, refreshKey])
 
   const getMappedAccountForCC = (cCustoCode: string | null, orgId: string | null) => {
     if (!cCustoCode || !orgId) return null
     const cleanCode = cCustoCode.trim().toUpperCase()
-    const cc = costCenters.find(
+
+    const matchingCcs = costCenters.filter(
       (c) => c.organization_id === orgId && (c.code || '').trim().toUpperCase() === cleanCode,
     )
-    if (!cc) return null
-    const mapping = mappings.find((m) => m.cost_center_id === cc.id)
-    if (!mapping) return null
-    return chartOfAccounts.find((coa) => coa.id === mapping.chart_account_id) || null
+
+    if (matchingCcs.length === 0) return null
+
+    for (const cc of matchingCcs) {
+      const mapping = mappings.find((m) => m.cost_center_id === cc.id)
+      if (mapping) {
+        return chartOfAccounts.find((coa) => coa.id === mapping.chart_account_id) || null
+      }
+    }
+
+    return null
   }
 
   const getMappedAccount = (row: any) => {
@@ -208,9 +220,27 @@ export default function FinancialMovements() {
     const cCustoCode = mappingRow.c_custo
 
     const cleanCode = cCustoCode ? cCustoCode.trim().toUpperCase() : null
-    let ccId = costCenters.find(
+
+    const matchingCcs = costCenters.filter(
       (c) => c.organization_id === orgId && (c.code || '').trim().toUpperCase() === cleanCode,
-    )?.id
+    )
+
+    let ccId = null
+    let existingMap = null
+
+    for (const cc of matchingCcs) {
+      const map = mappings.find((m) => m.cost_center_id === cc.id)
+      if (map) {
+        ccId = cc.id
+        existingMap = map
+        break
+      }
+    }
+
+    if (!ccId && matchingCcs.length > 0) {
+      ccId = matchingCcs[0].id
+    }
+
     if (!ccId && cCustoCode) {
       const newCcId = crypto.randomUUID()
       await supabase.from('cost_centers').insert({
@@ -223,12 +253,16 @@ export default function FinancialMovements() {
     }
 
     if (ccId) {
-      const existingMap = mappings.find((m) => m.cost_center_id === ccId)
       if (existingMap) {
         await supabase
           .from('account_mapping')
-          .update({ chart_account_id: selectedAccountId })
+          .update({
+            chart_account_id: selectedAccountId,
+            deleted_at: null,
+            pending_deletion: false,
+          })
           .eq('cost_center_id', ccId)
+          .eq('organization_id', orgId)
       } else {
         await supabase.from('account_mapping').insert({
           organization_id: orgId,
@@ -239,14 +273,21 @@ export default function FinancialMovements() {
       }
     }
 
-    await supabase
-      .from('erp_financial_movements')
-      .update({ mapped_account_id: selectedAccountId })
-      .eq('id', mappingRow.id)
+    if (cCustoCode) {
+      await supabase
+        .from('erp_financial_movements')
+        .update({ mapped_account_id: selectedAccountId })
+        .eq('organization_id', orgId)
+        .ilike('c_custo', cCustoCode.trim())
+    } else {
+      await supabase
+        .from('erp_financial_movements')
+        .update({ mapped_account_id: selectedAccountId })
+        .eq('id', mappingRow.id)
+    }
 
     toast.success('Mapeamento salvo com sucesso!')
     setMappingRow(null)
-    fetchAuxData()
     setRefreshKey((k) => k + 1)
   }
 
@@ -2321,9 +2362,19 @@ export default function FinancialMovements() {
                                     variant="ghost"
                                     className="h-6 px-2 text-[10px] text-green-600 font-semibold hover:text-green-700"
                                     onClick={async () => {
+                                      const newMappedAccount = getMappedAccountForCC(
+                                        editForm.c_custo,
+                                        row.organization_id,
+                                      )
+                                      const payload = {
+                                        ...editForm,
+                                        mapped_account_id: newMappedAccount
+                                          ? newMappedAccount.id
+                                          : null,
+                                      }
                                       const { error } = await supabase
                                         .from('erp_financial_movements')
-                                        .update(editForm)
+                                        .update(payload)
                                         .eq('id', row.id)
                                       if (!error) {
                                         setEditingId(null)
