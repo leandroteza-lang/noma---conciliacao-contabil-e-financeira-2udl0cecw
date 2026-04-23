@@ -155,16 +155,16 @@ function DraggablePopoverContent({
       onPointerUp={handlePointerUp}
       onPointerCancel={handlePointerUp}
     >
-      <div className="drag-handle bg-slate-100 hover:bg-slate-200 cursor-move flex items-center justify-between px-4 py-2 border-b border-slate-200 rounded-t-md select-none touch-none active:cursor-grabbing">
+      <div className="drag-handle bg-[#800000] hover:bg-[#800000]/90 cursor-move flex items-center justify-between px-4 py-2 border-b border-[#800000] rounded-t-md select-none touch-none active:cursor-grabbing">
         <div className="flex items-center gap-2">
-          <GripHorizontal className="h-4 w-4 text-slate-400" />
-          <span className="font-semibold text-xs text-slate-700">{title}</span>
+          <GripHorizontal className="h-4 w-4 text-white/80" />
+          <span className="font-bold text-xs text-white">{title}</span>
         </div>
         {(pos.x !== 0 || pos.y !== 0) && (
           <Button
             variant="ghost"
             size="sm"
-            className="h-6 text-[10px] px-2 text-slate-500 hover:text-slate-800"
+            className="h-6 text-[10px] px-2 text-white/80 hover:text-white hover:bg-white/20"
             onClick={(e) => {
               e.stopPropagation()
               setPos({ x: 0, y: 0 })
@@ -428,6 +428,8 @@ export default function FinancialMovements() {
   const [summaryData, setSummaryData] = useState<any[]>([])
   const [summaryDateBase, setSummaryDateBase] = useState('data_emissao')
 
+  const [filtersOpen, setFiltersOpen] = useState(false)
+  const [columnsOpen, setColumnsOpen] = useState(false)
   const [filters, setFilters] = useState<Record<string, string[]>>({})
   const [activeTab, setActiveTab] = useState('grade')
 
@@ -1803,7 +1805,7 @@ export default function FinancialMovements() {
                   />
                 </div>
                 <div className="flex flex-wrap items-center gap-3 xl:ml-auto bg-white p-1.5 rounded-md border shadow-sm">
-                  <Popover>
+                  <Popover open={filtersOpen} onOpenChange={setFiltersOpen}>
                     <PopoverTrigger asChild>
                       <Button
                         variant="outline"
@@ -1830,8 +1832,18 @@ export default function FinancialMovements() {
                         <Tabs defaultValue="filters" className="w-full">
                           <div className="px-4 pt-4 pb-2 border-b">
                             <TabsList className="w-full grid grid-cols-2">
-                              <TabsTrigger value="filters">Filtros</TabsTrigger>
-                              <TabsTrigger value="saved">Salvos</TabsTrigger>
+                              <TabsTrigger
+                                value="filters"
+                                className="data-[state=active]:bg-[#800000] data-[state=active]:text-white font-bold data-[state=active]:hover:bg-[#800000]/90 transition-colors"
+                              >
+                                Filtros
+                              </TabsTrigger>
+                              <TabsTrigger
+                                value="saved"
+                                className="data-[state=active]:bg-[#800000] data-[state=active]:text-white font-bold data-[state=active]:hover:bg-[#800000]/90 transition-colors"
+                              >
+                                Salvos
+                              </TabsTrigger>
                             </TabsList>
                           </div>
                           <TabsContent
@@ -1960,11 +1972,19 @@ export default function FinancialMovements() {
                                 value={newFilterName}
                                 onChange={(e) => setNewFilterName(e.target.value)}
                                 placeholder="Nome para salvar filtro..."
-                                className="h-8 text-xs"
+                                className="h-8 text-xs flex-1"
                               />
                               <Button
+                                variant="outline"
                                 size="sm"
                                 className="h-8 text-xs whitespace-nowrap"
+                                onClick={() => setFiltersOpen(false)}
+                              >
+                                Cancelar
+                              </Button>
+                              <Button
+                                size="sm"
+                                className="h-8 text-xs whitespace-nowrap bg-[#800000] hover:bg-[#800000]/90 text-white"
                                 onClick={saveCurrentFilter}
                               >
                                 <Save className="h-3.5 w-3.5 mr-1" />
@@ -2011,7 +2031,7 @@ export default function FinancialMovements() {
                     </PopoverContent>
                   </Popover>
 
-                  <Popover>
+                  <Popover open={columnsOpen} onOpenChange={setColumnsOpen}>
                     <PopoverTrigger asChild>
                       <Button
                         variant="outline"
@@ -2037,8 +2057,18 @@ export default function FinancialMovements() {
                         <Tabs defaultValue="columns" className="w-full">
                           <div className="px-4 pt-4 pb-2 border-b">
                             <TabsList className="w-full grid grid-cols-2">
-                              <TabsTrigger value="columns">Colunas</TabsTrigger>
-                              <TabsTrigger value="saved">Salvas</TabsTrigger>
+                              <TabsTrigger
+                                value="columns"
+                                className="data-[state=active]:bg-[#800000] data-[state=active]:text-white font-bold data-[state=active]:hover:bg-[#800000]/90 transition-colors"
+                              >
+                                Colunas
+                              </TabsTrigger>
+                              <TabsTrigger
+                                value="saved"
+                                className="data-[state=active]:bg-[#800000] data-[state=active]:text-white font-bold data-[state=active]:hover:bg-[#800000]/90 transition-colors"
+                              >
+                                Salvas
+                              </TabsTrigger>
                             </TabsList>
                           </div>
                           <TabsContent value="columns" className="m-0 p-4 flex flex-col gap-4">
@@ -2110,11 +2140,19 @@ export default function FinancialMovements() {
                                 value={newColumnPresetName}
                                 onChange={(e) => setNewColumnPresetName(e.target.value)}
                                 placeholder="Nome da visualização..."
-                                className="h-8 text-xs"
+                                className="h-8 text-xs flex-1"
                               />
                               <Button
+                                variant="outline"
                                 size="sm"
                                 className="h-8 text-xs whitespace-nowrap"
+                                onClick={() => setColumnsOpen(false)}
+                              >
+                                Cancelar
+                              </Button>
+                              <Button
+                                size="sm"
+                                className="h-8 text-xs whitespace-nowrap bg-[#800000] hover:bg-[#800000]/90 text-white"
                                 onClick={saveCurrentColumns}
                               >
                                 <Save className="h-3.5 w-3.5 mr-1" />
