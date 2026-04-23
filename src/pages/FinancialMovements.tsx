@@ -54,10 +54,18 @@ import { Progress } from '@/components/ui/progress'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Label } from '@/components/ui/label'
-import { Filter } from 'lucide-react'
+import { Filter, Check } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { MultiSelect } from '@/components/MultiSelect'
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command'
 
 const tableHeaders = [
   { label: 'Empresa', key: 'empresa' },
@@ -132,6 +140,44 @@ export default function FinancialMovements() {
     c_custos: [],
     descricoes_c_custo: [],
   })
+
+  const headerToFilterKey: Record<string, keyof typeof filters> = {
+    empresa: 'empresas',
+    conta_caixa: 'contas',
+    tipo_operacao: 'tipos',
+    status: 'status',
+    conta_caixa_destino: 'contas_destino',
+    forma_pagto: 'formas_pagto',
+    c_custo: 'c_custos',
+    descricao_c_custo: 'descricoes_c_custo',
+  }
+
+  const getOptionsForHeader = (key: string) => {
+    switch (key) {
+      case 'empresa':
+        return filterOptions.empresas.map((e) => ({ label: e.name, value: e.id }))
+      case 'conta_caixa':
+        return filterOptions.contas.map((c) => ({ label: c, value: c }))
+      case 'tipo_operacao':
+        return filterOptions.tipos.map((t) => ({ label: t, value: t }))
+      case 'status':
+        return [
+          { label: 'Pendente', value: 'Pendente' },
+          { label: 'Concluído', value: 'Concluído' },
+          { label: 'Erro', value: 'Erro' },
+        ]
+      case 'conta_caixa_destino':
+        return filterOptions.contas_destino.map((c) => ({ label: c, value: c }))
+      case 'forma_pagto':
+        return filterOptions.formas_pagto.map((f) => ({ label: f, value: f }))
+      case 'c_custo':
+        return filterOptions.c_custos.map((c) => ({ label: c, value: c }))
+      case 'descricao_c_custo':
+        return filterOptions.descricoes_c_custo.map((c) => ({ label: c, value: c }))
+      default:
+        return []
+    }
+  }
 
   const [savedFilters, setSavedFilters] = useState<any[]>(() => {
     const saved = localStorage.getItem('fin_mov_saved_filters')
@@ -1468,30 +1514,106 @@ export default function FinancialMovements() {
                 </TableHead>
                 {tableHeaders
                   .filter((h) => visibleColumns[h.key] !== false)
-                  .map((h) => (
-                    <TableHead
-                      key={h.key}
-                      className={cn(
-                        'h-8 px-2 py-1 text-sm font-bold text-black whitespace-nowrap cursor-pointer hover:bg-slate-200/50 select-none transition-colors border-r last:border-r-0',
-                        h.className,
-                      )}
-                      onClick={() => handleSort(h.key)}
-                    >
-                      <div
+                  .map((h) => {
+                    const filterKey = headerToFilterKey[h.key]
+                    const isFilterable = !!filterKey
+                    const activeFilterCount = isFilterable ? filters[filterKey]?.length || 0 : 0
+                    const options = isFilterable ? getOptionsForHeader(h.key) : []
+
+                    return (
+                      <TableHead
+                        key={h.key}
                         className={cn(
-                          'flex items-center',
-                          h.align === 'right'
-                            ? 'justify-end'
-                            : h.align === 'center'
-                              ? 'justify-center'
-                              : 'justify-start',
+                          'h-8 px-2 py-1 text-sm font-bold text-black whitespace-nowrap select-none transition-colors border-r last:border-r-0',
+                          h.className,
                         )}
                       >
-                        {h.label}
-                        {renderSortIcon(h.key)}
-                      </div>
-                    </TableHead>
-                  ))}
+                        <div
+                          className={cn(
+                            'flex items-center gap-1',
+                            h.align === 'right'
+                              ? 'justify-end'
+                              : h.align === 'center'
+                                ? 'justify-center'
+                                : 'justify-start',
+                          )}
+                        >
+                          <div
+                            className="flex items-center cursor-pointer hover:bg-slate-200/50 rounded px-1 -ml-1"
+                            onClick={() => handleSort(h.key)}
+                          >
+                            {h.label}
+                            {renderSortIcon(h.key)}
+                          </div>
+                          {isFilterable && (
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className={cn(
+                                    'h-5 w-5 rounded-sm relative',
+                                    activeFilterCount > 0
+                                      ? 'text-primary bg-primary/10'
+                                      : 'text-slate-400 hover:text-slate-600',
+                                  )}
+                                >
+                                  <Filter className="h-3 w-3" />
+                                  {activeFilterCount > 0 && (
+                                    <span className="absolute -top-0.5 -right-0.5 flex h-2 w-2 items-center justify-center rounded-full bg-primary text-[8px] text-primary-foreground"></span>
+                                  )}
+                                </Button>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-[200px] p-0" align="start">
+                                <Command>
+                                  <CommandInput placeholder="Buscar..." className="h-8 text-xs" />
+                                  <CommandList className="max-h-[200px] overflow-y-auto">
+                                    <CommandEmpty className="py-2 text-xs text-center text-slate-500">
+                                      Nenhum encontrado.
+                                    </CommandEmpty>
+                                    <CommandGroup>
+                                      {options.map((opt) => {
+                                        const isSelected = filters[filterKey]?.includes(opt.value)
+                                        return (
+                                          <CommandItem
+                                            key={opt.value}
+                                            onSelect={() => {
+                                              const current = filters[filterKey] || []
+                                              const updated = isSelected
+                                                ? current.filter((v) => v !== opt.value)
+                                                : [...current, opt.value]
+                                              setFilters((prev) => ({
+                                                ...prev,
+                                                [filterKey]: updated,
+                                              }))
+                                              setPage(0)
+                                            }}
+                                            className="text-xs cursor-pointer"
+                                          >
+                                            <div
+                                              className={cn(
+                                                'mr-2 flex h-3 w-3 items-center justify-center rounded-sm border border-primary',
+                                                isSelected
+                                                  ? 'bg-primary text-primary-foreground'
+                                                  : 'opacity-50 [&_svg]:invisible',
+                                              )}
+                                            >
+                                              <Check className="h-2 w-2" />
+                                            </div>
+                                            <span>{opt.label}</span>
+                                          </CommandItem>
+                                        )
+                                      })}
+                                    </CommandGroup>
+                                  </CommandList>
+                                </Command>
+                              </PopoverContent>
+                            </Popover>
+                          )}
+                        </div>
+                      </TableHead>
+                    )
+                  })}
                 <TableHead className="h-8 px-2 py-1 text-sm font-bold text-black whitespace-nowrap text-center border-r last:border-r-0">
                   Ações
                 </TableHead>
