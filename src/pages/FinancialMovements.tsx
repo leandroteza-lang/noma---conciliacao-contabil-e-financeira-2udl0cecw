@@ -114,19 +114,31 @@ export default function FinancialMovements() {
     conta: 'all',
     tipo: 'all',
     status: 'all',
+    conta_destino: 'all',
+    forma_pagto: 'all',
+    c_custo: 'all',
+    descricao_c_custo: 'all',
   })
 
   const [filterOptions, setFilterOptions] = useState({
     empresas: [] as { id: string; name: string }[],
     contas: [] as string[],
     tipos: [] as string[],
+    contas_destino: [] as string[],
+    formas_pagto: [] as string[],
+    c_custos: [] as string[],
+    descricoes_c_custo: [] as string[],
   })
 
   const hasActiveFilters =
     filters.empresa !== 'all' ||
     filters.conta !== 'all' ||
     filters.tipo !== 'all' ||
-    filters.status !== 'all'
+    filters.status !== 'all' ||
+    filters.conta_destino !== 'all' ||
+    filters.forma_pagto !== 'all' ||
+    filters.c_custo !== 'all' ||
+    filters.descricao_c_custo !== 'all'
 
   const clearFilters = () => {
     setFilters({
@@ -134,6 +146,10 @@ export default function FinancialMovements() {
       conta: 'all',
       tipo: 'all',
       status: 'all',
+      conta_destino: 'all',
+      forma_pagto: 'all',
+      c_custo: 'all',
+      descricao_c_custo: 'all',
     })
     setPage(0)
   }
@@ -148,7 +164,9 @@ export default function FinancialMovements() {
 
     const { data: movs } = await supabase
       .from('erp_financial_movements')
-      .select('conta_caixa, tipo_operacao')
+      .select(
+        'conta_caixa, tipo_operacao, conta_caixa_destino, forma_pagto, c_custo, descricao_c_custo',
+      )
       .is('deleted_at', null)
       .limit(5000)
 
@@ -158,11 +176,27 @@ export default function FinancialMovements() {
     const uniqueTipos = Array.from(
       new Set(movs?.map((m) => m.tipo_operacao).filter(Boolean) as string[]),
     ).sort()
+    const uniqueContasDestino = Array.from(
+      new Set(movs?.map((m) => m.conta_caixa_destino).filter(Boolean) as string[]),
+    ).sort()
+    const uniqueFormasPagto = Array.from(
+      new Set(movs?.map((m) => m.forma_pagto).filter(Boolean) as string[]),
+    ).sort()
+    const uniqueCCustos = Array.from(
+      new Set(movs?.map((m) => m.c_custo).filter(Boolean) as string[]),
+    ).sort()
+    const uniqueDescCCustos = Array.from(
+      new Set(movs?.map((m) => m.descricao_c_custo).filter(Boolean) as string[]),
+    ).sort()
 
     setFilterOptions({
       empresas: orgs || [],
       contas: uniqueContas,
       tipos: uniqueTipos,
+      contas_destino: uniqueContasDestino,
+      formas_pagto: uniqueFormasPagto,
+      c_custos: uniqueCCustos,
+      descricoes_c_custo: uniqueDescCCustos,
     })
   }
 
@@ -452,6 +486,18 @@ export default function FinancialMovements() {
     if (filters.status !== 'all') {
       query = query.eq('status', filters.status)
     }
+    if (filters.conta_destino !== 'all') {
+      query = query.eq('conta_caixa_destino', filters.conta_destino)
+    }
+    if (filters.forma_pagto !== 'all') {
+      query = query.eq('forma_pagto', filters.forma_pagto)
+    }
+    if (filters.c_custo !== 'all') {
+      query = query.eq('c_custo', filters.c_custo)
+    }
+    if (filters.descricao_c_custo !== 'all') {
+      query = query.eq('descricao_c_custo', filters.descricao_c_custo)
+    }
 
     const {
       data: result,
@@ -558,6 +604,18 @@ export default function FinancialMovements() {
     }
     if (filters.status !== 'all') {
       query = query.eq('status', filters.status)
+    }
+    if (filters.conta_destino !== 'all') {
+      query = query.eq('conta_caixa_destino', filters.conta_destino)
+    }
+    if (filters.forma_pagto !== 'all') {
+      query = query.eq('forma_pagto', filters.forma_pagto)
+    }
+    if (filters.c_custo !== 'all') {
+      query = query.eq('c_custo', filters.c_custo)
+    }
+    if (filters.descricao_c_custo !== 'all') {
+      query = query.eq('descricao_c_custo', filters.descricao_c_custo)
     }
 
     const {
@@ -860,7 +918,10 @@ export default function FinancialMovements() {
                     )}
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent align="end" className="w-80 p-4 flex flex-col gap-4">
+                <PopoverContent
+                  align="end"
+                  className="w-80 max-h-[80vh] overflow-y-auto p-4 flex flex-col gap-4"
+                >
                   <div className="flex items-center justify-between">
                     <h4 className="font-semibold text-sm">Filtros Avançados</h4>
                     {hasActiveFilters && (
@@ -939,6 +1000,98 @@ export default function FinancialMovements() {
                           {filterOptions.tipos.map((t) => (
                             <SelectItem key={t} value={t}>
                               {t}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Conta/Caixa Destino</Label>
+                      <Select
+                        value={filters.conta_destino}
+                        onValueChange={(v) => {
+                          setFilters((p) => ({ ...p, conta_destino: v }))
+                          setPage(0)
+                        }}
+                      >
+                        <SelectTrigger className="h-8 text-xs">
+                          <SelectValue placeholder="Todas as contas destino" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Todas as contas destino</SelectItem>
+                          {filterOptions.contas_destino.map((c) => (
+                            <SelectItem key={c} value={c}>
+                              {c}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Forma de Pagto</Label>
+                      <Select
+                        value={filters.forma_pagto}
+                        onValueChange={(v) => {
+                          setFilters((p) => ({ ...p, forma_pagto: v }))
+                          setPage(0)
+                        }}
+                      >
+                        <SelectTrigger className="h-8 text-xs">
+                          <SelectValue placeholder="Todas as formas de pagto" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Todas as formas de pagto</SelectItem>
+                          {filterOptions.formas_pagto.map((f) => (
+                            <SelectItem key={f} value={f}>
+                              {f}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">C.Custo</Label>
+                      <Select
+                        value={filters.c_custo}
+                        onValueChange={(v) => {
+                          setFilters((p) => ({ ...p, c_custo: v }))
+                          setPage(0)
+                        }}
+                      >
+                        <SelectTrigger className="h-8 text-xs">
+                          <SelectValue placeholder="Todos os C.Custo" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Todos os C.Custo</SelectItem>
+                          {filterOptions.c_custos.map((c) => (
+                            <SelectItem key={c} value={c}>
+                              {c}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Descrição C.Custo</Label>
+                      <Select
+                        value={filters.descricao_c_custo}
+                        onValueChange={(v) => {
+                          setFilters((p) => ({ ...p, descricao_c_custo: v }))
+                          setPage(0)
+                        }}
+                      >
+                        <SelectTrigger className="h-8 text-xs">
+                          <SelectValue placeholder="Todas as descrições" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Todas as descrições</SelectItem>
+                          {filterOptions.descricoes_c_custo.map((d) => (
+                            <SelectItem key={d} value={d}>
+                              {d}
                             </SelectItem>
                           ))}
                         </SelectContent>
