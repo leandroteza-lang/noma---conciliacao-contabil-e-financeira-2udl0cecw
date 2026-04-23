@@ -431,6 +431,29 @@ export default function FinancialMovements() {
   const [filters, setFilters] = useState<Record<string, string[]>>({})
   const [activeTab, setActiveTab] = useState('grade')
 
+  const defaultFilterOrder = ['natureza', ...tableHeaders.map((h) => h.key)]
+  const [filterOrder, setFilterOrder] = useState<string[]>(() => {
+    const saved = localStorage.getItem('fin_mov_filter_order')
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved)
+        const validKeys = new Set(defaultFilterOrder)
+        const validParsed = parsed.filter((key: string) => validKeys.has(key))
+        const missingKeys = defaultFilterOrder.filter((key) => !validParsed.includes(key))
+        return [...validParsed, ...missingKeys]
+      } catch (e) {
+        return defaultFilterOrder
+      }
+    }
+    return defaultFilterOrder
+  })
+
+  useEffect(() => {
+    localStorage.setItem('fin_mov_filter_order', JSON.stringify(filterOrder))
+  }, [filterOrder])
+
+  const [draggedFilter, setDraggedFilter] = useState<string | null>(null)
+
   const [chartOfAccounts, setChartOfAccounts] = useState<any[]>([])
   const [costCenters, setCostCenters] = useState<any[]>([])
   const [mappings, setMappings] = useState<any[]>([])
@@ -728,6 +751,7 @@ export default function FinancialMovements() {
       name: newFilterName,
       filters: { ...filters },
       search,
+      filterOrder: [...filterOrder],
     }
     const updated = [...savedFilters, newFilter]
     setSavedFilters(updated)
@@ -739,6 +763,12 @@ export default function FinancialMovements() {
   const applySavedFilter = (sf: any) => {
     setFilters(sf.filters)
     setSearch(sf.search || '')
+    if (sf.filterOrder) {
+      const validKeys = new Set(defaultFilterOrder)
+      const validParsed = sf.filterOrder.filter((key: string) => validKeys.has(key))
+      const missingKeys = defaultFilterOrder.filter((key) => !validParsed.includes(key))
+      setFilterOrder([...validParsed, ...missingKeys])
+    }
     setPage(0)
     toast.success(`Filtro "${sf.name}" aplicado.`)
   }
@@ -1822,37 +1852,108 @@ export default function FinancialMovements() {
                               )}
                             </div>
                             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                              <div className="space-y-1.5">
-                                <Label className="text-xs">Natureza</Label>
-                                <MultiSelect
-                                  title="Ambas"
-                                  options={[
-                                    { label: 'Entradas (+)', value: 'positivo' },
-                                    { label: 'Saídas (-)', value: 'negativo' },
-                                  ]}
-                                  selected={filters['natureza'] || []}
-                                  onChange={(v) => {
-                                    setFilters((p) => ({ ...p, natureza: v }))
-                                    setPage(0)
-                                  }}
-                                />
-                              </div>
-                              {tableHeaders.map((h) => (
-                                <div key={h.key} className="space-y-1.5">
-                                  <Label className="text-xs truncate block" title={h.label}>
-                                    {h.label}
-                                  </Label>
-                                  <MultiSelect
-                                    title="Todos"
-                                    options={filterOptions[h.key] || []}
-                                    selected={filters[h.key] || []}
-                                    onChange={(v) => {
-                                      setFilters((p) => ({ ...p, [h.key]: v }))
-                                      setPage(0)
+                              {filterOrder.map((key) => {
+                                if (key === 'natureza') {
+                                  return (
+                                    <div
+                                      key={key}
+                                      className={cn(
+                                        'space-y-1.5 p-1.5 -m-1.5 border border-transparent hover:border-slate-200 rounded-md cursor-grab active:cursor-grabbing transition-colors',
+                                        draggedFilter === key ? 'opacity-50 bg-slate-100' : '',
+                                      )}
+                                      draggable
+                                      onDragStart={(e) => {
+                                        setDraggedFilter(key)
+                                        e.dataTransfer.effectAllowed = 'move'
+                                      }}
+                                      onDragOver={(e) => {
+                                        e.preventDefault()
+                                        e.dataTransfer.dropEffect = 'move'
+                                      }}
+                                      onDrop={(e) => {
+                                        e.preventDefault()
+                                        if (!draggedFilter || draggedFilter === key) return
+                                        const newOrder = [...filterOrder]
+                                        const draggedIdx = newOrder.indexOf(draggedFilter)
+                                        const targetIdx = newOrder.indexOf(key)
+                                        newOrder.splice(draggedIdx, 1)
+                                        newOrder.splice(targetIdx, 0, draggedFilter)
+                                        setFilterOrder(newOrder)
+                                        setDraggedFilter(null)
+                                      }}
+                                      onDragEnd={() => setDraggedFilter(null)}
+                                    >
+                                      <Label className="text-xs flex items-center gap-1.5 text-slate-700 font-semibold">
+                                        <GripHorizontal className="h-3.5 w-3.5 text-slate-400 flex-shrink-0" />
+                                        Natureza
+                                      </Label>
+                                      <MultiSelect
+                                        title="Ambas"
+                                        options={[
+                                          { label: 'Entradas (+)', value: 'positivo' },
+                                          { label: 'Saídas (-)', value: 'negativo' },
+                                        ]}
+                                        selected={filters['natureza'] || []}
+                                        onChange={(v) => {
+                                          setFilters((p) => ({ ...p, natureza: v }))
+                                          setPage(0)
+                                        }}
+                                      />
+                                    </div>
+                                  )
+                                }
+
+                                const h = tableHeaders.find((th) => th.key === key)
+                                if (!h) return null
+
+                                return (
+                                  <div
+                                    key={h.key}
+                                    className={cn(
+                                      'space-y-1.5 p-1.5 -m-1.5 border border-transparent hover:border-slate-200 rounded-md cursor-grab active:cursor-grabbing transition-colors',
+                                      draggedFilter === h.key ? 'opacity-50 bg-slate-100' : '',
+                                    )}
+                                    draggable
+                                    onDragStart={(e) => {
+                                      setDraggedFilter(h.key)
+                                      e.dataTransfer.effectAllowed = 'move'
                                     }}
-                                  />
-                                </div>
-                              ))}
+                                    onDragOver={(e) => {
+                                      e.preventDefault()
+                                      e.dataTransfer.dropEffect = 'move'
+                                    }}
+                                    onDrop={(e) => {
+                                      e.preventDefault()
+                                      if (!draggedFilter || draggedFilter === h.key) return
+                                      const newOrder = [...filterOrder]
+                                      const draggedIdx = newOrder.indexOf(draggedFilter)
+                                      const targetIdx = newOrder.indexOf(h.key)
+                                      newOrder.splice(draggedIdx, 1)
+                                      newOrder.splice(targetIdx, 0, draggedFilter)
+                                      setFilterOrder(newOrder)
+                                      setDraggedFilter(null)
+                                    }}
+                                    onDragEnd={() => setDraggedFilter(null)}
+                                  >
+                                    <Label
+                                      className="text-xs truncate flex items-center gap-1.5 text-slate-700 font-semibold"
+                                      title={h.label}
+                                    >
+                                      <GripHorizontal className="h-3.5 w-3.5 text-slate-400 flex-shrink-0" />
+                                      {h.label}
+                                    </Label>
+                                    <MultiSelect
+                                      title="Todos"
+                                      options={filterOptions[h.key] || []}
+                                      selected={filters[h.key] || []}
+                                      onChange={(v) => {
+                                        setFilters((p) => ({ ...p, [h.key]: v }))
+                                        setPage(0)
+                                      }}
+                                    />
+                                  </div>
+                                )
+                              })}
                             </div>
                             <div className="pt-4 border-t border-slate-200 flex items-center gap-2">
                               <Input
