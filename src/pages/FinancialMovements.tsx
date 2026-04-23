@@ -30,6 +30,9 @@ import {
   Columns,
   Trash2,
   Save,
+  EyeOff,
+  Eye,
+  MoreVertical,
 } from 'lucide-react'
 import { Checkbox } from '@/components/ui/checkbox'
 import { toast } from 'sonner'
@@ -48,6 +51,10 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuItem,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
 } from '@/components/ui/dropdown-menu'
 import { ImportErpFinancialModal } from '@/components/ImportErpFinancialModal'
 import { Progress } from '@/components/ui/progress'
@@ -1428,86 +1435,132 @@ export default function FinancialMovements() {
                           h.className,
                         )}
                       >
-                        <div
-                          className={cn(
-                            'flex items-center gap-1',
-                            h.align === 'right'
-                              ? 'justify-end'
-                              : h.align === 'center'
-                                ? 'justify-center'
-                                : 'justify-start',
-                          )}
-                        >
+                        <div className="flex items-center justify-between gap-1 w-full">
                           <div
-                            className="flex items-center cursor-pointer hover:bg-slate-200/50 rounded px-1 -ml-1"
+                            className={cn(
+                              'flex items-center cursor-pointer hover:bg-slate-200/50 rounded px-1 -ml-1 flex-1',
+                              h.align === 'right'
+                                ? 'justify-end'
+                                : h.align === 'center'
+                                  ? 'justify-center'
+                                  : 'justify-start',
+                            )}
                             onClick={() => handleSort(h.key)}
                           >
                             {h.label}
                             {renderSortIcon(h.key)}
                           </div>
-                          <Popover>
-                            <PopoverTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className={cn(
-                                  'h-5 w-5 rounded-sm relative',
-                                  activeFilterCount > 0
-                                    ? 'text-primary bg-primary/10'
-                                    : 'text-slate-400 hover:text-slate-600',
-                                )}
-                              >
-                                <Filter className="h-3 w-3" />
-                                {activeFilterCount > 0 && (
-                                  <span className="absolute -top-0.5 -right-0.5 flex h-2 w-2 items-center justify-center rounded-full bg-primary text-[8px] text-primary-foreground"></span>
-                                )}
-                              </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-[200px] p-0" align="start">
-                              <Command>
-                                <CommandInput placeholder="Buscar..." className="h-8 text-xs" />
-                                <CommandList className="max-h-[200px] overflow-y-auto">
-                                  <CommandEmpty className="py-2 text-xs text-center text-slate-500">
-                                    Nenhum encontrado.
-                                  </CommandEmpty>
-                                  <CommandGroup>
-                                    {options.map((opt) => {
-                                      const isSelected = filters[h.key]?.includes(opt.value)
-                                      return (
-                                        <CommandItem
-                                          key={opt.value}
-                                          onSelect={() => {
-                                            const current = filters[h.key] || []
-                                            const updated = isSelected
-                                              ? current.filter((v) => v !== opt.value)
-                                              : [...current, opt.value]
-                                            setFilters((prev) => ({
-                                              ...prev,
-                                              [h.key]: updated,
-                                            }))
-                                            setPage(0)
-                                          }}
-                                          className="text-xs cursor-pointer"
-                                        >
-                                          <div
-                                            className={cn(
-                                              'mr-2 flex h-3 w-3 items-center justify-center rounded-sm border border-primary',
-                                              isSelected
-                                                ? 'bg-primary text-primary-foreground'
-                                                : 'opacity-50 [&_svg]:invisible',
-                                            )}
+                          <div className="flex items-center flex-shrink-0">
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className={cn(
+                                    'h-5 w-5 rounded-sm relative',
+                                    activeFilterCount > 0
+                                      ? 'text-primary bg-primary/10'
+                                      : 'text-slate-400 hover:text-slate-600',
+                                  )}
+                                  title="Filtrar coluna"
+                                >
+                                  <Filter className="h-3 w-3" />
+                                  {activeFilterCount > 0 && (
+                                    <span className="absolute -top-0.5 -right-0.5 flex h-2 w-2 items-center justify-center rounded-full bg-primary text-[8px] text-primary-foreground"></span>
+                                  )}
+                                </Button>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-[200px] p-0" align="start">
+                                <Command>
+                                  <CommandInput placeholder="Buscar..." className="h-8 text-xs" />
+                                  <CommandList className="max-h-[200px] overflow-y-auto">
+                                    <CommandEmpty className="py-2 text-xs text-center text-slate-500">
+                                      Nenhum encontrado.
+                                    </CommandEmpty>
+                                    <CommandGroup>
+                                      {options.map((opt) => {
+                                        const isSelected = filters[h.key]?.includes(opt.value)
+                                        return (
+                                          <CommandItem
+                                            key={opt.value}
+                                            onSelect={() => {
+                                              const current = filters[h.key] || []
+                                              const updated = isSelected
+                                                ? current.filter((v) => v !== opt.value)
+                                                : [...current, opt.value]
+                                              setFilters((prev) => ({
+                                                ...prev,
+                                                [h.key]: updated,
+                                              }))
+                                              setPage(0)
+                                            }}
+                                            className="text-xs cursor-pointer"
                                           >
-                                            <Check className="h-2 w-2" />
-                                          </div>
-                                          <span>{opt.label}</span>
-                                        </CommandItem>
-                                      )
-                                    })}
-                                  </CommandGroup>
-                                </CommandList>
-                              </Command>
-                            </PopoverContent>
-                          </Popover>
+                                            <div
+                                              className={cn(
+                                                'mr-2 flex h-3 w-3 items-center justify-center rounded-sm border border-primary',
+                                                isSelected
+                                                  ? 'bg-primary text-primary-foreground'
+                                                  : 'opacity-50 [&_svg]:invisible',
+                                              )}
+                                            >
+                                              <Check className="h-2 w-2" />
+                                            </div>
+                                            <span>{opt.label}</span>
+                                          </CommandItem>
+                                        )
+                                      })}
+                                    </CommandGroup>
+                                  </CommandList>
+                                </Command>
+                              </PopoverContent>
+                            </Popover>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-5 w-5 rounded-sm text-slate-400 hover:text-slate-600 relative ml-0.5"
+                                  title="Opções de visualização"
+                                >
+                                  <MoreVertical className="h-3 w-3" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="start" className="w-48">
+                                <DropdownMenuItem
+                                  onClick={() => toggleColumn(h.key)}
+                                  className="text-xs cursor-pointer"
+                                >
+                                  <EyeOff className="mr-2 h-3.5 w-3.5 text-slate-500" />
+                                  <span>Ocultar coluna</span>
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuSub>
+                                  <DropdownMenuSubTrigger className="text-xs cursor-pointer">
+                                    <Columns className="mr-2 h-3.5 w-3.5 text-slate-500" />
+                                    <span>Reexibir colunas</span>
+                                  </DropdownMenuSubTrigger>
+                                  <DropdownMenuSubContent className="w-56 max-h-[300px] overflow-y-auto">
+                                    {tableHeaders.map((col) => (
+                                      <DropdownMenuCheckboxItem
+                                        key={col.key}
+                                        className="text-xs cursor-pointer"
+                                        checked={visibleColumns[col.key] !== false}
+                                        onCheckedChange={(checked) => {
+                                          setVisibleColumns((prev) => ({
+                                            ...prev,
+                                            [col.key]: checked,
+                                          }))
+                                        }}
+                                      >
+                                        {col.label}
+                                      </DropdownMenuCheckboxItem>
+                                    ))}
+                                  </DropdownMenuSubContent>
+                                </DropdownMenuSub>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
                         </div>
                       </TableHead>
                     )
