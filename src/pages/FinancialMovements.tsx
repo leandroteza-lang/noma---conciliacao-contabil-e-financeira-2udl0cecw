@@ -476,7 +476,15 @@ export default function FinancialMovements() {
     options['empresa'] = (orgs || []).map((e) => ({ label: e.name, value: e.id }))
 
     tableHeaders.forEach((h) => {
-      if (h.key === 'empresa' || h.key === 'prontidao') return
+      if (h.key === 'empresa') return
+      if (h.key === 'prontidao') {
+        options['prontidao'] = [
+          { label: 'Mapeado', value: 'Mapeado' },
+          { label: 'Pendente', value: 'Pendente' },
+          { label: 'Incompleto', value: 'Incompleto' },
+        ]
+        return
+      }
       if (h.key === 'status') {
         options['status'] = [
           { label: 'Pendente', value: 'Pendente' },
@@ -736,8 +744,46 @@ export default function FinancialMovements() {
       )
     Object.entries(filters).forEach(([key, values]) => {
       if (values && values.length > 0) {
-        if (key === 'empresa') q = q.in('organization_id', values)
-        else q = q.in(key, values)
+        if (key === 'empresa') {
+          q = q.in('organization_id', values)
+        } else if (key === 'prontidao') {
+          const hasIncompleto = values.includes('Incompleto')
+          const hasMapeado = values.includes('Mapeado')
+          const hasPendente = values.includes('Pendente')
+
+          const allMappedCodes = Array.from(
+            new Set(
+              costCenters
+                .filter((cc) => mappings.some((m) => m.cost_center_id === cc.id))
+                .map((cc) => cc.code?.trim())
+                .filter(Boolean),
+            ),
+          )
+          const inList =
+            allMappedCodes.length > 0
+              ? `(${allMappedCodes.map((c) => `"${c?.replace(/"/g, '""')}"`).join(',')})`
+              : '("@@NONE@@")'
+
+          const orParts: string[] = []
+
+          if (hasIncompleto) {
+            orParts.push('data_emissao.is.null', 'c_custo.is.null', 'valor_liquido.is.null')
+          }
+          if (hasMapeado) {
+            orParts.push('mapped_account_id.not.is.null', `c_custo.in.${inList}`)
+          }
+          if (hasPendente) {
+            orParts.push(
+              `and(mapped_account_id.is.null,c_custo.not.in.${inList},data_emissao.not.is.null,c_custo.not.is.null,valor_liquido.not.is.null)`,
+            )
+          }
+
+          if (orParts.length > 0) {
+            q = q.or(orParts.join(','))
+          }
+        } else {
+          q = q.in(key, values)
+        }
       }
     })
     return q
@@ -747,6 +793,7 @@ export default function FinancialMovements() {
     if (!user) return
     let orderCol = sortColumn
     if (sortColumn === 'empresa') orderCol = 'organization_id'
+    if (sortColumn === 'prontidao') orderCol = 'data_emissao'
 
     let query = supabase
       .from('erp_financial_movements')
@@ -768,7 +815,43 @@ export default function FinancialMovements() {
     ])
 
     if (!error && result) {
-      setData(result)
+      let finalData = result
+
+      if (filters['prontidao'] && filters['prontidao'].length > 0) {
+        finalData = finalData.filter((row) => {
+          const missing =
+            !row.data_emissao ||
+            !row.c_custo ||
+            row.valor_liquido === null ||
+            row.valor_liquido === undefined
+          let statusText = 'Pendente'
+          if (missing) statusText = 'Incompleto'
+          else if (getMappedAccount(row)) statusText = 'Mapeado'
+          return filters['prontidao'].includes(statusText)
+        })
+      }
+
+      if (sortColumn === 'prontidao') {
+        finalData.sort((a, b) => {
+          const getStatus = (row: any) => {
+            const missing =
+              !row.data_emissao ||
+              !row.c_custo ||
+              row.valor_liquido === null ||
+              row.valor_liquido === undefined
+            if (missing) return 2
+            if (getMappedAccount(row)) return 0
+            return 1
+          }
+          const statA = getStatus(a)
+          const statB = getStatus(b)
+          if (statA < statB) return sortDirection === 'asc' ? -1 : 1
+          if (statA > statB) return sortDirection === 'asc' ? 1 : -1
+          return 0
+        })
+      }
+
+      setData(finalData)
       setTotalCount(count || 0)
     }
 
@@ -849,6 +932,7 @@ export default function FinancialMovements() {
     setLoading(true)
     let orderCol = sortColumn
     if (sortColumn === 'empresa') orderCol = 'organization_id'
+    if (sortColumn === 'prontidao') orderCol = 'data_emissao'
 
     let query = supabase
       .from('erp_financial_movements')
@@ -870,7 +954,43 @@ export default function FinancialMovements() {
     ])
 
     if (!error && result) {
-      setData(result)
+      let finalData = result
+
+      if (filters['prontidao'] && filters['prontidao'].length > 0) {
+        finalData = finalData.filter((row) => {
+          const missing =
+            !row.data_emissao ||
+            !row.c_custo ||
+            row.valor_liquido === null ||
+            row.valor_liquido === undefined
+          let statusText = 'Pendente'
+          if (missing) statusText = 'Incompleto'
+          else if (getMappedAccount(row)) statusText = 'Mapeado'
+          return filters['prontidao'].includes(statusText)
+        })
+      }
+
+      if (sortColumn === 'prontidao') {
+        finalData.sort((a, b) => {
+          const getStatus = (row: any) => {
+            const missing =
+              !row.data_emissao ||
+              !row.c_custo ||
+              row.valor_liquido === null ||
+              row.valor_liquido === undefined
+            if (missing) return 2
+            if (getMappedAccount(row)) return 0
+            return 1
+          }
+          const statA = getStatus(a)
+          const statB = getStatus(b)
+          if (statA < statB) return sortDirection === 'asc' ? -1 : 1
+          if (statA > statB) return sortDirection === 'asc' ? 1 : -1
+          return 0
+        })
+      }
+
+      setData(finalData)
       setTotalCount(count || 0)
     }
 
@@ -1344,6 +1464,18 @@ export default function FinancialMovements() {
                                 selected={filters['c_custo'] || []}
                                 onChange={(v) => {
                                   setFilters((p) => ({ ...p, c_custo: v }))
+                                  setPage(0)
+                                }}
+                              />
+                            </div>
+                            <div className="space-y-1.5">
+                              <Label className="text-xs">Prontidão</Label>
+                              <MultiSelect
+                                title="Todos"
+                                options={filterOptions['prontidao'] || []}
+                                selected={filters['prontidao'] || []}
+                                onChange={(v) => {
+                                  setFilters((p) => ({ ...p, prontidao: v }))
                                   setPage(0)
                                 }}
                               />
