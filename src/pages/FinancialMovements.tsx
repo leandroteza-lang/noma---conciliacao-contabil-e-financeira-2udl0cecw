@@ -93,13 +93,57 @@ const formatMonthYear = (dateStr: string) => {
 
 function SummaryTable({
   data,
-  primaryKeyFn,
-  secondaryKeyFn,
+  type,
 }: {
   data: any[]
-  primaryKeyFn: (r: any) => string
-  secondaryKeyFn: (r: any) => string
+  type: 'month_account' | 'account_month' | 'month_cost' | 'cost_month'
 }) {
+  let col1Label = ''
+  let col2Label = ''
+  let primaryKeyFn: (r: any) => string
+  let secondaryKeyFn: (r: any) => string
+
+  const formatAccount = (r: any) => {
+    const code = r.conta_caixa || ''
+    const name = r.nome_caixa || ''
+    if (code && name) return `${code} - ${name}`
+    return code || name || 'Sem Conta/Caixa'
+  }
+
+  const formatCostCenter = (r: any) => {
+    const code = r.c_custo || ''
+    const name = r.descricao_c_custo || ''
+    if (code && name) return `${code} - ${name}`
+    return code || name || 'Sem C. Custo'
+  }
+
+  switch (type) {
+    case 'month_account':
+      col1Label = 'Mês/Ano'
+      col2Label = 'Caixa/Banco'
+      primaryKeyFn = formatMonthYear
+      secondaryKeyFn = formatAccount
+      break
+    case 'account_month':
+      col1Label = 'Caixa/Banco'
+      col2Label = 'Mês/Ano'
+      primaryKeyFn = formatAccount
+      secondaryKeyFn = formatMonthYear
+      break
+    case 'month_cost':
+      col1Label = 'Mês/Ano'
+      col2Label = 'Centro de Custo'
+      primaryKeyFn = formatMonthYear
+      secondaryKeyFn = formatCostCenter
+      break
+    case 'cost_month':
+      col1Label = 'Centro de Custo'
+      col2Label = 'Mês/Ano'
+      primaryKeyFn = formatCostCenter
+      secondaryKeyFn = formatMonthYear
+      break
+  }
+
   const aggregated = useMemo(() => {
     const map = new Map<
       string,
@@ -166,43 +210,59 @@ function SummaryTable({
   return (
     <Table className="w-full text-xs">
       <TableHeader className="sticky top-0 z-10 bg-slate-50 shadow-sm border-b">
-        <TableRow>
-          <TableHead className="w-[40%] font-bold text-slate-800">Agrupamento</TableHead>
-          <TableHead className="text-right font-bold text-emerald-600">Entradas (+)</TableHead>
-          <TableHead className="text-right font-bold text-rose-600">Saídas (-)</TableHead>
-          <TableHead className="text-right font-bold text-blue-600">Diferença</TableHead>
+        <TableRow disableZebra>
+          <TableHead className="w-[20%] font-bold text-slate-800 border-r px-2 py-1 h-8">
+            {col1Label}
+          </TableHead>
+          <TableHead className="w-[35%] font-bold text-slate-800 border-r px-2 py-1 h-8">
+            {col2Label}
+          </TableHead>
+          <TableHead className="w-[15%] text-right font-bold text-emerald-700 border-r px-2 py-1 h-8">
+            Entradas (+)
+          </TableHead>
+          <TableHead className="w-[15%] text-right font-bold text-rose-700 border-r px-2 py-1 h-8">
+            Saídas (-)
+          </TableHead>
+          <TableHead className="w-[15%] text-right font-bold text-blue-700 px-2 py-1 h-8">
+            Diferença
+          </TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
         {aggregated.map((group) => (
           <React.Fragment key={group.name}>
-            <TableRow className="bg-slate-100 font-bold hover:bg-slate-200/50 transition-colors border-b-slate-200">
-              <TableCell className="py-2.5">{group.name}</TableCell>
-              <TableCell className="text-right text-emerald-700 py-2.5">
+            <TableRow disableZebra className="bg-slate-200/60 font-bold border-b border-slate-300">
+              <TableCell className="px-2 py-1 border-r text-slate-900">{group.name}</TableCell>
+              <TableCell className="px-2 py-1 border-r text-slate-500 font-medium">
+                Totais do agrupamento
+              </TableCell>
+              <TableCell className="px-2 py-1 text-right text-emerald-700 border-r">
                 {formatVal(group.pos)}
               </TableCell>
-              <TableCell className="text-right text-rose-700 py-2.5">
+              <TableCell className="px-2 py-1 text-right text-rose-700 border-r">
                 {formatVal(group.neg)}
               </TableCell>
-              <TableCell className="text-right text-blue-700 py-2.5">
+              <TableCell className="px-2 py-1 text-right text-blue-800">
                 {formatVal(group.diff)}
               </TableCell>
             </TableRow>
             {group.items.map((item) => (
               <TableRow
+                disableZebra
                 key={item.name}
-                className="border-b border-slate-100 last:border-0 hover:bg-slate-50 transition-colors"
+                className="border-b border-slate-200 last:border-0 hover:bg-slate-50 transition-colors"
               >
-                <TableCell className="pl-6 py-2 text-slate-600 before:content-['└'] before:mr-2 before:text-slate-400 font-medium">
+                <TableCell className="px-2 py-1 border-r text-slate-400"></TableCell>
+                <TableCell className="px-2 py-1 border-r text-slate-700 font-medium">
                   {item.name}
                 </TableCell>
-                <TableCell className="text-right py-2 text-emerald-600/80">
+                <TableCell className="px-2 py-1 text-right text-emerald-600/90 border-r">
                   {formatVal(item.pos)}
                 </TableCell>
-                <TableCell className="text-right py-2 text-rose-600/80">
+                <TableCell className="px-2 py-1 text-right text-rose-600/90 border-r">
                   {formatVal(item.neg)}
                 </TableCell>
-                <TableCell className="text-right font-semibold py-2 text-slate-700">
+                <TableCell className="px-2 py-1 text-right font-semibold text-slate-700">
                   {formatVal(item.diff)}
                 </TableCell>
               </TableRow>
@@ -210,8 +270,8 @@ function SummaryTable({
           </React.Fragment>
         ))}
         {aggregated.length === 0 && (
-          <TableRow>
-            <TableCell colSpan={4} className="text-center py-8 text-slate-500">
+          <TableRow disableZebra>
+            <TableCell colSpan={5} className="text-center py-4 text-slate-500">
               Nenhum dado para resumir.
             </TableCell>
           </TableRow>
@@ -943,7 +1003,7 @@ export default function FinancialMovements() {
     let totalsQuery = supabase
       .from('erp_financial_movements')
       .select(
-        'valor, valor_liquido, data_emissao, conta_caixa, c_custo, organization_id, mapped_account_id',
+        'valor, valor_liquido, data_emissao, conta_caixa, nome_caixa, c_custo, descricao_c_custo, organization_id, mapped_account_id',
       )
       .is('deleted_at', null)
       .limit(100000)
@@ -1103,7 +1163,7 @@ export default function FinancialMovements() {
     let totalsQuery = supabase
       .from('erp_financial_movements')
       .select(
-        'valor, valor_liquido, data_emissao, conta_caixa, c_custo, organization_id, mapped_account_id',
+        'valor, valor_liquido, data_emissao, conta_caixa, nome_caixa, c_custo, descricao_c_custo, organization_id, mapped_account_id',
       )
       .is('deleted_at', null)
       .limit(100000)
@@ -2818,11 +2878,7 @@ export default function FinancialMovements() {
               </CardHeader>
               <CardContent className="p-0">
                 <div className="h-[500px] overflow-y-auto custom-scrollbar">
-                  <SummaryTable
-                    data={summaryData}
-                    primaryKeyFn={(r) => formatMonthYear(r.data_emissao)}
-                    secondaryKeyFn={(r) => r.conta_caixa || 'Sem Conta'}
-                  />
+                  <SummaryTable data={summaryData} type="month_account" />
                 </div>
               </CardContent>
             </Card>
@@ -2835,11 +2891,7 @@ export default function FinancialMovements() {
               </CardHeader>
               <CardContent className="p-0">
                 <div className="h-[500px] overflow-y-auto custom-scrollbar">
-                  <SummaryTable
-                    data={summaryData}
-                    primaryKeyFn={(r) => r.conta_caixa || 'Sem Conta'}
-                    secondaryKeyFn={(r) => formatMonthYear(r.data_emissao)}
-                  />
+                  <SummaryTable data={summaryData} type="account_month" />
                 </div>
               </CardContent>
             </Card>
@@ -2850,11 +2902,7 @@ export default function FinancialMovements() {
               </CardHeader>
               <CardContent className="p-0">
                 <div className="h-[500px] overflow-y-auto custom-scrollbar">
-                  <SummaryTable
-                    data={summaryData}
-                    primaryKeyFn={(r) => formatMonthYear(r.data_emissao)}
-                    secondaryKeyFn={(r) => r.c_custo || 'Sem C. Custo'}
-                  />
+                  <SummaryTable data={summaryData} type="month_cost" />
                 </div>
               </CardContent>
             </Card>
@@ -2865,11 +2913,7 @@ export default function FinancialMovements() {
               </CardHeader>
               <CardContent className="p-0">
                 <div className="h-[500px] overflow-y-auto custom-scrollbar">
-                  <SummaryTable
-                    data={summaryData}
-                    primaryKeyFn={(r) => r.c_custo || 'Sem C. Custo'}
-                    secondaryKeyFn={(r) => formatMonthYear(r.data_emissao)}
-                  />
+                  <SummaryTable data={summaryData} type="cost_month" />
                 </div>
               </CardContent>
             </Card>
