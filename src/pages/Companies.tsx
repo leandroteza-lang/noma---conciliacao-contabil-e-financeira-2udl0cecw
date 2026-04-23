@@ -844,11 +844,6 @@ export default function Companies() {
                         </TableCell>
                         <TableCell className="py-0.5 px-2 font-bold text-[11px]">
                           <div className="flex items-center gap-2">
-                            <div
-                              className={`h-6 w-6 rounded-full flex items-center justify-center shrink-0 text-[9px] font-bold ${isEven ? 'bg-white text-[#800000]' : 'bg-black text-white'}`}
-                            >
-                              {org.name.substring(0, 2).toUpperCase()}
-                            </div>
                             <div>
                               <p
                                 className={`text-[11px] font-bold ${isEven ? 'text-white' : 'text-black'}`}
