@@ -1709,7 +1709,7 @@ export default function FinancialMovements() {
                     </PopoverTrigger>
                     <PopoverContent
                       align="end"
-                      className="w-[calc(100vw-2rem)] sm:w-[600px] p-0 flex flex-col"
+                      className="w-[calc(100vw-2rem)] sm:w-[600px] md:w-[800px] lg:w-[1000px] p-0 flex flex-col"
                     >
                       <Tabs defaultValue="filters" className="w-full">
                         <div className="px-4 pt-4 pb-2 border-b">
@@ -1735,31 +1735,7 @@ export default function FinancialMovements() {
                               </Button>
                             )}
                           </div>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div className="space-y-1.5">
-                              <Label className="text-xs">Empresa</Label>
-                              <MultiSelect
-                                title="Todas as empresas"
-                                options={filterOptions['empresa'] || []}
-                                selected={filters['empresa'] || []}
-                                onChange={(v) => {
-                                  setFilters((p) => ({ ...p, empresa: v }))
-                                  setPage(0)
-                                }}
-                              />
-                            </div>
-                            <div className="space-y-1.5">
-                              <Label className="text-xs">Conta/Caixa</Label>
-                              <MultiSelect
-                                title="Todas as contas"
-                                options={filterOptions['conta_caixa'] || []}
-                                selected={filters['conta_caixa'] || []}
-                                onChange={(v) => {
-                                  setFilters((p) => ({ ...p, conta_caixa: v }))
-                                  setPage(0)
-                                }}
-                              />
-                            </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                             <div className="space-y-1.5">
                               <Label className="text-xs">Natureza</Label>
                               <MultiSelect
@@ -1775,54 +1751,22 @@ export default function FinancialMovements() {
                                 }}
                               />
                             </div>
-                            <div className="space-y-1.5">
-                              <Label className="text-xs">Tipo de Operação</Label>
-                              <MultiSelect
-                                title="Todos os tipos"
-                                options={filterOptions['tipo_operacao'] || []}
-                                selected={filters['tipo_operacao'] || []}
-                                onChange={(v) => {
-                                  setFilters((p) => ({ ...p, tipo_operacao: v }))
-                                  setPage(0)
-                                }}
-                              />
-                            </div>
-                            <div className="space-y-1.5">
-                              <Label className="text-xs">C.Custo</Label>
-                              <MultiSelect
-                                title="Todos os C.Custo"
-                                options={filterOptions['c_custo'] || []}
-                                selected={filters['c_custo'] || []}
-                                onChange={(v) => {
-                                  setFilters((p) => ({ ...p, c_custo: v }))
-                                  setPage(0)
-                                }}
-                              />
-                            </div>
-                            <div className="space-y-1.5">
-                              <Label className="text-xs">Prontidão</Label>
-                              <MultiSelect
-                                title="Todos"
-                                options={filterOptions['prontidao'] || []}
-                                selected={filters['prontidao'] || []}
-                                onChange={(v) => {
-                                  setFilters((p) => ({ ...p, prontidao: v }))
-                                  setPage(0)
-                                }}
-                              />
-                            </div>
-                            <div className="space-y-1.5">
-                              <Label className="text-xs">Status</Label>
-                              <MultiSelect
-                                title="Todos os status"
-                                options={filterOptions['status'] || []}
-                                selected={filters['status'] || []}
-                                onChange={(v) => {
-                                  setFilters((p) => ({ ...p, status: v }))
-                                  setPage(0)
-                                }}
-                              />
-                            </div>
+                            {tableHeaders.map((h) => (
+                              <div key={h.key} className="space-y-1.5">
+                                <Label className="text-xs truncate block" title={h.label}>
+                                  {h.label}
+                                </Label>
+                                <MultiSelect
+                                  title="Todos"
+                                  options={filterOptions[h.key] || []}
+                                  selected={filters[h.key] || []}
+                                  onChange={(v) => {
+                                    setFilters((p) => ({ ...p, [h.key]: v }))
+                                    setPage(0)
+                                  }}
+                                />
+                              </div>
+                            ))}
                           </div>
                           <div className="pt-4 border-t border-slate-200 flex items-center gap-2">
                             <Input
