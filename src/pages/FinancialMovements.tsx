@@ -187,6 +187,7 @@ export default function FinancialMovements() {
       id: crypto.randomUUID(),
       name: newColumnPresetName,
       columns: { ...visibleColumns },
+      order: [...columnOrder],
     }
     const updated = [...savedColumns, newPreset]
     setSavedColumns(updated)
@@ -197,6 +198,14 @@ export default function FinancialMovements() {
 
   const applySavedColumns = (sc: any) => {
     setVisibleColumns(sc.columns)
+    if (sc.order) {
+      const validKeys = new Set(defaultColumnOrder)
+      const validParsed = sc.order.filter((key: string) => validKeys.has(key))
+      const missingKeys = defaultColumnOrder.filter((key) => !validParsed.includes(key))
+      setColumnOrder([...validParsed, ...missingKeys])
+    } else {
+      setColumnOrder(defaultColumnOrder)
+    }
     toast.success(`Preferência "${sc.name}" aplicada.`)
   }
 
@@ -367,6 +376,36 @@ export default function FinancialMovements() {
         {},
       ),
     )
+  }
+
+  const defaultColumnOrder = tableHeaders.map((h) => h.key)
+
+  const [columnOrder, setColumnOrder] = useState<string[]>(() => {
+    const saved = localStorage.getItem('fin_mov_column_order')
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved)
+        const validKeys = new Set(defaultColumnOrder)
+        const validParsed = parsed.filter((key: string) => validKeys.has(key))
+        const missingKeys = defaultColumnOrder.filter((key) => !validParsed.includes(key))
+        return [...validParsed, ...missingKeys]
+      } catch (e) {
+        return defaultColumnOrder
+      }
+    }
+    return defaultColumnOrder
+  })
+
+  useEffect(() => {
+    localStorage.setItem('fin_mov_column_order', JSON.stringify(columnOrder))
+  }, [columnOrder])
+
+  const [draggedColumn, setDraggedColumn] = useState<string | null>(null)
+
+  const resetColumns = () => {
+    setVisibleColumns(defaultVisibleColumns)
+    setColumnOrder(defaultColumnOrder)
+    toast.success('Visualização e ordem padrão restauradas.')
   }
 
   const formatTime = (seconds: number) => {
@@ -1218,9 +1257,11 @@ export default function FinancialMovements() {
                     className="h-7 text-xs flex items-center gap-1.5 px-2 relative"
                   >
                     <Columns className="h-3.5 w-3.5" />
-                    <span className="hidden sm:inline">Colunas</span>
+                    <span className="hidden sm:inline">
+                      Colunas {hiddenColumnsCount > 0 ? `(${hiddenColumnsCount})` : ''}
+                    </span>
                     {hiddenColumnsCount > 0 && (
-                      <span className="absolute -top-1 -right-1 flex h-3 w-3 items-center justify-center rounded-full bg-primary text-[8px] text-primary-foreground">
+                      <span className="absolute -top-1 -right-1 flex h-3 w-3 items-center justify-center rounded-full bg-primary text-[8px] text-primary-foreground sm:hidden">
                         {hiddenColumnsCount}
                       </span>
                     )}
@@ -1238,11 +1279,12 @@ export default function FinancialMovements() {
                     <TabsContent value="columns" className="m-0 p-4 space-y-4">
                       <div className="flex items-center justify-between mb-2">
                         <h4 className="font-semibold text-sm">Gerenciar Colunas</h4>
-                        {hiddenColumnsCount > 0 && (
+                        {(hiddenColumnsCount > 0 ||
+                          JSON.stringify(columnOrder) !== JSON.stringify(defaultColumnOrder)) && (
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={selectAllColumns}
+                            onClick={resetColumns}
                             className="h-6 text-xs px-2 text-slate-500 hover:text-slate-800"
                           >
                             Restaurar padrão
@@ -1277,21 +1319,24 @@ export default function FinancialMovements() {
                       </div>
 
                       <div className="max-h-[40vh] overflow-y-auto space-y-1.5 pr-2">
-                        {tableHeaders.map((h) => (
-                          <div key={h.key} className="flex items-center space-x-2">
-                            <Checkbox
-                              id={`col-${h.key}`}
-                              checked={visibleColumns[h.key] !== false}
-                              onCheckedChange={() => toggleColumn(h.key)}
-                            />
-                            <Label
-                              htmlFor={`col-${h.key}`}
-                              className="text-xs font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
-                            >
-                              {h.label}
-                            </Label>
-                          </div>
-                        ))}
+                        {columnOrder.map((key) => {
+                          const h = tableHeaders.find((th) => th.key === key)!
+                          return (
+                            <div key={h.key} className="flex items-center space-x-2">
+                              <Checkbox
+                                id={`col-${h.key}`}
+                                checked={visibleColumns[h.key] !== false}
+                                onCheckedChange={() => toggleColumn(h.key)}
+                              />
+                              <Label
+                                htmlFor={`col-${h.key}`}
+                                className="text-xs font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                              >
+                                {h.label}
+                              </Label>
+                            </div>
+                          )
+                        })}
                       </div>
 
                       <div className="pt-4 border-t border-slate-200 mt-4 flex items-center gap-2">
@@ -1440,18 +1485,41 @@ export default function FinancialMovements() {
                     />
                   </div>
                 </TableHead>
-                {tableHeaders
-                  .filter((h) => visibleColumns[h.key] !== false)
-                  .map((h) => {
+                {columnOrder
+                  .filter((key) => visibleColumns[key] !== false)
+                  .map((key) => {
+                    const h = tableHeaders.find((th) => th.key === key)!
                     const activeFilterCount = filters[h.key]?.length || 0
                     const options = filterOptions[h.key] || []
 
                     return (
                       <TableHead
                         key={h.key}
+                        draggable
+                        onDragStart={(e) => {
+                          setDraggedColumn(h.key)
+                          e.dataTransfer.effectAllowed = 'move'
+                        }}
+                        onDragOver={(e) => {
+                          e.preventDefault()
+                          e.dataTransfer.dropEffect = 'move'
+                        }}
+                        onDrop={(e) => {
+                          e.preventDefault()
+                          if (!draggedColumn || draggedColumn === h.key) return
+                          const newOrder = [...columnOrder]
+                          const draggedIdx = newOrder.indexOf(draggedColumn)
+                          const targetIdx = newOrder.indexOf(h.key)
+                          newOrder.splice(draggedIdx, 1)
+                          newOrder.splice(targetIdx, 0, draggedColumn)
+                          setColumnOrder(newOrder)
+                          setDraggedColumn(null)
+                        }}
+                        onDragEnd={() => setDraggedColumn(null)}
                         className={cn(
-                          'h-8 px-2 py-1 text-sm font-bold text-black whitespace-nowrap select-none transition-colors border-r last:border-r-0',
+                          'h-8 px-2 py-1 text-sm font-bold text-black whitespace-nowrap select-none transition-colors border-r last:border-r-0 cursor-grab active:cursor-grabbing',
                           h.className,
+                          draggedColumn === h.key ? 'opacity-50 bg-slate-100' : '',
                         )}
                       >
                         <div className="flex items-center justify-between gap-1 w-full">
@@ -1627,339 +1695,470 @@ export default function FinancialMovements() {
                             />
                           </div>
                         </TableCell>
-                        {visibleColumns['empresa'] !== false && (
-                          <TableCell
-                            className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-800 font-medium max-w-[150px] truncate border-r"
-                            title={row.organizations?.name}
-                          >
-                            {row.organizations?.name || '-'}
-                          </TableCell>
-                        )}
-                        {visibleColumns['compensado'] !== false && (
-                          <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 text-center border-r">
-                            {row.compensado || '-'}
-                          </TableCell>
-                        )}
-                        {visibleColumns['tipo_operacao'] !== false && (
-                          <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 text-center border-r">
-                            {row.tipo_operacao || '-'}
-                          </TableCell>
-                        )}
-                        {visibleColumns['data_emissao'] !== false && (
-                          <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 text-center border-r">
-                            {editingId === row.id ? (
-                              <Input
-                                type="date"
-                                className="h-6 text-xs px-1.5 w-32"
-                                value={editForm.data_emissao || ''}
-                                onChange={(e) =>
-                                  setEditForm({ ...editForm, data_emissao: e.target.value })
-                                }
-                              />
-                            ) : (
-                              <span className={!row.data_emissao ? 'text-red-500 font-bold' : ''}>
-                                {row.data_emissao ? formatDate(row.data_emissao) : 'Indisponível'}
-                              </span>
-                            )}
-                          </TableCell>
-                        )}
-                        {visibleColumns['dt_compens'] !== false && (
-                          <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 text-center border-r">
-                            {formatDate(row.dt_compens)}
-                          </TableCell>
-                        )}
-                        {visibleColumns['conta_caixa'] !== false && (
-                          <TableCell
-                            className="px-2 py-1.5 text-xs text-slate-600 text-center max-w-[150px] truncate border-r"
-                            title={row.conta_caixa || ''}
-                          >
-                            {editingId === row.id ? (
-                              <Input
-                                className="h-6 text-xs px-1.5 w-28"
-                                value={editForm.conta_caixa || ''}
-                                onChange={(e) =>
-                                  setEditForm({ ...editForm, conta_caixa: e.target.value })
-                                }
-                              />
-                            ) : (
-                              row.conta_caixa || '-'
-                            )}
-                          </TableCell>
-                        )}
-                        {visibleColumns['nome_caixa'] !== false && (
-                          <TableCell
-                            className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 max-w-[150px] truncate border-r"
-                            title={row.nome_caixa}
-                          >
-                            {row.nome_caixa || '-'}
-                          </TableCell>
-                        )}
-                        {visibleColumns['conta_caixa_destino'] !== false && (
-                          <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 text-center border-r">
-                            {row.conta_caixa_destino || '-'}
-                          </TableCell>
-                        )}
-                        {visibleColumns['forma_pagto'] !== false && (
-                          <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 border-r">
-                            {editingId === row.id ? (
-                              <Input
-                                className="h-6 text-xs px-1.5 w-24"
-                                value={editForm.forma_pagto || ''}
-                                onChange={(e) =>
-                                  setEditForm({ ...editForm, forma_pagto: e.target.value })
-                                }
-                              />
-                            ) : (
-                              row.forma_pagto || '-'
-                            )}
-                          </TableCell>
-                        )}
-                        {visibleColumns['c_custo'] !== false && (
-                          <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 border-r">
-                            {editingId === row.id ? (
-                              <Input
-                                className="h-6 text-xs px-1.5 w-24"
-                                value={editForm.c_custo || ''}
-                                onChange={(e) =>
-                                  setEditForm({ ...editForm, c_custo: e.target.value })
-                                }
-                              />
-                            ) : (
-                              <span className={!row.c_custo ? 'text-red-500 font-bold' : ''}>
-                                {row.c_custo || 'Sem C. Custo'}
-                              </span>
-                            )}
-                          </TableCell>
-                        )}
-                        {visibleColumns['descricao_c_custo'] !== false && (
-                          <TableCell
-                            className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 max-w-[150px] truncate border-r"
-                            title={row.descricao_c_custo}
-                          >
-                            {row.descricao_c_custo || '-'}
-                          </TableCell>
-                        )}
-                        {visibleColumns['valor'] !== false && (
-                          <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-center text-slate-600 border-r">
-                            {row.valor !== null
-                              ? new Intl.NumberFormat('pt-BR', {
-                                  style: 'currency',
-                                  currency: 'BRL',
-                                }).format(row.valor)
-                              : '-'}
-                          </TableCell>
-                        )}
-                        {visibleColumns['valor_liquido'] !== false && (
-                          <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-center font-semibold text-slate-900 border-r">
-                            {editingId === row.id ? (
-                              <Input
-                                type="number"
-                                step="0.01"
-                                className="h-6 text-xs px-1.5 w-28 text-center mx-auto"
-                                value={editForm.valor_liquido || ''}
-                                onChange={(e) =>
-                                  setEditForm({
-                                    ...editForm,
-                                    valor_liquido: parseFloat(e.target.value),
-                                  })
-                                }
-                              />
-                            ) : (
-                              <span
-                                className={
-                                  row.valor_liquido === null ? 'text-red-500 font-bold' : ''
-                                }
-                              >
-                                {row.valor_liquido !== null
-                                  ? new Intl.NumberFormat('pt-BR', {
-                                      style: 'currency',
-                                      currency: 'BRL',
-                                    }).format(row.valor_liquido)
-                                  : 'R$ 0,00'}
-                              </span>
-                            )}
-                          </TableCell>
-                        )}
-                        {visibleColumns['n_documento'] !== false && (
-                          <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap font-medium text-slate-700 border-r">
-                            {editingId === row.id ? (
-                              <Input
-                                className="h-6 text-xs px-1.5 w-28"
-                                value={editForm.n_documento || ''}
-                                onChange={(e) =>
-                                  setEditForm({ ...editForm, n_documento: e.target.value })
-                                }
-                              />
-                            ) : (
-                              row.n_documento || '-'
-                            )}
-                          </TableCell>
-                        )}
-                        {visibleColumns['nome_cli_fornec'] !== false && (
-                          <TableCell
-                            className="px-2 py-1.5 text-xs text-slate-600 max-w-[200px] truncate border-r"
-                            title={row.nome_cli_fornec}
-                          >
-                            {editingId === row.id ? (
-                              <Input
-                                className="h-6 text-xs px-1.5"
-                                value={editForm.nome_cli_fornec || ''}
-                                onChange={(e) =>
-                                  setEditForm({ ...editForm, nome_cli_fornec: e.target.value })
-                                }
-                              />
-                            ) : (
-                              row.nome_cli_fornec || '-'
-                            )}
-                          </TableCell>
-                        )}
-                        {visibleColumns['historico'] !== false && (
-                          <TableCell
-                            className="px-2 py-1.5 text-xs text-slate-600 max-w-[250px] truncate border-r"
-                            title={row.historico}
-                          >
-                            {editingId === row.id ? (
-                              <Input
-                                className="h-6 text-xs px-1.5"
-                                value={editForm.historico || ''}
-                                onChange={(e) =>
-                                  setEditForm({ ...editForm, historico: e.target.value })
-                                }
-                              />
-                            ) : (
-                              row.historico || '-'
-                            )}
-                          </TableCell>
-                        )}
-                        {visibleColumns['fp'] !== false && (
-                          <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 text-center border-r">
-                            {row.fp || '-'}
-                          </TableCell>
-                        )}
-                        {visibleColumns['n_cheque'] !== false && (
-                          <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 border-r">
-                            {row.n_cheque || '-'}
-                          </TableCell>
-                        )}
-                        {visibleColumns['data_vencto'] !== false && (
-                          <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 text-center border-r">
-                            {editingId === row.id ? (
-                              <Input
-                                type="date"
-                                className="h-6 text-xs px-1.5 w-32"
-                                value={editForm.data_vencto || ''}
-                                onChange={(e) =>
-                                  setEditForm({ ...editForm, data_vencto: e.target.value })
-                                }
-                              />
-                            ) : (
-                              <span>{row.data_vencto ? formatDate(row.data_vencto) : '-'}</span>
-                            )}
-                          </TableCell>
-                        )}
-                        {visibleColumns['nominal_a'] !== false && (
-                          <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 border-r">
-                            {row.nominal_a || '-'}
-                          </TableCell>
-                        )}
-                        {visibleColumns['emitente_cheque'] !== false && (
-                          <TableCell
-                            className="px-2 py-1.5 text-xs text-slate-600 max-w-[150px] truncate border-r"
-                            title={row.emitente_cheque}
-                          >
-                            {row.emitente_cheque || '-'}
-                          </TableCell>
-                        )}
-                        {visibleColumns['cnpj_cpf'] !== false && (
-                          <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 border-r">
-                            {row.cnpj_cpf || '-'}
-                          </TableCell>
-                        )}
-                        {visibleColumns['n_extrato'] !== false && (
-                          <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 text-center border-r">
-                            {row.n_extrato || '-'}
-                          </TableCell>
-                        )}
-                        {visibleColumns['filial'] !== false && (
-                          <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 text-center border-r">
-                            {row.filial || '-'}
-                          </TableCell>
-                        )}
-                        {visibleColumns['data_canc'] !== false && (
-                          <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 text-center border-r">
-                            {formatDate(row.data_canc)}
-                          </TableCell>
-                        )}
-                        {visibleColumns['data_estorno'] !== false && (
-                          <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 text-center border-r">
-                            {formatDate(row.data_estorno)}
-                          </TableCell>
-                        )}
-                        {visibleColumns['banco'] !== false && (
-                          <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 text-center border-r">
-                            {editingId === row.id ? (
-                              <Input
-                                className="h-6 text-xs px-1.5 w-24"
-                                value={editForm.banco || ''}
-                                onChange={(e) =>
-                                  setEditForm({ ...editForm, banco: e.target.value })
-                                }
-                              />
-                            ) : (
-                              row.banco || '-'
-                            )}
-                          </TableCell>
-                        )}
-                        {visibleColumns['c_corrente'] !== false && (
-                          <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 border-r">
-                            {row.c_corrente || '-'}
-                          </TableCell>
-                        )}
-                        {visibleColumns['cod_cli_for'] !== false && (
-                          <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 border-r">
-                            {row.cod_cli_for || '-'}
-                          </TableCell>
-                        )}
-                        {visibleColumns['departamento'] !== false && (
-                          <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 text-center border-r">
-                            {row.departamento || '-'}
-                          </TableCell>
-                        )}
-                        {visibleColumns['status'] !== false && (
-                          <TableCell className="px-2 py-1.5 text-xs text-center border-r">
-                            {isMissing ? (
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-red-100 text-red-800 border border-red-200 cursor-help">
-                                    Dados Incompletos
-                                  </span>
-                                </TooltipTrigger>
-                                <TooltipContent className="bg-red-50 border-red-200 text-red-900 shadow-md">
-                                  <p className="font-semibold mb-1">Campos ausentes:</p>
-                                  <ul className="list-disc pl-4 text-xs">
-                                    {missingFields.map((f) => (
-                                      <li key={f}>{f}</li>
-                                    ))}
-                                  </ul>
-                                </TooltipContent>
-                              </Tooltip>
-                            ) : (
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-800 border border-amber-200 cursor-help">
-                                    {row.status || 'Pendente'}
-                                  </span>
-                                </TooltipTrigger>
-                                <TooltipContent className="bg-slate-800 text-white border-slate-700 shadow-md">
-                                  <p className="text-xs max-w-[200px]">
-                                    O registro foi importado com sucesso, mas ainda não foi
-                                    conciliado ou exportado.
-                                  </p>
-                                </TooltipContent>
-                              </Tooltip>
-                            )}
-                          </TableCell>
-                        )}
+                        {columnOrder
+                          .filter((key) => visibleColumns[key] !== false)
+                          .map((key) => {
+                            switch (key) {
+                              case 'empresa':
+                                return (
+                                  <TableCell
+                                    key={key}
+                                    className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-800 font-medium max-w-[150px] truncate border-r"
+                                    title={row.organizations?.name}
+                                  >
+                                    {row.organizations?.name || '-'}
+                                  </TableCell>
+                                )
+                              case 'compensado':
+                                return (
+                                  <TableCell
+                                    key={key}
+                                    className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 text-center border-r"
+                                  >
+                                    {row.compensado || '-'}
+                                  </TableCell>
+                                )
+                              case 'tipo_operacao':
+                                return (
+                                  <TableCell
+                                    key={key}
+                                    className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 text-center border-r"
+                                  >
+                                    {row.tipo_operacao || '-'}
+                                  </TableCell>
+                                )
+                              case 'data_emissao':
+                                return (
+                                  <TableCell
+                                    key={key}
+                                    className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 text-center border-r"
+                                  >
+                                    {editingId === row.id ? (
+                                      <Input
+                                        type="date"
+                                        className="h-6 text-xs px-1.5 w-32"
+                                        value={editForm.data_emissao || ''}
+                                        onChange={(e) =>
+                                          setEditForm({ ...editForm, data_emissao: e.target.value })
+                                        }
+                                      />
+                                    ) : (
+                                      <span
+                                        className={
+                                          !row.data_emissao ? 'text-red-500 font-bold' : ''
+                                        }
+                                      >
+                                        {row.data_emissao
+                                          ? formatDate(row.data_emissao)
+                                          : 'Indisponível'}
+                                      </span>
+                                    )}
+                                  </TableCell>
+                                )
+                              case 'dt_compens':
+                                return (
+                                  <TableCell
+                                    key={key}
+                                    className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 text-center border-r"
+                                  >
+                                    {formatDate(row.dt_compens)}
+                                  </TableCell>
+                                )
+                              case 'conta_caixa':
+                                return (
+                                  <TableCell
+                                    key={key}
+                                    className="px-2 py-1.5 text-xs text-slate-600 text-center max-w-[150px] truncate border-r"
+                                    title={row.conta_caixa || ''}
+                                  >
+                                    {editingId === row.id ? (
+                                      <Input
+                                        className="h-6 text-xs px-1.5 w-28"
+                                        value={editForm.conta_caixa || ''}
+                                        onChange={(e) =>
+                                          setEditForm({ ...editForm, conta_caixa: e.target.value })
+                                        }
+                                      />
+                                    ) : (
+                                      row.conta_caixa || '-'
+                                    )}
+                                  </TableCell>
+                                )
+                              case 'nome_caixa':
+                                return (
+                                  <TableCell
+                                    key={key}
+                                    className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 max-w-[150px] truncate border-r"
+                                    title={row.nome_caixa}
+                                  >
+                                    {row.nome_caixa || '-'}
+                                  </TableCell>
+                                )
+                              case 'conta_caixa_destino':
+                                return (
+                                  <TableCell
+                                    key={key}
+                                    className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 text-center border-r"
+                                  >
+                                    {row.conta_caixa_destino || '-'}
+                                  </TableCell>
+                                )
+                              case 'forma_pagto':
+                                return (
+                                  <TableCell
+                                    key={key}
+                                    className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 border-r"
+                                  >
+                                    {editingId === row.id ? (
+                                      <Input
+                                        className="h-6 text-xs px-1.5 w-24"
+                                        value={editForm.forma_pagto || ''}
+                                        onChange={(e) =>
+                                          setEditForm({ ...editForm, forma_pagto: e.target.value })
+                                        }
+                                      />
+                                    ) : (
+                                      row.forma_pagto || '-'
+                                    )}
+                                  </TableCell>
+                                )
+                              case 'c_custo':
+                                return (
+                                  <TableCell
+                                    key={key}
+                                    className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 border-r"
+                                  >
+                                    {editingId === row.id ? (
+                                      <Input
+                                        className="h-6 text-xs px-1.5 w-24"
+                                        value={editForm.c_custo || ''}
+                                        onChange={(e) =>
+                                          setEditForm({ ...editForm, c_custo: e.target.value })
+                                        }
+                                      />
+                                    ) : (
+                                      <span
+                                        className={!row.c_custo ? 'text-red-500 font-bold' : ''}
+                                      >
+                                        {row.c_custo || 'Sem C. Custo'}
+                                      </span>
+                                    )}
+                                  </TableCell>
+                                )
+                              case 'descricao_c_custo':
+                                return (
+                                  <TableCell
+                                    key={key}
+                                    className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 max-w-[150px] truncate border-r"
+                                    title={row.descricao_c_custo}
+                                  >
+                                    {row.descricao_c_custo || '-'}
+                                  </TableCell>
+                                )
+                              case 'valor':
+                                return (
+                                  <TableCell
+                                    key={key}
+                                    className="px-2 py-1.5 text-xs whitespace-nowrap text-center text-slate-600 border-r"
+                                  >
+                                    {row.valor !== null
+                                      ? new Intl.NumberFormat('pt-BR', {
+                                          style: 'currency',
+                                          currency: 'BRL',
+                                        }).format(row.valor)
+                                      : '-'}
+                                  </TableCell>
+                                )
+                              case 'valor_liquido':
+                                return (
+                                  <TableCell
+                                    key={key}
+                                    className="px-2 py-1.5 text-xs whitespace-nowrap text-center font-semibold text-slate-900 border-r"
+                                  >
+                                    {editingId === row.id ? (
+                                      <Input
+                                        type="number"
+                                        step="0.01"
+                                        className="h-6 text-xs px-1.5 w-28 text-center mx-auto"
+                                        value={editForm.valor_liquido || ''}
+                                        onChange={(e) =>
+                                          setEditForm({
+                                            ...editForm,
+                                            valor_liquido: parseFloat(e.target.value),
+                                          })
+                                        }
+                                      />
+                                    ) : (
+                                      <span
+                                        className={
+                                          row.valor_liquido === null ? 'text-red-500 font-bold' : ''
+                                        }
+                                      >
+                                        {row.valor_liquido !== null
+                                          ? new Intl.NumberFormat('pt-BR', {
+                                              style: 'currency',
+                                              currency: 'BRL',
+                                            }).format(row.valor_liquido)
+                                          : 'R$ 0,00'}
+                                      </span>
+                                    )}
+                                  </TableCell>
+                                )
+                              case 'n_documento':
+                                return (
+                                  <TableCell
+                                    key={key}
+                                    className="px-2 py-1.5 text-xs whitespace-nowrap font-medium text-slate-700 border-r"
+                                  >
+                                    {editingId === row.id ? (
+                                      <Input
+                                        className="h-6 text-xs px-1.5 w-28"
+                                        value={editForm.n_documento || ''}
+                                        onChange={(e) =>
+                                          setEditForm({ ...editForm, n_documento: e.target.value })
+                                        }
+                                      />
+                                    ) : (
+                                      row.n_documento || '-'
+                                    )}
+                                  </TableCell>
+                                )
+                              case 'nome_cli_fornec':
+                                return (
+                                  <TableCell
+                                    key={key}
+                                    className="px-2 py-1.5 text-xs text-slate-600 max-w-[200px] truncate border-r"
+                                    title={row.nome_cli_fornec}
+                                  >
+                                    {editingId === row.id ? (
+                                      <Input
+                                        className="h-6 text-xs px-1.5"
+                                        value={editForm.nome_cli_fornec || ''}
+                                        onChange={(e) =>
+                                          setEditForm({
+                                            ...editForm,
+                                            nome_cli_fornec: e.target.value,
+                                          })
+                                        }
+                                      />
+                                    ) : (
+                                      row.nome_cli_fornec || '-'
+                                    )}
+                                  </TableCell>
+                                )
+                              case 'historico':
+                                return (
+                                  <TableCell
+                                    key={key}
+                                    className="px-2 py-1.5 text-xs text-slate-600 max-w-[250px] truncate border-r"
+                                    title={row.historico}
+                                  >
+                                    {editingId === row.id ? (
+                                      <Input
+                                        className="h-6 text-xs px-1.5"
+                                        value={editForm.historico || ''}
+                                        onChange={(e) =>
+                                          setEditForm({ ...editForm, historico: e.target.value })
+                                        }
+                                      />
+                                    ) : (
+                                      row.historico || '-'
+                                    )}
+                                  </TableCell>
+                                )
+                              case 'fp':
+                                return (
+                                  <TableCell
+                                    key={key}
+                                    className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 text-center border-r"
+                                  >
+                                    {row.fp || '-'}
+                                  </TableCell>
+                                )
+                              case 'n_cheque':
+                                return (
+                                  <TableCell
+                                    key={key}
+                                    className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 border-r"
+                                  >
+                                    {row.n_cheque || '-'}
+                                  </TableCell>
+                                )
+                              case 'data_vencto':
+                                return (
+                                  <TableCell
+                                    key={key}
+                                    className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 text-center border-r"
+                                  >
+                                    {editingId === row.id ? (
+                                      <Input
+                                        type="date"
+                                        className="h-6 text-xs px-1.5 w-32"
+                                        value={editForm.data_vencto || ''}
+                                        onChange={(e) =>
+                                          setEditForm({ ...editForm, data_vencto: e.target.value })
+                                        }
+                                      />
+                                    ) : (
+                                      <span>
+                                        {row.data_vencto ? formatDate(row.data_vencto) : '-'}
+                                      </span>
+                                    )}
+                                  </TableCell>
+                                )
+                              case 'nominal_a':
+                                return (
+                                  <TableCell
+                                    key={key}
+                                    className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 border-r"
+                                  >
+                                    {row.nominal_a || '-'}
+                                  </TableCell>
+                                )
+                              case 'emitente_cheque':
+                                return (
+                                  <TableCell
+                                    key={key}
+                                    className="px-2 py-1.5 text-xs text-slate-600 max-w-[150px] truncate border-r"
+                                    title={row.emitente_cheque}
+                                  >
+                                    {row.emitente_cheque || '-'}
+                                  </TableCell>
+                                )
+                              case 'cnpj_cpf':
+                                return (
+                                  <TableCell
+                                    key={key}
+                                    className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 border-r"
+                                  >
+                                    {row.cnpj_cpf || '-'}
+                                  </TableCell>
+                                )
+                              case 'n_extrato':
+                                return (
+                                  <TableCell
+                                    key={key}
+                                    className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 text-center border-r"
+                                  >
+                                    {row.n_extrato || '-'}
+                                  </TableCell>
+                                )
+                              case 'filial':
+                                return (
+                                  <TableCell
+                                    key={key}
+                                    className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 text-center border-r"
+                                  >
+                                    {row.filial || '-'}
+                                  </TableCell>
+                                )
+                              case 'data_canc':
+                                return (
+                                  <TableCell
+                                    key={key}
+                                    className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 text-center border-r"
+                                  >
+                                    {formatDate(row.data_canc)}
+                                  </TableCell>
+                                )
+                              case 'data_estorno':
+                                return (
+                                  <TableCell
+                                    key={key}
+                                    className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 text-center border-r"
+                                  >
+                                    {formatDate(row.data_estorno)}
+                                  </TableCell>
+                                )
+                              case 'banco':
+                                return (
+                                  <TableCell
+                                    key={key}
+                                    className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 text-center border-r"
+                                  >
+                                    {editingId === row.id ? (
+                                      <Input
+                                        className="h-6 text-xs px-1.5 w-24"
+                                        value={editForm.banco || ''}
+                                        onChange={(e) =>
+                                          setEditForm({ ...editForm, banco: e.target.value })
+                                        }
+                                      />
+                                    ) : (
+                                      row.banco || '-'
+                                    )}
+                                  </TableCell>
+                                )
+                              case 'c_corrente':
+                                return (
+                                  <TableCell
+                                    key={key}
+                                    className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 border-r"
+                                  >
+                                    {row.c_corrente || '-'}
+                                  </TableCell>
+                                )
+                              case 'cod_cli_for':
+                                return (
+                                  <TableCell
+                                    key={key}
+                                    className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 border-r"
+                                  >
+                                    {row.cod_cli_for || '-'}
+                                  </TableCell>
+                                )
+                              case 'departamento':
+                                return (
+                                  <TableCell
+                                    key={key}
+                                    className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 text-center border-r"
+                                  >
+                                    {row.departamento || '-'}
+                                  </TableCell>
+                                )
+                              case 'status':
+                                return (
+                                  <TableCell
+                                    key={key}
+                                    className="px-2 py-1.5 text-xs text-center border-r"
+                                  >
+                                    {isMissing ? (
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-red-100 text-red-800 border border-red-200 cursor-help">
+                                            Dados Incompletos
+                                          </span>
+                                        </TooltipTrigger>
+                                        <TooltipContent className="bg-red-50 border-red-200 text-red-900 shadow-md">
+                                          <p className="font-semibold mb-1">Campos ausentes:</p>
+                                          <ul className="list-disc pl-4 text-xs">
+                                            {missingFields.map((f) => (
+                                              <li key={f}>{f}</li>
+                                            ))}
+                                          </ul>
+                                        </TooltipContent>
+                                      </Tooltip>
+                                    ) : (
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-800 border border-amber-200 cursor-help">
+                                            {row.status || 'Pendente'}
+                                          </span>
+                                        </TooltipTrigger>
+                                        <TooltipContent className="bg-slate-800 text-white border-slate-700 shadow-md">
+                                          <p className="text-xs max-w-[200px]">
+                                            O registro foi importado com sucesso, mas ainda não foi
+                                            conciliado ou exportado.
+                                          </p>
+                                        </TooltipContent>
+                                      </Tooltip>
+                                    )}
+                                  </TableCell>
+                                )
+                              default:
+                                return null
+                            }
+                          })}
                         <TableCell className="px-2 py-1.5 text-xs text-center border-r last:border-r-0">
                           {editingId === row.id ? (
                             <div className="flex items-center justify-center gap-1">
@@ -2013,13 +2212,13 @@ export default function FinancialMovements() {
                     className="bg-slate-100 hover:bg-slate-100 font-bold border-t-2 border-slate-300 shadow-inner"
                   >
                     <TableCell className="border-r" />
-                    {tableHeaders
-                      .filter((h) => visibleColumns[h.key] !== false)
-                      .map((h, i) => {
-                        if (h.key === 'valor') {
+                    {columnOrder
+                      .filter((key) => visibleColumns[key] !== false)
+                      .map((key, i) => {
+                        if (key === 'valor') {
                           return (
                             <TableCell
-                              key={h.key}
+                              key={key}
                               className="px-2 py-2 text-xs whitespace-nowrap text-center text-slate-800 border-r"
                             >
                               {new Intl.NumberFormat('pt-BR', {
@@ -2029,10 +2228,10 @@ export default function FinancialMovements() {
                             </TableCell>
                           )
                         }
-                        if (h.key === 'valor_liquido') {
+                        if (key === 'valor_liquido') {
                           return (
                             <TableCell
-                              key={h.key}
+                              key={key}
                               className="px-2 py-2 text-xs whitespace-nowrap text-center text-slate-900 border-r"
                             >
                               {new Intl.NumberFormat('pt-BR', {
@@ -2045,7 +2244,7 @@ export default function FinancialMovements() {
                         const isFirstVisible = i === 0
                         return (
                           <TableCell
-                            key={h.key}
+                            key={key}
                             className="px-2 py-2 text-xs whitespace-nowrap text-right text-slate-600 border-r"
                           >
                             {isFirstVisible ? 'TOTAIS (Filtro Atual):' : ''}
