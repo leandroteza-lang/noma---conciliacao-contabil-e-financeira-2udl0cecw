@@ -121,63 +121,7 @@ export default function FinancialMovements() {
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [totals, setTotals] = useState({ valor: 0, valor_liquido: 0 })
 
-  const [filters, setFilters] = useState<{
-    empresas: string[]
-    contas: string[]
-    tipos: string[]
-    status: string[]
-    contas_destino: string[]
-    formas_pagto: string[]
-    c_custos: string[]
-    descricoes_c_custo: string[]
-  }>({
-    empresas: [],
-    contas: [],
-    tipos: [],
-    status: [],
-    contas_destino: [],
-    formas_pagto: [],
-    c_custos: [],
-    descricoes_c_custo: [],
-  })
-
-  const headerToFilterKey: Record<string, keyof typeof filters> = {
-    empresa: 'empresas',
-    conta_caixa: 'contas',
-    tipo_operacao: 'tipos',
-    status: 'status',
-    conta_caixa_destino: 'contas_destino',
-    forma_pagto: 'formas_pagto',
-    c_custo: 'c_custos',
-    descricao_c_custo: 'descricoes_c_custo',
-  }
-
-  const getOptionsForHeader = (key: string) => {
-    switch (key) {
-      case 'empresa':
-        return filterOptions.empresas.map((e) => ({ label: e.name, value: e.id }))
-      case 'conta_caixa':
-        return filterOptions.contas.map((c) => ({ label: c, value: c }))
-      case 'tipo_operacao':
-        return filterOptions.tipos.map((t) => ({ label: t, value: t }))
-      case 'status':
-        return [
-          { label: 'Pendente', value: 'Pendente' },
-          { label: 'Concluído', value: 'Concluído' },
-          { label: 'Erro', value: 'Erro' },
-        ]
-      case 'conta_caixa_destino':
-        return filterOptions.contas_destino.map((c) => ({ label: c, value: c }))
-      case 'forma_pagto':
-        return filterOptions.formas_pagto.map((f) => ({ label: f, value: f }))
-      case 'c_custo':
-        return filterOptions.c_custos.map((c) => ({ label: c, value: c }))
-      case 'descricao_c_custo':
-        return filterOptions.descricoes_c_custo.map((c) => ({ label: c, value: c }))
-      default:
-        return []
-    }
-  }
+  const [filters, setFilters] = useState<Record<string, string[]>>({})
 
   const [savedFilters, setSavedFilters] = useState<any[]>(() => {
     const saved = localStorage.getItem('fin_mov_saved_filters')
@@ -186,50 +130,24 @@ export default function FinancialMovements() {
         const parsed = JSON.parse(saved)
         return parsed.map((f: any) => {
           const newFilt = f.filters || {}
+          const migratedFilters: Record<string, string[]> = {}
+          const mappings: Record<string, string> = {
+            empresas: 'empresa',
+            contas: 'conta_caixa',
+            tipos: 'tipo_operacao',
+            status: 'status',
+            contas_destino: 'conta_caixa_destino',
+            formas_pagto: 'forma_pagto',
+            c_custos: 'c_custo',
+            descricoes_c_custo: 'descricao_c_custo',
+          }
+          Object.entries(newFilt).forEach(([k, v]) => {
+            const newKey = mappings[k] || k
+            migratedFilters[newKey] = Array.isArray(v) ? v : v && v !== 'all' ? [v] : []
+          })
           return {
             ...f,
-            filters: {
-              empresas: Array.isArray(newFilt.empresas)
-                ? newFilt.empresas
-                : newFilt.empresa && newFilt.empresa !== 'all'
-                  ? [newFilt.empresa]
-                  : [],
-              contas: Array.isArray(newFilt.contas)
-                ? newFilt.contas
-                : newFilt.conta && newFilt.conta !== 'all'
-                  ? [newFilt.conta]
-                  : [],
-              tipos: Array.isArray(newFilt.tipos)
-                ? newFilt.tipos
-                : newFilt.tipo && newFilt.tipo !== 'all'
-                  ? [newFilt.tipo]
-                  : [],
-              status: Array.isArray(newFilt.status)
-                ? newFilt.status
-                : newFilt.status && newFilt.status !== 'all'
-                  ? [newFilt.status]
-                  : [],
-              contas_destino: Array.isArray(newFilt.contas_destino)
-                ? newFilt.contas_destino
-                : newFilt.conta_destino && newFilt.conta_destino !== 'all'
-                  ? [newFilt.conta_destino]
-                  : [],
-              formas_pagto: Array.isArray(newFilt.formas_pagto)
-                ? newFilt.formas_pagto
-                : newFilt.forma_pagto && newFilt.forma_pagto !== 'all'
-                  ? [newFilt.forma_pagto]
-                  : [],
-              c_custos: Array.isArray(newFilt.c_custos)
-                ? newFilt.c_custos
-                : newFilt.c_custo && newFilt.c_custo !== 'all'
-                  ? [newFilt.c_custo]
-                  : [],
-              descricoes_c_custo: Array.isArray(newFilt.descricoes_c_custo)
-                ? newFilt.descricoes_c_custo
-                : newFilt.descricao_c_custo && newFilt.descricao_c_custo !== 'all'
-                  ? [newFilt.descricao_c_custo]
-                  : [],
-            },
+            filters: migratedFilters,
           }
         })
       } catch (e) {
@@ -281,29 +199,14 @@ export default function FinancialMovements() {
     localStorage.setItem('fin_mov_saved_columns', JSON.stringify(updated))
   }
 
-  const [filterOptions, setFilterOptions] = useState({
-    empresas: [] as { id: string; name: string }[],
-    contas: [] as string[],
-    tipos: [] as string[],
-    contas_destino: [] as string[],
-    formas_pagto: [] as string[],
-    c_custos: [] as string[],
-    descricoes_c_custo: [] as string[],
-  })
+  const [filterOptions, setFilterOptions] = useState<
+    Record<string, { label: string; value: string }[]>
+  >({})
 
   const hasActiveFilters = Object.values(filters).some((arr) => arr && arr.length > 0)
 
   const clearFilters = () => {
-    setFilters({
-      empresas: [],
-      contas: [],
-      tipos: [],
-      status: [],
-      contas_destino: [],
-      formas_pagto: [],
-      c_custos: [],
-      descricoes_c_custo: [],
-    })
+    setFilters({})
     setSearch('')
     setPage(0)
   }
@@ -349,40 +252,55 @@ export default function FinancialMovements() {
 
     const { data: movs } = await supabase
       .from('erp_financial_movements')
-      .select(
-        'conta_caixa, tipo_operacao, conta_caixa_destino, forma_pagto, c_custo, descricao_c_custo',
-      )
+      .select('*')
       .is('deleted_at', null)
       .limit(5000)
 
-    const uniqueContas = Array.from(
-      new Set(movs?.map((m) => m.conta_caixa).filter(Boolean) as string[]),
-    ).sort()
-    const uniqueTipos = Array.from(
-      new Set(movs?.map((m) => m.tipo_operacao).filter(Boolean) as string[]),
-    ).sort()
-    const uniqueContasDestino = Array.from(
-      new Set(movs?.map((m) => m.conta_caixa_destino).filter(Boolean) as string[]),
-    ).sort()
-    const uniqueFormasPagto = Array.from(
-      new Set(movs?.map((m) => m.forma_pagto).filter(Boolean) as string[]),
-    ).sort()
-    const uniqueCCustos = Array.from(
-      new Set(movs?.map((m) => m.c_custo).filter(Boolean) as string[]),
-    ).sort()
-    const uniqueDescCCustos = Array.from(
-      new Set(movs?.map((m) => m.descricao_c_custo).filter(Boolean) as string[]),
-    ).sort()
+    const options: Record<string, { label: string; value: string }[]> = {}
 
-    setFilterOptions({
-      empresas: orgs || [],
-      contas: uniqueContas,
-      tipos: uniqueTipos,
-      contas_destino: uniqueContasDestino,
-      formas_pagto: uniqueFormasPagto,
-      c_custos: uniqueCCustos,
-      descricoes_c_custo: uniqueDescCCustos,
+    options['empresa'] = (orgs || []).map((e) => ({ label: e.name, value: e.id }))
+
+    tableHeaders.forEach((h) => {
+      if (h.key === 'empresa') return
+      if (h.key === 'status') {
+        options['status'] = [
+          { label: 'Pendente', value: 'Pendente' },
+          { label: 'Concluído', value: 'Concluído' },
+          { label: 'Erro', value: 'Erro' },
+        ]
+        return
+      }
+
+      if (movs) {
+        const uniqueVals = Array.from(
+          new Set(
+            movs.map((m) => m[h.key]).filter((v) => v !== null && v !== undefined && v !== ''),
+          ),
+        ).sort()
+        options[h.key] = uniqueVals.map((v) => {
+          let label = String(v)
+          if (
+            ['data_emissao', 'dt_compens', 'data_vencto', 'data_canc', 'data_estorno'].includes(
+              h.key,
+            )
+          ) {
+            const parts = label.split('T')[0].split('-')
+            if (parts.length === 3) {
+              label = `${parts[2]}/${parts[1]}/${parts[0]}`
+            }
+          } else if (['valor', 'valor_liquido'].includes(h.key)) {
+            label = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(
+              Number(v),
+            )
+          }
+          return { label, value: String(v) }
+        })
+      } else {
+        options[h.key] = []
+      }
     })
+
+    setFilterOptions(options)
   }
 
   useEffect(() => {
@@ -650,15 +568,15 @@ export default function FinancialMovements() {
         `historico.ilike.%${search}%,nome_cli_fornec.ilike.%${search}%,c_custo.ilike.%${search}%`,
       )
     }
-    if (filters.empresas?.length > 0) q = q.in('organization_id', filters.empresas)
-    if (filters.contas?.length > 0) q = q.in('conta_caixa', filters.contas)
-    if (filters.tipos?.length > 0) q = q.in('tipo_operacao', filters.tipos)
-    if (filters.status?.length > 0) q = q.in('status', filters.status)
-    if (filters.contas_destino?.length > 0) q = q.in('conta_caixa_destino', filters.contas_destino)
-    if (filters.formas_pagto?.length > 0) q = q.in('forma_pagto', filters.formas_pagto)
-    if (filters.c_custos?.length > 0) q = q.in('c_custo', filters.c_custos)
-    if (filters.descricoes_c_custo?.length > 0)
-      q = q.in('descricao_c_custo', filters.descricoes_c_custo)
+    Object.entries(filters).forEach(([key, values]) => {
+      if (values && values.length > 0) {
+        if (key === 'empresa') {
+          q = q.in('organization_id', values)
+        } else {
+          q = q.in(key, values)
+        }
+      }
+    })
     return q
   }
 
@@ -1128,13 +1046,10 @@ export default function FinancialMovements() {
                           <Label className="text-xs">Empresa</Label>
                           <MultiSelect
                             title="Todas as empresas"
-                            options={filterOptions.empresas.map((e) => ({
-                              label: e.name,
-                              value: e.id,
-                            }))}
-                            selected={filters.empresas || []}
+                            options={filterOptions['empresa'] || []}
+                            selected={filters['empresa'] || []}
                             onChange={(v) => {
-                              setFilters((p) => ({ ...p, empresas: v }))
+                              setFilters((p) => ({ ...p, empresa: v }))
                               setPage(0)
                             }}
                           />
@@ -1144,10 +1059,10 @@ export default function FinancialMovements() {
                           <Label className="text-xs">Conta/Caixa</Label>
                           <MultiSelect
                             title="Todas as contas"
-                            options={filterOptions.contas.map((c) => ({ label: c, value: c }))}
-                            selected={filters.contas || []}
+                            options={filterOptions['conta_caixa'] || []}
+                            selected={filters['conta_caixa'] || []}
                             onChange={(v) => {
-                              setFilters((p) => ({ ...p, contas: v }))
+                              setFilters((p) => ({ ...p, conta_caixa: v }))
                               setPage(0)
                             }}
                           />
@@ -1157,10 +1072,10 @@ export default function FinancialMovements() {
                           <Label className="text-xs">Tipo de Operação</Label>
                           <MultiSelect
                             title="Todos os tipos"
-                            options={filterOptions.tipos.map((t) => ({ label: t, value: t }))}
-                            selected={filters.tipos || []}
+                            options={filterOptions['tipo_operacao'] || []}
+                            selected={filters['tipo_operacao'] || []}
                             onChange={(v) => {
-                              setFilters((p) => ({ ...p, tipos: v }))
+                              setFilters((p) => ({ ...p, tipo_operacao: v }))
                               setPage(0)
                             }}
                           />
@@ -1170,13 +1085,10 @@ export default function FinancialMovements() {
                           <Label className="text-xs">Conta/Caixa Destino</Label>
                           <MultiSelect
                             title="Todas as contas destino"
-                            options={filterOptions.contas_destino.map((c) => ({
-                              label: c,
-                              value: c,
-                            }))}
-                            selected={filters.contas_destino || []}
+                            options={filterOptions['conta_caixa_destino'] || []}
+                            selected={filters['conta_caixa_destino'] || []}
                             onChange={(v) => {
-                              setFilters((p) => ({ ...p, contas_destino: v }))
+                              setFilters((p) => ({ ...p, conta_caixa_destino: v }))
                               setPage(0)
                             }}
                           />
@@ -1186,13 +1098,10 @@ export default function FinancialMovements() {
                           <Label className="text-xs">Forma de Pagto</Label>
                           <MultiSelect
                             title="Todas as formas de pagto"
-                            options={filterOptions.formas_pagto.map((f) => ({
-                              label: f,
-                              value: f,
-                            }))}
-                            selected={filters.formas_pagto || []}
+                            options={filterOptions['forma_pagto'] || []}
+                            selected={filters['forma_pagto'] || []}
                             onChange={(v) => {
-                              setFilters((p) => ({ ...p, formas_pagto: v }))
+                              setFilters((p) => ({ ...p, forma_pagto: v }))
                               setPage(0)
                             }}
                           />
@@ -1202,10 +1111,10 @@ export default function FinancialMovements() {
                           <Label className="text-xs">C.Custo</Label>
                           <MultiSelect
                             title="Todos os C.Custo"
-                            options={filterOptions.c_custos.map((c) => ({ label: c, value: c }))}
-                            selected={filters.c_custos || []}
+                            options={filterOptions['c_custo'] || []}
+                            selected={filters['c_custo'] || []}
                             onChange={(v) => {
-                              setFilters((p) => ({ ...p, c_custos: v }))
+                              setFilters((p) => ({ ...p, c_custo: v }))
                               setPage(0)
                             }}
                           />
@@ -1215,13 +1124,10 @@ export default function FinancialMovements() {
                           <Label className="text-xs">Descrição C.Custo</Label>
                           <MultiSelect
                             title="Todas as descrições"
-                            options={filterOptions.descricoes_c_custo.map((d) => ({
-                              label: d,
-                              value: d,
-                            }))}
-                            selected={filters.descricoes_c_custo || []}
+                            options={filterOptions['descricao_c_custo'] || []}
+                            selected={filters['descricao_c_custo'] || []}
                             onChange={(v) => {
-                              setFilters((p) => ({ ...p, descricoes_c_custo: v }))
+                              setFilters((p) => ({ ...p, descricao_c_custo: v }))
                               setPage(0)
                             }}
                           />
@@ -1231,12 +1137,8 @@ export default function FinancialMovements() {
                           <Label className="text-xs">Status</Label>
                           <MultiSelect
                             title="Todos os status"
-                            options={[
-                              { label: 'Pendente', value: 'Pendente' },
-                              { label: 'Concluído', value: 'Concluído' },
-                              { label: 'Erro', value: 'Erro' },
-                            ]}
-                            selected={filters.status || []}
+                            options={filterOptions['status'] || []}
+                            selected={filters['status'] || []}
                             onChange={(v) => {
                               setFilters((p) => ({ ...p, status: v }))
                               setPage(0)
@@ -1515,10 +1417,8 @@ export default function FinancialMovements() {
                 {tableHeaders
                   .filter((h) => visibleColumns[h.key] !== false)
                   .map((h) => {
-                    const filterKey = headerToFilterKey[h.key]
-                    const isFilterable = !!filterKey
-                    const activeFilterCount = isFilterable ? filters[filterKey]?.length || 0 : 0
-                    const options = isFilterable ? getOptionsForHeader(h.key) : []
+                    const activeFilterCount = filters[h.key]?.length || 0
+                    const options = filterOptions[h.key] || []
 
                     return (
                       <TableHead
@@ -1545,71 +1445,69 @@ export default function FinancialMovements() {
                             {h.label}
                             {renderSortIcon(h.key)}
                           </div>
-                          {isFilterable && (
-                            <Popover>
-                              <PopoverTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className={cn(
-                                    'h-5 w-5 rounded-sm relative',
-                                    activeFilterCount > 0
-                                      ? 'text-primary bg-primary/10'
-                                      : 'text-slate-400 hover:text-slate-600',
-                                  )}
-                                >
-                                  <Filter className="h-3 w-3" />
-                                  {activeFilterCount > 0 && (
-                                    <span className="absolute -top-0.5 -right-0.5 flex h-2 w-2 items-center justify-center rounded-full bg-primary text-[8px] text-primary-foreground"></span>
-                                  )}
-                                </Button>
-                              </PopoverTrigger>
-                              <PopoverContent className="w-[200px] p-0" align="start">
-                                <Command>
-                                  <CommandInput placeholder="Buscar..." className="h-8 text-xs" />
-                                  <CommandList className="max-h-[200px] overflow-y-auto">
-                                    <CommandEmpty className="py-2 text-xs text-center text-slate-500">
-                                      Nenhum encontrado.
-                                    </CommandEmpty>
-                                    <CommandGroup>
-                                      {options.map((opt) => {
-                                        const isSelected = filters[filterKey]?.includes(opt.value)
-                                        return (
-                                          <CommandItem
-                                            key={opt.value}
-                                            onSelect={() => {
-                                              const current = filters[filterKey] || []
-                                              const updated = isSelected
-                                                ? current.filter((v) => v !== opt.value)
-                                                : [...current, opt.value]
-                                              setFilters((prev) => ({
-                                                ...prev,
-                                                [filterKey]: updated,
-                                              }))
-                                              setPage(0)
-                                            }}
-                                            className="text-xs cursor-pointer"
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className={cn(
+                                  'h-5 w-5 rounded-sm relative',
+                                  activeFilterCount > 0
+                                    ? 'text-primary bg-primary/10'
+                                    : 'text-slate-400 hover:text-slate-600',
+                                )}
+                              >
+                                <Filter className="h-3 w-3" />
+                                {activeFilterCount > 0 && (
+                                  <span className="absolute -top-0.5 -right-0.5 flex h-2 w-2 items-center justify-center rounded-full bg-primary text-[8px] text-primary-foreground"></span>
+                                )}
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-[200px] p-0" align="start">
+                              <Command>
+                                <CommandInput placeholder="Buscar..." className="h-8 text-xs" />
+                                <CommandList className="max-h-[200px] overflow-y-auto">
+                                  <CommandEmpty className="py-2 text-xs text-center text-slate-500">
+                                    Nenhum encontrado.
+                                  </CommandEmpty>
+                                  <CommandGroup>
+                                    {options.map((opt) => {
+                                      const isSelected = filters[h.key]?.includes(opt.value)
+                                      return (
+                                        <CommandItem
+                                          key={opt.value}
+                                          onSelect={() => {
+                                            const current = filters[h.key] || []
+                                            const updated = isSelected
+                                              ? current.filter((v) => v !== opt.value)
+                                              : [...current, opt.value]
+                                            setFilters((prev) => ({
+                                              ...prev,
+                                              [h.key]: updated,
+                                            }))
+                                            setPage(0)
+                                          }}
+                                          className="text-xs cursor-pointer"
+                                        >
+                                          <div
+                                            className={cn(
+                                              'mr-2 flex h-3 w-3 items-center justify-center rounded-sm border border-primary',
+                                              isSelected
+                                                ? 'bg-primary text-primary-foreground'
+                                                : 'opacity-50 [&_svg]:invisible',
+                                            )}
                                           >
-                                            <div
-                                              className={cn(
-                                                'mr-2 flex h-3 w-3 items-center justify-center rounded-sm border border-primary',
-                                                isSelected
-                                                  ? 'bg-primary text-primary-foreground'
-                                                  : 'opacity-50 [&_svg]:invisible',
-                                              )}
-                                            >
-                                              <Check className="h-2 w-2" />
-                                            </div>
-                                            <span>{opt.label}</span>
-                                          </CommandItem>
-                                        )
-                                      })}
-                                    </CommandGroup>
-                                  </CommandList>
-                                </Command>
-                              </PopoverContent>
-                            </Popover>
-                          )}
+                                            <Check className="h-2 w-2" />
+                                          </div>
+                                          <span>{opt.label}</span>
+                                        </CommandItem>
+                                      )
+                                    })}
+                                  </CommandGroup>
+                                </CommandList>
+                              </Command>
+                            </PopoverContent>
+                          </Popover>
                         </div>
                       </TableHead>
                     )
