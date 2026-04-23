@@ -84,8 +84,9 @@ import {
   SheetDescription,
 } from '@/components/ui/sheet'
 
-const formatMonthYear = (dateStr: string) => {
-  if (!dateStr) return 'Sem Data'
+const formatMonthYear = (row: any) => {
+  const dateStr = row?.data_emissao
+  if (!dateStr || typeof dateStr !== 'string') return 'Sem Data'
   const parts = dateStr.split('T')[0].split('-')
   if (parts.length >= 3) return `${parts[1]}/${parts[0]}`
   return 'Sem Data'
