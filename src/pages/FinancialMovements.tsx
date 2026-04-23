@@ -985,7 +985,18 @@ export default function FinancialMovements() {
 
     Object.entries(filters).forEach(([key, values]) => {
       if (values && values.length > 0) {
-        if (key === 'empresa') {
+        if (key === 'natureza') {
+          const orParts: string[] = []
+          if (values.includes('positivo')) {
+            orParts.push('valor.gt.0', 'valor_liquido.gt.0')
+          }
+          if (values.includes('negativo')) {
+            orParts.push('valor.lt.0', 'valor_liquido.lt.0')
+          }
+          if (orParts.length > 0) {
+            q = q.or(orParts.join(','))
+          }
+        } else if (key === 'empresa') {
           q = q.in('organization_id', values)
         } else if (key === 'prontidao') {
           const hasIncompleto = values.includes('Incompleto')
@@ -1739,6 +1750,21 @@ export default function FinancialMovements() {
                                 selected={filters['conta_caixa'] || []}
                                 onChange={(v) => {
                                   setFilters((p) => ({ ...p, conta_caixa: v }))
+                                  setPage(0)
+                                }}
+                              />
+                            </div>
+                            <div className="space-y-1.5">
+                              <Label className="text-xs">Natureza</Label>
+                              <MultiSelect
+                                title="Ambas"
+                                options={[
+                                  { label: 'Entradas (+)', value: 'positivo' },
+                                  { label: 'Saídas (-)', value: 'negativo' },
+                                ]}
+                                selected={filters['natureza'] || []}
+                                onChange={(v) => {
+                                  setFilters((p) => ({ ...p, natureza: v }))
                                   setPage(0)
                                 }}
                               />
@@ -2530,21 +2556,34 @@ export default function FinancialMovements() {
                                     return (
                                       <TableCell
                                         key={key}
-                                        className="px-2 py-1.5 text-xs whitespace-nowrap text-center text-slate-600 border-r"
+                                        className="px-2 py-1.5 text-xs whitespace-nowrap text-center border-r"
                                       >
-                                        {row.valor !== null
-                                          ? new Intl.NumberFormat('pt-BR', {
+                                        {row.valor !== null ? (
+                                          <span
+                                            className={cn(
+                                              'font-medium',
+                                              row.valor > 0
+                                                ? 'text-emerald-600'
+                                                : row.valor < 0
+                                                  ? 'text-rose-600'
+                                                  : 'text-slate-600',
+                                            )}
+                                          >
+                                            {new Intl.NumberFormat('pt-BR', {
                                               style: 'currency',
                                               currency: 'BRL',
-                                            }).format(row.valor)
-                                          : '-'}
+                                            }).format(row.valor)}
+                                          </span>
+                                        ) : (
+                                          <span className="text-slate-400">-</span>
+                                        )}
                                       </TableCell>
                                     )
                                   case 'valor_liquido':
                                     return (
                                       <TableCell
                                         key={key}
-                                        className="px-2 py-1.5 text-xs whitespace-nowrap text-center font-semibold text-slate-900 border-r"
+                                        className="px-2 py-1.5 text-xs whitespace-nowrap text-center border-r"
                                       >
                                         {editingId === row.id ? (
                                           <Input
@@ -2561,11 +2600,16 @@ export default function FinancialMovements() {
                                           />
                                         ) : (
                                           <span
-                                            className={
+                                            className={cn(
+                                              'font-semibold',
                                               row.valor_liquido === null
                                                 ? 'text-red-500 font-bold'
-                                                : ''
-                                            }
+                                                : row.valor_liquido > 0
+                                                  ? 'text-emerald-600'
+                                                  : row.valor_liquido < 0
+                                                    ? 'text-rose-600'
+                                                    : 'text-slate-900',
+                                            )}
                                           >
                                             {row.valor_liquido !== null
                                               ? new Intl.NumberFormat('pt-BR', {
@@ -2889,24 +2933,46 @@ export default function FinancialMovements() {
                               return (
                                 <TableCell
                                   key={key}
-                                  className="px-2 py-2 text-xs whitespace-nowrap text-center text-slate-800 border-r"
+                                  className="px-2 py-2 text-xs whitespace-nowrap text-center border-r"
                                 >
-                                  {new Intl.NumberFormat('pt-BR', {
-                                    style: 'currency',
-                                    currency: 'BRL',
-                                  }).format(totals.valor)}
+                                  <span
+                                    className={cn(
+                                      'font-bold',
+                                      totals.valor > 0
+                                        ? 'text-emerald-600'
+                                        : totals.valor < 0
+                                          ? 'text-rose-600'
+                                          : 'text-slate-800',
+                                    )}
+                                  >
+                                    {new Intl.NumberFormat('pt-BR', {
+                                      style: 'currency',
+                                      currency: 'BRL',
+                                    }).format(totals.valor)}
+                                  </span>
                                 </TableCell>
                               )
                             if (key === 'valor_liquido')
                               return (
                                 <TableCell
                                   key={key}
-                                  className="px-2 py-2 text-xs whitespace-nowrap text-center text-slate-900 border-r"
+                                  className="px-2 py-2 text-xs whitespace-nowrap text-center border-r"
                                 >
-                                  {new Intl.NumberFormat('pt-BR', {
-                                    style: 'currency',
-                                    currency: 'BRL',
-                                  }).format(totals.valor_liquido)}
+                                  <span
+                                    className={cn(
+                                      'font-bold',
+                                      totals.valor_liquido > 0
+                                        ? 'text-emerald-600'
+                                        : totals.valor_liquido < 0
+                                          ? 'text-rose-600'
+                                          : 'text-slate-900',
+                                    )}
+                                  >
+                                    {new Intl.NumberFormat('pt-BR', {
+                                      style: 'currency',
+                                      currency: 'BRL',
+                                    }).format(totals.valor_liquido)}
+                                  </span>
                                 </TableCell>
                               )
                             const isFirstVisible = i === 0
