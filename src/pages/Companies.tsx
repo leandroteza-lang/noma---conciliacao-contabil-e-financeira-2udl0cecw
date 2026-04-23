@@ -824,8 +824,8 @@ export default function Companies() {
                         key={org.id}
                         className={
                           isEven
-                            ? 'bg-[#800000] text-white font-bold hover:bg-[#800000]/90 border-0'
-                            : 'hover:bg-slate-50/50 border-0'
+                            ? 'bg-[#800000] text-white font-bold text-[11px] hover:bg-[#800000]/90 border-0'
+                            : 'bg-white text-black font-bold text-[11px] hover:bg-slate-50 border-0'
                         }
                       >
                         <TableCell className="py-0.5 px-2 text-center">
@@ -838,24 +838,26 @@ export default function Companies() {
                             className={
                               isEven
                                 ? 'border-white data-[state=checked]:bg-white data-[state=checked]:text-[#800000]'
-                                : ''
+                                : 'border-black data-[state=checked]:bg-black data-[state=checked]:text-white'
                             }
                           />
                         </TableCell>
-                        <TableCell className="py-0.5 px-2 font-medium">
+                        <TableCell className="py-0.5 px-2 font-bold text-[11px]">
                           <div className="flex items-center gap-2">
                             <div
-                              className={`h-6 w-6 rounded-full flex items-center justify-center shrink-0 text-[9px] font-bold ${isEven ? 'bg-white text-[#800000]' : 'bg-blue-100 text-blue-700'}`}
+                              className={`h-6 w-6 rounded-full flex items-center justify-center shrink-0 text-[9px] font-bold ${isEven ? 'bg-white text-[#800000]' : 'bg-black text-white'}`}
                             >
                               {org.name.substring(0, 2).toUpperCase()}
                             </div>
                             <div>
-                              <p className={`text-sm ${isEven ? 'text-white' : 'text-slate-900'}`}>
+                              <p
+                                className={`text-[11px] font-bold ${isEven ? 'text-white' : 'text-black'}`}
+                              >
                                 {org.name}
                               </p>
                               {org.address && (
                                 <p
-                                  className={`text-[11px] truncate max-w-[200px] ${isEven ? 'text-gray-200 font-normal' : 'text-slate-500'}`}
+                                  className={`text-[11px] truncate max-w-[200px] ${isEven ? 'text-gray-200 font-bold' : 'text-black font-bold'}`}
                                 >
                                   {org.address}
                                 </p>
@@ -863,38 +865,28 @@ export default function Companies() {
                             </div>
                           </div>
                         </TableCell>
-                        <TableCell className="py-0.5 px-2">
-                          <div className="text-[13px]">
+                        <TableCell className="py-0.5 px-2 text-[11px] font-bold">
+                          <div>
                             {org.cnpj && (
-                              <p>
-                                <span
-                                  className={`font-medium mr-1 ${isEven ? 'text-white' : 'text-slate-500'}`}
-                                >
-                                  CNPJ:
-                                </span>
+                              <p className={isEven ? 'text-white' : 'text-black'}>
+                                <span className="font-bold mr-1">CNPJ:</span>
                                 {formatCNPJ(org.cnpj)}
                               </p>
                             )}
                             {org.cpf && (
-                              <p>
-                                <span
-                                  className={`font-medium mr-1 ${isEven ? 'text-white' : 'text-slate-500'}`}
-                                >
-                                  CPF:
-                                </span>
+                              <p className={isEven ? 'text-white' : 'text-black'}>
+                                <span className="font-bold mr-1">CPF:</span>
                                 {formatCPF(org.cpf)}
                               </p>
                             )}
                           </div>
                         </TableCell>
-                        <TableCell className="py-0.5 px-2">
-                          <div
-                            className={`text-[13px] ${isEven ? 'text-white' : 'text-slate-600'}`}
-                          >
+                        <TableCell className="py-0.5 px-2 text-[11px] font-bold">
+                          <div className={isEven ? 'text-white' : 'text-black'}>
                             {org.email && <p>{org.email}</p>}
                             {org.phone && <p>{org.phone}</p>}
                             {!org.email && !org.phone && (
-                              <span className={isEven ? 'text-white' : 'text-slate-400'}>-</span>
+                              <span className={isEven ? 'text-white' : 'text-black'}>-</span>
                             )}
                           </div>
                         </TableCell>
@@ -903,17 +895,17 @@ export default function Companies() {
                             variant={org.status ? 'default' : 'secondary'}
                             className={
                               isEven
-                                ? 'bg-white/20 text-white text-[10px] h-4 py-0 hover:bg-white/30'
+                                ? 'bg-white/20 text-white font-bold text-[10px] h-4 py-0 hover:bg-white/30'
                                 : org.status
-                                  ? 'bg-green-100 text-green-800 text-[10px] h-4 py-0'
-                                  : 'bg-slate-100 text-slate-600 text-[10px] h-4 py-0'
+                                  ? 'bg-green-100 text-black font-bold text-[10px] h-4 py-0'
+                                  : 'bg-slate-100 text-black font-bold text-[10px] h-4 py-0'
                             }
                           >
                             {org.status ? 'Ativo' : 'Inativo'}
                           </Badge>
                         </TableCell>
                         <TableCell
-                          className={`py-0.5 px-2 text-[13px] ${isEven ? 'text-white' : 'text-slate-500'}`}
+                          className={`py-0.5 px-2 text-[11px] font-bold ${isEven ? 'text-white' : 'text-black'}`}
                         >
                           {org.created_at
                             ? format(new Date(org.created_at), 'dd/MM/yyyy', { locale: ptBR })
@@ -925,7 +917,7 @@ export default function Companies() {
                               variant="ghost"
                               size="icon"
                               onClick={() => openModal(org)}
-                              className={`h-6 w-6 ${isEven ? 'text-white hover:bg-white/10 hover:text-white' : 'text-slate-500 hover:text-blue-600'}`}
+                              className={`h-6 w-6 ${isEven ? 'text-white hover:bg-white/10 hover:text-white' : 'text-black hover:text-blue-600 hover:bg-slate-100'}`}
                             >
                               <Edit className="h-3 w-3" />
                             </Button>
@@ -933,7 +925,7 @@ export default function Companies() {
                               variant="ghost"
                               size="icon"
                               onClick={() => handleDelete(org.id)}
-                              className={`h-6 w-6 ${isEven ? 'text-white hover:bg-white/10 hover:text-red-200' : 'text-slate-500 hover:text-red-600 hover:bg-red-50'}`}
+                              className={`h-6 w-6 ${isEven ? 'text-white hover:bg-white/10 hover:text-red-200' : 'text-black hover:text-red-600 hover:bg-red-50'}`}
                             >
                               <Trash2 className="h-3 w-3" />
                             </Button>
