@@ -95,6 +95,90 @@ const formatMonthYear = (row: any, dateField: string = 'data_emissao') => {
   return 'Sem Data'
 }
 
+function DraggablePopoverContent({
+  children,
+  className,
+  title,
+}: {
+  children: React.ReactNode
+  className?: string
+  title: string
+}) {
+  const [pos, setPos] = useState({ x: 0, y: 0 })
+  const dragRef = useRef<{ startX: number; startY: number; initX: number; initY: number } | null>(
+    null,
+  )
+
+  const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    const target = e.target as HTMLElement
+    if (target.closest('.drag-handle')) {
+      e.currentTarget.setPointerCapture(e.pointerId)
+      dragRef.current = {
+        startX: e.clientX,
+        startY: e.clientY,
+        initX: pos.x,
+        initY: pos.y,
+      }
+    }
+  }
+
+  const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (dragRef.current) {
+      const dx = e.clientX - dragRef.current.startX
+      const dy = e.clientY - dragRef.current.startY
+      setPos({
+        x: dragRef.current.initX + dx,
+        y: dragRef.current.initY + dy,
+      })
+    }
+  }
+
+  const handlePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (dragRef.current) {
+      e.currentTarget.releasePointerCapture(e.pointerId)
+      dragRef.current = null
+    }
+  }
+
+  return (
+    <div
+      className={cn(
+        'bg-white border border-slate-200 shadow-xl rounded-md flex flex-col w-full h-full pointer-events-auto relative',
+        className,
+      )}
+      style={{
+        transform: `translate(${pos.x}px, ${pos.y}px)`,
+        transition: dragRef.current ? 'none' : 'transform 0.1s ease-out',
+      }}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      onPointerCancel={handlePointerUp}
+    >
+      <div className="drag-handle bg-slate-100 hover:bg-slate-200 cursor-move flex items-center justify-between px-4 py-2 border-b border-slate-200 rounded-t-md select-none touch-none active:cursor-grabbing">
+        <div className="flex items-center gap-2">
+          <GripHorizontal className="h-4 w-4 text-slate-400" />
+          <span className="font-semibold text-xs text-slate-700">{title}</span>
+        </div>
+        {(pos.x !== 0 || pos.y !== 0) && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 text-[10px] px-2 text-slate-500 hover:text-slate-800"
+            onClick={(e) => {
+              e.stopPropagation()
+              setPos({ x: 0, y: 0 })
+            }}
+          >
+            Resetar Posição
+          </Button>
+        )}
+      </div>
+      {children}
+    </div>
+  )
+}
+
 function SummaryTable({
   data,
   type,
@@ -209,90 +293,6 @@ function SummaryTable({
     })
     return result
   }, [data, primaryKeyFn, secondaryKeyFn])
-
-  function DraggablePopoverContent({
-    children,
-    className,
-    title,
-  }: {
-    children: React.ReactNode
-    className?: string
-    title: string
-  }) {
-    const [pos, setPos] = useState({ x: 0, y: 0 })
-    const dragRef = useRef<{ startX: number; startY: number; initX: number; initY: number } | null>(
-      null,
-    )
-
-    const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
-      const target = e.target as HTMLElement
-      if (target.closest('.drag-handle')) {
-        e.currentTarget.setPointerCapture(e.pointerId)
-        dragRef.current = {
-          startX: e.clientX,
-          startY: e.clientY,
-          initX: pos.x,
-          initY: pos.y,
-        }
-      }
-    }
-
-    const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
-      if (dragRef.current) {
-        const dx = e.clientX - dragRef.current.startX
-        const dy = e.clientY - dragRef.current.startY
-        setPos({
-          x: dragRef.current.initX + dx,
-          y: dragRef.current.initY + dy,
-        })
-      }
-    }
-
-    const handlePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
-      if (dragRef.current) {
-        e.currentTarget.releasePointerCapture(e.pointerId)
-        dragRef.current = null
-      }
-    }
-
-    return (
-      <div
-        className={cn(
-          'bg-white border border-slate-200 shadow-xl rounded-md flex flex-col w-full h-full pointer-events-auto relative',
-          className,
-        )}
-        style={{
-          transform: `translate(${pos.x}px, ${pos.y}px)`,
-          transition: dragRef.current ? 'none' : 'transform 0.1s ease-out',
-        }}
-        onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={handlePointerUp}
-        onPointerCancel={handlePointerUp}
-      >
-        <div className="drag-handle bg-slate-100 hover:bg-slate-200 cursor-move flex items-center justify-between px-4 py-2 border-b border-slate-200 rounded-t-md select-none touch-none active:cursor-grabbing">
-          <div className="flex items-center gap-2">
-            <GripHorizontal className="h-4 w-4 text-slate-400" />
-            <span className="font-semibold text-xs text-slate-700">{title}</span>
-          </div>
-          {(pos.x !== 0 || pos.y !== 0) && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-6 text-[10px] px-2 text-slate-500 hover:text-slate-800"
-              onClick={(e) => {
-                e.stopPropagation()
-                setPos({ x: 0, y: 0 })
-              }}
-            >
-              Resetar Posição
-            </Button>
-          )}
-        </div>
-        {children}
-      </div>
-    )
-  }
 
   const formatVal = (v: number) =>
     new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v)
