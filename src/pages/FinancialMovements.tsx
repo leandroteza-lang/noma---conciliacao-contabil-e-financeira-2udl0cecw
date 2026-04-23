@@ -1707,7 +1707,10 @@ export default function FinancialMovements() {
                         )}
                       </Button>
                     </PopoverTrigger>
-                    <PopoverContent align="end" className="w-80 p-0 flex flex-col">
+                    <PopoverContent
+                      align="end"
+                      className="w-[calc(100vw-2rem)] sm:w-[600px] p-0 flex flex-col"
+                    >
                       <Tabs defaultValue="filters" className="w-full">
                         <div className="px-4 pt-4 pb-2 border-b">
                           <TabsList className="w-full grid grid-cols-2">
@@ -1717,9 +1720,9 @@ export default function FinancialMovements() {
                         </div>
                         <TabsContent
                           value="filters"
-                          className="m-0 p-4 max-h-[60vh] overflow-y-auto space-y-4"
+                          className="m-0 p-4 max-h-[70vh] overflow-y-auto flex flex-col gap-4"
                         >
-                          <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center justify-between">
                             <h4 className="font-semibold text-sm">Filtros Combinados</h4>
                             {hasActiveFilters && (
                               <Button
@@ -1732,7 +1735,7 @@ export default function FinancialMovements() {
                               </Button>
                             )}
                           </div>
-                          <div className="space-y-4">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div className="space-y-1.5">
                               <Label className="text-xs">Empresa</Label>
                               <MultiSelect
@@ -1821,7 +1824,7 @@ export default function FinancialMovements() {
                               />
                             </div>
                           </div>
-                          <div className="pt-4 border-t border-slate-200 mt-4 flex items-center gap-2">
+                          <div className="pt-4 border-t border-slate-200 flex items-center gap-2">
                             <Input
                               value={newFilterName}
                               onChange={(e) => setNewFilterName(e.target.value)}
@@ -1891,7 +1894,10 @@ export default function FinancialMovements() {
                         )}
                       </Button>
                     </PopoverTrigger>
-                    <PopoverContent align="end" className="w-80 p-0 flex flex-col">
+                    <PopoverContent
+                      align="end"
+                      className="w-[calc(100vw-2rem)] sm:w-[500px] md:w-[700px] lg:w-[800px] p-0 flex flex-col"
+                    >
                       <Tabs defaultValue="columns" className="w-full">
                         <div className="px-4 pt-4 pb-2 border-b">
                           <TabsList className="w-full grid grid-cols-2">
@@ -1899,69 +1905,71 @@ export default function FinancialMovements() {
                             <TabsTrigger value="saved">Salvas</TabsTrigger>
                           </TabsList>
                         </div>
-                        <TabsContent value="columns" className="m-0 p-4 space-y-4">
-                          <div className="flex items-center justify-between mb-2">
+                        <TabsContent value="columns" className="m-0 p-4 flex flex-col gap-4">
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                             <h4 className="font-semibold text-sm">Gerenciar Colunas</h4>
-                            {(hiddenColumnsCount > 0 ||
-                              JSON.stringify(columnOrder) !==
-                                JSON.stringify(defaultColumnOrder)) && (
+                            <div className="flex flex-wrap items-center gap-1">
                               <Button
-                                variant="ghost"
+                                variant="secondary"
                                 size="sm"
-                                onClick={resetColumns}
-                                className="h-6 text-xs px-2 text-slate-500 hover:text-slate-800"
+                                className="h-6 px-2 text-[10px]"
+                                onClick={selectAllColumns}
                               >
-                                Restaurar padrão
+                                Todos
                               </Button>
-                            )}
+                              <Button
+                                variant="secondary"
+                                size="sm"
+                                className="h-6 px-2 text-[10px]"
+                                onClick={selectNoColumns}
+                              >
+                                Nenhum
+                              </Button>
+                              <Button
+                                variant="secondary"
+                                size="sm"
+                                className="h-6 px-2 text-[10px]"
+                                onClick={invertColumns}
+                              >
+                                Inverter
+                              </Button>
+                              {(hiddenColumnsCount > 0 ||
+                                JSON.stringify(columnOrder) !==
+                                  JSON.stringify(defaultColumnOrder)) && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={resetColumns}
+                                  className="h-6 text-xs px-2 text-slate-500 hover:text-slate-800"
+                                >
+                                  Restaurar padrão
+                                </Button>
+                              )}
+                            </div>
                           </div>
-                          <div className="flex items-center justify-between gap-1 mb-2">
-                            <Button
-                              variant="secondary"
-                              size="sm"
-                              className="h-6 px-2 text-[10px] flex-1"
-                              onClick={selectAllColumns}
-                            >
-                              Todos
-                            </Button>
-                            <Button
-                              variant="secondary"
-                              size="sm"
-                              className="h-6 px-2 text-[10px] flex-1"
-                              onClick={selectNoColumns}
-                            >
-                              Nenhum
-                            </Button>
-                            <Button
-                              variant="secondary"
-                              size="sm"
-                              className="h-6 px-2 text-[10px] flex-1"
-                              onClick={invertColumns}
-                            >
-                              Inverter
-                            </Button>
+                          <div className="max-h-[50vh] overflow-y-auto pr-2">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-4 gap-y-2.5">
+                              {columnOrder.map((key) => {
+                                const h = tableHeaders.find((th) => th.key === key)!
+                                return (
+                                  <div key={h.key} className="flex items-center space-x-2">
+                                    <Checkbox
+                                      id={`col-${h.key}`}
+                                      checked={visibleColumns[h.key] !== false}
+                                      onCheckedChange={() => toggleColumn(h.key)}
+                                    />
+                                    <Label
+                                      htmlFor={`col-${h.key}`}
+                                      className="text-xs font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                                    >
+                                      {h.label}
+                                    </Label>
+                                  </div>
+                                )
+                              })}
+                            </div>
                           </div>
-                          <div className="max-h-[40vh] overflow-y-auto space-y-1.5 pr-2">
-                            {columnOrder.map((key) => {
-                              const h = tableHeaders.find((th) => th.key === key)!
-                              return (
-                                <div key={h.key} className="flex items-center space-x-2">
-                                  <Checkbox
-                                    id={`col-${h.key}`}
-                                    checked={visibleColumns[h.key] !== false}
-                                    onCheckedChange={() => toggleColumn(h.key)}
-                                  />
-                                  <Label
-                                    htmlFor={`col-${h.key}`}
-                                    className="text-xs font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
-                                  >
-                                    {h.label}
-                                  </Label>
-                                </div>
-                              )
-                            })}
-                          </div>
-                          <div className="pt-4 border-t border-slate-200 mt-4 flex items-center gap-2">
+                          <div className="pt-4 border-t border-slate-200 flex items-center gap-2">
                             <Input
                               value={newColumnPresetName}
                               onChange={(e) => setNewColumnPresetName(e.target.value)}
