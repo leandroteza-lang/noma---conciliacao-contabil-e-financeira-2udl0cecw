@@ -86,8 +86,8 @@ import {
   SheetDescription,
 } from '@/components/ui/sheet'
 
-const formatMonthYear = (row: any) => {
-  const dateStr = row?.data_emissao
+const formatMonthYear = (row: any, dateField: string = 'data_emissao') => {
+  const dateStr = row?.[dateField]
   if (!dateStr || typeof dateStr !== 'string') return 'Sem Data'
   const parts = dateStr.split('T')[0].split('-')
   if (parts.length >= 3) return `${parts[1]}/${parts[0]}`
@@ -97,9 +97,11 @@ const formatMonthYear = (row: any) => {
 function SummaryTable({
   data,
   type,
+  dateField = 'data_emissao',
 }: {
   data: any[]
   type: 'month_account' | 'account_month' | 'month_cost' | 'cost_month'
+  dateField?: string
 }) {
   let col1Label = ''
   let col2Label = ''
@@ -124,26 +126,26 @@ function SummaryTable({
     case 'month_account':
       col1Label = 'Mês/Ano'
       col2Label = 'Caixa/Banco'
-      primaryKeyFn = formatMonthYear
+      primaryKeyFn = (r) => formatMonthYear(r, dateField)
       secondaryKeyFn = formatAccount
       break
     case 'account_month':
       col1Label = 'Caixa/Banco'
       col2Label = 'Mês/Ano'
       primaryKeyFn = formatAccount
-      secondaryKeyFn = formatMonthYear
+      secondaryKeyFn = (r) => formatMonthYear(r, dateField)
       break
     case 'month_cost':
       col1Label = 'Mês/Ano'
       col2Label = 'Centro de Custo'
-      primaryKeyFn = formatMonthYear
+      primaryKeyFn = (r) => formatMonthYear(r, dateField)
       secondaryKeyFn = formatCostCenter
       break
     case 'cost_month':
       col1Label = 'Centro de Custo'
       col2Label = 'Mês/Ano'
       primaryKeyFn = formatCostCenter
-      secondaryKeyFn = formatMonthYear
+      secondaryKeyFn = (r) => formatMonthYear(r, dateField)
       break
   }
 
@@ -339,6 +341,7 @@ export default function FinancialMovements() {
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [totals, setTotals] = useState({ valor: 0, valor_liquido: 0 })
   const [summaryData, setSummaryData] = useState<any[]>([])
+  const [summaryDateBase, setSummaryDateBase] = useState('data_emissao')
 
   const [filters, setFilters] = useState<Record<string, string[]>>({})
   const [activeTab, setActiveTab] = useState('grade')
@@ -1070,7 +1073,7 @@ export default function FinancialMovements() {
     let totalsQuery = supabase
       .from('erp_financial_movements')
       .select(
-        'valor, valor_liquido, data_emissao, conta_caixa, nome_caixa, c_custo, descricao_c_custo, organization_id, mapped_account_id',
+        'valor, valor_liquido, data_emissao, dt_compens, conta_caixa, nome_caixa, c_custo, descricao_c_custo, organization_id, mapped_account_id',
       )
       .is('deleted_at', null)
       .limit(100000)
@@ -1230,7 +1233,7 @@ export default function FinancialMovements() {
     let totalsQuery = supabase
       .from('erp_financial_movements')
       .select(
-        'valor, valor_liquido, data_emissao, conta_caixa, nome_caixa, c_custo, descricao_c_custo, organization_id, mapped_account_id',
+        'valor, valor_liquido, data_emissao, dt_compens, conta_caixa, nome_caixa, c_custo, descricao_c_custo, organization_id, mapped_account_id',
       )
       .is('deleted_at', null)
       .limit(100000)
@@ -3025,6 +3028,25 @@ export default function FinancialMovements() {
         </TabsContent>
 
         <TabsContent value="resumo" className="m-0 animate-in fade-in-up duration-500">
+          <div className="flex justify-end mb-4">
+            <div className="flex items-center gap-2 bg-white border border-slate-200 p-1.5 rounded-lg shadow-sm">
+              <span className="text-sm font-medium text-slate-600 px-2">Data Base:</span>
+              <Tabs
+                value={summaryDateBase}
+                onValueChange={setSummaryDateBase}
+                className="w-[300px]"
+              >
+                <TabsList className="grid w-full grid-cols-2 h-8">
+                  <TabsTrigger value="data_emissao" className="text-xs">
+                    Emissão
+                  </TabsTrigger>
+                  <TabsTrigger value="dt_compens" className="text-xs">
+                    Compensação
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
+            </div>
+          </div>
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
             <Card className="shadow-sm border-slate-200">
               <CardHeader className="bg-slate-50/50 border-b pb-3 pt-4">
@@ -3034,7 +3056,11 @@ export default function FinancialMovements() {
               </CardHeader>
               <CardContent className="p-0">
                 <div className="h-[500px] overflow-y-auto custom-scrollbar">
-                  <SummaryTable data={summaryData} type="month_account" />
+                  <SummaryTable
+                    data={summaryData}
+                    type="month_account"
+                    dateField={summaryDateBase}
+                  />
                 </div>
               </CardContent>
             </Card>
@@ -3047,7 +3073,11 @@ export default function FinancialMovements() {
               </CardHeader>
               <CardContent className="p-0">
                 <div className="h-[500px] overflow-y-auto custom-scrollbar">
-                  <SummaryTable data={summaryData} type="account_month" />
+                  <SummaryTable
+                    data={summaryData}
+                    type="account_month"
+                    dateField={summaryDateBase}
+                  />
                 </div>
               </CardContent>
             </Card>
@@ -3058,7 +3088,7 @@ export default function FinancialMovements() {
               </CardHeader>
               <CardContent className="p-0">
                 <div className="h-[500px] overflow-y-auto custom-scrollbar">
-                  <SummaryTable data={summaryData} type="month_cost" />
+                  <SummaryTable data={summaryData} type="month_cost" dateField={summaryDateBase} />
                 </div>
               </CardContent>
             </Card>
@@ -3069,7 +3099,7 @@ export default function FinancialMovements() {
               </CardHeader>
               <CardContent className="p-0">
                 <div className="h-[500px] overflow-y-auto custom-scrollbar">
-                  <SummaryTable data={summaryData} type="cost_month" />
+                  <SummaryTable data={summaryData} type="cost_month" dateField={summaryDateBase} />
                 </div>
               </CardContent>
             </Card>
