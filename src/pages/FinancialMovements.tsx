@@ -57,6 +57,7 @@ import { Label } from '@/components/ui/label'
 import { Filter } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { MultiSelect } from '@/components/MultiSelect'
 
 const tableHeaders = [
   { label: 'Empresa', key: 'empresa' },
@@ -112,22 +113,79 @@ export default function FinancialMovements() {
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [totals, setTotals] = useState({ valor: 0, valor_liquido: 0 })
 
-  const [filters, setFilters] = useState({
-    empresa: 'all',
-    conta: 'all',
-    tipo: 'all',
-    status: 'all',
-    conta_destino: 'all',
-    forma_pagto: 'all',
-    c_custo: 'all',
-    descricao_c_custo: 'all',
+  const [filters, setFilters] = useState<{
+    empresas: string[]
+    contas: string[]
+    tipos: string[]
+    status: string[]
+    contas_destino: string[]
+    formas_pagto: string[]
+    c_custos: string[]
+    descricoes_c_custo: string[]
+  }>({
+    empresas: [],
+    contas: [],
+    tipos: [],
+    status: [],
+    contas_destino: [],
+    formas_pagto: [],
+    c_custos: [],
+    descricoes_c_custo: [],
   })
 
   const [savedFilters, setSavedFilters] = useState<any[]>(() => {
     const saved = localStorage.getItem('fin_mov_saved_filters')
     if (saved) {
       try {
-        return JSON.parse(saved)
+        const parsed = JSON.parse(saved)
+        return parsed.map((f: any) => {
+          const newFilt = f.filters || {}
+          return {
+            ...f,
+            filters: {
+              empresas: Array.isArray(newFilt.empresas)
+                ? newFilt.empresas
+                : newFilt.empresa && newFilt.empresa !== 'all'
+                  ? [newFilt.empresa]
+                  : [],
+              contas: Array.isArray(newFilt.contas)
+                ? newFilt.contas
+                : newFilt.conta && newFilt.conta !== 'all'
+                  ? [newFilt.conta]
+                  : [],
+              tipos: Array.isArray(newFilt.tipos)
+                ? newFilt.tipos
+                : newFilt.tipo && newFilt.tipo !== 'all'
+                  ? [newFilt.tipo]
+                  : [],
+              status: Array.isArray(newFilt.status)
+                ? newFilt.status
+                : newFilt.status && newFilt.status !== 'all'
+                  ? [newFilt.status]
+                  : [],
+              contas_destino: Array.isArray(newFilt.contas_destino)
+                ? newFilt.contas_destino
+                : newFilt.conta_destino && newFilt.conta_destino !== 'all'
+                  ? [newFilt.conta_destino]
+                  : [],
+              formas_pagto: Array.isArray(newFilt.formas_pagto)
+                ? newFilt.formas_pagto
+                : newFilt.forma_pagto && newFilt.forma_pagto !== 'all'
+                  ? [newFilt.forma_pagto]
+                  : [],
+              c_custos: Array.isArray(newFilt.c_custos)
+                ? newFilt.c_custos
+                : newFilt.c_custo && newFilt.c_custo !== 'all'
+                  ? [newFilt.c_custo]
+                  : [],
+              descricoes_c_custo: Array.isArray(newFilt.descricoes_c_custo)
+                ? newFilt.descricoes_c_custo
+                : newFilt.descricao_c_custo && newFilt.descricao_c_custo !== 'all'
+                  ? [newFilt.descricao_c_custo]
+                  : [],
+            },
+          }
+        })
       } catch (e) {
         return []
       }
@@ -146,26 +204,18 @@ export default function FinancialMovements() {
     descricoes_c_custo: [] as string[],
   })
 
-  const hasActiveFilters =
-    filters.empresa !== 'all' ||
-    filters.conta !== 'all' ||
-    filters.tipo !== 'all' ||
-    filters.status !== 'all' ||
-    filters.conta_destino !== 'all' ||
-    filters.forma_pagto !== 'all' ||
-    filters.c_custo !== 'all' ||
-    filters.descricao_c_custo !== 'all'
+  const hasActiveFilters = Object.values(filters).some((arr) => arr && arr.length > 0)
 
   const clearFilters = () => {
     setFilters({
-      empresa: 'all',
-      conta: 'all',
-      tipo: 'all',
-      status: 'all',
-      conta_destino: 'all',
-      forma_pagto: 'all',
-      c_custo: 'all',
-      descricao_c_custo: 'all',
+      empresas: [],
+      contas: [],
+      tipos: [],
+      status: [],
+      contas_destino: [],
+      formas_pagto: [],
+      c_custos: [],
+      descricoes_c_custo: [],
     })
     setSearch('')
     setPage(0)
@@ -513,15 +563,15 @@ export default function FinancialMovements() {
         `historico.ilike.%${search}%,nome_cli_fornec.ilike.%${search}%,c_custo.ilike.%${search}%`,
       )
     }
-    if (filters.empresa !== 'all') q = q.eq('organization_id', filters.empresa)
-    if (filters.conta !== 'all') q = q.eq('conta_caixa', filters.conta)
-    if (filters.tipo !== 'all') q = q.eq('tipo_operacao', filters.tipo)
-    if (filters.status !== 'all') q = q.eq('status', filters.status)
-    if (filters.conta_destino !== 'all') q = q.eq('conta_caixa_destino', filters.conta_destino)
-    if (filters.forma_pagto !== 'all') q = q.eq('forma_pagto', filters.forma_pagto)
-    if (filters.c_custo !== 'all') q = q.eq('c_custo', filters.c_custo)
-    if (filters.descricao_c_custo !== 'all')
-      q = q.eq('descricao_c_custo', filters.descricao_c_custo)
+    if (filters.empresas?.length > 0) q = q.in('organization_id', filters.empresas)
+    if (filters.contas?.length > 0) q = q.in('conta_caixa', filters.contas)
+    if (filters.tipos?.length > 0) q = q.in('tipo_operacao', filters.tipos)
+    if (filters.status?.length > 0) q = q.in('status', filters.status)
+    if (filters.contas_destino?.length > 0) q = q.in('conta_caixa_destino', filters.contas_destino)
+    if (filters.formas_pagto?.length > 0) q = q.in('forma_pagto', filters.formas_pagto)
+    if (filters.c_custos?.length > 0) q = q.in('c_custo', filters.c_custos)
+    if (filters.descricoes_c_custo?.length > 0)
+      q = q.in('descricao_c_custo', filters.descricoes_c_custo)
     return q
   }
 
@@ -951,7 +1001,10 @@ export default function FinancialMovements() {
                     <span className="hidden sm:inline">Filtros</span>
                     {hasActiveFilters && (
                       <span className="absolute -top-1 -right-1 flex h-3 w-3 items-center justify-center rounded-full bg-primary text-[8px] text-primary-foreground">
-                        {Object.values(filters).filter((v) => v !== 'all').length}
+                        {Object.values(filters).reduce(
+                          (acc: number, val: any) => acc + (val?.length > 0 ? 1 : 0),
+                          0,
+                        )}
                       </span>
                     )}
                   </Button>
@@ -986,184 +1039,122 @@ export default function FinancialMovements() {
                       <div className="space-y-4">
                         <div className="space-y-1.5">
                           <Label className="text-xs">Empresa</Label>
-                          <Select
-                            value={filters.empresa}
-                            onValueChange={(v) => {
-                              setFilters((p) => ({ ...p, empresa: v }))
+                          <MultiSelect
+                            title="Todas as empresas"
+                            options={filterOptions.empresas.map((e) => ({
+                              label: e.name,
+                              value: e.id,
+                            }))}
+                            selected={filters.empresas || []}
+                            onChange={(v) => {
+                              setFilters((p) => ({ ...p, empresas: v }))
                               setPage(0)
                             }}
-                          >
-                            <SelectTrigger className="h-8 text-xs">
-                              <SelectValue placeholder="Todas as empresas" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="all">Todas as empresas</SelectItem>
-                              {filterOptions.empresas.map((e) => (
-                                <SelectItem key={e.id} value={e.id}>
-                                  {e.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                          />
                         </div>
 
                         <div className="space-y-1.5">
                           <Label className="text-xs">Conta/Caixa</Label>
-                          <Select
-                            value={filters.conta}
-                            onValueChange={(v) => {
-                              setFilters((p) => ({ ...p, conta: v }))
+                          <MultiSelect
+                            title="Todas as contas"
+                            options={filterOptions.contas.map((c) => ({ label: c, value: c }))}
+                            selected={filters.contas || []}
+                            onChange={(v) => {
+                              setFilters((p) => ({ ...p, contas: v }))
                               setPage(0)
                             }}
-                          >
-                            <SelectTrigger className="h-8 text-xs">
-                              <SelectValue placeholder="Todas as contas" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="all">Todas as contas</SelectItem>
-                              {filterOptions.contas.map((c) => (
-                                <SelectItem key={c} value={c}>
-                                  {c}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                          />
                         </div>
 
                         <div className="space-y-1.5">
                           <Label className="text-xs">Tipo de Operação</Label>
-                          <Select
-                            value={filters.tipo}
-                            onValueChange={(v) => {
-                              setFilters((p) => ({ ...p, tipo: v }))
+                          <MultiSelect
+                            title="Todos os tipos"
+                            options={filterOptions.tipos.map((t) => ({ label: t, value: t }))}
+                            selected={filters.tipos || []}
+                            onChange={(v) => {
+                              setFilters((p) => ({ ...p, tipos: v }))
                               setPage(0)
                             }}
-                          >
-                            <SelectTrigger className="h-8 text-xs">
-                              <SelectValue placeholder="Todos os tipos" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="all">Todos os tipos</SelectItem>
-                              {filterOptions.tipos.map((t) => (
-                                <SelectItem key={t} value={t}>
-                                  {t}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                          />
                         </div>
 
                         <div className="space-y-1.5">
                           <Label className="text-xs">Conta/Caixa Destino</Label>
-                          <Select
-                            value={filters.conta_destino}
-                            onValueChange={(v) => {
-                              setFilters((p) => ({ ...p, conta_destino: v }))
+                          <MultiSelect
+                            title="Todas as contas destino"
+                            options={filterOptions.contas_destino.map((c) => ({
+                              label: c,
+                              value: c,
+                            }))}
+                            selected={filters.contas_destino || []}
+                            onChange={(v) => {
+                              setFilters((p) => ({ ...p, contas_destino: v }))
                               setPage(0)
                             }}
-                          >
-                            <SelectTrigger className="h-8 text-xs">
-                              <SelectValue placeholder="Todas as contas destino" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="all">Todas as contas destino</SelectItem>
-                              {filterOptions.contas_destino.map((c) => (
-                                <SelectItem key={c} value={c}>
-                                  {c}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                          />
                         </div>
 
                         <div className="space-y-1.5">
                           <Label className="text-xs">Forma de Pagto</Label>
-                          <Select
-                            value={filters.forma_pagto}
-                            onValueChange={(v) => {
-                              setFilters((p) => ({ ...p, forma_pagto: v }))
+                          <MultiSelect
+                            title="Todas as formas de pagto"
+                            options={filterOptions.formas_pagto.map((f) => ({
+                              label: f,
+                              value: f,
+                            }))}
+                            selected={filters.formas_pagto || []}
+                            onChange={(v) => {
+                              setFilters((p) => ({ ...p, formas_pagto: v }))
                               setPage(0)
                             }}
-                          >
-                            <SelectTrigger className="h-8 text-xs">
-                              <SelectValue placeholder="Todas as formas de pagto" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="all">Todas as formas de pagto</SelectItem>
-                              {filterOptions.formas_pagto.map((f) => (
-                                <SelectItem key={f} value={f}>
-                                  {f}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                          />
                         </div>
 
                         <div className="space-y-1.5">
                           <Label className="text-xs">C.Custo</Label>
-                          <Select
-                            value={filters.c_custo}
-                            onValueChange={(v) => {
-                              setFilters((p) => ({ ...p, c_custo: v }))
+                          <MultiSelect
+                            title="Todos os C.Custo"
+                            options={filterOptions.c_custos.map((c) => ({ label: c, value: c }))}
+                            selected={filters.c_custos || []}
+                            onChange={(v) => {
+                              setFilters((p) => ({ ...p, c_custos: v }))
                               setPage(0)
                             }}
-                          >
-                            <SelectTrigger className="h-8 text-xs">
-                              <SelectValue placeholder="Todos os C.Custo" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="all">Todos os C.Custo</SelectItem>
-                              {filterOptions.c_custos.map((c) => (
-                                <SelectItem key={c} value={c}>
-                                  {c}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                          />
                         </div>
 
                         <div className="space-y-1.5">
                           <Label className="text-xs">Descrição C.Custo</Label>
-                          <Select
-                            value={filters.descricao_c_custo}
-                            onValueChange={(v) => {
-                              setFilters((p) => ({ ...p, descricao_c_custo: v }))
+                          <MultiSelect
+                            title="Todas as descrições"
+                            options={filterOptions.descricoes_c_custo.map((d) => ({
+                              label: d,
+                              value: d,
+                            }))}
+                            selected={filters.descricoes_c_custo || []}
+                            onChange={(v) => {
+                              setFilters((p) => ({ ...p, descricoes_c_custo: v }))
                               setPage(0)
                             }}
-                          >
-                            <SelectTrigger className="h-8 text-xs">
-                              <SelectValue placeholder="Todas as descrições" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="all">Todas as descrições</SelectItem>
-                              {filterOptions.descricoes_c_custo.map((d) => (
-                                <SelectItem key={d} value={d}>
-                                  {d}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                          />
                         </div>
 
                         <div className="space-y-1.5">
                           <Label className="text-xs">Status</Label>
-                          <Select
-                            value={filters.status}
-                            onValueChange={(v) => {
+                          <MultiSelect
+                            title="Todos os status"
+                            options={[
+                              { label: 'Pendente', value: 'Pendente' },
+                              { label: 'Concluído', value: 'Concluído' },
+                              { label: 'Erro', value: 'Erro' },
+                            ]}
+                            selected={filters.status || []}
+                            onChange={(v) => {
                               setFilters((p) => ({ ...p, status: v }))
                               setPage(0)
                             }}
-                          >
-                            <SelectTrigger className="h-8 text-xs">
-                              <SelectValue placeholder="Todos os status" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="all">Todos os status</SelectItem>
-                              <SelectItem value="Pendente">Pendente</SelectItem>
-                              <SelectItem value="Concluído">Concluído</SelectItem>
-                              <SelectItem value="Erro">Erro</SelectItem>
-                            </SelectContent>
-                          </Select>
+                          />
                         </div>
                       </div>
 
