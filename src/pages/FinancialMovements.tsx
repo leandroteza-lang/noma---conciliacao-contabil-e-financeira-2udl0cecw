@@ -176,9 +176,12 @@ export default function FinancialMovements() {
     fetchAuxData()
   }, [user])
 
-  const getMappedAccountForCC = (cCustoCode: string | null) => {
-    if (!cCustoCode) return null
-    const cc = costCenters.find((c) => c.code === cCustoCode)
+  const getMappedAccountForCC = (cCustoCode: string | null, orgId: string | null) => {
+    if (!cCustoCode || !orgId) return null
+    const cleanCode = cCustoCode.trim().toUpperCase()
+    const cc = costCenters.find(
+      (c) => c.organization_id === orgId && (c.code || '').trim().toUpperCase() === cleanCode,
+    )
     if (!cc) return null
     const mapping = mappings.find((m) => m.cost_center_id === cc.id)
     if (!mapping) return null
@@ -189,7 +192,7 @@ export default function FinancialMovements() {
     if (row.mapped_account_id) {
       return chartOfAccounts.find((coa) => coa.id === row.mapped_account_id) || null
     }
-    return getMappedAccountForCC(row.c_custo)
+    return getMappedAccountForCC(row.c_custo, row.organization_id)
   }
 
   useEffect(() => {
@@ -204,14 +207,17 @@ export default function FinancialMovements() {
     const orgId = mappingRow.organization_id
     const cCustoCode = mappingRow.c_custo
 
-    let ccId = costCenters.find((c) => c.code === cCustoCode && c.organization_id === orgId)?.id
+    const cleanCode = cCustoCode ? cCustoCode.trim().toUpperCase() : null
+    let ccId = costCenters.find(
+      (c) => c.organization_id === orgId && (c.code || '').trim().toUpperCase() === cleanCode,
+    )?.id
     if (!ccId && cCustoCode) {
       const newCcId = crypto.randomUUID()
       await supabase.from('cost_centers').insert({
         id: newCcId,
         organization_id: orgId,
-        code: cCustoCode,
-        description: cCustoCode,
+        code: cCustoCode.trim(),
+        description: cCustoCode.trim(),
       })
       ccId = newCcId
     }
@@ -863,7 +869,11 @@ export default function FinancialMovements() {
         const startX = rect1.right - containerRect.left
         const startY = rect1.top + rect1.height / 2 - containerRect.top
 
-        const mappedAcct = getMappedAccountForCC(cc === 'SEM_CC' ? null : cc)
+        const rowForCc = data.find((d) => (d.c_custo || 'SEM_CC') === cc)
+        const mappedAcct = getMappedAccountForCC(
+          cc === 'SEM_CC' ? null : cc,
+          rowForCc?.organization_id || null,
+        )
         if (mappedAcct) {
           const el2 = document.getElementById(`bridge-coa-${mappedAcct.id}`)
           if (el2) {
@@ -2465,7 +2475,11 @@ export default function FinancialMovements() {
                       <div
                         className={cn(
                           'w-3 h-3 rounded-full shadow-sm ring-2 ring-white',
-                          getMappedAccountForCC(cc === 'SEM_CC' ? null : cc)
+                          getMappedAccountForCC(
+                            cc === 'SEM_CC' ? null : cc,
+                            data.find((d) => (d.c_custo || 'SEM_CC') === cc)?.organization_id ||
+                              null,
+                          )
                             ? 'bg-primary'
                             : 'bg-red-400',
                         )}
@@ -2482,7 +2496,7 @@ export default function FinancialMovements() {
                     new Set(
                       data
                         .map((d) => {
-                          const m = getMappedAccountForCC(d.c_custo)
+                          const m = getMappedAccountForCC(d.c_custo, d.organization_id)
                           return m ? m.id : null
                         })
                         .filter(Boolean),
