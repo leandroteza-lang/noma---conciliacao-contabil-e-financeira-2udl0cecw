@@ -674,6 +674,8 @@ export default function FinancialMovements() {
     const options: Record<string, { label: string; value: string }[]> = {}
     options['empresa'] = (orgs || []).map((e) => ({ label: e.name, value: e.id }))
 
+    const dateCols = ['data_emissao', 'dt_compens', 'data_vencto', 'data_canc', 'data_estorno']
+
     tableHeaders.forEach((h) => {
       if (h.key === 'empresa') return
       if (h.key === 'prontidao') {
@@ -694,27 +696,39 @@ export default function FinancialMovements() {
       }
 
       if (movs) {
-        const uniqueVals = Array.from(
-          new Set(
-            movs.map((m) => m[h.key]).filter((v) => v !== null && v !== undefined && v !== ''),
-          ),
-        ).sort()
-        options[h.key] = uniqueVals.map((v) => {
-          let label = String(v)
-          if (
-            ['data_emissao', 'dt_compens', 'data_vencto', 'data_canc', 'data_estorno'].includes(
-              h.key,
-            )
-          ) {
-            const parts = label.split('T')[0].split('-')
-            if (parts.length === 3) label = `${parts[2]}/${parts[1]}/${parts[0]}`
-          } else if (['valor', 'valor_liquido'].includes(h.key)) {
-            label = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(
-              Number(v),
-            )
-          }
-          return { label, value: String(v) }
-        })
+        if (dateCols.includes(h.key)) {
+          const uniqueMonths = Array.from(
+            new Set(
+              movs
+                .map((m) => {
+                  const val = m[h.key]
+                  if (!val) return null
+                  return String(val).substring(0, 7)
+                })
+                .filter(Boolean),
+            ),
+          ).sort((a, b) => (b as string).localeCompare(a as string))
+
+          options[h.key] = uniqueMonths.map((ym) => {
+            const [y, m] = (ym as string).split('-')
+            return { label: `${m}/${y}`, value: ym as string }
+          })
+        } else {
+          const uniqueVals = Array.from(
+            new Set(
+              movs.map((m) => m[h.key]).filter((v) => v !== null && v !== undefined && v !== ''),
+            ),
+          ).sort()
+          options[h.key] = uniqueVals.map((v) => {
+            let label = String(v)
+            if (['valor', 'valor_liquido'].includes(h.key)) {
+              label = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(
+                Number(v),
+              )
+            }
+            return { label, value: String(v) }
+          })
+        }
       } else {
         options[h.key] = []
       }
@@ -941,6 +955,9 @@ export default function FinancialMovements() {
       q = q.or(
         `historico.ilike.%${search}%,nome_cli_fornec.ilike.%${search}%,c_custo.ilike.%${search}%`,
       )
+
+    const dateCols = ['data_emissao', 'dt_compens', 'data_vencto', 'data_canc', 'data_estorno']
+
     Object.entries(filters).forEach(([key, values]) => {
       if (values && values.length > 0) {
         if (key === 'empresa') {
@@ -980,6 +997,15 @@ export default function FinancialMovements() {
           if (orParts.length > 0) {
             q = q.or(orParts.join(','))
           }
+        } else if (dateCols.includes(key)) {
+          const orParts = values.map((ym) => {
+            const [y, m] = ym.split('-')
+            const startDate = `${ym}-01`
+            const lastDay = new Date(Date.UTC(parseInt(y), parseInt(m), 0)).getUTCDate()
+            const endDate = `${ym}-${String(lastDay).padStart(2, '0')}`
+            return `and(${key}.gte.${startDate},${key}.lte.${endDate})`
+          })
+          q = q.or(orParts.join(','))
         } else {
           q = q.in(key, values)
         }
