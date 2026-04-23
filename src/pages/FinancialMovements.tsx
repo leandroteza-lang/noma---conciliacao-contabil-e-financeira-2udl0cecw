@@ -29,6 +29,7 @@ import {
   ArrowDown,
   Columns,
   Trash2,
+  Save,
 } from 'lucide-react'
 import { Checkbox } from '@/components/ui/checkbox'
 import { toast } from 'sonner'
@@ -55,6 +56,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Label } from '@/components/ui/label'
 import { Filter } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
 const tableHeaders = [
   { label: 'Empresa', key: 'empresa' },
@@ -108,6 +110,7 @@ export default function FinancialMovements() {
   const [refreshKey, setRefreshKey] = useState(0)
 
   const [selectedIds, setSelectedIds] = useState<string[]>([])
+  const [totals, setTotals] = useState({ valor: 0, valor_liquido: 0 })
 
   const [filters, setFilters] = useState({
     empresa: 'all',
@@ -119,6 +122,19 @@ export default function FinancialMovements() {
     c_custo: 'all',
     descricao_c_custo: 'all',
   })
+
+  const [savedFilters, setSavedFilters] = useState<any[]>(() => {
+    const saved = localStorage.getItem('fin_mov_saved_filters')
+    if (saved) {
+      try {
+        return JSON.parse(saved)
+      } catch (e) {
+        return []
+      }
+    }
+    return []
+  })
+  const [newFilterName, setNewFilterName] = useState('')
 
   const [filterOptions, setFilterOptions] = useState({
     empresas: [] as { id: string; name: string }[],
@@ -151,7 +167,39 @@ export default function FinancialMovements() {
       c_custo: 'all',
       descricao_c_custo: 'all',
     })
+    setSearch('')
     setPage(0)
+  }
+
+  const saveCurrentFilter = () => {
+    if (!newFilterName.trim()) {
+      toast.error('Informe um nome para o filtro.')
+      return
+    }
+    const newFilter = {
+      id: crypto.randomUUID(),
+      name: newFilterName,
+      filters: { ...filters },
+      search,
+    }
+    const updated = [...savedFilters, newFilter]
+    setSavedFilters(updated)
+    localStorage.setItem('fin_mov_saved_filters', JSON.stringify(updated))
+    setNewFilterName('')
+    toast.success('Filtro salvo com sucesso!')
+  }
+
+  const applySavedFilter = (sf: any) => {
+    setFilters(sf.filters)
+    setSearch(sf.search || '')
+    setPage(0)
+    toast.success(`Filtro "${sf.name}" aplicado.`)
+  }
+
+  const deleteSavedFilter = (id: string) => {
+    const updated = savedFilters.filter((f) => f.id !== id)
+    setSavedFilters(updated)
+    localStorage.setItem('fin_mov_saved_filters', JSON.stringify(updated))
   }
 
   const loadFilterOptions = async () => {
@@ -203,6 +251,7 @@ export default function FinancialMovements() {
   useEffect(() => {
     loadFilterOptions()
   }, [user, refreshKey])
+
   const [deleteModalOpen, setDeleteModalOpen] = useState(false)
   const [deleteMode, setDeleteMode] = useState<'selected' | 'all' | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
@@ -328,7 +377,7 @@ export default function FinancialMovements() {
 
     try {
       let processed = 0
-      const chunkSize = 150 // Reduzido para evitar URI Too Long (Bad Request)
+      const chunkSize = 150
 
       while (true) {
         const { data, error: fetchErr } = await supabase
@@ -449,12 +498,31 @@ export default function FinancialMovements() {
             if (parsed.id === data.id) {
               setElapsedSeconds(parsed.elapsed)
             }
-          } catch (e) {
-            // Ignore parse errors
+          } catch {
+            /* intentionally ignored */
           }
         }
       }
     }
+  }
+
+  const applyQueryFilters = (query: any) => {
+    let q = query
+    if (search) {
+      q = q.or(
+        `historico.ilike.%${search}%,nome_cli_fornec.ilike.%${search}%,c_custo.ilike.%${search}%`,
+      )
+    }
+    if (filters.empresa !== 'all') q = q.eq('organization_id', filters.empresa)
+    if (filters.conta !== 'all') q = q.eq('conta_caixa', filters.conta)
+    if (filters.tipo !== 'all') q = q.eq('tipo_operacao', filters.tipo)
+    if (filters.status !== 'all') q = q.eq('status', filters.status)
+    if (filters.conta_destino !== 'all') q = q.eq('conta_caixa_destino', filters.conta_destino)
+    if (filters.forma_pagto !== 'all') q = q.eq('forma_pagto', filters.forma_pagto)
+    if (filters.c_custo !== 'all') q = q.eq('c_custo', filters.c_custo)
+    if (filters.descricao_c_custo !== 'all')
+      q = q.eq('descricao_c_custo', filters.descricao_c_custo)
+    return q
   }
 
   const fetchDataSilent = async () => {
@@ -468,45 +536,29 @@ export default function FinancialMovements() {
       .is('deleted_at', null)
       .order(orderCol, { ascending: sortDirection === 'asc' })
 
-    if (search) {
-      query = query.or(
-        `historico.ilike.%${search}%,nome_cli_fornec.ilike.%${search}%,c_custo.ilike.%${search}%`,
-      )
-    }
+    query = applyQueryFilters(query)
 
-    if (filters.empresa !== 'all') {
-      query = query.eq('organization_id', filters.empresa)
-    }
-    if (filters.conta !== 'all') {
-      query = query.eq('conta_caixa', filters.conta)
-    }
-    if (filters.tipo !== 'all') {
-      query = query.eq('tipo_operacao', filters.tipo)
-    }
-    if (filters.status !== 'all') {
-      query = query.eq('status', filters.status)
-    }
-    if (filters.conta_destino !== 'all') {
-      query = query.eq('conta_caixa_destino', filters.conta_destino)
-    }
-    if (filters.forma_pagto !== 'all') {
-      query = query.eq('forma_pagto', filters.forma_pagto)
-    }
-    if (filters.c_custo !== 'all') {
-      query = query.eq('c_custo', filters.c_custo)
-    }
-    if (filters.descricao_c_custo !== 'all') {
-      query = query.eq('descricao_c_custo', filters.descricao_c_custo)
-    }
+    let totalsQuery = supabase
+      .from('erp_financial_movements')
+      .select('valor, valor_liquido')
+      .is('deleted_at', null)
+      .limit(100000)
+    totalsQuery = applyQueryFilters(totalsQuery)
 
-    const {
-      data: result,
-      count,
-      error,
-    } = await query.range(page * pageSize, (page + 1) * pageSize - 1)
+    const [{ data: result, count, error }, { data: totalsData }] = await Promise.all([
+      query.range(page * pageSize, (page + 1) * pageSize - 1),
+      totalsQuery,
+    ])
+
     if (!error && result) {
       setData(result)
       setTotalCount(count || 0)
+    }
+
+    if (totalsData) {
+      const sumV = totalsData.reduce((acc, curr) => acc + (Number(curr.valor) || 0), 0)
+      const sumVL = totalsData.reduce((acc, curr) => acc + (Number(curr.valor_liquido) || 0), 0)
+      setTotals({ valor: sumV, valor_liquido: sumVL })
     }
   }
 
@@ -587,46 +639,31 @@ export default function FinancialMovements() {
       .is('deleted_at', null)
       .order(orderCol, { ascending: sortDirection === 'asc' })
 
-    if (search) {
-      query = query.or(
-        `historico.ilike.%${search}%,nome_cli_fornec.ilike.%${search}%,c_custo.ilike.%${search}%`,
-      )
-    }
+    query = applyQueryFilters(query)
 
-    if (filters.empresa !== 'all') {
-      query = query.eq('organization_id', filters.empresa)
-    }
-    if (filters.conta !== 'all') {
-      query = query.eq('conta_caixa', filters.conta)
-    }
-    if (filters.tipo !== 'all') {
-      query = query.eq('tipo_operacao', filters.tipo)
-    }
-    if (filters.status !== 'all') {
-      query = query.eq('status', filters.status)
-    }
-    if (filters.conta_destino !== 'all') {
-      query = query.eq('conta_caixa_destino', filters.conta_destino)
-    }
-    if (filters.forma_pagto !== 'all') {
-      query = query.eq('forma_pagto', filters.forma_pagto)
-    }
-    if (filters.c_custo !== 'all') {
-      query = query.eq('c_custo', filters.c_custo)
-    }
-    if (filters.descricao_c_custo !== 'all') {
-      query = query.eq('descricao_c_custo', filters.descricao_c_custo)
-    }
+    let totalsQuery = supabase
+      .from('erp_financial_movements')
+      .select('valor, valor_liquido')
+      .is('deleted_at', null)
+      .limit(100000)
+    totalsQuery = applyQueryFilters(totalsQuery)
 
-    const {
-      data: result,
-      count,
-      error,
-    } = await query.range(page * pageSize, (page + 1) * pageSize - 1)
+    const [{ data: result, count, error }, { data: totalsData }] = await Promise.all([
+      query.range(page * pageSize, (page + 1) * pageSize - 1),
+      totalsQuery,
+    ])
+
     if (!error && result) {
       setData(result)
       setTotalCount(count || 0)
     }
+
+    if (totalsData) {
+      const sumV = totalsData.reduce((acc, curr) => acc + (Number(curr.valor) || 0), 0)
+      const sumVL = totalsData.reduce((acc, curr) => acc + (Number(curr.valor_liquido) || 0), 0)
+      setTotals({ valor: sumV, valor_liquido: sumVL })
+    }
+
     setLoading(false)
   }
 
@@ -643,6 +680,7 @@ export default function FinancialMovements() {
 
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize))
   const visibleCount = tableHeaders.filter((h) => visibleColumns[h.key] !== false).length + 2
+
   return (
     <div className="p-6 space-y-6 max-w-[1600px] mx-auto animate-fade-in-up">
       {deletionState.active && (
@@ -918,207 +956,269 @@ export default function FinancialMovements() {
                     )}
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent
-                  align="end"
-                  className="w-80 max-h-[80vh] overflow-y-auto p-4 flex flex-col gap-4"
-                >
-                  <div className="flex items-center justify-between">
-                    <h4 className="font-semibold text-sm">Filtros Avançados</h4>
-                    {hasActiveFilters && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={clearFilters}
-                        className="h-6 text-xs px-2 text-slate-500 hover:text-slate-800"
-                      >
-                        Limpar todos
-                      </Button>
-                    )}
-                  </div>
-
-                  <div className="space-y-4">
-                    <div className="space-y-1.5">
-                      <Label className="text-xs">Empresa</Label>
-                      <Select
-                        value={filters.empresa}
-                        onValueChange={(v) => {
-                          setFilters((p) => ({ ...p, empresa: v }))
-                          setPage(0)
-                        }}
-                      >
-                        <SelectTrigger className="h-8 text-xs">
-                          <SelectValue placeholder="Todas as empresas" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">Todas as empresas</SelectItem>
-                          {filterOptions.empresas.map((e) => (
-                            <SelectItem key={e.id} value={e.id}>
-                              {e.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                <PopoverContent align="end" className="w-80 p-0 flex flex-col">
+                  <Tabs defaultValue="filters" className="w-full">
+                    <div className="px-4 pt-4 pb-2 border-b">
+                      <TabsList className="w-full grid grid-cols-2">
+                        <TabsTrigger value="filters">Filtros</TabsTrigger>
+                        <TabsTrigger value="saved">Salvos</TabsTrigger>
+                      </TabsList>
                     </div>
 
-                    <div className="space-y-1.5">
-                      <Label className="text-xs">Conta/Caixa</Label>
-                      <Select
-                        value={filters.conta}
-                        onValueChange={(v) => {
-                          setFilters((p) => ({ ...p, conta: v }))
-                          setPage(0)
-                        }}
-                      >
-                        <SelectTrigger className="h-8 text-xs">
-                          <SelectValue placeholder="Todas as contas" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">Todas as contas</SelectItem>
-                          {filterOptions.contas.map((c) => (
-                            <SelectItem key={c} value={c}>
-                              {c}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
+                    <TabsContent
+                      value="filters"
+                      className="m-0 p-4 max-h-[60vh] overflow-y-auto space-y-4"
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <h4 className="font-semibold text-sm">Filtros Combinados</h4>
+                        {hasActiveFilters && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={clearFilters}
+                            className="h-6 text-xs px-2 text-slate-500 hover:text-slate-800"
+                          >
+                            Limpar todos
+                          </Button>
+                        )}
+                      </div>
 
-                    <div className="space-y-1.5">
-                      <Label className="text-xs">Tipo de Operação</Label>
-                      <Select
-                        value={filters.tipo}
-                        onValueChange={(v) => {
-                          setFilters((p) => ({ ...p, tipo: v }))
-                          setPage(0)
-                        }}
-                      >
-                        <SelectTrigger className="h-8 text-xs">
-                          <SelectValue placeholder="Todos os tipos" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">Todos os tipos</SelectItem>
-                          {filterOptions.tipos.map((t) => (
-                            <SelectItem key={t} value={t}>
-                              {t}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
+                      <div className="space-y-4">
+                        <div className="space-y-1.5">
+                          <Label className="text-xs">Empresa</Label>
+                          <Select
+                            value={filters.empresa}
+                            onValueChange={(v) => {
+                              setFilters((p) => ({ ...p, empresa: v }))
+                              setPage(0)
+                            }}
+                          >
+                            <SelectTrigger className="h-8 text-xs">
+                              <SelectValue placeholder="Todas as empresas" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="all">Todas as empresas</SelectItem>
+                              {filterOptions.empresas.map((e) => (
+                                <SelectItem key={e.id} value={e.id}>
+                                  {e.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
 
-                    <div className="space-y-1.5">
-                      <Label className="text-xs">Conta/Caixa Destino</Label>
-                      <Select
-                        value={filters.conta_destino}
-                        onValueChange={(v) => {
-                          setFilters((p) => ({ ...p, conta_destino: v }))
-                          setPage(0)
-                        }}
-                      >
-                        <SelectTrigger className="h-8 text-xs">
-                          <SelectValue placeholder="Todas as contas destino" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">Todas as contas destino</SelectItem>
-                          {filterOptions.contas_destino.map((c) => (
-                            <SelectItem key={c} value={c}>
-                              {c}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-xs">Conta/Caixa</Label>
+                          <Select
+                            value={filters.conta}
+                            onValueChange={(v) => {
+                              setFilters((p) => ({ ...p, conta: v }))
+                              setPage(0)
+                            }}
+                          >
+                            <SelectTrigger className="h-8 text-xs">
+                              <SelectValue placeholder="Todas as contas" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="all">Todas as contas</SelectItem>
+                              {filterOptions.contas.map((c) => (
+                                <SelectItem key={c} value={c}>
+                                  {c}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
 
-                    <div className="space-y-1.5">
-                      <Label className="text-xs">Forma de Pagto</Label>
-                      <Select
-                        value={filters.forma_pagto}
-                        onValueChange={(v) => {
-                          setFilters((p) => ({ ...p, forma_pagto: v }))
-                          setPage(0)
-                        }}
-                      >
-                        <SelectTrigger className="h-8 text-xs">
-                          <SelectValue placeholder="Todas as formas de pagto" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">Todas as formas de pagto</SelectItem>
-                          {filterOptions.formas_pagto.map((f) => (
-                            <SelectItem key={f} value={f}>
-                              {f}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-xs">Tipo de Operação</Label>
+                          <Select
+                            value={filters.tipo}
+                            onValueChange={(v) => {
+                              setFilters((p) => ({ ...p, tipo: v }))
+                              setPage(0)
+                            }}
+                          >
+                            <SelectTrigger className="h-8 text-xs">
+                              <SelectValue placeholder="Todos os tipos" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="all">Todos os tipos</SelectItem>
+                              {filterOptions.tipos.map((t) => (
+                                <SelectItem key={t} value={t}>
+                                  {t}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
 
-                    <div className="space-y-1.5">
-                      <Label className="text-xs">C.Custo</Label>
-                      <Select
-                        value={filters.c_custo}
-                        onValueChange={(v) => {
-                          setFilters((p) => ({ ...p, c_custo: v }))
-                          setPage(0)
-                        }}
-                      >
-                        <SelectTrigger className="h-8 text-xs">
-                          <SelectValue placeholder="Todos os C.Custo" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">Todos os C.Custo</SelectItem>
-                          {filterOptions.c_custos.map((c) => (
-                            <SelectItem key={c} value={c}>
-                              {c}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-xs">Conta/Caixa Destino</Label>
+                          <Select
+                            value={filters.conta_destino}
+                            onValueChange={(v) => {
+                              setFilters((p) => ({ ...p, conta_destino: v }))
+                              setPage(0)
+                            }}
+                          >
+                            <SelectTrigger className="h-8 text-xs">
+                              <SelectValue placeholder="Todas as contas destino" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="all">Todas as contas destino</SelectItem>
+                              {filterOptions.contas_destino.map((c) => (
+                                <SelectItem key={c} value={c}>
+                                  {c}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
 
-                    <div className="space-y-1.5">
-                      <Label className="text-xs">Descrição C.Custo</Label>
-                      <Select
-                        value={filters.descricao_c_custo}
-                        onValueChange={(v) => {
-                          setFilters((p) => ({ ...p, descricao_c_custo: v }))
-                          setPage(0)
-                        }}
-                      >
-                        <SelectTrigger className="h-8 text-xs">
-                          <SelectValue placeholder="Todas as descrições" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">Todas as descrições</SelectItem>
-                          {filterOptions.descricoes_c_custo.map((d) => (
-                            <SelectItem key={d} value={d}>
-                              {d}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-xs">Forma de Pagto</Label>
+                          <Select
+                            value={filters.forma_pagto}
+                            onValueChange={(v) => {
+                              setFilters((p) => ({ ...p, forma_pagto: v }))
+                              setPage(0)
+                            }}
+                          >
+                            <SelectTrigger className="h-8 text-xs">
+                              <SelectValue placeholder="Todas as formas de pagto" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="all">Todas as formas de pagto</SelectItem>
+                              {filterOptions.formas_pagto.map((f) => (
+                                <SelectItem key={f} value={f}>
+                                  {f}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
 
-                    <div className="space-y-1.5">
-                      <Label className="text-xs">Status</Label>
-                      <Select
-                        value={filters.status}
-                        onValueChange={(v) => {
-                          setFilters((p) => ({ ...p, status: v }))
-                          setPage(0)
-                        }}
-                      >
-                        <SelectTrigger className="h-8 text-xs">
-                          <SelectValue placeholder="Todos os status" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">Todos os status</SelectItem>
-                          <SelectItem value="Pendente">Pendente</SelectItem>
-                          <SelectItem value="Concluído">Concluído</SelectItem>
-                          <SelectItem value="Erro">Erro</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-xs">C.Custo</Label>
+                          <Select
+                            value={filters.c_custo}
+                            onValueChange={(v) => {
+                              setFilters((p) => ({ ...p, c_custo: v }))
+                              setPage(0)
+                            }}
+                          >
+                            <SelectTrigger className="h-8 text-xs">
+                              <SelectValue placeholder="Todos os C.Custo" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="all">Todos os C.Custo</SelectItem>
+                              {filterOptions.c_custos.map((c) => (
+                                <SelectItem key={c} value={c}>
+                                  {c}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <Label className="text-xs">Descrição C.Custo</Label>
+                          <Select
+                            value={filters.descricao_c_custo}
+                            onValueChange={(v) => {
+                              setFilters((p) => ({ ...p, descricao_c_custo: v }))
+                              setPage(0)
+                            }}
+                          >
+                            <SelectTrigger className="h-8 text-xs">
+                              <SelectValue placeholder="Todas as descrições" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="all">Todas as descrições</SelectItem>
+                              {filterOptions.descricoes_c_custo.map((d) => (
+                                <SelectItem key={d} value={d}>
+                                  {d}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <Label className="text-xs">Status</Label>
+                          <Select
+                            value={filters.status}
+                            onValueChange={(v) => {
+                              setFilters((p) => ({ ...p, status: v }))
+                              setPage(0)
+                            }}
+                          >
+                            <SelectTrigger className="h-8 text-xs">
+                              <SelectValue placeholder="Todos os status" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="all">Todos os status</SelectItem>
+                              <SelectItem value="Pendente">Pendente</SelectItem>
+                              <SelectItem value="Concluído">Concluído</SelectItem>
+                              <SelectItem value="Erro">Erro</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+
+                      <div className="pt-4 border-t border-slate-200 mt-4 flex items-center gap-2">
+                        <Input
+                          value={newFilterName}
+                          onChange={(e) => setNewFilterName(e.target.value)}
+                          placeholder="Nome para salvar filtro..."
+                          className="h-8 text-xs"
+                        />
+                        <Button
+                          size="sm"
+                          className="h-8 text-xs whitespace-nowrap"
+                          onClick={saveCurrentFilter}
+                        >
+                          <Save className="h-3.5 w-3.5 mr-1" />
+                          Salvar
+                        </Button>
+                      </div>
+                    </TabsContent>
+
+                    <TabsContent value="saved" className="m-0 p-4 max-h-[60vh] overflow-y-auto">
+                      <div className="space-y-2">
+                        {savedFilters.map((sf) => (
+                          <div
+                            key={sf.id}
+                            className="flex items-center justify-between p-2 border border-slate-200 bg-slate-50 hover:bg-slate-100 rounded-md text-sm transition-colors"
+                          >
+                            <span
+                              className="font-medium text-slate-700 cursor-pointer flex-1"
+                              onClick={() => applySavedFilter(sf)}
+                            >
+                              {sf.name}
+                            </span>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => deleteSavedFilter(sf.id)}
+                              className="h-6 w-6 text-slate-400 hover:text-red-600 hover:bg-red-50"
+                              title="Excluir filtro salvo"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        ))}
+                        {savedFilters.length === 0 && (
+                          <div className="text-xs text-slate-500 text-center py-6">
+                            Nenhum filtro salvo ainda.
+                            <br />
+                            Configure os filtros e salve-os para acesso rápido.
+                          </div>
+                        )}
+                      </div>
+                    </TabsContent>
+                  </Tabs>
                 </PopoverContent>
               </Popover>
 
@@ -1321,406 +1421,458 @@ export default function FinancialMovements() {
                   </TableCell>
                 </TableRow>
               ) : (
-                data.map((row) => {
-                  const missingFields = []
-                  if (!row.data_emissao) missingFields.push('Data de Emissão')
-                  if (!row.c_custo) missingFields.push('Centro de Custo')
-                  if (row.valor_liquido === null || row.valor_liquido === undefined)
-                    missingFields.push('Valor Líquido')
-                  const isMissing = missingFields.length > 0
+                <>
+                  {data.map((row) => {
+                    const missingFields = []
+                    if (!row.data_emissao) missingFields.push('Data de Emissão')
+                    if (!row.c_custo) missingFields.push('Centro de Custo')
+                    if (row.valor_liquido === null || row.valor_liquido === undefined)
+                      missingFields.push('Valor Líquido')
+                    const isMissing = missingFields.length > 0
 
-                  return (
-                    <TableRow
-                      disableZebra
-                      key={row.id}
-                      className="hover:bg-slate-50/80 transition-colors border-b"
-                    >
-                      <TableCell className="px-2 py-1.5 border-r text-center align-middle">
-                        <div className="flex items-center justify-center">
-                          <Checkbox
-                            checked={selectedIds.includes(row.id)}
-                            onCheckedChange={() => toggleRow(row.id)}
-                            aria-label="Selecionar registro"
-                          />
-                        </div>
-                      </TableCell>
-                      {visibleColumns['empresa'] !== false && (
-                        <TableCell
-                          className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-800 font-medium max-w-[150px] truncate border-r"
-                          title={row.organizations?.name}
-                        >
-                          {row.organizations?.name || '-'}
-                        </TableCell>
-                      )}
-                      {visibleColumns['compensado'] !== false && (
-                        <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 text-center border-r">
-                          {row.compensado || '-'}
-                        </TableCell>
-                      )}
-                      {visibleColumns['tipo_operacao'] !== false && (
-                        <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 text-center border-r">
-                          {row.tipo_operacao || '-'}
-                        </TableCell>
-                      )}
-                      {visibleColumns['data_emissao'] !== false && (
-                        <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 text-center border-r">
-                          {editingId === row.id ? (
-                            <Input
-                              type="date"
-                              className="h-6 text-xs px-1.5 w-32"
-                              value={editForm.data_emissao || ''}
-                              onChange={(e) =>
-                                setEditForm({ ...editForm, data_emissao: e.target.value })
-                              }
+                    return (
+                      <TableRow
+                        disableZebra
+                        key={row.id}
+                        className="hover:bg-slate-50/80 transition-colors border-b"
+                      >
+                        <TableCell className="px-2 py-1.5 border-r text-center align-middle">
+                          <div className="flex items-center justify-center">
+                            <Checkbox
+                              checked={selectedIds.includes(row.id)}
+                              onCheckedChange={() => toggleRow(row.id)}
+                              aria-label="Selecionar registro"
                             />
-                          ) : (
-                            <span className={!row.data_emissao ? 'text-red-500 font-bold' : ''}>
-                              {row.data_emissao ? formatDate(row.data_emissao) : 'Indisponível'}
-                            </span>
-                          )}
+                          </div>
                         </TableCell>
-                      )}
-                      {visibleColumns['dt_compens'] !== false && (
-                        <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 text-center border-r">
-                          {formatDate(row.dt_compens)}
-                        </TableCell>
-                      )}
-                      {visibleColumns['conta_caixa'] !== false && (
-                        <TableCell
-                          className="px-2 py-1.5 text-xs text-slate-600 text-center max-w-[150px] truncate border-r"
-                          title={row.conta_caixa || ''}
-                        >
+                        {visibleColumns['empresa'] !== false && (
+                          <TableCell
+                            className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-800 font-medium max-w-[150px] truncate border-r"
+                            title={row.organizations?.name}
+                          >
+                            {row.organizations?.name || '-'}
+                          </TableCell>
+                        )}
+                        {visibleColumns['compensado'] !== false && (
+                          <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 text-center border-r">
+                            {row.compensado || '-'}
+                          </TableCell>
+                        )}
+                        {visibleColumns['tipo_operacao'] !== false && (
+                          <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 text-center border-r">
+                            {row.tipo_operacao || '-'}
+                          </TableCell>
+                        )}
+                        {visibleColumns['data_emissao'] !== false && (
+                          <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 text-center border-r">
+                            {editingId === row.id ? (
+                              <Input
+                                type="date"
+                                className="h-6 text-xs px-1.5 w-32"
+                                value={editForm.data_emissao || ''}
+                                onChange={(e) =>
+                                  setEditForm({ ...editForm, data_emissao: e.target.value })
+                                }
+                              />
+                            ) : (
+                              <span className={!row.data_emissao ? 'text-red-500 font-bold' : ''}>
+                                {row.data_emissao ? formatDate(row.data_emissao) : 'Indisponível'}
+                              </span>
+                            )}
+                          </TableCell>
+                        )}
+                        {visibleColumns['dt_compens'] !== false && (
+                          <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 text-center border-r">
+                            {formatDate(row.dt_compens)}
+                          </TableCell>
+                        )}
+                        {visibleColumns['conta_caixa'] !== false && (
+                          <TableCell
+                            className="px-2 py-1.5 text-xs text-slate-600 text-center max-w-[150px] truncate border-r"
+                            title={row.conta_caixa || ''}
+                          >
+                            {editingId === row.id ? (
+                              <Input
+                                className="h-6 text-xs px-1.5 w-28"
+                                value={editForm.conta_caixa || ''}
+                                onChange={(e) =>
+                                  setEditForm({ ...editForm, conta_caixa: e.target.value })
+                                }
+                              />
+                            ) : (
+                              row.conta_caixa || '-'
+                            )}
+                          </TableCell>
+                        )}
+                        {visibleColumns['nome_caixa'] !== false && (
+                          <TableCell
+                            className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 max-w-[150px] truncate border-r"
+                            title={row.nome_caixa}
+                          >
+                            {row.nome_caixa || '-'}
+                          </TableCell>
+                        )}
+                        {visibleColumns['conta_caixa_destino'] !== false && (
+                          <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 text-center border-r">
+                            {row.conta_caixa_destino || '-'}
+                          </TableCell>
+                        )}
+                        {visibleColumns['forma_pagto'] !== false && (
+                          <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 border-r">
+                            {editingId === row.id ? (
+                              <Input
+                                className="h-6 text-xs px-1.5 w-24"
+                                value={editForm.forma_pagto || ''}
+                                onChange={(e) =>
+                                  setEditForm({ ...editForm, forma_pagto: e.target.value })
+                                }
+                              />
+                            ) : (
+                              row.forma_pagto || '-'
+                            )}
+                          </TableCell>
+                        )}
+                        {visibleColumns['c_custo'] !== false && (
+                          <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 border-r">
+                            {editingId === row.id ? (
+                              <Input
+                                className="h-6 text-xs px-1.5 w-24"
+                                value={editForm.c_custo || ''}
+                                onChange={(e) =>
+                                  setEditForm({ ...editForm, c_custo: e.target.value })
+                                }
+                              />
+                            ) : (
+                              <span className={!row.c_custo ? 'text-red-500 font-bold' : ''}>
+                                {row.c_custo || 'Sem C. Custo'}
+                              </span>
+                            )}
+                          </TableCell>
+                        )}
+                        {visibleColumns['descricao_c_custo'] !== false && (
+                          <TableCell
+                            className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 max-w-[150px] truncate border-r"
+                            title={row.descricao_c_custo}
+                          >
+                            {row.descricao_c_custo || '-'}
+                          </TableCell>
+                        )}
+                        {visibleColumns['valor'] !== false && (
+                          <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-center text-slate-600 border-r">
+                            {row.valor !== null
+                              ? new Intl.NumberFormat('pt-BR', {
+                                  style: 'currency',
+                                  currency: 'BRL',
+                                }).format(row.valor)
+                              : '-'}
+                          </TableCell>
+                        )}
+                        {visibleColumns['valor_liquido'] !== false && (
+                          <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-center font-semibold text-slate-900 border-r">
+                            {editingId === row.id ? (
+                              <Input
+                                type="number"
+                                step="0.01"
+                                className="h-6 text-xs px-1.5 w-28 text-center mx-auto"
+                                value={editForm.valor_liquido || ''}
+                                onChange={(e) =>
+                                  setEditForm({
+                                    ...editForm,
+                                    valor_liquido: parseFloat(e.target.value),
+                                  })
+                                }
+                              />
+                            ) : (
+                              <span
+                                className={
+                                  row.valor_liquido === null ? 'text-red-500 font-bold' : ''
+                                }
+                              >
+                                {row.valor_liquido !== null
+                                  ? new Intl.NumberFormat('pt-BR', {
+                                      style: 'currency',
+                                      currency: 'BRL',
+                                    }).format(row.valor_liquido)
+                                  : 'R$ 0,00'}
+                              </span>
+                            )}
+                          </TableCell>
+                        )}
+                        {visibleColumns['n_documento'] !== false && (
+                          <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap font-medium text-slate-700 border-r">
+                            {editingId === row.id ? (
+                              <Input
+                                className="h-6 text-xs px-1.5 w-28"
+                                value={editForm.n_documento || ''}
+                                onChange={(e) =>
+                                  setEditForm({ ...editForm, n_documento: e.target.value })
+                                }
+                              />
+                            ) : (
+                              row.n_documento || '-'
+                            )}
+                          </TableCell>
+                        )}
+                        {visibleColumns['nome_cli_fornec'] !== false && (
+                          <TableCell
+                            className="px-2 py-1.5 text-xs text-slate-600 max-w-[200px] truncate border-r"
+                            title={row.nome_cli_fornec}
+                          >
+                            {editingId === row.id ? (
+                              <Input
+                                className="h-6 text-xs px-1.5"
+                                value={editForm.nome_cli_fornec || ''}
+                                onChange={(e) =>
+                                  setEditForm({ ...editForm, nome_cli_fornec: e.target.value })
+                                }
+                              />
+                            ) : (
+                              row.nome_cli_fornec || '-'
+                            )}
+                          </TableCell>
+                        )}
+                        {visibleColumns['historico'] !== false && (
+                          <TableCell
+                            className="px-2 py-1.5 text-xs text-slate-600 max-w-[250px] truncate border-r"
+                            title={row.historico}
+                          >
+                            {editingId === row.id ? (
+                              <Input
+                                className="h-6 text-xs px-1.5"
+                                value={editForm.historico || ''}
+                                onChange={(e) =>
+                                  setEditForm({ ...editForm, historico: e.target.value })
+                                }
+                              />
+                            ) : (
+                              row.historico || '-'
+                            )}
+                          </TableCell>
+                        )}
+                        {visibleColumns['fp'] !== false && (
+                          <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 text-center border-r">
+                            {row.fp || '-'}
+                          </TableCell>
+                        )}
+                        {visibleColumns['n_cheque'] !== false && (
+                          <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 border-r">
+                            {row.n_cheque || '-'}
+                          </TableCell>
+                        )}
+                        {visibleColumns['data_vencto'] !== false && (
+                          <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 text-center border-r">
+                            {editingId === row.id ? (
+                              <Input
+                                type="date"
+                                className="h-6 text-xs px-1.5 w-32"
+                                value={editForm.data_vencto || ''}
+                                onChange={(e) =>
+                                  setEditForm({ ...editForm, data_vencto: e.target.value })
+                                }
+                              />
+                            ) : (
+                              <span>{row.data_vencto ? formatDate(row.data_vencto) : '-'}</span>
+                            )}
+                          </TableCell>
+                        )}
+                        {visibleColumns['nominal_a'] !== false && (
+                          <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 border-r">
+                            {row.nominal_a || '-'}
+                          </TableCell>
+                        )}
+                        {visibleColumns['emitente_cheque'] !== false && (
+                          <TableCell
+                            className="px-2 py-1.5 text-xs text-slate-600 max-w-[150px] truncate border-r"
+                            title={row.emitente_cheque}
+                          >
+                            {row.emitente_cheque || '-'}
+                          </TableCell>
+                        )}
+                        {visibleColumns['cnpj_cpf'] !== false && (
+                          <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 border-r">
+                            {row.cnpj_cpf || '-'}
+                          </TableCell>
+                        )}
+                        {visibleColumns['n_extrato'] !== false && (
+                          <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 text-center border-r">
+                            {row.n_extrato || '-'}
+                          </TableCell>
+                        )}
+                        {visibleColumns['filial'] !== false && (
+                          <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 text-center border-r">
+                            {row.filial || '-'}
+                          </TableCell>
+                        )}
+                        {visibleColumns['data_canc'] !== false && (
+                          <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 text-center border-r">
+                            {formatDate(row.data_canc)}
+                          </TableCell>
+                        )}
+                        {visibleColumns['data_estorno'] !== false && (
+                          <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 text-center border-r">
+                            {formatDate(row.data_estorno)}
+                          </TableCell>
+                        )}
+                        {visibleColumns['banco'] !== false && (
+                          <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 text-center border-r">
+                            {editingId === row.id ? (
+                              <Input
+                                className="h-6 text-xs px-1.5 w-24"
+                                value={editForm.banco || ''}
+                                onChange={(e) =>
+                                  setEditForm({ ...editForm, banco: e.target.value })
+                                }
+                              />
+                            ) : (
+                              row.banco || '-'
+                            )}
+                          </TableCell>
+                        )}
+                        {visibleColumns['c_corrente'] !== false && (
+                          <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 border-r">
+                            {row.c_corrente || '-'}
+                          </TableCell>
+                        )}
+                        {visibleColumns['cod_cli_for'] !== false && (
+                          <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 border-r">
+                            {row.cod_cli_for || '-'}
+                          </TableCell>
+                        )}
+                        {visibleColumns['departamento'] !== false && (
+                          <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 text-center border-r">
+                            {row.departamento || '-'}
+                          </TableCell>
+                        )}
+                        {visibleColumns['status'] !== false && (
+                          <TableCell className="px-2 py-1.5 text-xs text-center border-r">
+                            {isMissing ? (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-red-100 text-red-800 border border-red-200 cursor-help">
+                                    Dados Incompletos
+                                  </span>
+                                </TooltipTrigger>
+                                <TooltipContent className="bg-red-50 border-red-200 text-red-900 shadow-md">
+                                  <p className="font-semibold mb-1">Campos ausentes:</p>
+                                  <ul className="list-disc pl-4 text-xs">
+                                    {missingFields.map((f) => (
+                                      <li key={f}>{f}</li>
+                                    ))}
+                                  </ul>
+                                </TooltipContent>
+                              </Tooltip>
+                            ) : (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-800 border border-amber-200 cursor-help">
+                                    {row.status || 'Pendente'}
+                                  </span>
+                                </TooltipTrigger>
+                                <TooltipContent className="bg-slate-800 text-white border-slate-700 shadow-md">
+                                  <p className="text-xs max-w-[200px]">
+                                    O registro foi importado com sucesso, mas ainda não foi
+                                    conciliado ou exportado.
+                                  </p>
+                                </TooltipContent>
+                              </Tooltip>
+                            )}
+                          </TableCell>
+                        )}
+                        <TableCell className="px-2 py-1.5 text-xs text-center border-r last:border-r-0">
                           {editingId === row.id ? (
-                            <Input
-                              className="h-6 text-xs px-1.5 w-28"
-                              value={editForm.conta_caixa || ''}
-                              onChange={(e) =>
-                                setEditForm({ ...editForm, conta_caixa: e.target.value })
-                              }
-                            />
+                            <div className="flex items-center justify-center gap-1">
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-6 px-2 text-[10px] text-green-600 font-semibold hover:text-green-700"
+                                onClick={async () => {
+                                  const { error } = await supabase
+                                    .from('erp_financial_movements')
+                                    .update(editForm)
+                                    .eq('id', row.id)
+                                  if (!error) {
+                                    setEditingId(null)
+                                    setRefreshKey((k) => k + 1)
+                                  } else {
+                                    toast.error('Erro ao salvar: ' + error.message)
+                                  }
+                                }}
+                              >
+                                Salvar
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-6 px-2 text-[10px] text-red-600 hover:text-red-700"
+                                onClick={() => setEditingId(null)}
+                              >
+                                Cancelar
+                              </Button>
+                            </div>
                           ) : (
-                            row.conta_caixa || '-'
-                          )}
-                        </TableCell>
-                      )}
-                      {visibleColumns['nome_caixa'] !== false && (
-                        <TableCell
-                          className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 max-w-[150px] truncate border-r"
-                          title={row.nome_caixa}
-                        >
-                          {row.nome_caixa || '-'}
-                        </TableCell>
-                      )}
-                      {visibleColumns['conta_caixa_destino'] !== false && (
-                        <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 text-center border-r">
-                          {row.conta_caixa_destino || '-'}
-                        </TableCell>
-                      )}
-                      {visibleColumns['forma_pagto'] !== false && (
-                        <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 border-r">
-                          {editingId === row.id ? (
-                            <Input
-                              className="h-6 text-xs px-1.5 w-24"
-                              value={editForm.forma_pagto || ''}
-                              onChange={(e) =>
-                                setEditForm({ ...editForm, forma_pagto: e.target.value })
-                              }
-                            />
-                          ) : (
-                            row.forma_pagto || '-'
-                          )}
-                        </TableCell>
-                      )}
-                      {visibleColumns['c_custo'] !== false && (
-                        <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 border-r">
-                          {editingId === row.id ? (
-                            <Input
-                              className="h-6 text-xs px-1.5 w-24"
-                              value={editForm.c_custo || ''}
-                              onChange={(e) =>
-                                setEditForm({ ...editForm, c_custo: e.target.value })
-                              }
-                            />
-                          ) : (
-                            <span className={!row.c_custo ? 'text-red-500 font-bold' : ''}>
-                              {row.c_custo || 'Sem C. Custo'}
-                            </span>
-                          )}
-                        </TableCell>
-                      )}
-                      {visibleColumns['descricao_c_custo'] !== false && (
-                        <TableCell
-                          className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 max-w-[150px] truncate border-r"
-                          title={row.descricao_c_custo}
-                        >
-                          {row.descricao_c_custo || '-'}
-                        </TableCell>
-                      )}
-                      {visibleColumns['valor'] !== false && (
-                        <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-center text-slate-600 border-r">
-                          {row.valor !== null
-                            ? new Intl.NumberFormat('pt-BR', {
-                                style: 'currency',
-                                currency: 'BRL',
-                              }).format(row.valor)
-                            : '-'}
-                        </TableCell>
-                      )}
-                      {visibleColumns['valor_liquido'] !== false && (
-                        <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-center font-semibold text-slate-900 border-r">
-                          {editingId === row.id ? (
-                            <Input
-                              type="number"
-                              step="0.01"
-                              className="h-6 text-xs px-1.5 w-28 text-center mx-auto"
-                              value={editForm.valor_liquido || ''}
-                              onChange={(e) =>
-                                setEditForm({
-                                  ...editForm,
-                                  valor_liquido: parseFloat(e.target.value),
-                                })
-                              }
-                            />
-                          ) : (
-                            <span
-                              className={row.valor_liquido === null ? 'text-red-500 font-bold' : ''}
-                            >
-                              {row.valor_liquido !== null
-                                ? new Intl.NumberFormat('pt-BR', {
-                                    style: 'currency',
-                                    currency: 'BRL',
-                                  }).format(row.valor_liquido)
-                                : 'R$ 0,00'}
-                            </span>
-                          )}
-                        </TableCell>
-                      )}
-                      {visibleColumns['n_documento'] !== false && (
-                        <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap font-medium text-slate-700 border-r">
-                          {editingId === row.id ? (
-                            <Input
-                              className="h-6 text-xs px-1.5 w-28"
-                              value={editForm.n_documento || ''}
-                              onChange={(e) =>
-                                setEditForm({ ...editForm, n_documento: e.target.value })
-                              }
-                            />
-                          ) : (
-                            row.n_documento || '-'
-                          )}
-                        </TableCell>
-                      )}
-                      {visibleColumns['nome_cli_fornec'] !== false && (
-                        <TableCell
-                          className="px-2 py-1.5 text-xs text-slate-600 max-w-[200px] truncate border-r"
-                          title={row.nome_cli_fornec}
-                        >
-                          {editingId === row.id ? (
-                            <Input
-                              className="h-6 text-xs px-1.5"
-                              value={editForm.nome_cli_fornec || ''}
-                              onChange={(e) =>
-                                setEditForm({ ...editForm, nome_cli_fornec: e.target.value })
-                              }
-                            />
-                          ) : (
-                            row.nome_cli_fornec || '-'
-                          )}
-                        </TableCell>
-                      )}
-                      {visibleColumns['historico'] !== false && (
-                        <TableCell
-                          className="px-2 py-1.5 text-xs text-slate-600 max-w-[250px] truncate border-r"
-                          title={row.historico}
-                        >
-                          {editingId === row.id ? (
-                            <Input
-                              className="h-6 text-xs px-1.5"
-                              value={editForm.historico || ''}
-                              onChange={(e) =>
-                                setEditForm({ ...editForm, historico: e.target.value })
-                              }
-                            />
-                          ) : (
-                            row.historico || '-'
-                          )}
-                        </TableCell>
-                      )}
-                      {visibleColumns['fp'] !== false && (
-                        <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 text-center border-r">
-                          {row.fp || '-'}
-                        </TableCell>
-                      )}
-                      {visibleColumns['n_cheque'] !== false && (
-                        <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 border-r">
-                          {row.n_cheque || '-'}
-                        </TableCell>
-                      )}
-                      {visibleColumns['data_vencto'] !== false && (
-                        <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 text-center border-r">
-                          {editingId === row.id ? (
-                            <Input
-                              type="date"
-                              className="h-6 text-xs px-1.5 w-32"
-                              value={editForm.data_vencto || ''}
-                              onChange={(e) =>
-                                setEditForm({ ...editForm, data_vencto: e.target.value })
-                              }
-                            />
-                          ) : (
-                            <span>{row.data_vencto ? formatDate(row.data_vencto) : '-'}</span>
-                          )}
-                        </TableCell>
-                      )}
-                      {visibleColumns['nominal_a'] !== false && (
-                        <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 border-r">
-                          {row.nominal_a || '-'}
-                        </TableCell>
-                      )}
-                      {visibleColumns['emitente_cheque'] !== false && (
-                        <TableCell
-                          className="px-2 py-1.5 text-xs text-slate-600 max-w-[150px] truncate border-r"
-                          title={row.emitente_cheque}
-                        >
-                          {row.emitente_cheque || '-'}
-                        </TableCell>
-                      )}
-                      {visibleColumns['cnpj_cpf'] !== false && (
-                        <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 border-r">
-                          {row.cnpj_cpf || '-'}
-                        </TableCell>
-                      )}
-                      {visibleColumns['n_extrato'] !== false && (
-                        <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 text-center border-r">
-                          {row.n_extrato || '-'}
-                        </TableCell>
-                      )}
-                      {visibleColumns['filial'] !== false && (
-                        <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 text-center border-r">
-                          {row.filial || '-'}
-                        </TableCell>
-                      )}
-                      {visibleColumns['data_canc'] !== false && (
-                        <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 text-center border-r">
-                          {formatDate(row.data_canc)}
-                        </TableCell>
-                      )}
-                      {visibleColumns['data_estorno'] !== false && (
-                        <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 text-center border-r">
-                          {formatDate(row.data_estorno)}
-                        </TableCell>
-                      )}
-                      {visibleColumns['banco'] !== false && (
-                        <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 text-center border-r">
-                          {editingId === row.id ? (
-                            <Input
-                              className="h-6 text-xs px-1.5 w-24"
-                              value={editForm.banco || ''}
-                              onChange={(e) => setEditForm({ ...editForm, banco: e.target.value })}
-                            />
-                          ) : (
-                            row.banco || '-'
-                          )}
-                        </TableCell>
-                      )}
-                      {visibleColumns['c_corrente'] !== false && (
-                        <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 border-r">
-                          {row.c_corrente || '-'}
-                        </TableCell>
-                      )}
-                      {visibleColumns['cod_cli_for'] !== false && (
-                        <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 border-r">
-                          {row.cod_cli_for || '-'}
-                        </TableCell>
-                      )}
-                      {visibleColumns['departamento'] !== false && (
-                        <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 text-center border-r">
-                          {row.departamento || '-'}
-                        </TableCell>
-                      )}
-                      {visibleColumns['status'] !== false && (
-                        <TableCell className="px-2 py-1.5 text-xs text-center border-r">
-                          {isMissing ? (
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-red-100 text-red-800 border border-red-200 cursor-help">
-                                  Dados Incompletos
-                                </span>
-                              </TooltipTrigger>
-                              <TooltipContent className="bg-red-50 border-red-200 text-red-900 shadow-md">
-                                <p className="font-semibold mb-1">Campos ausentes:</p>
-                                <ul className="list-disc pl-4 text-xs">
-                                  {missingFields.map((f) => (
-                                    <li key={f}>{f}</li>
-                                  ))}
-                                </ul>
-                              </TooltipContent>
-                            </Tooltip>
-                          ) : (
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-800 border border-amber-200 cursor-help">
-                                  {row.status || 'Pendente'}
-                                </span>
-                              </TooltipTrigger>
-                              <TooltipContent className="bg-slate-800 text-white border-slate-700 shadow-md">
-                                <p className="text-xs max-w-[200px]">
-                                  O registro foi importado com sucesso, mas ainda não foi conciliado
-                                  ou exportado.
-                                </p>
-                              </TooltipContent>
-                            </Tooltip>
-                          )}
-                        </TableCell>
-                      )}
-                      <TableCell className="px-2 py-1.5 text-xs text-center border-r last:border-r-0">
-                        {editingId === row.id ? (
-                          <div className="flex items-center justify-center gap-1">
                             <Button
                               size="sm"
-                              variant="ghost"
-                              className="h-6 px-2 text-[10px] text-green-600 font-semibold hover:text-green-700"
-                              onClick={async () => {
-                                const { error } = await supabase
-                                  .from('erp_financial_movements')
-                                  .update(editForm)
-                                  .eq('id', row.id)
-                                if (!error) {
-                                  setEditingId(null)
-                                  setRefreshKey((k) => k + 1)
-                                } else {
-                                  toast.error('Erro ao salvar: ' + error.message)
-                                }
+                              variant="outline"
+                              className="h-6 px-2 text-[10px]"
+                              onClick={() => {
+                                setEditingId(row.id)
+                                setEditForm(row)
                               }}
                             >
-                              Salvar
+                              Editar
                             </Button>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="h-6 px-2 text-[10px] text-red-600 hover:text-red-700"
-                              onClick={() => setEditingId(null)}
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })}
+                  <TableRow
+                    disableZebra
+                    className="bg-slate-100 hover:bg-slate-100 font-bold border-t-2 border-slate-300 shadow-inner"
+                  >
+                    <TableCell className="border-r" />
+                    {tableHeaders
+                      .filter((h) => visibleColumns[h.key] !== false)
+                      .map((h, i) => {
+                        if (h.key === 'valor') {
+                          return (
+                            <TableCell
+                              key={h.key}
+                              className="px-2 py-2 text-xs whitespace-nowrap text-center text-slate-800 border-r"
                             >
-                              Cancelar
-                            </Button>
-                          </div>
-                        ) : (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="h-6 px-2 text-[10px]"
-                            onClick={() => {
-                              setEditingId(row.id)
-                              setEditForm(row)
-                            }}
+                              {new Intl.NumberFormat('pt-BR', {
+                                style: 'currency',
+                                currency: 'BRL',
+                              }).format(totals.valor)}
+                            </TableCell>
+                          )
+                        }
+                        if (h.key === 'valor_liquido') {
+                          return (
+                            <TableCell
+                              key={h.key}
+                              className="px-2 py-2 text-xs whitespace-nowrap text-center text-slate-900 border-r"
+                            >
+                              {new Intl.NumberFormat('pt-BR', {
+                                style: 'currency',
+                                currency: 'BRL',
+                              }).format(totals.valor_liquido)}
+                            </TableCell>
+                          )
+                        }
+                        const isFirstVisible = i === 0
+                        return (
+                          <TableCell
+                            key={h.key}
+                            className="px-2 py-2 text-xs whitespace-nowrap text-right text-slate-600 border-r"
                           >
-                            Editar
-                          </Button>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  )
-                })
+                            {isFirstVisible ? 'TOTAIS (Filtro Atual):' : ''}
+                          </TableCell>
+                        )
+                      })}
+                    <TableCell className="border-r" />
+                  </TableRow>
+                </>
               )}
             </TableBody>
           </Table>
