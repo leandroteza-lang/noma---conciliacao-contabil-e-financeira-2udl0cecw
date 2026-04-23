@@ -1834,13 +1834,13 @@ export default function FinancialMovements() {
                             <TabsList className="w-full grid grid-cols-2 bg-slate-100 p-1">
                               <TabsTrigger
                                 value="filters"
-                                className="bg-[#800000]/60 text-white font-bold hover:bg-[#800000]/80 data-[state=active]:bg-[#800000] data-[state=active]:text-white data-[state=inactive]:text-white transition-colors"
+                                className="bg-[#800000] text-white font-bold hover:bg-[#800000]/90 data-[state=active]:bg-[#600000] data-[state=active]:text-white data-[state=inactive]:bg-[#800000] data-[state=inactive]:text-white transition-colors"
                               >
                                 Filtros
                               </TabsTrigger>
                               <TabsTrigger
                                 value="saved"
-                                className="bg-[#800000]/60 text-white font-bold hover:bg-[#800000]/80 data-[state=active]:bg-[#800000] data-[state=active]:text-white data-[state=inactive]:text-white transition-colors"
+                                className="bg-[#800000] text-white font-bold hover:bg-[#800000]/90 data-[state=active]:bg-[#600000] data-[state=active]:text-white data-[state=inactive]:bg-[#800000] data-[state=inactive]:text-white transition-colors"
                               >
                                 Salvos
                               </TabsTrigger>
@@ -2059,13 +2059,13 @@ export default function FinancialMovements() {
                             <TabsList className="w-full grid grid-cols-2 bg-slate-100 p-1">
                               <TabsTrigger
                                 value="columns"
-                                className="bg-[#800000]/60 text-white font-bold hover:bg-[#800000]/80 data-[state=active]:bg-[#800000] data-[state=active]:text-white data-[state=inactive]:text-white transition-colors"
+                                className="bg-[#800000] text-white font-bold hover:bg-[#800000]/90 data-[state=active]:bg-[#600000] data-[state=active]:text-white data-[state=inactive]:bg-[#800000] data-[state=inactive]:text-white transition-colors"
                               >
                                 Colunas
                               </TabsTrigger>
                               <TabsTrigger
                                 value="saved"
-                                className="bg-[#800000]/60 text-white font-bold hover:bg-[#800000]/80 data-[state=active]:bg-[#800000] data-[state=active]:text-white data-[state=inactive]:text-white transition-colors"
+                                className="bg-[#800000] text-white font-bold hover:bg-[#800000]/90 data-[state=active]:bg-[#600000] data-[state=active]:text-white data-[state=inactive]:bg-[#800000] data-[state=inactive]:text-white transition-colors"
                               >
                                 Salvas
                               </TabsTrigger>
