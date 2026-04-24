@@ -179,6 +179,125 @@ function DraggablePopoverContent({
   )
 }
 
+function PeriodConsolidatedTable({ data, type }: { data: any[]; type: 'account' | 'cost' }) {
+  const aggregated = useMemo(() => {
+    const map = new Map<string, { name: string; pos: number; neg: number; diff: number }>()
+
+    const getKey = (r: any) => {
+      if (type === 'account') {
+        const code = r.conta_caixa || ''
+        const name = r.nome_caixa || ''
+        if (code && name) return `${code} - ${name}`
+        return code || name || 'Sem Conta/Caixa'
+      } else {
+        const code = r.c_custo || ''
+        const name = r.descricao_c_custo || ''
+        if (code && name) return `${code} - ${name}`
+        return code || name || 'Sem C. Custo'
+      }
+    }
+
+    for (const row of data) {
+      const key = getKey(row)
+      const val = Number(row.valor_liquido || 0)
+
+      if (!map.has(key)) {
+        map.set(key, { name: key, pos: 0, neg: 0, diff: 0 })
+      }
+      const group = map.get(key)!
+      if (val > 0) {
+        group.pos += val
+      } else {
+        group.neg += val
+      }
+      group.diff += val
+    }
+
+    return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name))
+  }, [data, type])
+
+  const formatVal = (v: number) =>
+    new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v)
+
+  const totalPos = aggregated.reduce((acc, curr) => acc + curr.pos, 0)
+  const totalNeg = aggregated.reduce((acc, curr) => acc + curr.neg, 0)
+  const totalDiff = aggregated.reduce((acc, curr) => acc + curr.diff, 0)
+
+  return (
+    <Table
+      className="w-full text-xs"
+      wrapperClassName="max-h-[500px] overflow-y-auto custom-scrollbar"
+    >
+      <TableHeader className="sticky top-0 z-10 shadow-sm border-b border-black">
+        <TableRow disableZebra className="bg-blue-500 hover:bg-blue-400 border-none">
+          <TableHead className="font-medium text-white text-center border-r border-black px-2 py-1 h-8 w-[40%]">
+            {type === 'account' ? 'Caixa/Banco' : 'Centro de Custo'}
+          </TableHead>
+          <TableHead className="w-[20%] text-center font-bold text-emerald-700 border-r border-black px-2 py-1 h-8">
+            Entradas (+)
+          </TableHead>
+          <TableHead className="w-[20%] text-center font-bold text-rose-700 border-r border-black px-2 py-1 h-8">
+            Saídas (-)
+          </TableHead>
+          <TableHead className="w-[20%] text-center font-bold text-blue-700 px-2 py-1 h-8">
+            Diferença
+          </TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {aggregated.map((item) => (
+          <TableRow
+            disableZebra
+            key={item.name}
+            className="border-b border-black last:border-b-0 hover:bg-slate-50 transition-colors"
+          >
+            <TableCell className="px-2 py-1 border-r border-black text-slate-700 font-medium">
+              {item.name}
+            </TableCell>
+            <TableCell className="px-2 py-1 text-right text-emerald-600/90 border-r border-black">
+              {formatVal(item.pos)}
+            </TableCell>
+            <TableCell className="px-2 py-1 text-right text-rose-600/90 border-r border-black">
+              {formatVal(item.neg)}
+            </TableCell>
+            <TableCell className="px-2 py-1 text-right font-semibold text-slate-700">
+              {formatVal(item.diff)}
+            </TableCell>
+          </TableRow>
+        ))}
+        {aggregated.length === 0 ? (
+          <TableRow disableZebra>
+            <TableCell
+              colSpan={4}
+              className="text-center py-4 text-slate-500 border-t border-black"
+            >
+              Nenhum dado para resumir.
+            </TableCell>
+          </TableRow>
+        ) : (
+          <TableRow
+            disableZebra
+            className="bg-slate-200/80 font-bold border-t-2 border-black border-b border-b-black shadow-inner"
+          >
+            <TableCell className="px-2 py-1 border-r border-black text-right text-slate-900 uppercase">
+              Total Geral do Período:
+            </TableCell>
+            <TableCell className="px-2 py-1 text-right text-emerald-700 border-r border-black">
+              {formatVal(totalPos)}
+            </TableCell>
+            <TableCell className="px-2 py-1 text-right text-rose-700 border-r border-black">
+              {formatVal(totalNeg)}
+            </TableCell>
+            <TableCell className="px-2 py-1 text-right text-blue-800">
+              {formatVal(totalDiff)}
+            </TableCell>
+          </TableRow>
+        )}
+      </TableBody>
+    </Table>
+  )
+}
+
 function SummaryTable({
   data,
   type,
@@ -190,8 +309,8 @@ function SummaryTable({
 }) {
   let col1Label = ''
   let col2Label = ''
-  let col1Width = 'w-[20%]'
-  let col2Width = 'w-[35%]'
+  let col1Width = 'w-[15%]'
+  let col2Width = 'w-[40%]'
   let primaryKeyFn: (r: any) => string
   let secondaryKeyFn: (r: any) => string
 
@@ -219,22 +338,24 @@ function SummaryTable({
     case 'account_month':
       col1Label = 'Caixa/Banco'
       col2Label = 'Mês/Ano'
-      col1Width = 'w-[35%]'
-      col2Width = 'w-[20%]'
+      col1Width = 'w-[40%]'
+      col2Width = 'w-[15%]'
       primaryKeyFn = formatAccount
       secondaryKeyFn = (r) => formatMonthYear(r, dateField)
       break
     case 'month_cost':
       col1Label = 'Mês/Ano'
       col2Label = 'Centro de Custo'
+      col1Width = 'w-[15%]'
+      col2Width = 'w-[40%]'
       primaryKeyFn = (r) => formatMonthYear(r, dateField)
       secondaryKeyFn = formatCostCenter
       break
     case 'cost_month':
       col1Label = 'Centro de Custo'
       col2Label = 'Mês/Ano'
-      col1Width = 'w-[35%]'
-      col2Width = 'w-[20%]'
+      col1Width = 'w-[40%]'
+      col2Width = 'w-[15%]'
       primaryKeyFn = formatCostCenter
       secondaryKeyFn = (r) => formatMonthYear(r, dateField)
       break
@@ -3359,13 +3480,14 @@ export default function FinancialMovements() {
         </TabsContent>
 
         <TabsContent value="resumo" className="m-0 animate-in fade-in-up duration-500">
-          <div className="flex justify-end mb-4">
-            <div className="flex items-center gap-2 bg-white border border-slate-200 p-1.5 rounded-lg shadow-sm">
+          <div className="flex justify-between mb-4 items-center flex-wrap gap-4">
+            <h2 className="text-xl font-bold text-slate-800 hidden sm:block">Painel Gerencial</h2>
+            <div className="flex items-center gap-2 bg-white border border-slate-200 p-1.5 rounded-lg shadow-sm ml-auto">
               <span className="text-sm font-medium text-slate-600 px-2">Data Base:</span>
               <Tabs
                 value={summaryDateBase}
                 onValueChange={setSummaryDateBase}
-                className="w-[300px]"
+                className="w-[200px] sm:w-[300px]"
               >
                 <TabsList className="grid w-full grid-cols-2 h-8">
                   <TabsTrigger value="data_emissao" className="text-xs">
@@ -3378,6 +3500,31 @@ export default function FinancialMovements() {
               </Tabs>
             </div>
           </div>
+
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 mb-6">
+            <Card className="shadow-sm border-4 border-indigo-950 overflow-hidden">
+              <CardHeader className="bg-indigo-950 text-white hover:bg-indigo-900 border-none pb-3 pt-4 transition-colors">
+                <h2 className="text-base font-bold text-center w-full uppercase tracking-wider">
+                  Totais Consolidados por Conta/Caixa
+                </h2>
+              </CardHeader>
+              <CardContent className="p-0">
+                <PeriodConsolidatedTable data={summaryData} type="account" />
+              </CardContent>
+            </Card>
+
+            <Card className="shadow-sm border-4 border-indigo-950 overflow-hidden">
+              <CardHeader className="bg-indigo-950 text-white hover:bg-indigo-900 border-none pb-3 pt-4 transition-colors">
+                <h2 className="text-base font-bold text-center w-full uppercase tracking-wider">
+                  Totais Consolidados por Centro de Custo
+                </h2>
+              </CardHeader>
+              <CardContent className="p-0">
+                <PeriodConsolidatedTable data={summaryData} type="cost" />
+              </CardContent>
+            </Card>
+          </div>
+
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
             <Card className="shadow-sm border-4 border-indigo-950 overflow-hidden">
               <CardHeader className="bg-indigo-950 text-white hover:bg-indigo-900 border-none pb-3 pt-4 transition-colors">
