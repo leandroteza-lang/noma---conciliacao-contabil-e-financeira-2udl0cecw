@@ -2533,7 +2533,7 @@ export default function FinancialMovements() {
                             className={cn(
                               'transition-colors',
                               isBlueRow
-                                ? 'bg-blue-500 text-white font-medium hover:bg-blue-400 border-b border-black [&_td_.text-slate-600]:text-white [&_td_.text-slate-700]:text-white [&_td_.text-slate-800]:text-white [&_td_.text-slate-400]:text-blue-100'
+                                ? 'bg-blue-800 text-white font-bold hover:bg-blue-700 border-b border-black [&_td_.text-slate-600]:text-white [&_td_.text-slate-700]:text-white [&_td_.text-slate-800]:text-white [&_td_.text-slate-400]:text-blue-100'
                                 : 'bg-white text-black font-bold hover:bg-slate-50 border-b border-black',
                             )}
                           >
@@ -2545,7 +2545,7 @@ export default function FinancialMovements() {
                                   aria-label="Selecionar registro"
                                   className={
                                     isBlueRow
-                                      ? 'border-white data-[state=checked]:bg-white data-[state=checked]:text-blue-500'
+                                      ? 'border-white data-[state=checked]:bg-white data-[state=checked]:text-blue-800'
                                       : ''
                                   }
                                 />
