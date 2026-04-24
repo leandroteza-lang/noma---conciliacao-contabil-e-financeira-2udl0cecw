@@ -38,6 +38,7 @@ import {
   ChevronRight,
   ChevronDown,
   GripHorizontal,
+  Download,
 } from 'lucide-react'
 import { Checkbox } from '@/components/ui/checkbox'
 import { toast } from 'sonner'
@@ -609,6 +610,107 @@ export default function FinancialMovements() {
   const [drillDownOpen, setDrillDownOpen] = useState(false)
   const [drillDownData, setDrillDownData] = useState<any[]>([])
   const [drillDownTitle, setDrillDownTitle] = useState('')
+
+  // Balancete Comparativo State
+  const [balanceteView, setBalanceteView] = useState<'c_custo' | 'conta_caixa'>('c_custo')
+  const [avEnabled, setAvEnabled] = useState(false)
+  const [ahEnabled, setAhEnabled] = useState(false)
+  const [balanceteSearch, setBalanceteSearch] = useState('')
+  const [selectedPeriods, setSelectedPeriods] = useState<string[]>([])
+
+  const availableMonths = useMemo(() => {
+    return Array.from(new Set(summaryData.map((d) => d[summaryDateBase]?.substring(0, 7))))
+      .filter(Boolean)
+      .sort()
+  }, [summaryData, summaryDateBase])
+
+  const activePeriods = selectedPeriods.length > 0 ? selectedPeriods : availableMonths
+  const sortedActivePeriods = [...activePeriods].sort()
+
+  const matrixData = useMemo(() => {
+    const map = new Map<string, { code: string; name: string; values: Record<string, number> }>()
+    const monthTotalsAbs: Record<string, number> = {}
+
+    summaryData.forEach((row) => {
+      const month = row[summaryDateBase]?.substring(0, 7)
+      if (!month || !sortedActivePeriods.includes(month)) return
+
+      const code = balanceteView === 'c_custo' ? row.c_custo || 'S/C' : row.conta_caixa || 'S/C'
+      const name =
+        balanceteView === 'c_custo'
+          ? row.descricao_c_custo || 'Sem Centro de Custo'
+          : row.nome_caixa || 'Sem Conta'
+      const key = `${code}::${name}`
+      const val = Number(row.valor_liquido || 0)
+
+      if (!map.has(key)) map.set(key, { code, name, values: {} })
+      const group = map.get(key)!
+      group.values[month] = (group.values[month] || 0) + val
+      monthTotalsAbs[month] = (monthTotalsAbs[month] || 0) + Math.abs(val)
+    })
+
+    let rows = Array.from(map.values())
+    if (balanceteSearch) {
+      const q = balanceteSearch.toLowerCase()
+      rows = rows.filter(
+        (r) => r.code.toLowerCase().includes(q) || r.name.toLowerCase().includes(q),
+      )
+    }
+    rows.sort((a, b) => a.code.localeCompare(b.code))
+
+    return { rows, monthTotalsAbs }
+  }, [summaryData, summaryDateBase, balanceteView, sortedActivePeriods, balanceteSearch])
+
+  const handleExportBalancete = () => {
+    const separator = ';'
+    let csv = `Código${separator}Descrição`
+    sortedActivePeriods.forEach((p) => {
+      const [y, m] = p.split('-')
+      const colName = `${m}/${y}`
+      csv += `${separator}${colName}`
+      if (avEnabled) csv += `${separator}${colName} (AV%)`
+      if (ahEnabled) csv += `${separator}${colName} (AH%)`
+    })
+    csv += '\n'
+
+    matrixData.rows.forEach((row) => {
+      csv += `"${row.code}"${separator}"${row.name}"`
+      sortedActivePeriods.forEach((month, mIdx) => {
+        const val = row.values[month] || 0
+        csv += `${separator}${val.toFixed(2).replace('.', ',')}`
+
+        if (avEnabled) {
+          const totalAbs = matrixData.monthTotalsAbs[month] || 1
+          const av = (Math.abs(val) / totalAbs) * 100
+          csv += `${separator}${val === 0 ? '0' : av.toFixed(2).replace('.', ',')}`
+        }
+        if (ahEnabled) {
+          const prevMonth = mIdx > 0 ? sortedActivePeriods[mIdx - 1] : null
+          const prevVal = prevMonth ? row.values[prevMonth] || 0 : 0
+          let ah = 0
+          if (prevMonth && prevVal !== 0) {
+            ah = ((val - prevVal) / Math.abs(prevVal)) * 100
+          } else if (prevMonth && prevVal === 0 && val !== 0) {
+            ah = 100
+          }
+          csv += `${separator}${mIdx === 0 ? '0' : ah.toFixed(2).replace('.', ',')}`
+        }
+      })
+      csv += '\n'
+    })
+
+    const blob = new Blob([new Uint8Array([0xef, 0xbb, 0xbf]), csv], {
+      type: 'text/csv;charset=utf-8;',
+    })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `balancete_comparativo_${new Date().toISOString().split('T')[0]}.csv`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  }
 
   const handleDrillDown = (costCenterLabel: string) => {
     setDrillDownTitle(costCenterLabel)
@@ -2046,6 +2148,12 @@ export default function FinancialMovements() {
           </TabsTrigger>
           <TabsTrigger value="resumo" className="whitespace-nowrap">
             Resumo Consolidado
+          </TabsTrigger>
+          <TabsTrigger
+            value="balancete"
+            className="whitespace-nowrap text-emerald-700 font-bold data-[state=active]:bg-emerald-700 data-[state=active]:text-white"
+          >
+            Balancete Comparativo
           </TabsTrigger>
           <TabsTrigger
             value="dashboard"
@@ -3698,6 +3806,246 @@ export default function FinancialMovements() {
               </CardContent>
             </Card>
           </div>
+        </TabsContent>
+
+        <TabsContent value="balancete" className="m-0 animate-in fade-in-up duration-500">
+          <Card className="border-slate-200 shadow-sm overflow-hidden flex flex-col h-[800px]">
+            <CardHeader className="bg-slate-50/50 border-b pb-4 shrink-0">
+              <div className="flex flex-col xl:flex-row xl:items-start justify-between gap-4">
+                <div>
+                  <h2 className="text-xl font-bold text-slate-800">Balancete Comparativo</h2>
+                  <p className="text-sm text-slate-500">
+                    Evolução matricial dos saldos ao longo do tempo.
+                  </p>
+                </div>
+                <div className="flex flex-wrap items-center gap-3 xl:ml-auto">
+                  <div className="flex items-center bg-white border border-slate-200 rounded-md p-1 shadow-sm">
+                    <Button
+                      variant={balanceteView === 'c_custo' ? 'secondary' : 'ghost'}
+                      size="sm"
+                      className={cn(
+                        'h-7 px-3 text-xs',
+                        balanceteView === 'c_custo'
+                          ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200'
+                          : '',
+                      )}
+                      onClick={() => setBalanceteView('c_custo')}
+                    >
+                      Por Centro de Custo
+                    </Button>
+                    <Button
+                      variant={balanceteView === 'conta_caixa' ? 'secondary' : 'ghost'}
+                      size="sm"
+                      className={cn(
+                        'h-7 px-3 text-xs',
+                        balanceteView === 'conta_caixa'
+                          ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200'
+                          : '',
+                      )}
+                      onClick={() => setBalanceteView('conta_caixa')}
+                    >
+                      Por Conta/Caixa
+                    </Button>
+                  </div>
+
+                  <div className="w-[180px]">
+                    <MultiSelect
+                      title={`Períodos (${activePeriods.length})`}
+                      options={availableMonths.map((m) => {
+                        const [y, mo] = m.split('-')
+                        return { label: `${mo}/${y}`, value: m }
+                      })}
+                      selected={selectedPeriods}
+                      onChange={setSelectedPeriods}
+                    />
+                  </div>
+
+                  <div className="flex items-center gap-4 bg-white border border-slate-200 px-3 py-1.5 rounded-md shadow-sm h-9">
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="av-toggle"
+                        checked={avEnabled}
+                        onCheckedChange={(c) => setAvEnabled(!!c)}
+                      />
+                      <Label htmlFor="av-toggle" className="text-xs font-semibold cursor-pointer">
+                        AV%
+                      </Label>
+                    </div>
+                    <div className="w-px h-4 bg-slate-200"></div>
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="ah-toggle"
+                        checked={ahEnabled}
+                        onCheckedChange={(c) => setAhEnabled(!!c)}
+                      />
+                      <Label htmlFor="ah-toggle" className="text-xs font-semibold cursor-pointer">
+                        AH%
+                      </Label>
+                    </div>
+                  </div>
+
+                  <div className="relative w-full sm:w-[250px]">
+                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                    <Input
+                      placeholder="Pesquisar conta/código..."
+                      className="pl-8 h-9 text-sm bg-white"
+                      value={balanceteSearch}
+                      onChange={(e) => setBalanceteSearch(e.target.value)}
+                    />
+                  </div>
+
+                  <Button
+                    onClick={handleExportBalancete}
+                    className="bg-[#0f172a] hover:bg-[#1e293b] text-white h-9 shadow-sm"
+                  >
+                    <Download className="mr-2 h-4 w-4" />
+                    Exportar CSV
+                  </Button>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="p-0 flex-1 overflow-hidden bg-white relative">
+              <div className="absolute inset-0 overflow-auto custom-scrollbar">
+                <Table className="w-full text-xs min-w-max">
+                  <TableHeader className="sticky top-0 z-20 shadow-sm border-b-2 border-slate-300">
+                    <TableRow className="bg-slate-100 hover:bg-slate-100">
+                      <TableHead className="w-[150px] font-bold text-slate-700 sticky left-0 bg-slate-100 z-30 uppercase text-xs">
+                        Conta
+                      </TableHead>
+                      <TableHead className="min-w-[250px] font-bold text-slate-700 sticky left-[150px] bg-slate-100 z-30 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] uppercase text-xs">
+                        Descrição
+                      </TableHead>
+                      {sortedActivePeriods.map((month) => {
+                        const [y, m] = month.split('-')
+                        return (
+                          <TableHead
+                            key={month}
+                            className="text-right font-bold text-slate-800 min-w-[140px] px-4"
+                          >
+                            <div className="flex flex-col items-end">
+                              <span className="text-[11px] text-slate-500 font-medium leading-tight">
+                                {m}/{y}
+                              </span>
+                              <span>Saldo</span>
+                            </div>
+                          </TableHead>
+                        )
+                      })}
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {matrixData.rows.length === 0 ? (
+                      <TableRow>
+                        <TableCell
+                          colSpan={sortedActivePeriods.length + 2}
+                          className="h-48 text-center text-slate-500"
+                        >
+                          Nenhum dado encontrado para os filtros atuais.
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      matrixData.rows.map((row, idx) => (
+                        <TableRow
+                          key={idx}
+                          className="hover:bg-blue-50/50 transition-colors border-b border-slate-200 group"
+                        >
+                          <TableCell className="font-mono text-slate-600 font-medium sticky left-0 bg-white z-10 group-hover:bg-blue-50/50">
+                            {row.code}
+                          </TableCell>
+                          <TableCell
+                            className="font-semibold text-slate-800 sticky left-[150px] bg-white z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)] group-hover:bg-blue-50/50 truncate max-w-[300px]"
+                            title={row.name}
+                          >
+                            {row.name}
+                          </TableCell>
+                          {sortedActivePeriods.map((month, mIdx) => {
+                            const val = row.values[month] || 0
+                            const prevMonth = mIdx > 0 ? sortedActivePeriods[mIdx - 1] : null
+                            const prevVal = prevMonth ? row.values[prevMonth] || 0 : 0
+
+                            const totalAbs = matrixData.monthTotalsAbs[month] || 1
+                            const av = (Math.abs(val) / totalAbs) * 100
+
+                            let ah = 0
+                            if (prevMonth && prevVal !== 0) {
+                              ah = ((val - prevVal) / Math.abs(prevVal)) * 100
+                            } else if (prevMonth && prevVal === 0 && val !== 0) {
+                              ah = 100
+                            }
+
+                            return (
+                              <TableCell key={month} className="text-right px-4 align-top py-2">
+                                <div className="flex items-center justify-end gap-1.5">
+                                  <span
+                                    className={cn(
+                                      'font-bold',
+                                      val > 0
+                                        ? 'text-emerald-600'
+                                        : val < 0
+                                          ? 'text-rose-600'
+                                          : 'text-slate-400',
+                                    )}
+                                  >
+                                    {new Intl.NumberFormat('pt-BR', {
+                                      minimumFractionDigits: 2,
+                                      maximumFractionDigits: 2,
+                                    }).format(Math.abs(val))}
+                                  </span>
+                                  <span
+                                    className={cn(
+                                      'text-[10px] font-bold',
+                                      val > 0
+                                        ? 'text-emerald-500'
+                                        : val < 0
+                                          ? 'text-rose-500'
+                                          : 'text-slate-300',
+                                    )}
+                                  >
+                                    {val > 0 ? 'D' : val < 0 ? 'C' : ''}
+                                  </span>
+                                </div>
+                                {(avEnabled || ahEnabled) && (
+                                  <div className="flex justify-end gap-2 mt-1.5 text-[10px] font-medium">
+                                    {avEnabled && (
+                                      <span
+                                        className="bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded border border-slate-200"
+                                        title="Análise Vertical"
+                                      >
+                                        {val === 0 ? '-' : `${av.toFixed(1)}%`}
+                                      </span>
+                                    )}
+                                    {ahEnabled && mIdx > 0 && (
+                                      <span
+                                        className={cn(
+                                          'px-1.5 py-0.5 rounded border',
+                                          ah > 0
+                                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                            : ah < 0
+                                              ? 'bg-rose-50 text-rose-700 border-rose-200'
+                                              : 'bg-slate-50 text-slate-500 border-slate-200',
+                                        )}
+                                        title="Análise Horizontal"
+                                      >
+                                        {prevVal === 0 && val !== 0
+                                          ? '100%'
+                                          : prevVal === 0
+                                            ? '-'
+                                            : `${ah > 0 ? '+' : ''}${ah.toFixed(1)}%`}
+                                      </span>
+                                    )}
+                                  </div>
+                                )}
+                              </TableCell>
+                            )
+                          })}
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="dashboard" className="m-0 animate-in fade-in-up duration-500">
