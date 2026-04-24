@@ -3923,137 +3923,156 @@ export default function FinancialMovements() {
               </div>
             </CardHeader>
             <CardContent className="p-0 flex-1 overflow-hidden bg-white relative">
-              <div className="absolute inset-0 overflow-auto custom-scrollbar">
-                <Table className="w-full text-xs min-w-max">
-                  <TableHeader className="sticky top-0 z-20 shadow-sm border-none">
-                    <TableRow disableZebra className="bg-blue-500 hover:bg-blue-400 border-none">
-                      <TableHead className="w-[150px] font-medium text-white text-center border border-black sticky left-0 top-0 bg-blue-500 hover:bg-blue-400 z-30 uppercase text-xs">
-                        Conta
-                      </TableHead>
-                      <TableHead className="min-w-[250px] font-medium text-white text-center border border-black sticky left-[150px] top-0 bg-blue-500 hover:bg-blue-400 z-30 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] uppercase text-xs">
-                        Descrição
-                      </TableHead>
-                      {sortedActivePeriods.map((month) => {
-                        const [y, m] = month.split('-')
-                        return (
-                          <TableHead
-                            key={month}
-                            className="text-center font-medium text-white border border-black min-w-[140px] px-4 bg-blue-500 hover:bg-blue-400 top-0 sticky z-20"
-                          >
-                            <div className="flex flex-col items-center justify-center">
-                              <span className="text-[12px] leading-tight">
-                                {m}/{y}
-                              </span>
-                              <span>Saldo</span>
-                            </div>
-                          </TableHead>
-                        )
-                      })}
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {matrixData.rows.length === 0 ? (
-                      <TableRow disableZebra>
-                        <TableCell
-                          colSpan={sortedActivePeriods.length + 2}
-                          className="h-48 text-center text-black font-bold border border-black"
+              <Table
+                wrapperClassName="absolute inset-0 overflow-auto custom-scrollbar"
+                className="w-full text-xs min-w-max border-collapse"
+              >
+                <TableHeader className="sticky top-0 z-30 shadow-sm border-none bg-indigo-950">
+                  <TableRow
+                    disableZebra
+                    className="bg-indigo-950 text-white font-bold hover:bg-indigo-900 border-none"
+                  >
+                    <TableHead className="w-[150px] font-bold text-white text-center border border-black sticky left-0 top-0 bg-indigo-950 hover:bg-indigo-900 z-40 uppercase text-xs">
+                      Conta
+                    </TableHead>
+                    <TableHead className="min-w-[250px] font-bold text-white text-center border border-black sticky left-[150px] top-0 bg-indigo-950 hover:bg-indigo-900 z-40 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] uppercase text-xs">
+                      Descrição
+                    </TableHead>
+                    {sortedActivePeriods.map((month) => {
+                      const [y, m] = month.split('-')
+                      return (
+                        <TableHead
+                          key={month}
+                          className="text-center font-bold text-white border border-black min-w-[140px] px-4 bg-indigo-950 hover:bg-indigo-900 top-0 sticky z-30"
                         >
-                          Nenhum dado encontrado para os filtros atuais.
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      matrixData.rows.map((row, idx) => {
-                        const isEven = idx % 2 !== 0
-                        const rowBg = isEven ? 'bg-[#e8f4ff]' : 'bg-white'
+                          <div className="flex flex-col items-center justify-center">
+                            <span className="text-[12px] leading-tight">
+                              {m}/{y}
+                            </span>
+                            <span>Saldo</span>
+                          </div>
+                        </TableHead>
+                      )
+                    })}
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {matrixData.rows.length === 0 ? (
+                    <TableRow disableZebra>
+                      <TableCell
+                        colSpan={sortedActivePeriods.length + 2}
+                        className="h-48 text-center text-black font-bold border border-black"
+                      >
+                        Nenhum dado encontrado para os filtros atuais.
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    matrixData.rows.map((row, idx) => {
+                      const isEven = idx % 2 !== 0
+                      const rowBg = isEven
+                        ? 'bg-blue-800 text-white font-bold hover:bg-blue-700'
+                        : 'bg-white text-black font-bold hover:bg-slate-50'
+                      const stickyBg = isEven
+                        ? 'bg-blue-800 group-hover:bg-blue-700'
+                        : 'bg-white group-hover:bg-slate-50'
 
-                        return (
-                          <TableRow
-                            disableZebra
-                            key={idx}
-                            className={cn('transition-colors group', rowBg)}
+                      return (
+                        <TableRow
+                          disableZebra
+                          key={idx}
+                          className={cn('transition-colors group border-none', rowBg)}
+                        >
+                          <TableCell
+                            className={cn(
+                              'border border-black sticky left-0 z-10 text-center',
+                              stickyBg,
+                            )}
                           >
-                            <TableCell
-                              className={cn(
-                                'font-bold text-black border border-black sticky left-0 z-10 text-center group-hover:bg-[#d1e9ff]',
-                                rowBg,
-                              )}
-                            >
-                              {row.code}
-                            </TableCell>
-                            <TableCell
-                              className={cn(
-                                'font-bold text-black border border-black sticky left-[150px] z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)] truncate max-w-[300px] group-hover:bg-[#d1e9ff]',
-                                rowBg,
-                              )}
-                              title={row.name}
-                            >
-                              {row.name}
-                            </TableCell>
-                            {sortedActivePeriods.map((month, mIdx) => {
-                              const val = row.values[month] || 0
-                              const prevMonth = mIdx > 0 ? sortedActivePeriods[mIdx - 1] : null
-                              const prevVal = prevMonth ? row.values[prevMonth] || 0 : 0
+                            {row.code}
+                          </TableCell>
+                          <TableCell
+                            className={cn(
+                              'border border-black sticky left-[150px] z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)] truncate max-w-[300px]',
+                              stickyBg,
+                            )}
+                            title={row.name}
+                          >
+                            {row.name}
+                          </TableCell>
+                          {sortedActivePeriods.map((month, mIdx) => {
+                            const val = row.values[month] || 0
+                            const prevMonth = mIdx > 0 ? sortedActivePeriods[mIdx - 1] : null
+                            const prevVal = prevMonth ? row.values[prevMonth] || 0 : 0
 
-                              const totalAbs = matrixData.monthTotalsAbs[month] || 1
-                              const av = (Math.abs(val) / totalAbs) * 100
+                            const totalAbs = matrixData.monthTotalsAbs[month] || 1
+                            const av = (Math.abs(val) / totalAbs) * 100
 
-                              let ah = 0
-                              if (prevMonth && prevVal !== 0) {
-                                ah = ((val - prevVal) / Math.abs(prevVal)) * 100
-                              } else if (prevMonth && prevVal === 0 && val !== 0) {
-                                ah = 100
-                              }
+                            let ah = 0
+                            if (prevMonth && prevVal !== 0) {
+                              ah = ((val - prevVal) / Math.abs(prevVal)) * 100
+                            } else if (prevMonth && prevVal === 0 && val !== 0) {
+                              ah = 100
+                            }
 
-                              return (
-                                <TableCell
-                                  key={month}
-                                  className="text-right px-4 align-top py-2 border border-black"
-                                >
-                                  <div className="flex items-center justify-end gap-1.5">
-                                    <span className="font-bold text-black">
-                                      {new Intl.NumberFormat('pt-BR', {
-                                        minimumFractionDigits: 2,
-                                        maximumFractionDigits: 2,
-                                      }).format(Math.abs(val))}
-                                    </span>
-                                    <span className="text-[10px] font-bold text-black">
-                                      {val > 0 ? 'D' : val < 0 ? 'C' : ''}
-                                    </span>
+                            return (
+                              <TableCell
+                                key={month}
+                                className="text-left px-4 align-top py-2 border border-black"
+                              >
+                                <div className="flex items-center justify-start gap-1.5 w-full">
+                                  <span className="flex-1 whitespace-nowrap">
+                                    {new Intl.NumberFormat('pt-BR', {
+                                      style: 'currency',
+                                      currency: 'BRL',
+                                    }).format(Math.abs(val))}
+                                  </span>
+                                  <span className="text-[10px]">
+                                    {val > 0 ? 'D' : val < 0 ? 'C' : ''}
+                                  </span>
+                                </div>
+                                {(avEnabled || ahEnabled) && (
+                                  <div className="flex justify-start gap-2 mt-1.5 text-[10px] font-medium">
+                                    {avEnabled && (
+                                      <span
+                                        className={cn(
+                                          'px-1.5 py-0.5 rounded border border-black',
+                                          isEven
+                                            ? 'bg-blue-900/50 text-white'
+                                            : 'bg-slate-100 text-black',
+                                        )}
+                                        title="Análise Vertical"
+                                      >
+                                        {val === 0 ? '-' : `${av.toFixed(1)}%`}
+                                      </span>
+                                    )}
+                                    {ahEnabled && mIdx > 0 && (
+                                      <span
+                                        className={cn(
+                                          'px-1.5 py-0.5 rounded border border-black',
+                                          isEven
+                                            ? 'bg-blue-900/50 text-white'
+                                            : 'bg-slate-50 text-black',
+                                        )}
+                                        title="Análise Horizontal"
+                                      >
+                                        {prevVal === 0 && val !== 0
+                                          ? '100%'
+                                          : prevVal === 0
+                                            ? '-'
+                                            : `${ah > 0 ? '+' : ''}${ah.toFixed(1)}%`}
+                                      </span>
+                                    )}
                                   </div>
-                                  {(avEnabled || ahEnabled) && (
-                                    <div className="flex justify-end gap-2 mt-1.5 text-[10px] font-medium">
-                                      {avEnabled && (
-                                        <span
-                                          className="bg-slate-100 text-black font-bold px-1.5 py-0.5 rounded border border-black"
-                                          title="Análise Vertical"
-                                        >
-                                          {val === 0 ? '-' : `${av.toFixed(1)}%`}
-                                        </span>
-                                      )}
-                                      {ahEnabled && mIdx > 0 && (
-                                        <span
-                                          className="px-1.5 py-0.5 rounded border bg-slate-50 text-black font-bold border-black"
-                                          title="Análise Horizontal"
-                                        >
-                                          {prevVal === 0 && val !== 0
-                                            ? '100%'
-                                            : prevVal === 0
-                                              ? '-'
-                                              : `${ah > 0 ? '+' : ''}${ah.toFixed(1)}%`}
-                                        </span>
-                                      )}
-                                    </div>
-                                  )}
-                                </TableCell>
-                              )
-                            })}
-                          </TableRow>
-                        )
-                      })
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
+                                )}
+                              </TableCell>
+                            )
+                          })}
+                        </TableRow>
+                      )
+                    })
+                  )}
+                </TableBody>
+              </Table>
             </CardContent>
           </Card>
         </TabsContent>
