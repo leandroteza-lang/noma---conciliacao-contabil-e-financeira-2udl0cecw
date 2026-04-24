@@ -107,6 +107,13 @@ import {
   SheetTitle,
   SheetDescription,
 } from '@/components/ui/sheet'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog'
 
 const formatMonthYear = (row: any, dateField: string = 'data_emissao') => {
   const dateStr = row?.[dateField]
@@ -598,6 +605,30 @@ export default function FinancialMovements() {
   const [columnsOpen, setColumnsOpen] = useState(false)
   const [filters, setFilters] = useState<Record<string, string[]>>({})
   const [activeTab, setActiveTab] = useState('grade')
+
+  const [drillDownOpen, setDrillDownOpen] = useState(false)
+  const [drillDownData, setDrillDownData] = useState<any[]>([])
+  const [drillDownTitle, setDrillDownTitle] = useState('')
+
+  const handleDrillDown = (costCenterLabel: string) => {
+    setDrillDownTitle(costCenterLabel)
+
+    const matchingRows = summaryData.filter((row) => {
+      const val = Number(row.valor_liquido || 0)
+      if (val >= 0) return false
+      const ccName = row.descricao_c_custo || row.c_custo || 'Sem C. Custo'
+      return ccName === costCenterLabel
+    })
+
+    matchingRows.sort((a, b) => {
+      const valA = Number(a.valor_liquido || 0)
+      const valB = Number(b.valor_liquido || 0)
+      return valA - valB
+    })
+
+    setDrillDownData(matchingRows)
+    setDrillDownOpen(true)
+  }
 
   const defaultFilterOrder = ['natureza', ...tableHeaders.map((h) => h.key)]
   const [filterOrder, setFilterOrder] = useState<string[]>(() => {
@@ -1356,7 +1387,7 @@ export default function FinancialMovements() {
     let totalsQuery = supabase
       .from('erp_financial_movements')
       .select(
-        'valor, valor_liquido, data_emissao, dt_compens, conta_caixa, nome_caixa, c_custo, descricao_c_custo, organization_id, mapped_account_id',
+        'id, valor, valor_liquido, data_emissao, dt_compens, conta_caixa, nome_caixa, c_custo, descricao_c_custo, organization_id, mapped_account_id, historico, nome_cli_fornec, n_documento',
       )
       .is('deleted_at', null)
       .limit(100000)
@@ -1516,7 +1547,7 @@ export default function FinancialMovements() {
     let totalsQuery = supabase
       .from('erp_financial_movements')
       .select(
-        'valor, valor_liquido, data_emissao, dt_compens, conta_caixa, nome_caixa, c_custo, descricao_c_custo, organization_id, mapped_account_id',
+        'id, valor, valor_liquido, data_emissao, dt_compens, conta_caixa, nome_caixa, c_custo, descricao_c_custo, organization_id, mapped_account_id, historico, nome_cli_fornec, n_documento',
       )
       .is('deleted_at', null)
       .limit(100000)
@@ -3827,6 +3858,12 @@ export default function FinancialMovements() {
                       data={dashboardData.topExpenses}
                       layout="vertical"
                       margin={{ top: 0, right: 0, left: -20, bottom: 0 }}
+                      onClick={(state) => {
+                        if (state && state.activePayload && state.activePayload.length > 0) {
+                          handleDrillDown(state.activePayload[0].payload.name)
+                        }
+                      }}
+                      className="cursor-pointer"
                     >
                       <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e2e8f0" />
                       <XAxis
@@ -3850,6 +3887,7 @@ export default function FinancialMovements() {
                         fill="var(--color-value)"
                         radius={[0, 4, 4, 0]}
                         maxBarSize={30}
+                        cursor="pointer"
                       />
                     </BarChart>
                   </ChartContainer>
@@ -3888,6 +3926,10 @@ export default function FinancialMovements() {
                         innerRadius={60}
                         outerRadius={90}
                         paddingAngle={2}
+                        cursor="pointer"
+                        onClick={(data) => {
+                          if (data && data.name) handleDrillDown(data.name)
+                        }}
                       ></Pie>
                       <ChartTooltip content={<ChartTooltipContent />} />
                       <ChartLegend content={<ChartLegendContent className="flex-wrap" />} />
@@ -4154,6 +4196,99 @@ export default function FinancialMovements() {
             : `Tem certeza que deseja excluir os ${selectedIds.length} registros selecionados?`
         }
       />
+
+      <Dialog open={drillDownOpen} onOpenChange={setDrillDownOpen}>
+        <DialogContent className="max-w-5xl max-h-[85vh] flex flex-col p-0 overflow-hidden bg-slate-50 border-0 shadow-2xl rounded-xl">
+          <DialogHeader className="px-6 py-5 border-b bg-white">
+            <DialogTitle className="text-xl flex items-center gap-2 text-slate-900 font-bold">
+              Detalhamento de Despesas
+            </DialogTitle>
+            <DialogDescription className="text-sm text-slate-500 mt-1">
+              Lançamentos que compõem o total de{' '}
+              <strong className="text-slate-900 font-semibold">{drillDownTitle}</strong> no período.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex-1 overflow-auto p-6 bg-slate-50/50">
+            <Table className="bg-white border border-slate-200 rounded-lg shadow-sm">
+              <TableHeader className="bg-slate-100 sticky top-0 z-10 shadow-sm">
+                <TableRow className="border-b-slate-200 hover:bg-slate-100">
+                  <TableHead className="font-semibold text-slate-700 w-[120px]">
+                    Data Emissão
+                  </TableHead>
+                  <TableHead className="font-semibold text-slate-700 w-[140px]">
+                    Documento
+                  </TableHead>
+                  <TableHead className="font-semibold text-slate-700">Fornecedor/Cliente</TableHead>
+                  <TableHead className="font-semibold text-slate-700">Histórico</TableHead>
+                  <TableHead className="font-semibold text-slate-700 text-right w-[150px]">
+                    Valor
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {drillDownData.map((row, i) => (
+                  <TableRow
+                    key={row.id || i}
+                    className="border-b-slate-100 hover:bg-slate-50/80 transition-colors"
+                  >
+                    <TableCell className="whitespace-nowrap font-medium text-slate-600">
+                      {formatDate(row.data_emissao)}
+                    </TableCell>
+                    <TableCell className="font-mono text-xs text-slate-500">
+                      {row.n_documento || '-'}
+                    </TableCell>
+                    <TableCell className="text-slate-700 font-medium">
+                      {row.nome_cli_fornec || '-'}
+                    </TableCell>
+                    <TableCell
+                      className="max-w-[200px] truncate text-slate-600 text-sm"
+                      title={row.historico}
+                    >
+                      {row.historico || '-'}
+                    </TableCell>
+                    <TableCell className="text-right text-rose-600 font-bold whitespace-nowrap">
+                      {new Intl.NumberFormat('pt-BR', {
+                        style: 'currency',
+                        currency: 'BRL',
+                      }).format(row.valor_liquido || row.valor || 0)}
+                    </TableCell>
+                  </TableRow>
+                ))}
+                {drillDownData.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center py-10 text-slate-500">
+                      <div className="flex flex-col items-center gap-2">
+                        <Search className="h-8 w-8 text-slate-300" />
+                        <p>Nenhum lançamento detalhado encontrado.</p>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
+
+          <div className="px-6 py-4 border-t border-slate-200 bg-white flex justify-between items-center shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
+            <span className="text-sm font-medium text-slate-500 bg-slate-100 px-3 py-1 rounded-md">
+              Total de {drillDownData.length} registro{drillDownData.length !== 1 && 's'}
+            </span>
+            <div className="flex items-center gap-3">
+              <span className="text-sm font-semibold text-slate-600 uppercase tracking-wider">
+                Total:
+              </span>
+              <div className="text-2xl font-bold text-rose-600 bg-rose-50 px-4 py-1.5 rounded-lg border border-rose-100">
+                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(
+                  drillDownData.reduce(
+                    (acc, row) => acc + Number(row.valor_liquido || row.valor || 0),
+                    0,
+                  ),
+                )}
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Sheet open={!!mappingRow} onOpenChange={(open) => !open && setMappingRow(null)}>
         <SheetContent className="w-full sm:max-w-md border-l shadow-2xl overflow-y-auto bg-white p-6 sm:p-8">
