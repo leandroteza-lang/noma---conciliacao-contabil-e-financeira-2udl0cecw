@@ -2275,7 +2275,7 @@ export default function FinancialMovements() {
             </CardHeader>
             <CardContent className="p-0 bg-white">
               <Table
-                wrapperClassName="transform scale-y-[-1] overflow-x-auto overflow-y-hidden finance-table-scrollbar pb-3"
+                wrapperClassName="transform scale-y-[-1] overflow-x-auto overflow-y-hidden finance-table-scrollbar pb-3 border-4 border-indigo-950"
                 className="transform scale-y-[-1] w-full min-w-max"
               >
                 <TableHeader>
