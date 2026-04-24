@@ -298,7 +298,10 @@ function SummaryTable({
     new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v)
 
   return (
-    <Table className="w-full text-xs">
+    <Table
+      className="w-full text-xs"
+      wrapperClassName="max-h-[500px] overflow-y-auto custom-scrollbar"
+    >
       <TableHeader className="sticky top-0 z-10 shadow-sm border-none">
         <TableRow disableZebra className="bg-blue-500 hover:bg-blue-400 border-none">
           <TableHead className="w-[20%] font-medium text-white text-center border-none px-2 py-1 h-8">
@@ -3362,13 +3365,7 @@ export default function FinancialMovements() {
                 </h2>
               </CardHeader>
               <CardContent className="p-0">
-                <div className="h-[500px] overflow-y-auto custom-scrollbar">
-                  <SummaryTable
-                    data={summaryData}
-                    type="month_account"
-                    dateField={summaryDateBase}
-                  />
-                </div>
+                <SummaryTable data={summaryData} type="month_account" dateField={summaryDateBase} />
               </CardContent>
             </Card>
 
@@ -3379,13 +3376,7 @@ export default function FinancialMovements() {
                 </h2>
               </CardHeader>
               <CardContent className="p-0">
-                <div className="h-[500px] overflow-y-auto custom-scrollbar">
-                  <SummaryTable
-                    data={summaryData}
-                    type="account_month"
-                    dateField={summaryDateBase}
-                  />
-                </div>
+                <SummaryTable data={summaryData} type="account_month" dateField={summaryDateBase} />
               </CardContent>
             </Card>
 
@@ -3394,9 +3385,7 @@ export default function FinancialMovements() {
                 <h2 className="text-base font-bold text-center w-full">Custos (Mês ➔ C. Custo)</h2>
               </CardHeader>
               <CardContent className="p-0">
-                <div className="h-[500px] overflow-y-auto custom-scrollbar">
-                  <SummaryTable data={summaryData} type="month_cost" dateField={summaryDateBase} />
-                </div>
+                <SummaryTable data={summaryData} type="month_cost" dateField={summaryDateBase} />
               </CardContent>
             </Card>
 
@@ -3405,9 +3394,7 @@ export default function FinancialMovements() {
                 <h2 className="text-base font-bold text-center w-full">Custos (C. Custo ➔ Mês)</h2>
               </CardHeader>
               <CardContent className="p-0">
-                <div className="h-[500px] overflow-y-auto custom-scrollbar">
-                  <SummaryTable data={summaryData} type="cost_month" dateField={summaryDateBase} />
-                </div>
+                <SummaryTable data={summaryData} type="cost_month" dateField={summaryDateBase} />
               </CardContent>
             </Card>
           </div>
