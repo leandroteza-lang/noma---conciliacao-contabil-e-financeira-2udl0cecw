@@ -1052,11 +1052,11 @@ export default function FinancialMovements() {
   }
 
   const renderSortIcon = (key: string) => {
-    if (sortColumn !== key) return <ArrowUpDown className="h-3 w-3 ml-1 text-slate-300" />
+    if (sortColumn !== key) return <ArrowUpDown className="h-3 w-3 ml-1 text-indigo-300" />
     return sortDirection === 'asc' ? (
-      <ArrowUp className="h-3 w-3 ml-1 text-primary" />
+      <ArrowUp className="h-3 w-3 ml-1 text-white" />
     ) : (
-      <ArrowDown className="h-3 w-3 ml-1 text-primary" />
+      <ArrowDown className="h-3 w-3 ml-1 text-white" />
     )
   }
 
@@ -2281,14 +2281,15 @@ export default function FinancialMovements() {
                 <TableHeader>
                   <TableRow
                     disableZebra
-                    className="bg-slate-50 hover:bg-slate-50 border-b border-black"
+                    className="bg-indigo-950 text-white font-bold hover:bg-indigo-900 border-none [&>th]:border-none [&>th]:text-white"
                   >
-                    <TableHead className="w-[40px] px-2 py-1 border-r border-black text-center align-middle">
+                    <TableHead className="w-[40px] px-2 py-1 text-center align-middle">
                       <div className="flex items-center justify-center">
                         <Checkbox
                           checked={data.length > 0 && data.every((d) => selectedIds.includes(d.id))}
                           onCheckedChange={toggleAllPage}
                           aria-label="Selecionar todos da página"
+                          className="border-white data-[state=checked]:bg-white data-[state=checked]:text-indigo-950"
                         />
                       </div>
                     </TableHead>
@@ -2324,15 +2325,15 @@ export default function FinancialMovements() {
                             }}
                             onDragEnd={() => setDraggedColumn(null)}
                             className={cn(
-                              'h-8 px-2 py-1 text-sm font-bold text-black whitespace-nowrap select-none transition-colors border-r border-black last:border-r-0 cursor-grab active:cursor-grabbing',
+                              'h-8 px-2 py-1 text-sm font-bold whitespace-nowrap select-none transition-colors cursor-grab active:cursor-grabbing',
                               h.className,
-                              draggedColumn === h.key ? 'opacity-50 bg-slate-100' : '',
+                              draggedColumn === h.key ? 'opacity-50 bg-indigo-900' : '',
                             )}
                           >
                             <div className="flex items-center justify-between gap-1 w-full">
                               <div
                                 className={cn(
-                                  'flex items-center cursor-pointer hover:bg-slate-200/50 rounded px-1 -ml-1 flex-1',
+                                  'flex items-center cursor-pointer hover:bg-indigo-800/50 rounded px-1 -ml-1 flex-1',
                                   h.align === 'right'
                                     ? 'justify-end'
                                     : h.align === 'center'
@@ -2353,8 +2354,8 @@ export default function FinancialMovements() {
                                       className={cn(
                                         'h-5 w-5 rounded-sm relative',
                                         activeFilterCount > 0
-                                          ? 'text-primary bg-primary/10'
-                                          : 'text-slate-400 hover:text-slate-600',
+                                          ? 'text-white bg-primary/40'
+                                          : 'text-indigo-200 hover:text-white hover:bg-indigo-800/50',
                                       )}
                                       title="Filtrar coluna"
                                     >
@@ -2451,7 +2452,7 @@ export default function FinancialMovements() {
                                     <Button
                                       variant="ghost"
                                       size="icon"
-                                      className="h-5 w-5 rounded-sm text-slate-400 hover:text-slate-600 relative ml-0.5"
+                                      className="h-5 w-5 rounded-sm text-indigo-200 hover:text-white hover:bg-indigo-800/50 relative ml-0.5"
                                       title="Opções de visualização"
                                     >
                                       <MoreVertical className="h-3 w-3" />
@@ -2496,7 +2497,7 @@ export default function FinancialMovements() {
                           </TableHead>
                         )
                       })}
-                    <TableHead className="h-8 px-2 py-1 text-sm font-bold text-black whitespace-nowrap text-center border-r border-black last:border-r-0">
+                    <TableHead className="h-8 px-2 py-1 text-sm font-bold whitespace-nowrap text-center">
                       Ações
                     </TableHead>
                   </TableRow>
@@ -2516,18 +2517,25 @@ export default function FinancialMovements() {
                     </TableRow>
                   ) : (
                     <>
-                      {data.map((row) => {
+                      {data.map((row, index) => {
                         const missingFields = []
                         if (!row.data_emissao) missingFields.push('Data de Emissão')
                         if (!row.c_custo) missingFields.push('Centro de Custo')
                         if (row.valor_liquido === null || row.valor_liquido === undefined)
                           missingFields.push('Valor Líquido')
 
+                        const isBlueRow = index % 2 === 1
+
                         return (
                           <TableRow
-                            customZebraColor="#191970"
+                            disableZebra
                             key={row.id}
-                            className="transition-colors border-b border-black"
+                            className={cn(
+                              'transition-colors',
+                              isBlueRow
+                                ? 'bg-blue-200 text-blue-950 font-medium hover:bg-blue-300 border-none [&>td]:border-none [&_td_.text-slate-600]:text-blue-950 [&_td_.text-slate-700]:text-blue-950 [&_td_.text-slate-800]:text-blue-950 [&_td_.text-slate-400]:text-blue-900'
+                                : 'bg-white text-black font-bold hover:bg-slate-50 border-b border-black',
+                            )}
                           >
                             <TableCell className="px-2 py-1 border-r border-black text-center align-middle">
                               <div className="flex items-center justify-center">
@@ -2535,6 +2543,11 @@ export default function FinancialMovements() {
                                   checked={selectedIds.includes(row.id)}
                                   onCheckedChange={() => toggleRow(row.id)}
                                   aria-label="Selecionar registro"
+                                  className={
+                                    isBlueRow
+                                      ? 'border-blue-950 data-[state=checked]:bg-blue-950 data-[state=checked]:text-white'
+                                      : ''
+                                  }
                                 />
                               </div>
                             </TableCell>
