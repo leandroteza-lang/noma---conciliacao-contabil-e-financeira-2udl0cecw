@@ -78,7 +78,28 @@ import {
   CommandItem,
   CommandList,
 } from '@/components/ui/command'
-import { Sankey, ResponsiveContainer, Tooltip as RechartsTooltip } from 'recharts'
+import {
+  Sankey,
+  ResponsiveContainer,
+  Tooltip as RechartsTooltip,
+  BarChart,
+  Bar,
+  LineChart,
+  Line,
+  PieChart,
+  Pie,
+  Cell,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+} from 'recharts'
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+  ChartLegend,
+  ChartLegendContent,
+} from '@/components/ui/chart'
 import {
   Sheet,
   SheetContent,
@@ -1677,6 +1698,80 @@ export default function FinancialMovements() {
   }
   const sankeyData = getSankeyData()
 
+  const dashboardData = useMemo(() => {
+    let revenue = 0
+    let expense = 0
+
+    const costCenterMap = new Map<string, number>()
+    const monthlyMap = new Map<string, { month: string; revenue: number; expense: number }>()
+
+    summaryData.forEach((row) => {
+      const val = Number(row.valor_liquido || 0)
+      if (val > 0) revenue += val
+      else expense += Math.abs(val)
+
+      if (val < 0) {
+        const ccName = row.descricao_c_custo || row.c_custo || 'Sem C. Custo'
+        costCenterMap.set(ccName, (costCenterMap.get(ccName) || 0) + Math.abs(val))
+      }
+
+      const dateStr = row[summaryDateBase] as string
+      if (dateStr) {
+        const month = dateStr.substring(0, 7) // YYYY-MM
+        if (!monthlyMap.has(month)) monthlyMap.set(month, { month, revenue: 0, expense: 0 })
+        const mData = monthlyMap.get(month)!
+        if (val > 0) mData.revenue += val
+        else mData.expense += Math.abs(val)
+      }
+    })
+
+    const COLORS = [
+      '#ef4444',
+      '#f97316',
+      '#f59e0b',
+      '#84cc16',
+      '#10b981',
+      '#06b6d4',
+      '#3b82f6',
+      '#6366f1',
+      '#8b5cf6',
+      '#d946ef',
+    ]
+
+    const topExpenses = Array.from(costCenterMap.entries())
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 10)
+      .map((item, index) => ({
+        ...item,
+        fill: `var(--color-expense_${index})`,
+      }))
+
+    const pieConfig = topExpenses.reduce(
+      (acc, curr, index) => {
+        acc[`expense_${index}`] = { label: curr.name, color: COLORS[index % COLORS.length] }
+        return acc
+      },
+      {} as Record<string, any>,
+    )
+
+    const monthlyTrends = Array.from(monthlyMap.values())
+      .sort((a, b) => a.month.localeCompare(b.month))
+      .map((m) => {
+        const [y, mo] = m.month.split('-')
+        return { ...m, monthLabel: `${mo}/${y}` }
+      })
+
+    return {
+      revenue,
+      expense,
+      balance: revenue - expense,
+      topExpenses,
+      pieConfig,
+      monthlyTrends,
+    }
+  }, [summaryData, summaryDateBase])
+
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize))
   const visibleCount = tableHeaders.filter((h) => visibleColumns[h.key] !== false).length + 2
   const hiddenColumnsCount = tableHeaders.filter((h) => visibleColumns[h.key] === false).length
@@ -1920,6 +2015,12 @@ export default function FinancialMovements() {
           </TabsTrigger>
           <TabsTrigger value="resumo" className="whitespace-nowrap">
             Resumo Consolidado
+          </TabsTrigger>
+          <TabsTrigger
+            value="dashboard"
+            className="whitespace-nowrap font-bold text-blue-700 data-[state=active]:bg-blue-700 data-[state=active]:text-white"
+          >
+            Dashboard Gerencial
           </TabsTrigger>
           <TabsTrigger value="bridge" className="whitespace-nowrap">
             Accounting Bridge
@@ -3563,6 +3664,240 @@ export default function FinancialMovements() {
               </CardHeader>
               <CardContent className="p-0">
                 <SummaryTable data={summaryData} type="cost_month" dateField={summaryDateBase} />
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="dashboard" className="m-0 animate-in fade-in-up duration-500">
+          <div className="flex justify-between mb-4 items-center flex-wrap gap-4">
+            <h2 className="text-xl font-bold text-slate-800 hidden sm:block">
+              Dashboard Gerencial
+            </h2>
+            <div className="flex items-center gap-2 bg-white border border-slate-200 p-1.5 rounded-lg shadow-sm ml-auto">
+              <span className="text-sm font-medium text-slate-600 px-2">Data Base:</span>
+              <Tabs
+                value={summaryDateBase}
+                onValueChange={setSummaryDateBase}
+                className="w-[200px] sm:w-[300px]"
+              >
+                <TabsList className="grid w-full grid-cols-2 h-8">
+                  <TabsTrigger value="data_emissao" className="text-xs">
+                    Emissão
+                  </TabsTrigger>
+                  <TabsTrigger value="dt_compens" className="text-xs">
+                    Compensação
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+            <Card className="shadow-sm border-l-4 border-l-emerald-500 relative overflow-hidden group">
+              <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                <ArrowUp className="h-16 w-16 text-emerald-500" />
+              </div>
+              <CardContent className="p-6">
+                <p className="text-sm text-slate-500 font-medium uppercase tracking-wider">
+                  Receitas Totais
+                </p>
+                <h3 className="text-3xl font-bold text-emerald-600 mt-2">
+                  {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(
+                    dashboardData.revenue,
+                  )}
+                </h3>
+              </CardContent>
+            </Card>
+            <Card className="shadow-sm border-l-4 border-l-rose-500 relative overflow-hidden group">
+              <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                <ArrowDown className="h-16 w-16 text-rose-500" />
+              </div>
+              <CardContent className="p-6">
+                <p className="text-sm text-slate-500 font-medium uppercase tracking-wider">
+                  Despesas Totais
+                </p>
+                <h3 className="text-3xl font-bold text-rose-600 mt-2">
+                  {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(
+                    dashboardData.expense,
+                  )}
+                </h3>
+              </CardContent>
+            </Card>
+            <Card className="shadow-sm border-l-4 border-l-blue-500 relative overflow-hidden group">
+              <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                <div className="h-16 w-16 text-blue-500 flex items-center justify-center font-bold text-4xl">
+                  %
+                </div>
+              </div>
+              <CardContent className="p-6">
+                <p className="text-sm text-slate-500 font-medium uppercase tracking-wider">
+                  Saldo (Margem)
+                </p>
+                <h3
+                  className={cn(
+                    'text-3xl font-bold mt-2',
+                    dashboardData.balance >= 0 ? 'text-blue-600' : 'text-rose-600',
+                  )}
+                >
+                  {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(
+                    dashboardData.balance,
+                  )}
+                </h3>
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+            <Card className="shadow-sm border-0 border-t-4 border-t-indigo-950">
+              <CardHeader className="bg-slate-50/50 border-b pb-4">
+                <h3 className="text-lg font-bold text-slate-800">Evolução Temporal</h3>
+                <p className="text-sm text-slate-500">Receitas vs Despesas ao longo dos meses</p>
+              </CardHeader>
+              <CardContent className="p-6">
+                {dashboardData.monthlyTrends.length > 0 ? (
+                  <ChartContainer
+                    config={{
+                      revenue: { label: 'Receitas', color: '#10b981' },
+                      expense: { label: 'Despesas', color: '#f43f5e' },
+                    }}
+                    className="h-[300px] w-full"
+                  >
+                    <LineChart
+                      data={dashboardData.monthlyTrends}
+                      margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                      <XAxis
+                        dataKey="monthLabel"
+                        tickLine={false}
+                        axisLine={false}
+                        tick={{ fill: '#64748b', fontSize: 12 }}
+                      />
+                      <YAxis
+                        tickFormatter={(val) => `R$ ${(val / 1000).toFixed(0)}k`}
+                        tickLine={false}
+                        axisLine={false}
+                        tick={{ fill: '#64748b', fontSize: 12 }}
+                      />
+                      <ChartTooltip content={<ChartTooltipContent />} />
+                      <ChartLegend content={<ChartLegendContent />} />
+                      <Line
+                        type="monotone"
+                        dataKey="revenue"
+                        stroke="var(--color-revenue)"
+                        strokeWidth={3}
+                        dot={{ r: 4, fill: 'var(--color-revenue)' }}
+                        activeDot={{ r: 6 }}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="expense"
+                        stroke="var(--color-expense)"
+                        strokeWidth={3}
+                        dot={{ r: 4, fill: 'var(--color-expense)' }}
+                        activeDot={{ r: 6 }}
+                      />
+                    </LineChart>
+                  </ChartContainer>
+                ) : (
+                  <div className="flex items-center justify-center h-[300px] text-slate-400">
+                    Nenhum dado no período
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card className="shadow-sm border-0 border-t-4 border-t-indigo-950">
+              <CardHeader className="bg-slate-50/50 border-b pb-4">
+                <h3 className="text-lg font-bold text-slate-800">
+                  Top 10 Despesas (Centros de Custo)
+                </h3>
+                <p className="text-sm text-slate-500">
+                  Os maiores ofensores no período selecionado
+                </p>
+              </CardHeader>
+              <CardContent className="p-6">
+                {dashboardData.topExpenses.length > 0 ? (
+                  <ChartContainer
+                    config={{ value: { label: 'Valor', color: '#f43f5e' } }}
+                    className="h-[300px] w-full"
+                  >
+                    <BarChart
+                      data={dashboardData.topExpenses}
+                      layout="vertical"
+                      margin={{ top: 0, right: 0, left: -20, bottom: 0 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e2e8f0" />
+                      <XAxis
+                        type="number"
+                        tickFormatter={(val) => `R$ ${(val / 1000).toFixed(0)}k`}
+                        tickLine={false}
+                        axisLine={false}
+                        tick={{ fill: '#64748b', fontSize: 12 }}
+                      />
+                      <YAxis
+                        dataKey="name"
+                        type="category"
+                        width={120}
+                        tickLine={false}
+                        axisLine={false}
+                        tick={{ fill: '#475569', fontSize: 11 }}
+                      />
+                      <ChartTooltip content={<ChartTooltipContent />} />
+                      <Bar
+                        dataKey="value"
+                        fill="var(--color-value)"
+                        radius={[0, 4, 4, 0]}
+                        maxBarSize={30}
+                      />
+                    </BarChart>
+                  </ChartContainer>
+                ) : (
+                  <div className="flex items-center justify-center h-[300px] text-slate-400">
+                    Nenhuma despesa no período
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Card className="shadow-sm border-0 border-t-4 border-t-indigo-950">
+              <CardHeader className="bg-slate-50/50 border-b pb-4">
+                <h3 className="text-lg font-bold text-slate-800">
+                  Análise Vertical (Composição de Custos)
+                </h3>
+                <p className="text-sm text-slate-500">
+                  Participação de cada centro de custo no total de despesas
+                </p>
+              </CardHeader>
+              <CardContent className="p-6 flex justify-center items-center">
+                {dashboardData.topExpenses.length > 0 ? (
+                  <ChartContainer
+                    config={dashboardData.pieConfig}
+                    className="h-[300px] w-full max-w-[400px]"
+                  >
+                    <PieChart>
+                      <Pie
+                        data={dashboardData.topExpenses}
+                        dataKey="value"
+                        nameKey="name"
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={60}
+                        outerRadius={90}
+                        paddingAngle={2}
+                      ></Pie>
+                      <ChartTooltip content={<ChartTooltipContent />} />
+                      <ChartLegend content={<ChartLegendContent className="flex-wrap" />} />
+                    </PieChart>
+                  </ChartContainer>
+                ) : (
+                  <div className="flex items-center justify-center h-[300px] text-slate-400">
+                    Nenhum dado para analisar
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
