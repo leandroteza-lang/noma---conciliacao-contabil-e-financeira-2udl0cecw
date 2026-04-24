@@ -190,6 +190,8 @@ function SummaryTable({
 }) {
   let col1Label = ''
   let col2Label = ''
+  let col1Width = 'w-[20%]'
+  let col2Width = 'w-[35%]'
   let primaryKeyFn: (r: any) => string
   let secondaryKeyFn: (r: any) => string
 
@@ -217,6 +219,8 @@ function SummaryTable({
     case 'account_month':
       col1Label = 'Caixa/Banco'
       col2Label = 'Mês/Ano'
+      col1Width = 'w-[35%]'
+      col2Width = 'w-[20%]'
       primaryKeyFn = formatAccount
       secondaryKeyFn = (r) => formatMonthYear(r, dateField)
       break
@@ -229,6 +233,8 @@ function SummaryTable({
     case 'cost_month':
       col1Label = 'Centro de Custo'
       col2Label = 'Mês/Ano'
+      col1Width = 'w-[35%]'
+      col2Width = 'w-[20%]'
       primaryKeyFn = formatCostCenter
       secondaryKeyFn = (r) => formatMonthYear(r, dateField)
       break
@@ -304,10 +310,20 @@ function SummaryTable({
     >
       <TableHeader className="sticky top-0 z-10 shadow-sm border-b border-black">
         <TableRow disableZebra className="bg-blue-500 hover:bg-blue-400 border-none">
-          <TableHead className="w-[20%] font-medium text-white text-center border-r border-black px-2 py-1 h-8">
+          <TableHead
+            className={cn(
+              'font-medium text-white text-center border-r border-black px-2 py-1 h-8',
+              col1Width,
+            )}
+          >
             {col1Label}
           </TableHead>
-          <TableHead className="w-[35%] font-medium text-white text-center border-r border-black px-2 py-1 h-8">
+          <TableHead
+            className={cn(
+              'font-medium text-white text-center border-r border-black px-2 py-1 h-8',
+              col2Width,
+            )}
+          >
             {col2Label}
           </TableHead>
           <TableHead className="w-[15%] text-center font-bold text-emerald-700 border-r border-black px-2 py-1 h-8">
