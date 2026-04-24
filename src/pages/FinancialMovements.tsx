@@ -3355,9 +3355,9 @@ export default function FinancialMovements() {
             </div>
           </div>
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-            <Card className="shadow-sm border-slate-200">
-              <CardHeader className="bg-slate-50/50 border-b pb-3 pt-4">
-                <h2 className="text-base font-bold text-slate-800">
+            <Card className="shadow-sm border-slate-200 overflow-hidden">
+              <CardHeader className="bg-indigo-950 text-white hover:bg-indigo-900 border-none pb-3 pt-4 transition-colors">
+                <h2 className="text-base font-bold text-center w-full">
                   Financeiro (Mês ➔ Conta/Caixa)
                 </h2>
               </CardHeader>
@@ -3372,9 +3372,9 @@ export default function FinancialMovements() {
               </CardContent>
             </Card>
 
-            <Card className="shadow-sm border-slate-200">
-              <CardHeader className="bg-slate-50/50 border-b pb-3 pt-4">
-                <h2 className="text-base font-bold text-slate-800">
+            <Card className="shadow-sm border-slate-200 overflow-hidden">
+              <CardHeader className="bg-indigo-950 text-white hover:bg-indigo-900 border-none pb-3 pt-4 transition-colors">
+                <h2 className="text-base font-bold text-center w-full">
                   Financeiro (Conta/Caixa ➔ Mês)
                 </h2>
               </CardHeader>
@@ -3389,9 +3389,9 @@ export default function FinancialMovements() {
               </CardContent>
             </Card>
 
-            <Card className="shadow-sm border-slate-200">
-              <CardHeader className="bg-slate-50/50 border-b pb-3 pt-4">
-                <h2 className="text-base font-bold text-slate-800">Custos (Mês ➔ C. Custo)</h2>
+            <Card className="shadow-sm border-slate-200 overflow-hidden">
+              <CardHeader className="bg-indigo-950 text-white hover:bg-indigo-900 border-none pb-3 pt-4 transition-colors">
+                <h2 className="text-base font-bold text-center w-full">Custos (Mês ➔ C. Custo)</h2>
               </CardHeader>
               <CardContent className="p-0">
                 <div className="h-[500px] overflow-y-auto custom-scrollbar">
@@ -3400,9 +3400,9 @@ export default function FinancialMovements() {
               </CardContent>
             </Card>
 
-            <Card className="shadow-sm border-slate-200">
-              <CardHeader className="bg-slate-50/50 border-b pb-3 pt-4">
-                <h2 className="text-base font-bold text-slate-800">Custos (C. Custo ➔ Mês)</h2>
+            <Card className="shadow-sm border-slate-200 overflow-hidden">
+              <CardHeader className="bg-indigo-950 text-white hover:bg-indigo-900 border-none pb-3 pt-4 transition-colors">
+                <h2 className="text-base font-bold text-center w-full">Custos (C. Custo ➔ Mês)</h2>
               </CardHeader>
               <CardContent className="p-0">
                 <div className="h-[500px] overflow-y-auto custom-scrollbar">
