@@ -46,6 +46,7 @@ const TableRow = React.forwardRef<
   React.HTMLAttributes<HTMLTableRowElement> & { disableZebra?: boolean; customZebraColor?: string }
 >(({ className, disableZebra, customZebraColor, ...props }, ref) => {
   const applyDeepSkyBlue = customZebraColor === '#00BFFF'
+  const applyMidnightBlue = customZebraColor === '#191970'
 
   return (
     <tr
@@ -53,7 +54,8 @@ const TableRow = React.forwardRef<
       className={cn(
         'border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted',
         !disableZebra &&
-          !applyDeepSkyBlue && [
+          !applyDeepSkyBlue &&
+          !applyMidnightBlue && [
             'odd:bg-white dark:odd:bg-transparent',
             'even:bg-[#800000] even:text-white even:font-bold hover:even:bg-[#800000]/90',
             '[&:nth-child(even)>td]:text-white [&:nth-child(even)>td]:font-bold',
@@ -69,6 +71,20 @@ const TableRow = React.forwardRef<
             'even:bg-[#00BFFF] even:text-white even:font-bold hover:even:bg-[#00BFFF]/90',
             '[&:nth-child(even)>td]:text-white [&:nth-child(even)>td]:font-bold',
             '[&:nth-child(even)>td_.text-muted-foreground]:text-white/90',
+            '[&:nth-child(even)>td_.bg-background]:bg-transparent [&:nth-child(even)>td_.border-input]:border-white/30',
+            '[&:nth-child(even)>td_button:hover]:bg-white/20 [&:nth-child(even)>td_button:hover_svg]:text-white',
+            '[&:nth-child(even)>td_span.bg-primary\\/10]:bg-white/20 [&:nth-child(even)>td_span.bg-primary\\/10]:text-white',
+            '[&:nth-child(even)>td_span.bg-secondary]:bg-white/20 [&:nth-child(even)>td_span.bg-secondary]:text-white',
+          ],
+        !disableZebra &&
+          applyMidnightBlue && [
+            'odd:bg-white odd:text-black odd:font-bold dark:odd:bg-transparent hover:odd:bg-slate-50',
+            '[&:nth-child(odd)>td]:text-black [&:nth-child(odd)>td]:font-bold',
+            '[&:nth-child(odd)>td_.text-slate-600]:text-black [&:nth-child(odd)>td_.text-slate-700]:text-black [&:nth-child(odd)>td_.text-slate-800]:text-black',
+            'even:bg-[#191970] even:text-white even:font-bold hover:even:bg-[#191970]/90',
+            '[&:nth-child(even)>td]:text-white [&:nth-child(even)>td]:font-bold',
+            '[&:nth-child(even)>td_.text-slate-600]:text-white/90 [&:nth-child(even)>td_.text-slate-700]:text-white/90 [&:nth-child(even)>td_.text-slate-800]:text-white',
+            '[&:nth-child(even)>td_.text-emerald-600]:text-emerald-400 [&:nth-child(even)>td_.text-rose-600]:text-rose-400',
             '[&:nth-child(even)>td_.bg-background]:bg-transparent [&:nth-child(even)>td_.border-input]:border-white/30',
             '[&:nth-child(even)>td_button:hover]:bg-white/20 [&:nth-child(even)>td_button:hover_svg]:text-white',
             '[&:nth-child(even)>td_span.bg-primary\\/10]:bg-white/20 [&:nth-child(even)>td_span.bg-primary\\/10]:text-white',

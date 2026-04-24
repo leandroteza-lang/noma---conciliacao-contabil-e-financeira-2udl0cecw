@@ -2522,9 +2522,9 @@ export default function FinancialMovements() {
 
                         return (
                           <TableRow
-                            disableZebra
+                            customZebraColor="#191970"
                             key={row.id}
-                            className="hover:bg-slate-50/80 transition-colors border-b"
+                            className="transition-colors border-b"
                           >
                             <TableCell className="px-2 py-1.5 border-r text-center align-middle">
                               <div className="flex items-center justify-center">
