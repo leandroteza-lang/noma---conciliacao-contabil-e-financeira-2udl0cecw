@@ -302,21 +302,21 @@ function SummaryTable({
       className="w-full text-xs"
       wrapperClassName="max-h-[500px] overflow-y-auto custom-scrollbar"
     >
-      <TableHeader className="sticky top-0 z-10 shadow-sm border-none">
+      <TableHeader className="sticky top-0 z-10 shadow-sm border-b border-black">
         <TableRow disableZebra className="bg-blue-500 hover:bg-blue-400 border-none">
-          <TableHead className="w-[20%] font-medium text-white text-center border-none px-2 py-1 h-8">
+          <TableHead className="w-[20%] font-medium text-white text-center border-r border-black px-2 py-1 h-8">
             {col1Label}
           </TableHead>
-          <TableHead className="w-[35%] font-medium text-white text-center border-none px-2 py-1 h-8">
+          <TableHead className="w-[35%] font-medium text-white text-center border-r border-black px-2 py-1 h-8">
             {col2Label}
           </TableHead>
-          <TableHead className="w-[15%] text-center font-bold text-emerald-700 border-none px-2 py-1 h-8">
+          <TableHead className="w-[15%] text-center font-bold text-emerald-700 border-r border-black px-2 py-1 h-8">
             Entradas (+)
           </TableHead>
-          <TableHead className="w-[15%] text-center font-bold text-rose-700 border-none px-2 py-1 h-8">
+          <TableHead className="w-[15%] text-center font-bold text-rose-700 border-r border-black px-2 py-1 h-8">
             Saídas (-)
           </TableHead>
-          <TableHead className="w-[15%] text-center font-bold text-blue-700 border-none px-2 py-1 h-8">
+          <TableHead className="w-[15%] text-center font-bold text-blue-700 px-2 py-1 h-8">
             Diferença
           </TableHead>
         </TableRow>
@@ -324,15 +324,17 @@ function SummaryTable({
       <TableBody>
         {aggregated.map((group) => (
           <React.Fragment key={group.name}>
-            <TableRow disableZebra className="bg-slate-200/60 font-bold border-b border-slate-300">
-              <TableCell className="px-2 py-1 border-r text-slate-900">{group.name}</TableCell>
-              <TableCell className="px-2 py-1 border-r text-slate-500 font-medium">
+            <TableRow disableZebra className="bg-slate-200/60 font-bold border-b border-black">
+              <TableCell className="px-2 py-1 border-r border-black text-slate-900">
+                {group.name}
+              </TableCell>
+              <TableCell className="px-2 py-1 border-r border-black text-slate-500 font-medium">
                 Totais do agrupamento
               </TableCell>
-              <TableCell className="px-2 py-1 text-right text-emerald-700 border-r">
+              <TableCell className="px-2 py-1 text-right text-emerald-700 border-r border-black">
                 {formatVal(group.pos)}
               </TableCell>
-              <TableCell className="px-2 py-1 text-right text-rose-700 border-r">
+              <TableCell className="px-2 py-1 text-right text-rose-700 border-r border-black">
                 {formatVal(group.neg)}
               </TableCell>
               <TableCell className="px-2 py-1 text-right text-blue-800">
@@ -343,16 +345,16 @@ function SummaryTable({
               <TableRow
                 disableZebra
                 key={item.name}
-                className="border-b border-slate-200 last:border-0 hover:bg-slate-50 transition-colors"
+                className="border-b border-black last:border-b-0 hover:bg-slate-50 transition-colors"
               >
-                <TableCell className="px-2 py-1 border-r text-slate-400"></TableCell>
-                <TableCell className="px-2 py-1 border-r text-slate-700 font-medium">
+                <TableCell className="px-2 py-1 border-r border-black text-slate-400"></TableCell>
+                <TableCell className="px-2 py-1 border-r border-black text-slate-700 font-medium">
                   {item.name}
                 </TableCell>
-                <TableCell className="px-2 py-1 text-right text-emerald-600/90 border-r">
+                <TableCell className="px-2 py-1 text-right text-emerald-600/90 border-r border-black">
                   {formatVal(item.pos)}
                 </TableCell>
-                <TableCell className="px-2 py-1 text-right text-rose-600/90 border-r">
+                <TableCell className="px-2 py-1 text-right text-rose-600/90 border-r border-black">
                   {formatVal(item.neg)}
                 </TableCell>
                 <TableCell className="px-2 py-1 text-right font-semibold text-slate-700">
@@ -364,7 +366,10 @@ function SummaryTable({
         ))}
         {aggregated.length === 0 && (
           <TableRow disableZebra>
-            <TableCell colSpan={5} className="text-center py-4 text-slate-500">
+            <TableCell
+              colSpan={5}
+              className="text-center py-4 text-slate-500 border-t border-black"
+            >
               Nenhum dado para resumir.
             </TableCell>
           </TableRow>
@@ -3358,7 +3363,7 @@ export default function FinancialMovements() {
             </div>
           </div>
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-            <Card className="shadow-sm border-slate-200 overflow-hidden">
+            <Card className="shadow-sm border-4 border-indigo-950 overflow-hidden">
               <CardHeader className="bg-indigo-950 text-white hover:bg-indigo-900 border-none pb-3 pt-4 transition-colors">
                 <h2 className="text-base font-bold text-center w-full">
                   Financeiro (Mês ➔ Conta/Caixa)
@@ -3369,7 +3374,7 @@ export default function FinancialMovements() {
               </CardContent>
             </Card>
 
-            <Card className="shadow-sm border-slate-200 overflow-hidden">
+            <Card className="shadow-sm border-4 border-indigo-950 overflow-hidden">
               <CardHeader className="bg-indigo-950 text-white hover:bg-indigo-900 border-none pb-3 pt-4 transition-colors">
                 <h2 className="text-base font-bold text-center w-full">
                   Financeiro (Conta/Caixa ➔ Mês)
@@ -3380,7 +3385,7 @@ export default function FinancialMovements() {
               </CardContent>
             </Card>
 
-            <Card className="shadow-sm border-slate-200 overflow-hidden">
+            <Card className="shadow-sm border-4 border-indigo-950 overflow-hidden">
               <CardHeader className="bg-indigo-950 text-white hover:bg-indigo-900 border-none pb-3 pt-4 transition-colors">
                 <h2 className="text-base font-bold text-center w-full">Custos (Mês ➔ C. Custo)</h2>
               </CardHeader>
@@ -3389,7 +3394,7 @@ export default function FinancialMovements() {
               </CardContent>
             </Card>
 
-            <Card className="shadow-sm border-slate-200 overflow-hidden">
+            <Card className="shadow-sm border-4 border-indigo-950 overflow-hidden">
               <CardHeader className="bg-indigo-950 text-white hover:bg-indigo-900 border-none pb-3 pt-4 transition-colors">
                 <h2 className="text-base font-bold text-center w-full">Custos (C. Custo ➔ Mês)</h2>
               </CardHeader>
