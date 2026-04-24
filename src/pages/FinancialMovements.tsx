@@ -299,21 +299,21 @@ function SummaryTable({
 
   return (
     <Table className="w-full text-xs">
-      <TableHeader className="sticky top-0 z-10 bg-slate-50 shadow-sm border-b">
-        <TableRow disableZebra>
-          <TableHead className="w-[20%] font-bold text-slate-800 border-r px-2 py-1 h-8">
+      <TableHeader className="sticky top-0 z-10 shadow-sm border-none">
+        <TableRow disableZebra className="bg-blue-500 hover:bg-blue-400 border-none">
+          <TableHead className="w-[20%] font-medium text-white text-center border-none px-2 py-1 h-8">
             {col1Label}
           </TableHead>
-          <TableHead className="w-[35%] font-bold text-slate-800 border-r px-2 py-1 h-8">
+          <TableHead className="w-[35%] font-medium text-white text-center border-none px-2 py-1 h-8">
             {col2Label}
           </TableHead>
-          <TableHead className="w-[15%] text-right font-bold text-emerald-700 border-r px-2 py-1 h-8">
+          <TableHead className="w-[15%] text-center font-bold text-emerald-700 border-none px-2 py-1 h-8">
             Entradas (+)
           </TableHead>
-          <TableHead className="w-[15%] text-right font-bold text-rose-700 border-r px-2 py-1 h-8">
+          <TableHead className="w-[15%] text-center font-bold text-rose-700 border-none px-2 py-1 h-8">
             Saídas (-)
           </TableHead>
-          <TableHead className="w-[15%] text-right font-bold text-blue-700 px-2 py-1 h-8">
+          <TableHead className="w-[15%] text-center font-bold text-blue-700 border-none px-2 py-1 h-8">
             Diferença
           </TableHead>
         </TableRow>
