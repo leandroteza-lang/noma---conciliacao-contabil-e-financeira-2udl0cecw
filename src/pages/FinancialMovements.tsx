@@ -2279,8 +2279,11 @@ export default function FinancialMovements() {
                 className="transform scale-y-[-1] w-full min-w-max"
               >
                 <TableHeader>
-                  <TableRow disableZebra className="bg-slate-50 hover:bg-slate-50 border-b">
-                    <TableHead className="w-[40px] px-2 py-1 border-r text-center align-middle">
+                  <TableRow
+                    disableZebra
+                    className="bg-slate-50 hover:bg-slate-50 border-b border-black"
+                  >
+                    <TableHead className="w-[40px] px-2 py-1 border-r border-black text-center align-middle">
                       <div className="flex items-center justify-center">
                         <Checkbox
                           checked={data.length > 0 && data.every((d) => selectedIds.includes(d.id))}
@@ -2321,7 +2324,7 @@ export default function FinancialMovements() {
                             }}
                             onDragEnd={() => setDraggedColumn(null)}
                             className={cn(
-                              'h-8 px-2 py-1 text-sm font-bold text-black whitespace-nowrap select-none transition-colors border-r last:border-r-0 cursor-grab active:cursor-grabbing',
+                              'h-8 px-2 py-1 text-sm font-bold text-black whitespace-nowrap select-none transition-colors border-r border-black last:border-r-0 cursor-grab active:cursor-grabbing',
                               h.className,
                               draggedColumn === h.key ? 'opacity-50 bg-slate-100' : '',
                             )}
@@ -2493,7 +2496,7 @@ export default function FinancialMovements() {
                           </TableHead>
                         )
                       })}
-                    <TableHead className="h-8 px-2 py-1 text-sm font-bold text-black whitespace-nowrap text-center border-r last:border-r-0">
+                    <TableHead className="h-8 px-2 py-1 text-sm font-bold text-black whitespace-nowrap text-center border-r border-black last:border-r-0">
                       Ações
                     </TableHead>
                   </TableRow>
@@ -2524,9 +2527,9 @@ export default function FinancialMovements() {
                           <TableRow
                             customZebraColor="#191970"
                             key={row.id}
-                            className="transition-colors border-b"
+                            className="transition-colors border-b border-black"
                           >
-                            <TableCell className="px-2 py-1.5 border-r text-center align-middle">
+                            <TableCell className="px-2 py-1 border-r border-black text-center align-middle">
                               <div className="flex items-center justify-center">
                                 <Checkbox
                                   checked={selectedIds.includes(row.id)}
@@ -2561,7 +2564,7 @@ export default function FinancialMovements() {
                                     return (
                                       <TableCell
                                         key={key}
-                                        className="px-2 py-1.5 text-xs text-center border-r"
+                                        className="px-2 py-1 text-xs text-center border-r border-black"
                                       >
                                         <Button
                                           variant="ghost"
@@ -2580,7 +2583,7 @@ export default function FinancialMovements() {
                                     return (
                                       <TableCell
                                         key={key}
-                                        className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-800 font-medium max-w-[150px] truncate border-r"
+                                        className="px-2 py-1 text-xs whitespace-nowrap text-slate-800 font-medium max-w-[150px] truncate border-r border-black"
                                         title={row.organizations?.name}
                                       >
                                         {row.organizations?.name || '-'}
@@ -2590,7 +2593,7 @@ export default function FinancialMovements() {
                                     return (
                                       <TableCell
                                         key={key}
-                                        className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 text-center border-r"
+                                        className="px-2 py-1 text-xs whitespace-nowrap text-slate-600 text-center border-r border-black"
                                       >
                                         {row.compensado || '-'}
                                       </TableCell>
@@ -2599,7 +2602,7 @@ export default function FinancialMovements() {
                                     return (
                                       <TableCell
                                         key={key}
-                                        className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 text-center border-r"
+                                        className="px-2 py-1 text-xs whitespace-nowrap text-slate-600 text-center border-r border-black"
                                       >
                                         {row.tipo_operacao || '-'}
                                       </TableCell>
@@ -2608,7 +2611,7 @@ export default function FinancialMovements() {
                                     return (
                                       <TableCell
                                         key={key}
-                                        className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 text-center border-r"
+                                        className="px-2 py-1 text-xs whitespace-nowrap text-slate-600 text-center border-r border-black"
                                       >
                                         {editingId === row.id ? (
                                           <Input
@@ -2639,7 +2642,7 @@ export default function FinancialMovements() {
                                     return (
                                       <TableCell
                                         key={key}
-                                        className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 text-center border-r"
+                                        className="px-2 py-1 text-xs whitespace-nowrap text-slate-600 text-center border-r border-black"
                                       >
                                         {formatDate(row.dt_compens)}
                                       </TableCell>
@@ -2648,7 +2651,7 @@ export default function FinancialMovements() {
                                     return (
                                       <TableCell
                                         key={key}
-                                        className="px-2 py-1.5 text-xs text-slate-600 text-center max-w-[150px] truncate border-r"
+                                        className="px-2 py-1 text-xs text-slate-600 text-center max-w-[150px] truncate border-r border-black"
                                         title={row.conta_caixa || ''}
                                       >
                                         {editingId === row.id ? (
@@ -2671,7 +2674,7 @@ export default function FinancialMovements() {
                                     return (
                                       <TableCell
                                         key={key}
-                                        className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 max-w-[150px] truncate border-r"
+                                        className="px-2 py-1 text-xs whitespace-nowrap text-slate-600 max-w-[150px] truncate border-r border-black"
                                         title={row.nome_caixa}
                                       >
                                         {row.nome_caixa || '-'}
@@ -2681,7 +2684,7 @@ export default function FinancialMovements() {
                                     return (
                                       <TableCell
                                         key={key}
-                                        className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 text-center border-r"
+                                        className="px-2 py-1 text-xs whitespace-nowrap text-slate-600 text-center border-r border-black"
                                       >
                                         {row.conta_caixa_destino || '-'}
                                       </TableCell>
@@ -2690,7 +2693,7 @@ export default function FinancialMovements() {
                                     return (
                                       <TableCell
                                         key={key}
-                                        className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 border-r"
+                                        className="px-2 py-1 text-xs whitespace-nowrap text-slate-600 border-r border-black"
                                       >
                                         {editingId === row.id ? (
                                           <Input
@@ -2712,7 +2715,7 @@ export default function FinancialMovements() {
                                     return (
                                       <TableCell
                                         key={key}
-                                        className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 border-r"
+                                        className="px-2 py-1 text-xs whitespace-nowrap text-slate-600 border-r border-black"
                                       >
                                         {editingId === row.id ? (
                                           <Input
@@ -2735,7 +2738,7 @@ export default function FinancialMovements() {
                                     return (
                                       <TableCell
                                         key={key}
-                                        className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 max-w-[150px] truncate border-r"
+                                        className="px-2 py-1 text-xs whitespace-nowrap text-slate-600 max-w-[150px] truncate border-r border-black"
                                         title={row.descricao_c_custo}
                                       >
                                         {row.descricao_c_custo || '-'}
@@ -2745,7 +2748,7 @@ export default function FinancialMovements() {
                                     return (
                                       <TableCell
                                         key={key}
-                                        className="px-2 py-1.5 text-xs whitespace-nowrap text-center border-r"
+                                        className="px-2 py-1 text-xs whitespace-nowrap text-center border-r border-black"
                                       >
                                         {row.valor !== null ? (
                                           <span
@@ -2772,7 +2775,7 @@ export default function FinancialMovements() {
                                     return (
                                       <TableCell
                                         key={key}
-                                        className="px-2 py-1.5 text-xs whitespace-nowrap text-center border-r"
+                                        className="px-2 py-1 text-xs whitespace-nowrap text-center border-r border-black"
                                       >
                                         {editingId === row.id ? (
                                           <Input
@@ -2814,7 +2817,7 @@ export default function FinancialMovements() {
                                     return (
                                       <TableCell
                                         key={key}
-                                        className="px-2 py-1.5 text-xs whitespace-nowrap font-medium text-slate-700 border-r"
+                                        className="px-2 py-1 text-xs whitespace-nowrap font-medium text-slate-700 border-r border-black"
                                       >
                                         {editingId === row.id ? (
                                           <Input
@@ -2836,7 +2839,7 @@ export default function FinancialMovements() {
                                     return (
                                       <TableCell
                                         key={key}
-                                        className="px-2 py-1.5 text-xs text-slate-600 max-w-[200px] truncate border-r"
+                                        className="px-2 py-1 text-xs text-slate-600 max-w-[200px] truncate border-r border-black"
                                         title={row.nome_cli_fornec}
                                       >
                                         {editingId === row.id ? (
@@ -2859,7 +2862,7 @@ export default function FinancialMovements() {
                                     return (
                                       <TableCell
                                         key={key}
-                                        className="px-2 py-1.5 text-xs text-slate-600 max-w-[250px] truncate border-r"
+                                        className="px-2 py-1 text-xs text-slate-600 max-w-[250px] truncate border-r border-black"
                                         title={row.historico}
                                       >
                                         {editingId === row.id ? (
@@ -2882,7 +2885,7 @@ export default function FinancialMovements() {
                                     return (
                                       <TableCell
                                         key={key}
-                                        className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 text-center border-r"
+                                        className="px-2 py-1 text-xs whitespace-nowrap text-slate-600 text-center border-r border-black"
                                       >
                                         {row.fp || '-'}
                                       </TableCell>
@@ -2891,7 +2894,7 @@ export default function FinancialMovements() {
                                     return (
                                       <TableCell
                                         key={key}
-                                        className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 border-r"
+                                        className="px-2 py-1 text-xs whitespace-nowrap text-slate-600 border-r border-black"
                                       >
                                         {row.n_cheque || '-'}
                                       </TableCell>
@@ -2900,7 +2903,7 @@ export default function FinancialMovements() {
                                     return (
                                       <TableCell
                                         key={key}
-                                        className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 text-center border-r"
+                                        className="px-2 py-1 text-xs whitespace-nowrap text-slate-600 text-center border-r border-black"
                                       >
                                         {editingId === row.id ? (
                                           <Input
@@ -2925,7 +2928,7 @@ export default function FinancialMovements() {
                                     return (
                                       <TableCell
                                         key={key}
-                                        className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 border-r"
+                                        className="px-2 py-1 text-xs whitespace-nowrap text-slate-600 border-r border-black"
                                       >
                                         {row.nominal_a || '-'}
                                       </TableCell>
@@ -2934,7 +2937,7 @@ export default function FinancialMovements() {
                                     return (
                                       <TableCell
                                         key={key}
-                                        className="px-2 py-1.5 text-xs text-slate-600 max-w-[150px] truncate border-r"
+                                        className="px-2 py-1 text-xs text-slate-600 max-w-[150px] truncate border-r border-black"
                                         title={row.emitente_cheque}
                                       >
                                         {row.emitente_cheque || '-'}
@@ -2944,7 +2947,7 @@ export default function FinancialMovements() {
                                     return (
                                       <TableCell
                                         key={key}
-                                        className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 border-r"
+                                        className="px-2 py-1 text-xs whitespace-nowrap text-slate-600 border-r border-black"
                                       >
                                         {row.cnpj_cpf || '-'}
                                       </TableCell>
@@ -2953,7 +2956,7 @@ export default function FinancialMovements() {
                                     return (
                                       <TableCell
                                         key={key}
-                                        className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 text-center border-r"
+                                        className="px-2 py-1 text-xs whitespace-nowrap text-slate-600 text-center border-r border-black"
                                       >
                                         {row.n_extrato || '-'}
                                       </TableCell>
@@ -2962,7 +2965,7 @@ export default function FinancialMovements() {
                                     return (
                                       <TableCell
                                         key={key}
-                                        className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 text-center border-r"
+                                        className="px-2 py-1 text-xs whitespace-nowrap text-slate-600 text-center border-r border-black"
                                       >
                                         {row.filial || '-'}
                                       </TableCell>
@@ -2971,7 +2974,7 @@ export default function FinancialMovements() {
                                     return (
                                       <TableCell
                                         key={key}
-                                        className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 text-center border-r"
+                                        className="px-2 py-1 text-xs whitespace-nowrap text-slate-600 text-center border-r border-black"
                                       >
                                         {formatDate(row.data_canc)}
                                       </TableCell>
@@ -2980,7 +2983,7 @@ export default function FinancialMovements() {
                                     return (
                                       <TableCell
                                         key={key}
-                                        className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 text-center border-r"
+                                        className="px-2 py-1 text-xs whitespace-nowrap text-slate-600 text-center border-r border-black"
                                       >
                                         {formatDate(row.data_estorno)}
                                       </TableCell>
@@ -2989,7 +2992,7 @@ export default function FinancialMovements() {
                                     return (
                                       <TableCell
                                         key={key}
-                                        className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 text-center border-r"
+                                        className="px-2 py-1 text-xs whitespace-nowrap text-slate-600 text-center border-r border-black"
                                       >
                                         {editingId === row.id ? (
                                           <Input
@@ -3008,7 +3011,7 @@ export default function FinancialMovements() {
                                     return (
                                       <TableCell
                                         key={key}
-                                        className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 border-r"
+                                        className="px-2 py-1 text-xs whitespace-nowrap text-slate-600 border-r border-black"
                                       >
                                         {row.c_corrente || '-'}
                                       </TableCell>
@@ -3017,7 +3020,7 @@ export default function FinancialMovements() {
                                     return (
                                       <TableCell
                                         key={key}
-                                        className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 border-r"
+                                        className="px-2 py-1 text-xs whitespace-nowrap text-slate-600 border-r border-black"
                                       >
                                         {row.cod_cli_for || '-'}
                                       </TableCell>
@@ -3026,7 +3029,7 @@ export default function FinancialMovements() {
                                     return (
                                       <TableCell
                                         key={key}
-                                        className="px-2 py-1.5 text-xs whitespace-nowrap text-slate-600 text-center border-r"
+                                        className="px-2 py-1 text-xs whitespace-nowrap text-slate-600 text-center border-r border-black"
                                       >
                                         {row.departamento || '-'}
                                       </TableCell>
@@ -3035,14 +3038,14 @@ export default function FinancialMovements() {
                                     return (
                                       <TableCell
                                         key={key}
-                                        className="px-2 py-1.5 text-xs text-center border-r"
+                                        className="px-2 py-1 text-xs text-center border-r border-black"
                                       >
                                         {missingFields.length > 0 ? (
                                           <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-red-100 text-red-800 border border-red-200">
                                             Dados Incompletos
                                           </span>
                                         ) : (
-                                          <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-800 border border-slate-200">
+                                          <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 !text-black border border-slate-200">
                                             {row.status || 'Pendente'}
                                           </span>
                                         )}
@@ -3052,7 +3055,7 @@ export default function FinancialMovements() {
                                     return null
                                 }
                               })}
-                            <TableCell className="px-2 py-1.5 text-xs text-center border-r last:border-r-0">
+                            <TableCell className="px-2 py-1 text-xs text-center border-r border-black last:border-r-0">
                               {editingId === row.id ? (
                                 <div className="flex items-center justify-center gap-1">
                                   <Button
@@ -3112,9 +3115,9 @@ export default function FinancialMovements() {
                       })}
                       <TableRow
                         disableZebra
-                        className="bg-slate-100 hover:bg-slate-100 font-bold border-t-2 border-slate-300 shadow-inner"
+                        className="bg-slate-100 hover:bg-slate-100 font-bold border-t-2 border-black border-b border-b-black shadow-inner"
                       >
-                        <TableCell className="border-r" />
+                        <TableCell className="border-r border-black" />
                         {columnOrder
                           .filter((key) => visibleColumns[key] !== false)
                           .map((key, i) => {
@@ -3122,7 +3125,7 @@ export default function FinancialMovements() {
                               return (
                                 <TableCell
                                   key={key}
-                                  className="px-2 py-2 text-xs whitespace-nowrap text-center border-r"
+                                  className="px-2 py-1 text-xs whitespace-nowrap text-center border-r border-black"
                                 >
                                   <span
                                     className={cn(
@@ -3145,7 +3148,7 @@ export default function FinancialMovements() {
                               return (
                                 <TableCell
                                   key={key}
-                                  className="px-2 py-2 text-xs whitespace-nowrap text-center border-r"
+                                  className="px-2 py-1 text-xs whitespace-nowrap text-center border-r border-black"
                                 >
                                   <span
                                     className={cn(
@@ -3168,13 +3171,13 @@ export default function FinancialMovements() {
                             return (
                               <TableCell
                                 key={key}
-                                className="px-2 py-2 text-xs whitespace-nowrap text-right text-slate-600 border-r"
+                                className="px-2 py-1 text-xs whitespace-nowrap text-right text-slate-600 border-r border-black"
                               >
                                 {isFirstVisible ? 'TOTAIS (Filtro Atual):' : ''}
                               </TableCell>
                             )
                           })}
-                        <TableCell className="border-r" />
+                        <TableCell className="border-r border-black" />
                       </TableRow>
                     </>
                   )}
