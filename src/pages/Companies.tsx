@@ -759,8 +759,8 @@ export default function Companies() {
             <div className="rounded-md border-2 border-indigo-950 overflow-hidden">
               <Table>
                 <TableHeader className="bg-indigo-950 [&_tr]:border-b [&_tr]:border-b-indigo-900/50">
-                  <TableRow className="border-0">
-                    <TableHead className="w-12 text-center py-2 px-2 text-white font-bold text-[14px]">
+                  <TableRow className="border-0 bg-indigo-950 hover:bg-indigo-950" disableZebra>
+                    <TableHead className="w-12 text-center py-2 px-2 bg-indigo-950 text-white font-bold text-[14px]">
                       <Checkbox
                         checked={
                           paginatedOrgs.length > 0 && selectedIds.length === paginatedOrgs.length
@@ -773,7 +773,7 @@ export default function Companies() {
                       />
                     </TableHead>
                     <TableHead
-                      className="cursor-pointer hover:bg-indigo-900 transition-colors py-2 px-2 text-white font-bold text-[14px] text-center"
+                      className="cursor-pointer bg-indigo-950 hover:bg-indigo-900 transition-colors py-2 px-2 text-white font-bold text-[14px] text-center"
                       onClick={() => handleSort('name')}
                     >
                       <div className="flex items-center justify-center gap-2">
@@ -781,7 +781,7 @@ export default function Companies() {
                       </div>
                     </TableHead>
                     <TableHead
-                      className="cursor-pointer hover:bg-indigo-900 transition-colors py-2 px-2 text-white font-bold text-[14px] text-center"
+                      className="cursor-pointer bg-indigo-950 hover:bg-indigo-900 transition-colors py-2 px-2 text-white font-bold text-[14px] text-center"
                       onClick={() => handleSort('cnpj')}
                     >
                       <div className="flex items-center justify-center gap-2">
@@ -789,7 +789,7 @@ export default function Companies() {
                       </div>
                     </TableHead>
                     <TableHead
-                      className="cursor-pointer hover:bg-indigo-900 transition-colors py-2 px-2 text-white font-bold text-[14px] text-center"
+                      className="cursor-pointer bg-indigo-950 hover:bg-indigo-900 transition-colors py-2 px-2 text-white font-bold text-[14px] text-center"
                       onClick={() => handleSort('email')}
                     >
                       <div className="flex items-center justify-center gap-2">
@@ -797,7 +797,7 @@ export default function Companies() {
                       </div>
                     </TableHead>
                     <TableHead
-                      className="cursor-pointer hover:bg-indigo-900 transition-colors py-2 px-2 text-white font-bold text-[14px] text-center"
+                      className="cursor-pointer bg-indigo-950 hover:bg-indigo-900 transition-colors py-2 px-2 text-white font-bold text-[14px] text-center"
                       onClick={() => handleSort('status')}
                     >
                       <div className="flex items-center justify-center gap-2">
@@ -805,14 +805,14 @@ export default function Companies() {
                       </div>
                     </TableHead>
                     <TableHead
-                      className="cursor-pointer hover:bg-indigo-900 transition-colors py-2 px-2 text-white font-bold text-[14px] text-center"
+                      className="cursor-pointer bg-indigo-950 hover:bg-indigo-900 transition-colors py-2 px-2 text-white font-bold text-[14px] text-center"
                       onClick={() => handleSort('created_at')}
                     >
                       <div className="flex items-center justify-center gap-2">
                         Criado em <ArrowUpDown className="h-3 w-3 text-indigo-300" />
                       </div>
                     </TableHead>
-                    <TableHead className="text-center py-2 px-2 text-white font-bold text-[14px]">
+                    <TableHead className="text-center py-2 px-2 bg-indigo-950 text-white font-bold text-[14px]">
                       Ações
                     </TableHead>
                   </TableRow>
@@ -823,6 +823,7 @@ export default function Companies() {
                     return (
                       <TableRow
                         key={org.id}
+                        disableZebra
                         className={
                           isEven
                             ? 'bg-slate-50 text-slate-900 font-medium text-[11px] hover:bg-slate-100 border-0'
