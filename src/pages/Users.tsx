@@ -372,7 +372,7 @@ export default function Users() {
                 </div>
               </TableHead>
               <TableHead
-                className="cursor-pointer select-none py-2 px-2 !bg-indigo-950 text-white font-bold text-[15px] border-0"
+                className="cursor-pointer select-none py-2 px-2 !bg-indigo-950 text-white font-normal text-[15px] border-0"
                 onClick={() => toggleSort('email')}
               >
                 <div className="flex items-center">
@@ -380,7 +380,7 @@ export default function Users() {
                 </div>
               </TableHead>
               <TableHead
-                className="cursor-pointer select-none py-2 px-2 !bg-indigo-950 text-white font-bold text-[15px] border-0"
+                className="cursor-pointer select-none py-2 px-2 !bg-indigo-950 text-white font-normal text-[15px] border-0"
                 onClick={() => toggleSort('cpf')}
               >
                 <div className="flex items-center">
@@ -388,7 +388,7 @@ export default function Users() {
                 </div>
               </TableHead>
               <TableHead
-                className="cursor-pointer select-none py-2 px-2 !bg-indigo-950 text-white font-bold text-[15px] border-0"
+                className="cursor-pointer select-none py-2 px-2 !bg-indigo-950 text-white font-normal text-[15px] border-0"
                 onClick={() => toggleSort('role')}
               >
                 <div className="flex items-center">
@@ -396,7 +396,7 @@ export default function Users() {
                 </div>
               </TableHead>
               <TableHead
-                className="cursor-pointer select-none py-2 px-2 !bg-indigo-950 text-white font-bold text-[15px] border-0"
+                className="cursor-pointer select-none py-2 px-2 !bg-indigo-950 text-white font-normal text-[15px] border-0"
                 onClick={() => toggleSort('department')}
               >
                 <div className="flex items-center">
@@ -404,14 +404,14 @@ export default function Users() {
                 </div>
               </TableHead>
               <TableHead
-                className="cursor-pointer select-none py-2 px-2 !bg-indigo-950 text-white font-bold text-[15px] border-0"
+                className="cursor-pointer select-none py-2 px-2 !bg-indigo-950 text-white font-normal text-[15px] border-0"
                 onClick={() => toggleSort('status')}
               >
                 <div className="flex items-center">
                   Status <SortIcon field="status" />
                 </div>
               </TableHead>
-              <TableHead className="w-[100px] text-right py-2 px-2 !bg-indigo-950 text-white font-bold text-[15px] border-0">
+              <TableHead className="w-[100px] text-right py-2 px-2 !bg-indigo-950 text-white font-normal text-[15px] border-0">
                 Ações
               </TableHead>
             </TableRow>
