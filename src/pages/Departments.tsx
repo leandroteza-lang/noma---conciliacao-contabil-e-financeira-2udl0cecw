@@ -584,10 +584,10 @@ export default function Departments() {
               <p>Nenhum departamento encontrado.</p>
             </div>
           ) : (
-            <div className="rounded-md border-2 border-[#800000] overflow-hidden overflow-x-auto">
+            <div className="border-2 border-indigo-950 rounded-md bg-card/20 overflow-hidden overflow-x-auto">
               <Table>
-                <TableHeader className="bg-[#f8fafc] dark:bg-slate-900 border-b border-[#e2e8f0] dark:border-slate-800">
-                  <TableRow disableZebra className="h-7 border-none hover:bg-transparent">
+                <TableHeader>
+                  <TableRow disableZebra className="h-7 border-0 hover:bg-transparent">
                     {canDelete && (
                       <TableHead className="w-12 text-center py-1 px-3 text-[15px] font-bold text-black dark:text-white">
                         <Checkbox
@@ -638,10 +638,10 @@ export default function Departments() {
                         key={item.id}
                         disableZebra
                         className={cn(
-                          'h-6 whitespace-nowrap transition-colors border-none text-[11px]',
+                          'h-6 whitespace-nowrap transition-colors border-0 text-[11px]',
                           isZebra
-                            ? 'bg-[#800000] hover:bg-[#800000]/90 text-white font-bold'
-                            : 'bg-white dark:bg-background hover:bg-slate-50 dark:hover:bg-muted/50 text-black dark:text-white font-bold',
+                            ? 'bg-[#bfdbfe] hover:bg-[#93c5fd] text-black'
+                            : 'bg-transparent hover:bg-muted/50 text-black dark:text-white',
                         )}
                       >
                         {canDelete && (
@@ -655,39 +655,14 @@ export default function Departments() {
                               className={cn(
                                 'h-3.5 w-3.5',
                                 isZebra &&
-                                  'border-white data-[state=checked]:bg-white data-[state=checked]:text-[#800000]',
+                                  'border-black data-[state=checked]:bg-black data-[state=checked]:text-[#bfdbfe]',
                               )}
                             />
                           </TableCell>
                         )}
-                        <TableCell
-                          className={cn(
-                            'py-0.5 px-2 text-[11px]',
-                            isZebra
-                              ? 'text-white font-bold'
-                              : 'text-black dark:text-white font-bold',
-                          )}
-                        >
-                          {item.code}
-                        </TableCell>
-                        <TableCell
-                          className={cn(
-                            'py-0.5 px-2 text-[11px]',
-                            isZebra
-                              ? 'text-white font-bold'
-                              : 'text-black dark:text-white font-bold',
-                          )}
-                        >
-                          {item.name}
-                        </TableCell>
-                        <TableCell
-                          className={cn(
-                            'py-0.5 px-2 text-[11px]',
-                            isZebra
-                              ? 'text-white font-bold'
-                              : 'text-black dark:text-white font-bold',
-                          )}
-                        >
+                        <TableCell className="py-0.5 px-2">{item.code}</TableCell>
+                        <TableCell className="py-0.5 px-2 font-bold">{item.name}</TableCell>
+                        <TableCell className="py-0.5 px-2">
                           {item.created_at ? format(new Date(item.created_at), 'dd/MM/yyyy') : '-'}
                         </TableCell>
                         {(canEdit || canDelete) && (
@@ -701,7 +676,7 @@ export default function Departments() {
                                   className={cn(
                                     'h-5 w-5',
                                     isZebra
-                                      ? 'text-white hover:text-[#800000] hover:bg-white'
+                                      ? 'text-black hover:text-indigo-950 hover:bg-black/10'
                                       : 'text-slate-500 hover:text-primary hover:bg-primary/10',
                                   )}
                                 >
@@ -716,7 +691,7 @@ export default function Departments() {
                                   className={cn(
                                     'h-5 w-5',
                                     isZebra
-                                      ? 'text-white hover:text-[#800000] hover:bg-white'
+                                      ? 'text-black hover:text-destructive hover:bg-black/10'
                                       : 'text-slate-500 hover:text-destructive hover:bg-destructive/10',
                                   )}
                                 >
