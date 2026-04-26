@@ -352,7 +352,7 @@ export default function Users() {
       <div className="border-2 border-indigo-950 rounded-md bg-card/20 overflow-hidden">
         <Table>
           <TableHeader className="bg-indigo-950">
-            <TableRow className="border-0 hover:bg-transparent">
+            <TableRow className="border-0 bg-indigo-950 hover:bg-indigo-950">
               <TableHead className="w-[40px] text-center py-2 px-2 text-white font-bold text-[15px]">
                 <Checkbox
                   checked={selectedUsers.length === sortedUsers.length && sortedUsers.length > 0}
@@ -433,9 +433,9 @@ export default function Users() {
               sortedUsers.map((user) => (
                 <TableRow
                   key={user.id}
-                  className="border-0 group/row text-[11px] text-black dark:text-white even:bg-[#bfdbfe] even:text-black hover:even:bg-[#93c5fd]"
+                  className="border-0 group/row font-normal text-[11px] text-black dark:text-white even:bg-[#bfdbfe] even:text-black hover:even:bg-[#93c5fd]"
                 >
-                  <TableCell className="text-center py-0.5 px-2">
+                  <TableCell className="font-normal text-center py-0.5 px-2">
                     <Checkbox
                       checked={selectedUsers.includes(user.id)}
                       onCheckedChange={(checked) => {
@@ -489,7 +489,7 @@ export default function Users() {
                       </Badge>
                     )}
                   </TableCell>
-                  <TableCell className="text-right py-0.5 px-2">
+                  <TableCell className="font-normal text-right py-0.5 px-2">
                     <div className="flex items-center justify-end gap-1">
                       <Button
                         variant="ghost"
@@ -780,7 +780,7 @@ function ImportUsersModal({
               <div className="border-2 border-indigo-950 rounded-md overflow-hidden bg-card shadow-sm">
                 <Table>
                   <TableHeader className="bg-indigo-950">
-                    <TableRow className="border-0 hover:bg-transparent">
+                    <TableRow className="border-0 bg-indigo-950 hover:bg-indigo-950">
                       <TableHead className="w-[60px] text-center py-2 text-white font-bold">
                         Linha
                       </TableHead>
@@ -795,13 +795,13 @@ function ImportUsersModal({
                     {previewData.map((row) => (
                       <TableRow
                         key={row._index}
-                        className="border-0 group/row even:bg-[#bfdbfe] even:text-black hover:even:bg-[#93c5fd]"
+                        className="border-0 group/row font-normal even:bg-[#bfdbfe] even:text-black hover:even:bg-[#93c5fd]"
                       >
-                        <TableCell className="text-center font-medium text-muted-foreground group-even/row:text-black py-2">
+                        <TableCell className="text-center font-normal text-muted-foreground group-even/row:text-black py-2">
                           {row._index}
                         </TableCell>
-                        <TableCell className="font-medium py-2">{row.nome || '-'}</TableCell>
-                        <TableCell className="py-2">
+                        <TableCell className="font-bold py-2">{row.nome || '-'}</TableCell>
+                        <TableCell className="font-normal py-2">
                           <div className="flex flex-col">
                             <span className="text-muted-foreground group-even/row:text-black">
                               {row.email || '-'}
@@ -818,7 +818,7 @@ function ImportUsersModal({
                             )}
                           </div>
                         </TableCell>
-                        <TableCell className="py-2">
+                        <TableCell className="font-normal py-2">
                           <div className="flex flex-col">
                             <span className="text-muted-foreground group-even/row:text-black">
                               {row.cpf || '-'}
@@ -830,10 +830,10 @@ function ImportUsersModal({
                             )}
                           </div>
                         </TableCell>
-                        <TableCell className="text-muted-foreground group-even/row:text-black py-2">
+                        <TableCell className="font-normal text-muted-foreground group-even/row:text-black py-2">
                           {row.departamento || '-'}
                         </TableCell>
-                        <TableCell className="py-2">
+                        <TableCell className="font-normal py-2">
                           <div className="flex flex-col gap-1 py-1">
                             <Select
                               value={row.action}
