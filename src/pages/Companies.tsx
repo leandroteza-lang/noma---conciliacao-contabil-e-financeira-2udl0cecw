@@ -756,11 +756,11 @@ export default function Companies() {
               <p>Nenhuma empresa encontrada.</p>
             </div>
           ) : (
-            <div className="rounded-md border-2 border-[#800000] overflow-hidden">
+            <div className="rounded-md border-2 border-indigo-950 overflow-hidden">
               <Table>
-                <TableHeader className="bg-slate-50 [&_tr]:border-0">
+                <TableHeader className="bg-indigo-950 [&_tr]:border-b [&_tr]:border-b-indigo-900/50">
                   <TableRow className="border-0">
-                    <TableHead className="w-12 text-center py-2 px-2 text-black font-bold text-[14px]">
+                    <TableHead className="w-12 text-center py-2 px-2 text-white font-bold text-[14px]">
                       <Checkbox
                         checked={
                           paginatedOrgs.length > 0 && selectedIds.length === paginatedOrgs.length
@@ -769,49 +769,50 @@ export default function Companies() {
                           if (checked) setSelectedIds(paginatedOrgs.map((o) => o.id))
                           else setSelectedIds([])
                         }}
+                        className="border-white data-[state=checked]:bg-white data-[state=checked]:text-indigo-950"
                       />
                     </TableHead>
                     <TableHead
-                      className="cursor-pointer hover:bg-slate-100 transition-colors py-2 px-2 text-black font-bold text-[14px]"
+                      className="cursor-pointer hover:bg-indigo-900 transition-colors py-2 px-2 text-white font-bold text-[14px] text-center"
                       onClick={() => handleSort('name')}
                     >
-                      <div className="flex items-center gap-2">
-                        Empresa <ArrowUpDown className="h-3 w-3 text-slate-400" />
+                      <div className="flex items-center justify-center gap-2">
+                        Empresa <ArrowUpDown className="h-3 w-3 text-indigo-300" />
                       </div>
                     </TableHead>
                     <TableHead
-                      className="cursor-pointer hover:bg-slate-100 transition-colors py-2 px-2 text-black font-bold text-[14px]"
+                      className="cursor-pointer hover:bg-indigo-900 transition-colors py-2 px-2 text-white font-bold text-[14px] text-center"
                       onClick={() => handleSort('cnpj')}
                     >
-                      <div className="flex items-center gap-2">
-                        Documentos <ArrowUpDown className="h-3 w-3 text-slate-400" />
+                      <div className="flex items-center justify-center gap-2">
+                        Documentos <ArrowUpDown className="h-3 w-3 text-indigo-300" />
                       </div>
                     </TableHead>
                     <TableHead
-                      className="cursor-pointer hover:bg-slate-100 transition-colors py-2 px-2 text-black font-bold text-[14px]"
+                      className="cursor-pointer hover:bg-indigo-900 transition-colors py-2 px-2 text-white font-bold text-[14px] text-center"
                       onClick={() => handleSort('email')}
                     >
-                      <div className="flex items-center gap-2">
-                        Contato <ArrowUpDown className="h-3 w-3 text-slate-400" />
+                      <div className="flex items-center justify-center gap-2">
+                        Contato <ArrowUpDown className="h-3 w-3 text-indigo-300" />
                       </div>
                     </TableHead>
                     <TableHead
-                      className="cursor-pointer hover:bg-slate-100 transition-colors py-2 px-2 text-black font-bold text-[14px]"
+                      className="cursor-pointer hover:bg-indigo-900 transition-colors py-2 px-2 text-white font-bold text-[14px] text-center"
                       onClick={() => handleSort('status')}
                     >
-                      <div className="flex items-center gap-2">
-                        Status <ArrowUpDown className="h-3 w-3 text-slate-400" />
+                      <div className="flex items-center justify-center gap-2">
+                        Status <ArrowUpDown className="h-3 w-3 text-indigo-300" />
                       </div>
                     </TableHead>
                     <TableHead
-                      className="cursor-pointer hover:bg-slate-100 transition-colors py-2 px-2 text-black font-bold text-[14px]"
+                      className="cursor-pointer hover:bg-indigo-900 transition-colors py-2 px-2 text-white font-bold text-[14px] text-center"
                       onClick={() => handleSort('created_at')}
                     >
-                      <div className="flex items-center gap-2">
-                        Criado em <ArrowUpDown className="h-3 w-3 text-slate-400" />
+                      <div className="flex items-center justify-center gap-2">
+                        Criado em <ArrowUpDown className="h-3 w-3 text-indigo-300" />
                       </div>
                     </TableHead>
-                    <TableHead className="text-right py-2 px-2 text-black font-bold text-[14px]">
+                    <TableHead className="text-center py-2 px-2 text-white font-bold text-[14px]">
                       Ações
                     </TableHead>
                   </TableRow>
@@ -824,8 +825,8 @@ export default function Companies() {
                         key={org.id}
                         className={
                           isEven
-                            ? 'bg-[#800000] text-white font-bold text-[11px] hover:bg-[#800000]/90 border-0'
-                            : 'bg-white text-black font-bold text-[11px] hover:bg-slate-50 border-0'
+                            ? 'bg-slate-50 text-slate-900 font-medium text-[11px] hover:bg-slate-100 border-0'
+                            : 'bg-white text-slate-900 font-medium text-[11px] hover:bg-slate-50 border-0'
                         }
                       >
                         <TableCell className="py-0.5 px-2 text-center">
@@ -835,84 +836,68 @@ export default function Companies() {
                               if (checked) setSelectedIds((prev) => [...prev, org.id])
                               else setSelectedIds((prev) => prev.filter((id) => id !== org.id))
                             }}
-                            className={
-                              isEven
-                                ? 'border-white data-[state=checked]:bg-white data-[state=checked]:text-[#800000]'
-                                : 'border-black data-[state=checked]:bg-black data-[state=checked]:text-white'
-                            }
+                            className="border-slate-300 data-[state=checked]:bg-indigo-600 data-[state=checked]:text-white"
                           />
                         </TableCell>
-                        <TableCell className="py-0.5 px-2 font-bold text-[11px]">
-                          <div className="flex items-center gap-2">
+                        <TableCell className="py-0.5 px-2 text-[11px] text-center">
+                          <div className="flex items-center justify-center gap-2">
                             <div>
-                              <p
-                                className={`text-[11px] font-bold ${isEven ? 'text-white' : 'text-black'}`}
-                              >
-                                {org.name}
-                              </p>
+                              <p className="text-[11px] font-bold text-slate-900">{org.name}</p>
                               {org.address && (
-                                <p
-                                  className={`text-[11px] truncate max-w-[200px] ${isEven ? 'text-gray-200 font-bold' : 'text-black font-bold'}`}
-                                >
+                                <p className="text-[11px] truncate max-w-[200px] text-slate-500">
                                   {org.address}
                                 </p>
                               )}
                             </div>
                           </div>
                         </TableCell>
-                        <TableCell className="py-0.5 px-2 text-[11px] font-bold">
+                        <TableCell className="py-0.5 px-2 text-[11px] text-center">
                           <div>
                             {org.cnpj && (
-                              <p className={isEven ? 'text-white' : 'text-black'}>
-                                <span className="font-bold mr-1">CNPJ:</span>
+                              <p className="text-slate-900">
+                                <span className="font-semibold mr-1">CNPJ:</span>
                                 {formatCNPJ(org.cnpj)}
                               </p>
                             )}
                             {org.cpf && (
-                              <p className={isEven ? 'text-white' : 'text-black'}>
-                                <span className="font-bold mr-1">CPF:</span>
+                              <p className="text-slate-900">
+                                <span className="font-semibold mr-1">CPF:</span>
                                 {formatCPF(org.cpf)}
                               </p>
                             )}
                           </div>
                         </TableCell>
-                        <TableCell className="py-0.5 px-2 text-[11px] font-bold">
-                          <div className={isEven ? 'text-white' : 'text-black'}>
+                        <TableCell className="py-0.5 px-2 text-[11px] text-center">
+                          <div className="text-slate-900">
                             {org.email && <p>{org.email}</p>}
                             {org.phone && <p>{org.phone}</p>}
-                            {!org.email && !org.phone && (
-                              <span className={isEven ? 'text-white' : 'text-black'}>-</span>
-                            )}
+                            {!org.email && !org.phone && <span className="text-slate-500">-</span>}
                           </div>
                         </TableCell>
-                        <TableCell className="py-0.5 px-2">
+                        <TableCell className="py-0.5 px-2 text-center">
                           <Badge
                             variant={org.status ? 'default' : 'secondary'}
                             className={
-                              isEven
-                                ? 'bg-white/20 text-white font-bold text-[10px] h-4 py-0 hover:bg-white/30'
-                                : org.status
-                                  ? 'bg-green-100 text-black font-bold text-[10px] h-4 py-0'
-                                  : 'bg-slate-100 text-black font-bold text-[10px] h-4 py-0'
+                              org.status
+                                ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200 font-semibold text-[10px] h-4 py-0'
+                                : 'bg-slate-100 text-slate-700 hover:bg-slate-200 font-semibold text-[10px] h-4 py-0'
                             }
                           >
                             {org.status ? 'Ativo' : 'Inativo'}
                           </Badge>
                         </TableCell>
-                        <TableCell
-                          className={`py-0.5 px-2 text-[11px] font-bold ${isEven ? 'text-white' : 'text-black'}`}
-                        >
+                        <TableCell className="py-0.5 px-2 text-[11px] text-center text-slate-900">
                           {org.created_at
                             ? format(new Date(org.created_at), 'dd/MM/yyyy', { locale: ptBR })
                             : '-'}
                         </TableCell>
-                        <TableCell className="py-0.5 px-2 text-right">
-                          <div className="flex items-center justify-end gap-1">
+                        <TableCell className="py-0.5 px-2 text-center">
+                          <div className="flex items-center justify-center gap-1">
                             <Button
                               variant="ghost"
                               size="icon"
                               onClick={() => openModal(org)}
-                              className={`h-6 w-6 ${isEven ? 'text-white hover:bg-white/10 hover:text-white' : 'text-black hover:text-blue-600 hover:bg-slate-100'}`}
+                              className="h-6 w-6 text-slate-600 hover:text-blue-600 hover:bg-blue-50"
                             >
                               <Edit className="h-3 w-3" />
                             </Button>
@@ -920,7 +905,7 @@ export default function Companies() {
                               variant="ghost"
                               size="icon"
                               onClick={() => handleDelete(org.id)}
-                              className={`h-6 w-6 ${isEven ? 'text-white hover:bg-white/10 hover:text-red-200' : 'text-black hover:text-red-600 hover:bg-red-50'}`}
+                              className="h-6 w-6 text-slate-600 hover:text-red-600 hover:bg-red-50"
                             >
                               <Trash2 className="h-3 w-3" />
                             </Button>
