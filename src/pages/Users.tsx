@@ -351,8 +351,8 @@ export default function Users() {
 
       <div className="border-2 border-indigo-950 rounded-md bg-card/20 overflow-hidden">
         <Table>
-          <TableHeader>
-            <TableRow className="border-0 bg-indigo-950 hover:bg-indigo-950">
+          <TableHeader className="bg-indigo-950">
+            <TableRow className="border-0 hover:bg-transparent">
               <TableHead className="w-[40px] text-center py-2 px-2 text-white font-bold text-[15px]">
                 <Checkbox
                   checked={selectedUsers.length === sortedUsers.length && sortedUsers.length > 0}
@@ -364,7 +364,7 @@ export default function Users() {
                 />
               </TableHead>
               <TableHead
-                className="cursor-pointer select-none py-2 px-2 text-white hover:text-white font-bold text-[15px]"
+                className="cursor-pointer select-none py-2 px-2 text-white font-bold text-[15px]"
                 onClick={() => toggleSort('name')}
               >
                 <div className="flex items-center">
@@ -372,7 +372,7 @@ export default function Users() {
                 </div>
               </TableHead>
               <TableHead
-                className="cursor-pointer select-none py-2 px-2 text-white hover:text-white font-bold text-[15px]"
+                className="cursor-pointer select-none py-2 px-2 text-white font-bold text-[15px]"
                 onClick={() => toggleSort('email')}
               >
                 <div className="flex items-center">
@@ -380,7 +380,7 @@ export default function Users() {
                 </div>
               </TableHead>
               <TableHead
-                className="cursor-pointer select-none py-2 px-2 text-white hover:text-white font-bold text-[15px]"
+                className="cursor-pointer select-none py-2 px-2 text-white font-bold text-[15px]"
                 onClick={() => toggleSort('cpf')}
               >
                 <div className="flex items-center">
@@ -388,7 +388,7 @@ export default function Users() {
                 </div>
               </TableHead>
               <TableHead
-                className="cursor-pointer select-none py-2 px-2 text-white hover:text-white font-bold text-[15px]"
+                className="cursor-pointer select-none py-2 px-2 text-white font-bold text-[15px]"
                 onClick={() => toggleSort('role')}
               >
                 <div className="flex items-center">
@@ -396,7 +396,7 @@ export default function Users() {
                 </div>
               </TableHead>
               <TableHead
-                className="cursor-pointer select-none py-2 px-2 text-white hover:text-white font-bold text-[15px]"
+                className="cursor-pointer select-none py-2 px-2 text-white font-bold text-[15px]"
                 onClick={() => toggleSort('department')}
               >
                 <div className="flex items-center">
@@ -404,7 +404,7 @@ export default function Users() {
                 </div>
               </TableHead>
               <TableHead
-                className="cursor-pointer select-none py-2 px-2 text-white hover:text-white font-bold text-[15px]"
+                className="cursor-pointer select-none py-2 px-2 text-white font-bold text-[15px]"
                 onClick={() => toggleSort('status')}
               >
                 <div className="flex items-center">
@@ -433,10 +433,7 @@ export default function Users() {
               sortedUsers.map((user) => (
                 <TableRow
                   key={user.id}
-                  className={cn(
-                    'border-0 group/row text-[11px] text-black dark:text-white even:bg-[#bfdbfe] even:text-black hover:even:bg-[#93c5fd]',
-                    selectedUsers.includes(user.id) ? 'bg-indigo-50 dark:bg-indigo-900/20' : '',
-                  )}
+                  className="border-0 group/row text-[11px] text-black dark:text-white even:bg-[#bfdbfe] even:text-black hover:even:bg-[#93c5fd]"
                 >
                   <TableCell className="text-center py-0.5 px-2">
                     <Checkbox
@@ -445,16 +442,16 @@ export default function Users() {
                         if (checked) setSelectedUsers([...selectedUsers, user.id])
                         else setSelectedUsers(selectedUsers.filter((id) => id !== user.id))
                       }}
-                      className="border-black dark:border-white data-[state=checked]:bg-indigo-600 data-[state=checked]:border-indigo-600 data-[state=checked]:text-white group-even/row:border-black group-even/row:data-[state=checked]:bg-indigo-600 group-even/row:data-[state=checked]:border-indigo-600 group-even/row:data-[state=checked]:text-white"
+                      className="border-black/50 dark:border-white/50 data-[state=checked]:bg-indigo-600 data-[state=checked]:border-indigo-600 data-[state=checked]:text-white group-even/row:border-black/50 group-even/row:data-[state=checked]:bg-indigo-600 group-even/row:data-[state=checked]:border-indigo-600 group-even/row:data-[state=checked]:text-white"
                     />
                   </TableCell>
                   <TableCell className="font-bold py-0.5 px-2">{user.name}</TableCell>
-                  <TableCell className="py-0.5 px-2">{user.email}</TableCell>
-                  <TableCell className="py-0.5 px-2">{user.cpf || '-'}</TableCell>
-                  <TableCell className="py-0.5 px-2">
+                  <TableCell className="font-normal py-0.5 px-2">{user.email}</TableCell>
+                  <TableCell className="font-normal py-0.5 px-2">{user.cpf || '-'}</TableCell>
+                  <TableCell className="font-normal py-0.5 px-2">
                     <Badge
                       variant="outline"
-                      className="font-bold text-black dark:text-white border-black dark:border-white h-5 text-[11px] group-even/row:text-black group-even/row:border-black group-even/row:bg-transparent"
+                      className="font-normal text-black dark:text-white border-black dark:border-white h-5 text-[11px] group-even/row:text-black group-even/row:border-black group-even/row:bg-transparent"
                     >
                       {user.role === 'admin'
                         ? 'Administrador'
@@ -465,26 +462,28 @@ export default function Users() {
                             : 'Colaborador'}
                     </Badge>
                   </TableCell>
-                  <TableCell className="py-0.5 px-2">{user.departments?.name || '-'}</TableCell>
-                  <TableCell className="py-0.5 px-2">
+                  <TableCell className="font-normal py-0.5 px-2">
+                    {user.departments?.name || '-'}
+                  </TableCell>
+                  <TableCell className="font-normal py-0.5 px-2">
                     {user.approval_status === 'pending' ? (
                       <Badge
                         variant="secondary"
-                        className="bg-amber-100 text-amber-800 font-bold hover:bg-amber-100 dark:bg-amber-900/30 dark:text-amber-300 h-5 text-[11px]"
+                        className="font-normal bg-amber-100 text-amber-800 hover:bg-amber-100 dark:bg-amber-900/30 dark:text-amber-300 h-5 text-[11px]"
                       >
                         Pendente de Aprovação
                       </Badge>
                     ) : user.status ? (
                       <Badge
                         variant="secondary"
-                        className="bg-emerald-100 text-emerald-800 font-bold hover:bg-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-300 h-5 text-[11px]"
+                        className="font-normal bg-emerald-100 text-emerald-800 hover:bg-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-300 h-5 text-[11px]"
                       >
                         Ativo
                       </Badge>
                     ) : (
                       <Badge
                         variant="secondary"
-                        className="bg-slate-100 text-slate-800 font-bold hover:bg-slate-100 dark:bg-slate-800 dark:text-slate-300 h-5 text-[11px]"
+                        className="font-normal bg-slate-100 text-slate-800 hover:bg-slate-100 dark:bg-slate-800 dark:text-slate-300 h-5 text-[11px]"
                       >
                         Inativo
                       </Badge>
