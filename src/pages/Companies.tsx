@@ -758,9 +758,9 @@ export default function Companies() {
           ) : (
             <div className="rounded-md border-2 border-indigo-950 overflow-hidden">
               <Table>
-                <TableHeader className="bg-indigo-950 [&_tr]:border-b [&_tr]:border-b-indigo-900/50">
-                  <TableRow className="border-0 bg-indigo-950 hover:bg-indigo-950" disableZebra>
-                    <TableHead className="w-12 text-center py-2 px-2 bg-indigo-950 text-white font-bold text-[14px]">
+                <TableHeader className="!bg-indigo-950 [&_tr]:border-b [&_tr]:border-b-indigo-900/50">
+                  <TableRow className="border-0 !bg-indigo-950 hover:!bg-indigo-950">
+                    <TableHead className="w-12 text-center py-2 px-2 !bg-indigo-950 text-white font-bold text-[14px] border-0">
                       <Checkbox
                         checked={
                           paginatedOrgs.length > 0 && selectedIds.length === paginatedOrgs.length
@@ -773,7 +773,7 @@ export default function Companies() {
                       />
                     </TableHead>
                     <TableHead
-                      className="cursor-pointer bg-indigo-950 hover:bg-indigo-900 transition-colors py-2 px-2 text-white font-bold text-[14px] text-center"
+                      className="cursor-pointer !bg-indigo-950 hover:!bg-indigo-900 transition-colors py-2 px-2 text-white font-bold text-[14px] text-center border-0"
                       onClick={() => handleSort('name')}
                     >
                       <div className="flex items-center justify-center gap-2">
@@ -781,7 +781,7 @@ export default function Companies() {
                       </div>
                     </TableHead>
                     <TableHead
-                      className="cursor-pointer bg-indigo-950 hover:bg-indigo-900 transition-colors py-2 px-2 text-white font-bold text-[14px] text-center"
+                      className="cursor-pointer !bg-indigo-950 hover:!bg-indigo-900 transition-colors py-2 px-2 text-white font-bold text-[14px] text-center border-0"
                       onClick={() => handleSort('cnpj')}
                     >
                       <div className="flex items-center justify-center gap-2">
@@ -789,7 +789,7 @@ export default function Companies() {
                       </div>
                     </TableHead>
                     <TableHead
-                      className="cursor-pointer bg-indigo-950 hover:bg-indigo-900 transition-colors py-2 px-2 text-white font-bold text-[14px] text-center"
+                      className="cursor-pointer !bg-indigo-950 hover:!bg-indigo-900 transition-colors py-2 px-2 text-white font-bold text-[14px] text-center border-0"
                       onClick={() => handleSort('email')}
                     >
                       <div className="flex items-center justify-center gap-2">
@@ -797,7 +797,7 @@ export default function Companies() {
                       </div>
                     </TableHead>
                     <TableHead
-                      className="cursor-pointer bg-indigo-950 hover:bg-indigo-900 transition-colors py-2 px-2 text-white font-bold text-[14px] text-center"
+                      className="cursor-pointer !bg-indigo-950 hover:!bg-indigo-900 transition-colors py-2 px-2 text-white font-bold text-[14px] text-center border-0"
                       onClick={() => handleSort('status')}
                     >
                       <div className="flex items-center justify-center gap-2">
@@ -805,14 +805,14 @@ export default function Companies() {
                       </div>
                     </TableHead>
                     <TableHead
-                      className="cursor-pointer bg-indigo-950 hover:bg-indigo-900 transition-colors py-2 px-2 text-white font-bold text-[14px] text-center"
+                      className="cursor-pointer !bg-indigo-950 hover:!bg-indigo-900 transition-colors py-2 px-2 text-white font-bold text-[14px] text-center border-0"
                       onClick={() => handleSort('created_at')}
                     >
                       <div className="flex items-center justify-center gap-2">
                         Criado em <ArrowUpDown className="h-3 w-3 text-indigo-300" />
                       </div>
                     </TableHead>
-                    <TableHead className="text-center py-2 px-2 bg-indigo-950 text-white font-bold text-[14px]">
+                    <TableHead className="text-center py-2 px-2 !bg-indigo-950 text-white font-bold text-[14px] border-0">
                       Ações
                     </TableHead>
                   </TableRow>
@@ -823,14 +823,13 @@ export default function Companies() {
                     return (
                       <TableRow
                         key={org.id}
-                        disableZebra
                         className={
                           isEven
-                            ? 'bg-blue-250 text-slate-900 font-medium text-[11px] hover:bg-blue-300 border-0'
-                            : 'bg-white text-slate-900 font-medium text-[11px] hover:bg-slate-50 border-0'
+                            ? 'bg-[#bfdbfe] text-slate-900 font-normal text-[11px] hover:bg-[#93c5fd] border-0'
+                            : 'bg-white text-slate-900 font-normal text-[11px] hover:bg-slate-50 border-0'
                         }
                       >
-                        <TableCell className="py-0.5 px-2 text-center">
+                        <TableCell className="py-0.5 px-2 text-center font-normal">
                           <Checkbox
                             checked={selectedIds.includes(org.id)}
                             onCheckedChange={(checked) => {
@@ -839,83 +838,61 @@ export default function Companies() {
                             }}
                             className={
                               isEven
-                                ? 'border-slate-300 data-[state=checked]:bg-indigo-600 data-[state=checked]:text-white'
-                                : 'border-slate-300 data-[state=checked]:bg-indigo-600 data-[state=checked]:text-white'
+                                ? 'border-slate-400 data-[state=checked]:bg-indigo-950 data-[state=checked]:border-indigo-950 data-[state=checked]:text-white'
+                                : 'border-slate-400 data-[state=checked]:bg-indigo-950 data-[state=checked]:border-indigo-950 data-[state=checked]:text-white'
                             }
                           />
                         </TableCell>
-                        <TableCell className="py-0.5 px-2 text-[11px] text-center">
+                        <TableCell className="py-0.5 px-2 text-[11px] text-center font-normal">
                           <div className="flex items-center justify-center gap-2">
                             <div>
-                              <p
-                                className={
-                                  isEven
-                                    ? 'text-[11px] font-bold text-slate-900'
-                                    : 'text-[11px] font-bold text-slate-900'
-                                }
-                              >
-                                {org.name}
-                              </p>
+                              <p className="text-[11px] font-bold text-slate-900">{org.name}</p>
                               {org.address && (
-                                <p
-                                  className={
-                                    isEven
-                                      ? 'text-[11px] truncate max-w-[200px] text-slate-500'
-                                      : 'text-[11px] truncate max-w-[200px] text-slate-500'
-                                  }
-                                >
+                                <p className="text-[11px] truncate max-w-[200px] text-slate-500 font-normal">
                                   {org.address}
                                 </p>
                               )}
                             </div>
                           </div>
                         </TableCell>
-                        <TableCell className="py-0.5 px-2 text-[11px] text-center">
+                        <TableCell className="py-0.5 px-2 text-[11px] text-center font-normal">
                           <div>
                             {org.cnpj && (
-                              <p className={isEven ? 'text-slate-900' : 'text-slate-900'}>
-                                <span className="font-semibold mr-1">CNPJ:</span>
+                              <p className="text-slate-900 font-normal">
+                                <span className="font-normal mr-1">CNPJ:</span>
                                 {formatCNPJ(org.cnpj)}
                               </p>
                             )}
                             {org.cpf && (
-                              <p className={isEven ? 'text-slate-900' : 'text-slate-900'}>
-                                <span className="font-semibold mr-1">CPF:</span>
+                              <p className="text-slate-900 font-normal">
+                                <span className="font-normal mr-1">CPF:</span>
                                 {formatCPF(org.cpf)}
                               </p>
                             )}
                           </div>
                         </TableCell>
-                        <TableCell className="py-0.5 px-2 text-[11px] text-center">
-                          <div className={isEven ? 'text-slate-900' : 'text-slate-900'}>
+                        <TableCell className="py-0.5 px-2 text-[11px] text-center font-normal">
+                          <div className="text-slate-900 font-normal">
                             {org.email && <p>{org.email}</p>}
                             {org.phone && <p>{org.phone}</p>}
                             {!org.email && !org.phone && (
-                              <span className={isEven ? 'text-slate-500' : 'text-slate-500'}>
-                                -
-                              </span>
+                              <span className="text-slate-500 font-normal">-</span>
                             )}
                           </div>
                         </TableCell>
-                        <TableCell className="py-0.5 px-2 text-center">
+                        <TableCell className="py-0.5 px-2 text-center font-normal">
                           <Badge
                             variant={org.status ? 'default' : 'secondary'}
                             className={
                               org.status
-                                ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200 font-semibold text-[10px] h-4 py-0'
-                                : 'bg-slate-100 text-slate-700 hover:bg-slate-200 font-semibold text-[10px] h-4 py-0'
+                                ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200 font-normal text-[10px] h-4 py-0'
+                                : 'bg-slate-100 text-slate-700 hover:bg-slate-200 font-normal text-[10px] h-4 py-0'
                             }
                           >
                             {org.status ? 'Ativo' : 'Inativo'}
                           </Badge>
                         </TableCell>
-                        <TableCell
-                          className={
-                            isEven
-                              ? 'py-0.5 px-2 text-[11px] text-center text-slate-900'
-                              : 'py-0.5 px-2 text-[11px] text-center text-slate-900'
-                          }
-                        >
+                        <TableCell className="py-0.5 px-2 text-[11px] text-center text-slate-900 font-normal">
                           {org.created_at
                             ? format(new Date(org.created_at), 'dd/MM/yyyy', { locale: ptBR })
                             : '-'}

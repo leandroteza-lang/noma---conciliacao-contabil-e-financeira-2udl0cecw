@@ -351,20 +351,20 @@ export default function Users() {
 
       <div className="border-2 border-indigo-950 rounded-md bg-card/20 overflow-hidden">
         <Table>
-          <TableHeader className="bg-indigo-950">
-            <TableRow className="border-0 bg-indigo-950 hover:bg-indigo-950">
-              <TableHead className="w-[40px] text-center py-2 px-2 text-white font-bold text-[15px]">
+          <TableHeader className="!bg-indigo-950">
+            <TableRow className="border-0 !bg-indigo-950 hover:!bg-indigo-950">
+              <TableHead className="w-[40px] text-center py-2 px-2 !bg-indigo-950 text-white font-bold text-[15px] border-0">
                 <Checkbox
                   checked={selectedUsers.length === sortedUsers.length && sortedUsers.length > 0}
                   onCheckedChange={(checked) => {
                     if (checked) setSelectedUsers(sortedUsers.map((u) => u.id))
                     else setSelectedUsers([])
                   }}
-                  className="border-white data-[state=checked]:bg-indigo-600 data-[state=checked]:border-indigo-600 data-[state=checked]:text-white"
+                  className="border-white data-[state=checked]:bg-indigo-950 data-[state=checked]:border-indigo-950 data-[state=checked]:text-white"
                 />
               </TableHead>
               <TableHead
-                className="cursor-pointer select-none py-2 px-2 text-white font-bold text-[15px]"
+                className="cursor-pointer select-none py-2 px-2 !bg-indigo-950 text-white font-bold text-[15px] border-0"
                 onClick={() => toggleSort('name')}
               >
                 <div className="flex items-center">
@@ -372,7 +372,7 @@ export default function Users() {
                 </div>
               </TableHead>
               <TableHead
-                className="cursor-pointer select-none py-2 px-2 text-white font-bold text-[15px]"
+                className="cursor-pointer select-none py-2 px-2 !bg-indigo-950 text-white font-bold text-[15px] border-0"
                 onClick={() => toggleSort('email')}
               >
                 <div className="flex items-center">
@@ -380,7 +380,7 @@ export default function Users() {
                 </div>
               </TableHead>
               <TableHead
-                className="cursor-pointer select-none py-2 px-2 text-white font-bold text-[15px]"
+                className="cursor-pointer select-none py-2 px-2 !bg-indigo-950 text-white font-bold text-[15px] border-0"
                 onClick={() => toggleSort('cpf')}
               >
                 <div className="flex items-center">
@@ -388,7 +388,7 @@ export default function Users() {
                 </div>
               </TableHead>
               <TableHead
-                className="cursor-pointer select-none py-2 px-2 text-white font-bold text-[15px]"
+                className="cursor-pointer select-none py-2 px-2 !bg-indigo-950 text-white font-bold text-[15px] border-0"
                 onClick={() => toggleSort('role')}
               >
                 <div className="flex items-center">
@@ -396,7 +396,7 @@ export default function Users() {
                 </div>
               </TableHead>
               <TableHead
-                className="cursor-pointer select-none py-2 px-2 text-white font-bold text-[15px]"
+                className="cursor-pointer select-none py-2 px-2 !bg-indigo-950 text-white font-bold text-[15px] border-0"
                 onClick={() => toggleSort('department')}
               >
                 <div className="flex items-center">
@@ -404,14 +404,14 @@ export default function Users() {
                 </div>
               </TableHead>
               <TableHead
-                className="cursor-pointer select-none py-2 px-2 text-white font-bold text-[15px]"
+                className="cursor-pointer select-none py-2 px-2 !bg-indigo-950 text-white font-bold text-[15px] border-0"
                 onClick={() => toggleSort('status')}
               >
                 <div className="flex items-center">
                   Status <SortIcon field="status" />
                 </div>
               </TableHead>
-              <TableHead className="w-[100px] text-right py-2 px-2 text-white font-bold text-[15px]">
+              <TableHead className="w-[100px] text-right py-2 px-2 !bg-indigo-950 text-white font-bold text-[15px] border-0">
                 Ações
               </TableHead>
             </TableRow>
@@ -442,7 +442,7 @@ export default function Users() {
                         if (checked) setSelectedUsers([...selectedUsers, user.id])
                         else setSelectedUsers(selectedUsers.filter((id) => id !== user.id))
                       }}
-                      className="border-black/50 dark:border-white/50 data-[state=checked]:bg-indigo-600 data-[state=checked]:border-indigo-600 data-[state=checked]:text-white group-even/row:border-black/50 group-even/row:data-[state=checked]:bg-indigo-600 group-even/row:data-[state=checked]:border-indigo-600 group-even/row:data-[state=checked]:text-white"
+                      className="border-black/50 dark:border-white/50 data-[state=checked]:bg-indigo-950 data-[state=checked]:border-indigo-950 data-[state=checked]:text-white group-even/row:border-black/50 group-even/row:data-[state=checked]:bg-indigo-950 group-even/row:data-[state=checked]:border-indigo-950 group-even/row:data-[state=checked]:text-white"
                     />
                   </TableCell>
                   <TableCell className="font-bold py-0.5 px-2">{user.name}</TableCell>
@@ -779,16 +779,26 @@ function ImportUsersModal({
 
               <div className="border-2 border-indigo-950 rounded-md overflow-hidden bg-card shadow-sm">
                 <Table>
-                  <TableHeader className="bg-indigo-950">
-                    <TableRow className="border-0 bg-indigo-950 hover:bg-indigo-950">
-                      <TableHead className="w-[60px] text-center py-2 text-white font-bold">
+                  <TableHeader className="!bg-indigo-950">
+                    <TableRow className="border-0 !bg-indigo-950 hover:!bg-indigo-950">
+                      <TableHead className="w-[60px] text-center py-2 !bg-indigo-950 text-white font-bold border-0">
                         Linha
                       </TableHead>
-                      <TableHead className="py-2 text-white font-bold">Nome</TableHead>
-                      <TableHead className="py-2 text-white font-bold">E-mail</TableHead>
-                      <TableHead className="py-2 text-white font-bold">CPF</TableHead>
-                      <TableHead className="py-2 text-white font-bold">Departamento</TableHead>
-                      <TableHead className="w-[380px] py-2 text-white font-bold">Ação</TableHead>
+                      <TableHead className="py-2 !bg-indigo-950 text-white font-bold border-0">
+                        Nome
+                      </TableHead>
+                      <TableHead className="py-2 !bg-indigo-950 text-white font-bold border-0">
+                        E-mail
+                      </TableHead>
+                      <TableHead className="py-2 !bg-indigo-950 text-white font-bold border-0">
+                        CPF
+                      </TableHead>
+                      <TableHead className="py-2 !bg-indigo-950 text-white font-bold border-0">
+                        Departamento
+                      </TableHead>
+                      <TableHead className="w-[380px] py-2 !bg-indigo-950 text-white font-bold border-0">
+                        Ação
+                      </TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
