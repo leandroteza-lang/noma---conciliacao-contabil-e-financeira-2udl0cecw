@@ -364,7 +364,7 @@ export default function Users() {
                 />
               </TableHead>
               <TableHead
-                className="cursor-pointer select-none py-2 px-2 !bg-indigo-950 text-white font-bold text-[15px] border-0"
+                className="cursor-pointer select-none py-2 px-2 !bg-indigo-950 text-white !font-bold text-[15px] border-0"
                 onClick={() => toggleSort('name')}
               >
                 <div className="flex items-center">
@@ -372,7 +372,7 @@ export default function Users() {
                 </div>
               </TableHead>
               <TableHead
-                className="cursor-pointer select-none py-2 px-2 !bg-indigo-950 text-white font-normal text-[15px] border-0"
+                className="cursor-pointer select-none py-2 px-2 !bg-indigo-950 text-white !font-normal text-[15px] border-0"
                 onClick={() => toggleSort('email')}
               >
                 <div className="flex items-center">
@@ -380,7 +380,7 @@ export default function Users() {
                 </div>
               </TableHead>
               <TableHead
-                className="cursor-pointer select-none py-2 px-2 !bg-indigo-950 text-white font-normal text-[15px] border-0"
+                className="cursor-pointer select-none py-2 px-2 !bg-indigo-950 text-white !font-normal text-[15px] border-0"
                 onClick={() => toggleSort('cpf')}
               >
                 <div className="flex items-center">
@@ -388,7 +388,7 @@ export default function Users() {
                 </div>
               </TableHead>
               <TableHead
-                className="cursor-pointer select-none py-2 px-2 !bg-indigo-950 text-white font-normal text-[15px] border-0"
+                className="cursor-pointer select-none py-2 px-2 !bg-indigo-950 text-white !font-normal text-[15px] border-0"
                 onClick={() => toggleSort('role')}
               >
                 <div className="flex items-center">
@@ -396,7 +396,7 @@ export default function Users() {
                 </div>
               </TableHead>
               <TableHead
-                className="cursor-pointer select-none py-2 px-2 !bg-indigo-950 text-white font-normal text-[15px] border-0"
+                className="cursor-pointer select-none py-2 px-2 !bg-indigo-950 text-white !font-normal text-[15px] border-0"
                 onClick={() => toggleSort('department')}
               >
                 <div className="flex items-center">
@@ -404,14 +404,14 @@ export default function Users() {
                 </div>
               </TableHead>
               <TableHead
-                className="cursor-pointer select-none py-2 px-2 !bg-indigo-950 text-white font-normal text-[15px] border-0"
+                className="cursor-pointer select-none py-2 px-2 !bg-indigo-950 text-white !font-normal text-[15px] border-0"
                 onClick={() => toggleSort('status')}
               >
                 <div className="flex items-center">
                   Status <SortIcon field="status" />
                 </div>
               </TableHead>
-              <TableHead className="w-[100px] text-right py-2 px-2 !bg-indigo-950 text-white font-normal text-[15px] border-0">
+              <TableHead className="w-[100px] text-right py-2 px-2 !bg-indigo-950 text-white !font-normal text-[15px] border-0">
                 Ações
               </TableHead>
             </TableRow>
@@ -433,9 +433,10 @@ export default function Users() {
               sortedUsers.map((user) => (
                 <TableRow
                   key={user.id}
+                  disableZebra
                   className="border-0 group/row font-normal text-[11px] text-black dark:text-white even:bg-[#bfdbfe] even:text-black hover:even:bg-[#93c5fd]"
                 >
-                  <TableCell className="font-normal text-center py-0.5 px-2">
+                  <TableCell className="!font-normal text-center py-0.5 px-2">
                     <Checkbox
                       checked={selectedUsers.includes(user.id)}
                       onCheckedChange={(checked) => {
@@ -445,13 +446,13 @@ export default function Users() {
                       className="border-black/50 dark:border-white/50 data-[state=checked]:bg-indigo-950 data-[state=checked]:border-indigo-950 data-[state=checked]:text-white group-even/row:border-black/50 group-even/row:data-[state=checked]:bg-indigo-950 group-even/row:data-[state=checked]:border-indigo-950 group-even/row:data-[state=checked]:text-white"
                     />
                   </TableCell>
-                  <TableCell className="font-bold py-0.5 px-2">{user.name}</TableCell>
-                  <TableCell className="font-normal py-0.5 px-2">{user.email}</TableCell>
-                  <TableCell className="font-normal py-0.5 px-2">{user.cpf || '-'}</TableCell>
-                  <TableCell className="font-normal py-0.5 px-2">
+                  <TableCell className="!font-bold py-0.5 px-2">{user.name}</TableCell>
+                  <TableCell className="!font-normal py-0.5 px-2">{user.email}</TableCell>
+                  <TableCell className="!font-normal py-0.5 px-2">{user.cpf || '-'}</TableCell>
+                  <TableCell className="!font-normal py-0.5 px-2">
                     <Badge
                       variant="outline"
-                      className="font-normal text-black dark:text-white border-black dark:border-white h-5 text-[11px] group-even/row:text-black group-even/row:border-black group-even/row:bg-transparent"
+                      className="!font-normal text-black dark:text-white border-black dark:border-white h-5 text-[11px] group-even/row:text-black group-even/row:border-black group-even/row:bg-transparent"
                     >
                       {user.role === 'admin'
                         ? 'Administrador'
@@ -462,34 +463,34 @@ export default function Users() {
                             : 'Colaborador'}
                     </Badge>
                   </TableCell>
-                  <TableCell className="font-normal py-0.5 px-2">
+                  <TableCell className="!font-normal py-0.5 px-2">
                     {user.departments?.name || '-'}
                   </TableCell>
-                  <TableCell className="font-normal py-0.5 px-2">
+                  <TableCell className="!font-normal py-0.5 px-2">
                     {user.approval_status === 'pending' ? (
                       <Badge
                         variant="secondary"
-                        className="font-normal bg-amber-100 text-amber-800 hover:bg-amber-100 dark:bg-amber-900/30 dark:text-amber-300 h-5 text-[11px]"
+                        className="!font-normal bg-amber-100 text-amber-800 hover:bg-amber-100 dark:bg-amber-900/30 dark:text-amber-300 h-5 text-[11px]"
                       >
                         Pendente de Aprovação
                       </Badge>
                     ) : user.status ? (
                       <Badge
                         variant="secondary"
-                        className="font-normal bg-emerald-100 text-emerald-800 hover:bg-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-300 h-5 text-[11px]"
+                        className="!font-normal bg-emerald-100 text-emerald-800 hover:bg-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-300 h-5 text-[11px]"
                       >
                         Ativo
                       </Badge>
                     ) : (
                       <Badge
                         variant="secondary"
-                        className="font-normal bg-slate-100 text-slate-800 hover:bg-slate-100 dark:bg-slate-800 dark:text-slate-300 h-5 text-[11px]"
+                        className="!font-normal bg-slate-100 text-slate-800 hover:bg-slate-100 dark:bg-slate-800 dark:text-slate-300 h-5 text-[11px]"
                       >
                         Inativo
                       </Badge>
                     )}
                   </TableCell>
-                  <TableCell className="font-normal text-right py-0.5 px-2">
+                  <TableCell className="!font-normal text-right py-0.5 px-2">
                     <div className="flex items-center justify-end gap-1">
                       <Button
                         variant="ghost"
@@ -805,13 +806,14 @@ function ImportUsersModal({
                     {previewData.map((row) => (
                       <TableRow
                         key={row._index}
+                        disableZebra
                         className="border-0 group/row font-normal even:bg-[#bfdbfe] even:text-black hover:even:bg-[#93c5fd]"
                       >
-                        <TableCell className="text-center font-normal text-muted-foreground group-even/row:text-black py-2">
+                        <TableCell className="!font-normal text-center text-muted-foreground group-even/row:text-black py-2">
                           {row._index}
                         </TableCell>
-                        <TableCell className="font-bold py-2">{row.nome || '-'}</TableCell>
-                        <TableCell className="font-normal py-2">
+                        <TableCell className="!font-bold py-2">{row.nome || '-'}</TableCell>
+                        <TableCell className="!font-normal py-2">
                           <div className="flex flex-col">
                             <span className="text-muted-foreground group-even/row:text-black">
                               {row.email || '-'}
@@ -828,7 +830,7 @@ function ImportUsersModal({
                             )}
                           </div>
                         </TableCell>
-                        <TableCell className="font-normal py-2">
+                        <TableCell className="!font-normal py-2">
                           <div className="flex flex-col">
                             <span className="text-muted-foreground group-even/row:text-black">
                               {row.cpf || '-'}
@@ -840,10 +842,10 @@ function ImportUsersModal({
                             )}
                           </div>
                         </TableCell>
-                        <TableCell className="font-normal text-muted-foreground group-even/row:text-black py-2">
+                        <TableCell className="!font-normal text-muted-foreground group-even/row:text-black py-2">
                           {row.departamento || '-'}
                         </TableCell>
-                        <TableCell className="font-normal py-2">
+                        <TableCell className="!font-normal py-2">
                           <div className="flex flex-col gap-1 py-1">
                             <Select
                               value={row.action}
