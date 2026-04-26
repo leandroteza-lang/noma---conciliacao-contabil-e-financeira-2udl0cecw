@@ -353,7 +353,7 @@ export default function Users() {
         <Table>
           <TableHeader className="!bg-indigo-950">
             <TableRow className="border-0 !bg-indigo-950 hover:!bg-indigo-950">
-              <TableHead className="w-[40px] text-center py-2 px-2 !bg-indigo-950 text-white font-bold text-[15px] border-0">
+              <TableHead className="w-[40px] text-center py-2 px-2 !bg-indigo-950 text-white font-normal text-[15px] border-0">
                 <Checkbox
                   checked={selectedUsers.length === sortedUsers.length && sortedUsers.length > 0}
                   onCheckedChange={(checked) => {
