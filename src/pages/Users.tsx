@@ -270,8 +270,7 @@ export default function Users() {
   }
 
   const SortIcon = ({ field }: { field: SortField }) => {
-    if (sortField !== field)
-      return <ArrowUpDown className="ml-2 h-4 w-4 text-muted-foreground/30" />
+    if (sortField !== field) return <ArrowUpDown className="ml-2 h-4 w-4 opacity-50" />
     return sortDesc ? <ArrowDown className="ml-2 h-4 w-4" /> : <ArrowUp className="ml-2 h-4 w-4" />
   }
 
@@ -328,7 +327,7 @@ export default function Users() {
         </div>
       </div>
 
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 border-2 border-indigo-950 rounded-md bg-card">
         <div className="relative w-full max-w-sm">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
@@ -350,21 +349,22 @@ export default function Users() {
         )}
       </div>
 
-      <div className="border-2 border-[#800000] rounded-md bg-card/20 overflow-hidden">
+      <div className="border-2 border-indigo-950 rounded-md bg-card/20 overflow-hidden">
         <Table>
-          <TableHeader className="bg-muted/50">
+          <TableHeader className="bg-indigo-950">
             <TableRow className="border-0 hover:bg-transparent">
-              <TableHead className="w-[40px] text-center py-2 px-2 text-black dark:text-white font-bold text-[15px]">
+              <TableHead className="w-[40px] text-center py-2 px-2 text-white font-bold text-[15px]">
                 <Checkbox
                   checked={selectedUsers.length === sortedUsers.length && sortedUsers.length > 0}
                   onCheckedChange={(checked) => {
                     if (checked) setSelectedUsers(sortedUsers.map((u) => u.id))
                     else setSelectedUsers([])
                   }}
+                  className="border-white data-[state=checked]:bg-white data-[state=checked]:text-indigo-950"
                 />
               </TableHead>
               <TableHead
-                className="cursor-pointer select-none py-2 px-2 text-black dark:text-white font-bold text-[15px]"
+                className="cursor-pointer select-none py-2 px-2 text-white font-bold text-[15px]"
                 onClick={() => toggleSort('name')}
               >
                 <div className="flex items-center">
@@ -372,7 +372,7 @@ export default function Users() {
                 </div>
               </TableHead>
               <TableHead
-                className="cursor-pointer select-none py-2 px-2 text-black dark:text-white font-bold text-[15px]"
+                className="cursor-pointer select-none py-2 px-2 text-white font-bold text-[15px]"
                 onClick={() => toggleSort('email')}
               >
                 <div className="flex items-center">
@@ -380,7 +380,7 @@ export default function Users() {
                 </div>
               </TableHead>
               <TableHead
-                className="cursor-pointer select-none py-2 px-2 text-black dark:text-white font-bold text-[15px]"
+                className="cursor-pointer select-none py-2 px-2 text-white font-bold text-[15px]"
                 onClick={() => toggleSort('cpf')}
               >
                 <div className="flex items-center">
@@ -388,7 +388,7 @@ export default function Users() {
                 </div>
               </TableHead>
               <TableHead
-                className="cursor-pointer select-none py-2 px-2 text-black dark:text-white font-bold text-[15px]"
+                className="cursor-pointer select-none py-2 px-2 text-white font-bold text-[15px]"
                 onClick={() => toggleSort('role')}
               >
                 <div className="flex items-center">
@@ -396,7 +396,7 @@ export default function Users() {
                 </div>
               </TableHead>
               <TableHead
-                className="cursor-pointer select-none py-2 px-2 text-black dark:text-white font-bold text-[15px]"
+                className="cursor-pointer select-none py-2 px-2 text-white font-bold text-[15px]"
                 onClick={() => toggleSort('department')}
               >
                 <div className="flex items-center">
@@ -404,14 +404,14 @@ export default function Users() {
                 </div>
               </TableHead>
               <TableHead
-                className="cursor-pointer select-none py-2 px-2 text-black dark:text-white font-bold text-[15px]"
+                className="cursor-pointer select-none py-2 px-2 text-white font-bold text-[15px]"
                 onClick={() => toggleSort('status')}
               >
                 <div className="flex items-center">
                   Status <SortIcon field="status" />
                 </div>
               </TableHead>
-              <TableHead className="w-[100px] text-right py-2 px-2 text-black dark:text-white font-bold text-[15px]">
+              <TableHead className="w-[100px] text-right py-2 px-2 text-white font-bold text-[15px]">
                 Ações
               </TableHead>
             </TableRow>
@@ -434,7 +434,7 @@ export default function Users() {
                 <TableRow
                   key={user.id}
                   className={cn(
-                    'border-0 group/row text-[11px] font-bold text-black dark:text-white even:bg-[#800000] even:text-white even:font-bold hover:even:bg-[#800000]/90',
+                    'border-0 group/row text-[11px] font-bold text-black dark:text-white even:bg-[#bfdbfe] even:text-black even:font-bold hover:even:bg-[#93c5fd]',
                     selectedUsers.includes(user.id) ? 'bg-muted/50' : '',
                   )}
                 >
@@ -445,7 +445,7 @@ export default function Users() {
                         if (checked) setSelectedUsers([...selectedUsers, user.id])
                         else setSelectedUsers(selectedUsers.filter((id) => id !== user.id))
                       }}
-                      className="border-black dark:border-white data-[state=checked]:bg-black dark:data-[state=checked]:bg-white data-[state=checked]:text-white dark:data-[state=checked]:text-black group-even/row:border-white group-even/row:data-[state=checked]:bg-white group-even/row:data-[state=checked]:text-[#800000]"
+                      className="border-black dark:border-white data-[state=checked]:bg-black dark:data-[state=checked]:bg-white data-[state=checked]:text-white dark:data-[state=checked]:text-black group-even/row:border-black group-even/row:data-[state=checked]:bg-black group-even/row:data-[state=checked]:text-white"
                     />
                   </TableCell>
                   <TableCell className="py-0.5 px-2">{user.name}</TableCell>
@@ -454,7 +454,7 @@ export default function Users() {
                   <TableCell className="py-0.5 px-2">
                     <Badge
                       variant="outline"
-                      className="font-bold text-black dark:text-white border-black dark:border-white h-5 text-[11px] group-even/row:text-white group-even/row:border-white group-even/row:bg-transparent"
+                      className="font-bold text-black dark:text-white border-black dark:border-white h-5 text-[11px] group-even/row:text-black group-even/row:border-black group-even/row:bg-transparent"
                     >
                       {user.role === 'admin'
                         ? 'Administrador'
@@ -495,7 +495,7 @@ export default function Users() {
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-6 w-6 text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/20 group-even/row:text-white group-even/row:hover:text-blue-100 group-even/row:hover:bg-white/20"
+                        className="h-6 w-6 text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/20 group-even/row:text-blue-700 group-even/row:hover:text-blue-900 group-even/row:hover:bg-blue-200"
                         title="Editar"
                         onClick={() => {
                           setUserToEdit(user)
@@ -507,7 +507,7 @@ export default function Users() {
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-6 w-6 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 group-even/row:text-white group-even/row:hover:text-red-100 group-even/row:hover:bg-white/20"
+                        className="h-6 w-6 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 group-even/row:text-red-700 group-even/row:hover:text-red-900 group-even/row:hover:bg-blue-200"
                         onClick={() => handleDelete(user.id)}
                         title="Excluir"
                       >
@@ -778,28 +778,35 @@ function ImportUsersModal({
                 </Alert>
               )}
 
-              <div className="border rounded-md overflow-hidden bg-card shadow-sm">
+              <div className="border-2 border-indigo-950 rounded-md overflow-hidden bg-card shadow-sm">
                 <Table>
-                  <TableHeader className="bg-muted/50">
-                    <TableRow>
-                      <TableHead className="w-[60px] text-center py-2">Linha</TableHead>
-                      <TableHead className="py-2">Nome</TableHead>
-                      <TableHead className="py-2">E-mail</TableHead>
-                      <TableHead className="py-2">CPF</TableHead>
-                      <TableHead className="py-2">Departamento</TableHead>
-                      <TableHead className="w-[380px] py-2">Ação</TableHead>
+                  <TableHeader className="bg-indigo-950">
+                    <TableRow className="border-0 hover:bg-transparent">
+                      <TableHead className="w-[60px] text-center py-2 text-white font-bold">
+                        Linha
+                      </TableHead>
+                      <TableHead className="py-2 text-white font-bold">Nome</TableHead>
+                      <TableHead className="py-2 text-white font-bold">E-mail</TableHead>
+                      <TableHead className="py-2 text-white font-bold">CPF</TableHead>
+                      <TableHead className="py-2 text-white font-bold">Departamento</TableHead>
+                      <TableHead className="w-[380px] py-2 text-white font-bold">Ação</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {previewData.map((row) => (
-                      <TableRow key={row._index}>
-                        <TableCell className="text-center font-medium text-muted-foreground py-2">
+                      <TableRow
+                        key={row._index}
+                        className="border-0 group/row even:bg-[#bfdbfe] even:text-black hover:even:bg-[#93c5fd]"
+                      >
+                        <TableCell className="text-center font-medium text-muted-foreground group-even/row:text-black py-2">
                           {row._index}
                         </TableCell>
                         <TableCell className="font-medium py-2">{row.nome || '-'}</TableCell>
                         <TableCell className="py-2">
                           <div className="flex flex-col">
-                            <span className="text-muted-foreground">{row.email || '-'}</span>
+                            <span className="text-muted-foreground group-even/row:text-black">
+                              {row.email || '-'}
+                            </span>
                             {!row.emailValid && row.email && (
                               <span className="text-[10px] text-red-500 font-semibold mt-0.5">
                                 E-mail Inválido
@@ -814,7 +821,9 @@ function ImportUsersModal({
                         </TableCell>
                         <TableCell className="py-2">
                           <div className="flex flex-col">
-                            <span className="text-muted-foreground">{row.cpf || '-'}</span>
+                            <span className="text-muted-foreground group-even/row:text-black">
+                              {row.cpf || '-'}
+                            </span>
                             {!row.cpfValid && row.cpf && (
                               <span className="text-[10px] text-red-500 font-semibold mt-0.5">
                                 CPF Inválido
@@ -822,7 +831,7 @@ function ImportUsersModal({
                             )}
                           </div>
                         </TableCell>
-                        <TableCell className="text-muted-foreground py-2">
+                        <TableCell className="text-muted-foreground group-even/row:text-black py-2">
                           {row.departamento || '-'}
                         </TableCell>
                         <TableCell className="py-2">
