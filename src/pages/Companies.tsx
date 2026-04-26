@@ -756,11 +756,11 @@ export default function Companies() {
               <p>Nenhuma empresa encontrada.</p>
             </div>
           ) : (
-            <div className="rounded-md border-2 border-[#800000] overflow-hidden">
+            <div className="rounded-md border-2 border-indigo-950 overflow-hidden">
               <Table>
-                <TableHeader className="bg-slate-50 [&_tr]:border-0">
-                  <TableRow className="border-0">
-                    <TableHead className="w-12 text-center py-2 px-2 text-black font-bold text-[14px]">
+                <TableHeader className="bg-indigo-950 [&_tr]:border-0">
+                  <TableRow className="border-0 border-b border-indigo-900/50">
+                    <TableHead className="w-12 text-center py-2 px-2 text-white font-bold text-[14px]">
                       <Checkbox
                         checked={
                           paginatedOrgs.length > 0 && selectedIds.length === paginatedOrgs.length
@@ -772,46 +772,46 @@ export default function Companies() {
                       />
                     </TableHead>
                     <TableHead
-                      className="cursor-pointer hover:bg-slate-100 transition-colors py-2 px-2 text-black font-bold text-[14px]"
+                      className="cursor-pointer hover:bg-indigo-900 transition-colors py-2 px-2 text-white font-bold text-[14px] text-center"
                       onClick={() => handleSort('name')}
                     >
-                      <div className="flex items-center gap-2">
-                        Empresa <ArrowUpDown className="h-3 w-3 text-slate-400" />
+                      <div className="flex items-center justify-center gap-2">
+                        Empresa <ArrowUpDown className="h-3 w-3 text-white/60" />
                       </div>
                     </TableHead>
                     <TableHead
-                      className="cursor-pointer hover:bg-slate-100 transition-colors py-2 px-2 text-black font-bold text-[14px]"
+                      className="cursor-pointer hover:bg-indigo-900 transition-colors py-2 px-2 text-white font-bold text-[14px] text-center"
                       onClick={() => handleSort('cnpj')}
                     >
-                      <div className="flex items-center gap-2">
-                        Documentos <ArrowUpDown className="h-3 w-3 text-slate-400" />
+                      <div className="flex items-center justify-center gap-2">
+                        Documentos <ArrowUpDown className="h-3 w-3 text-white/60" />
                       </div>
                     </TableHead>
                     <TableHead
-                      className="cursor-pointer hover:bg-slate-100 transition-colors py-2 px-2 text-black font-bold text-[14px]"
+                      className="cursor-pointer hover:bg-indigo-900 transition-colors py-2 px-2 text-white font-bold text-[14px] text-center"
                       onClick={() => handleSort('email')}
                     >
-                      <div className="flex items-center gap-2">
-                        Contato <ArrowUpDown className="h-3 w-3 text-slate-400" />
+                      <div className="flex items-center justify-center gap-2">
+                        Contato <ArrowUpDown className="h-3 w-3 text-white/60" />
                       </div>
                     </TableHead>
                     <TableHead
-                      className="cursor-pointer hover:bg-slate-100 transition-colors py-2 px-2 text-black font-bold text-[14px]"
+                      className="cursor-pointer hover:bg-indigo-900 transition-colors py-2 px-2 text-white font-bold text-[14px] text-center"
                       onClick={() => handleSort('status')}
                     >
-                      <div className="flex items-center gap-2">
-                        Status <ArrowUpDown className="h-3 w-3 text-slate-400" />
+                      <div className="flex items-center justify-center gap-2">
+                        Status <ArrowUpDown className="h-3 w-3 text-white/60" />
                       </div>
                     </TableHead>
                     <TableHead
-                      className="cursor-pointer hover:bg-slate-100 transition-colors py-2 px-2 text-black font-bold text-[14px]"
+                      className="cursor-pointer hover:bg-indigo-900 transition-colors py-2 px-2 text-white font-bold text-[14px] text-center"
                       onClick={() => handleSort('created_at')}
                     >
-                      <div className="flex items-center gap-2">
-                        Criado em <ArrowUpDown className="h-3 w-3 text-slate-400" />
+                      <div className="flex items-center justify-center gap-2">
+                        Criado em <ArrowUpDown className="h-3 w-3 text-white/60" />
                       </div>
                     </TableHead>
-                    <TableHead className="text-right py-2 px-2 text-black font-bold text-[14px]">
+                    <TableHead className="text-center py-2 px-2 text-white font-bold text-[14px]">
                       Ações
                     </TableHead>
                   </TableRow>
@@ -824,8 +824,8 @@ export default function Companies() {
                         key={org.id}
                         className={
                           isEven
-                            ? 'bg-[#800000] text-white font-bold text-[11px] hover:bg-[#800000]/90 border-0'
-                            : 'bg-white text-black font-bold text-[11px] hover:bg-slate-50 border-0'
+                            ? 'bg-slate-50 text-slate-900 font-bold text-[11px] hover:bg-slate-100 border-0'
+                            : 'bg-white text-slate-900 font-bold text-[11px] hover:bg-slate-50 border-0'
                         }
                       >
                         <TableCell className="py-0.5 px-2 text-center">
@@ -837,7 +837,7 @@ export default function Companies() {
                             }}
                             className={
                               isEven
-                                ? 'border-white data-[state=checked]:bg-white data-[state=checked]:text-[#800000]'
+                                ? 'border-slate-400 data-[state=checked]:bg-slate-700 data-[state=checked]:text-white'
                                 : 'border-black data-[state=checked]:bg-black data-[state=checked]:text-white'
                             }
                           />
@@ -846,13 +846,13 @@ export default function Companies() {
                           <div className="flex items-center gap-2">
                             <div>
                               <p
-                                className={`text-[11px] font-bold ${isEven ? 'text-white' : 'text-black'}`}
+                                className={`text-[11px] font-bold ${isEven ? 'text-slate-900' : 'text-slate-900'}`}
                               >
                                 {org.name}
                               </p>
                               {org.address && (
                                 <p
-                                  className={`text-[11px] truncate max-w-[200px] ${isEven ? 'text-gray-200 font-bold' : 'text-black font-bold'}`}
+                                  className={`text-[11px] truncate max-w-[200px] ${isEven ? 'text-slate-600 font-bold' : 'text-slate-600 font-bold'}`}
                                 >
                                   {org.address}
                                 </p>
@@ -863,13 +863,13 @@ export default function Companies() {
                         <TableCell className="py-0.5 px-2 text-[11px] font-bold">
                           <div>
                             {org.cnpj && (
-                              <p className={isEven ? 'text-white' : 'text-black'}>
+                              <p className={isEven ? 'text-slate-900' : 'text-slate-900'}>
                                 <span className="font-bold mr-1">CNPJ:</span>
                                 {formatCNPJ(org.cnpj)}
                               </p>
                             )}
                             {org.cpf && (
-                              <p className={isEven ? 'text-white' : 'text-black'}>
+                              <p className={isEven ? 'text-slate-900' : 'text-slate-900'}>
                                 <span className="font-bold mr-1">CPF:</span>
                                 {formatCPF(org.cpf)}
                               </p>
@@ -877,11 +877,11 @@ export default function Companies() {
                           </div>
                         </TableCell>
                         <TableCell className="py-0.5 px-2 text-[11px] font-bold">
-                          <div className={isEven ? 'text-white' : 'text-black'}>
+                          <div className={isEven ? 'text-slate-900' : 'text-slate-900'}>
                             {org.email && <p>{org.email}</p>}
                             {org.phone && <p>{org.phone}</p>}
                             {!org.email && !org.phone && (
-                              <span className={isEven ? 'text-white' : 'text-black'}>-</span>
+                              <span className={isEven ? 'text-slate-900' : 'text-slate-900'}>-</span>
                             )}
                           </div>
                         </TableCell>
@@ -890,7 +890,9 @@ export default function Companies() {
                             variant={org.status ? 'default' : 'secondary'}
                             className={
                               isEven
-                                ? 'bg-white/20 text-white font-bold text-[10px] h-4 py-0 hover:bg-white/30'
+                                ? org.status
+                                  ? 'bg-green-100 text-slate-900 font-bold text-[10px] h-4 py-0'
+                                  : 'bg-slate-100 text-slate-900 font-bold text-[10px] h-4 py-0'
                                 : org.status
                                   ? 'bg-green-100 text-black font-bold text-[10px] h-4 py-0'
                                   : 'bg-slate-100 text-black font-bold text-[10px] h-4 py-0'
@@ -900,7 +902,7 @@ export default function Companies() {
                           </Badge>
                         </TableCell>
                         <TableCell
-                          className={`py-0.5 px-2 text-[11px] font-bold ${isEven ? 'text-white' : 'text-black'}`}
+                          className={`py-0.5 px-2 text-[11px] font-bold ${isEven ? 'text-slate-900' : 'text-slate-900'}`}
                         >
                           {org.created_at
                             ? format(new Date(org.created_at), 'dd/MM/yyyy', { locale: ptBR })
@@ -912,7 +914,7 @@ export default function Companies() {
                               variant="ghost"
                               size="icon"
                               onClick={() => openModal(org)}
-                              className={`h-6 w-6 ${isEven ? 'text-white hover:bg-white/10 hover:text-white' : 'text-black hover:text-blue-600 hover:bg-slate-100'}`}
+                              className={`h-6 w-6 ${isEven ? 'text-slate-700 hover:text-blue-600 hover:bg-slate-200' : 'text-black hover:text-blue-600 hover:bg-slate-100'}`}
                             >
                               <Edit className="h-3 w-3" />
                             </Button>
@@ -920,7 +922,7 @@ export default function Companies() {
                               variant="ghost"
                               size="icon"
                               onClick={() => handleDelete(org.id)}
-                              className={`h-6 w-6 ${isEven ? 'text-white hover:bg-white/10 hover:text-red-200' : 'text-black hover:text-red-600 hover:bg-red-50'}`}
+                              className={`h-6 w-6 ${isEven ? 'text-slate-700 hover:text-red-600 hover:bg-red-100' : 'text-black hover:text-red-600 hover:bg-red-50'}`}
                             >
                               <Trash2 className="h-3 w-3" />
                             </Button>
