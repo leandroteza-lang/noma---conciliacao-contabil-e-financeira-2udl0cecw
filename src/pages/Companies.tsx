@@ -826,7 +826,7 @@ export default function Companies() {
                         disableZebra
                         className={
                           isEven
-                            ? 'bg-blue-500 text-white font-medium text-[11px] hover:bg-blue-600 border-0'
+                            ? 'bg-blue-250 text-slate-900 font-medium text-[11px] hover:bg-blue-300 border-0'
                             : 'bg-white text-slate-900 font-medium text-[11px] hover:bg-slate-50 border-0'
                         }
                       >
@@ -839,7 +839,7 @@ export default function Companies() {
                             }}
                             className={
                               isEven
-                                ? 'border-white data-[state=checked]:bg-white data-[state=checked]:text-blue-500'
+                                ? 'border-slate-300 data-[state=checked]:bg-indigo-600 data-[state=checked]:text-white'
                                 : 'border-slate-300 data-[state=checked]:bg-indigo-600 data-[state=checked]:text-white'
                             }
                           />
@@ -850,7 +850,7 @@ export default function Companies() {
                               <p
                                 className={
                                   isEven
-                                    ? 'text-[11px] font-bold text-white'
+                                    ? 'text-[11px] font-bold text-slate-900'
                                     : 'text-[11px] font-bold text-slate-900'
                                 }
                               >
@@ -860,7 +860,7 @@ export default function Companies() {
                                 <p
                                   className={
                                     isEven
-                                      ? 'text-[11px] truncate max-w-[200px] text-blue-100'
+                                      ? 'text-[11px] truncate max-w-[200px] text-slate-500'
                                       : 'text-[11px] truncate max-w-[200px] text-slate-500'
                                   }
                                 >
@@ -873,13 +873,13 @@ export default function Companies() {
                         <TableCell className="py-0.5 px-2 text-[11px] text-center">
                           <div>
                             {org.cnpj && (
-                              <p className={isEven ? 'text-white' : 'text-slate-900'}>
+                              <p className={isEven ? 'text-slate-900' : 'text-slate-900'}>
                                 <span className="font-semibold mr-1">CNPJ:</span>
                                 {formatCNPJ(org.cnpj)}
                               </p>
                             )}
                             {org.cpf && (
-                              <p className={isEven ? 'text-white' : 'text-slate-900'}>
+                              <p className={isEven ? 'text-slate-900' : 'text-slate-900'}>
                                 <span className="font-semibold mr-1">CPF:</span>
                                 {formatCPF(org.cpf)}
                               </p>
@@ -887,11 +887,13 @@ export default function Companies() {
                           </div>
                         </TableCell>
                         <TableCell className="py-0.5 px-2 text-[11px] text-center">
-                          <div className={isEven ? 'text-white' : 'text-slate-900'}>
+                          <div className={isEven ? 'text-slate-900' : 'text-slate-900'}>
                             {org.email && <p>{org.email}</p>}
                             {org.phone && <p>{org.phone}</p>}
                             {!org.email && !org.phone && (
-                              <span className={isEven ? 'text-blue-200' : 'text-slate-500'}>-</span>
+                              <span className={isEven ? 'text-slate-500' : 'text-slate-500'}>
+                                -
+                              </span>
                             )}
                           </div>
                         </TableCell>
@@ -910,7 +912,7 @@ export default function Companies() {
                         <TableCell
                           className={
                             isEven
-                              ? 'py-0.5 px-2 text-[11px] text-center text-white'
+                              ? 'py-0.5 px-2 text-[11px] text-center text-slate-900'
                               : 'py-0.5 px-2 text-[11px] text-center text-slate-900'
                           }
                         >
@@ -926,7 +928,7 @@ export default function Companies() {
                               onClick={() => openModal(org)}
                               className={
                                 isEven
-                                  ? 'h-6 w-6 text-white hover:text-blue-100 hover:bg-blue-600'
+                                  ? 'h-6 w-6 text-slate-600 hover:text-blue-600 hover:bg-blue-50'
                                   : 'h-6 w-6 text-slate-600 hover:text-blue-600 hover:bg-blue-50'
                               }
                             >
@@ -938,7 +940,7 @@ export default function Companies() {
                               onClick={() => handleDelete(org.id)}
                               className={
                                 isEven
-                                  ? 'h-6 w-6 text-white hover:text-red-200 hover:bg-blue-600'
+                                  ? 'h-6 w-6 text-slate-600 hover:text-red-600 hover:bg-red-50'
                                   : 'h-6 w-6 text-slate-600 hover:text-red-600 hover:bg-red-50'
                               }
                             >
