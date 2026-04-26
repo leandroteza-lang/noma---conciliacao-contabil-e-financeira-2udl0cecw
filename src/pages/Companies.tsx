@@ -667,7 +667,7 @@ export default function Companies() {
         </div>
       </div>
 
-      <Card>
+      <Card className="border-2 border-indigo-950">
         <CardHeader className="pb-3">
           <CardTitle>Filtros</CardTitle>
         </CardHeader>
