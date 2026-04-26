@@ -586,45 +586,46 @@ export default function Departments() {
           ) : (
             <div className="border-2 border-indigo-950 rounded-md bg-card/20 overflow-hidden overflow-x-auto">
               <Table>
-                <TableHeader>
-                  <TableRow disableZebra className="h-7 border-0 hover:bg-transparent">
+                <TableHeader className="bg-[#1e1b4b]">
+                  <TableRow disableZebra className="h-9 border-0 hover:bg-transparent">
                     {canDelete && (
-                      <TableHead className="w-12 text-center py-1 px-3 text-[15px] font-bold text-black dark:text-white">
+                      <TableHead className="w-12 text-center py-1 px-3 text-[15px] font-bold text-white">
                         <Checkbox
                           checked={paginated.length > 0 && selectedIds.length === paginated.length}
                           onCheckedChange={(checked) => {
                             if (checked) setSelectedIds(paginated.map((d) => d.id))
                             else setSelectedIds([])
                           }}
+                          className="border-white data-[state=checked]:bg-white data-[state=checked]:text-[#1e1b4b]"
                         />
                       </TableHead>
                     )}
                     <TableHead
-                      className="cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-800 py-1 px-3 text-[15px] font-bold text-black dark:text-white"
+                      className="cursor-pointer hover:bg-white/10 py-1 px-3 text-[15px] font-bold text-white"
                       onClick={() => handleSort('code')}
                     >
                       <div className="flex items-center gap-2">
-                        Código <ArrowUpDown className="h-4 w-4 text-slate-500" />
+                        Código <ArrowUpDown className="h-4 w-4 text-slate-300" />
                       </div>
                     </TableHead>
                     <TableHead
-                      className="cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-800 py-1 px-3 text-[15px] font-bold text-black dark:text-white"
+                      className="cursor-pointer hover:bg-white/10 py-1 px-3 text-[15px] font-bold text-white"
                       onClick={() => handleSort('name')}
                     >
                       <div className="flex items-center gap-2">
-                        Nome <ArrowUpDown className="h-4 w-4 text-slate-500" />
+                        Nome <ArrowUpDown className="h-4 w-4 text-slate-300" />
                       </div>
                     </TableHead>
                     <TableHead
-                      className="cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-800 py-1 px-3 text-[15px] font-bold text-black dark:text-white"
+                      className="cursor-pointer hover:bg-white/10 py-1 px-3 text-[15px] font-bold text-white"
                       onClick={() => handleSort('created_at')}
                     >
                       <div className="flex items-center gap-2">
-                        Criado em <ArrowUpDown className="h-4 w-4 text-slate-500" />
+                        Criado em <ArrowUpDown className="h-4 w-4 text-slate-300" />
                       </div>
                     </TableHead>
                     {(canEdit || canDelete) && (
-                      <TableHead className="text-right py-1 px-3 text-[15px] font-bold text-black dark:text-white">
+                      <TableHead className="text-right py-1 px-3 text-[15px] font-bold text-white">
                         Ações
                       </TableHead>
                     )}
@@ -652,11 +653,7 @@ export default function Departments() {
                                 if (checked) setSelectedIds((prev) => [...prev, item.id])
                                 else setSelectedIds((prev) => prev.filter((id) => id !== item.id))
                               }}
-                              className={cn(
-                                'h-3.5 w-3.5',
-                                isZebra &&
-                                  'border-black data-[state=checked]:bg-black data-[state=checked]:text-[#bfdbfe]',
-                              )}
+                              className="h-3.5 w-3.5 border-[#1e1b4b] data-[state=checked]:bg-[#1e1b4b] data-[state=checked]:text-white"
                             />
                           </TableCell>
                         )}
