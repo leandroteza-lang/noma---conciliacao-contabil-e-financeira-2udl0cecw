@@ -303,21 +303,22 @@ export default function TgaAccountTypes() {
         )}
       </div>
 
-      <div className="border-2 border-[#800000] rounded-md bg-card/20 overflow-hidden">
+      <div className="border-2 border-indigo-950 rounded-md bg-card/20 overflow-hidden">
         <Table>
-          <TableHeader className="bg-muted/50">
+          <TableHeader className="bg-indigo-950">
             <TableRow className="border-0 hover:bg-transparent">
-              <TableHead className="w-[40px] text-center py-2 px-2 text-black dark:text-white font-bold text-[15px]">
+              <TableHead className="w-[40px] text-center py-2 px-2 text-white font-bold text-[15px]">
                 <Checkbox
                   checked={selectedItems.length === sortedData.length && sortedData.length > 0}
                   onCheckedChange={(checked) => {
                     if (checked) setSelectedItems(sortedData.map((u) => u.id))
                     else setSelectedItems([])
                   }}
+                  className="border-white data-[state=checked]:bg-white data-[state=checked]:text-indigo-950"
                 />
               </TableHead>
               <TableHead
-                className="cursor-pointer select-none py-2 px-2 text-black dark:text-white font-bold text-[15px]"
+                className="cursor-pointer select-none py-2 px-2 text-white font-bold text-[15px]"
                 onClick={() => toggleSort('codigo')}
               >
                 <div className="flex items-center">
@@ -325,7 +326,7 @@ export default function TgaAccountTypes() {
                 </div>
               </TableHead>
               <TableHead
-                className="cursor-pointer select-none py-2 px-2 text-black dark:text-white font-bold text-[15px]"
+                className="cursor-pointer select-none py-2 px-2 text-white font-bold text-[15px]"
                 onClick={() => toggleSort('nome')}
               >
                 <div className="flex items-center">
@@ -333,7 +334,7 @@ export default function TgaAccountTypes() {
                 </div>
               </TableHead>
               <TableHead
-                className="cursor-pointer select-none py-2 px-2 text-black dark:text-white font-bold text-[15px]"
+                className="cursor-pointer select-none py-2 px-2 text-white font-bold text-[15px]"
                 onClick={() => toggleSort('abreviacao')}
               >
                 <div className="flex items-center">
@@ -341,14 +342,14 @@ export default function TgaAccountTypes() {
                 </div>
               </TableHead>
               <TableHead
-                className="cursor-pointer select-none py-2 px-2 text-black dark:text-white font-bold text-[15px]"
+                className="cursor-pointer select-none py-2 px-2 text-white font-bold text-[15px]"
                 onClick={() => toggleSort('empresa')}
               >
                 <div className="flex items-center">
                   Empresa <SortIcon field="empresa" />
                 </div>
               </TableHead>
-              <TableHead className="w-[100px] text-right py-2 px-2 text-black dark:text-white font-bold text-[15px]">
+              <TableHead className="w-[100px] text-right py-2 px-2 text-white font-bold text-[15px]">
                 Ações
               </TableHead>
             </TableRow>
@@ -371,8 +372,10 @@ export default function TgaAccountTypes() {
                 <TableRow
                   key={item.id}
                   className={cn(
-                    'border-0 group/row even:bg-[#800000] even:text-white even:font-bold hover:even:bg-[#800000]/90',
-                    selectedItems.includes(item.id) ? 'bg-muted/50' : '',
+                    'border-0 group/row transition-colors',
+                    selectedItems.includes(item.id)
+                      ? 'bg-[#bfdbfe] hover:bg-[#93c5fd] selected'
+                      : 'even:bg-[#bfdbfe] hover:even:bg-[#93c5fd]',
                   )}
                 >
                   <TableCell className="text-center py-0.5 px-2">
@@ -382,19 +385,19 @@ export default function TgaAccountTypes() {
                         if (checked) setSelectedItems([...selectedItems, item.id])
                         else setSelectedItems(selectedItems.filter((id) => id !== item.id))
                       }}
-                      className="group-even/row:border-white group-even/row:data-[state=checked]:bg-white group-even/row:data-[state=checked]:text-[#800000]"
+                      className="border-indigo-950 data-[state=checked]:bg-indigo-950 data-[state=checked]:text-white"
                     />
                   </TableCell>
-                  <TableCell className="text-black dark:text-white group-even/row:text-white font-bold text-[11px] py-0.5 px-2">
+                  <TableCell className="text-[11px] py-0.5 px-2 text-black dark:text-white group-even/row:text-black group-[.selected]:text-black dark:group-even/row:text-black dark:group-[.selected]:text-black">
                     {item.codigo}
                   </TableCell>
-                  <TableCell className="text-black dark:text-white group-even/row:text-white font-bold text-[11px] py-0.5 px-2">
+                  <TableCell className="text-[11px] py-0.5 px-2 text-black dark:text-white group-even/row:text-black group-[.selected]:text-black dark:group-even/row:text-black dark:group-[.selected]:text-black">
                     {item.nome}
                   </TableCell>
-                  <TableCell className="text-black dark:text-white group-even/row:text-white font-bold text-[11px] py-0.5 px-2">
+                  <TableCell className="text-[11px] py-0.5 px-2 text-black dark:text-white group-even/row:text-black group-[.selected]:text-black dark:group-even/row:text-black dark:group-[.selected]:text-black">
                     {item.abreviacao || '-'}
                   </TableCell>
-                  <TableCell className="text-black dark:text-white group-even/row:text-white font-bold text-[11px] py-0.5 px-2">
+                  <TableCell className="text-[11px] py-0.5 px-2 text-black dark:text-white group-even/row:text-black group-[.selected]:text-black dark:group-even/row:text-black dark:group-[.selected]:text-black">
                     {item.organizations?.name || 'Geral'}
                   </TableCell>
                   <TableCell className="text-right py-0.5 px-2">
@@ -402,7 +405,7 @@ export default function TgaAccountTypes() {
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-6 w-6 text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/20 group-even/row:text-white group-even/row:hover:text-blue-100 group-even/row:hover:bg-white/20"
+                        className="h-6 w-6 text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/20 group-even/row:hover:bg-white/40 group-[.selected]:hover:bg-white/40"
                         title="Editar"
                         onClick={() => {
                           setItemToEdit(item)
@@ -414,7 +417,7 @@ export default function TgaAccountTypes() {
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-6 w-6 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 group-even/row:text-white group-even/row:hover:text-red-100 group-even/row:hover:bg-white/20"
+                        className="h-6 w-6 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 group-even/row:hover:bg-white/40 group-[.selected]:hover:bg-white/40"
                         onClick={() => handleDelete(item.id)}
                         title="Excluir"
                       >
