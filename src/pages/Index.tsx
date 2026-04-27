@@ -549,13 +549,13 @@ export default function Index() {
           background-color: transparent !important;
         }
         .bank-accounts-table-wrapper [role="checkbox"][data-state="checked"] {
-          background-color: #dc2626 !important;
-          border-color: #dc2626 !important;
+          background-color: #1e1b4b !important;
+          border-color: #1e1b4b !important;
           color: #ffffff !important;
         }
         .bank-accounts-table-wrapper th [role="checkbox"][data-state="checked"] {
-          background-color: #dc2626 !important;
-          border-color: #dc2626 !important;
+          background-color: #1e1b4b !important;
+          border-color: #1e1b4b !important;
         }
         .bank-accounts-table-wrapper [role="checkbox"] svg,
         .bank-accounts-table-wrapper tbody tr:nth-child(even) td [role="checkbox"] svg {
