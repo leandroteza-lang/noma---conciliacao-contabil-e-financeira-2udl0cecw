@@ -66,7 +66,10 @@ const getTheme = (name: string | null | undefined) => {
       badge: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300',
       border: 'border-purple-500 dark:border-purple-700',
     }
-  return { badge: 'bg-muted text-foreground', border: 'border-border' }
+  return {
+    badge: 'bg-black/5 dark:bg-white/10 text-inherit border-transparent',
+    border: 'border-border',
+  }
 }
 
 function EditableCell({
@@ -121,12 +124,12 @@ function EditableCell({
         {field === 'classificacao' ? (
           <Badge
             variant="secondary"
-            className="bg-muted text-foreground font-normal hover:bg-muted/80"
+            className="bg-black/5 dark:bg-white/10 text-inherit border-transparent font-normal hover:bg-black/10 dark:hover:bg-white/20"
           >
             {value}
           </Badge>
         ) : (
-          value || <span className="text-muted-foreground/50 italic text-xs">Vazio</span>
+          value || <span className="opacity-50 italic text-xs">Vazio</span>
         )}
       </div>
     )
@@ -634,11 +637,12 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
       </div>
 
       <div className="hidden lg:block rounded-xl border border-border bg-card shadow-sm overflow-hidden">
-        <Table>
-          <TableHeader>
-            <TableRow className="bg-muted/50">
-              <TableHead className="w-12 text-center p-2 text-black dark:text-white font-bold text-[15px]">
+        <Table className="border-collapse">
+          <TableHeader className="bg-indigo-950">
+            <TableRow className="border-0 hover:bg-transparent">
+              <TableHead className="w-12 text-center py-2 px-2 text-white font-normal text-[15px] border-0">
                 <Checkbox
+                  className="border-white data-[state=checked]:bg-white data-[state=checked]:text-indigo-950"
                   checked={
                     sortedAccounts.length > 0 && selectedIds.length === sortedAccounts.length
                   }
@@ -649,149 +653,171 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
                 />
               </TableHead>
               <TableHead
-                className="w-[180px] cursor-pointer hover:bg-muted p-2 text-black dark:text-white font-bold text-[15px]"
+                className="w-[180px] cursor-pointer hover:bg-indigo-950/80 py-2 px-2 text-white font-normal text-[15px] border-0"
                 onClick={() => handleSort('organization_id')}
               >
                 <div className="flex items-center gap-2">
-                  Empresa <ArrowUpDown className="h-3 w-3 text-muted-foreground" />
+                  Empresa <ArrowUpDown className="h-3 w-3 opacity-50" />
                 </div>
               </TableHead>
               <TableHead
-                className="cursor-pointer hover:bg-muted p-2 text-black dark:text-white font-bold text-[15px]"
+                className="cursor-pointer hover:bg-indigo-950/80 py-2 px-2 text-white font-normal text-[15px] border-0"
                 onClick={() => handleSort('contaContabil')}
               >
                 <div className="flex items-center gap-2">
-                  Conta Contábil <ArrowUpDown className="h-3 w-3 text-muted-foreground" />
+                  Conta Contábil <ArrowUpDown className="h-3 w-3 opacity-50" />
                 </div>
               </TableHead>
               <TableHead
-                className="cursor-pointer hover:bg-muted p-2 text-black dark:text-white font-bold text-[15px]"
+                className="cursor-pointer hover:bg-indigo-950/80 py-2 px-2 text-white font-bold text-[15px] border-0"
                 onClick={() => handleSort('descricao')}
               >
                 <div className="flex items-center gap-2">
-                  Descrição <ArrowUpDown className="h-3 w-3 text-muted-foreground" />
+                  Descrição <ArrowUpDown className="h-3 w-3 opacity-50" />
                 </div>
               </TableHead>
               <TableHead
-                className="cursor-pointer hover:bg-muted p-2 text-black dark:text-white font-bold text-[15px]"
+                className="cursor-pointer hover:bg-indigo-950/80 py-2 px-2 text-white font-normal text-[15px] border-0"
                 onClick={() => handleSort('banco')}
               >
                 <div className="flex items-center gap-2">
-                  Banco <ArrowUpDown className="h-3 w-3 text-muted-foreground" />
+                  Banco <ArrowUpDown className="h-3 w-3 opacity-50" />
                 </div>
               </TableHead>
               <TableHead
-                className="cursor-pointer hover:bg-muted p-2 text-black dark:text-white font-bold text-[15px]"
+                className="cursor-pointer hover:bg-indigo-950/80 py-2 px-2 text-white font-normal text-[15px] border-0"
                 onClick={() => handleSort('agencia')}
               >
                 <div className="flex items-center gap-2">
-                  Agência <ArrowUpDown className="h-3 w-3 text-muted-foreground" />
+                  Agência <ArrowUpDown className="h-3 w-3 opacity-50" />
                 </div>
               </TableHead>
               <TableHead
-                className="cursor-pointer hover:bg-muted p-2 text-black dark:text-white font-bold text-[15px]"
+                className="cursor-pointer hover:bg-indigo-950/80 py-2 px-2 text-white font-normal text-[15px] border-0"
                 onClick={() => handleSort('numeroConta')}
               >
                 <div className="flex items-center gap-2">
-                  Conta <ArrowUpDown className="h-3 w-3 text-muted-foreground" />
+                  Conta <ArrowUpDown className="h-3 w-3 opacity-50" />
                 </div>
               </TableHead>
               <TableHead
-                className="cursor-pointer hover:bg-muted p-2 text-black dark:text-white font-bold text-[15px]"
+                className="cursor-pointer hover:bg-indigo-950/80 py-2 px-2 text-white font-normal text-[15px] border-0"
                 onClick={() => handleSort('digitoConta')}
               >
                 <div className="flex items-center gap-2">
-                  Dígito <ArrowUpDown className="h-3 w-3 text-muted-foreground" />
+                  Dígito <ArrowUpDown className="h-3 w-3 opacity-50" />
                 </div>
               </TableHead>
               <TableHead
-                className="cursor-pointer hover:bg-muted p-2 text-black dark:text-white font-bold text-[15px]"
+                className="cursor-pointer hover:bg-indigo-950/80 py-2 px-2 text-white font-normal text-[15px] border-0"
                 onClick={() => handleSort('tipoConta')}
               >
                 <div className="flex items-center gap-2">
-                  Tipo <ArrowUpDown className="h-3 w-3 text-muted-foreground" />
+                  Tipo <ArrowUpDown className="h-3 w-3 opacity-50" />
                 </div>
               </TableHead>
               <TableHead
-                className="cursor-pointer hover:bg-muted p-2 text-black dark:text-white font-bold text-[15px]"
+                className="cursor-pointer hover:bg-indigo-950/80 py-2 px-2 text-white font-normal text-[15px] border-0"
                 onClick={() => handleSort('classificacao')}
               >
                 <div className="flex items-center gap-2">
-                  Classificação <ArrowUpDown className="h-3 w-3 text-muted-foreground" />
+                  Classificação <ArrowUpDown className="h-3 w-3 opacity-50" />
                 </div>
               </TableHead>
-              <TableHead className="text-right p-2 text-black dark:text-white font-bold text-[15px]">
+              <TableHead className="text-right py-2 px-2 text-white font-normal text-[15px] border-0">
                 Ações
               </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {sortedAccounts.map((acc) => (
-              <TableRow
-                key={acc.id}
-                className="border-0 group/row odd:bg-white dark:odd:bg-transparent even:bg-[#800000] even:text-white even:font-bold hover:even:bg-[#800000]/90 hover:bg-muted/50"
-              >
-                <TableCell className="text-center p-2">
-                  <Checkbox
-                    checked={selectedIds.includes(acc.id)}
-                    onCheckedChange={(checked) => {
-                      if (checked) setSelectedIds((prev) => [...prev, acc.id])
-                      else setSelectedIds((prev) => prev.filter((id) => id !== acc.id))
-                    }}
-                  />
-                </TableCell>
-                {(
-                  [
-                    'organization_id',
-                    'contaContabil',
-                    'descricao',
-                    'banco',
-                    'agencia',
-                    'numeroConta',
-                    'digitoConta',
-                    'tipoConta',
-                    'classificacao',
-                  ] as const
-                ).map((field) => (
-                  <TableCell
-                    key={field}
-                    className={cn('p-2 text-[11px]', field === 'contaContabil' ? 'font-mono' : '')}
-                  >
-                    <EditableCell
-                      value={acc[field]}
-                      field={field}
-                      organizations={organizations}
-                      isEditing={editing?.id === acc.id && editing?.field === field}
-                      onEditStart={() => setEditing({ id: acc.id, field })}
-                      onEditCommit={(val: string) =>
-                        val !== acc[field] ? handleEditCommit(acc.id, field, val) : setEditing(null)
-                      }
-                      onEditCancel={() => setEditing(null)}
+            {sortedAccounts.map((acc, index) => {
+              const isEven = index % 2 === 1
+              return (
+                <TableRow
+                  key={acc.id}
+                  className="border-0 group/row text-[11px] odd:bg-transparent odd:text-black dark:odd:text-white even:bg-[#bfdbfe] even:text-black dark:even:text-black hover:even:bg-[#93c5fd] hover:odd:bg-muted/50 transition-colors"
+                >
+                  <TableCell className="text-center py-2 px-2 border-0">
+                    <Checkbox
+                      className={cn(
+                        isEven &&
+                          'border-black/50 data-[state=checked]:bg-indigo-950 data-[state=checked]:border-indigo-950 data-[state=checked]:text-white',
+                      )}
+                      checked={selectedIds.includes(acc.id)}
+                      onCheckedChange={(checked) => {
+                        if (checked) setSelectedIds((prev) => [...prev, acc.id])
+                        else setSelectedIds((prev) => prev.filter((id) => id !== acc.id))
+                      }}
                     />
                   </TableCell>
-                ))}
-                <TableCell className="text-right p-2">
-                  <div className="flex justify-end gap-2 transition-opacity">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-8 text-muted-foreground hover:text-primary hover:bg-primary/10"
-                      onClick={() => setEditModalAccount(acc)}
+                  {(
+                    [
+                      'organization_id',
+                      'contaContabil',
+                      'descricao',
+                      'banco',
+                      'agencia',
+                      'numeroConta',
+                      'digitoConta',
+                      'tipoConta',
+                      'classificacao',
+                    ] as const
+                  ).map((field) => (
+                    <TableCell
+                      key={field}
+                      className={cn(
+                        'py-2 px-2 border-0',
+                        field === 'contaContabil' ? 'font-mono' : '',
+                      )}
                     >
-                      <Edit className="h-4 w-4 mr-1.5" /> Editar
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                      onClick={() => onDelete(acc.id)}
-                    >
-                      <Trash2 className="h-4 w-4 mr-1.5" /> Excluir
-                    </Button>
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))}
+                      <EditableCell
+                        value={acc[field]}
+                        field={field}
+                        organizations={organizations}
+                        isEditing={editing?.id === acc.id && editing?.field === field}
+                        onEditStart={() => setEditing({ id: acc.id, field })}
+                        onEditCommit={(val: string) =>
+                          val !== acc[field]
+                            ? handleEditCommit(acc.id, field, val)
+                            : setEditing(null)
+                        }
+                        onEditCancel={() => setEditing(null)}
+                      />
+                    </TableCell>
+                  ))}
+                  <TableCell className="text-right py-2 px-2 border-0">
+                    <div className="flex justify-end gap-2 transition-opacity">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className={cn(
+                          'h-8 transition-colors',
+                          isEven
+                            ? 'text-black/70 hover:text-indigo-950 hover:bg-black/10'
+                            : 'text-muted-foreground hover:text-primary hover:bg-primary/10',
+                        )}
+                        onClick={() => setEditModalAccount(acc)}
+                      >
+                        <Edit className="h-4 w-4 mr-1.5" /> Editar
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className={cn(
+                          'h-8 transition-colors',
+                          isEven
+                            ? 'text-black/70 hover:text-red-700 hover:bg-red-500/20'
+                            : 'text-muted-foreground hover:text-destructive hover:bg-destructive/10',
+                        )}
+                        onClick={() => onDelete(acc.id)}
+                      >
+                        <Trash2 className="h-4 w-4 mr-1.5" /> Excluir
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              )
+            })}
           </TableBody>
         </Table>
       </div>
