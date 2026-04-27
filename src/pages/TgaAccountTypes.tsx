@@ -310,7 +310,7 @@ export default function TgaAccountTypes() {
         <Table>
           <TableHeader className="bg-indigo-950">
             <TableRow className="bg-indigo-950 hover:bg-indigo-950 border-0">
-              <TableHead className="w-[40px] text-center py-2 px-2 text-white font-bold text-[15px]">
+              <TableHead className="w-[40px] text-center py-2 px-2 text-white bg-indigo-950 font-normal text-[15px] border-0">
                 <Checkbox
                   checked={selectedItems.length === sortedData.length && sortedData.length > 0}
                   onCheckedChange={(checked) => {
@@ -321,7 +321,7 @@ export default function TgaAccountTypes() {
                 />
               </TableHead>
               <TableHead
-                className="cursor-pointer select-none py-2 px-2 text-white font-bold text-[15px] hover:text-white"
+                className="cursor-pointer select-none py-2 px-2 text-white bg-indigo-950 font-normal text-[15px] border-0 hover:text-white"
                 onClick={() => toggleSort('codigo')}
               >
                 <div className="flex items-center text-white">
@@ -329,7 +329,7 @@ export default function TgaAccountTypes() {
                 </div>
               </TableHead>
               <TableHead
-                className="cursor-pointer select-none py-2 px-2 text-white font-bold text-[15px] hover:text-white"
+                className="cursor-pointer select-none py-2 px-2 text-white bg-indigo-950 font-bold text-[15px] border-0 hover:text-white"
                 onClick={() => toggleSort('nome')}
               >
                 <div className="flex items-center text-white">
@@ -337,7 +337,7 @@ export default function TgaAccountTypes() {
                 </div>
               </TableHead>
               <TableHead
-                className="cursor-pointer select-none py-2 px-2 text-white font-bold text-[15px] hover:text-white"
+                className="cursor-pointer select-none py-2 px-2 text-white bg-indigo-950 font-normal text-[15px] border-0 hover:text-white"
                 onClick={() => toggleSort('abreviacao')}
               >
                 <div className="flex items-center text-white">
@@ -345,14 +345,14 @@ export default function TgaAccountTypes() {
                 </div>
               </TableHead>
               <TableHead
-                className="cursor-pointer select-none py-2 px-2 text-white font-bold text-[15px] hover:text-white"
+                className="cursor-pointer select-none py-2 px-2 text-white bg-indigo-950 font-normal text-[15px] border-0 hover:text-white"
                 onClick={() => toggleSort('empresa')}
               >
                 <div className="flex items-center text-white">
                   Empresa <SortIcon field="empresa" />
                 </div>
               </TableHead>
-              <TableHead className="w-[100px] text-right py-2 px-2 text-white font-bold text-[15px] hover:text-white">
+              <TableHead className="w-[100px] text-right py-2 px-2 text-white bg-indigo-950 font-normal text-[15px] border-0 hover:text-white">
                 Ações
               </TableHead>
             </TableRow>
