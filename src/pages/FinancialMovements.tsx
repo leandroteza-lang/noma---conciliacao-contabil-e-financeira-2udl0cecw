@@ -3792,18 +3792,18 @@ export default function FinancialMovements() {
             </CardHeader>
             <CardContent className="p-0 flex-1 overflow-hidden bg-white relative">
               <Table
-                wrapperClassName="absolute inset-0 overflow-auto custom-scrollbar"
+                wrapperClassName="absolute inset-0 overflow-auto custom-scrollbar border-4 border-indigo-950 rounded-lg"
                 className="w-full text-xs min-w-max border-collapse"
               >
                 <TableHeader className="sticky top-0 z-30 shadow-sm border-none bg-indigo-950">
                   <TableRow
                     disableZebra
-                    className="bg-indigo-950 text-white font-bold hover:bg-indigo-900 border-none"
+                    className="bg-indigo-950 text-white font-bold hover:bg-indigo-900 border-none [&>th]:border-none [&>th]:text-white"
                   >
-                    <TableHead className="w-[150px] font-bold text-white text-center border border-black sticky left-0 top-0 bg-indigo-950 hover:bg-indigo-900 z-40 uppercase text-xs">
+                    <TableHead className="w-[150px] font-bold text-center sticky left-0 top-0 bg-indigo-950 hover:bg-indigo-900 z-40 uppercase text-[11px]">
                       Conta
                     </TableHead>
-                    <TableHead className="min-w-[250px] font-bold text-white text-center border border-black sticky left-[150px] top-0 bg-indigo-950 hover:bg-indigo-900 z-40 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] uppercase text-xs">
+                    <TableHead className="min-w-[250px] font-bold text-center sticky left-[150px] top-0 bg-indigo-950 hover:bg-indigo-900 z-40 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] uppercase text-[11px]">
                       Descrição
                     </TableHead>
                     {sortedActivePeriods.map((month) => {
@@ -3811,7 +3811,7 @@ export default function FinancialMovements() {
                       return (
                         <TableHead
                           key={month}
-                          className="text-center font-bold text-white border border-black min-w-[140px] px-4 bg-indigo-950 hover:bg-indigo-900 top-0 sticky z-30"
+                          className="text-center font-bold min-w-[140px] px-4 bg-indigo-950 hover:bg-indigo-900 top-0 sticky z-30"
                         >
                           <div className="flex flex-col items-center justify-center">
                             <span className="text-[12px] leading-tight">
@@ -3829,30 +3829,30 @@ export default function FinancialMovements() {
                     <TableRow disableZebra>
                       <TableCell
                         colSpan={sortedActivePeriods.length + 2}
-                        className="h-48 text-center text-black font-bold border border-black"
+                        className="h-48 text-center text-black font-bold border-0"
                       >
                         Nenhum dado encontrado para os filtros atuais.
                       </TableCell>
                     </TableRow>
                   ) : (
                     matrixData.rows.map((row, idx) => {
-                      const isEven = idx % 2 !== 0
-                      const rowBg = isEven
-                        ? 'bg-blue-800 text-white font-bold hover:bg-blue-700'
-                        : 'bg-white text-black font-bold hover:bg-slate-50'
-                      const stickyBg = isEven
-                        ? 'bg-blue-800 group-hover:bg-blue-700'
-                        : 'bg-white group-hover:bg-slate-50'
+                      const isEvenRow = idx % 2 === 1
+                      const rowBg = isEvenRow
+                        ? 'bg-[#bfdbfe] text-black hover:bg-[#93c5fd]'
+                        : 'bg-transparent text-black dark:text-white hover:bg-slate-50 dark:hover:bg-slate-800/50'
+                      const stickyBg = isEvenRow
+                        ? 'bg-[#bfdbfe] group-hover:bg-[#93c5fd]'
+                        : 'bg-white dark:bg-transparent group-hover:bg-slate-50 dark:group-hover:bg-slate-800/50'
 
                       return (
                         <TableRow
                           disableZebra
                           key={idx}
-                          className={cn('transition-colors group border-none', rowBg)}
+                          className={cn('transition-colors group border-0 text-[11px]', rowBg)}
                         >
                           <TableCell
                             className={cn(
-                              'border border-black sticky left-0 z-10 text-center',
+                              'border-0 sticky left-0 z-10 text-center px-2 py-0.5',
                               stickyBg,
                             )}
                           >
@@ -3860,7 +3860,7 @@ export default function FinancialMovements() {
                           </TableCell>
                           <TableCell
                             className={cn(
-                              'border border-black sticky left-[150px] z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)] truncate max-w-[300px]',
+                              'border-0 sticky left-[150px] z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)] truncate max-w-[300px] px-2 py-0.5',
                               stickyBg,
                             )}
                             title={row.name}
@@ -3885,7 +3885,7 @@ export default function FinancialMovements() {
                             return (
                               <TableCell
                                 key={month}
-                                className="text-left px-4 align-top py-2 border border-black"
+                                className="text-left px-4 align-top py-1 border-0"
                               >
                                 <div className="flex items-center justify-start gap-1.5 w-full">
                                   <span className="flex-1 whitespace-nowrap">
@@ -3903,10 +3903,10 @@ export default function FinancialMovements() {
                                     {avEnabled && (
                                       <span
                                         className={cn(
-                                          'px-1.5 py-0.5 rounded border border-black',
-                                          isEven
-                                            ? 'bg-blue-900/50 text-white'
-                                            : 'bg-slate-100 text-black',
+                                          'px-1.5 py-0.5 rounded border border-slate-300',
+                                          isEvenRow
+                                            ? 'bg-blue-800/20 text-blue-900 border-blue-300'
+                                            : 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-200',
                                         )}
                                         title="Análise Vertical"
                                       >
@@ -3916,10 +3916,10 @@ export default function FinancialMovements() {
                                     {ahEnabled && mIdx > 0 && (
                                       <span
                                         className={cn(
-                                          'px-1.5 py-0.5 rounded border border-black',
-                                          isEven
-                                            ? 'bg-blue-900/50 text-white'
-                                            : 'bg-slate-50 text-black',
+                                          'px-1.5 py-0.5 rounded border border-slate-300',
+                                          isEvenRow
+                                            ? 'bg-blue-800/20 text-blue-900 border-blue-300'
+                                            : 'bg-slate-50 text-slate-800 dark:bg-slate-800 dark:text-slate-200',
                                         )}
                                         title="Análise Horizontal"
                                       >
