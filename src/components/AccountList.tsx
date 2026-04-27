@@ -740,8 +740,8 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
                   <TableCell className="text-center py-2 px-2 border-0">
                     <Checkbox
                       className={cn(
-                        isEven &&
-                          'border-black/50 data-[state=checked]:bg-indigo-950 data-[state=checked]:border-indigo-950 data-[state=checked]:text-white',
+                        'data-[state=checked]:bg-indigo-950 data-[state=checked]:border-indigo-950 data-[state=checked]:text-white',
+                        isEven && 'border-black/50',
                       )}
                       checked={selectedIds.includes(acc.id)}
                       onCheckedChange={(checked) => {
