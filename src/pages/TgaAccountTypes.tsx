@@ -236,9 +236,12 @@ export default function TgaAccountTypes() {
   }
 
   const SortIcon = ({ field }: { field: SortField }) => {
-    if (sortField !== field)
-      return <ArrowUpDown className="ml-2 h-4 w-4 text-muted-foreground/30" />
-    return sortDesc ? <ArrowDown className="ml-2 h-4 w-4" /> : <ArrowUp className="ml-2 h-4 w-4" />
+    if (sortField !== field) return <ArrowUpDown className="ml-2 h-4 w-4 text-white/50" />
+    return sortDesc ? (
+      <ArrowDown className="ml-2 h-4 w-4 text-white" />
+    ) : (
+      <ArrowUp className="ml-2 h-4 w-4 text-white" />
+    )
   }
 
   return (
@@ -306,7 +309,7 @@ export default function TgaAccountTypes() {
       <div className="border-2 border-indigo-950 rounded-md bg-card/20 overflow-hidden">
         <Table>
           <TableHeader className="bg-indigo-950">
-            <TableRow className="border-0 hover:bg-transparent">
+            <TableRow className="bg-indigo-950 hover:bg-indigo-950 border-0">
               <TableHead className="w-[40px] text-center py-2 px-2 text-white font-bold text-[15px]">
                 <Checkbox
                   checked={selectedItems.length === sortedData.length && sortedData.length > 0}
@@ -318,38 +321,38 @@ export default function TgaAccountTypes() {
                 />
               </TableHead>
               <TableHead
-                className="cursor-pointer select-none py-2 px-2 text-white font-bold text-[15px]"
+                className="cursor-pointer select-none py-2 px-2 text-white font-bold text-[15px] hover:text-white"
                 onClick={() => toggleSort('codigo')}
               >
-                <div className="flex items-center">
+                <div className="flex items-center text-white">
                   Código <SortIcon field="codigo" />
                 </div>
               </TableHead>
               <TableHead
-                className="cursor-pointer select-none py-2 px-2 text-white font-bold text-[15px]"
+                className="cursor-pointer select-none py-2 px-2 text-white font-bold text-[15px] hover:text-white"
                 onClick={() => toggleSort('nome')}
               >
-                <div className="flex items-center">
+                <div className="flex items-center text-white">
                   Nome <SortIcon field="nome" />
                 </div>
               </TableHead>
               <TableHead
-                className="cursor-pointer select-none py-2 px-2 text-white font-bold text-[15px]"
+                className="cursor-pointer select-none py-2 px-2 text-white font-bold text-[15px] hover:text-white"
                 onClick={() => toggleSort('abreviacao')}
               >
-                <div className="flex items-center">
+                <div className="flex items-center text-white">
                   Abreviação <SortIcon field="abreviacao" />
                 </div>
               </TableHead>
               <TableHead
-                className="cursor-pointer select-none py-2 px-2 text-white font-bold text-[15px]"
+                className="cursor-pointer select-none py-2 px-2 text-white font-bold text-[15px] hover:text-white"
                 onClick={() => toggleSort('empresa')}
               >
-                <div className="flex items-center">
+                <div className="flex items-center text-white">
                   Empresa <SortIcon field="empresa" />
                 </div>
               </TableHead>
-              <TableHead className="w-[100px] text-right py-2 px-2 text-white font-bold text-[15px]">
+              <TableHead className="w-[100px] text-right py-2 px-2 text-white font-bold text-[15px] hover:text-white">
                 Ações
               </TableHead>
             </TableRow>
@@ -374,7 +377,7 @@ export default function TgaAccountTypes() {
                   className={cn(
                     'border-0 group/row transition-colors',
                     selectedItems.includes(item.id)
-                      ? 'bg-[#bfdbfe] hover:bg-[#93c5fd] selected'
+                      ? 'bg-indigo-950 hover:bg-indigo-950 selected'
                       : 'even:bg-[#bfdbfe] hover:even:bg-[#93c5fd]',
                   )}
                 >
@@ -385,19 +388,24 @@ export default function TgaAccountTypes() {
                         if (checked) setSelectedItems([...selectedItems, item.id])
                         else setSelectedItems(selectedItems.filter((id) => id !== item.id))
                       }}
-                      className="border-indigo-950 data-[state=checked]:bg-indigo-950 data-[state=checked]:text-white"
+                      className={cn(
+                        'border-indigo-950',
+                        selectedItems.includes(item.id)
+                          ? 'border-white data-[state=checked]:bg-white data-[state=checked]:text-indigo-950'
+                          : 'data-[state=checked]:bg-indigo-950 data-[state=checked]:text-white',
+                      )}
                     />
                   </TableCell>
-                  <TableCell className="text-[11px] py-0.5 px-2 text-black dark:text-white group-even/row:text-black group-[.selected]:text-black dark:group-even/row:text-black dark:group-[.selected]:text-black">
+                  <TableCell className="text-[11px] py-0.5 px-2 text-black dark:text-white group-even/row:text-black group-[.selected]:text-white dark:group-even/row:text-black dark:group-[.selected]:text-white">
                     {item.codigo}
                   </TableCell>
-                  <TableCell className="text-[11px] py-0.5 px-2 text-black dark:text-white group-even/row:text-black group-[.selected]:text-black dark:group-even/row:text-black dark:group-[.selected]:text-black">
+                  <TableCell className="text-[11px] py-0.5 px-2 text-black dark:text-white group-even/row:text-black group-[.selected]:text-white dark:group-even/row:text-black dark:group-[.selected]:text-white">
                     {item.nome}
                   </TableCell>
-                  <TableCell className="text-[11px] py-0.5 px-2 text-black dark:text-white group-even/row:text-black group-[.selected]:text-black dark:group-even/row:text-black dark:group-[.selected]:text-black">
+                  <TableCell className="text-[11px] py-0.5 px-2 text-black dark:text-white group-even/row:text-black group-[.selected]:text-white dark:group-even/row:text-black dark:group-[.selected]:text-white">
                     {item.abreviacao || '-'}
                   </TableCell>
-                  <TableCell className="text-[11px] py-0.5 px-2 text-black dark:text-white group-even/row:text-black group-[.selected]:text-black dark:group-even/row:text-black dark:group-[.selected]:text-black">
+                  <TableCell className="text-[11px] py-0.5 px-2 text-black dark:text-white group-even/row:text-black group-[.selected]:text-white dark:group-even/row:text-black dark:group-[.selected]:text-white">
                     {item.organizations?.name || 'Geral'}
                   </TableCell>
                   <TableCell className="text-right py-0.5 px-2">
@@ -405,7 +413,12 @@ export default function TgaAccountTypes() {
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-6 w-6 text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/20 group-even/row:hover:bg-white/40 group-[.selected]:hover:bg-white/40"
+                        className={cn(
+                          'h-6 w-6',
+                          selectedItems.includes(item.id)
+                            ? 'text-white hover:text-white hover:bg-white/20'
+                            : 'text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/20 group-even/row:hover:bg-white/40',
+                        )}
                         title="Editar"
                         onClick={() => {
                           setItemToEdit(item)
@@ -417,7 +430,12 @@ export default function TgaAccountTypes() {
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-6 w-6 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 group-even/row:hover:bg-white/40 group-[.selected]:hover:bg-white/40"
+                        className={cn(
+                          'h-6 w-6',
+                          selectedItems.includes(item.id)
+                            ? 'text-white hover:text-red-300 hover:bg-white/20'
+                            : 'text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 group-even/row:hover:bg-white/40',
+                        )}
                         onClick={() => handleDelete(item.id)}
                         title="Excluir"
                       >
