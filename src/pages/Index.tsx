@@ -445,24 +445,78 @@ export default function Index() {
       </div>
 
       <style>{`
+        .bank-accounts-table-wrapper table {
+          border-collapse: collapse !important;
+        }
+        .bank-accounts-table-wrapper thead,
+        .bank-accounts-table-wrapper thead tr {
+          background-color: #1e1b4b !important;
+          border: none !important;
+        }
         .bank-accounts-table-wrapper th {
-          color: #000 !important;
-          font-weight: bold !important;
+          color: #ffffff !important;
           font-size: 15px !important;
+          font-weight: normal !important;
+          padding: 8px !important;
+          border: none !important;
+          background-color: #1e1b4b !important;
         }
-        .dark .bank-accounts-table-wrapper th {
-          color: #fff !important;
+        /* Coluna Descrição */
+        .bank-accounts-table-wrapper th:nth-child(4) {
+          font-weight: bold !important;
         }
-        .bank-accounts-table-wrapper td {
+        .bank-accounts-table-wrapper th svg {
+          color: #ffffff !important;
+          opacity: 0.7 !important;
+        }
+        
+        .bank-accounts-table-wrapper tbody tr {
+          border: none !important;
+        }
+        .bank-accounts-table-wrapper tbody td {
+          font-size: 11px !important;
+          padding: 8px !important;
+          border: none !important;
+        }
+        
+        /* Linhas Ímpares */
+        .bank-accounts-table-wrapper tbody tr:nth-child(odd) {
+          background-color: transparent !important;
+        }
+        .bank-accounts-table-wrapper tbody tr:nth-child(odd) td {
+          color: #000000 !important;
+        }
+        .dark .bank-accounts-table-wrapper tbody tr:nth-child(odd) td {
+          color: #ffffff !important;
+        }
+        .bank-accounts-table-wrapper tbody tr:nth-child(odd):hover {
+          background-color: transparent !important;
+        }
+        
+        /* Linhas Pares */
+        .bank-accounts-table-wrapper tbody tr:nth-child(even) {
+          background-color: #bfdbfe !important;
+        }
+        .bank-accounts-table-wrapper tbody tr:nth-child(even) td {
+          color: #000000 !important;
+        }
+        .dark .bank-accounts-table-wrapper tbody tr:nth-child(even) td {
+          color: #000000 !important;
+        }
+        .bank-accounts-table-wrapper tbody tr:nth-child(even):hover {
+          background-color: #93c5fd !important;
+        }
+        
+        .bank-accounts-table-wrapper tbody td input,
+        .bank-accounts-table-wrapper tbody td select,
+        .bank-accounts-table-wrapper tbody td .badge,
+        .bank-accounts-table-wrapper tbody td button,
+        .bank-accounts-table-wrapper tbody td [class*="bg-"] {
           font-size: 11px !important;
         }
-        .bank-accounts-table-wrapper td input,
-        .bank-accounts-table-wrapper td select {
-          font-size: 11px !important;
-        }
-        .bank-accounts-table-wrapper td .badge,
-        .bank-accounts-table-wrapper td [class*="bg-"] {
-          font-size: 11px !important;
+        .bank-accounts-table-wrapper tbody tr:nth-child(even) td button,
+        .bank-accounts-table-wrapper tbody tr:nth-child(even) td svg {
+          color: #000000 !important;
         }
       `}</style>
 
