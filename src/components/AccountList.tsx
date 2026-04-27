@@ -636,7 +636,7 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
         </div>
       </div>
 
-      <div className="hidden lg:block rounded-xl border border-border bg-card shadow-sm overflow-hidden">
+      <div className="hidden lg:block rounded-xl border-2 border-indigo-950 bg-card shadow-sm overflow-hidden">
         <Table className="border-collapse">
           <TableHeader className="bg-indigo-950">
             <TableRow className="border-0 hover:bg-transparent">
@@ -768,6 +768,10 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
                       className={cn(
                         'py-2 px-2 border-0',
                         field === 'contaContabil' ? 'font-mono' : '',
+                        field === 'organization_id' || field === 'descricao'
+                          ? 'font-bold'
+                          : 'font-normal',
+                        field === 'tipoConta' ? '!text-black dark:!text-black' : '',
                       )}
                     >
                       <EditableCell
@@ -843,8 +847,12 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
                       key={field}
                       className={cn(
                         'flex items-center gap-2 text-[11px]',
-                        field === 'descricao' && 'font-bold text-[13px]',
+                        field === 'organization_id' || field === 'descricao'
+                          ? 'font-bold'
+                          : 'font-normal',
+                        field === 'descricao' && 'text-[13px]',
                         field === 'contaContabil' && 'font-mono text-muted-foreground',
+                        field === 'tipoConta' ? '!text-black dark:!text-black' : '',
                       )}
                     >
                       {(field === 'tipoConta' || field === 'classificacao') && (

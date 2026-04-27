@@ -477,6 +477,13 @@ export default function Index() {
           font-size: 11px !important;
           padding: 8px !important;
           border: none !important;
+          font-weight: normal !important;
+        }
+        
+        /* Colunas Empresa e Descrição em negrito */
+        .bank-accounts-table-wrapper tbody td:nth-child(2),
+        .bank-accounts-table-wrapper tbody td:nth-child(4) {
+          font-weight: bold !important;
         }
         
         /* Linhas Ímpares */
@@ -505,6 +512,12 @@ export default function Index() {
         }
         .bank-accounts-table-wrapper tbody tr:nth-child(even):hover {
           background-color: #93c5fd !important;
+        }
+        
+        /* Força coluna Tipo a ficar com texto preto em ambos os temas e linhas */
+        .bank-accounts-table-wrapper tbody tr td:nth-child(8),
+        .bank-accounts-table-wrapper tbody tr td:nth-child(9) {
+          color: #000000 !important;
         }
         
         .bank-accounts-table-wrapper tbody td input,
@@ -573,7 +586,7 @@ export default function Index() {
         </div>
       </div>
 
-      <div className="bank-accounts-table-wrapper border-4 border-[#800000] rounded-lg overflow-hidden">
+      <div className="bank-accounts-table-wrapper border-2 border-indigo-950 rounded-lg overflow-hidden">
         <BankAccountsTable
           accounts={paginatedAccounts}
           chartAccounts={chartAccounts}
