@@ -469,7 +469,7 @@ export function BankAccountsTable({
                       </TableCell>
                       <TableCell className="p-1 px-2">
                         <span
-                          className={`${isEven ? 'bg-white/20 text-white' : 'bg-primary/10 text-primary'} text-[11px] px-2 py-0.5 rounded-full font-bold whitespace-nowrap`}
+                          className={`${isEven ? 'bg-white/50 text-black' : 'bg-primary/10 text-primary'} text-[11px] px-2 py-0.5 rounded-full font-bold whitespace-nowrap`}
                         >
                           {acc.account_type || '-'}
                         </span>
@@ -477,7 +477,7 @@ export function BankAccountsTable({
                       <TableCell className="p-1 px-2">
                         {acc.classification ? (
                           <span
-                            className={`${isEven ? 'bg-white/20 text-white' : 'bg-secondary text-secondary-foreground'} text-[11px] px-2 py-0.5 rounded-full font-bold whitespace-nowrap`}
+                            className={`${isEven ? 'bg-white/50 text-black' : 'bg-secondary text-secondary-foreground'} text-[11px] px-2 py-0.5 rounded-full font-bold whitespace-nowrap`}
                           >
                             {acc.classification}
                           </span>
