@@ -531,6 +531,39 @@ export default function Index() {
         .bank-accounts-table-wrapper tbody tr:nth-child(even) td svg {
           color: #000000 !important;
         }
+
+        /* Customização dos checkboxes (flegs) */
+        .bank-accounts-table-wrapper [role="checkbox"] {
+          width: 22px !important;
+          height: 22px !important;
+          border-radius: 6px !important;
+          border: 1px solid #94a3b8 !important;
+          background-color: #ffffff !important;
+          display: flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+          box-shadow: none !important;
+        }
+        .bank-accounts-table-wrapper th [role="checkbox"] {
+          border-color: #ffffff !important;
+          background-color: transparent !important;
+        }
+        .bank-accounts-table-wrapper [role="checkbox"][data-state="checked"] {
+          background-color: #dc2626 !important;
+          border-color: #dc2626 !important;
+          color: #ffffff !important;
+        }
+        .bank-accounts-table-wrapper th [role="checkbox"][data-state="checked"] {
+          background-color: #dc2626 !important;
+          border-color: #dc2626 !important;
+        }
+        .bank-accounts-table-wrapper [role="checkbox"] svg,
+        .bank-accounts-table-wrapper tbody tr:nth-child(even) td [role="checkbox"] svg {
+          width: 14px !important;
+          height: 14px !important;
+          color: #ffffff !important;
+          opacity: 1 !important;
+        }
       `}</style>
 
       <div className="bg-card border rounded-xl p-5 space-y-4 shadow-sm">
