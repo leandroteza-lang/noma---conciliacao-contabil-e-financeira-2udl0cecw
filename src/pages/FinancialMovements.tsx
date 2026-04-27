@@ -2909,30 +2909,26 @@ export default function FinancialMovements() {
                         if (row.valor_liquido === null || row.valor_liquido === undefined)
                           missingFields.push('Valor Líquido')
 
-                        const isBlueRow = index % 2 === 1
+                        const isEvenRow = index % 2 === 1
 
                         return (
                           <TableRow
                             disableZebra
                             key={row.id}
                             className={cn(
-                              'transition-colors',
-                              isBlueRow
-                                ? 'bg-blue-800 text-white font-semibold hover:bg-blue-700 border-b border-black'
-                                : 'bg-white text-black font-bold hover:bg-slate-50 border-b border-black',
+                              'transition-colors border-0 text-[11px]',
+                              isEvenRow
+                                ? 'bg-[#bfdbfe] text-black hover:bg-[#93c5fd]'
+                                : 'bg-transparent text-black dark:text-white hover:bg-slate-50 dark:hover:bg-slate-800/50',
                             )}
                           >
-                            <TableCell className="px-2 py-0.5 border-r border-black text-center align-middle">
+                            <TableCell className="px-2 py-0.5 text-center align-middle border-0">
                               <div className="flex items-center justify-center">
                                 <Checkbox
                                   checked={selectedIds.includes(row.id)}
                                   onCheckedChange={() => toggleRow(row.id)}
                                   aria-label="Selecionar registro"
-                                  className={
-                                    isBlueRow
-                                      ? 'border-white data-[state=checked]:bg-white data-[state=checked]:text-blue-800'
-                                      : ''
-                                  }
+                                  className="data-[state=checked]:bg-indigo-950 data-[state=checked]:text-white border-slate-400"
                                 />
                               </div>
                             </TableCell>
@@ -2962,7 +2958,7 @@ export default function FinancialMovements() {
                                     return (
                                       <TableCell
                                         key={key}
-                                        className="px-2 py-0.5 text-xs text-center border-r border-black"
+                                        className="px-2 py-0.5 text-center border-0"
                                       >
                                         <Button
                                           variant="ghost"
@@ -2981,10 +2977,7 @@ export default function FinancialMovements() {
                                     return (
                                       <TableCell
                                         key={key}
-                                        className={cn(
-                                          'px-2 py-0.5 text-xs whitespace-nowrap max-w-[150px] truncate border-r border-black',
-                                          isBlueRow ? 'text-white' : 'text-black font-bold',
-                                        )}
+                                        className="px-2 py-0.5 whitespace-nowrap max-w-[150px] truncate border-0"
                                         title={row.organizations?.name}
                                       >
                                         {row.organizations?.name || '-'}
@@ -2994,10 +2987,7 @@ export default function FinancialMovements() {
                                     return (
                                       <TableCell
                                         key={key}
-                                        className={cn(
-                                          'px-2 py-0.5 text-xs whitespace-nowrap text-center border-r border-black',
-                                          isBlueRow ? 'text-white' : 'text-black font-bold',
-                                        )}
+                                        className="px-2 py-0.5 whitespace-nowrap text-center border-0"
                                       >
                                         {row.compensado || '-'}
                                       </TableCell>
@@ -3006,10 +2996,7 @@ export default function FinancialMovements() {
                                     return (
                                       <TableCell
                                         key={key}
-                                        className={cn(
-                                          'px-2 py-0.5 text-xs whitespace-nowrap text-center border-r border-black',
-                                          isBlueRow ? 'text-white' : 'text-black font-bold',
-                                        )}
+                                        className="px-2 py-0.5 whitespace-nowrap text-center border-0"
                                       >
                                         {row.tipo_operacao || '-'}
                                       </TableCell>
@@ -3018,15 +3005,12 @@ export default function FinancialMovements() {
                                     return (
                                       <TableCell
                                         key={key}
-                                        className={cn(
-                                          'px-2 py-0.5 text-xs whitespace-nowrap text-center border-r border-black',
-                                          isBlueRow ? 'text-white' : 'text-black font-bold',
-                                        )}
+                                        className="px-2 py-0.5 whitespace-nowrap text-center border-0"
                                       >
                                         {editingId === row.id ? (
                                           <Input
                                             type="date"
-                                            className="h-6 text-xs px-1.5 w-32 !text-slate-900"
+                                            className="h-6 text-[11px] px-1.5 w-32 !text-slate-900"
                                             value={editForm.data_emissao || ''}
                                             onChange={(e) =>
                                               setEditForm({
@@ -3036,15 +3020,7 @@ export default function FinancialMovements() {
                                             }
                                           />
                                         ) : (
-                                          <span
-                                            className={
-                                              !row.data_emissao
-                                                ? isBlueRow
-                                                  ? 'text-white font-bold'
-                                                  : 'text-black font-bold'
-                                                : ''
-                                            }
-                                          >
+                                          <span>
                                             {row.data_emissao
                                               ? formatDate(row.data_emissao)
                                               : 'Indisponível'}
@@ -3056,10 +3032,7 @@ export default function FinancialMovements() {
                                     return (
                                       <TableCell
                                         key={key}
-                                        className={cn(
-                                          'px-2 py-0.5 text-xs whitespace-nowrap text-center border-r border-black',
-                                          isBlueRow ? 'text-white' : 'text-black font-bold',
-                                        )}
+                                        className="px-2 py-0.5 whitespace-nowrap text-center border-0"
                                       >
                                         {formatDate(row.dt_compens)}
                                       </TableCell>
@@ -3068,15 +3041,12 @@ export default function FinancialMovements() {
                                     return (
                                       <TableCell
                                         key={key}
-                                        className={cn(
-                                          'px-2 py-0.5 text-xs text-center max-w-[150px] truncate border-r border-black',
-                                          isBlueRow ? 'text-white' : 'text-black font-bold',
-                                        )}
+                                        className="px-2 py-0.5 text-center max-w-[150px] truncate border-0"
                                         title={row.conta_caixa || ''}
                                       >
                                         {editingId === row.id ? (
                                           <Input
-                                            className="h-6 text-xs px-1.5 w-28 !text-slate-900"
+                                            className="h-6 text-[11px] px-1.5 w-28 !text-slate-900"
                                             value={editForm.conta_caixa || ''}
                                             onChange={(e) =>
                                               setEditForm({
@@ -3094,10 +3064,7 @@ export default function FinancialMovements() {
                                     return (
                                       <TableCell
                                         key={key}
-                                        className={cn(
-                                          'px-2 py-0.5 text-xs whitespace-nowrap max-w-[150px] truncate border-r border-black',
-                                          isBlueRow ? 'text-white' : 'text-black font-bold',
-                                        )}
+                                        className="px-2 py-0.5 whitespace-nowrap max-w-[150px] truncate border-0"
                                         title={row.nome_caixa}
                                       >
                                         {row.nome_caixa || '-'}
@@ -3107,10 +3074,7 @@ export default function FinancialMovements() {
                                     return (
                                       <TableCell
                                         key={key}
-                                        className={cn(
-                                          'px-2 py-0.5 text-xs whitespace-nowrap text-center border-r border-black',
-                                          isBlueRow ? 'text-white' : 'text-black font-bold',
-                                        )}
+                                        className="px-2 py-0.5 whitespace-nowrap text-center border-0"
                                       >
                                         {row.conta_caixa_destino || '-'}
                                       </TableCell>
@@ -3119,14 +3083,11 @@ export default function FinancialMovements() {
                                     return (
                                       <TableCell
                                         key={key}
-                                        className={cn(
-                                          'px-2 py-0.5 text-xs whitespace-nowrap border-r border-black',
-                                          isBlueRow ? 'text-white' : 'text-black font-bold',
-                                        )}
+                                        className="px-2 py-0.5 whitespace-nowrap border-0"
                                       >
                                         {editingId === row.id ? (
                                           <Input
-                                            className="h-6 text-xs px-1.5 w-24 !text-slate-900"
+                                            className="h-6 text-[11px] px-1.5 w-24 !text-slate-900"
                                             value={editForm.forma_pagto || ''}
                                             onChange={(e) =>
                                               setEditForm({
@@ -3144,31 +3105,18 @@ export default function FinancialMovements() {
                                     return (
                                       <TableCell
                                         key={key}
-                                        className={cn(
-                                          'px-2 py-0.5 text-xs whitespace-nowrap border-r border-black',
-                                          isBlueRow ? 'text-white' : 'text-black font-bold',
-                                        )}
+                                        className="px-2 py-0.5 whitespace-nowrap border-0"
                                       >
                                         {editingId === row.id ? (
                                           <Input
-                                            className="h-6 text-xs px-1.5 w-24 !text-slate-900"
+                                            className="h-6 text-[11px] px-1.5 w-24 !text-slate-900"
                                             value={editForm.c_custo || ''}
                                             onChange={(e) =>
                                               setEditForm({ ...editForm, c_custo: e.target.value })
                                             }
                                           />
                                         ) : (
-                                          <span
-                                            className={
-                                              !row.c_custo
-                                                ? isBlueRow
-                                                  ? 'text-white font-bold'
-                                                  : 'text-black font-bold'
-                                                : ''
-                                            }
-                                          >
-                                            {row.c_custo || 'Sem C. Custo'}
-                                          </span>
+                                          <span>{row.c_custo || 'Sem C. Custo'}</span>
                                         )}
                                       </TableCell>
                                     )
@@ -3176,10 +3124,7 @@ export default function FinancialMovements() {
                                     return (
                                       <TableCell
                                         key={key}
-                                        className={cn(
-                                          'px-2 py-0.5 text-xs whitespace-nowrap max-w-[150px] truncate border-r border-black',
-                                          isBlueRow ? 'text-white' : 'text-black font-bold',
-                                        )}
+                                        className="px-2 py-0.5 whitespace-nowrap max-w-[150px] truncate border-0"
                                         title={row.descricao_c_custo}
                                       >
                                         {row.descricao_c_custo || '-'}
@@ -3189,28 +3134,17 @@ export default function FinancialMovements() {
                                     return (
                                       <TableCell
                                         key={key}
-                                        className="px-2 py-0.5 text-xs whitespace-nowrap text-center border-r border-black"
+                                        className="px-2 py-0.5 whitespace-nowrap text-center border-0"
                                       >
                                         {row.valor !== null ? (
-                                          <span
-                                            className={cn(
-                                              'font-medium',
-                                              isBlueRow ? 'text-white' : 'text-black font-bold',
-                                            )}
-                                          >
+                                          <span>
                                             {new Intl.NumberFormat('pt-BR', {
                                               style: 'currency',
                                               currency: 'BRL',
                                             }).format(row.valor)}
                                           </span>
                                         ) : (
-                                          <span
-                                            className={
-                                              isBlueRow ? 'text-white' : 'text-black font-bold'
-                                            }
-                                          >
-                                            -
-                                          </span>
+                                          <span>-</span>
                                         )}
                                       </TableCell>
                                     )
@@ -3218,13 +3152,13 @@ export default function FinancialMovements() {
                                     return (
                                       <TableCell
                                         key={key}
-                                        className="px-2 py-0.5 text-xs whitespace-nowrap text-center border-r border-black"
+                                        className="px-2 py-0.5 whitespace-nowrap text-center border-0"
                                       >
                                         {editingId === row.id ? (
                                           <Input
                                             type="number"
                                             step="0.01"
-                                            className="h-6 text-xs px-1.5 w-28 text-center mx-auto !text-slate-900"
+                                            className="h-6 text-[11px] px-1.5 w-28 text-center mx-auto !text-slate-900"
                                             value={editForm.valor_liquido || ''}
                                             onChange={(e) =>
                                               setEditForm({
@@ -3234,16 +3168,7 @@ export default function FinancialMovements() {
                                             }
                                           />
                                         ) : (
-                                          <span
-                                            className={cn(
-                                              'font-semibold',
-                                              isBlueRow
-                                                ? row.valor_liquido === null
-                                                  ? 'text-white font-bold'
-                                                  : 'text-white'
-                                                : 'text-black font-bold',
-                                            )}
-                                          >
+                                          <span>
                                             {row.valor_liquido !== null
                                               ? new Intl.NumberFormat('pt-BR', {
                                                   style: 'currency',
@@ -3258,14 +3183,11 @@ export default function FinancialMovements() {
                                     return (
                                       <TableCell
                                         key={key}
-                                        className={cn(
-                                          'px-2 py-0.5 text-xs whitespace-nowrap border-r border-black',
-                                          isBlueRow ? 'text-white' : 'text-black font-bold',
-                                        )}
+                                        className="px-2 py-0.5 whitespace-nowrap border-0"
                                       >
                                         {editingId === row.id ? (
                                           <Input
-                                            className="h-6 text-xs px-1.5 w-28 !text-slate-900"
+                                            className="h-6 text-[11px] px-1.5 w-28 !text-slate-900"
                                             value={editForm.n_documento || ''}
                                             onChange={(e) =>
                                               setEditForm({
@@ -3283,15 +3205,12 @@ export default function FinancialMovements() {
                                     return (
                                       <TableCell
                                         key={key}
-                                        className={cn(
-                                          'px-2 py-0.5 text-xs max-w-[200px] truncate border-r border-black',
-                                          isBlueRow ? 'text-white' : 'text-black font-bold',
-                                        )}
+                                        className="px-2 py-0.5 max-w-[200px] truncate border-0"
                                         title={row.nome_cli_fornec}
                                       >
                                         {editingId === row.id ? (
                                           <Input
-                                            className="h-6 text-xs px-1.5 !text-slate-900"
+                                            className="h-6 text-[11px] px-1.5 !text-slate-900"
                                             value={editForm.nome_cli_fornec || ''}
                                             onChange={(e) =>
                                               setEditForm({
@@ -3309,15 +3228,12 @@ export default function FinancialMovements() {
                                     return (
                                       <TableCell
                                         key={key}
-                                        className={cn(
-                                          'px-2 py-0.5 text-xs max-w-[250px] truncate border-r border-black',
-                                          isBlueRow ? 'text-white' : 'text-black font-bold',
-                                        )}
+                                        className="px-2 py-0.5 max-w-[250px] truncate border-0"
                                         title={row.historico}
                                       >
                                         {editingId === row.id ? (
                                           <Input
-                                            className="h-6 text-xs px-1.5 !text-slate-900"
+                                            className="h-6 text-[11px] px-1.5 !text-slate-900"
                                             value={editForm.historico || ''}
                                             onChange={(e) =>
                                               setEditForm({
@@ -3335,10 +3251,7 @@ export default function FinancialMovements() {
                                     return (
                                       <TableCell
                                         key={key}
-                                        className={cn(
-                                          'px-2 py-0.5 text-xs whitespace-nowrap text-center border-r border-black',
-                                          isBlueRow ? 'text-white' : 'text-black font-bold',
-                                        )}
+                                        className="px-2 py-0.5 whitespace-nowrap text-center border-0"
                                       >
                                         {row.fp || '-'}
                                       </TableCell>
@@ -3347,10 +3260,7 @@ export default function FinancialMovements() {
                                     return (
                                       <TableCell
                                         key={key}
-                                        className={cn(
-                                          'px-2 py-0.5 text-xs whitespace-nowrap border-r border-black',
-                                          isBlueRow ? 'text-white' : 'text-black font-bold',
-                                        )}
+                                        className="px-2 py-0.5 whitespace-nowrap border-0"
                                       >
                                         {row.n_cheque || '-'}
                                       </TableCell>
@@ -3359,15 +3269,12 @@ export default function FinancialMovements() {
                                     return (
                                       <TableCell
                                         key={key}
-                                        className={cn(
-                                          'px-2 py-0.5 text-xs whitespace-nowrap text-center border-r border-black',
-                                          isBlueRow ? 'text-white' : 'text-black font-bold',
-                                        )}
+                                        className="px-2 py-0.5 whitespace-nowrap text-center border-0"
                                       >
                                         {editingId === row.id ? (
                                           <Input
                                             type="date"
-                                            className="h-6 text-xs px-1.5 w-32 !text-slate-900"
+                                            className="h-6 text-[11px] px-1.5 w-32 !text-slate-900"
                                             value={editForm.data_vencto || ''}
                                             onChange={(e) =>
                                               setEditForm({
@@ -3387,10 +3294,7 @@ export default function FinancialMovements() {
                                     return (
                                       <TableCell
                                         key={key}
-                                        className={cn(
-                                          'px-2 py-0.5 text-xs whitespace-nowrap border-r border-black',
-                                          isBlueRow ? 'text-white' : 'text-black font-bold',
-                                        )}
+                                        className="px-2 py-0.5 whitespace-nowrap border-0"
                                       >
                                         {row.nominal_a || '-'}
                                       </TableCell>
@@ -3399,10 +3303,7 @@ export default function FinancialMovements() {
                                     return (
                                       <TableCell
                                         key={key}
-                                        className={cn(
-                                          'px-2 py-0.5 text-xs max-w-[150px] truncate border-r border-black',
-                                          isBlueRow ? 'text-white' : 'text-black font-bold',
-                                        )}
+                                        className="px-2 py-0.5 max-w-[150px] truncate border-0"
                                         title={row.emitente_cheque}
                                       >
                                         {row.emitente_cheque || '-'}
@@ -3412,10 +3313,7 @@ export default function FinancialMovements() {
                                     return (
                                       <TableCell
                                         key={key}
-                                        className={cn(
-                                          'px-2 py-0.5 text-xs whitespace-nowrap border-r border-black',
-                                          isBlueRow ? 'text-white' : 'text-black font-bold',
-                                        )}
+                                        className="px-2 py-0.5 whitespace-nowrap border-0"
                                       >
                                         {row.cnpj_cpf || '-'}
                                       </TableCell>
@@ -3424,10 +3322,7 @@ export default function FinancialMovements() {
                                     return (
                                       <TableCell
                                         key={key}
-                                        className={cn(
-                                          'px-2 py-0.5 text-xs whitespace-nowrap text-center border-r border-black',
-                                          isBlueRow ? 'text-white' : 'text-black font-bold',
-                                        )}
+                                        className="px-2 py-0.5 whitespace-nowrap text-center border-0"
                                       >
                                         {row.n_extrato || '-'}
                                       </TableCell>
@@ -3436,10 +3331,7 @@ export default function FinancialMovements() {
                                     return (
                                       <TableCell
                                         key={key}
-                                        className={cn(
-                                          'px-2 py-0.5 text-xs whitespace-nowrap text-center border-r border-black',
-                                          isBlueRow ? 'text-white' : 'text-black font-bold',
-                                        )}
+                                        className="px-2 py-0.5 whitespace-nowrap text-center border-0"
                                       >
                                         {row.filial || '-'}
                                       </TableCell>
@@ -3448,10 +3340,7 @@ export default function FinancialMovements() {
                                     return (
                                       <TableCell
                                         key={key}
-                                        className={cn(
-                                          'px-2 py-0.5 text-xs whitespace-nowrap text-center border-r border-black',
-                                          isBlueRow ? 'text-white' : 'text-black font-bold',
-                                        )}
+                                        className="px-2 py-0.5 whitespace-nowrap text-center border-0"
                                       >
                                         {formatDate(row.data_canc)}
                                       </TableCell>
@@ -3460,10 +3349,7 @@ export default function FinancialMovements() {
                                     return (
                                       <TableCell
                                         key={key}
-                                        className={cn(
-                                          'px-2 py-0.5 text-xs whitespace-nowrap text-center border-r border-black',
-                                          isBlueRow ? 'text-white' : 'text-black font-bold',
-                                        )}
+                                        className="px-2 py-0.5 whitespace-nowrap text-center border-0"
                                       >
                                         {formatDate(row.data_estorno)}
                                       </TableCell>
@@ -3472,14 +3358,11 @@ export default function FinancialMovements() {
                                     return (
                                       <TableCell
                                         key={key}
-                                        className={cn(
-                                          'px-2 py-0.5 text-xs whitespace-nowrap text-center border-r border-black',
-                                          isBlueRow ? 'text-white' : 'text-black font-bold',
-                                        )}
+                                        className="px-2 py-0.5 whitespace-nowrap text-center border-0"
                                       >
                                         {editingId === row.id ? (
                                           <Input
-                                            className="h-6 text-xs px-1.5 w-24 !text-slate-900"
+                                            className="h-6 text-[11px] px-1.5 w-24 !text-slate-900"
                                             value={editForm.banco || ''}
                                             onChange={(e) =>
                                               setEditForm({ ...editForm, banco: e.target.value })
@@ -3494,10 +3377,7 @@ export default function FinancialMovements() {
                                     return (
                                       <TableCell
                                         key={key}
-                                        className={cn(
-                                          'px-2 py-0.5 text-xs whitespace-nowrap border-r border-black',
-                                          isBlueRow ? 'text-white' : 'text-black font-bold',
-                                        )}
+                                        className="px-2 py-0.5 whitespace-nowrap border-0"
                                       >
                                         {row.c_corrente || '-'}
                                       </TableCell>
@@ -3506,10 +3386,7 @@ export default function FinancialMovements() {
                                     return (
                                       <TableCell
                                         key={key}
-                                        className={cn(
-                                          'px-2 py-0.5 text-xs whitespace-nowrap border-r border-black',
-                                          isBlueRow ? 'text-white' : 'text-black font-bold',
-                                        )}
+                                        className="px-2 py-0.5 whitespace-nowrap border-0"
                                       >
                                         {row.cod_cli_for || '-'}
                                       </TableCell>
@@ -3518,10 +3395,7 @@ export default function FinancialMovements() {
                                     return (
                                       <TableCell
                                         key={key}
-                                        className={cn(
-                                          'px-2 py-0.5 text-xs whitespace-nowrap text-center border-r border-black',
-                                          isBlueRow ? 'text-white' : 'text-black font-bold',
-                                        )}
+                                        className="px-2 py-0.5 whitespace-nowrap text-center border-0"
                                       >
                                         {row.departamento || '-'}
                                       </TableCell>
@@ -3530,7 +3404,7 @@ export default function FinancialMovements() {
                                     return (
                                       <TableCell
                                         key={key}
-                                        className="px-2 py-0.5 text-xs text-center border-r border-black"
+                                        className="px-2 py-0.5 text-center border-0"
                                       >
                                         {missingFields.length > 0 ? (
                                           <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-red-100 text-red-800 border border-red-200">
@@ -3547,16 +3421,13 @@ export default function FinancialMovements() {
                                     return null
                                 }
                               })}
-                            <TableCell className="px-2 py-0.5 text-xs text-center border-r border-black last:border-r-0">
+                            <TableCell className="px-2 py-0.5 text-center border-0">
                               {editingId === row.id ? (
                                 <div className="flex items-center justify-center gap-1">
                                   <Button
                                     size="sm"
                                     variant="ghost"
-                                    className={cn(
-                                      'h-6 px-2 text-[10px] text-green-600 font-semibold hover:text-green-700',
-                                      isBlueRow ? 'bg-white/90 hover:bg-white' : '',
-                                    )}
+                                    className="h-6 px-2 text-[10px] text-green-600 font-semibold hover:text-green-700 bg-white/90 hover:bg-white"
                                     onClick={async () => {
                                       const newMappedAccount = getMappedAccountForCC(
                                         editForm.c_custo,
@@ -3585,10 +3456,7 @@ export default function FinancialMovements() {
                                   <Button
                                     size="sm"
                                     variant="ghost"
-                                    className={cn(
-                                      'h-6 px-2 text-[10px] text-red-600 hover:text-red-700',
-                                      isBlueRow ? 'bg-white/90 hover:bg-white' : '',
-                                    )}
+                                    className="h-6 px-2 text-[10px] text-red-600 hover:text-red-700 bg-white/90 hover:bg-white"
                                     onClick={() => setEditingId(null)}
                                   >
                                     Cancelar
@@ -3600,7 +3468,7 @@ export default function FinancialMovements() {
                                   variant="outline"
                                   className={cn(
                                     'h-6 px-2 text-[10px]',
-                                    isBlueRow
+                                    isEvenRow
                                       ? 'bg-blue-800 text-white border-white/30 hover:bg-blue-700 hover:text-white'
                                       : '',
                                   )}
