@@ -120,7 +120,7 @@ Deno.serve(async (req: Request) => {
         function: {
           name: 'get_financial_movements',
           description:
-            'Obtém os lançamentos e movimentações financeiras recentes, útil para procurar divergências ou analisar conciliações',
+            'Obtém as movimentações financeiras criadas no sistema para conciliação (tabela financial_movements)',
           parameters: {
             type: 'object',
             properties: {
@@ -168,7 +168,7 @@ Deno.serve(async (req: Request) => {
         type: 'function',
         function: {
           name: 'get_accounting_entries',
-          description: 'Obtém os lançamentos contábeis recentes',
+          description: 'Obtém os lançamentos contábeis recentes (tabela accounting_entries)',
           parameters: {
             type: 'object',
             properties: {
@@ -194,6 +194,47 @@ Deno.serve(async (req: Request) => {
           name: 'get_tga_account_types',
           description: 'Obtém os tipos de conta TGA configurados',
           parameters: { type: 'object', properties: {} },
+        },
+      },
+      {
+        type: 'function',
+        function: {
+          name: 'get_erp_financial_movements',
+          description:
+            'Obtém os lançamentos do Movimento Financeiro TGA / ERP (tabela erp_financial_movements). Use esta função para buscas por fornecedor/cliente, período (datas), faixa de valores ou centro de custo importados.',
+          parameters: {
+            type: 'object',
+            properties: {
+              start_date: {
+                type: 'string',
+                description: 'Data de emissão inicial no formato YYYY-MM-DD',
+              },
+              end_date: {
+                type: 'string',
+                description: 'Data de emissão final no formato YYYY-MM-DD',
+              },
+              supplier_name: {
+                type: 'string',
+                description: 'Nome do cliente ou fornecedor (busca parcial)',
+              },
+              min_amount: {
+                type: 'number',
+                description: 'Valor mínimo do lançamento',
+              },
+              max_amount: {
+                type: 'number',
+                description: 'Valor máximo do lançamento',
+              },
+              cost_center: {
+                type: 'string',
+                description: 'Código ou descrição do centro de custo',
+              },
+              limit: {
+                type: 'number',
+                description: 'Número de registros para retornar (padrão 15, máx 50)',
+              },
+            },
+          },
         },
       },
     ]
@@ -323,6 +364,33 @@ Deno.serve(async (req: Request) => {
             .is('deleted_at', null)
           return JSON.stringify(data || [])
         }
+        if (name === 'get_erp_financial_movements') {
+          if (!hasPerm(['view_entries', 'view_financial_movements']))
+            return 'Acesso negado: Você não tem permissão para visualizar movimentações do TGA.'
+          if (orgIds.length === 0) return JSON.stringify([])
+          const limit = Math.min(args.limit || 15, 50)
+          let query = supabase
+            .from('erp_financial_movements')
+            .select(
+              'data_emissao, dt_compens, c_custo, descricao_c_custo, valor, nome_cli_fornec, historico, n_documento, status',
+            )
+            .in('organization_id', orgIds)
+            .is('deleted_at', null)
+
+          if (args.start_date) query = query.gte('data_emissao', args.start_date)
+          if (args.end_date) query = query.lte('data_emissao', args.end_date)
+          if (args.min_amount) query = query.gte('valor', args.min_amount)
+          if (args.max_amount) query = query.lte('valor', args.max_amount)
+          if (args.supplier_name) query = query.ilike('nome_cli_fornec', `%${args.supplier_name}%`)
+          if (args.cost_center) {
+            query = query.or(
+              `c_custo.ilike.%${args.cost_center}%,descricao_c_custo.ilike.%${args.cost_center}%`,
+            )
+          }
+
+          const { data } = await query.order('data_emissao', { ascending: false }).limit(limit)
+          return JSON.stringify(data || [])
+        }
         return 'Função não encontrada'
       } catch (e: any) {
         return `Erro ao executar função: ${e.message}`
@@ -355,7 +423,9 @@ Exemplos de rotas OBRIGATÓRIAS (NUNCA INVENTE OUTRAS ROTAS):
 - Ao listar Departamentos: inclua [Acessar Departamentos](/departamentos)
 - Ao listar Contas Bancárias ou Listagem de Contas: inclua [Acessar Listagem de Contas](/app)
 - Ao listar Usuários/Funcionários: inclua [Acessar Usuários](/usuarios)
-- Ao listar Lançamentos Financeiros ou Contábeis: inclua [Acessar Lançamentos](/lancamentos)
+- Ao listar Lançamentos Contábeis (accounting_entries): inclua [Acessar Lançamentos](/lancamentos)
+- Ao listar Movimento Financeiro TGA ou ERP (erp_financial_movements): inclua [Acessar Movimentos Financeiros](/movimento-financeiro)
+- Ao listar Lançamentos Financeiros Genéricos: inclua [Acessar Lançamentos](/lancamentos)
 - Ao listar Centros de Custo: inclua [Acessar Centros de Custo](/centros-de-custo)
 - Ao listar Plano de Contas: inclua [Acessar Plano de Contas](/plano-de-contas)
 - Ao falar de Dashboard: inclua [Acessar Dashboard](/dashboard)
