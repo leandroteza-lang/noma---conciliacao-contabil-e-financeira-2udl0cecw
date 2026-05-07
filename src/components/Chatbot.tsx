@@ -1,27 +1,60 @@
 import { useState, useRef, useEffect } from 'react'
-import {
-  MessageCircle,
-  X,
-  Send,
-  Loader2,
-  Download,
-  FileText,
-  FileSpreadsheet,
-  Printer,
-} from 'lucide-react'
+import { MessageCircle, X, Send, Loader2, FileText, FileSpreadsheet, Printer } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
 import { supabase } from '@/lib/supabase/client'
 import { useToast } from '@/hooks/use-toast'
 import { cn } from '@/lib/utils'
 import { Link } from 'react-router-dom'
+
+const parseInline = (text: string) => {
+  const parts = text.split(/\[([^\]]+)\]\(([^)]+)\)/g)
+  if (parts.length > 1) {
+    return parts.map((part, j) => {
+      if (j % 3 === 0) {
+        const boldParts = part.split(/\*\*([^*]+)\*\*/g)
+        return boldParts.map((bp, k) =>
+          k % 2 === 1 ? (
+            <strong key={`bold-${j}-${k}`}>{bp}</strong>
+          ) : (
+            <span key={`text-${j}-${k}`}>{bp}</span>
+          ),
+        )
+      }
+      if (j % 3 === 1) {
+        const url = parts[j + 1]
+        if (url.startsWith('http')) {
+          return (
+            <a
+              key={`link-${j}`}
+              href={url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-indigo-600 font-medium hover:underline relative z-50 pointer-events-auto"
+            >
+              {part}
+            </a>
+          )
+        }
+        return (
+          <Link
+            key={`link-${j}`}
+            to={url}
+            className="text-indigo-600 font-medium hover:underline relative z-50 pointer-events-auto"
+          >
+            {part}
+          </Link>
+        )
+      }
+      return null
+    })
+  }
+  const boldParts = text.split(/\*\*([^*]+)\*\*/g)
+  return boldParts.map((bp, k) =>
+    k % 2 === 1 ? <strong key={`bold-${k}`}>{bp}</strong> : <span key={`text-${k}`}>{bp}</span>,
+  )
+}
 
 const parseMarkdown = (text: string) => {
   if (!text) return null
@@ -37,9 +70,17 @@ const parseMarkdown = (text: string) => {
     const flushText = () => {
       if (currentText) {
         result.push(
-          <p key={result.length} className="whitespace-pre-wrap mb-2">
-            {currentText.trim()}
-          </p>,
+          <div key={`text-${result.length}`} className="whitespace-pre-wrap mb-2">
+            {currentText
+              .trim()
+              .split('\n')
+              .map((line, i) => (
+                <span key={i}>
+                  {parseInline(line)}
+                  <br />
+                </span>
+              ))}
+          </div>,
         )
         currentText = ''
       }
@@ -68,7 +109,7 @@ const parseMarkdown = (text: string) => {
         if (inTable) {
           result.push(
             <div
-              key={result.length}
+              key={`table-${result.length}`}
               className="w-full overflow-x-auto mb-2 border rounded-md border-slate-200"
             >
               <table className="w-full text-xs text-left">
@@ -86,7 +127,7 @@ const parseMarkdown = (text: string) => {
                     <tr key={rIdx} className="hover:bg-slate-50 transition-colors">
                       {row.map((cell, cIdx) => (
                         <td key={cIdx} className="p-2 text-slate-600">
-                          {cell}
+                          {parseInline(cell)}
                         </td>
                       ))}
                     </tr>
@@ -109,7 +150,7 @@ const parseMarkdown = (text: string) => {
     if (inTable) {
       result.push(
         <div
-          key={result.length}
+          key={`table-${result.length}`}
           className="w-full overflow-x-auto mb-2 border rounded-md border-slate-200"
         >
           <table className="w-full text-xs text-left">
@@ -127,7 +168,7 @@ const parseMarkdown = (text: string) => {
                 <tr key={rIdx} className="hover:bg-slate-50 transition-colors">
                   {row.map((cell, cIdx) => (
                     <td key={cIdx} className="p-2 text-slate-600">
-                      {cell}
+                      {parseInline(cell)}
                     </td>
                   ))}
                 </tr>
@@ -149,44 +190,12 @@ const parseMarkdown = (text: string) => {
 
   return (
     <div className="whitespace-pre-wrap">
-      {text.split('\n').map((line, i) => {
-        const parts = line.split(/\[([^\]]+)\]\(([^)]+)\)/g)
-        if (parts.length > 1) {
-          return (
-            <span key={i}>
-              {parts.map((part, j) => {
-                if (j % 3 === 0) {
-                  const boldParts = part.split(/\*\*([^*]+)\*\*/g)
-                  return boldParts.map((bp, k) =>
-                    k % 2 === 1 ? <strong key={k}>{bp}</strong> : <span key={k}>{bp}</span>,
-                  )
-                }
-                if (j % 3 === 1)
-                  return (
-                    <Link
-                      key={j}
-                      to={parts[j + 1]}
-                      className="text-indigo-600 font-medium hover:underline"
-                    >
-                      {part}
-                    </Link>
-                  )
-                return null
-              })}
-              <br />
-            </span>
-          )
-        }
-        const boldParts = line.split(/\*\*([^*]+)\*\*/g)
-        return (
-          <span key={i}>
-            {boldParts.map((bp, k) =>
-              k % 2 === 1 ? <strong key={k}>{bp}</strong> : <span key={k}>{bp}</span>,
-            )}
-            <br />
-          </span>
-        )
-      })}
+      {text.split('\n').map((line, i) => (
+        <span key={i}>
+          {parseInline(line)}
+          <br />
+        </span>
+      ))}
     </div>
   )
 }
@@ -254,13 +263,15 @@ export function Chatbot() {
     URL.revokeObjectURL(url)
   }
 
-  const exportToCsv = () => {
+  const exportToExcel = () => {
     let csvContent = 'Remetente;Mensagem\n'
     messages.forEach((m) => {
       const sender = m.role === 'user' ? 'Você' : 'NOMA'
-      const text = m.content.replace(/"/g, '""')
+      const text = m.content.replace(/"/g, '""').replace(/\n/g, ' ')
       csvContent += `"${sender}";"${text}"\n`
     })
+    // CSV is native to Excel. Creating a proper ZIP-based XLSX string in vanilla JS is not feasible
+    // without an external package, so we use CSV encoded perfectly for MS Excel to consume.
     const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
@@ -383,30 +394,6 @@ export function Chatbot() {
               <MessageCircle className="h-4 w-4" /> Assistente Virtual NOMA
             </CardTitle>
             <div className="flex items-center gap-1 no-drag">
-              {messages.length > 0 && (
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-6 w-6 text-white hover:bg-indigo-900 hover:text-white"
-                    >
-                      <Download className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={exportToTxt}>
-                      <FileText className="h-4 w-4 mr-2" /> Exportar TXT
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={exportToCsv}>
-                      <FileSpreadsheet className="h-4 w-4 mr-2" /> Exportar Excel (CSV)
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={exportToPdf}>
-                      <Printer className="h-4 w-4 mr-2" /> Exportar PDF / Imprimir
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              )}
               <Button
                 variant="ghost"
                 size="icon"
@@ -469,7 +456,41 @@ export function Chatbot() {
               </div>
             )}
           </CardContent>
-          <CardFooter className="p-3 border-t bg-white rounded-b-xl">
+          <CardFooter className="p-3 border-t bg-white rounded-b-xl flex flex-col gap-3">
+            {messages.length > 0 && (
+              <div className="flex w-full justify-between items-center px-1">
+                <span className="text-xs text-slate-400 font-medium">Exportar histórico:</span>
+                <div className="flex gap-1">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={exportToTxt}
+                    title="Exportar TXT"
+                    className="h-8 w-8 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50"
+                  >
+                    <FileText className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={exportToExcel}
+                    title="Exportar Excel"
+                    className="h-8 w-8 text-slate-500 hover:text-emerald-600 hover:bg-emerald-50"
+                  >
+                    <FileSpreadsheet className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={exportToPdf}
+                    title="Exportar PDF"
+                    className="h-8 w-8 text-slate-500 hover:text-rose-600 hover:bg-rose-50"
+                  >
+                    <Printer className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            )}
             <form
               onSubmit={(e) => {
                 e.preventDefault()
