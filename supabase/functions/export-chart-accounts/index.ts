@@ -98,8 +98,31 @@ Deno.serve(async (req: Request) => {
         ],
         body: body,
         theme: 'grid',
-        headStyles: { fillColor: [220, 38, 38] },
-        styles: { fontSize: 8 },
+        headStyles: {
+          fillColor: [30, 27, 75],
+          textColor: [255, 255, 255],
+          fontStyle: 'bold',
+          halign: 'left',
+          fontSize: 11,
+        },
+        styles: {
+          fontSize: 8,
+          cellPadding: 4,
+          lineWidth: 0.1,
+          lineColor: [203, 213, 225],
+        },
+        didParseCell: function (data: any) {
+          if (data.section === 'body') {
+            const isEven = data.row.index % 2 === 1
+            if (isEven) {
+              data.cell.styles.fillColor = [191, 219, 254]
+              data.cell.styles.textColor = [15, 23, 42]
+            } else {
+              data.cell.styles.fillColor = [255, 255, 255]
+              data.cell.styles.textColor = [15, 23, 42]
+            }
+          }
+        },
         columnStyles: {
           3: { cellWidth: 50 },
           7: { cellWidth: 40 },

@@ -121,37 +121,43 @@ Deno.serve(async (req: Request) => {
         print-color-adjust: exact !important;
       }
     }
-    .table-container {
+    .table-container-wrapper {
       padding: 24px;
+    }
+    .styled-table-container {
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      overflow: hidden;
     }
     .styled-table { 
       width: 100%; 
       border-collapse: collapse;
-      border: 2px solid #800000;
-      border-radius: 6px;
-      overflow: hidden;
     }
     th { 
-      background-color: #f8fafc; 
-      color: #000000; 
-      padding: 8px 16px; 
+      background-color: #1e1b4b; 
+      color: #ffffff; 
+      padding: 12px 16px; 
       text-align: left; 
-      font-size: 15px; 
+      font-size: 14px; 
       font-weight: bold; 
-      border-bottom: 1px solid #e2e8f0; 
+      border: 1px solid #cbd5e1; 
+      border-top: none;
     }
     td { 
-      padding: 6px 16px; 
-      font-size: 13px; 
+      padding: 8px 16px; 
+      font-size: 11px; 
       vertical-align: middle; 
-      border: none;
+      border: 1px solid #cbd5e1;
     }
+    th:first-child, td:first-child { border-left: none; }
+    th:last-child, td:last-child { border-right: none; }
+    tr:last-child td { border-bottom: none; }
     
-    .row-odd { background-color: #ffffff; color: #64748b; }
-    .row-even { background-color: #800000; color: #ffffff; font-weight: bold; }
+    .row-odd { background-color: #ffffff; color: #0f172a; }
+    .row-even { background-color: #bfdbfe; color: #0f172a; }
     
-    .row-odd td.main-text { color: #0f172a; font-weight: 500; }
-    .row-even td.main-text { color: #ffffff; font-weight: bold; }
+    .row-odd td.main-text { color: #0f172a; font-weight: bold; }
+    .row-even td.main-text { color: #0f172a; font-weight: bold; }
   </style>
 </head>
 <body>
@@ -163,7 +169,8 @@ Deno.serve(async (req: Request) => {
       </div>
       <button class="print-btn" onclick="window.print()">Imprimir</button>
     </div>
-    <div class="table-container">
+    <div class="table-container-wrapper">
+      <div class="styled-table-container">
       <table class="styled-table">
         <thead>
           <tr>
@@ -191,6 +198,7 @@ Deno.serve(async (req: Request) => {
             .join('')}
         </tbody>
       </table>
+      </div>
     </div>
   </div>
 </body>
@@ -227,31 +235,32 @@ Deno.serve(async (req: Request) => {
         startY: 28,
         head: [['Código', 'Nome', 'Abreviação', 'Empresa']],
         body: body,
-        theme: 'plain',
-        tableLineWidth: 0.5,
-        tableLineColor: [128, 0, 0], // Outer border
+        theme: 'grid',
         headStyles: {
-          fillColor: [248, 250, 252],
-          textColor: [0, 0, 0], // black header
+          fillColor: [30, 27, 75],
+          textColor: [255, 255, 255],
           fontStyle: 'bold',
           halign: 'left',
           fontSize: 11,
         },
         styles: {
-          fontSize: 9,
-          cellPadding: 3, // Thinner rows style excel
+          fontSize: 8,
+          cellPadding: 4,
+          lineWidth: 0.1,
+          lineColor: [203, 213, 225],
         },
         didParseCell: function (data: any) {
           if (data.section === 'body') {
-            const isZebra = data.row.index % 2 !== 0
-            if (isZebra) {
-              data.cell.styles.fillColor = [128, 0, 0] // maroon zebra
-              data.cell.styles.textColor = [255, 255, 255]
-              data.cell.styles.fontStyle = 'bold'
+            const isEven = data.row.index % 2 === 1
+            if (isEven) {
+              data.cell.styles.fillColor = [191, 219, 254]
+              data.cell.styles.textColor = [15, 23, 42]
             } else {
               data.cell.styles.fillColor = [255, 255, 255]
               data.cell.styles.textColor = [15, 23, 42]
-              data.cell.styles.fontStyle = 'normal'
+            }
+            if (data.column.index === 0 || data.column.index === 1) {
+              data.cell.styles.fontStyle = 'bold'
             }
           }
         },

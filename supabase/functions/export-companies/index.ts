@@ -128,9 +128,18 @@ Deno.serve(async (req: Request) => {
     .table-wrapper {
       padding: 24px;
     }
-    table { width: 100%; border-collapse: collapse; border-radius: 6px; overflow: hidden; }
-    th { background-color: #1e1b4b; color: #ffffff; padding: 12px 16px; text-align: center; font-size: 14px; font-weight: bold; border: none; }
-    td { padding: 8px 16px; font-size: 11px; vertical-align: middle; text-align: center; border: none; }
+    .table-container {
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    table { width: 100%; border-collapse: collapse; }
+    th { background-color: #1e1b4b; color: #ffffff; padding: 12px 16px; text-align: center; font-size: 14px; font-weight: bold; border: 1px solid #cbd5e1; }
+    td { padding: 8px 16px; font-size: 11px; vertical-align: middle; text-align: center; border: 1px solid #cbd5e1; }
+    th { border-top: none; }
+    tr:last-child td { border-bottom: none; }
+    th:first-child, td:first-child { border-left: none; }
+    th:last-child, td:last-child { border-right: none; }
     
     .row-odd { background-color: #ffffff; color: #0f172a; }
     .row-even { background-color: #bfdbfe; color: #0f172a; }
@@ -153,6 +162,7 @@ Deno.serve(async (req: Request) => {
       <button class="print-btn" onclick="window.print()">Imprimir</button>
     </div>
     <div class="table-wrapper">
+      <div class="table-container">
       <table>
         <thead>
           <tr>
@@ -200,6 +210,7 @@ Deno.serve(async (req: Request) => {
             .join('')}
         </tbody>
       </table>
+      </div>
     </div>
   </div>
 </body>
@@ -254,7 +265,8 @@ Deno.serve(async (req: Request) => {
           cellPadding: 4,
           halign: 'center',
           valign: 'middle',
-          lineWidth: 0,
+          lineWidth: 0.1,
+          lineColor: [203, 213, 225],
         },
         columnStyles: {
           0: { fontStyle: 'bold' },
@@ -270,7 +282,7 @@ Deno.serve(async (req: Request) => {
               data.cell.styles.textColor = [15, 23, 42] // #0f172a
             }
             if (data.column.index === 3) {
-               data.cell.styles.textColor = data.cell.styles.fillColor
+              data.cell.styles.textColor = data.cell.styles.fillColor
             }
           }
         },

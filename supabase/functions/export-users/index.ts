@@ -155,40 +155,45 @@ Deno.serve(async (req: Request) => {
         print-color-adjust: exact !important;
       }
     }
-    .table-container {
+    .table-container-wrapper {
       padding: 24px;
+    }
+    .styled-table-container {
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      overflow: hidden;
     }
     .styled-table { 
       width: 100%; 
       border-collapse: collapse;
-      border: 2px solid #800000;
-      border-radius: 6px;
-      overflow: hidden;
     }
     th { 
-      background-color: #f8fafc; 
-      color: #000000; 
+      background-color: #1e1b4b; 
+      color: #ffffff; 
       padding: 12px 16px; 
       text-align: left; 
-      font-size: 15px; 
+      font-size: 14px; 
       font-weight: bold; 
-      border-bottom: 1px solid #e2e8f0; 
+      border: 1px solid #cbd5e1; 
+      border-top: none;
     }
     td { 
       padding: 8px 16px; 
-      font-size: 13px; 
+      font-size: 11px; 
       vertical-align: middle; 
-      border: none;
+      border: 1px solid #cbd5e1;
     }
+    th:first-child, td:first-child { border-left: none; }
+    th:last-child, td:last-child { border-right: none; }
+    tr:last-child td { border-bottom: none; }
     
-    .row-odd { background-color: #ffffff; color: #64748b; }
-    .row-even { background-color: #800000; color: #ffffff; font-weight: bold; }
+    .row-odd { background-color: #ffffff; color: #0f172a; }
+    .row-even { background-color: #bfdbfe; color: #0f172a; }
     
-    .row-odd td.main-text { color: #0f172a; font-weight: 500; }
-    .row-even td.main-text { color: #ffffff; font-weight: bold; }
+    .row-odd td.main-text { color: #0f172a; font-weight: bold; }
+    .row-even td.main-text { color: #0f172a; font-weight: bold; }
     
     .badge { padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: normal; border: 1px solid transparent; }
-    .row-even .badge { background-color: transparent !important; color: #ffffff !important; border-color: #ffffff !important; font-weight: bold; }
     
     .role-badge { border-color: #e2e8f0; }
     
@@ -206,7 +211,8 @@ Deno.serve(async (req: Request) => {
       </div>
       <button class="print-btn" onclick="window.print()">Imprimir</button>
     </div>
-    <div class="table-container">
+    <div class="table-container-wrapper">
+      <div class="styled-table-container">
       <table class="styled-table">
         <thead>
           <tr>
@@ -257,6 +263,7 @@ Deno.serve(async (req: Request) => {
             .join('')}
         </tbody>
       </table>
+      </div>
     </div>
   </div>
 </body>
@@ -308,42 +315,33 @@ Deno.serve(async (req: Request) => {
         startY: 28,
         head: [['Nome', 'E-mail', 'CPF', 'Perfil', 'Departamento', 'Status']],
         body: body,
-        theme: 'plain',
-        tableLineWidth: 0.5,
-        tableLineColor: [128, 0, 0], // #800000 outer border
+        theme: 'grid',
         headStyles: {
-          fillColor: [248, 250, 252],
-          textColor: [0, 0, 0], // black header
+          fillColor: [30, 27, 75],
+          textColor: [255, 255, 255],
           fontStyle: 'bold',
           halign: 'left',
-          fontSize: 11, // larger font
+          fontSize: 11,
         },
         styles: {
-          fontSize: 9,
-          cellPadding: 3, // Compact "Excel" style
+          fontSize: 8,
+          cellPadding: 4,
+          lineWidth: 0.1,
+          lineColor: [203, 213, 225],
         },
         didParseCell: function (data: any) {
           if (data.section === 'body') {
             const isEven = data.row.index % 2 === 1
             if (isEven) {
-              data.cell.styles.fillColor = [128, 0, 0] // #800000
-              data.cell.styles.textColor = [255, 255, 255]
-              data.cell.styles.fontStyle = 'bold'
+              data.cell.styles.fillColor = [191, 219, 254]
+              data.cell.styles.textColor = [15, 23, 42]
             } else {
               data.cell.styles.fillColor = [255, 255, 255]
-              data.cell.styles.textColor = [15, 23, 42] // darker text for main column could be set via column index
-              data.cell.styles.fontStyle = 'normal'
+              data.cell.styles.textColor = [15, 23, 42]
             }
-
-            // Adjust specific column text color if needed for odd rows
-            if (!isEven && data.column.index === 0) {
-              data.cell.styles.textColor = [15, 23, 42] // name main color
+            if (data.column.index === 0) {
               data.cell.styles.fontStyle = 'bold'
-            } else if (!isEven && data.column.index !== 3 && data.column.index !== 5) {
-              data.cell.styles.textColor = [100, 116, 139] // muted foreground for other columns
             }
-
-            // Transparent text for badge columns to draw them manually
             if (data.column.index === 3 || data.column.index === 5) {
               data.cell.styles.textColor = data.cell.styles.fillColor
             }
@@ -362,21 +360,12 @@ Deno.serve(async (req: Request) => {
               docRef.setFont('helvetica', isEven ? 'bold' : 'normal')
               const textWidth = docRef.getTextWidth(text)
 
-              if (isEven) {
-                // UI: transparent bg, white border
-                docRef.setDrawColor(255, 255, 255)
-                docRef.setLineWidth(0.1)
-                docRef.roundedRect(startX, centerY - 2.5, textWidth + 4, 5, 1, 1, 'D')
-                docRef.setTextColor(255, 255, 255)
-                docRef.text(text, startX + 2, centerY + 1)
-              } else {
-                // UI: outline badge
-                docRef.setDrawColor(226, 232, 240) // slate-200
-                docRef.setLineWidth(0.1)
-                docRef.roundedRect(startX, centerY - 2.5, textWidth + 4, 5, 1, 1, 'D')
-                docRef.setTextColor(15, 23, 42) // slate-900
-                docRef.text(text, startX + 2, centerY + 1)
-              }
+              // UI: outline badge
+              docRef.setDrawColor(148, 163, 184) // slate-400 for better visibility on both bg
+              docRef.setLineWidth(0.1)
+              docRef.roundedRect(startX, centerY - 2.5, textWidth + 4, 5, 1, 1, 'D')
+              docRef.setTextColor(15, 23, 42) // slate-900
+              docRef.text(text, startX + 2, centerY + 1)
             }
 
             if (data.column.index === 5) {
@@ -387,27 +376,21 @@ Deno.serve(async (req: Request) => {
               docRef.setFont('helvetica', isEven ? 'bold' : 'normal')
               const textWidth = docRef.getTextWidth(text)
 
-              if (isEven) {
-                // UI: transparent bg, white text, white border
-                docRef.setTextColor(255, 255, 255)
-                docRef.text(text, startX + 2, centerY + 1)
-              } else {
-                let bgColor = [241, 245, 249]
-                let textColor = [30, 41, 59]
+              let bgColor = [241, 245, 249]
+              let textColor = [30, 41, 59]
 
-                if (text === 'Ativo') {
-                  bgColor = [209, 250, 229] // emerald-100
-                  textColor = [6, 95, 70] // emerald-800
-                } else if (text === 'Pendente de Aprovação') {
-                  bgColor = [254, 243, 199] // amber-100
-                  textColor = [146, 64, 14] // amber-800
-                }
-
-                docRef.setFillColor(bgColor[0], bgColor[1], bgColor[2])
-                docRef.roundedRect(startX, centerY - 2.5, textWidth + 4, 5, 1, 1, 'F')
-                docRef.setTextColor(textColor[0], textColor[1], textColor[2])
-                docRef.text(text, startX + 2, centerY + 1)
+              if (text === 'Ativo') {
+                bgColor = [209, 250, 229] // emerald-100
+                textColor = [6, 95, 70] // emerald-800
+              } else if (text === 'Pendente de Aprovação') {
+                bgColor = [254, 243, 199] // amber-100
+                textColor = [146, 64, 14] // amber-800
               }
+
+              docRef.setFillColor(bgColor[0], bgColor[1], bgColor[2])
+              docRef.roundedRect(startX, centerY - 2.5, textWidth + 4, 5, 1, 1, 'F')
+              docRef.setTextColor(textColor[0], textColor[1], textColor[2])
+              docRef.text(text, startX + 2, centerY + 1)
             }
           }
         },
