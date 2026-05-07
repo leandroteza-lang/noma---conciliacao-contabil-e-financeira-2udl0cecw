@@ -50,6 +50,7 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb'
+import { Chatbot } from '@/components/Chatbot'
 
 export default function Layout() {
   const { user, role, signOut } = useAuth()
@@ -341,6 +342,7 @@ export default function Layout() {
           </main>
         </SidebarInset>
       </div>
+      <Chatbot />
     </SidebarProvider>
   )
 }

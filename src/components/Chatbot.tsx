@@ -1,1247 +1,343 @@
 import { useState, useRef, useEffect } from 'react'
-import { Link } from 'react-router-dom'
-import {
-  MessageCircle,
-  X,
-  Send,
-  Bot,
-  User as UserIcon,
-  Copy,
-  Check,
-  Download,
-  Paperclip,
-  FileText,
-  Plus,
-  Link as LinkIcon,
-  EyeOff,
-} from 'lucide-react'
+import { MessageCircle, X, Send, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card'
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from '@/components/ui/dialog'
-import { Switch } from '@/components/ui/switch'
-import { Label } from '@/components/ui/label'
 import { supabase } from '@/lib/supabase/client'
+import { useToast } from '@/hooks/use-toast'
 import { cn } from '@/lib/utils'
-import * as XLSX from 'xlsx'
-import { useAuth } from '@/hooks/use-auth'
+import { Link } from 'react-router-dom'
 
-const MarkdownTable = ({
-  headers,
-  rows,
-  processInline,
-}: {
-  headers: string[]
-  rows: string[][]
-  processInline: (text: string) => React.ReactNode
-}) => {
-  const [currentPage, setCurrentPage] = useState(1)
-  const [searchTerm, setSearchTerm] = useState('')
-
-  const totalRows = rows.length
-
-  const filteredRows =
-    totalRows > 50 && searchTerm.trim() !== ''
-      ? rows.filter((row) =>
-          row.some((cell) => cell.toLowerCase().includes(searchTerm.toLowerCase())),
-        )
-      : rows
-
-  const displayTotalRows = filteredRows.length
-
-  let rowsPerPage = displayTotalRows
-  if (totalRows > 15 && totalRows <= 50) {
-    rowsPerPage = 5
-  } else if (totalRows > 50) {
-    rowsPerPage = 10
-  }
-
-  const totalPages = Math.ceil(displayTotalRows / rowsPerPage) || 1
-
-  useEffect(() => {
-    if (currentPage > totalPages) {
-      setCurrentPage(1)
-    }
-  }, [displayTotalRows, totalPages, currentPage])
-
-  const currentRows = filteredRows.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage)
-
-  const handlePrev = () => setCurrentPage((p) => Math.max(1, p - 1))
-  const handleNext = () => setCurrentPage((p) => Math.min(totalPages, p + 1))
-
-  return (
-    <div className="my-4 w-full flex flex-col gap-3 max-w-full min-w-0">
-      {totalRows > 50 && (
-        <div className="w-full shrink-0 min-w-0">
-          <Input
-            placeholder="Buscar nos resultados..."
-            value={searchTerm}
-            onChange={(e) => {
-              setSearchTerm(e.target.value)
-              setCurrentPage(1)
-            }}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault()
-              }
-            }}
-            className="h-9 text-sm w-full bg-background min-w-0"
-          />
-        </div>
-      )}
-      <div className="flex flex-col gap-3 w-full overflow-y-auto overflow-x-hidden max-h-[400px] custom-scrollbar pr-2 min-w-0">
-        {currentRows.map((row, i) => (
-          <div
-            key={i}
-            className="flex flex-col gap-1.5 p-3.5 rounded-lg bg-card border shadow-sm text-sm break-words w-full min-w-0 max-w-full"
-          >
-            <div className="font-bold text-primary mb-2 flex items-center gap-2">
-              📄 Registro {(currentPage - 1) * rowsPerPage + i + 1}
-            </div>
-            <div className="flex flex-col gap-2 w-full min-w-0">
-              {headers.map((h, j) => {
-                const val = row[j] || ''
-                if (!val.trim() || val.trim() === '-') return null
-                return (
-                  <div
-                    key={j}
-                    className="flex flex-col sm:flex-row sm:gap-2 items-start break-words w-full min-w-0"
-                  >
-                    <span className="font-semibold text-muted-foreground shrink-0 flex items-center gap-1.5">
-                      🔹 {processInline(h)}:
-                    </span>
-                    <span className="text-foreground break-words flex-1 min-w-0 w-full">
-                      {processInline(val)}
-                    </span>
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-        ))}
-        {currentRows.length === 0 && (
-          <div className="text-muted-foreground text-sm text-center py-4">
-            Nenhum resultado encontrado.
-          </div>
-        )}
-      </div>
-
-      {totalRows > 15 && (
-        <div className="flex items-center justify-between px-1 py-2 text-xs text-muted-foreground shrink-0 w-full border-t border-border/40 mt-1">
-          <div>Total: {displayTotalRows} registros</div>
-          <div className="flex items-center gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="h-7 px-3 text-xs rounded-full"
-              onClick={handlePrev}
-              disabled={currentPage === 1}
-            >
-              Anterior
-            </Button>
-            <span className="font-medium">
-              Página {currentPage} de {totalPages}
-            </span>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="h-7 px-3 text-xs rounded-full"
-              onClick={handleNext}
-              disabled={currentPage === totalPages}
-            >
-              Próxima
-            </Button>
-          </div>
-        </div>
-      )}
-    </div>
-  )
-}
-
-const renderMessageContent = (text: string, onLinkClick?: () => void) => {
+const parseMarkdown = (text: string) => {
   if (!text) return null
-  const lines = text.split('\n')
-  const elements: React.ReactNode[] = []
-  let inTable = false
-  let tableHeaders: string[] = []
-  let tableRows: string[][] = []
 
-  const processInline = (line: string) => {
-    const parts = line.split(/(\*\*.*?\*\*|\[.*?\]\(.*?\))/g)
-    return parts.map((part, i) => {
-      if (part.startsWith('**') && part.endsWith('**')) {
-        return (
-          <strong key={i} className="font-semibold text-foreground">
-            {part.slice(2, -2)}
-          </strong>
+  if (text.includes('|---')) {
+    const lines = text.split('\n')
+    const result: React.ReactNode[] = []
+    let inTable = false
+    let tableHeaders: string[] = []
+    let tableRows: string[][] = []
+    let currentText = ''
+
+    const flushText = () => {
+      if (currentText) {
+        result.push(
+          <p key={result.length} className="whitespace-pre-wrap mb-2">
+            {currentText.trim()}
+          </p>,
         )
+        currentText = ''
       }
-      if (part.startsWith('[') && part.includes('](') && part.endsWith(')')) {
-        const textMatch = part.match(/\[(.*?)\]/)
-        const urlMatch = part.match(/\((.*?)\)/)
-        if (textMatch && urlMatch) {
-          const label = textMatch[1]
-          const url = urlMatch[1]
-          if (url.startsWith('/')) {
-            return (
-              <Link
-                key={i}
-                to={url}
-                onClick={(e) => {
-                  const validRoutes = [
-                    '/app',
-                    '/empresas',
-                    '/departamentos',
-                    '/usuarios',
-                    '/import',
-                    '/mapeamento',
-                    '/lancamentos',
-                    '/centros-de-custo',
-                    '/plano-de-contas',
-                    '/dashboard',
-                    '/analises',
-                    '/aprovacoes',
-                    '/tipo-conta-tga',
-                    '/compartilhamentos',
-                    '/login',
-                    '/signup',
-                    '/forgot-password',
-                    '/reset-password',
-                    '/',
-                  ]
-                  const basePath = url.split('?')[0]
-                  if (!validRoutes.includes(basePath) && !basePath.startsWith('/consulta/')) {
-                    e.preventDefault()
-                    console.warn('Blocked navigation to unknown route generated by AI:', url)
-                    return
-                  }
-                  if (onLinkClick) onLinkClick()
-                }}
-                className="inline-flex items-center justify-center gap-1.5 bg-primary text-primary-foreground hover:bg-primary/90 px-3 py-1.5 rounded-md no-underline font-medium transition-colors my-1.5 shadow-sm text-sm w-fit"
-              >
-                {label}
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="14"
-                  height="14"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="shrink-0"
-                >
-                  <path d="M5 12h14" />
-                  <path d="m12 5 7 7-7 7" />
-                </svg>
-              </Link>
-            )
-          }
-          return (
-            <a
-              key={i}
-              href={url}
-              className="text-primary hover:underline font-medium break-all"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              {label}
-            </a>
+    }
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i]
+      if (line.trim().startsWith('|')) {
+        flushText()
+        if (!inTable) {
+          inTable = true
+          tableHeaders = line
+            .split('|')
+            .filter((c) => c.trim())
+            .map((c) => c.trim())
+          i++
+        } else {
+          tableRows.push(
+            line
+              .split('|')
+              .filter((c) => c.trim())
+              .map((c) => c.trim()),
           )
         }
-      }
-      return <span key={i}>{part}</span>
-    })
-  }
-
-  const flushTable = () => {
-    if (inTable) {
-      if (tableHeaders.length > 0) {
-        elements.push(
-          <MarkdownTable
-            key={`table-${elements.length}`}
-            headers={tableHeaders}
-            rows={tableRows}
-            processInline={processInline}
-          />,
-        )
-      }
-      inTable = false
-      tableHeaders = []
-      tableRows = []
-    }
-  }
-
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i]
-    const trimLine = line.trim()
-
-    if (!trimLine) {
-      flushTable()
-      elements.push(<div key={`br-${i}`} className="h-2" />)
-      continue
-    }
-
-    const isTableLine = trimLine.includes('|')
-    const isSeparator = isTableLine && trimLine.replace(/[|\-\s:]/g, '').length === 0
-
-    if (isTableLine) {
-      let cleaned = trimLine
-      if (cleaned.startsWith('|')) cleaned = cleaned.slice(1)
-      if (cleaned.endsWith('|')) cleaned = cleaned.slice(0, -1)
-      const cells = cleaned.split('|').map((c) => c.trim())
-
-      if (isSeparator) {
-        inTable = true
-        continue
-      }
-
-      if (!inTable) {
-        const nextLine = lines[i + 1]?.trim() || ''
-        const nextIsSeparator =
-          nextLine.includes('|') && nextLine.replace(/[|\-\s:]/g, '').length === 0
-
-        if (nextIsSeparator) {
-          inTable = true
-          tableHeaders = cells
-        } else {
-          elements.push(
+      } else {
+        if (inTable) {
+          result.push(
             <div
-              key={`text-${i}`}
-              className="mb-1.5 leading-relaxed text-foreground/90 break-words"
+              key={result.length}
+              className="w-full overflow-x-auto mb-2 border rounded-md border-slate-200"
             >
-              {processInline(trimLine)}
+              <table className="w-full text-xs text-left">
+                <thead className="bg-slate-100 border-b border-slate-200">
+                  <tr>
+                    {tableHeaders.map((h, idx) => (
+                      <th key={idx} className="p-2 font-semibold text-slate-700">
+                        {h}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-200 bg-white">
+                  {tableRows.map((row, rIdx) => (
+                    <tr key={rIdx} className="hover:bg-slate-50 transition-colors">
+                      {row.map((cell, cIdx) => (
+                        <td key={cIdx} className="p-2 text-slate-600">
+                          {cell}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>,
           )
+          inTable = false
+          tableHeaders = []
+          tableRows = []
         }
-      } else {
-        tableRows.push(cells)
-      }
-    } else {
-      flushTable()
-      if (trimLine.startsWith('### ')) {
-        elements.push(
-          <h3 key={`h3-${i}`} className="text-sm font-bold mt-4 mb-2 text-foreground">
-            {processInline(trimLine.slice(4))}
-          </h3>,
-        )
-      } else if (trimLine.startsWith('## ')) {
-        elements.push(
-          <h2 key={`h2-${i}`} className="text-base font-bold mt-5 mb-2 text-foreground">
-            {processInline(trimLine.slice(3))}
-          </h2>,
-        )
-      } else if (trimLine.startsWith('# ')) {
-        elements.push(
-          <h1 key={`h1-${i}`} className="text-lg font-bold mt-5 mb-3 text-foreground">
-            {processInline(trimLine.slice(2))}
-          </h1>,
-        )
-      } else if (trimLine.startsWith('- ')) {
-        elements.push(
-          <div key={`li-${i}`} className="flex items-start gap-2 mb-1.5 pl-1">
-            <div className="w-1.5 h-1.5 rounded-full bg-primary/70 mt-1.5 shrink-0" />
-            <div className="leading-relaxed text-foreground/90 w-full break-words">
-              {processInline(trimLine.slice(2))}
-            </div>
-          </div>,
-        )
-      } else {
-        elements.push(
-          <div
-            key={`text-${i}`}
-            className="mb-1.5 leading-relaxed text-foreground/90 w-full break-words"
-          >
-            {processInline(trimLine)}
-          </div>,
-        )
+
+        currentText += line + '\n'
       }
     }
-  }
 
-  flushTable()
-  return (
-    <div className="text-sm w-full min-w-0 max-w-full break-words overflow-x-hidden">
-      {elements}
-    </div>
-  )
-}
-import { useToast } from '@/hooks/use-toast'
+    flushText()
 
-type Message = {
-  id: string
-  role: 'user' | 'assistant' | 'system' | 'tool'
-  content: string
-  isTyping?: boolean
-  attachedFileName?: string
-}
-
-const TypingEffect = ({
-  content,
-  onComplete,
-  onLinkClick,
-}: {
-  content: string
-  onComplete?: () => void
-  onLinkClick?: () => void
-}) => {
-  const [displayedContent, setDisplayedContent] = useState('')
-  useEffect(() => {
-    let i = 0
-    const chunkSize = Math.max(1, Math.floor(content.length / 50))
-    const timer = setInterval(() => {
-      i += chunkSize
-      if (i >= content.length) {
-        setDisplayedContent(content)
-        clearInterval(timer)
-        if (onComplete) onComplete()
-      } else {
-        setDisplayedContent(content.slice(0, i))
-      }
-    }, 20)
-    return () => clearInterval(timer)
-  }, [content, onComplete])
-
-  return (
-    <div className="relative w-full min-w-0 break-words">
-      {renderMessageContent(displayedContent, onLinkClick)}
-      {displayedContent.length < content.length && (
-        <span className="inline-block w-1.5 h-3 ml-1 bg-primary animate-pulse align-baseline mt-1" />
-      )}
-    </div>
-  )
-}
-
-const BotMessageActions = ({ content, prevPrompt }: { content: string; prevPrompt?: string }) => {
-  const [copied, setCopied] = useState(false)
-  const [shared, setShared] = useState(false)
-
-  const [shareDialogOpen, setShareDialogOpen] = useState(false)
-  const [isProtected, setIsProtected] = useState(false)
-  const [notifyFirstAccess, setNotifyFirstAccess] = useState(false)
-  const [isSingleView, setIsSingleView] = useState(false)
-  const [generatedLink, setGeneratedLink] = useState('')
-  const [generatedPassword, setGeneratedPassword] = useState('')
-  const [isGenerating, setIsGenerating] = useState(false)
-
-  const { toast } = useToast()
-  const { user } = useAuth()
-
-  const handleCopy = async () => {
-    try {
-      if (navigator.clipboard && window.isSecureContext) {
-        await navigator.clipboard.writeText(content)
-        setCopied(true)
-        setTimeout(() => setCopied(false), 2000)
-      } else {
-        toast({
-          title: 'Erro',
-          description: 'Não foi possível copiar no seu navegador.',
-          variant: 'destructive',
-        })
-      }
-    } catch (err) {
-      toast({ title: 'Erro', description: 'Falha ao copiar o texto.', variant: 'destructive' })
-    }
-  }
-
-  const getRows = () =>
-    content
-      .split('\n')
-      .map((line) => {
-        if (line.includes('|')) {
-          const cells = line.split('|').map((c) => c.trim())
-          if (cells.every((c) => c === '' || c.match(/^[-:]+$/))) return null
-          return cells.filter((c) => c !== '')
-        }
-        return [line.replace(/[*#`]/g, '').trim()]
-      })
-      .filter((r) => r !== null && r.length > 0 && r[0] !== '') as string[][]
-
-  const handleDownloadExcel = () => {
-    const ws = XLSX.utils.aoa_to_sheet(getRows())
-    const wb = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(wb, ws, 'Resposta')
-    XLSX.writeFile(wb, 'consulta_assistente.xlsx')
-  }
-
-  const handleDownloadCSV = () => {
-    const csv = getRows()
-      .map((r) => r.join(';'))
-      .join('\n')
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = 'consulta.csv'
-    a.click()
-  }
-
-  const handleDownloadTXT = () => {
-    const blob = new Blob([content], { type: 'text/plain;charset=utf-8;' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = 'consulta.txt'
-    a.click()
-  }
-
-  const handleDownloadPDF = () => {
-    const win = window.open('', '', 'width=800,height=600')
-    if (win) {
-      win.document.write(
-        `<html><head><title>Consulta</title><style>body{font-family:sans-serif;padding:20px;line-height:1.6;}table{border-collapse:collapse;width:100%;}td,th{border:1px solid #ddd;padding:8px;text-align:left;}</style></head><body><pre style="white-space:pre-wrap;font-family:inherit;">${content.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</pre><script>window.onload=function(){window.print();window.close();}</script></body></html>`,
+    if (inTable) {
+      result.push(
+        <div
+          key={result.length}
+          className="w-full overflow-x-auto mb-2 border rounded-md border-slate-200"
+        >
+          <table className="w-full text-xs text-left">
+            <thead className="bg-slate-100 border-b border-slate-200">
+              <tr>
+                {tableHeaders.map((h, idx) => (
+                  <th key={idx} className="p-2 font-semibold text-slate-700">
+                    {h}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-200 bg-white">
+              {tableRows.map((row, rIdx) => (
+                <tr key={rIdx} className="hover:bg-slate-50 transition-colors">
+                  {row.map((cell, cIdx) => (
+                    <td key={cIdx} className="p-2 text-slate-600">
+                      {cell}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>,
       )
-      win.document.close()
     }
+
+    return (
+      <div className="space-y-2">
+        {result.map((node, i) => (
+          <div key={i}>{node}</div>
+        ))}
+      </div>
+    )
   }
 
-  const handleShareClick = () => {
-    if (!user) {
-      toast({ title: 'Erro', description: 'Usuário não autenticado.', variant: 'destructive' })
-      return
-    }
-    setShareDialogOpen(true)
-    setIsProtected(false)
-    setNotifyFirstAccess(false)
-    setIsSingleView(false)
-    setGeneratedLink('')
-    setGeneratedPassword('')
-  }
+  return (
+    <div className="whitespace-pre-wrap">
+      {text.split('\n').map((line, i) => {
+        const parts = line.split(/\[([^\]]+)\]\(([^)]+)\)/g)
+        if (parts.length > 1) {
+          return (
+            <span key={i}>
+              {parts.map((part, j) => {
+                if (j % 3 === 0) {
+                  const boldParts = part.split(/\*\*([^*]+)\*\*/g)
+                  return boldParts.map((bp, k) =>
+                    k % 2 === 1 ? <strong key={k}>{bp}</strong> : <span key={k}>{bp}</span>,
+                  )
+                }
+                if (j % 3 === 1)
+                  return (
+                    <Link
+                      key={j}
+                      to={parts[j + 1]}
+                      className="text-indigo-600 font-medium hover:underline"
+                    >
+                      {part}
+                    </Link>
+                  )
+                return null
+              })}
+              <br />
+            </span>
+          )
+        }
+        const boldParts = line.split(/\*\*([^*]+)\*\*/g)
+        return (
+          <span key={i}>
+            {boldParts.map((bp, k) =>
+              k % 2 === 1 ? <strong key={k}>{bp}</strong> : <span key={k}>{bp}</span>,
+            )}
+            <br />
+          </span>
+        )
+      })}
+    </div>
+  )
+}
 
-  const confirmShare = async () => {
-    if (!user) return
-    setIsGenerating(true)
+export function Chatbot() {
+  const [isOpen, setIsOpen] = useState(false)
+  const [messages, setMessages] = useState<{ role: string; content: string }[]>([])
+  const [input, setInput] = useState('')
+  const [loading, setLoading] = useState(false)
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const { toast } = useToast()
+
+  useEffect(() => {
+    if (scrollRef.current) {
+      const el = scrollRef.current
+      setTimeout(() => {
+        el.scrollTop = el.scrollHeight
+      }, 100)
+    }
+  }, [messages, loading, isOpen])
+
+  const handleSend = async () => {
+    if (!input.trim()) return
+
+    const newMessages = [...messages, { role: 'user', content: input }]
+    setMessages(newMessages)
+    setInput('')
+    setLoading(true)
 
     try {
-      const password = isProtected ? Math.random().toString(36).slice(-6).toUpperCase() : null
+      const { data: sessionData } = await supabase.auth.getSession()
+      const token = sessionData.session?.access_token
 
-      const { data, error } = await supabase
-        .from('shared_queries')
-        .insert({
-          user_id: user.id,
-          prompt: (prevPrompt || 'Consulta ao Assistente').slice(0, 1000),
-          content,
-          is_protected: isProtected,
-          password: password,
-          notify_first_access: notifyFirstAccess,
-          single_view: isSingleView,
-        })
-        .select('id')
-        .single()
-
-      if (error) {
-        console.error('Error generating link:', error)
-        toast({ title: 'Erro', description: 'Falha ao gerar link.', variant: 'destructive' })
-        return
-      }
-
-      if (data) {
-        const url = `${window.location.origin}/consulta/${data.id}`
-        setGeneratedLink(url)
-        if (password) setGeneratedPassword(password)
-
-        try {
-          if (navigator.clipboard && window.isSecureContext) {
-            await navigator.clipboard.writeText(
-              isProtected ? `Link: ${url}\nSenha: ${password}` : url,
-            )
-            setShared(true)
-            setTimeout(() => setShared(false), 2000)
-            toast({
-              title: 'Link gerado com sucesso!',
-              description: isProtected
-                ? 'O link e a senha foram copiados para sua área de transferência.'
-                : 'O link foi copiado para sua área de transferência.',
-            })
-          } else {
-            throw new Error('Clipboard API not available')
-          }
-        } catch (clipboardErr) {
-          toast({
-            title: 'Link Gerado!',
-            description: `Copie a URL: ${url}`,
-            duration: 10000,
-          })
-        }
-      }
-    } catch (err) {
-      console.error('Unexpected error:', err)
-      toast({
-        title: 'Erro',
-        description: 'Falha inesperada ao gerar link.',
-        variant: 'destructive',
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ messages: newMessages }),
       })
+
+      if (!response.ok) throw new Error('Erro ao enviar mensagem')
+
+      const data = await response.json()
+
+      setMessages([
+        ...newMessages,
+        { role: 'assistant', content: data.reply || data.error || 'Erro desconhecido' },
+      ])
+    } catch (error: any) {
+      toast({ title: 'Erro', description: error.message, variant: 'destructive' })
+      setMessages([
+        ...newMessages,
+        { role: 'assistant', content: 'Desculpe, ocorreu um erro ao processar sua mensagem.' },
+      ])
     } finally {
-      setIsGenerating(false)
+      setLoading(false)
     }
   }
 
   return (
     <>
-      <div className="flex items-center gap-1 mt-3 pt-2 border-t border-border/40 text-muted-foreground">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
+      {!isOpen && (
+        <Button
+          onClick={() => setIsOpen(true)}
+          className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 z-50 bg-indigo-950 hover:bg-indigo-900"
+        >
+          <MessageCircle className="h-6 w-6 text-white" />
+        </Button>
+      )}
+
+      {isOpen && (
+        <Card className="fixed bottom-6 right-6 w-80 sm:w-[450px] h-[550px] shadow-2xl flex flex-col z-50 border-indigo-100 animate-in slide-in-from-bottom-10 fade-in duration-300">
+          <CardHeader className="bg-indigo-950 text-white rounded-t-xl py-3 px-4 flex flex-row items-center justify-between space-y-0">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <MessageCircle className="h-4 w-4" /> Assistente Virtual NOMA
+            </CardTitle>
             <Button
-              type="button"
               variant="ghost"
               size="icon"
-              className="h-6 w-6 hover:bg-background/50"
-              title="Exportar"
+              className="h-6 w-6 text-white hover:bg-indigo-900 hover:text-white"
+              onClick={() => setIsOpen(false)}
             >
-              <Download className="w-3.5 h-3.5" />
+              <X className="h-4 w-4" />
             </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="z-[110]">
-            <DropdownMenuItem onClick={handleDownloadExcel}>Excel (.xlsx)</DropdownMenuItem>
-            <DropdownMenuItem onClick={handleDownloadCSV}>CSV (.csv)</DropdownMenuItem>
-            <DropdownMenuItem onClick={handleDownloadTXT}>Texto (.txt)</DropdownMenuItem>
-            <DropdownMenuItem onClick={handleDownloadPDF}>PDF (.pdf)</DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          className="h-6 w-6 hover:bg-background/50"
-          onClick={handleShareClick}
-          title="Compartilhar Link"
-        >
-          {shared ? (
-            <Check className="w-3.5 h-3.5 text-green-500" />
-          ) : (
-            <LinkIcon className="w-3.5 h-3.5" />
-          )}
-        </Button>
-        <div className="flex-1" />
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          className="h-6 w-6 hover:bg-background/50"
-          onClick={handleCopy}
-          title="Copiar texto"
-        >
-          {copied ? (
-            <Check className="w-3.5 h-3.5 text-green-500" />
-          ) : (
-            <Copy className="w-3.5 h-3.5" />
-          )}
-        </Button>
-      </div>
-
-      <Dialog open={shareDialogOpen} onOpenChange={setShareDialogOpen}>
-        <DialogContent className="sm:max-w-md w-[95vw] mx-auto z-[120]">
-          <DialogHeader>
-            <DialogTitle>Compartilhar Consulta</DialogTitle>
-            <DialogDescription>
-              Gere um link para compartilhar o resultado desta consulta com outras pessoas.
-            </DialogDescription>
-          </DialogHeader>
-
-          {!generatedLink ? (
-            <div className="flex flex-col space-y-5 py-4">
-              <div className="flex items-start space-x-3">
-                <Switch
-                  id="protect-link"
-                  checked={isProtected}
-                  onCheckedChange={setIsProtected}
-                  className="mt-0.5"
-                />
-                <div className="flex flex-col gap-1">
-                  <Label htmlFor="protect-link" className="cursor-pointer font-medium leading-none">
-                    Proteger com senha
-                  </Label>
-                  {isProtected && (
-                    <p className="text-xs text-muted-foreground leading-snug">
-                      O sistema criará uma senha segura para você compartilhar separadamente. Quem
-                      tiver o link só poderá acessar com a senha.
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              <div className="flex items-start space-x-3">
-                <Switch
-                  id="notify-link"
-                  checked={notifyFirstAccess}
-                  onCheckedChange={setNotifyFirstAccess}
-                  className="mt-0.5"
-                />
-                <div className="flex flex-col gap-1">
-                  <Label htmlFor="notify-link" className="cursor-pointer font-medium leading-none">
-                    Notificações de acesso
-                  </Label>
-                  {notifyFirstAccess && (
-                    <p className="text-xs text-muted-foreground leading-snug">
-                      Você será notificado quando este link for acessado pela primeira vez.
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              <div className="flex items-start space-x-3">
-                <Switch
-                  id="single-view-link"
-                  checked={isSingleView}
-                  onCheckedChange={setIsSingleView}
-                  className="mt-0.5"
-                />
-                <div className="flex flex-col gap-1">
-                  <Label
-                    htmlFor="single-view-link"
-                    className="cursor-pointer font-medium leading-none"
-                  >
-                    Visualização Única
-                  </Label>
-                  {isSingleView && (
-                    <p className="text-xs text-muted-foreground leading-snug">
-                      Este link será inutilizado automaticamente após o primeiro acesso.
-                    </p>
-                  )}
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="py-4 space-y-5">
-              <div className="space-y-2">
-                <Label>Link de Compartilhamento</Label>
-                <div className="flex items-center gap-2 w-full">
-                  <Input
-                    readOnly
-                    value={generatedLink}
-                    className="bg-muted flex-1 min-w-0 font-mono text-sm"
-                  />
-                  <Button
-                    size="icon"
-                    variant="outline"
-                    className="shrink-0"
-                    onClick={() => navigator.clipboard.writeText(generatedLink)}
-                  >
-                    <Copy className="w-4 h-4" />
-                  </Button>
-                </div>
-              </div>
-              {isProtected && generatedPassword && (
-                <div className="space-y-2">
-                  <Label>Senha de Acesso</Label>
-                  <div className="flex items-center gap-2 w-full">
-                    <Input
-                      readOnly
-                      value={generatedPassword}
-                      className="bg-muted font-mono tracking-wider flex-1 min-w-0 text-sm"
-                    />
-                    <Button
-                      size="icon"
-                      variant="outline"
-                      className="shrink-0"
-                      onClick={() => navigator.clipboard.writeText(generatedPassword)}
-                    >
-                      <Copy className="w-4 h-4" />
-                    </Button>
+          </CardHeader>
+          <CardContent className="flex-1 p-0 overflow-hidden bg-slate-50/50">
+            <ScrollArea className="h-full p-4" ref={scrollRef}>
+              {messages.length === 0 ? (
+                <div className="h-full flex flex-col items-center justify-center text-slate-500 space-y-3 mt-10">
+                  <div className="h-12 w-12 rounded-full bg-indigo-100 flex items-center justify-center">
+                    <MessageCircle className="h-6 w-6 text-indigo-950" />
                   </div>
-                  <p className="text-xs text-muted-foreground">
-                    Copie esta senha e envie para quem for acessar o link.
+                  <p className="text-sm text-center max-w-[200px]">
+                    Olá! Sou o assistente NOMA. Como posso ajudar você hoje?
                   </p>
                 </div>
-              )}
-              {isSingleView && (
-                <div className="bg-blue-500/10 text-blue-600 px-4 py-2 rounded-md font-medium text-sm w-full text-center flex items-center justify-center gap-2">
-                  <EyeOff className="w-4 h-4" />
-                  Visualização Única Ativada
-                </div>
-              )}
-            </div>
-          )}
-
-          <DialogFooter>
-            {!generatedLink ? (
-              <>
-                <Button variant="outline" onClick={() => setShareDialogOpen(false)}>
-                  Cancelar
-                </Button>
-                <Button onClick={confirmShare} disabled={isGenerating}>
-                  {isGenerating ? 'Gerando...' : 'Gerar Link'}
-                </Button>
-              </>
-            ) : (
-              <Button onClick={() => setShareDialogOpen(false)}>Fechar</Button>
-            )}
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </>
-  )
-}
-
-export function Chatbot() {
-  const { user } = useAuth()
-  const [isOpen, setIsOpen] = useState(false)
-  const [activeTab, setActiveTab] = useState('chat')
-  const [position, setPosition] = useState({ x: 0, y: 0 })
-  const [isDragging, setIsDragging] = useState(false)
-  const dragStartPos = useRef({ x: 0, y: 0 })
-  const dragElementPos = useRef({ x: 0, y: 0 })
-  const [sessions, setSessions] = useState<any[]>([])
-  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null)
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: '1',
-      role: 'assistant',
-      content: 'Olá! Sou o assistente virtual. Como posso ajudar com suas análises hoje?',
-    },
-  ])
-  const [input, setInput] = useState('')
-  const [isLoading, setIsLoading] = useState(false)
-  const [attachedFile, setAttachedFile] = useState<{
-    name: string
-    type: string
-    content: string
-  } | null>(null)
-
-  const messagesEndRef = useRef<HTMLDivElement>(null)
-  const fileInputRef = useRef<HTMLInputElement>(null)
-
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages, isOpen, isLoading, activeTab])
-
-  const handleMouseDown = (e: React.MouseEvent) => {
-    const target = e.target as HTMLElement
-    if (target.closest('.no-drag')) return
-    setIsDragging(true)
-    dragStartPos.current = { x: e.clientX, y: e.clientY }
-    dragElementPos.current = { ...position }
-  }
-
-  useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      if (!isDragging) return
-      const dx = e.clientX - dragStartPos.current.x
-      const dy = e.clientY - dragStartPos.current.y
-      setPosition({
-        x: dragElementPos.current.x + dx,
-        y: dragElementPos.current.y + dy,
-      })
-    }
-    const handleMouseUp = () => setIsDragging(false)
-    if (isDragging) {
-      document.addEventListener('mousemove', handleMouseMove)
-      document.addEventListener('mouseup', handleMouseUp)
-    }
-    return () => {
-      document.removeEventListener('mousemove', handleMouseMove)
-      document.removeEventListener('mouseup', handleMouseUp)
-    }
-  }, [isDragging])
-
-  useEffect(() => {
-    if (!isOpen) setPosition({ x: 0, y: 0 })
-  }, [isOpen])
-
-  const fetchHistory = async () => {
-    if (!user) return
-    const { data } = await supabase
-      .from('chat_sessions')
-      .select('id, title, created_at')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false })
-    if (data) setSessions(data)
-  }
-
-  useEffect(() => {
-    if (isOpen && activeTab === 'history') fetchHistory()
-  }, [isOpen, activeTab, user])
-
-  const startNewChat = () => {
-    setCurrentSessionId(null)
-    setMessages([
-      {
-        id: Date.now().toString(),
-        role: 'assistant',
-        content: 'Olá! Nova consulta iniciada. Como posso ajudar?',
-      },
-    ])
-    setActiveTab('chat')
-  }
-
-  const loadSession = async (sessionId: string) => {
-    setCurrentSessionId(sessionId)
-    const { data } = await supabase
-      .from('chat_messages')
-      .select('*')
-      .eq('session_id', sessionId)
-      .order('created_at', { ascending: true })
-    if (data)
-      setMessages(
-        data.map((m) => ({
-          id: m.id,
-          role: m.role as any,
-          content: m.content,
-          attachedFileName: m.attached_file_name,
-        })),
-      )
-    setActiveTab('chat')
-  }
-
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    let content = ''
-    const ext = file.name.split('.').pop()?.toLowerCase() || ''
-    try {
-      if (ext === 'xlsx') {
-        const buffer = await file.arrayBuffer()
-        const ws = XLSX.read(buffer).Sheets[XLSX.read(buffer).SheetNames[0]]
-        content = XLSX.utils.sheet_to_csv(ws)
-        setAttachedFile({ name: file.name, type: ext, content })
-      } else if (ext === 'pdf') {
-        const reader = new FileReader()
-        reader.onload = (ev) => {
-          const res = ev.target?.result as string
-          if (res) setAttachedFile({ name: file.name, type: ext, content: res.split(',')[1] })
-        }
-        reader.readAsDataURL(file)
-        return
-      } else {
-        content = await file.text()
-        setAttachedFile({ name: file.name, type: ext, content })
-      }
-    } catch (err) {
-      console.error(err)
-    }
-    if (fileInputRef.current) fileInputRef.current.value = ''
-  }
-
-  const handleSend = async () => {
-    if (!input.trim() && !attachedFile) return
-    const userContent = input.trim() || 'Arquivo em anexo.'
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      role: 'user',
-      content: userContent,
-      attachedFileName: attachedFile?.name,
-    }
-
-    setMessages((prev) => [...prev, userMessage])
-    setInput('')
-    setIsLoading(true)
-    const currentFile = attachedFile
-    setAttachedFile(null)
-
-    let sId = currentSessionId
-    if (!sId && user) {
-      const { data: sData } = await supabase
-        .from('chat_sessions')
-        .insert({ user_id: user.id, title: userContent.slice(0, 35) || 'Consulta' })
-        .select('id')
-        .single()
-      if (sData) {
-        sId = sData.id
-        setCurrentSessionId(sId)
-      }
-    }
-    if (sId && user)
-      await supabase.from('chat_messages').insert({
-        session_id: sId,
-        role: 'user',
-        content: userContent,
-        attached_file_name: userMessage.attachedFileName,
-      })
-
-    try {
-      const { data, error } = await supabase.functions.invoke('chat', {
-        body: {
-          messages: [...messages, userMessage]
-            .filter((m) => m.role === 'user' || m.role === 'assistant')
-            .map((m) => ({ role: m.role, content: m.content })),
-          file: currentFile,
-        },
-      })
-      if (error) throw error
-      const reply = data?.reply || (data?.error ? `Erro: ${data.error}` : 'Erro desconhecido.')
-      setMessages((prev) => [
-        ...prev,
-        { id: Date.now().toString(), role: 'assistant', content: reply, isTyping: true },
-      ])
-      if (sId && user)
-        await supabase
-          .from('chat_messages')
-          .insert({ session_id: sId, role: 'assistant', content: reply })
-    } catch (error: any) {
-      console.error('Chat error:', error)
-      let errorMsg = 'Erro de conexão ou API Key inválida.'
-      if (error?.context?.error) {
-        errorMsg = error.context.error
-      } else if (error instanceof Error) {
-        errorMsg = error.message
-      }
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: Date.now().toString(),
-          role: 'assistant',
-          content: `Falha na consulta: ${errorMsg}`,
-        },
-      ])
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  return (
-    <div className="fixed bottom-6 right-6 z-[100] flex flex-col items-end">
-      {isOpen && (
-        <Card
-          className="w-[380px] sm:w-[450px] max-w-[calc(100vw-2rem)] h-[600px] max-h-[calc(100vh-6rem)] mb-4 flex flex-col shadow-2xl border-primary/20 animate-in slide-in-from-bottom-5 overflow-hidden"
-          style={{ transform: `translate(${position.x}px, ${position.y}px)` }}
-        >
-          <CardHeader
-            className="bg-primary text-primary-foreground p-3 rounded-t-lg flex flex-row items-center justify-between cursor-move select-none"
-            onMouseDown={handleMouseDown}
-          >
-            <div className="flex items-center gap-2 pointer-events-none">
-              <Bot className="w-5 h-5" />
-              <CardTitle className="text-base font-medium">Assistente</CardTitle>
-            </div>
-            <div className="flex gap-1 no-drag cursor-default">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7 text-primary-foreground hover:bg-primary/90"
-                onClick={startNewChat}
-                title="Nova Consulta"
-              >
-                <Plus className="w-4 h-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7 text-primary-foreground hover:bg-primary/90"
-                onClick={() => setIsOpen(false)}
-              >
-                <X className="w-4 h-4" />
-              </Button>
-            </div>
-          </CardHeader>
-
-          <Tabs
-            value={activeTab}
-            onValueChange={setActiveTab}
-            className="flex-1 flex flex-col w-full"
-          >
-            <div className="px-3 pt-2 border-b bg-muted/20">
-              <TabsList className="w-full grid grid-cols-2">
-                <TabsTrigger value="chat">Chat</TabsTrigger>
-                <TabsTrigger value="history">Histórico</TabsTrigger>
-              </TabsList>
-            </div>
-
-            <TabsContent
-              value="chat"
-              className="flex-1 overflow-hidden m-0 p-0 flex flex-col relative"
-            >
-              <ScrollArea className="flex-1 p-4 w-full max-w-full">
-                <div className="flex flex-col gap-5 pb-4 w-full max-w-full min-w-0">
-                  {messages.map((msg, idx) => (
+              ) : (
+                <div className="space-y-4 pb-4">
+                  {messages.map((msg, index) => (
                     <div
-                      key={msg.id}
+                      key={index}
                       className={cn(
-                        'flex gap-2 w-full min-w-0 max-w-full break-words',
-                        msg.role === 'user' ? 'ml-auto flex-row-reverse w-full' : 'w-full',
+                        'flex w-full',
+                        msg.role === 'user' ? 'justify-end' : 'justify-start',
                       )}
                     >
                       <div
                         className={cn(
-                          'w-8 h-8 rounded-full flex items-center justify-center shrink-0 mt-1',
+                          'max-w-[85%] rounded-2xl px-4 py-2.5 text-sm shadow-sm',
                           msg.role === 'user'
-                            ? 'bg-primary text-primary-foreground'
-                            : 'bg-muted text-muted-foreground',
+                            ? 'bg-indigo-600 text-white rounded-tr-sm'
+                            : 'bg-white border border-slate-200 text-slate-800 rounded-tl-sm',
                         )}
                       >
                         {msg.role === 'user' ? (
-                          <UserIcon className="w-4 h-4" />
+                          <div className="whitespace-pre-wrap">{msg.content}</div>
                         ) : (
-                          <Bot className="w-4 h-4" />
-                        )}
-                      </div>
-                      <div
-                        className={cn(
-                          'p-3 rounded-xl text-sm shadow-sm flex flex-col w-full min-w-0 max-w-full overflow-x-hidden',
-                          msg.role === 'user'
-                            ? 'bg-primary text-primary-foreground rounded-tr-none'
-                            : 'bg-muted text-foreground rounded-tl-none',
-                        )}
-                        style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }}
-                      >
-                        {msg.role === 'user' ? (
-                          <div className="whitespace-pre-wrap flex flex-col gap-1">
-                            {msg.content}
-                            {msg.attachedFileName && (
-                              <div className="flex items-center gap-1 mt-1 text-[11px] opacity-90 bg-primary-foreground/15 px-2 py-1 rounded-md w-full break-words">
-                                <Paperclip className="w-3 h-3" />
-                                <span className="w-full break-words">{msg.attachedFileName}</span>
-                              </div>
-                            )}
+                          <div className="prose-sm max-w-none text-slate-800">
+                            {parseMarkdown(msg.content)}
                           </div>
-                        ) : (
-                          <>
-                            {msg.isTyping ? (
-                              <TypingEffect
-                                content={msg.content}
-                                onComplete={() =>
-                                  setMessages((prev) =>
-                                    prev.map((m) =>
-                                      m.id === msg.id ? { ...m, isTyping: false } : m,
-                                    ),
-                                  )
-                                }
-                                onLinkClick={() => setIsOpen(false)}
-                              />
-                            ) : (
-                              renderMessageContent(msg.content, () => setIsOpen(false))
-                            )}
-                            {!msg.isTyping && idx > 0 && (
-                              <BotMessageActions
-                                content={msg.content}
-                                prevPrompt={messages[idx - 1]?.content}
-                              />
-                            )}
-                          </>
                         )}
                       </div>
                     </div>
                   ))}
-                  {isLoading && (
-                    <div className="flex gap-2 w-full break-words">
-                      <div className="w-8 h-8 rounded-full bg-muted text-muted-foreground flex items-center justify-center shrink-0 mt-1">
-                        <Bot className="w-4 h-4" />
-                      </div>
-                      <div className="p-3 rounded-xl text-sm bg-muted text-foreground rounded-tl-none flex items-center gap-2 shadow-sm h-10">
-                        <span className="flex gap-1 items-center h-full">
-                          <span className="w-1.5 h-1.5 bg-foreground/40 rounded-full animate-bounce [animation-delay:-0.3s]" />
-                          <span className="w-1.5 h-1.5 bg-foreground/40 rounded-full animate-bounce [animation-delay:-0.15s]" />
-                          <span className="w-1.5 h-1.5 bg-foreground/40 rounded-full animate-bounce" />
-                        </span>
+                  {loading && (
+                    <div className="flex w-full justify-start">
+                      <div className="bg-white border border-slate-200 text-slate-500 rounded-2xl rounded-tl-sm px-4 py-2.5 text-sm flex items-center gap-2 shadow-sm">
+                        <Loader2 className="h-4 w-4 animate-spin text-indigo-600" />
+                        <span>Processando...</span>
                       </div>
                     </div>
                   )}
-                  <div ref={messagesEndRef} />
                 </div>
-              </ScrollArea>
-              <CardFooter className="p-3 border-t bg-card/50 backdrop-blur-sm shrink-0">
-                <form
-                  onSubmit={(e) => {
-                    e.preventDefault()
-                    handleSend()
-                  }}
-                  className="flex w-full gap-2 items-end"
-                >
-                  <input
-                    type="file"
-                    ref={fileInputRef}
-                    onChange={handleFileChange}
-                    className="hidden"
-                    accept=".txt,.csv,.xlsx,.pdf"
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="shrink-0 rounded-full h-10 w-10 text-muted-foreground"
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={isLoading}
-                  >
-                    <Paperclip className="w-4 h-4" />
-                  </Button>
-                  <div className="flex-1 flex flex-col bg-background border rounded-2xl w-full focus-within:ring-1 focus-within:ring-ring">
-                    {attachedFile && (
-                      <div className="flex items-center gap-2 px-3 py-1.5 bg-muted/40 border-b text-xs w-full break-words">
-                        <FileText className="w-3.5 h-3.5 text-primary" />
-                        <span className="flex-1 w-full break-words font-medium">
-                          {attachedFile.name}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => setAttachedFile(null)}
-                          className="hover:text-destructive"
-                        >
-                          <X className="w-3 h-3" />
-                        </button>
-                      </div>
-                    )}
-                    <Input
-                      placeholder="Pergunte ou anexe um arquivo..."
-                      value={input}
-                      onChange={(e) => setInput(e.target.value)}
-                      disabled={isLoading}
-                      className="border-0 focus-visible:ring-0 shadow-none rounded-none h-10 px-3 bg-transparent"
-                      autoFocus
-                    />
-                  </div>
-                  <Button
-                    type="submit"
-                    size="icon"
-                    className="rounded-full shrink-0 h-10 w-10"
-                    disabled={isLoading || (!input.trim() && !attachedFile)}
-                  >
-                    <Send className="w-4 h-4" />
-                  </Button>
-                </form>
-              </CardFooter>
-            </TabsContent>
-
-            <TabsContent value="history" className="flex-1 m-0 p-0 w-full">
-              <ScrollArea className="h-full p-4 w-full">
-                {sessions.map((s) => (
-                  <div
-                    key={s.id}
-                    onClick={() => loadSession(s.id)}
-                    className="p-3 border rounded-lg mb-3 cursor-pointer hover:bg-muted/80 transition-colors shadow-sm w-full break-words"
-                  >
-                    <div className="font-medium text-[13px] w-full break-words">{s.title}</div>
-                    <div className="text-[11px] text-muted-foreground mt-1.5">
-                      {new Date(s.created_at).toLocaleString()}
-                    </div>
-                  </div>
-                ))}
-                {sessions.length === 0 && (
-                  <div className="text-center text-sm text-muted-foreground py-8">
-                    Nenhum histórico encontrado.
-                  </div>
-                )}
-              </ScrollArea>
-            </TabsContent>
-          </Tabs>
+              )}
+            </ScrollArea>
+          </CardContent>
+          <CardFooter className="p-3 border-t bg-white rounded-b-xl">
+            <form
+              onSubmit={(e) => {
+                e.preventDefault()
+                handleSend()
+              }}
+              className="flex w-full items-center gap-2"
+            >
+              <Input
+                placeholder="Pergunte sobre os dados..."
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                className="flex-1 border-slate-200 focus-visible:ring-indigo-600 h-10 shadow-sm"
+                disabled={loading}
+              />
+              <Button
+                type="submit"
+                size="icon"
+                disabled={!input.trim() || loading}
+                className="h-10 w-10 bg-indigo-600 hover:bg-indigo-700 text-white shrink-0 shadow-sm transition-all active:scale-95"
+              >
+                <Send className="h-4 w-4" />
+              </Button>
+            </form>
+          </CardFooter>
         </Card>
       )}
-
-      {!isOpen && (
-        <Button
-          onClick={() => setIsOpen(true)}
-          className="w-14 h-14 rounded-full shadow-xl hover:shadow-2xl transition-all duration-300 bg-primary text-primary-foreground flex items-center justify-center animate-in zoom-in-50"
-        >
-          <MessageCircle className="w-6 h-6" />
-        </Button>
-      )}
-    </div>
+    </>
   )
 }
