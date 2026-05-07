@@ -118,30 +118,29 @@ Deno.serve(async (req: Request) => {
     }
     @media print {
       body { background-color: white; padding: 0; }
-      .container { box-shadow: none; border-radius: 0; max-width: 100%; }
+      .container { box-shadow: none; border-radius: 0; max-width: 100%; border: none; }
       .print-btn { display: none; }
       * {
         -webkit-print-color-adjust: exact !important;
         print-color-adjust: exact !important;
       }
     }
-    table { width: 100%; border-collapse: collapse; }
-    th { background-color: #f8fafc; color: #000; padding: 12px 16px; text-align: left; font-size: 14px; font-weight: bold; border-bottom: 1px solid #e2e8f0; }
-    td { padding: 8px 16px; font-size: 13px; vertical-align: middle; }
+    .table-wrapper {
+      padding: 24px;
+    }
+    table { width: 100%; border-collapse: collapse; border-radius: 6px; overflow: hidden; }
+    th { background-color: #1e1b4b; color: #ffffff; padding: 12px 16px; text-align: center; font-size: 14px; font-weight: bold; border: none; }
+    td { padding: 8px 16px; font-size: 11px; vertical-align: middle; text-align: center; border: none; }
     
-    .row-odd { background-color: #ffffff; color: #0f172a; border-bottom: 1px solid #f1f5f9; }
-    .row-even { background-color: #800000; color: #ffffff; font-weight: bold; }
+    .row-odd { background-color: #ffffff; color: #0f172a; }
+    .row-even { background-color: #bfdbfe; color: #0f172a; }
     
-    .status-badge { padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 600; }
+    .status-badge { padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: normal; }
     
-    .status-active-odd { background-color: #dcfce7; color: #065f46; }
-    .status-inactive-odd { background-color: #f1f5f9; color: #475569; }
-    
-    .status-active-even { background-color: rgba(255,255,255,0.2); color: #ffffff; }
-    .status-inactive-even { background-color: rgba(255,255,255,0.2); color: #ffffff; }
+    .status-active { background-color: #d1fae5; color: #065f46; }
+    .status-inactive { background-color: #f1f5f9; color: #334155; }
 
-    .doc-label-odd { font-weight: 500; color: #64748b; margin-right: 4px; }
-    .doc-label-even { font-weight: 500; color: #ffffff; margin-right: 4px; }
+    .doc-label { font-weight: normal; color: #0f172a; margin-right: 4px; }
   </style>
 </head>
 <body>
@@ -153,60 +152,55 @@ Deno.serve(async (req: Request) => {
       </div>
       <button class="print-btn" onclick="window.print()">Imprimir</button>
     </div>
-    <table>
-      <thead>
-        <tr>
-          <th>Empresa</th>
-          <th>Documentos</th>
-          <th>Contato</th>
-          <th>Status</th>
-          <th>Criado em</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${data
-          .map((r: any, index: number) => {
-            const isEven = index % 2 === 1
-            const rowClass = isEven ? 'row-even' : 'row-odd'
-            const statusClass = r.status
-              ? isEven
-                ? 'status-active-even'
-                : 'status-active-odd'
-              : isEven
-                ? 'status-inactive-even'
-                : 'status-inactive-odd'
-            const docLabelClass = isEven ? 'doc-label-even' : 'doc-label-odd'
-
-            return `
-          <tr class="${rowClass}">
-            <td>
-              <div>
-                <div style="font-size: 14px;">${r.name || '-'}</div>
-                ${r.address ? `<div style="font-size: 11px; font-weight: normal; margin-top: 2px; ${isEven ? 'color: #e2e8f0;' : 'color: #64748b;'}">${r.address}</div>` : ''}
-              </div>
-            </td>
-            <td>
-              ${r.cnpj ? `<div><span class="${docLabelClass}">CNPJ:</span>${r.cnpj}</div>` : ''}
-              ${r.cpf ? `<div><span class="${docLabelClass}">CPF:</span>${r.cpf}</div>` : ''}
-              ${!r.cnpj && !r.cpf ? '-' : ''}
-            </td>
-            <td>
-              ${r.email ? `<div>${r.email}</div>` : ''}
-              ${r.phone ? `<div>${r.phone}</div>` : ''}
-              ${!r.email && !r.phone ? '-' : ''}
-            </td>
-            <td>
-              <span class="status-badge ${statusClass}">${r.status ? 'Ativo' : 'Inativo'}</span>
-            </td>
-            <td>
-              ${r.created_at || '-'}
-            </td>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr>
+            <th>Empresa</th>
+            <th>Documentos</th>
+            <th>Contato</th>
+            <th>Status</th>
+            <th>Criado em</th>
           </tr>
-        `
-          })
-          .join('')}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          ${data
+            .map((r: any, index: number) => {
+              const isEven = index % 2 === 1
+              const rowClass = isEven ? 'row-even' : 'row-odd'
+              const statusClass = r.status ? 'status-active' : 'status-inactive'
+
+              return `
+            <tr class="${rowClass}">
+              <td>
+                <div style="text-align: center;">
+                  <div style="font-size: 11px; font-weight: bold; color: #0f172a;">${r.name || '-'}</div>
+                  ${r.address ? `<div style="font-size: 11px; font-weight: normal; margin-top: 2px; color: #64748b;">${r.address}</div>` : ''}
+                </div>
+              </td>
+              <td>
+                ${r.cnpj ? `<div><span class="doc-label">CNPJ:</span>${r.cnpj}</div>` : ''}
+                ${r.cpf ? `<div><span class="doc-label">CPF:</span>${r.cpf}</div>` : ''}
+                ${!r.cnpj && !r.cpf ? '-' : ''}
+              </td>
+              <td>
+                ${r.email ? `<div>${r.email}</div>` : ''}
+                ${r.phone ? `<div>${r.phone}</div>` : ''}
+                ${!r.email && !r.phone ? '-' : ''}
+              </td>
+              <td>
+                <span class="status-badge ${statusClass}">${r.status ? 'Ativo' : 'Inativo'}</span>
+              </td>
+              <td>
+                ${r.created_at || '-'}
+              </td>
+            </tr>
+          `
+            })
+            .join('')}
+        </tbody>
+      </table>
+    </div>
   </div>
 </body>
 </html>
@@ -247,31 +241,71 @@ Deno.serve(async (req: Request) => {
         startY: 28,
         head: [['Empresa', 'Documentos', 'Contato', 'Status', 'Criado em']],
         body: body,
-        theme: 'grid',
+        theme: 'plain',
         headStyles: {
-          fillColor: [248, 250, 252],
-          textColor: [0, 0, 0],
+          fillColor: [30, 27, 75], // #1e1b4b
+          textColor: [255, 255, 255],
           fontStyle: 'bold',
-          halign: 'left',
+          halign: 'center',
+          fontSize: 11,
         },
         styles: {
-          fontSize: 9,
+          fontSize: 8,
           cellPadding: 4,
-          lineColor: [226, 232, 240],
-          lineWidth: 0.1,
+          halign: 'center',
+          valign: 'middle',
+          lineWidth: 0,
+        },
+        columnStyles: {
+          0: { fontStyle: 'bold' },
         },
         didParseCell: function (data: any) {
           if (data.section === 'body') {
             const isEven = data.row.index % 2 === 1
             if (isEven) {
-              data.cell.styles.fillColor = [128, 0, 0] // #800000 Maroon
-              data.cell.styles.textColor = [255, 255, 255]
-              data.cell.styles.fontStyle = 'bold'
+              data.cell.styles.fillColor = [191, 219, 254] // #bfdbfe
+              data.cell.styles.textColor = [15, 23, 42] // #0f172a
             } else {
               data.cell.styles.fillColor = [255, 255, 255]
-              data.cell.styles.textColor = [15, 23, 42]
-              data.cell.styles.fontStyle = 'normal'
+              data.cell.styles.textColor = [15, 23, 42] // #0f172a
             }
+            if (data.column.index === 3) {
+              data.cell.styles.textColor = data.cell.styles.fillColor
+            }
+          }
+        },
+        didDrawCell: function (data: any) {
+          if (data.section === 'body' && data.column.index === 3) {
+            const text = body[data.row.index][3]
+            const docRef = data.doc
+
+            const startX = data.cell.x + data.cell.width / 2
+            const centerY = data.cell.y + data.cell.height / 2
+
+            docRef.setFontSize(7)
+            docRef.setFont('helvetica', 'normal')
+            const textWidth = docRef.getTextWidth(text)
+            const badgeWidth = textWidth + 4
+            const badgeHeight = 4
+
+            if (text === 'Ativo') {
+              docRef.setFillColor(209, 250, 229) // emerald-100 #d1fae5
+              docRef.setTextColor(6, 95, 70) // emerald-800 #065f46
+            } else {
+              docRef.setFillColor(241, 245, 249) // slate-100 #f1f5f9
+              docRef.setTextColor(51, 65, 85) // slate-700 #334155
+            }
+
+            docRef.roundedRect(
+              startX - badgeWidth / 2,
+              centerY - 2,
+              badgeWidth,
+              badgeHeight,
+              1,
+              1,
+              'F',
+            )
+            docRef.text(text, startX, centerY + 0.8, { align: 'center' })
           }
         },
       })
