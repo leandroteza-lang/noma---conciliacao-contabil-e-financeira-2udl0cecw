@@ -371,9 +371,7 @@ Deno.serve(async (req: Request) => {
           const limit = Math.min(args.limit || 15, 50)
           let query = supabase
             .from('erp_financial_movements')
-            .select(
-              'data_emissao, dt_compens, c_custo, descricao_c_custo, valor, nome_cli_fornec, historico, n_documento, status',
-            )
+            .select('data_emissao, dt_compens, c_custo, descricao_c_custo, valor, nome_cli_fornec, historico, n_documento, status')
             .in('organization_id', orgIds)
             .is('deleted_at', null)
 
@@ -383,9 +381,7 @@ Deno.serve(async (req: Request) => {
           if (args.max_amount) query = query.lte('valor', args.max_amount)
           if (args.supplier_name) query = query.ilike('nome_cli_fornec', `%${args.supplier_name}%`)
           if (args.cost_center) {
-            query = query.or(
-              `c_custo.ilike.%${args.cost_center}%,descricao_c_custo.ilike.%${args.cost_center}%`,
-            )
+            query = query.or(`c_custo.ilike.%${args.cost_center}%,descricao_c_custo.ilike.%${args.cost_center}%`)
           }
 
           const { data } = await query.order('data_emissao', { ascending: false }).limit(limit)
