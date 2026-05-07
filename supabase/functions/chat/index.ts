@@ -231,7 +231,8 @@ Deno.serve(async (req: Request) => {
               },
               limit: {
                 type: 'number',
-                description: 'Número de registros para retornar (padrão 15, máx 50)',
+                description:
+                  'Número de registros para retornar (padrão 100, máx 500). Use limite alto para calcular totais.',
               },
             },
           },
@@ -368,10 +369,12 @@ Deno.serve(async (req: Request) => {
           if (!hasPerm(['view_entries', 'view_financial_movements']))
             return 'Acesso negado: Você não tem permissão para visualizar movimentações do TGA.'
           if (orgIds.length === 0) return JSON.stringify([])
-          const limit = Math.min(args.limit || 15, 50)
+          const limit = Math.min(args.limit || 100, 500)
           let query = supabase
             .from('erp_financial_movements')
-            .select('data_emissao, dt_compens, c_custo, descricao_c_custo, valor, nome_cli_fornec, historico, n_documento, status')
+            .select(
+              'data_emissao, dt_compens, c_custo, descricao_c_custo, valor, valor_liquido, nome_cli_fornec, historico, n_documento, status',
+            )
             .in('organization_id', orgIds)
             .is('deleted_at', null)
 
@@ -379,9 +382,31 @@ Deno.serve(async (req: Request) => {
           if (args.end_date) query = query.lte('data_emissao', args.end_date)
           if (args.min_amount) query = query.gte('valor', args.min_amount)
           if (args.max_amount) query = query.lte('valor', args.max_amount)
-          if (args.supplier_name) query = query.ilike('nome_cli_fornec', `%${args.supplier_name}%`)
+          if (args.supplier_name) {
+            const words = args.supplier_name.split(' ').filter((w: string) => w.length > 2)
+            if (words.length > 0) {
+              const conditions = words.map((w: string) => {
+                const cleanW = w.replace(/[aeiouáàãâäéèêëíìîïóòõôöúùûücç]/gi, '_')
+                return `nome_cli_fornec.ilike.%${cleanW}%`
+              })
+              query = query.or(conditions.join(','))
+            } else {
+              query = query.ilike('nome_cli_fornec', `%${args.supplier_name}%`)
+            }
+          }
           if (args.cost_center) {
-            query = query.or(`c_custo.ilike.%${args.cost_center}%,descricao_c_custo.ilike.%${args.cost_center}%`)
+            const words = args.cost_center.split(' ').filter((w: string) => w.length > 2)
+            if (words.length > 0) {
+              const conditions = words.map((w: string) => {
+                const cleanW = w.replace(/[aeiouáàãâäéèêëíìîïóòõôöúùûücç]/gi, '_')
+                return `c_custo.ilike.%${cleanW}%,descricao_c_custo.ilike.%${cleanW}%`
+              })
+              query = query.or(conditions.join(','))
+            } else {
+              query = query.or(
+                `c_custo.ilike.%${args.cost_center}%,descricao_c_custo.ilike.%${args.cost_center}%`,
+              )
+            }
           }
 
           const { data } = await query.order('data_emissao', { ascending: false }).limit(limit)
@@ -400,6 +425,10 @@ Sua missão é ajudar os usuários na extração de dados gerenciais, conciliaç
 Comunique-se em português de forma profissional, direta e com um tom industrial e corporativo.
 Sempre utilize as funções (tools) disponíveis para buscar informações reais no banco de dados e fundamentar suas respostas. Não invente dados. Cruce os dados se necessário para fornecer respostas completas (ex: se perguntarem os usuários e seus departamentos, use get_users e get_departments e faça o vínculo).
 
+MUITO IMPORTANTE - REGRAS DE BUSCA E SOMAS:
+- Se o usuário pedir o "valor total", "soma" ou perguntar "quanto" gastou com algo, você DEVE usar as funções de busca (como get_erp_financial_movements) definindo um "limit" alto (ex: 500) para garantir que você receba todos os registros. Em seguida, você MESMO deve somar matematicamente os valores (campo 'valor' ou 'valor_liquido') recebidos no JSON para responder ao usuário com o cálculo exato.
+- Para buscas por Centro de Custo ou Fornecedor, a função já suporta busca fuzzy. Se o usuário digitar com erros ortográficos, a busca compensará isso.
+
 MUITO IMPORTANTE - ESTRUTURA DA RESPOSTA:
 1. PRIMEIRO, você DEVE exibir os dados solicitados OBRIGATORIAMENTE em formato de TABELA MARKDOWN (Markdown Table). NUNCA apresente os dados em texto corrido, listas (bullet points) ou qualquer outro formato que não seja uma tabela.
 Exemplo exato de como você deve estruturar a resposta (comece diretamente com a tabela):
@@ -408,6 +437,7 @@ Exemplo exato de como você deve estruturar a resposta (comece diretamente com a
 | João Silva | DEP-123 | joao@exemplo.com |
 | NOMA PARTS | EMP-001 | contato@noma.com |
 
+- Se for uma pergunta de TOTAIS, apresente uma tabela com os registros e adicione uma linha final de "Total" na tabela, ou apresente uma tabela resumida apenas com os totais caso os registros passem de 20 linhas.
 NUNCA crie links de paginação (como "Ver mais", "Próxima página", etc) na sua resposta. A interface do chat já possui paginação nativa que detecta tabelas grandes automaticamente. Retorne todos os dados que a função fornecer na tabela.
 
 Se não houver informações disponíveis no retorno das funções, informe claramente que os dados não foram encontrados.
