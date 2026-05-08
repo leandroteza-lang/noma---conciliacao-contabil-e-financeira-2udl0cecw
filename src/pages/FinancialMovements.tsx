@@ -2143,6 +2143,45 @@ export default function FinancialMovements() {
   }
   const sankeyData = getSankeyData()
 
+  const deParaSummary = useMemo(() => {
+    const map = new Map<string, any>()
+    summaryData.forEach((row) => {
+      const cc = row.c_custo || 'SEM_CC'
+      if (!map.has(cc)) {
+        map.set(cc, {
+          c_custo: row.c_custo,
+          descricao_c_custo: row.descricao_c_custo,
+          org_id: row.organization_id,
+          count: 0,
+          total: 0,
+          rows: [],
+        })
+      }
+      const group = map.get(cc)!
+      group.count++
+      group.total += Number(row.valor_liquido || row.valor || 0)
+      group.rows.push(row)
+    })
+
+    return Array.from(map.values())
+      .map((group) => {
+        const mappedAccount = getMappedAccountForCC(
+          group.c_custo !== 'SEM_CC' ? group.c_custo : null,
+          group.org_id,
+        )
+        return {
+          ...group,
+          mappedAccount,
+          status: mappedAccount ? 'Mapeado' : 'Pendente',
+        }
+      })
+      .sort((a, b) => {
+        if (a.c_custo === 'SEM_CC') return 1
+        if (b.c_custo === 'SEM_CC') return -1
+        return (a.c_custo || '').localeCompare(b.c_custo || '')
+      })
+  }, [summaryData, costCenters, mappings, chartOfAccounts])
+
   const dashboardData = useMemo(() => {
     let revenue = 0
     let expense = 0
@@ -2472,6 +2511,12 @@ export default function FinancialMovements() {
             className="whitespace-nowrap font-bold text-blue-700 data-[state=active]:bg-blue-700 data-[state=active]:text-white"
           >
             Dashboard Gerencial
+          </TabsTrigger>
+          <TabsTrigger
+            value="resumo-mapeamento"
+            className="whitespace-nowrap font-bold text-[#800000] data-[state=active]:bg-[#800000] data-[state=active]:text-white"
+          >
+            Resumo DE/PARA
           </TabsTrigger>
           <TabsTrigger value="bridge" className="whitespace-nowrap">
             Accounting Bridge
@@ -4689,6 +4734,120 @@ export default function FinancialMovements() {
           </div>
         </TabsContent>
 
+        <TabsContent value="resumo-mapeamento" className="m-0 animate-in fade-in-up duration-500">
+          <Card className="border-slate-200 shadow-sm">
+            <CardHeader className="bg-slate-50/50 border-b pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                  <Columns className="h-5 w-5 text-primary" />
+                  Resumo DE/PARA (Movimento Atual)
+                </h2>
+                <p className="text-sm text-slate-500">
+                  Visão consolidada de como os centros de custo dos lançamentos atuais estão
+                  mapeados.
+                </p>
+              </div>
+            </CardHeader>
+            <CardContent className="p-0 bg-white max-h-[700px] overflow-y-auto custom-scrollbar">
+              <Table className="w-full text-sm relative">
+                <TableHeader className="bg-slate-100/90 sticky top-0 z-10 backdrop-blur-sm shadow-sm">
+                  <TableRow>
+                    <TableHead className="w-[30%]">Centro de Custo (Origem ERP)</TableHead>
+                    <TableHead className="w-[35%]">Conta Contábil (Destino)</TableHead>
+                    <TableHead className="text-center">Status</TableHead>
+                    <TableHead className="text-center">Lançamentos</TableHead>
+                    <TableHead className="text-right">Total Líquido</TableHead>
+                    <TableHead className="text-center w-[100px]">Ação</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {deParaSummary.map((item) => (
+                    <TableRow
+                      key={item.c_custo}
+                      className="hover:bg-slate-50 border-b border-slate-100"
+                    >
+                      <TableCell>
+                        <div className="flex flex-col">
+                          <span className="font-semibold text-slate-800">
+                            {item.c_custo || 'Sem Centro de Custo'}
+                          </span>
+                          <span
+                            className="text-xs text-slate-500 truncate max-w-[250px]"
+                            title={item.descricao_c_custo}
+                          >
+                            {item.descricao_c_custo || '-'}
+                          </span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {item.mappedAccount ? (
+                          <div className="flex flex-col items-start">
+                            <span className="font-mono text-xs font-bold text-emerald-800 bg-emerald-100 px-1.5 py-0.5 rounded border border-emerald-200 mb-1">
+                              {item.mappedAccount.account_code}
+                            </span>
+                            <span
+                              className="text-xs font-medium text-slate-700 truncate max-w-[300px]"
+                              title={item.mappedAccount.account_name}
+                            >
+                              {item.mappedAccount.account_name}
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="text-slate-400 italic text-xs font-medium bg-slate-100 px-2 py-1 rounded-md border border-slate-200">
+                            Não vinculado
+                          </span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <span
+                          className={cn(
+                            'inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border uppercase tracking-wider',
+                            item.mappedAccount
+                              ? 'bg-emerald-100 text-emerald-800 border-emerald-200'
+                              : 'bg-rose-100 text-rose-800 border-rose-200 shadow-sm',
+                          )}
+                        >
+                          {item.status}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-center font-bold text-slate-600">
+                        {item.count}
+                      </TableCell>
+                      <TableCell className="text-right font-bold text-slate-700">
+                        {new Intl.NumberFormat('pt-BR', {
+                          style: 'currency',
+                          currency: 'BRL',
+                        }).format(item.total)}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <Button
+                          size="sm"
+                          variant={item.mappedAccount ? 'outline' : 'default'}
+                          className={cn(
+                            'h-7 text-xs px-3',
+                            !item.mappedAccount &&
+                              'bg-[#800000] hover:bg-[#800000]/90 text-white shadow-sm',
+                          )}
+                          onClick={() => setMappingRow(item.rows[0])}
+                        >
+                          {item.mappedAccount ? 'Editar' : 'Mapear'}
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  {deParaSummary.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={6} className="h-32 text-center text-slate-500">
+                        Nenhum registro para exibir.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
         <TabsContent value="bridge" className="m-0 animate-in fade-in-up duration-500">
           <Card className="border-slate-200 overflow-hidden shadow-sm">
             <CardHeader className="bg-slate-50/50 border-b pb-4">
@@ -5140,10 +5299,20 @@ export default function FinancialMovements() {
                     </Command>
                   </PopoverContent>
                 </Popover>
-                <p className="text-xs text-slate-500 mt-2 leading-relaxed">
-                  Ao salvar, este mapeamento será aplicado automaticamente a todos os lançamentos
-                  futuros que utilizarem o mesmo centro de custo.
-                </p>
+                <div className="text-xs text-slate-700 mt-3 p-3 bg-blue-50/50 border border-blue-100 rounded-md leading-relaxed shadow-sm">
+                  <strong className="text-blue-900 block mb-1">O que acontece ao salvar?</strong>
+                  Uma regra fixa de <strong>DE/PARA</strong> será criada no sistema, vinculando o
+                  Centro de Custo ERP atual (
+                  <span className="font-mono bg-white px-1 rounded border border-slate-200">
+                    {mappingRow.c_custo || 'Sem C.Custo'}
+                  </span>
+                  ) à Conta Contábil selecionada acima.
+                  <br />
+                  <br />
+                  Além de mapear este lançamento específico,{' '}
+                  <strong>todos os outros lançamentos</strong> (atuais e futuros) com este mesmo
+                  centro de custo serão atualizados e mapeados automaticamente.
+                </div>
               </div>
 
               <div className="pt-6 border-t border-slate-200 flex flex-col-reverse sm:flex-row justify-end gap-3">
