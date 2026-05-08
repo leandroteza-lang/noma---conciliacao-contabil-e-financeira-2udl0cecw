@@ -39,6 +39,8 @@ import {
   ChevronDown,
   GripHorizontal,
   Download,
+  FileSpreadsheet,
+  FileText,
 } from 'lucide-react'
 import { Checkbox } from '@/components/ui/checkbox'
 import { toast } from 'sonner'
@@ -58,6 +60,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
   DropdownMenuItem,
+  DropdownMenuGroup,
   DropdownMenuSub,
   DropdownMenuSubTrigger,
   DropdownMenuSubContent,
@@ -664,6 +667,133 @@ export default function FinancialMovements() {
 
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [totals, setTotals] = useState({ valor: 0, valor_liquido: 0 })
+  const [isExporting, setIsExporting] = useState(false)
+
+  const handleExport = async (scope: 'filtered' | 'all', format: 'excel' | 'pdf' | 'txt') => {
+    if (!user) return
+    setIsExporting(true)
+    try {
+      let allData: any[] = []
+      let hasMore = true
+      let pageIdx = 0
+      const limit = 1000
+
+      let q = supabase
+        .from('erp_financial_movements')
+        .select('*, organizations(name)')
+        .is('deleted_at', null)
+        .order(
+          sortColumn === 'empresa'
+            ? 'organization_id'
+            : sortColumn === 'prontidao'
+              ? 'data_emissao'
+              : sortColumn,
+          { ascending: sortDirection === 'asc' },
+        )
+
+      if (scope === 'filtered') {
+        q = applyQueryFilters(q)
+      }
+
+      while (hasMore) {
+        const { data, error } = await q.range(pageIdx * limit, (pageIdx + 1) * limit - 1)
+        if (error) throw error
+        if (!data || data.length === 0) {
+          hasMore = false
+        } else {
+          allData = allData.concat(data)
+          pageIdx++
+          if (data.length < limit) {
+            hasMore = false
+          }
+        }
+      }
+
+      if (scope === 'filtered' && filters['prontidao'] && filters['prontidao'].length > 0) {
+        allData = allData.filter((row) => {
+          const missing =
+            !row.data_emissao ||
+            !row.c_custo ||
+            row.valor_liquido === null ||
+            row.valor_liquido === undefined
+          let statusText = 'Pendente'
+          if (missing) statusText = 'Incompleto'
+          else if (getMappedAccount(row)) statusText = 'Mapeado'
+          return filters['prontidao'].includes(statusText)
+        })
+      }
+
+      const exportData = allData.map((row) => {
+        const mappedRow: any = {}
+        const colsToExport =
+          format === 'pdf'
+            ? columnOrder.filter((k) => visibleColumns[k] !== false).slice(0, 10)
+            : columnOrder.filter((k) => visibleColumns[k] !== false)
+
+        colsToExport.forEach((key) => {
+          const h = tableHeaders.find((th) => th.key === key)
+          if (h) {
+            let val = row[key]
+            if (key === 'empresa') val = row.organizations?.name || '-'
+            if (key === 'valor' || key === 'valor_liquido') val = val !== null ? val : 0
+            if (
+              ['data_emissao', 'dt_compens', 'data_vencto', 'data_canc', 'data_estorno'].includes(
+                key,
+              )
+            ) {
+              val = formatDate(val)
+            }
+            if (key === 'prontidao') {
+              const missing =
+                !row.data_emissao ||
+                !row.c_custo ||
+                row.valor_liquido === null ||
+                row.valor_liquido === undefined
+              if (missing) val = 'Incompleto'
+              else if (getMappedAccount(row)) val = 'Mapeado'
+              else val = 'Pendente'
+            }
+            mappedRow[h.label] = val
+          }
+        })
+        return mappedRow
+      })
+
+      if (exportData.length === 0) {
+        toast.info('Nenhum dado para exportar.')
+        return
+      }
+
+      const { data: result, error } = await supabase.functions.invoke('export-erp-movements', {
+        body: { format, data: exportData },
+      })
+
+      if (error) throw error
+
+      if (format === 'excel' && result.excel) {
+        const link = document.createElement('a')
+        link.href = `data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,${result.excel}`
+        link.download = `movimento_financeiro_${new Date().toISOString().split('T')[0]}.xlsx`
+        link.click()
+      } else if (format === 'txt' && result.txt) {
+        const blob = new Blob([result.txt], { type: 'text/plain;charset=utf-8;' })
+        const link = document.createElement('a')
+        link.href = URL.createObjectURL(blob)
+        link.download = `movimento_financeiro_${new Date().toISOString().split('T')[0]}.txt`
+        link.click()
+      } else if (format === 'pdf' && result.pdf) {
+        const link = document.createElement('a')
+        link.href = result.pdf
+        link.download = `movimento_financeiro_${new Date().toISOString().split('T')[0]}.pdf`
+        link.click()
+      }
+      toast.success('Exportação concluída com sucesso!')
+    } catch (error: any) {
+      toast.error('Erro ao exportar: ' + error.message)
+    } finally {
+      setIsExporting(false)
+    }
+  }
   const [summaryData, setSummaryData] = useState<any[]>([])
   const [summaryDateBase, setSummaryDateBase] = useState('data_emissao')
 
@@ -2322,6 +2452,33 @@ export default function FinancialMovements() {
                   />
                 </div>
                 <div className="flex flex-wrap items-center gap-3 xl:ml-auto bg-white p-1.5 rounded-md border shadow-sm">
+                  <Select
+                    value={
+                      filters['natureza']?.length === 1
+                        ? filters['natureza'][0]
+                        : filters['natureza']?.length === 2
+                          ? 'ambos'
+                          : 'todos'
+                    }
+                    onValueChange={(v) => {
+                      if (v === 'todos' || v === 'ambos') {
+                        setFilters((p) => ({ ...p, natureza: [] }))
+                      } else {
+                        setFilters((p) => ({ ...p, natureza: [v] }))
+                      }
+                      setPage(0)
+                    }}
+                  >
+                    <SelectTrigger className="h-7 w-[140px] text-xs font-semibold bg-white border-slate-200">
+                      <SelectValue placeholder="Natureza" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="todos">Todas as Naturezas</SelectItem>
+                      <SelectItem value="positivo">Entradas (+)</SelectItem>
+                      <SelectItem value="negativo">Saídas (-)</SelectItem>
+                    </SelectContent>
+                  </Select>
+
                   <Button
                     variant="outline"
                     size="sm"
@@ -2841,6 +2998,120 @@ export default function FinancialMovements() {
               </div>
             </CardHeader>
             <CardContent className="p-0 bg-white">
+              <div className="p-4 border-b bg-slate-50/50 flex flex-col sm:flex-row items-center justify-between shadow-sm gap-4">
+                <div className="flex flex-wrap items-center gap-6">
+                  <div className="flex flex-col">
+                    <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">
+                      Total (Valor Bruto)
+                    </span>
+                    <span
+                      className={cn(
+                        'text-xl font-bold',
+                        totals.valor > 0
+                          ? 'text-blue-700'
+                          : totals.valor < 0
+                            ? 'text-rose-700'
+                            : 'text-slate-800',
+                      )}
+                    >
+                      {new Intl.NumberFormat('pt-BR', {
+                        style: 'currency',
+                        currency: 'BRL',
+                      }).format(totals.valor)}
+                    </span>
+                  </div>
+                  <div className="hidden sm:block w-px h-10 bg-slate-300"></div>
+                  <div className="flex flex-col">
+                    <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">
+                      Total (Valor Líquido)
+                    </span>
+                    <span
+                      className={cn(
+                        'text-xl font-bold',
+                        totals.valor_liquido > 0
+                          ? 'text-blue-700'
+                          : totals.valor_liquido < 0
+                            ? 'text-rose-700'
+                            : 'text-slate-800',
+                      )}
+                    >
+                      {new Intl.NumberFormat('pt-BR', {
+                        style: 'currency',
+                        currency: 'BRL',
+                      }).format(totals.valor_liquido)}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-9 shadow-sm bg-white hover:bg-slate-50 text-slate-700 font-medium"
+                        disabled={isExporting}
+                      >
+                        {isExporting ? (
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                          <Download className="h-4 w-4 mr-2" />
+                        )}
+                        Exportar Dados
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-56">
+                      <DropdownMenuGroup>
+                        <DropdownMenuLabel className="text-xs text-slate-500 uppercase tracking-wider">
+                          Apenas Filtrados
+                        </DropdownMenuLabel>
+                        <DropdownMenuItem
+                          onClick={() => handleExport('filtered', 'excel')}
+                          className="text-xs cursor-pointer py-2"
+                        >
+                          <FileSpreadsheet className="mr-2 h-4 w-4 text-green-600" /> Excel (XLSX)
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => handleExport('filtered', 'pdf')}
+                          className="text-xs cursor-pointer py-2"
+                        >
+                          <FileText className="mr-2 h-4 w-4 text-red-600" /> PDF
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => handleExport('filtered', 'txt')}
+                          className="text-xs cursor-pointer py-2"
+                        >
+                          <FileText className="mr-2 h-4 w-4 text-slate-600" /> Texto (TXT)
+                        </DropdownMenuItem>
+                      </DropdownMenuGroup>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuGroup>
+                        <DropdownMenuLabel className="text-xs text-slate-500 uppercase tracking-wider">
+                          Todos os Registros
+                        </DropdownMenuLabel>
+                        <DropdownMenuItem
+                          onClick={() => handleExport('all', 'excel')}
+                          className="text-xs cursor-pointer py-2"
+                        >
+                          <FileSpreadsheet className="mr-2 h-4 w-4 text-green-600" /> Excel (XLSX)
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => handleExport('all', 'pdf')}
+                          className="text-xs cursor-pointer py-2"
+                        >
+                          <FileText className="mr-2 h-4 w-4 text-red-600" /> PDF
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => handleExport('all', 'txt')}
+                          className="text-xs cursor-pointer py-2"
+                        >
+                          <FileText className="mr-2 h-4 w-4 text-slate-600" /> Texto (TXT)
+                        </DropdownMenuItem>
+                      </DropdownMenuGroup>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              </div>
               <Table
                 wrapperClassName="transform scale-y-[-1] overflow-x-auto overflow-y-hidden finance-table-scrollbar pb-3 border-4 border-indigo-950 rounded-lg"
                 className="transform scale-y-[-1] w-full min-w-max"
@@ -3682,72 +3953,6 @@ export default function FinancialMovements() {
                           </TableRow>
                         )
                       })}
-                      <TableRow
-                        disableZebra
-                        className="bg-slate-100 hover:bg-slate-100 font-bold border-t-2 border-black border-b border-b-black shadow-inner"
-                      >
-                        <TableCell className="border-r border-black" />
-                        {columnOrder
-                          .filter((key) => visibleColumns[key] !== false)
-                          .map((key, i) => {
-                            if (key === 'valor')
-                              return (
-                                <TableCell
-                                  key={key}
-                                  className="px-2 py-0.5 text-xs whitespace-nowrap text-center border-r border-black"
-                                >
-                                  <span
-                                    className={cn(
-                                      'font-bold',
-                                      totals.valor > 0
-                                        ? 'text-blue-700'
-                                        : totals.valor < 0
-                                          ? 'text-rose-700'
-                                          : 'text-slate-800',
-                                    )}
-                                  >
-                                    {new Intl.NumberFormat('pt-BR', {
-                                      style: 'currency',
-                                      currency: 'BRL',
-                                    }).format(totals.valor)}
-                                  </span>
-                                </TableCell>
-                              )
-                            if (key === 'valor_liquido')
-                              return (
-                                <TableCell
-                                  key={key}
-                                  className="px-2 py-0.5 text-xs whitespace-nowrap text-center border-r border-black"
-                                >
-                                  <span
-                                    className={cn(
-                                      'font-bold',
-                                      totals.valor_liquido > 0
-                                        ? 'text-blue-700'
-                                        : totals.valor_liquido < 0
-                                          ? 'text-rose-700'
-                                          : 'text-slate-900',
-                                    )}
-                                  >
-                                    {new Intl.NumberFormat('pt-BR', {
-                                      style: 'currency',
-                                      currency: 'BRL',
-                                    }).format(totals.valor_liquido)}
-                                  </span>
-                                </TableCell>
-                              )
-                            const isFirstVisible = i === 0
-                            return (
-                              <TableCell
-                                key={key}
-                                className="px-2 py-0.5 text-xs whitespace-nowrap text-right text-slate-600 border-r border-black"
-                              >
-                                {isFirstVisible ? 'TOTAIS (Filtro Atual):' : ''}
-                              </TableCell>
-                            )
-                          })}
-                        <TableCell className="border-r border-black" />
-                      </TableRow>
                     </>
                   )}
                 </TableBody>
