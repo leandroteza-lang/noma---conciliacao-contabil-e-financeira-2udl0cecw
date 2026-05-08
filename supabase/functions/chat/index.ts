@@ -231,8 +231,7 @@ Deno.serve(async (req: Request) => {
               },
               limit: {
                 type: 'number',
-                description:
-                  'Número de registros para retornar (padrão 100, máx 500). Use limite alto para calcular totais.',
+                description: 'Número de registros para retornar (padrão 100, máx 500). Use limite alto para calcular totais.',
               },
             },
           },
@@ -372,9 +371,7 @@ Deno.serve(async (req: Request) => {
           const limit = Math.min(args.limit || 100, 500)
           let query = supabase
             .from('erp_financial_movements')
-            .select(
-              'data_emissao, dt_compens, c_custo, descricao_c_custo, valor, valor_liquido, nome_cli_fornec, historico, n_documento, status',
-            )
+            .select('data_emissao, dt_compens, c_custo, descricao_c_custo, valor, valor_liquido, nome_cli_fornec, historico, n_documento, status')
             .in('organization_id', orgIds)
             .is('deleted_at', null)
 
@@ -403,9 +400,7 @@ Deno.serve(async (req: Request) => {
               })
               query = query.or(conditions.join(','))
             } else {
-              query = query.or(
-                `c_custo.ilike.%${args.cost_center}%,descricao_c_custo.ilike.%${args.cost_center}%`,
-              )
+              query = query.or(`c_custo.ilike.%${args.cost_center}%,descricao_c_custo.ilike.%${args.cost_center}%`)
             }
           }
 
