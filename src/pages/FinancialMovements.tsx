@@ -1087,11 +1087,33 @@ export default function FinancialMovements() {
       .select('id, name')
       .is('deleted_at', null)
       .order('name')
-    const { data: movs } = await supabase
-      .from('erp_financial_movements')
-      .select('*')
-      .is('deleted_at', null)
-      .limit(5000)
+
+    let allMovs: any[] = []
+    let fetchHasMore = true
+    let fetchPage = 0
+    const pageSize = 10000
+
+    while (fetchHasMore) {
+      const { data, error } = await supabase
+        .from('erp_financial_movements')
+        .select(
+          'data_emissao, dt_compens, data_vencto, data_canc, data_estorno, organization_id, tipo_operacao, status, conta_caixa, nome_caixa, conta_caixa_destino, forma_pagto, c_custo, descricao_c_custo, valor, valor_liquido, n_documento, nome_cli_fornec, historico, fp, n_cheque, nominal_a, emitente_cheque, cnpj_cpf, n_extrato, filial, banco, c_corrente, cod_cli_for, departamento, compensado',
+        )
+        .is('deleted_at', null)
+        .range(fetchPage * pageSize, (fetchPage + 1) * pageSize - 1)
+
+      if (error || !data || data.length === 0) {
+        fetchHasMore = false
+      } else {
+        allMovs = allMovs.concat(data)
+        fetchPage++
+        if (data.length < pageSize) {
+          fetchHasMore = false
+        }
+      }
+    }
+
+    const movs = allMovs
 
     const options: Record<string, { label: string; value: string }[]> = {}
     options['empresa'] = (orgs || []).map((e) => ({ label: e.name, value: e.id }))
