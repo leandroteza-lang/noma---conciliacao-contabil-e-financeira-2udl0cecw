@@ -3050,7 +3050,7 @@ export default function FinancialMovements() {
             <CardContent className="p-0 bg-white">
               <div className="p-4 border-b bg-slate-50/50 flex flex-col xl:flex-row items-center justify-between shadow-sm gap-4 overflow-hidden">
                 <div className="flex flex-1 overflow-x-auto custom-scrollbar pb-2 xl:pb-0 items-center justify-start gap-4 w-full">
-                  <div className="card-plano-contas bg-slate-700">
+                  <div className="card-plano-contas bg-bruto">
                     <span className="titulo">Total (Bruto)</span>
                     <span
                       className="valor"
@@ -3066,7 +3066,7 @@ export default function FinancialMovements() {
                     </span>
                     <CircleDollarSign className="icone" />
                   </div>
-                  <div className="card-plano-contas bg-slate-800">
+                  <div className="card-plano-contas bg-liquido">
                     <span className="titulo">Total (Líquido)</span>
                     <span
                       className="valor"
@@ -3082,7 +3082,7 @@ export default function FinancialMovements() {
                     </span>
                     <Wallet className="icone" />
                   </div>
-                  <div className="card-plano-contas bg-blue-600">
+                  <div className="card-plano-contas bg-positivos">
                     <span className="titulo">Entradas / Positivos</span>
                     <span
                       className="valor"
@@ -3098,7 +3098,7 @@ export default function FinancialMovements() {
                     </span>
                     <TrendingUp className="icone" />
                   </div>
-                  <div className="card-plano-contas bg-[#800000]">
+                  <div className="card-plano-contas bg-negativos">
                     <span className="titulo">Saídas / Negativos</span>
                     <span
                       className="valor"
