@@ -1029,8 +1029,8 @@ export default function FinancialMovements() {
     { key: 'conta_contabil', label: 'Conta Contábil (Destino)' },
     { key: 'status', label: 'Status', align: 'center' },
     { key: 'count', label: 'Lançamentos', align: 'center' },
-    { key: 'total_bruto', label: 'Total Bruto', align: 'right' },
-    { key: 'total_liquido', label: 'Total Líquido', align: 'right' },
+    { key: 'total_bruto', label: 'Total Bruto', align: 'left' },
+    { key: 'total_liquido', label: 'Total Líquido', align: 'left' },
     { key: 'acao', label: 'Ação', align: 'center' },
   ]
 
@@ -4891,7 +4891,7 @@ export default function FinancialMovements() {
               </div>
             </CardHeader>
             <CardContent className="p-4 bg-white">
-              <div className="border border-[#2c2f7a] rounded-lg overflow-hidden relative">
+              <div className="border-4 border-[#221c5a] rounded-lg overflow-hidden relative">
                 <Table
                   wrapperClassName="max-h-[650px] overflow-y-auto custom-scrollbar"
                   className="w-full text-sm relative"
@@ -5225,7 +5225,7 @@ export default function FinancialMovements() {
                               return (
                                 <TableCell
                                   key={key}
-                                  className="px-2 py-0.5 text-right align-middle border-0 font-medium"
+                                  className="px-2 py-0.5 text-left align-middle border-0 font-medium"
                                 >
                                   {new Intl.NumberFormat('pt-BR', {
                                     style: 'currency',
@@ -5237,7 +5237,7 @@ export default function FinancialMovements() {
                               return (
                                 <TableCell
                                   key={key}
-                                  className="px-2 py-0.5 text-right align-middle border-0 font-medium"
+                                  className="px-2 py-0.5 text-left align-middle border-0 font-medium"
                                 >
                                   {new Intl.NumberFormat('pt-BR', {
                                     style: 'currency',
