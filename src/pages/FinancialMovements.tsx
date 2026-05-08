@@ -1127,9 +1127,9 @@ export default function FinancialMovements() {
     const [coa, cc, map] = await Promise.all([
       fetchAll(
         'chart_of_accounts',
-        'id, account_code, account_name, classification, organization_id',
+        'id, account_code, account_name, classification, account_level, organization_id',
       ),
-      fetchAll('cost_centers', 'id, code, description, organization_id'),
+      fetchAll('cost_centers', 'id, code, description, organization_id, parent_id, classification'),
       fetchAll('account_mapping', 'cost_center_id, chart_account_id, organization_id'),
     ])
 
@@ -2183,46 +2183,173 @@ export default function FinancialMovements() {
   }
   const sankeyData = getSankeyData()
 
-  const deParaSummary = useMemo(() => {
-    const map = new Map<string, any>()
-    summaryData.forEach((row) => {
-      const cc = row.c_custo || 'SEM_CC'
-      if (!map.has(cc)) {
-        map.set(cc, {
-          c_custo: row.c_custo,
-          descricao_c_custo: row.descricao_c_custo,
-          org_id: row.organization_id,
-          count: 0,
-          total: 0,
-          total_bruto: 0,
-          rows: [],
-        })
+  const [expandedNodes, setExpandedNodes] = useState<Record<string, boolean>>({})
+
+  const deParaTree = useMemo(() => {
+    const nodesMap = new Map<string, any>()
+
+    const getOrCreateNode = (ccId: string, orgId: string): any => {
+      const key = `${orgId}_${ccId}`
+      if (nodesMap.has(key)) return nodesMap.get(key)
+
+      const cc = costCenters.find((c) => c.id === ccId)
+      if (!cc) return null
+
+      const mappedAccount = getMappedAccountForCC(cc.code, cc.organization_id)
+
+      let hierarchyArray: any[] = []
+      if (mappedAccount && mappedAccount.classification) {
+        const parts = mappedAccount.classification.split('.')
+        let currentClass = ''
+        for (let i = 0; i < parts.length; i++) {
+          currentClass += (i === 0 ? '' : '.') + parts[i]
+          const parentAcc = chartOfAccounts.find(
+            (c) =>
+              c.classification === currentClass &&
+              c.organization_id === mappedAccount.organization_id,
+          )
+          if (parentAcc) hierarchyArray.push(parentAcc)
+        }
       }
-      const group = map.get(cc)!
-      group.count++
-      group.total += Number(row.valor_liquido || row.valor || 0)
-      group.total_bruto += Number(row.valor || 0)
-      group.rows.push(row)
+
+      const node = {
+        id: key,
+        dbId: cc.id,
+        c_custo: cc.code,
+        descricao_c_custo: cc.description,
+        org_id: cc.organization_id,
+        mappedAccount,
+        hierarchyArray,
+        status: mappedAccount ? 'Mapeado' : 'Pendente',
+        count: 0,
+        total: 0,
+        total_bruto: 0,
+        rows: [],
+        children: [],
+        isSynthetic: false,
+        level: 0,
+        parentId: cc.parent_id,
+      }
+      nodesMap.set(key, node)
+      return node
+    }
+
+    summaryData.forEach((row) => {
+      const orgId = row.organization_id || 'UNKNOWN'
+      const ccCode = row.c_custo?.trim().toUpperCase()
+
+      let cc = null
+      if (ccCode && orgId !== 'UNKNOWN') {
+        cc = costCenters.find(
+          (c) => c.organization_id === orgId && c.code?.trim().toUpperCase() === ccCode,
+        )
+      }
+
+      if (cc) {
+        let currId = cc.id
+        let leafNode = null
+        while (currId) {
+          const node = getOrCreateNode(currId, orgId)
+          if (!node) break
+          node.count++
+          node.total += Number(row.valor_liquido || row.valor || 0)
+          node.total_bruto += Number(row.valor || 0)
+          if (currId === cc.id) {
+            node.rows.push(row)
+            leafNode = node
+          }
+          currId = node.parentId
+        }
+      } else {
+        const key = `UNMAPPED_${orgId}_${ccCode || 'SEM_CC'}`
+        if (!nodesMap.has(key)) {
+          const mappedAccount = getMappedAccountForCC(row.c_custo, orgId)
+
+          let hierarchyArray: any[] = []
+          if (mappedAccount && mappedAccount.classification) {
+            const parts = mappedAccount.classification.split('.')
+            let currentClass = ''
+            for (let i = 0; i < parts.length; i++) {
+              currentClass += (i === 0 ? '' : '.') + parts[i]
+              const parentAcc = chartOfAccounts.find(
+                (c) =>
+                  c.classification === currentClass &&
+                  c.organization_id === mappedAccount.organization_id,
+              )
+              if (parentAcc) hierarchyArray.push(parentAcc)
+            }
+          }
+
+          nodesMap.set(key, {
+            id: key,
+            dbId: null,
+            c_custo: row.c_custo || 'SEM_CC',
+            descricao_c_custo: row.descricao_c_custo || 'Sem Centro de Custo',
+            org_id: orgId,
+            mappedAccount,
+            hierarchyArray,
+            status: mappedAccount ? 'Mapeado' : 'Pendente',
+            count: 0,
+            total: 0,
+            total_bruto: 0,
+            rows: [],
+            children: [],
+            isSynthetic: false,
+            level: 0,
+            parentId: null,
+          })
+        }
+        const node = nodesMap.get(key)
+        node.count++
+        node.total += Number(row.valor_liquido || row.valor || 0)
+        node.total_bruto += Number(row.valor || 0)
+        node.rows.push(row)
+      }
     })
 
-    return Array.from(map.values())
-      .map((group) => {
-        const mappedAccount = getMappedAccountForCC(
-          group.c_custo !== 'SEM_CC' ? group.c_custo : null,
-          group.org_id,
-        )
-        return {
-          ...group,
-          mappedAccount,
-          status: mappedAccount ? 'Mapeado' : 'Pendente',
+    const roots: any[] = []
+    nodesMap.forEach((node) => {
+      if (node.parentId) {
+        const parentKey = `${node.org_id}_${node.parentId}`
+        const parent = nodesMap.get(parentKey)
+        if (parent) {
+          parent.children.push(node)
+          parent.isSynthetic = true
+        } else {
+          roots.push(node)
         }
-      })
-      .sort((a, b) => {
+      } else {
+        roots.push(node)
+      }
+    })
+
+    const sortTree = (nodes: any[], level: number) => {
+      nodes.sort((a, b) => {
         if (a.c_custo === 'SEM_CC') return 1
         if (b.c_custo === 'SEM_CC') return -1
         return (a.c_custo || '').localeCompare(b.c_custo || '')
       })
+      nodes.forEach((n) => {
+        n.level = level
+        sortTree(n.children, level + 1)
+      })
+    }
+    sortTree(roots, 0)
+
+    return roots
   }, [summaryData, costCenters, mappings, chartOfAccounts])
+
+  const flatLeaves = useMemo(() => {
+    const result: any[] = []
+    const traverse = (nodes: any[]) => {
+      nodes.forEach((n) => {
+        if (!n.isSynthetic) result.push(n)
+        if (n.children) traverse(n.children)
+      })
+    }
+    traverse(deParaTree)
+    return result
+  }, [deParaTree])
 
   const [resumoSortColumn, setResumoSortColumn] = useState<string>('c_custo')
   const [resumoSortDirection, setResumoSortDirection] = useState<'asc' | 'desc'>('asc')
@@ -2233,10 +2360,9 @@ export default function FinancialMovements() {
     const cCustoSet = new Set<string>()
     const contaContabilSet = new Set<string>()
     const statusSet = new Set<string>()
-
     const acaoSet = new Set<string>()
 
-    deParaSummary.forEach((item) => {
+    flatLeaves.forEach((item) => {
       cCustoSet.add(
         item.c_custo ? `${item.c_custo} - ${item.descricao_c_custo || ''}` : 'Sem Centro de Custo',
       )
@@ -2263,77 +2389,142 @@ export default function FinancialMovements() {
       .map((v) => ({ label: v, value: v }))
 
     return options
-  }, [deParaSummary])
+  }, [flatLeaves])
 
-  const sortedAndFilteredDeParaSummary = useMemo(() => {
-    const filtered = deParaSummary.filter((item) => {
-      return Object.entries(resumoFilters).every(([key, values]) => {
-        if (!values || values.length === 0) return true
+  const filteredAndSortedTree = useMemo(() => {
+    const filterNode = (node: any): any => {
+      let match = true
+
+      Object.entries(resumoFilters).forEach(([key, values]) => {
+        if (!values || values.length === 0) return
         if (key === 'c_custo') {
-          const val = item.c_custo
-            ? `${item.c_custo} - ${item.descricao_c_custo || ''}`
+          const val = node.c_custo
+            ? `${node.c_custo} - ${node.descricao_c_custo || ''}`
             : 'Sem Centro de Custo'
-          return values.includes(val)
+          if (!values.includes(val)) match = false
         }
         if (key === 'conta_contabil') {
-          const val = item.mappedAccount
-            ? `${item.mappedAccount.account_code} ${item.mappedAccount.classification ? item.mappedAccount.classification + ' ' : ''}${item.mappedAccount.account_name}`
+          const val = node.mappedAccount
+            ? `${node.mappedAccount.account_code} ${node.mappedAccount.classification ? node.mappedAccount.classification + ' ' : ''}${node.mappedAccount.account_name}`
             : 'Não vinculado'
-          return values.includes(val)
+          if (!values.includes(val)) match = false
         }
         if (key === 'status') {
-          return values.includes(item.status)
+          if (!values.includes(node.status)) match = false
         }
         if (key === 'acao') {
-          const val = item.mappedAccount ? 'Editar' : 'Mapear'
-          return values.includes(val)
+          const val = node.mappedAccount ? 'Editar' : 'Mapear'
+          if (!values.includes(val)) match = false
         }
-        return true
       })
-    })
 
-    return filtered.sort((a, b) => {
-      let valA: any, valB: any
-      if (resumoSortColumn === 'c_custo' || resumoSortColumn === 'c_custo_codigo') {
-        valA = a.c_custo || ''
-        valB = b.c_custo || ''
-      } else if (resumoSortColumn === 'c_custo_nome') {
-        valA = a.descricao_c_custo || ''
-        valB = b.descricao_c_custo || ''
-      } else if (
-        resumoSortColumn === 'conta_contabil' ||
-        resumoSortColumn === 'conta_contabil_reduzido'
-      ) {
-        valA = a.mappedAccount ? a.mappedAccount.account_code : ''
-        valB = b.mappedAccount ? b.mappedAccount.account_code : ''
-      } else if (resumoSortColumn === 'conta_contabil_classificacao') {
-        valA = a.mappedAccount ? a.mappedAccount.classification || '' : ''
-        valB = b.mappedAccount ? b.mappedAccount.classification || '' : ''
-      } else if (resumoSortColumn === 'conta_contabil_nome') {
-        valA = a.mappedAccount ? a.mappedAccount.account_name || '' : ''
-        valB = b.mappedAccount ? b.mappedAccount.account_name || '' : ''
-      } else if (resumoSortColumn === 'status') {
-        valA = a.status
-        valB = b.status
-      } else if (resumoSortColumn === 'count') {
-        valA = a.count
-        valB = b.count
-      } else if (resumoSortColumn === 'total_bruto') {
-        valA = a.total_bruto
-        valB = b.total_bruto
-      } else if (resumoSortColumn === 'total_liquido') {
-        valA = a.total
-        valB = b.total
-      } else if (resumoSortColumn === 'acao') {
-        valA = a.mappedAccount ? 1 : 0
-        valB = b.mappedAccount ? 1 : 0
+      const filteredChildren = node.children.map(filterNode).filter(Boolean)
+
+      if (match || filteredChildren.length > 0) {
+        return { ...node, children: filteredChildren, isMatch: match }
       }
+      return null
+    }
 
-      if (valA < valB) return resumoSortDirection === 'asc' ? -1 : 1
-      if (valA > valB) return resumoSortDirection === 'asc' ? 1 : -1
-      return 0
-    })
-  }, [deParaSummary, resumoFilters, resumoSortColumn, resumoSortDirection])
+    const filtered = deParaTree.map(filterNode).filter(Boolean)
+
+    const sortNodes = (nodes: any[]) => {
+      nodes.sort((a, b) => {
+        let valA: any, valB: any
+        if (resumoSortColumn === 'c_custo' || resumoSortColumn === 'c_custo_codigo') {
+          valA = a.c_custo || ''
+          valB = b.c_custo || ''
+        } else if (resumoSortColumn === 'c_custo_nome') {
+          valA = a.descricao_c_custo || ''
+          valB = b.descricao_c_custo || ''
+        } else if (
+          resumoSortColumn === 'conta_contabil' ||
+          resumoSortColumn === 'conta_contabil_reduzido'
+        ) {
+          valA = a.mappedAccount ? a.mappedAccount.account_code : ''
+          valB = b.mappedAccount ? b.mappedAccount.account_code : ''
+        } else if (resumoSortColumn === 'conta_contabil_classificacao') {
+          valA = a.mappedAccount ? a.mappedAccount.classification || '' : ''
+          valB = b.mappedAccount ? b.mappedAccount.classification || '' : ''
+        } else if (resumoSortColumn === 'conta_contabil_nome') {
+          valA = a.mappedAccount ? a.mappedAccount.account_name || '' : ''
+          valB = b.mappedAccount ? b.mappedAccount.account_name || '' : ''
+        } else if (resumoSortColumn === 'status') {
+          valA = a.status
+          valB = b.status
+        } else if (resumoSortColumn === 'count') {
+          valA = a.count
+          valB = b.count
+        } else if (resumoSortColumn === 'total_bruto') {
+          valA = a.total_bruto
+          valB = b.total_bruto
+        } else if (resumoSortColumn === 'total_liquido') {
+          valA = a.total
+          valB = b.total
+        } else if (resumoSortColumn === 'acao') {
+          valA = a.mappedAccount ? 1 : 0
+          valB = b.mappedAccount ? 1 : 0
+        }
+
+        if (valA < valB) return resumoSortDirection === 'asc' ? -1 : 1
+        if (valA > valB) return resumoSortDirection === 'asc' ? 1 : -1
+        return 0
+      })
+      nodes.forEach((n) => sortNodes(n.children))
+    }
+
+    sortNodes(filtered)
+    return filtered
+  }, [deParaTree, resumoFilters, resumoSortColumn, resumoSortDirection])
+
+  const flattenedTreeRows = useMemo(() => {
+    const result: any[] = []
+    const traverse = (nodes: any[]) => {
+      nodes.forEach((node) => {
+        result.push({ type: 'node', data: node })
+        if (expandedNodes[node.id]) {
+          if (node.children && node.children.length > 0) {
+            traverse(node.children)
+          } else if (node.hierarchyArray && node.hierarchyArray.length > 0) {
+            result.push({ type: 'inline-header', data: node })
+            node.hierarchyArray.forEach((hNode: any) => {
+              result.push({ type: 'inline-node', data: node, hNode })
+            })
+          }
+        }
+      })
+    }
+    traverse(filteredAndSortedTree)
+    return result
+  }, [filteredAndSortedTree, expandedNodes])
+
+  const expandAll = () => {
+    const all: Record<string, boolean> = {}
+    const traverse = (nodes: any[]) => {
+      nodes.forEach((n) => {
+        all[n.id] = true
+        traverse(n.children)
+      })
+    }
+    traverse(deParaTree)
+    setExpandedNodes(all)
+  }
+
+  const expandAnalytic = () => {
+    const analytic: Record<string, boolean> = {}
+    const traverse = (nodes: any[]) => {
+      nodes.forEach((n) => {
+        if (n.children.length > 0) {
+          analytic[n.id] = true
+          traverse(n.children)
+        }
+      })
+    }
+    traverse(deParaTree)
+    setExpandedNodes(analytic)
+  }
+
+  const collapseAll = () => setExpandedNodes({})
 
   const handleSortResumo = (col: string) => {
     if (resumoSortColumn === col) {
@@ -4889,6 +5080,32 @@ export default function FinancialMovements() {
                   mapeados.
                 </p>
               </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={expandAll}
+                  className="h-8 text-xs font-semibold shadow-sm bg-white"
+                >
+                  <ChevronsUpDown className="h-3.5 w-3.5 mr-1 text-slate-500" /> Expandir Todos
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={expandAnalytic}
+                  className="h-8 text-xs font-semibold shadow-sm bg-white"
+                >
+                  <ChevronDown className="h-3.5 w-3.5 mr-1 text-slate-500" /> Expandir Analítico
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={collapseAll}
+                  className="h-8 text-xs font-semibold shadow-sm bg-white text-rose-600 hover:text-rose-700 hover:bg-rose-50 border-rose-200"
+                >
+                  <ChevronRight className="h-3.5 w-3.5 mr-1" /> Recolher Todos
+                </Button>
+              </div>
             </CardHeader>
             <CardContent className="p-4 bg-white">
               <div className="border-4 border-[#221c5a] rounded-lg overflow-hidden relative">
@@ -5143,85 +5360,292 @@ export default function FinancialMovements() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {sortedAndFilteredDeParaSummary.map((item, index) => {
-                      const isEven = index % 2 === 1
-                      const rowClass = isEven
-                        ? 'bg-[#bfdbfe] text-black hover:bg-[#93c5fd]'
-                        : 'bg-transparent text-black dark:text-white hover:bg-slate-50 dark:hover:bg-slate-800/50'
+                    {flattenedTreeRows.map((rowItem, index) => {
+                      if (rowItem.type === 'inline-header') {
+                        return (
+                          <TableRow
+                            key={`${rowItem.data.id}-inline-hdr`}
+                            className="bg-slate-50 hover:bg-slate-50 border-0"
+                          >
+                            <TableCell colSpan={resumoColOrder.length} className="p-0 border-0">
+                              <div className="bg-slate-100/80 px-4 py-1 text-[10px] font-bold text-slate-500 uppercase tracking-wider border-y border-slate-200">
+                                ↳ Raiz Hierárquica da Conta Vinculada
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        )
+                      }
+
+                      if (rowItem.type === 'inline-node') {
+                        const { data: node, hNode } = rowItem
+                        const code = hNode.classification || hNode.account_code || ''
+                        const nodeLevel = (code.match(/\./g) || []).length + 1
+                        const isSyn = hNode.account_level === 'Sintética'
+
+                        let bg = '#ffffff',
+                          color = '#334155',
+                          fw = '500',
+                          badgeBg = '#f1f5f9',
+                          badgeColor = '#475569',
+                          badgeBorder = '#e2e8f0'
+                        if (isSyn) {
+                          if (nodeLevel === 1) {
+                            bg = '#1e1b4b'
+                            color = '#ffffff'
+                            fw = '700'
+                            badgeBg = '#312e81'
+                            badgeColor = '#ffffff'
+                            badgeBorder = '#3730a3'
+                          } else if (nodeLevel === 2) {
+                            bg = '#312e81'
+                            color = '#ffffff'
+                            fw = '600'
+                            badgeBg = '#3730a3'
+                            badgeColor = '#ffffff'
+                            badgeBorder = '#4338ca'
+                          } else if (nodeLevel === 3) {
+                            bg = '#3730a3'
+                            color = '#ffffff'
+                            fw = '500'
+                            badgeBg = '#4338ca'
+                            badgeColor = '#ffffff'
+                            badgeBorder = '#4f46e5'
+                          } else if (nodeLevel === 4) {
+                            bg = '#e0e7ff'
+                            color = '#1e1b4b'
+                            fw = '500'
+                            badgeBg = '#c7d2fe'
+                            badgeColor = '#1e1b4b'
+                            badgeBorder = '#a5b4fc'
+                          }
+                        }
+
+                        return (
+                          <TableRow
+                            key={`${node.id}-inline-${hNode.id}`}
+                            className="border-0 hover:opacity-90 transition-opacity"
+                          >
+                            <TableCell colSpan={resumoColOrder.length} className="p-0 border-0">
+                              <div
+                                style={{ backgroundColor: bg, color, fontWeight: fw as any }}
+                                className="px-6 py-1.5 flex items-center gap-3 border-b border-white/10 text-[11px]"
+                              >
+                                <span
+                                  style={{
+                                    backgroundColor: badgeBg,
+                                    color: badgeColor,
+                                    borderColor: badgeBorder,
+                                  }}
+                                  className="font-mono text-[10px] px-1.5 py-0.5 rounded border shadow-sm"
+                                >
+                                  {code}
+                                </span>
+                                <span>{hNode.account_name}</span>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        )
+                      }
+
+                      const item = rowItem.data
+                      const isExpanded = expandedNodes[item.id]
+                      const hasChildren = item.children && item.children.length > 0
+                      const canExpand =
+                        hasChildren || (item.hierarchyArray && item.hierarchyArray.length > 0)
+
+                      let rowClass =
+                        index % 2 === 1
+                          ? 'bg-[#bfdbfe] text-black hover:bg-[#93c5fd]'
+                          : 'bg-transparent text-black dark:text-white hover:bg-slate-50 dark:hover:bg-slate-800/50'
+
+                      if (item.isSynthetic) {
+                        if (item.level === 0)
+                          rowClass = 'bg-[#1e1b4b] text-white hover:bg-[#1e1b4b]/90'
+                        else if (item.level === 1)
+                          rowClass = 'bg-[#312e81] text-white hover:bg-[#312e81]/90'
+                        else if (item.level === 2)
+                          rowClass = 'bg-[#3730a3] text-white hover:bg-[#3730a3]/90'
+                        else if (item.level === 3)
+                          rowClass = 'bg-[#e0e7ff] text-[#1e1b4b] hover:bg-[#c7d2fe]'
+                        else rowClass = 'bg-slate-100 text-slate-800 hover:bg-slate-200'
+                      } else if (!item.mappedAccount) {
+                        rowClass =
+                          index % 2 === 0
+                            ? 'bg-amber-50/40 text-slate-700 hover:bg-amber-50/70'
+                            : 'bg-amber-50/70 text-slate-700 hover:bg-amber-100/50'
+                      }
 
                       return (
                         <TableRow
-                          key={item.c_custo}
+                          key={item.id}
                           className={cn('transition-colors border-0 text-[11px]', rowClass)}
                         >
                           {resumoColOrder.map((key) => {
-                            if (key === 'c_custo')
+                            if (key === 'c_custo') {
                               return (
                                 <TableCell key={key} className="px-2 py-0.5 align-middle border-0">
-                                  {item.c_custo
-                                    ? `${item.c_custo} - ${item.descricao_c_custo || ''}`
-                                    : 'Sem Centro de Custo'}
+                                  <div
+                                    className="flex items-center gap-1.5"
+                                    style={{ paddingLeft: `${item.level * 16}px` }}
+                                  >
+                                    {canExpand ? (
+                                      <button
+                                        onClick={() =>
+                                          setExpandedNodes((p) => ({
+                                            ...p,
+                                            [item.id]: !p[item.id],
+                                          }))
+                                        }
+                                        className={cn(
+                                          'p-0.5 rounded transition-colors',
+                                          item.isSynthetic && item.level <= 2
+                                            ? 'hover:bg-white/20'
+                                            : 'hover:bg-black/10',
+                                        )}
+                                      >
+                                        {isExpanded ? (
+                                          <ChevronDown className="h-3 w-3" />
+                                        ) : (
+                                          <ChevronRight className="h-3 w-3" />
+                                        )}
+                                      </button>
+                                    ) : (
+                                      <span className="w-4" />
+                                    )}
+
+                                    <span
+                                      className={cn(
+                                        'px-1.5 py-0.5 rounded text-[9px] font-bold shadow-sm',
+                                        item.isSynthetic
+                                          ? item.level <= 2
+                                            ? 'bg-white/20 text-white'
+                                            : 'bg-black/10 text-black'
+                                          : 'bg-blue-50 text-blue-600 border border-blue-200',
+                                      )}
+                                    >
+                                      {item.isSynthetic ? 'S' : 'A'}
+                                    </span>
+
+                                    <span className="font-mono font-semibold">
+                                      {item.c_custo || 'SEM_CC'}
+                                    </span>
+                                    <span
+                                      className="truncate max-w-[250px]"
+                                      title={item.descricao_c_custo}
+                                    >
+                                      {item.descricao_c_custo}
+                                    </span>
+                                  </div>
                                 </TableCell>
                               )
-                            if (key === 'conta_contabil')
+                            }
+
+                            if (key === 'conta_contabil') {
                               return (
                                 <TableCell key={key} className="px-2 py-0.5 align-middle border-0">
-                                  {item.mappedAccount ? (
+                                  {!item.isSynthetic && item.mappedAccount ? (
                                     <div className="flex items-center gap-1.5">
-                                      <span className="bg-[#1e1b4b] text-white px-1.5 py-0.5 rounded text-[10px] font-bold font-mono min-w-[50px] text-center inline-block">
+                                      <span className="bg-[#1e1b4b] text-white px-1.5 py-0.5 rounded text-[10px] font-bold font-mono min-w-[50px] text-center inline-block shadow-sm">
                                         {item.mappedAccount.account_code}
                                       </span>
                                       {item.mappedAccount.classification && (
-                                        <span className="text-black font-mono text-[10px] font-semibold whitespace-nowrap">
+                                        <span
+                                          className={cn(
+                                            'font-mono text-[10px] font-semibold whitespace-nowrap',
+                                            item.isSynthetic && item.level <= 2
+                                              ? 'text-white/80'
+                                              : 'text-slate-500',
+                                          )}
+                                        >
                                           {item.mappedAccount.classification}
                                         </span>
                                       )}
                                       <span
-                                        className="truncate text-slate-800 font-semibold"
+                                        className={cn(
+                                          'truncate font-semibold max-w-[250px]',
+                                          item.isSynthetic && item.level <= 2
+                                            ? 'text-white'
+                                            : 'text-slate-800',
+                                        )}
                                         title={item.mappedAccount.account_name}
                                       >
                                         {item.mappedAccount.account_name}
                                       </span>
                                     </div>
-                                  ) : (
-                                    <span className="text-slate-400 italic">Não vinculado</span>
+                                  ) : !item.isSynthetic && !item.mappedAccount ? (
+                                    <span className="text-slate-400 italic font-medium">
+                                      Não vinculado
+                                    </span>
+                                  ) : null}
+                                </TableCell>
+                              )
+                            }
+
+                            if (key === 'status') {
+                              return (
+                                <TableCell
+                                  key={key}
+                                  className="px-2 py-0.5 text-center align-middle border-0"
+                                >
+                                  {!item.isSynthetic && (
+                                    <span
+                                      className={cn(
+                                        'inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-bold border uppercase tracking-wider shadow-sm',
+                                        item.mappedAccount
+                                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                          : 'bg-rose-50 text-rose-700 border-rose-200',
+                                      )}
+                                    >
+                                      {item.status}
+                                    </span>
                                   )}
                                 </TableCell>
                               )
-                            if (key === 'status')
+                            }
+
+                            if (key === 'count') {
                               return (
                                 <TableCell
                                   key={key}
                                   className="px-2 py-0.5 text-center align-middle border-0"
                                 >
-                                  <span
-                                    className={cn(
-                                      'inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-bold border uppercase tracking-wider',
-                                      item.mappedAccount
-                                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                                        : 'bg-rose-50 text-rose-700 border-rose-200',
-                                    )}
-                                  >
-                                    {item.status}
-                                  </span>
+                                  {item.count > 0 ? (
+                                    <button
+                                      onClick={() =>
+                                        !item.isSynthetic && handleDrillDownResumo(item)
+                                      }
+                                      className={cn(
+                                        'font-bold hover:underline cursor-pointer',
+                                        item.isSynthetic
+                                          ? item.level <= 2
+                                            ? 'text-white cursor-default hover:no-underline'
+                                            : 'text-black cursor-default hover:no-underline'
+                                          : 'text-blue-600 hover:text-blue-800',
+                                      )}
+                                      title={
+                                        item.isSynthetic
+                                          ? 'Lançamentos agrupados'
+                                          : 'Visualizar Lançamentos'
+                                      }
+                                    >
+                                      {item.count}
+                                    </button>
+                                  ) : (
+                                    <span
+                                      className={
+                                        item.isSynthetic && item.level <= 2
+                                          ? 'text-white/50'
+                                          : 'text-slate-400'
+                                      }
+                                    >
+                                      0
+                                    </span>
+                                  )}
                                 </TableCell>
                               )
-                            if (key === 'count')
-                              return (
-                                <TableCell
-                                  key={key}
-                                  className="px-2 py-0.5 text-center align-middle border-0"
-                                >
-                                  <button
-                                    onClick={() => handleDrillDownResumo(item)}
-                                    className="text-blue-600 font-bold hover:text-blue-800 hover:underline cursor-pointer"
-                                    title="Visualizar Lançamentos"
-                                  >
-                                    {item.count}
-                                  </button>
-                                </TableCell>
-                              )
-                            if (key === 'total_bruto')
+                            }
+
+                            if (key === 'total_bruto') {
                               return (
                                 <TableCell
                                   key={key}
@@ -5233,7 +5657,8 @@ export default function FinancialMovements() {
                                   }).format(item.total_bruto)}
                                 </TableCell>
                               )
-                            if (key === 'total_liquido')
+                            }
+                            if (key === 'total_liquido') {
                               return (
                                 <TableCell
                                   key={key}
@@ -5245,32 +5670,40 @@ export default function FinancialMovements() {
                                   }).format(item.total)}
                                 </TableCell>
                               )
-                            if (key === 'acao')
+                            }
+                            if (key === 'acao') {
                               return (
                                 <TableCell
                                   key={key}
                                   className="px-2 py-0.5 text-center align-middle border-0"
                                 >
-                                  <Button
-                                    size="sm"
-                                    variant={item.mappedAccount ? 'outline' : 'default'}
-                                    className={cn(
-                                      'h-6 text-[10px] px-2',
-                                      !item.mappedAccount &&
-                                        'bg-[#800000] hover:bg-[#800000]/90 text-white shadow-sm',
-                                    )}
-                                    onClick={() => setMappingRow(item.rows[0])}
-                                  >
-                                    {item.mappedAccount ? 'Editar' : 'Mapear'}
-                                  </Button>
+                                  {!item.isSynthetic && (
+                                    <Button
+                                      size="sm"
+                                      variant={item.mappedAccount ? 'outline' : 'default'}
+                                      className={cn(
+                                        'h-6 text-[10px] px-2',
+                                        !item.mappedAccount &&
+                                          'bg-[#800000] hover:bg-[#800000]/90 text-white shadow-sm',
+                                        item.isSynthetic &&
+                                          item.level <= 2 &&
+                                          item.mappedAccount &&
+                                          'border-white/20 text-white hover:bg-white/10',
+                                      )}
+                                      onClick={() => setMappingRow(item.rows[0] || item)}
+                                    >
+                                      {item.mappedAccount ? 'Editar' : 'Mapear'}
+                                    </Button>
+                                  )}
                                 </TableCell>
                               )
+                            }
                             return null
                           })}
                         </TableRow>
                       )
                     })}
-                    {sortedAndFilteredDeParaSummary.length === 0 && (
+                    {flattenedTreeRows.length === 0 && (
                       <TableRow disableZebra>
                         <TableCell colSpan={7} className="h-32 text-center text-slate-500 border-0">
                           Nenhum registro para exibir com os filtros atuais.
