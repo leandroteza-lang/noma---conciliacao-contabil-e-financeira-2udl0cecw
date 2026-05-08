@@ -2231,16 +2231,19 @@ export default function FinancialMovements() {
     const contaContabilSet = new Set<string>()
     const statusSet = new Set<string>()
 
+    const acaoSet = new Set<string>()
+
     deParaSummary.forEach((item) => {
       cCustoSet.add(
         item.c_custo ? `${item.c_custo} - ${item.descricao_c_custo || ''}` : 'Sem Centro de Custo',
       )
       contaContabilSet.add(
         item.mappedAccount
-          ? `${item.mappedAccount.account_code} - ${item.mappedAccount.account_name}`
+          ? `${item.mappedAccount.account_code} ${item.mappedAccount.classification ? item.mappedAccount.classification + ' ' : ''}${item.mappedAccount.account_name}`
           : 'Não vinculado',
       )
       statusSet.add(item.status)
+      acaoSet.add(item.mappedAccount ? 'Editar' : 'Mapear')
     })
 
     options['c_custo'] = Array.from(cCustoSet)
@@ -2250,6 +2253,9 @@ export default function FinancialMovements() {
       .sort()
       .map((v) => ({ label: v, value: v }))
     options['status'] = Array.from(statusSet)
+      .sort()
+      .map((v) => ({ label: v, value: v }))
+    options['acao'] = Array.from(acaoSet)
       .sort()
       .map((v) => ({ label: v, value: v }))
 
@@ -2268,12 +2274,16 @@ export default function FinancialMovements() {
         }
         if (key === 'conta_contabil') {
           const val = item.mappedAccount
-            ? `${item.mappedAccount.account_code} - ${item.mappedAccount.account_name}`
+            ? `${item.mappedAccount.account_code} ${item.mappedAccount.classification ? item.mappedAccount.classification + ' ' : ''}${item.mappedAccount.account_name}`
             : 'Não vinculado'
           return values.includes(val)
         }
         if (key === 'status') {
           return values.includes(item.status)
+        }
+        if (key === 'acao') {
+          const val = item.mappedAccount ? 'Editar' : 'Mapear'
+          return values.includes(val)
         }
         return true
       })
@@ -2281,12 +2291,24 @@ export default function FinancialMovements() {
 
     return filtered.sort((a, b) => {
       let valA: any, valB: any
-      if (resumoSortColumn === 'c_custo') {
+      if (resumoSortColumn === 'c_custo' || resumoSortColumn === 'c_custo_codigo') {
         valA = a.c_custo || ''
         valB = b.c_custo || ''
-      } else if (resumoSortColumn === 'conta_contabil') {
+      } else if (resumoSortColumn === 'c_custo_nome') {
+        valA = a.descricao_c_custo || ''
+        valB = b.descricao_c_custo || ''
+      } else if (
+        resumoSortColumn === 'conta_contabil' ||
+        resumoSortColumn === 'conta_contabil_reduzido'
+      ) {
         valA = a.mappedAccount ? a.mappedAccount.account_code : ''
         valB = b.mappedAccount ? b.mappedAccount.account_code : ''
+      } else if (resumoSortColumn === 'conta_contabil_classificacao') {
+        valA = a.mappedAccount ? a.mappedAccount.classification || '' : ''
+        valB = b.mappedAccount ? b.mappedAccount.classification || '' : ''
+      } else if (resumoSortColumn === 'conta_contabil_nome') {
+        valA = a.mappedAccount ? a.mappedAccount.account_name || '' : ''
+        valB = b.mappedAccount ? b.mappedAccount.account_name || '' : ''
       } else if (resumoSortColumn === 'status') {
         valA = a.status
         valB = b.status
@@ -2299,6 +2321,9 @@ export default function FinancialMovements() {
       } else if (resumoSortColumn === 'total_liquido') {
         valA = a.total
         valB = b.total
+      } else if (resumoSortColumn === 'acao') {
+        valA = a.mappedAccount ? 1 : 0
+        valB = b.mappedAccount ? 1 : 0
       }
 
       if (valA < valB) return resumoSortDirection === 'asc' ? -1 : 1
@@ -2307,9 +2332,18 @@ export default function FinancialMovements() {
     })
   }, [deParaSummary, resumoFilters, resumoSortColumn, resumoSortDirection])
 
+  const handleSortResumo = (col: string) => {
+    if (resumoSortColumn === col) {
+      setResumoSortDirection(resumoSortDirection === 'asc' ? 'desc' : 'asc')
+    } else {
+      setResumoSortColumn(col)
+      setResumoSortDirection('asc')
+    }
+  }
+
   const renderResumoSortIcon = (key: string) => {
-    if (resumoSortColumn !== key)
-      return <ArrowUpDown className="h-3 w-3 ml-1 opacity-50 text-indigo-300" />
+    const isActive = resumoSortColumn.startsWith(key) || resumoSortColumn === key
+    if (!isActive) return <ArrowUpDown className="h-3 w-3 ml-1 opacity-50 text-indigo-300" />
     return resumoSortDirection === 'asc' ? (
       <ArrowUp className="h-3 w-3 ml-1 text-white" />
     ) : (
@@ -4863,7 +4897,12 @@ export default function FinancialMovements() {
                     <TableRow className="hover:bg-[#221c5a] border-none">
                       {resumoColOrder.map((key) => {
                         const h = resumoHeaders.find((x) => x.key === key)!
-                        const isFilterable = ['c_custo', 'conta_contabil', 'status'].includes(key)
+                        const isFilterable = [
+                          'c_custo',
+                          'conta_contabil',
+                          'status',
+                          'acao',
+                        ].includes(key)
                         const activeFilterCount = resumoFilters[key]?.length || 0
                         const options = resumoFilterOptions[key] || []
 
@@ -4902,33 +4941,123 @@ export default function FinancialMovements() {
                                 h.align === 'right' ? 'flex-row-reverse' : '',
                               )}
                             >
-                              <div
-                                className={cn(
-                                  'flex items-center cursor-pointer hover:bg-white/10 rounded px-1 -ml-1 flex-1',
-                                  h.align === 'right'
-                                    ? 'justify-end'
-                                    : h.align === 'center'
-                                      ? 'justify-center'
-                                      : 'justify-start',
-                                )}
-                                onClick={() => {
-                                  if (key === 'acao') return
-                                  if (resumoSortColumn === key) {
-                                    setResumoSortDirection(
-                                      resumoSortDirection === 'asc' ? 'desc' : 'asc',
-                                    )
-                                  } else {
-                                    setResumoSortColumn(key)
-                                    setResumoSortDirection('asc')
-                                  }
-                                }}
-                              >
-                                {h.label}
-                                {key !== 'acao' && renderResumoSortIcon(key)}
-                              </div>
+                              {key === 'c_custo' || key === 'conta_contabil' ? (
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger
+                                    className={cn(
+                                      'flex items-center cursor-pointer hover:bg-white/10 rounded px-1 -ml-1 flex-1 outline-none',
+                                      h.align === 'right'
+                                        ? 'justify-end'
+                                        : h.align === 'center'
+                                          ? 'justify-center'
+                                          : 'justify-start',
+                                    )}
+                                  >
+                                    {h.label}
+                                    {renderResumoSortIcon(key)}
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="start">
+                                    {key === 'c_custo' && (
+                                      <>
+                                        <DropdownMenuLabel className="text-xs text-slate-500 uppercase tracking-wider">
+                                          Ordenar por
+                                        </DropdownMenuLabel>
+                                        <DropdownMenuSeparator />
+                                        <DropdownMenuItem
+                                          onClick={() => handleSortResumo('c_custo_codigo')}
+                                          className="text-xs cursor-pointer flex items-center justify-between"
+                                        >
+                                          Código{' '}
+                                          {resumoSortColumn === 'c_custo_codigo' &&
+                                            (resumoSortDirection === 'asc' ? (
+                                              <ArrowUp className="ml-2 h-3 w-3" />
+                                            ) : (
+                                              <ArrowDown className="ml-2 h-3 w-3" />
+                                            ))}
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem
+                                          onClick={() => handleSortResumo('c_custo_nome')}
+                                          className="text-xs cursor-pointer flex items-center justify-between"
+                                        >
+                                          Nome{' '}
+                                          {resumoSortColumn === 'c_custo_nome' &&
+                                            (resumoSortDirection === 'asc' ? (
+                                              <ArrowUp className="ml-2 h-3 w-3" />
+                                            ) : (
+                                              <ArrowDown className="ml-2 h-3 w-3" />
+                                            ))}
+                                        </DropdownMenuItem>
+                                      </>
+                                    )}
+                                    {key === 'conta_contabil' && (
+                                      <>
+                                        <DropdownMenuLabel className="text-xs text-slate-500 uppercase tracking-wider">
+                                          Ordenar por
+                                        </DropdownMenuLabel>
+                                        <DropdownMenuSeparator />
+                                        <DropdownMenuItem
+                                          onClick={() =>
+                                            handleSortResumo('conta_contabil_classificacao')
+                                          }
+                                          className="text-xs cursor-pointer flex items-center justify-between"
+                                        >
+                                          Classificação{' '}
+                                          {resumoSortColumn === 'conta_contabil_classificacao' &&
+                                            (resumoSortDirection === 'asc' ? (
+                                              <ArrowUp className="ml-2 h-3 w-3" />
+                                            ) : (
+                                              <ArrowDown className="ml-2 h-3 w-3" />
+                                            ))}
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem
+                                          onClick={() =>
+                                            handleSortResumo('conta_contabil_reduzido')
+                                          }
+                                          className="text-xs cursor-pointer flex items-center justify-between"
+                                        >
+                                          Cód. Reduzido{' '}
+                                          {resumoSortColumn === 'conta_contabil_reduzido' &&
+                                            (resumoSortDirection === 'asc' ? (
+                                              <ArrowUp className="ml-2 h-3 w-3" />
+                                            ) : (
+                                              <ArrowDown className="ml-2 h-3 w-3" />
+                                            ))}
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem
+                                          onClick={() => handleSortResumo('conta_contabil_nome')}
+                                          className="text-xs cursor-pointer flex items-center justify-between"
+                                        >
+                                          Nome{' '}
+                                          {resumoSortColumn === 'conta_contabil_nome' &&
+                                            (resumoSortDirection === 'asc' ? (
+                                              <ArrowUp className="ml-2 h-3 w-3" />
+                                            ) : (
+                                              <ArrowDown className="ml-2 h-3 w-3" />
+                                            ))}
+                                        </DropdownMenuItem>
+                                      </>
+                                    )}
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              ) : (
+                                <div
+                                  className={cn(
+                                    'flex items-center cursor-pointer hover:bg-white/10 rounded px-1 -ml-1 flex-1 outline-none',
+                                    h.align === 'right'
+                                      ? 'justify-end'
+                                      : h.align === 'center'
+                                        ? 'justify-center'
+                                        : 'justify-start',
+                                  )}
+                                  onClick={() => handleSortResumo(key)}
+                                >
+                                  {h.label}
+                                  {renderResumoSortIcon(key)}
+                                </div>
+                              )}
 
                               {isFilterable && (
-                                <div className="flex items-center flex-shrink-0">
+                                <div className="flex items-center flex-shrink-0 relative">
                                   <Popover>
                                     <PopoverTrigger asChild>
                                       <Button
