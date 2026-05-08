@@ -349,9 +349,8 @@ function PeriodConsolidatedTable({ data, type }: { data: any[]; type: 'account' 
       <TableBody>
         {aggregated.map((item) => (
           <TableRow
-            disableZebra
             key={item.name}
-            className="border-b border-black last:border-b-0 hover:bg-slate-50 transition-colors"
+            className="border-b border-black last:border-b-0 transition-colors"
           >
             <TableCell className="px-2 py-1 border-r border-black text-slate-700 font-medium">
               {item.name}
@@ -582,9 +581,8 @@ function SummaryTable({
             </TableRow>
             {group.items.map((item) => (
               <TableRow
-                disableZebra
                 key={item.name}
-                className="border-b border-black last:border-b-0 hover:bg-slate-50 transition-colors"
+                className="border-b border-black last:border-b-0 transition-colors"
               >
                 <TableCell className="px-2 py-1 border-r border-black text-slate-400"></TableCell>
                 <TableCell className="px-2 py-1 border-r border-black text-slate-700 font-medium">
@@ -3550,26 +3548,15 @@ export default function FinancialMovements() {
                     </TableRow>
                   ) : (
                     <>
-                      {data.map((row, index) => {
+                      {data.map((row) => {
                         const missingFields = []
                         if (!row.data_emissao) missingFields.push('Data de Emissão')
                         if (!row.c_custo) missingFields.push('Centro de Custo')
                         if (row.valor_liquido === null || row.valor_liquido === undefined)
                           missingFields.push('Valor Líquido')
 
-                        const isEvenRow = index % 2 === 1
-
                         return (
-                          <TableRow
-                            disableZebra
-                            key={row.id}
-                            className={cn(
-                              'transition-colors border-0 text-[11px]',
-                              isEvenRow
-                                ? 'bg-[#bfdbfe] text-black hover:bg-[#93c5fd]'
-                                : 'bg-transparent text-black dark:text-white hover:bg-slate-50 dark:hover:bg-slate-800/50',
-                            )}
-                          >
+                          <TableRow key={row.id} className="transition-colors border-0 text-[11px]">
                             <TableCell className="px-2 py-0.5 text-center align-middle border-0">
                               <div className="flex items-center justify-center">
                                 <Checkbox
@@ -4130,12 +4117,7 @@ export default function FinancialMovements() {
                                 <Button
                                   size="sm"
                                   variant="outline"
-                                  className={cn(
-                                    'h-6 px-2 text-[10px]',
-                                    isEvenRow
-                                      ? 'bg-blue-800 text-white border-white/30 hover:bg-blue-700 hover:text-white'
-                                      : '',
-                                  )}
+                                  className="h-6 px-2 text-[10px]"
                                   onClick={() => {
                                     setEditingId(row.id)
                                     setEditForm(row)
@@ -4434,33 +4416,16 @@ export default function FinancialMovements() {
                     </TableRow>
                   ) : (
                     matrixData.rows.map((row, idx) => {
-                      const isEvenRow = idx % 2 === 1
-                      const rowBg = isEvenRow
-                        ? 'bg-[#bfdbfe] text-black hover:bg-[#93c5fd]'
-                        : 'bg-transparent text-black dark:text-white hover:bg-slate-50 dark:hover:bg-slate-800/50'
-                      const stickyBg = isEvenRow
-                        ? 'bg-[#bfdbfe] group-hover:bg-[#93c5fd]'
-                        : 'bg-white dark:bg-transparent group-hover:bg-slate-50 dark:group-hover:bg-slate-800/50'
-
                       return (
                         <TableRow
-                          disableZebra
                           key={idx}
-                          className={cn('transition-colors group border-0 text-[11px]', rowBg)}
+                          className="transition-colors group border-0 text-[11px] [&>td.sticky]:bg-inherit"
                         >
-                          <TableCell
-                            className={cn(
-                              'border-0 sticky left-0 z-10 text-center px-2 py-0.5',
-                              stickyBg,
-                            )}
-                          >
+                          <TableCell className="border-0 sticky left-0 z-10 text-center px-2 py-0.5 bg-inherit">
                             {row.code}
                           </TableCell>
                           <TableCell
-                            className={cn(
-                              'border-0 sticky left-[150px] z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)] truncate max-w-[300px] px-2 py-0.5',
-                              stickyBg,
-                            )}
+                            className="border-0 sticky left-[150px] z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)] truncate max-w-[300px] px-2 py-0.5 bg-inherit"
                             title={row.name}
                           >
                             {row.name}
@@ -4500,12 +4465,7 @@ export default function FinancialMovements() {
                                   <div className="flex justify-start gap-2 mt-1.5 text-[10px] font-medium">
                                     {avEnabled && (
                                       <span
-                                        className={cn(
-                                          'px-1.5 py-0.5 rounded border border-slate-300',
-                                          isEvenRow
-                                            ? 'bg-blue-800/20 text-blue-900 border-blue-300'
-                                            : 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-200',
-                                        )}
+                                        className="px-1.5 py-0.5 rounded border border-slate-300 bg-black/5 dark:bg-white/10"
                                         title="Análise Vertical"
                                       >
                                         {val === 0 ? '-' : `${av.toFixed(1)}%`}
@@ -4513,12 +4473,7 @@ export default function FinancialMovements() {
                                     )}
                                     {ahEnabled && mIdx > 0 && (
                                       <span
-                                        className={cn(
-                                          'px-1.5 py-0.5 rounded border border-slate-300',
-                                          isEvenRow
-                                            ? 'bg-blue-800/20 text-blue-900 border-blue-300'
-                                            : 'bg-slate-50 text-slate-800 dark:bg-slate-800 dark:text-slate-200',
-                                        )}
+                                        className="px-1.5 py-0.5 rounded border border-slate-300 bg-black/5 dark:bg-white/10"
                                         title="Análise Horizontal"
                                       >
                                         {prevVal === 0 && val !== 0
@@ -4851,11 +4806,7 @@ export default function FinancialMovements() {
                   </TableHeader>
                   <TableBody>
                     {deParaSummary.map((item) => (
-                      <TableRow
-                        key={item.c_custo}
-                        className="hover:bg-slate-50 border-b border-slate-200"
-                        disableZebra
-                      >
+                      <TableRow key={item.c_custo} className="border-b border-slate-200">
                         {resumoColOrder.map((key) => {
                           if (key === 'c_custo')
                             return (
@@ -5250,10 +5201,7 @@ export default function FinancialMovements() {
               </TableHeader>
               <TableBody>
                 {drillDownData.map((row, i) => (
-                  <TableRow
-                    key={row.id || i}
-                    className="border-b-slate-100 hover:bg-slate-50/80 transition-colors"
-                  >
+                  <TableRow key={row.id || i} className="border-b-slate-100 transition-colors">
                     <TableCell className="whitespace-nowrap font-medium text-slate-600">
                       {formatDate(row.data_emissao)}
                     </TableCell>

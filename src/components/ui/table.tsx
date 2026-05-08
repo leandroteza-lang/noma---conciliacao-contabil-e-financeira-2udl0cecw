@@ -56,9 +56,8 @@ const TableRow = React.forwardRef<
         !disableZebra &&
           !applyDeepSkyBlue &&
           !applyMidnightBlue && [
-            'odd:bg-white dark:odd:bg-transparent',
-            'even:bg-[#e8f4ff] hover:even:bg-[#d1e9ff]',
-            '[&>td]:text-black [&>td]:font-bold',
+            'odd:bg-transparent odd:text-black dark:odd:text-white hover:odd:bg-slate-50 dark:hover:odd:bg-slate-800/50',
+            'even:bg-[#bfdbfe] even:text-black hover:even:bg-[#93c5fd]',
           ],
         !disableZebra &&
           applyDeepSkyBlue && [
