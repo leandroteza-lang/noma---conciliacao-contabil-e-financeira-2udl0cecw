@@ -45,6 +45,7 @@ import {
   TrendingUp,
   TrendingDown,
   CircleDollarSign,
+  RefreshCw,
 } from 'lucide-react'
 import { Checkbox } from '@/components/ui/checkbox'
 import { toast } from 'sonner'
@@ -672,6 +673,75 @@ export default function FinancialMovements() {
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [totals, setTotals] = useState({ valor: 0, valor_liquido: 0, entradas: 0, saidas: 0 })
   const [isExporting, setIsExporting] = useState(false)
+  const [isSyncing, setIsSyncing] = useState(false)
+
+  const syncMappings = async () => {
+    if (!user) return
+    setIsSyncing(true)
+    const toastId = toast.loading('Sincronizando mapeamentos...')
+    try {
+      let allMovs: any[] = []
+      let hasMore = true
+      let pageIdx = 0
+      while (hasMore) {
+        const { data, error } = await supabase
+          .from('erp_financial_movements')
+          .select('id, c_custo, organization_id, mapped_account_id')
+          .is('deleted_at', null)
+          .range(pageIdx * 1000, (pageIdx + 1) * 1000 - 1)
+
+        if (error) throw error
+        if (data && data.length > 0) {
+          allMovs = allMovs.concat(data)
+          pageIdx++
+          if (data.length < 1000) hasMore = false
+        } else {
+          hasMore = false
+        }
+      }
+
+      const updates: { id: string; mapped_account_id: string | null }[] = []
+
+      for (const row of allMovs) {
+        const mapped = getMappedAccountForCC(row.c_custo, row.organization_id)
+        const expectedId = mapped ? mapped.id : null
+        if (row.mapped_account_id !== expectedId) {
+          updates.push({
+            id: row.id,
+            mapped_account_id: expectedId,
+          })
+        }
+      }
+
+      if (updates.length > 0) {
+        const chunkSize = 200
+        for (let i = 0; i < updates.length; i += chunkSize) {
+          const chunk = updates.slice(i, i + chunkSize)
+          const groupedByAccount: Record<string, string[]> = {}
+          for (const u of chunk) {
+            const key = u.mapped_account_id || 'NULL'
+            if (!groupedByAccount[key]) groupedByAccount[key] = []
+            groupedByAccount[key].push(u.id)
+          }
+
+          for (const [accId, ids] of Object.entries(groupedByAccount)) {
+            await supabase
+              .from('erp_financial_movements')
+              .update({ mapped_account_id: accId === 'NULL' ? null : accId })
+              .in('id', ids)
+          }
+        }
+        toast.success(updates.length + ' lançamentos foram sincronizados!', { id: toastId })
+        setRefreshKey((k) => k + 1)
+      } else {
+        toast.info('Tudo já está sincronizado.', { id: toastId })
+      }
+    } catch (error: any) {
+      toast.error('Erro ao sincronizar: ' + error.message, { id: toastId })
+    } finally {
+      setIsSyncing(false)
+    }
+  }
 
   const handleExport = async (scope: 'filtered' | 'all', format: 'excel' | 'pdf' | 'txt') => {
     if (!user) return
@@ -992,24 +1062,37 @@ export default function FinancialMovements() {
 
   const fetchAuxData = async () => {
     if (!user) return
-    const [{ data: coa }, { data: cc }, { data: map }] = await Promise.all([
-      supabase
-        .from('chart_of_accounts')
-        .select('id, account_code, account_name, organization_id')
-        .is('deleted_at', null),
-      supabase
-        .from('cost_centers')
-        .select('id, code, description, organization_id')
-        .is('deleted_at', null),
-      supabase
-        .from('account_mapping')
-        .select('cost_center_id, chart_account_id, organization_id')
-        .is('deleted_at', null)
-        .neq('pending_deletion', true),
+
+    const fetchAll = async (table: string, columns: string) => {
+      let all: any[] = []
+      let page = 0
+      let hasMore = true
+      while (hasMore) {
+        let q = supabase.from(table).select(columns).is('deleted_at', null)
+        if (table === 'account_mapping') {
+          q = q.neq('pending_deletion', true)
+        }
+        const { data, error } = await q.range(page * 1000, (page + 1) * 1000 - 1)
+        if (error || !data || data.length === 0) {
+          hasMore = false
+        } else {
+          all = all.concat(data)
+          page++
+          if (data.length < 1000) hasMore = false
+        }
+      }
+      return all
+    }
+
+    const [coa, cc, map] = await Promise.all([
+      fetchAll('chart_of_accounts', 'id, account_code, account_name, organization_id'),
+      fetchAll('cost_centers', 'id, code, description, organization_id'),
+      fetchAll('account_mapping', 'cost_center_id, chart_account_id, organization_id'),
     ])
-    if (coa) setChartOfAccounts(coa)
-    if (cc) setCostCenters(cc)
-    if (map) setMappings(map)
+
+    setChartOfAccounts(coa)
+    setCostCenters(cc)
+    setMappings(map)
   }
 
   useEffect(() => {
@@ -1037,10 +1120,13 @@ export default function FinancialMovements() {
   }
 
   const getMappedAccount = (row: any) => {
+    const fromMapeamento = getMappedAccountForCC(row.c_custo, row.organization_id)
+    if (fromMapeamento) return fromMapeamento
+
     if (row.mapped_account_id) {
       return chartOfAccounts.find((coa) => coa.id === row.mapped_account_id) || null
     }
-    return getMappedAccountForCC(row.c_custo, row.organization_id)
+    return null
   }
 
   useEffect(() => {
@@ -2350,7 +2436,20 @@ export default function FinancialMovements() {
             Gestão, visualização e conciliação de lançamentos do ERP
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            variant="outline"
+            onClick={syncMappings}
+            disabled={isSyncing || loading}
+            className="shadow-sm"
+          >
+            {isSyncing ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <RefreshCw className="mr-2 h-4 w-4" />
+            )}
+            Sincronizar Mapeamentos
+          </Button>
           <Button
             variant="outline"
             onClick={() => {
