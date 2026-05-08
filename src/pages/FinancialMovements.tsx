@@ -5168,11 +5168,11 @@ export default function FinancialMovements() {
                                 <TableCell key={key} className="px-2 py-0.5 align-middle border-0">
                                   {item.mappedAccount ? (
                                     <div className="flex items-center gap-1.5">
-                                      <span className="bg-[#1e1b4b] text-white px-1.5 py-0.5 rounded text-[10px] font-bold font-mono">
+                                      <span className="bg-[#1e1b4b] text-white px-1.5 py-0.5 rounded text-[10px] font-bold font-mono min-w-[50px] text-center inline-block">
                                         {item.mappedAccount.account_code}
                                       </span>
                                       {item.mappedAccount.classification && (
-                                        <span className="text-slate-500 font-mono text-[10px] font-semibold whitespace-nowrap">
+                                        <span className="text-black font-mono text-[10px] font-semibold whitespace-nowrap">
                                           {item.mappedAccount.classification}
                                         </span>
                                       )}
@@ -5729,11 +5729,11 @@ export default function FinancialMovements() {
                                   {account.account_name}
                                 </span>
                                 <div className="flex items-center gap-1.5">
-                                  <span className="bg-[#1e1b4b] text-white px-1.5 py-0.5 rounded text-[10px] font-bold font-mono">
+                                  <span className="bg-[#1e1b4b] text-white px-1.5 py-0.5 rounded text-[10px] font-bold font-mono min-w-[50px] text-center inline-block">
                                     {account.account_code}
                                   </span>
                                   {account.classification && (
-                                    <span className="font-mono text-[10px] text-slate-500 font-semibold">
+                                    <span className="font-mono text-[10px] text-black font-semibold">
                                       {account.classification}
                                     </span>
                                   )}
