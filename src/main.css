@@ -124,6 +124,22 @@
     background-color: #333333;
   }
 
+  .card-plano-contas {
+    @apply relative w-full sm:w-[220px] lg:w-[240px] xl:w-[250px] h-[90px] lg:h-[100px] rounded-[22px] px-[16px] py-[14px] lg:px-[18px] lg:py-[16px] text-white shadow-[0_4px_12px_rgba(0,0,0,0.12)] flex flex-col justify-center overflow-hidden flex-shrink-0;
+  }
+  .card-plano-contas .titulo {
+    @apply text-[11px] lg:text-[12px] font-semibold uppercase tracking-[0.8px] mb-[4px] lg:mb-[6px];
+  }
+  .card-plano-contas .valor {
+    @apply text-[20px] lg:text-[24px] xl:text-[28px] font-bold leading-none mb-[2px] lg:mb-[4px] truncate;
+  }
+  .card-plano-contas .descricao {
+    @apply text-[11px] lg:text-[12px] font-normal opacity-95;
+  }
+  .card-plano-contas .icone {
+    @apply absolute right-[12px] lg:right-[16px] top-[14px] opacity-15 w-[48px] h-[48px] lg:w-[56px] lg:h-[56px];
+  }
+
   /* Custom scrollbar for small containers */
   .custom-scrollbar::-webkit-scrollbar {
     height: 6px;

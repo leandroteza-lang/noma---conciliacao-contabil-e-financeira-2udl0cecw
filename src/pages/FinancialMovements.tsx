@@ -41,6 +41,10 @@ import {
   Download,
   FileSpreadsheet,
   FileText,
+  Wallet,
+  TrendingUp,
+  TrendingDown,
+  CircleDollarSign,
 } from 'lucide-react'
 import { Checkbox } from '@/components/ui/checkbox'
 import { toast } from 'sonner'
@@ -666,7 +670,7 @@ export default function FinancialMovements() {
   const [refreshKey, setRefreshKey] = useState(0)
 
   const [selectedIds, setSelectedIds] = useState<string[]>([])
-  const [totals, setTotals] = useState({ valor: 0, valor_liquido: 0 })
+  const [totals, setTotals] = useState({ valor: 0, valor_liquido: 0, entradas: 0, saidas: 0 })
   const [isExporting, setIsExporting] = useState(false)
 
   const handleExport = async (scope: 'filtered' | 'all', format: 'excel' | 'pdf' | 'txt') => {
@@ -724,6 +728,19 @@ export default function FinancialMovements() {
         })
       }
 
+      const exportTotals = {
+        valor: allData.reduce((acc, row) => acc + (Number(row.valor) || 0), 0),
+        valor_liquido: allData.reduce((acc, row) => acc + (Number(row.valor_liquido) || 0), 0),
+        entradas: allData.reduce((acc, row) => {
+          const v = Number(row.valor_liquido) || 0
+          return v > 0 ? acc + v : acc
+        }, 0),
+        saidas: allData.reduce((acc, row) => {
+          const v = Number(row.valor_liquido) || 0
+          return v < 0 ? acc + v : acc
+        }, 0),
+      }
+
       const exportData = allData.map((row) => {
         const mappedRow: any = {}
         const colsToExport =
@@ -766,7 +783,7 @@ export default function FinancialMovements() {
       }
 
       const { data: result, error } = await supabase.functions.invoke('export-erp-movements', {
-        body: { format, data: exportData },
+        body: { format, data: exportData, totals: exportTotals },
       })
 
       if (error) throw error
@@ -1820,7 +1837,16 @@ export default function FinancialMovements() {
         (acc, curr) => acc + (Number(curr.valor_liquido) || 0),
         0,
       )
-      setTotals({ valor: sumV, valor_liquido: sumVL })
+      const sumEntradas = finalTotalsData.reduce((acc, curr) => {
+        const val = Number(curr.valor_liquido) || 0
+        return val > 0 ? acc + val : acc
+      }, 0)
+      const sumSaidas = finalTotalsData.reduce((acc, curr) => {
+        const val = Number(curr.valor_liquido) || 0
+        return val < 0 ? acc + val : acc
+      }, 0)
+
+      setTotals({ valor: sumV, valor_liquido: sumVL, entradas: sumEntradas, saidas: sumSaidas })
     }
   }
 
@@ -2000,7 +2026,16 @@ export default function FinancialMovements() {
         (acc, curr) => acc + (Number(curr.valor_liquido) || 0),
         0,
       )
-      setTotals({ valor: sumV, valor_liquido: sumVL })
+      const sumEntradas = finalTotalsData.reduce((acc, curr) => {
+        const val = Number(curr.valor_liquido) || 0
+        return val > 0 ? acc + val : acc
+      }, 0)
+      const sumSaidas = finalTotalsData.reduce((acc, curr) => {
+        const val = Number(curr.valor_liquido) || 0
+        return val < 0 ? acc + val : acc
+      }, 0)
+
+      setTotals({ valor: sumV, valor_liquido: sumVL, entradas: sumEntradas, saidas: sumSaidas })
     }
 
     setLoading(false)
@@ -3013,52 +3048,75 @@ export default function FinancialMovements() {
               </div>
             </CardHeader>
             <CardContent className="p-0 bg-white">
-              <div className="p-4 border-b bg-slate-50/50 flex flex-col sm:flex-row items-center justify-between shadow-sm gap-4">
-                <div className="flex flex-wrap items-center gap-6">
-                  <div className="flex flex-col">
-                    <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">
-                      Total (Valor Bruto)
-                    </span>
+              <div className="p-4 border-b bg-slate-50/50 flex flex-col xl:flex-row items-center justify-between shadow-sm gap-4 overflow-hidden">
+                <div className="flex flex-1 overflow-x-auto custom-scrollbar pb-2 xl:pb-0 items-center justify-start gap-4 w-full">
+                  <div className="card-plano-contas bg-slate-700">
+                    <span className="titulo">Total (Bruto)</span>
                     <span
-                      className={cn(
-                        'text-xl font-bold',
-                        totals.valor > 0
-                          ? 'text-blue-700'
-                          : totals.valor < 0
-                            ? 'text-rose-700'
-                            : 'text-slate-800',
-                      )}
+                      className="valor"
+                      title={new Intl.NumberFormat('pt-BR', {
+                        style: 'currency',
+                        currency: 'BRL',
+                      }).format(totals.valor)}
                     >
                       {new Intl.NumberFormat('pt-BR', {
                         style: 'currency',
                         currency: 'BRL',
                       }).format(totals.valor)}
                     </span>
+                    <CircleDollarSign className="icone" />
                   </div>
-                  <div className="hidden sm:block w-px h-10 bg-slate-300"></div>
-                  <div className="flex flex-col">
-                    <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">
-                      Total (Valor Líquido)
-                    </span>
+                  <div className="card-plano-contas bg-slate-800">
+                    <span className="titulo">Total (Líquido)</span>
                     <span
-                      className={cn(
-                        'text-xl font-bold',
-                        totals.valor_liquido > 0
-                          ? 'text-blue-700'
-                          : totals.valor_liquido < 0
-                            ? 'text-rose-700'
-                            : 'text-slate-800',
-                      )}
+                      className="valor"
+                      title={new Intl.NumberFormat('pt-BR', {
+                        style: 'currency',
+                        currency: 'BRL',
+                      }).format(totals.valor_liquido)}
                     >
                       {new Intl.NumberFormat('pt-BR', {
                         style: 'currency',
                         currency: 'BRL',
                       }).format(totals.valor_liquido)}
                     </span>
+                    <Wallet className="icone" />
+                  </div>
+                  <div className="card-plano-contas bg-blue-600">
+                    <span className="titulo">Entradas / Positivos</span>
+                    <span
+                      className="valor"
+                      title={new Intl.NumberFormat('pt-BR', {
+                        style: 'currency',
+                        currency: 'BRL',
+                      }).format(totals.entradas)}
+                    >
+                      {new Intl.NumberFormat('pt-BR', {
+                        style: 'currency',
+                        currency: 'BRL',
+                      }).format(totals.entradas)}
+                    </span>
+                    <TrendingUp className="icone" />
+                  </div>
+                  <div className="card-plano-contas bg-[#800000]">
+                    <span className="titulo">Saídas / Negativos</span>
+                    <span
+                      className="valor"
+                      title={new Intl.NumberFormat('pt-BR', {
+                        style: 'currency',
+                        currency: 'BRL',
+                      }).format(totals.saidas)}
+                    >
+                      {new Intl.NumberFormat('pt-BR', {
+                        style: 'currency',
+                        currency: 'BRL',
+                      }).format(totals.saidas)}
+                    </span>
+                    <TrendingDown className="icone" />
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 shrink-0 xl:ml-auto">
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button

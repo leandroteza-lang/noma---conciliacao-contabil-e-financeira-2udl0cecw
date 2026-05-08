@@ -3,7 +3,8 @@ import { jsPDF } from 'npm:jspdf@2.5.1'
 import autoTablePkg from 'npm:jspdf-autotable@3.8.2'
 import * as XLSX from 'npm:xlsx@0.18.5'
 
-const autoTable = typeof autoTablePkg === 'function' ? autoTablePkg : (autoTablePkg as any).default || autoTablePkg
+const autoTable =
+  typeof autoTablePkg === 'function' ? autoTablePkg : (autoTablePkg as any).default || autoTablePkg
 
 if (typeof globalThis.window === 'undefined') {
   ;(globalThis as any).window = globalThis
@@ -15,7 +16,8 @@ if (typeof globalThis.document === 'undefined') {
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, x-supabase-client-platform, apikey, content-type',
+  'Access-Control-Allow-Headers':
+    'authorization, x-client-info, x-supabase-client-platform, apikey, content-type',
 }
 
 Deno.serve(async (req: Request) => {
@@ -24,7 +26,7 @@ Deno.serve(async (req: Request) => {
     const authHeader = req.headers.get('Authorization')
     if (!authHeader) throw new Error('Cabeçalho de autorização ausente')
 
-    const { format, data } = await req.json()
+    const { format, data, totals } = await req.json()
 
     if (format === 'excel') {
       const worksheet = XLSX.utils.json_to_sheet(data)
@@ -37,13 +39,26 @@ Deno.serve(async (req: Request) => {
     }
 
     if (format === 'txt') {
-      let txtContent = 'RELATÓRIO DE MOVIMENTO FINANCEIRO\n=========================================\n\n'
+      let txtContent =
+        'RELATÓRIO DE MOVIMENTO FINANCEIRO\n=========================================\n\n'
+
+      if (totals) {
+        const formatCurrency = (val: number) =>
+          new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val)
+        txtContent += `TOTAIS DO PERÍODO:\n`
+        txtContent += `Total (Bruto): ${formatCurrency(totals.valor)}\n`
+        txtContent += `Total (Líquido): ${formatCurrency(totals.valor_liquido)}\n`
+        txtContent += `Entradas / Positivos: ${formatCurrency(totals.entradas)}\n`
+        txtContent += `Saídas / Negativos: ${formatCurrency(totals.saidas)}\n`
+        txtContent += '=========================================\n\n'
+      }
+
       const headers = Object.keys(data[0] || {})
       data.forEach((r: any) => {
-        headers.forEach(h => {
+        headers.forEach((h) => {
           let val = r[h]
           if (typeof val === 'number') {
-             val = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val)
+            val = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val)
           }
           txtContent += `${h}: ${val || '-'}\n`
         })
@@ -56,7 +71,33 @@ Deno.serve(async (req: Request) => {
 
     if (format === 'pdf') {
       const headers = Object.keys(data[0] || {}).slice(0, 10) // Limit to 10 cols to fit in PDF
-      
+
+      const formatCurrency = (val: number) =>
+        new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val)
+
+      const totalsHtml = totals
+        ? `
+      <div class="totals-container">
+        <div class="total-card bg-slate">
+          <div class="total-title">Total (Bruto)</div>
+          <div class="total-value">${formatCurrency(totals.valor)}</div>
+        </div>
+        <div class="total-card bg-slate-dark">
+          <div class="total-title">Total (Líquido)</div>
+          <div class="total-value">${formatCurrency(totals.valor_liquido)}</div>
+        </div>
+        <div class="total-card bg-blue">
+          <div class="total-title">Entradas / Positivos</div>
+          <div class="total-value">${formatCurrency(totals.entradas)}</div>
+        </div>
+        <div class="total-card bg-red">
+          <div class="total-title">Saídas / Negativos</div>
+          <div class="total-value">${formatCurrency(totals.saidas)}</div>
+        </div>
+      </div>
+      `
+        : ''
+
       const html = `
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -87,9 +128,41 @@ Deno.serve(async (req: Request) => {
       background-color: #1e1b4b; color: white; border: none; padding: 8px 16px;
       border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 12px;
     }
+    
+    /* Novos Cards de Totais */
+    .totals-container {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    .total-card {
+      flex: 1;
+      padding: 16px;
+      border-radius: 12px;
+      color: white;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+    .total-card.bg-slate { background-color: #334155; }
+    .total-card.bg-slate-dark { background-color: #1e293b; }
+    .total-card.bg-blue { background-color: #2563eb; }
+    .total-card.bg-red { background-color: #800000; }
+    
+    .total-title { font-size: 11px; text-transform: uppercase; font-weight: 600; margin-bottom: 6px; opacity: 0.9; letter-spacing: 0.5px; }
+    .total-value { font-size: 20px; font-weight: 700; }
+
     @media print {
       .print-btn { display: none; }
       @page { size: landscape; margin: 1cm; }
+      .totals-container {
+        display: flex !important;
+        flex-direction: row !important;
+        gap: 12px !important;
+        margin-bottom: 20px !important;
+      }
+      .total-card {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
     }
     table { width: 100%; border-collapse: collapse; margin-top: 10px; }
     th { background-color: #1e1b4b; color: white; padding: 8px; text-align: left; font-size: 10px; font-weight: bold; border: 1px solid #cbd5e1; }
@@ -107,6 +180,7 @@ Deno.serve(async (req: Request) => {
     </div>
     <button class="print-btn" onclick="window.print()">Imprimir / Salvar PDF</button>
   </div>
+  ${totalsHtml}
   <table>
     <thead>
       <tr>
@@ -114,21 +188,28 @@ Deno.serve(async (req: Request) => {
       </tr>
     </thead>
     <tbody>
-      ${data.map((row: any, index: number) => {
-        const isEven = index % 2 === 0;
-        return `
+      ${data
+        .map((row: any, index: number) => {
+          const isEven = index % 2 === 0
+          return `
           <tr class="${isEven ? 'row-even' : 'row-odd'}">
-            ${headers.map((h: string) => {
-              let val = row[h];
-              let isNumber = typeof val === 'number';
-              if (isNumber) {
-                val = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
-              }
-              return `<td class="${isNumber ? 'text-right' : ''}">${val || '-'}</td>`;
-            }).join('')}
+            ${headers
+              .map((h: string) => {
+                let val = row[h]
+                let isNumber = typeof val === 'number'
+                if (isNumber) {
+                  val = new Intl.NumberFormat('pt-BR', {
+                    style: 'currency',
+                    currency: 'BRL',
+                  }).format(val)
+                }
+                return `<td class="${isNumber ? 'text-right' : ''}">${val || '-'}</td>`
+              })
+              .join('')}
           </tr>
-        `;
-      }).join('')}
+        `
+        })
+        .join('')}
     </tbody>
   </table>
   <script>
@@ -136,8 +217,8 @@ Deno.serve(async (req: Request) => {
   </script>
 </body>
 </html>
-      `;
-      
+      `
+
       return new Response(JSON.stringify({ html }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
