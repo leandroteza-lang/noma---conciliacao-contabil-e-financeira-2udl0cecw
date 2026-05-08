@@ -1153,9 +1153,33 @@ export default function FinancialMovements() {
             ),
           ).sort((a, b) => (b as string).localeCompare(a as string))
 
-          const dateOptions = uniqueDates.map((d: string) => {
+          const dateOptions: any[] = []
+          const groupedByMonth = new Map<string, string[]>()
+
+          uniqueDates.forEach((d: string) => {
             const [dy, dm, dd] = d.split('-')
-            return { label: `${dd}/${dm}/${dy}`, value: d }
+            const monthKey = `${dy}-${dm}`
+            if (!groupedByMonth.has(monthKey)) {
+              groupedByMonth.set(monthKey, [])
+            }
+            groupedByMonth.get(monthKey)!.push(d)
+          })
+
+          Array.from(groupedByMonth.entries()).forEach(([monthKey, days]) => {
+            const [dy, dm] = monthKey.split('-')
+            dateOptions.push({
+              label: `${dm}/${dy}`,
+              value: monthKey,
+              isParent: true,
+            })
+            days.forEach((d) => {
+              const [dy2, dm2, dd2] = d.split('-')
+              dateOptions.push({
+                label: `${dd2}/${dm2}/${dy2}`,
+                value: d,
+                parent: monthKey,
+              })
+            })
           })
 
           options[h.key] = dateOptions
