@@ -231,8 +231,7 @@ Deno.serve(async (req: Request) => {
               },
               limit: {
                 type: 'number',
-                description:
-                  'Número de registros para retornar (padrão 100, máx 10000). Use limite alto para calcular totais.',
+                description: 'Número de registros para retornar (padrão 100, máx 10000). Use limite alto para calcular totais.',
               },
             },
           },
@@ -372,9 +371,7 @@ Deno.serve(async (req: Request) => {
           const limit = Math.min(args.limit || 100, 10000)
           let query = supabase
             .from('erp_financial_movements')
-            .select(
-              'data_emissao, dt_compens, c_custo, descricao_c_custo, valor, valor_liquido, nome_cli_fornec, historico, n_documento, status',
-            )
+            .select('data_emissao, dt_compens, c_custo, descricao_c_custo, valor, valor_liquido, nome_cli_fornec, historico, n_documento, status')
             .in('organization_id', orgIds)
             .is('deleted_at', null)
 
@@ -396,13 +393,11 @@ Deno.serve(async (req: Request) => {
           }
           if (args.cost_center) {
             const searchPattern = `%${args.cost_center.trim()}%`
-            query = query.or(
-              `c_custo.ilike.${searchPattern},descricao_c_custo.ilike.${searchPattern}`,
-            )
+            query = query.or(`c_custo.ilike.${searchPattern},descricao_c_custo.ilike.${searchPattern}`)
           }
 
           const { data } = await query.order('data_emissao', { ascending: false }).limit(limit)
-
+          
           const formattedData = data?.map((d: any) => {
             let dataEmissaoStr = d.data_emissao
             if (dataEmissaoStr) {
@@ -417,7 +412,7 @@ Deno.serve(async (req: Request) => {
             return {
               ...d,
               data_emissao: dataEmissaoStr,
-              dt_compens: dtCompensStr,
+              dt_compens: dtCompensStr
             }
           })
 
