@@ -1395,10 +1395,15 @@ export default function FinancialMovements() {
 
   const applyQueryFilters = (query: any) => {
     let q = query
-    if (search)
+    if (search) {
+      const cleanW = search
+        .trim()
+        .replace(/\s+/g, '%')
+        .replace(/[aeiouáàãâäéèêëíìîïóòõôöúùûücç]/gi, '_')
       q = q.or(
-        `historico.ilike.%${search}%,nome_cli_fornec.ilike.%${search}%,c_custo.ilike.%${search}%`,
+        `historico.ilike.%${cleanW}%,nome_cli_fornec.ilike.%${cleanW}%,c_custo.ilike.%${cleanW}%,descricao_c_custo.ilike.%${cleanW}%,n_documento.ilike.%${cleanW}%`,
       )
+    }
 
     const dateCols = ['data_emissao', 'dt_compens', 'data_vencto', 'data_canc', 'data_estorno']
 
