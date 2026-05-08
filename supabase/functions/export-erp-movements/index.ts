@@ -3,7 +3,8 @@ import { jsPDF } from 'npm:jspdf@2.5.1'
 import autoTablePkg from 'npm:jspdf-autotable@3.8.2'
 import * as XLSX from 'npm:xlsx@0.18.5'
 
-const autoTable = typeof autoTablePkg === 'function' ? autoTablePkg : (autoTablePkg as any).default || autoTablePkg
+const autoTable =
+  typeof autoTablePkg === 'function' ? autoTablePkg : (autoTablePkg as any).default || autoTablePkg
 
 if (typeof globalThis.window === 'undefined') {
   ;(globalThis as any).window = globalThis
@@ -15,7 +16,8 @@ if (typeof globalThis.document === 'undefined') {
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, x-supabase-client-platform, apikey, content-type',
+  'Access-Control-Allow-Headers':
+    'authorization, x-client-info, x-supabase-client-platform, apikey, content-type',
 }
 
 Deno.serve(async (req: Request) => {
@@ -37,13 +39,14 @@ Deno.serve(async (req: Request) => {
     }
 
     if (format === 'txt') {
-      let txtContent = 'RELATÓRIO DE MOVIMENTO FINANCEIRO\n=========================================\n\n'
+      let txtContent =
+        'RELATÓRIO DE MOVIMENTO FINANCEIRO\n=========================================\n\n'
       const headers = Object.keys(data[0] || {})
       data.forEach((r: any) => {
-        headers.forEach(h => {
+        headers.forEach((h) => {
           let val = r[h]
           if (typeof val === 'number') {
-             val = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val)
+            val = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val)
           }
           txtContent += `${h}: ${val || '-'}\n`
         })
@@ -55,30 +58,97 @@ Deno.serve(async (req: Request) => {
     }
 
     if (format === 'pdf') {
-      const doc = new jsPDF('landscape')
-      doc.setFontSize(16)
-      doc.text('Relatório de Movimento Financeiro', 14, 20)
-
       const headers = Object.keys(data[0] || {}).slice(0, 10) // Limit to 10 cols to fit in PDF
-      const body = data.map((r: any) => headers.map(h => {
-         let val = r[h]
-         if (typeof val === 'number') {
-           return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val)
-         }
-         return val || '-'
-      }))
 
-      autoTable(doc, {
-        startY: 25,
-        head: [headers],
-        body: body,
-        theme: 'grid',
-        headStyles: { fillColor: [30, 27, 75], textColor: [255, 255, 255], fontSize: 8 },
-        styles: { fontSize: 7, cellPadding: 2, overflow: 'linebreak' },
-      })
+      const html = `
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Relatório de Movimento Financeiro</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+    body { 
+      font-family: 'Inter', system-ui, sans-serif; 
+      background-color: #ffffff; 
+      margin: 0; 
+      padding: 24px; 
+      color: #0f172a; 
+    }
+    .header { 
+      margin-bottom: 24px;
+      border-bottom: 1px solid #e2e8f0;
+      padding-bottom: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .header h1 { margin: 0 0 4px 0; font-size: 20px; font-weight: 700; color: #1e1b4b; }
+    .header p { margin: 0; color: #64748b; font-size: 12px; }
+    .print-btn {
+      background-color: #1e1b4b; color: white; border: none; padding: 8px 16px;
+      border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 12px;
+    }
+    @media print {
+      .print-btn { display: none; }
+      @page { size: landscape; margin: 1cm; }
+    }
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    th { background-color: #1e1b4b; color: white; padding: 8px; text-align: left; font-size: 10px; font-weight: bold; border: 1px solid #cbd5e1; }
+    td { padding: 6px 8px; font-size: 9px; vertical-align: top; border: 1px solid #cbd5e1; }
+    .row-even { background-color: #f8fafc; }
+    .row-odd { background-color: #ffffff; }
+    .text-right { text-align: right; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div>
+      <h1>Relatório de Movimento Financeiro</h1>
+      <p>Gerado em ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR')}</p>
+    </div>
+    <button class="print-btn" onclick="window.print()">Imprimir / Salvar PDF</button>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        ${headers.map((h: string) => `<th>${h}</th>`).join('')}
+      </tr>
+    </thead>
+    <tbody>
+      ${data
+        .map((row: any, index: number) => {
+          const isEven = index % 2 === 0
+          return `
+          <tr class="${isEven ? 'row-even' : 'row-odd'}">
+            ${headers
+              .map((h: string) => {
+                let val = row[h]
+                let isNumber = typeof val === 'number'
+                if (isNumber) {
+                  val = new Intl.NumberFormat('pt-BR', {
+                    style: 'currency',
+                    currency: 'BRL',
+                  }).format(val)
+                }
+                return `<td class="${isNumber ? 'text-right' : ''}">${val || '-'}</td>`
+              })
+              .join('')}
+          </tr>
+        `
+        })
+        .join('')}
+    </tbody>
+  </table>
+  <script>
+    window.onload = () => { setTimeout(() => window.print(), 500); }
+  </script>
+</body>
+</html>
+      `
 
-      const pdf = doc.output('datauristring')
-      return new Response(JSON.stringify({ pdf }), {
+      return new Response(JSON.stringify({ html }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     }

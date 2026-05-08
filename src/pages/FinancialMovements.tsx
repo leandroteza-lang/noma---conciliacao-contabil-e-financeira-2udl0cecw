@@ -690,6 +690,7 @@ export default function FinancialMovements() {
               : sortColumn,
           { ascending: sortDirection === 'asc' },
         )
+        .order('id', { ascending: true })
 
       if (scope === 'filtered') {
         q = applyQueryFilters(q)
@@ -735,7 +736,7 @@ export default function FinancialMovements() {
           if (h) {
             let val = row[key]
             if (key === 'empresa') val = row.organizations?.name || '-'
-            if (key === 'valor' || key === 'valor_liquido') val = val !== null ? val : 0
+            if (key === 'valor' || key === 'valor_liquido') val = val !== null ? Number(val) : 0
             if (
               ['data_emissao', 'dt_compens', 'data_vencto', 'data_canc', 'data_estorno'].includes(
                 key,
@@ -781,11 +782,21 @@ export default function FinancialMovements() {
         link.href = URL.createObjectURL(blob)
         link.download = `movimento_financeiro_${new Date().toISOString().split('T')[0]}.txt`
         link.click()
-      } else if (format === 'pdf' && result.pdf) {
-        const link = document.createElement('a')
-        link.href = result.pdf
-        link.download = `movimento_financeiro_${new Date().toISOString().split('T')[0]}.pdf`
-        link.click()
+      } else if (format === 'pdf') {
+        if (result.html) {
+          const printWindow = window.open('', '_blank')
+          if (printWindow) {
+            printWindow.document.write(result.html)
+            printWindow.document.close()
+          } else {
+            toast.error('Por favor, permita pop-ups para visualizar o PDF.')
+          }
+        } else if (result.pdf) {
+          const link = document.createElement('a')
+          link.href = result.pdf
+          link.download = `movimento_financeiro_${new Date().toISOString().split('T')[0]}.pdf`
+          link.click()
+        }
       }
       toast.success('Exportação concluída com sucesso!')
     } catch (error: any) {
@@ -1710,6 +1721,7 @@ export default function FinancialMovements() {
       .select('*, organizations(name)', { count: 'exact' })
       .is('deleted_at', null)
       .order(orderCol, { ascending: sortDirection === 'asc' })
+      .order('id', { ascending: true })
     query = applyQueryFilters(query)
 
     const fetchAllTotals = async () => {
@@ -1724,6 +1736,7 @@ export default function FinancialMovements() {
             'id, valor, valor_liquido, data_emissao, dt_compens, conta_caixa, nome_caixa, c_custo, descricao_c_custo, organization_id, mapped_account_id, historico, nome_cli_fornec, n_documento',
           )
           .is('deleted_at', null)
+          .order('id', { ascending: true })
         q = applyQueryFilters(q)
         const { data } = await q.range(pageIdx * limit, (pageIdx + 1) * limit - 1)
         if (!data || data.length === 0) {
@@ -1888,6 +1901,7 @@ export default function FinancialMovements() {
       .select('*, organizations(name)', { count: 'exact' })
       .is('deleted_at', null)
       .order(orderCol, { ascending: sortDirection === 'asc' })
+      .order('id', { ascending: true })
     query = applyQueryFilters(query)
 
     const fetchAllTotals = async () => {
@@ -1902,6 +1916,7 @@ export default function FinancialMovements() {
             'id, valor, valor_liquido, data_emissao, dt_compens, conta_caixa, nome_caixa, c_custo, descricao_c_custo, organization_id, mapped_account_id, historico, nome_cli_fornec, n_documento',
           )
           .is('deleted_at', null)
+          .order('id', { ascending: true })
         q = applyQueryFilters(q)
         const { data } = await q.range(pageIdx * limit, (pageIdx + 1) * limit - 1)
         if (!data || data.length === 0) {
