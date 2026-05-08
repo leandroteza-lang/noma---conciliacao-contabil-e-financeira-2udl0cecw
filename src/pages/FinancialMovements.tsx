@@ -1026,6 +1026,48 @@ export default function FinancialMovements() {
   }
 
   const defaultFilterOrder = ['natureza', ...tableHeaders.map((h) => h.key)]
+  const resumoHeaders = [
+    { key: 'c_custo', label: 'Centro de Custo (Origem ERP)' },
+    { key: 'conta_contabil', label: 'Conta Contábil (Destino)' },
+    { key: 'status', label: 'Status', align: 'center' },
+    { key: 'count', label: 'Lançamentos', align: 'center' },
+    { key: 'total_bruto', label: 'Total Bruto', align: 'right' },
+    { key: 'total_liquido', label: 'Total Líquido', align: 'right' },
+    { key: 'acao', label: 'Ação', align: 'center' },
+  ]
+
+  const [resumoColOrder, setResumoColOrder] = useState<string[]>(() => {
+    const saved = localStorage.getItem('fin_mov_resumo_cols')
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved)
+        const validKeys = new Set(resumoHeaders.map((h) => h.key))
+        const validParsed = parsed.filter((key: string) => validKeys.has(key))
+        const missingKeys = resumoHeaders
+          .map((h) => h.key)
+          .filter((key) => !validParsed.includes(key))
+        return [...validParsed, ...missingKeys]
+      } catch (e) {
+        return resumoHeaders.map((h) => h.key)
+      }
+    }
+    return resumoHeaders.map((h) => h.key)
+  })
+
+  useEffect(() => {
+    localStorage.setItem('fin_mov_resumo_cols', JSON.stringify(resumoColOrder))
+  }, [resumoColOrder])
+
+  const [draggedResumoCol, setDraggedResumoCol] = useState<string | null>(null)
+
+  const handleDrillDownResumo = (item: any) => {
+    setDrillDownTitle(
+      item.c_custo ? `${item.c_custo} - ${item.descricao_c_custo || ''}` : 'Sem Centro de Custo',
+    )
+    setDrillDownData(item.rows)
+    setDrillDownOpen(true)
+  }
+
   const [filterOrder, setFilterOrder] = useState<string[]>(() => {
     const saved = localStorage.getItem('fin_mov_filter_order')
     if (saved) {
@@ -2151,12 +2193,14 @@ export default function FinancialMovements() {
           org_id: row.organization_id,
           count: 0,
           total: 0,
+          total_bruto: 0,
           rows: [],
         })
       }
       const group = map.get(cc)!
       group.count++
       group.total += Number(row.valor_liquido || row.valor || 0)
+      group.total_bruto += Number(row.valor || 0)
       group.rows.push(row)
     })
 
@@ -4758,102 +4802,167 @@ export default function FinancialMovements() {
                 </p>
               </div>
             </CardHeader>
-            <CardContent className="p-0 bg-white max-h-[700px] overflow-y-auto custom-scrollbar">
-              <Table className="w-full text-sm relative">
-                <TableHeader className="bg-slate-100/90 sticky top-0 z-10 backdrop-blur-sm shadow-sm">
-                  <TableRow>
-                    <TableHead className="w-[30%]">Centro de Custo (Origem ERP)</TableHead>
-                    <TableHead className="w-[35%]">Conta Contábil (Destino)</TableHead>
-                    <TableHead className="text-center">Status</TableHead>
-                    <TableHead className="text-center">Lançamentos</TableHead>
-                    <TableHead className="text-right">Total Líquido</TableHead>
-                    <TableHead className="text-center w-[100px]">Ação</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {deParaSummary.map((item) => (
-                    <TableRow
-                      key={item.c_custo}
-                      className="hover:bg-slate-50 border-b border-slate-100"
-                    >
-                      <TableCell>
-                        <div className="flex flex-col">
-                          <span className="font-semibold text-slate-800">
-                            {item.c_custo || 'Sem Centro de Custo'}
-                          </span>
-                          <span
-                            className="text-xs text-slate-500 truncate max-w-[250px]"
-                            title={item.descricao_c_custo}
+            <CardContent className="p-4 bg-white max-h-[700px] overflow-y-auto custom-scrollbar">
+              <div className="border border-[#2c2f7a] rounded-lg overflow-hidden">
+                <Table className="w-full text-sm relative">
+                  <TableHeader className="bg-[#221c5a] sticky top-0 z-10 shadow-sm border-none">
+                    <TableRow className="hover:bg-[#221c5a] border-none">
+                      {resumoColOrder.map((key) => {
+                        const h = resumoHeaders.find((x) => x.key === key)!
+                        return (
+                          <TableHead
+                            key={key}
+                            draggable
+                            onDragStart={(e) => {
+                              setDraggedResumoCol(key)
+                              e.dataTransfer.effectAllowed = 'move'
+                            }}
+                            onDragOver={(e) => {
+                              e.preventDefault()
+                              e.dataTransfer.dropEffect = 'move'
+                            }}
+                            onDrop={(e) => {
+                              e.preventDefault()
+                              if (!draggedResumoCol || draggedResumoCol === key) return
+                              const newOrder = [...resumoColOrder]
+                              const draggedIdx = newOrder.indexOf(draggedResumoCol)
+                              const targetIdx = newOrder.indexOf(key)
+                              newOrder.splice(draggedIdx, 1)
+                              newOrder.splice(targetIdx, 0, draggedResumoCol)
+                              setResumoColOrder(newOrder)
+                              setDraggedResumoCol(null)
+                            }}
+                            onDragEnd={() => setDraggedResumoCol(null)}
+                            className={cn(
+                              "bg-[#221c5a] text-white font-['Inter'] text-[15px] font-semibold px-[14px] py-[10px] h-[40px] border-none cursor-grab active:cursor-grabbing",
+                              h.align === 'center'
+                                ? 'text-center'
+                                : h.align === 'right'
+                                  ? 'text-right'
+                                  : 'text-left',
+                              draggedResumoCol === key ? 'opacity-50 bg-[#1a1545]' : '',
+                            )}
                           >
-                            {item.descricao_c_custo || '-'}
-                          </span>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        {item.mappedAccount ? (
-                          <div className="flex flex-col items-start">
-                            <span className="font-mono text-xs font-bold text-emerald-800 bg-emerald-100 px-1.5 py-0.5 rounded border border-emerald-200 mb-1">
-                              {item.mappedAccount.account_code}
-                            </span>
-                            <span
-                              className="text-xs font-medium text-slate-700 truncate max-w-[300px]"
-                              title={item.mappedAccount.account_name}
-                            >
-                              {item.mappedAccount.account_name}
-                            </span>
-                          </div>
-                        ) : (
-                          <span className="text-slate-400 italic text-xs font-medium bg-slate-100 px-2 py-1 rounded-md border border-slate-200">
-                            Não vinculado
-                          </span>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <span
-                          className={cn(
-                            'inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border uppercase tracking-wider',
-                            item.mappedAccount
-                              ? 'bg-emerald-100 text-emerald-800 border-emerald-200'
-                              : 'bg-rose-100 text-rose-800 border-rose-200 shadow-sm',
-                          )}
-                        >
-                          {item.status}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-center font-bold text-slate-600">
-                        {item.count}
-                      </TableCell>
-                      <TableCell className="text-right font-bold text-slate-700">
-                        {new Intl.NumberFormat('pt-BR', {
-                          style: 'currency',
-                          currency: 'BRL',
-                        }).format(item.total)}
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <Button
-                          size="sm"
-                          variant={item.mappedAccount ? 'outline' : 'default'}
-                          className={cn(
-                            'h-7 text-xs px-3',
-                            !item.mappedAccount &&
-                              'bg-[#800000] hover:bg-[#800000]/90 text-white shadow-sm',
-                          )}
-                          onClick={() => setMappingRow(item.rows[0])}
-                        >
-                          {item.mappedAccount ? 'Editar' : 'Mapear'}
-                        </Button>
-                      </TableCell>
+                            {h.label}
+                          </TableHead>
+                        )
+                      })}
                     </TableRow>
-                  ))}
-                  {deParaSummary.length === 0 && (
-                    <TableRow>
-                      <TableCell colSpan={6} className="h-32 text-center text-slate-500">
-                        Nenhum registro para exibir.
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {deParaSummary.map((item) => (
+                      <TableRow
+                        key={item.c_custo}
+                        className="hover:bg-slate-50 border-b border-slate-200"
+                        disableZebra
+                      >
+                        {resumoColOrder.map((key) => {
+                          if (key === 'c_custo')
+                            return (
+                              <TableCell
+                                key={key}
+                                className="py-1.5 px-3 text-black font-normal text-sm align-middle"
+                              >
+                                {item.c_custo
+                                  ? `${item.c_custo} - ${item.descricao_c_custo || ''}`
+                                  : 'Sem Centro de Custo'}
+                              </TableCell>
+                            )
+                          if (key === 'conta_contabil')
+                            return (
+                              <TableCell
+                                key={key}
+                                className="py-1.5 px-3 text-black font-normal text-sm align-middle"
+                              >
+                                {item.mappedAccount ? (
+                                  `${item.mappedAccount.account_code} | ${item.mappedAccount.classification || '-'} | ${item.mappedAccount.account_name}`
+                                ) : (
+                                  <span className="text-slate-400 italic">Não vinculado</span>
+                                )}
+                              </TableCell>
+                            )
+                          if (key === 'status')
+                            return (
+                              <TableCell key={key} className="py-1.5 px-3 text-center align-middle">
+                                <span
+                                  className={cn(
+                                    'inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium border uppercase tracking-wider',
+                                    item.mappedAccount
+                                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                      : 'bg-rose-50 text-rose-700 border-rose-200',
+                                  )}
+                                >
+                                  {item.status}
+                                </span>
+                              </TableCell>
+                            )
+                          if (key === 'count')
+                            return (
+                              <TableCell key={key} className="py-1.5 px-3 text-center align-middle">
+                                <button
+                                  onClick={() => handleDrillDownResumo(item)}
+                                  className="text-blue-600 font-medium hover:text-blue-800 hover:underline cursor-pointer"
+                                  title="Visualizar Lançamentos"
+                                >
+                                  {item.count}
+                                </button>
+                              </TableCell>
+                            )
+                          if (key === 'total_bruto')
+                            return (
+                              <TableCell
+                                key={key}
+                                className="py-1.5 px-3 text-right align-middle text-black"
+                              >
+                                {new Intl.NumberFormat('pt-BR', {
+                                  style: 'currency',
+                                  currency: 'BRL',
+                                }).format(item.total_bruto)}
+                              </TableCell>
+                            )
+                          if (key === 'total_liquido')
+                            return (
+                              <TableCell
+                                key={key}
+                                className="py-1.5 px-3 text-right align-middle text-black"
+                              >
+                                {new Intl.NumberFormat('pt-BR', {
+                                  style: 'currency',
+                                  currency: 'BRL',
+                                }).format(item.total)}
+                              </TableCell>
+                            )
+                          if (key === 'acao')
+                            return (
+                              <TableCell key={key} className="py-1.5 px-3 text-center align-middle">
+                                <Button
+                                  size="sm"
+                                  variant={item.mappedAccount ? 'outline' : 'default'}
+                                  className={cn(
+                                    'h-7 text-xs px-3',
+                                    !item.mappedAccount &&
+                                      'bg-[#800000] hover:bg-[#800000]/90 text-white shadow-sm',
+                                  )}
+                                  onClick={() => setMappingRow(item.rows[0])}
+                                >
+                                  {item.mappedAccount ? 'Editar' : 'Mapear'}
+                                </Button>
+                              </TableCell>
+                            )
+                          return null
+                        })}
+                      </TableRow>
+                    ))}
+                    {deParaSummary.length === 0 && (
+                      <TableRow disableZebra>
+                        <TableCell colSpan={7} className="h-32 text-center text-slate-500">
+                          Nenhum registro para exibir.
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
