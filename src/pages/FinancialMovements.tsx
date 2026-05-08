@@ -4821,7 +4821,7 @@ export default function FinancialMovements() {
                               return (
                                 <TableCell
                                   key={key}
-                                  className="py-1.5 px-3 font-bold text-sm align-middle text-inherit"
+                                  className="py-1.5 px-3 text-sm align-middle text-inherit"
                                 >
                                   {item.c_custo
                                     ? `${item.c_custo} - ${item.descricao_c_custo || ''}`
@@ -4832,24 +4832,18 @@ export default function FinancialMovements() {
                               return (
                                 <TableCell
                                   key={key}
-                                  className="py-1.5 px-3 font-bold text-sm align-middle text-inherit"
+                                  className="py-1.5 px-3 text-sm align-middle text-inherit"
                                 >
                                   {item.mappedAccount ? (
-                                    <div className="flex items-center gap-2">
-                                      <span className="bg-[#1e1b4b] text-white px-2 py-0.5 rounded text-[11px] font-mono font-semibold shrink-0">
-                                        {item.mappedAccount.account_code}
-                                      </span>
-                                      <span className="truncate">
-                                        {item.mappedAccount.classification
-                                          ? `${item.mappedAccount.classification} `
-                                          : ''}
-                                        {item.mappedAccount.account_name}
-                                      </span>
-                                    </div>
-                                  ) : (
-                                    <span className="text-slate-400 italic font-normal">
-                                      Não vinculado
+                                    <span className="truncate">
+                                      {item.mappedAccount.account_code} |{' '}
+                                      {item.mappedAccount.classification
+                                        ? `${item.mappedAccount.classification} | `
+                                        : ''}
+                                      {item.mappedAccount.account_name}
                                     </span>
+                                  ) : (
+                                    <span className="text-slate-400 italic">Não vinculado</span>
                                   )}
                                 </TableCell>
                               )
