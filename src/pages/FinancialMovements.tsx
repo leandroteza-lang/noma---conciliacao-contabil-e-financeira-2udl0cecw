@@ -2503,15 +2503,9 @@ export default function FinancialMovements() {
                 </div>
                 <div className="flex flex-wrap items-center gap-3 xl:ml-auto bg-white p-1.5 rounded-md border shadow-sm">
                   <Select
-                    value={
-                      filters['natureza']?.length === 1
-                        ? filters['natureza'][0]
-                        : filters['natureza']?.length === 2
-                          ? 'ambos'
-                          : 'todos'
-                    }
+                    value={filters['natureza']?.length === 1 ? filters['natureza'][0] : 'todos'}
                     onValueChange={(v) => {
-                      if (v === 'todos' || v === 'ambos') {
+                      if (v === 'todos') {
                         setFilters((p) => ({ ...p, natureza: [] }))
                       } else {
                         setFilters((p) => ({ ...p, natureza: [v] }))
@@ -2519,11 +2513,14 @@ export default function FinancialMovements() {
                       setPage(0)
                     }}
                   >
-                    <SelectTrigger className="h-7 w-[140px] text-xs font-semibold bg-white border-slate-200">
-                      <SelectValue placeholder="Natureza" />
+                    <SelectTrigger className="h-7 w-[160px] text-xs font-semibold bg-white border-slate-200">
+                      <div className="flex items-center gap-1">
+                        <span className="text-slate-500 font-normal">Natureza:</span>
+                        <SelectValue placeholder="Todas" />
+                      </div>
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="todos">Todas as Naturezas</SelectItem>
+                      <SelectItem value="todos">Todas</SelectItem>
                       <SelectItem value="positivo">Entradas (+)</SelectItem>
                       <SelectItem value="negativo">Saídas (-)</SelectItem>
                     </SelectContent>
@@ -3082,7 +3079,20 @@ export default function FinancialMovements() {
                     </span>
                     <Wallet className="icone" />
                   </div>
-                  <div className="card-plano-contas bg-positivos">
+                  <div
+                    className={cn(
+                      'card-plano-contas bg-positivos cursor-pointer transition-all hover:scale-[1.02] hover:ring-2 hover:ring-offset-2 hover:ring-blue-400',
+                      filters['natureza']?.length === 1 && filters['natureza'][0] === 'positivo'
+                        ? 'ring-2 ring-offset-2 ring-blue-600 scale-[1.02] shadow-lg'
+                        : '',
+                    )}
+                    onClick={() => {
+                      const isPos =
+                        filters['natureza']?.length === 1 && filters['natureza'][0] === 'positivo'
+                      setFilters((p) => ({ ...p, natureza: isPos ? [] : ['positivo'] }))
+                      setPage(0)
+                    }}
+                  >
                     <span className="titulo">Entradas / Positivos</span>
                     <span
                       className="valor"
@@ -3098,7 +3108,20 @@ export default function FinancialMovements() {
                     </span>
                     <TrendingUp className="icone" />
                   </div>
-                  <div className="card-plano-contas bg-negativos">
+                  <div
+                    className={cn(
+                      'card-plano-contas bg-negativos cursor-pointer transition-all hover:scale-[1.02] hover:ring-2 hover:ring-offset-2 hover:ring-red-400',
+                      filters['natureza']?.length === 1 && filters['natureza'][0] === 'negativo'
+                        ? 'ring-2 ring-offset-2 ring-red-800 scale-[1.02] shadow-lg'
+                        : '',
+                    )}
+                    onClick={() => {
+                      const isNeg =
+                        filters['natureza']?.length === 1 && filters['natureza'][0] === 'negativo'
+                      setFilters((p) => ({ ...p, natureza: isNeg ? [] : ['negativo'] }))
+                      setPage(0)
+                    }}
+                  >
                     <span className="titulo">Saídas / Negativos</span>
                     <span
                       className="valor"
