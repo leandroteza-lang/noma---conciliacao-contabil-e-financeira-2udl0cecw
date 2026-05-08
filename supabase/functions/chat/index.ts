@@ -231,7 +231,8 @@ Deno.serve(async (req: Request) => {
               },
               limit: {
                 type: 'number',
-                description: 'Número de registros para retornar (padrão 100, máx 500). Use limite alto para calcular totais.',
+                description:
+                  'Número de registros para retornar (padrão 100, máx 10000). Use limite alto para calcular totais.',
               },
             },
           },
@@ -368,10 +369,12 @@ Deno.serve(async (req: Request) => {
           if (!hasPerm(['view_entries', 'view_financial_movements']))
             return 'Acesso negado: Você não tem permissão para visualizar movimentações do TGA.'
           if (orgIds.length === 0) return JSON.stringify([])
-          const limit = Math.min(args.limit || 100, 500)
+          const limit = Math.min(args.limit || 100, 10000)
           let query = supabase
             .from('erp_financial_movements')
-            .select('data_emissao, dt_compens, c_custo, descricao_c_custo, valor, valor_liquido, nome_cli_fornec, historico, n_documento, status')
+            .select(
+              'data_emissao, dt_compens, c_custo, descricao_c_custo, valor, valor_liquido, nome_cli_fornec, historico, n_documento, status',
+            )
             .in('organization_id', orgIds)
             .is('deleted_at', null)
 
@@ -392,20 +395,33 @@ Deno.serve(async (req: Request) => {
             }
           }
           if (args.cost_center) {
-            const words = args.cost_center.split(' ').filter((w: string) => w.length > 2)
-            if (words.length > 0) {
-              const conditions = words.map((w: string) => {
-                const cleanW = w.replace(/[aeiouáàãâäéèêëíìîïóòõôöúùûücç]/gi, '_')
-                return `c_custo.ilike.%${cleanW}%,descricao_c_custo.ilike.%${cleanW}%`
-              })
-              query = query.or(conditions.join(','))
-            } else {
-              query = query.or(`c_custo.ilike.%${args.cost_center}%,descricao_c_custo.ilike.%${args.cost_center}%`)
-            }
+            const searchPattern = `%${args.cost_center.trim()}%`
+            query = query.or(
+              `c_custo.ilike.${searchPattern},descricao_c_custo.ilike.${searchPattern}`,
+            )
           }
 
           const { data } = await query.order('data_emissao', { ascending: false }).limit(limit)
-          return JSON.stringify(data || [])
+
+          const formattedData = data?.map((d: any) => {
+            let dataEmissaoStr = d.data_emissao
+            if (dataEmissaoStr) {
+              const parts = dataEmissaoStr.split('-')
+              if (parts.length === 3) dataEmissaoStr = `${parts[2]}/${parts[1]}/${parts[0]}`
+            }
+            let dtCompensStr = d.dt_compens
+            if (dtCompensStr) {
+              const parts = dtCompensStr.split('-')
+              if (parts.length === 3) dtCompensStr = `${parts[2]}/${parts[1]}/${parts[0]}`
+            }
+            return {
+              ...d,
+              data_emissao: dataEmissaoStr,
+              dt_compens: dtCompensStr,
+            }
+          })
+
+          return JSON.stringify(formattedData || [])
         }
         return 'Função não encontrada'
       } catch (e: any) {
@@ -421,7 +437,7 @@ Comunique-se em português de forma profissional, direta e com um tom industrial
 Sempre utilize as funções (tools) disponíveis para buscar informações reais no banco de dados e fundamentar suas respostas. Não invente dados. Cruce os dados se necessário para fornecer respostas completas (ex: se perguntarem os usuários e seus departamentos, use get_users e get_departments e faça o vínculo).
 
 MUITO IMPORTANTE - REGRAS DE BUSCA E SOMAS:
-- Se o usuário pedir o "valor total", "soma" ou perguntar "quanto" gastou com algo, você DEVE usar as funções de busca (como get_erp_financial_movements) definindo um "limit" alto (ex: 500) para garantir que você receba todos os registros. Em seguida, você MESMO deve somar matematicamente os valores (campo 'valor' ou 'valor_liquido') recebidos no JSON para responder ao usuário com o cálculo exato.
+- Se o usuário pedir o "valor total", "soma" ou perguntar "quanto" gastou com algo, você DEVE usar as funções de busca (como get_erp_financial_movements) definindo um "limit" alto (ex: 10000) para garantir que você receba todos os registros. Em seguida, você MESMO deve somar matematicamente os valores (campo 'valor' ou 'valor_liquido') recebidos no JSON para responder ao usuário com o cálculo exato.
 - Para buscas por Centro de Custo ou Fornecedor, a função já suporta busca fuzzy. Se o usuário digitar com erros ortográficos, a busca compensará isso.
 
 MUITO IMPORTANTE - ESTRUTURA DA RESPOSTA:
@@ -455,7 +471,10 @@ Exemplos de rotas OBRIGATÓRIAS (NUNCA INVENTE OUTRAS ROTAS):
 - Ao falar de Mapeamentos: inclua [Acessar Mapeamentos](/mapeamento)
 - Ao falar de Compartilhamentos: inclua [Acessar Compartilhamentos](/compartilhamentos)
 
-Sempre termine a sua resposta com o link sugerido em uma nova linha. Não pergunte se o usuário quer o link, apenas forneça-o automaticamente ao apresentar os dados.`,
+Sempre termine a sua resposta com o link sugerido em uma nova linha. Não pergunte se o usuário quer o link, apenas forneça-o automaticamente ao apresentar os dados.
+
+MUITO IMPORTANTE - FORMATO DE DATAS:
+- Todas as datas devem ser exibidas OBRIGATORIAMENTE no formato brasileiro: DD/MM/AAAA (ex: 27/03/2024). NUNCA exiba datas no formato AAAA-MM-DD.`,
     }
 
     const response = await openai.chat.completions.create({
