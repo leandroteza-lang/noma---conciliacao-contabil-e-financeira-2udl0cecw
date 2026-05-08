@@ -50,7 +50,6 @@ Deno.serve(async (req: Request) => {
       auth: { persistSession: false },
     })
 
-    // Fetch user profile to check permissions
     const { data: userProfile } = await supabase
       .from('cadastro_usuarios')
       .select('role, permissions, status')
@@ -126,7 +125,8 @@ Deno.serve(async (req: Request) => {
             properties: {
               limit: {
                 type: 'number',
-                description: 'Número de registros para retornar (padrão 10)',
+                description:
+                  'Número de registros para retornar. Sempre use 10000 se quiser calcular totais.',
               },
             },
           },
@@ -174,7 +174,7 @@ Deno.serve(async (req: Request) => {
             properties: {
               limit: {
                 type: 'number',
-                description: 'Número de registros para retornar (padrão 15)',
+                description: 'Número de registros para retornar. Sempre use 10000 para totais.',
               },
             },
           },
@@ -201,7 +201,7 @@ Deno.serve(async (req: Request) => {
         function: {
           name: 'get_erp_financial_movements',
           description:
-            'Obtém os lançamentos do Movimento Financeiro TGA / ERP (tabela erp_financial_movements). Use esta função para buscas por fornecedor/cliente, período (datas), faixa de valores ou centro de custo importados.',
+            'Obtém os lançamentos do Movimento Financeiro TGA / ERP (tabela erp_financial_movements). Esta função busca por fornecedor/cliente, período (datas), faixa de valores ou centro de custo e JÁ RETORNA O VALOR TOTAL SOMADO.',
           parameters: {
             type: 'object',
             properties: {
@@ -231,7 +231,8 @@ Deno.serve(async (req: Request) => {
               },
               limit: {
                 type: 'number',
-                description: 'Número de registros para retornar (padrão 100, máx 10000). Use limite alto para calcular totais.',
+                description:
+                  'Número máximo de registros para retornar. Sempre envie 10000 para garantir que a soma inclua tudo.',
               },
             },
           },
@@ -285,9 +286,9 @@ Deno.serve(async (req: Request) => {
         if (name === 'get_financial_movements') {
           if (!hasPerm(['view_entries', 'view_financial_movements']))
             return 'Acesso negado: Você não tem permissão para visualizar movimentações financeiras.'
-          if (orgIds.length === 0) return JSON.stringify([])
-          const limit = args.limit || 15
-          const { data } = await supabase
+          if (orgIds.length === 0) return JSON.stringify({ erro: 'Nenhuma empresa.' })
+          const limit = Math.min(args.limit || 10000, 10000)
+          const { data, error } = await supabase
             .from('financial_movements')
             .select(
               'movement_date, description, amount, status, cost_centers(code, description), bank_accounts(description)',
@@ -295,7 +296,36 @@ Deno.serve(async (req: Request) => {
             .in('organization_id', orgIds)
             .order('movement_date', { ascending: false })
             .limit(limit)
-          return JSON.stringify(data || [])
+          if (error) return JSON.stringify({ erro: error.message })
+
+          let totalValor = 0
+          const formattedData =
+            data?.map((d: any) => {
+              totalValor += Number(d.amount || 0)
+              let md = d.movement_date
+              if (md) {
+                const p = md.split('-')
+                if (p.length === 3) md = `${p[2]}/${p[1]}/${p[0]}`
+              }
+              return { ...d, movement_date: md }
+            }) || []
+
+          const totalRegistros = formattedData.length
+          let finalData = formattedData
+          let truncated = false
+          if (finalData.length > 150) {
+            finalData = finalData.slice(0, 150)
+            truncated = true
+          }
+
+          return JSON.stringify({
+            registros_encontrados: totalRegistros,
+            total_valor: totalValor,
+            nota: truncated
+              ? 'A lista foi truncada para 150 itens, mas os totais acima consideram todos os registros.'
+              : '',
+            registros: finalData,
+          })
         }
         if (name === 'get_users') {
           if (!hasPerm(['view_users', 'view_employees']))
@@ -329,9 +359,9 @@ Deno.serve(async (req: Request) => {
         if (name === 'get_accounting_entries') {
           if (!hasPerm(['view_entries', 'view_accounting_entries']))
             return 'Acesso negado: Você não tem permissão para visualizar lançamentos contábeis.'
-          if (orgIds.length === 0) return JSON.stringify([])
-          const limit = args.limit || 15
-          const { data } = await supabase
+          if (orgIds.length === 0) return JSON.stringify({ erro: 'Nenhuma empresa.' })
+          const limit = Math.min(args.limit || 10000, 10000)
+          const { data, error } = await supabase
             .from('accounting_entries')
             .select(
               'entry_date, description, amount, status, debit_account:chart_of_accounts!accounting_entries_debit_account_id_fkey(account_name), credit_account:chart_of_accounts!accounting_entries_credit_account_id_fkey(account_name)',
@@ -339,7 +369,36 @@ Deno.serve(async (req: Request) => {
             .in('organization_id', orgIds)
             .order('entry_date', { ascending: false })
             .limit(limit)
-          return JSON.stringify(data || [])
+          if (error) return JSON.stringify({ erro: error.message })
+
+          let totalValor = 0
+          const formattedData =
+            data?.map((d: any) => {
+              totalValor += Number(d.amount || 0)
+              let ed = d.entry_date
+              if (ed) {
+                const p = ed.split('-')
+                if (p.length === 3) ed = `${p[2]}/${p[1]}/${p[0]}`
+              }
+              return { ...d, entry_date: ed }
+            }) || []
+
+          const totalRegistros = formattedData.length
+          let finalData = formattedData
+          let truncated = false
+          if (finalData.length > 150) {
+            finalData = finalData.slice(0, 150)
+            truncated = true
+          }
+
+          return JSON.stringify({
+            registros_encontrados: totalRegistros,
+            total_valor: totalValor,
+            nota: truncated
+              ? 'A lista foi truncada para 150 itens, mas os totais acima consideram todos os registros.'
+              : '',
+            registros: finalData,
+          })
         }
         if (name === 'get_account_mappings') {
           if (!hasPerm(['view_mappings', 'view_account_mappings']))
@@ -367,11 +426,14 @@ Deno.serve(async (req: Request) => {
         if (name === 'get_erp_financial_movements') {
           if (!hasPerm(['view_entries', 'view_financial_movements']))
             return 'Acesso negado: Você não tem permissão para visualizar movimentações do TGA.'
-          if (orgIds.length === 0) return JSON.stringify([])
-          const limit = Math.min(args.limit || 100, 10000)
+          if (orgIds.length === 0) return JSON.stringify({ erro: 'Nenhuma empresa associada.' })
+
+          const limit = Math.min(args.limit || 10000, 10000)
           let query = supabase
             .from('erp_financial_movements')
-            .select('data_emissao, dt_compens, c_custo, descricao_c_custo, valor, valor_liquido, nome_cli_fornec, historico, n_documento, status')
+            .select(
+              'data_emissao, dt_compens, c_custo, descricao_c_custo, valor, valor_liquido, nome_cli_fornec, historico, n_documento, status',
+            )
             .in('organization_id', orgIds)
             .is('deleted_at', null)
 
@@ -379,44 +441,84 @@ Deno.serve(async (req: Request) => {
           if (args.end_date) query = query.lte('data_emissao', args.end_date)
           if (args.min_amount) query = query.gte('valor', args.min_amount)
           if (args.max_amount) query = query.lte('valor', args.max_amount)
+
           if (args.supplier_name) {
             const words = args.supplier_name.split(' ').filter((w: string) => w.length > 2)
             if (words.length > 0) {
-              const conditions = words.map((w: string) => {
+              words.forEach((w: string) => {
                 const cleanW = w.replace(/[aeiouáàãâäéèêëíìîïóòõôöúùûücç]/gi, '_')
-                return `nome_cli_fornec.ilike.%${cleanW}%`
+                query = query.ilike('nome_cli_fornec', `%${cleanW}%`)
               })
-              query = query.or(conditions.join(','))
             } else {
-              query = query.ilike('nome_cli_fornec', `%${args.supplier_name}%`)
+              const cleanW = args.supplier_name
+                .trim()
+                .replace(/[aeiouáàãâäéèêëíìîïóòõôöúùûücç]/gi, '_')
+              query = query.ilike('nome_cli_fornec', `%${cleanW}%`)
             }
           }
+
           if (args.cost_center) {
-            const searchPattern = `%${args.cost_center.trim()}%`
-            query = query.or(`c_custo.ilike.${searchPattern},descricao_c_custo.ilike.${searchPattern}`)
+            const words = args.cost_center.split(' ').filter((w: string) => w.length > 2)
+            if (words.length > 0) {
+              words.forEach((w: string) => {
+                const cleanW = w.replace(/[aeiouáàãâäéèêëíìîïóòõôöúùûücç]/gi, '_')
+                query = query.or(`c_custo.ilike.%${cleanW}%,descricao_c_custo.ilike.%${cleanW}%`)
+              })
+            } else {
+              const cleanW = args.cost_center
+                .trim()
+                .replace(/[aeiouáàãâäéèêëíìîïóòõôöúùûücç]/gi, '_')
+              query = query.or(`c_custo.ilike.%${cleanW}%,descricao_c_custo.ilike.%${cleanW}%`)
+            }
           }
 
-          const { data } = await query.order('data_emissao', { ascending: false }).limit(limit)
-          
-          const formattedData = data?.map((d: any) => {
-            let dataEmissaoStr = d.data_emissao
-            if (dataEmissaoStr) {
-              const parts = dataEmissaoStr.split('-')
-              if (parts.length === 3) dataEmissaoStr = `${parts[2]}/${parts[1]}/${parts[0]}`
-            }
-            let dtCompensStr = d.dt_compens
-            if (dtCompensStr) {
-              const parts = dtCompensStr.split('-')
-              if (parts.length === 3) dtCompensStr = `${parts[2]}/${parts[1]}/${parts[0]}`
-            }
-            return {
-              ...d,
-              data_emissao: dataEmissaoStr,
-              dt_compens: dtCompensStr
-            }
-          })
+          const { data, error } = await query
+            .order('data_emissao', { ascending: false })
+            .limit(limit)
+          if (error) return JSON.stringify({ erro: error.message })
 
-          return JSON.stringify(formattedData || [])
+          let totalValor = 0
+          let totalValorLiquido = 0
+
+          const formattedData =
+            data?.map((d: any) => {
+              totalValor += Number(d.valor || 0)
+              totalValorLiquido += Number(d.valor_liquido || 0)
+
+              let dataEmissaoStr = d.data_emissao
+              if (dataEmissaoStr) {
+                const parts = dataEmissaoStr.split('-')
+                if (parts.length === 3) dataEmissaoStr = `${parts[2]}/${parts[1]}/${parts[0]}`
+              }
+              let dtCompensStr = d.dt_compens
+              if (dtCompensStr) {
+                const parts = dtCompensStr.split('-')
+                if (parts.length === 3) dtCompensStr = `${parts[2]}/${parts[1]}/${parts[0]}`
+              }
+              return {
+                ...d,
+                data_emissao: dataEmissaoStr,
+                dt_compens: dtCompensStr,
+              }
+            }) || []
+
+          const totalRegistros = formattedData.length
+          let finalData = formattedData
+          let truncated = false
+          if (finalData.length > 150) {
+            finalData = finalData.slice(0, 150)
+            truncated = true
+          }
+
+          return JSON.stringify({
+            registros_encontrados: totalRegistros,
+            total_valor: totalValor,
+            total_valor_liquido: totalValorLiquido,
+            nota: truncated
+              ? 'A lista de registros foi truncada para 150 itens devido ao limite de exibição, mas os totais acima consideram todos os registros encontrados na busca.'
+              : 'Todos os registros listados.',
+            registros: finalData,
+          })
         }
         return 'Função não encontrada'
       } catch (e: any) {
@@ -427,49 +529,42 @@ Deno.serve(async (req: Request) => {
     const systemPrompt = {
       role: 'system',
       content: `Você é um assistente virtual especializado em inteligência contábil e financeira, desenvolvido para a Molas Noma.
-Sua missão é ajudar os usuários na extração de dados gerenciais, conciliação, análise de divergências entre o ERP e a gestão financeira, além de fornecer informações sobre toda a estrutura organizacional (empresas, departamentos, usuários/funcionários, plano de contas, mapeamentos, etc).
+Sua missão é ajudar os usuários na extração de dados gerenciais, conciliação, análise de divergências entre o ERP e a gestão financeira, além de fornecer informações sobre toda a estrutura organizacional.
 Comunique-se em português de forma profissional, direta e com um tom industrial e corporativo.
-Sempre utilize as funções (tools) disponíveis para buscar informações reais no banco de dados e fundamentar suas respostas. Não invente dados. Cruce os dados se necessário para fornecer respostas completas (ex: se perguntarem os usuários e seus departamentos, use get_users e get_departments e faça o vínculo).
+Sempre utilize as funções (tools) disponíveis para buscar informações reais no banco de dados. Não invente dados.
 
 MUITO IMPORTANTE - REGRAS DE BUSCA E SOMAS:
-- Se o usuário pedir o "valor total", "soma" ou perguntar "quanto" gastou com algo, você DEVE usar as funções de busca (como get_erp_financial_movements) definindo um "limit" alto (ex: 10000) para garantir que você receba todos os registros. Em seguida, você MESMO deve somar matematicamente os valores (campo 'valor' ou 'valor_liquido') recebidos no JSON para responder ao usuário com o cálculo exato.
-- Para buscas por Centro de Custo ou Fornecedor, a função já suporta busca fuzzy. Se o usuário digitar com erros ortográficos, a busca compensará isso.
+- Ao usar funções que retornam registros (como get_erp_financial_movements), elas agora retornam um JSON com os campos 'registros_encontrados', 'total_valor', 'total_valor_liquido' e 'registros'. Use EXATAMENTE esses totais fornecidos pelo banco para responder sobre somas! NUNCA some manualmente.
+- Se houver mais de 150 registros, a matriz 'registros' virá truncada, mas os totais representam 100% dos dados reais. Neste caso, avise o usuário que a tabela exibirá apenas os primeiros itens por razões de visualização, mas o total inclui todos os registros encontrados.
+- Sempre defina o parâmetro 'limit' para 10000 para garantir que todos os dados sejam contabilizados.
+- Para buscas por Centro de Custo ou Fornecedor, as funções já utilizam uma lógica de busca "Strict/Fuzzy" segura, então basta enviar o nome como o usuário digitou.
 
 MUITO IMPORTANTE - ESTRUTURA DA RESPOSTA:
-1. PRIMEIRO, você DEVE exibir os dados solicitados OBRIGATORIAMENTE em formato de TABELA MARKDOWN (Markdown Table). NUNCA apresente os dados em texto corrido, listas (bullet points) ou qualquer outro formato que não seja uma tabela.
+1. PRIMEIRO, você DEVE exibir os dados solicitados OBRIGATORIAMENTE em formato de TABELA MARKDOWN (Markdown Table). NUNCA apresente os dados em texto corrido ou listas (bullet points).
 Exemplo exato de como você deve estruturar a resposta (comece diretamente com a tabela):
-| Nome | Código | Email |
+| Fornecedor | Valor | Data de Emissão |
 |---|---|---|
-| João Silva | DEP-123 | joao@exemplo.com |
-| NOMA PARTS | EMP-001 | contato@noma.com |
+| NOMA PARTS | R$ 1.500,00 | 12/03/2024 |
 
-- Se for uma pergunta de TOTAIS, apresente uma tabela com os registros e adicione uma linha final de "Total" na tabela, ou apresente uma tabela resumida apenas com os totais caso os registros passem de 20 linhas.
-NUNCA crie links de paginação (como "Ver mais", "Próxima página", etc) na sua resposta. A interface do chat já possui paginação nativa que detecta tabelas grandes automaticamente. Retorne todos os dados que a função fornecer na tabela.
+- Se for uma pergunta de TOTAIS, você DEVE inserir o valor calculado no banco na última linha ou fora da tabela explicando com clareza.
+Se não houver informações, informe claramente que os dados não foram encontrados.
+NUNCA crie links de paginação (como "Ver mais", "Próxima página", etc) na sua resposta. A interface do chat já possui paginação nativa que detecta tabelas grandes automaticamente.
 
-Se não houver informações disponíveis no retorno das funções, informe claramente que os dados não foram encontrados.
-Caso receba uma mensagem de "Acesso negado" de alguma função, informe o usuário educadamente que ele não possui a permissão necessária no sistema para acessar essa informação.
-
-2. APENAS DEPOIS de apresentar os dados completos e detalhados, você DEVE OBRIGATORIAMENTE incluir no final da sua resposta um link direto para a página correspondente no sistema em formato Markdown.
+2. APENAS DEPOIS de apresentar os dados completos, você DEVE OBRIGATORIAMENTE incluir no final da sua resposta um link direto para a página correspondente no sistema em formato Markdown.
 Exemplos de rotas OBRIGATÓRIAS (NUNCA INVENTE OUTRAS ROTAS):
-- Ao listar Empresas/Organizações: inclua [Acessar Gestão de Empresas](/empresas)
-- Ao listar Departamentos: inclua [Acessar Departamentos](/departamentos)
-- Ao listar Contas Bancárias ou Listagem de Contas: inclua [Acessar Listagem de Contas](/app)
-- Ao listar Usuários/Funcionários: inclua [Acessar Usuários](/usuarios)
-- Ao listar Lançamentos Contábeis (accounting_entries): inclua [Acessar Lançamentos](/lancamentos)
-- Ao listar Movimento Financeiro TGA ou ERP (erp_financial_movements): inclua [Acessar Movimentos Financeiros](/movimento-financeiro)
-- Ao listar Lançamentos Financeiros Genéricos: inclua [Acessar Lançamentos](/lancamentos)
-- Ao listar Centros de Custo: inclua [Acessar Centros de Custo](/centros-de-custo)
-- Ao listar Plano de Contas: inclua [Acessar Plano de Contas](/plano-de-contas)
-- Ao falar de Dashboard: inclua [Acessar Dashboard](/dashboard)
-- Ao falar de Análises: inclua [Acessar Análises](/analises)
-- Ao falar de Contas TGA: inclua [Acessar Tipos de Conta TGA](/tipo-conta-tga)
-- Ao falar de Mapeamentos: inclua [Acessar Mapeamentos](/mapeamento)
-- Ao falar de Compartilhamentos: inclua [Acessar Compartilhamentos](/compartilhamentos)
+- Ao listar Empresas: [Acessar Gestão de Empresas](/empresas)
+- Ao listar Departamentos: [Acessar Departamentos](/departamentos)
+- Ao listar Contas Bancárias: [Acessar Listagem de Contas](/app)
+- Ao listar Usuários: [Acessar Usuários](/usuarios)
+- Ao listar Movimento Financeiro TGA ou ERP (erp_financial_movements): [Acessar Movimento Financeiro](/movimento-financeiro)
+- Ao listar Lançamentos (accounting_entries): [Acessar Lançamentos](/lancamentos)
+- Ao listar Centros de Custo: [Acessar Centros de Custo](/centros-de-custo)
+- Ao listar Plano de Contas: [Acessar Plano de Contas](/plano-de-contas)
 
-Sempre termine a sua resposta com o link sugerido em uma nova linha. Não pergunte se o usuário quer o link, apenas forneça-o automaticamente ao apresentar os dados.
+Sempre termine a sua resposta com o link sugerido em uma nova linha. Não pergunte se o usuário quer o link, apenas forneça-o automaticamente.
 
 MUITO IMPORTANTE - FORMATO DE DATAS:
-- Todas as datas devem ser exibidas OBRIGATORIAMENTE no formato brasileiro: DD/MM/AAAA (ex: 27/03/2024). NUNCA exiba datas no formato AAAA-MM-DD.`,
+- Todas as datas já são retornadas pelo banco no formato brasileiro: DD/MM/AAAA. NUNCA exiba datas no formato AAAA-MM-DD. Mantenha exatamente o formato DD/MM/AAAA.`,
     }
 
     const response = await openai.chat.completions.create({
