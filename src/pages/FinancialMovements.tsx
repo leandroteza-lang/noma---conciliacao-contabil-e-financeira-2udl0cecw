@@ -2318,12 +2318,17 @@ export default function FinancialMovements() {
                             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                               {filterOrder.map((key) => {
                                 if (key === 'natureza') {
+                                  const isNaturezaActive =
+                                    filters['natureza'] && filters['natureza'].length > 0
                                   return (
                                     <div
                                       key={key}
                                       className={cn(
-                                        'space-y-1.5 p-1.5 -m-1.5 border border-transparent hover:border-slate-200 rounded-md cursor-grab active:cursor-grabbing transition-colors',
-                                        draggedFilter === key ? 'opacity-50 bg-slate-100' : '',
+                                        'space-y-1.5 p-2 border rounded-md cursor-grab active:cursor-grabbing transition-all duration-200 flex flex-col',
+                                        isNaturezaActive
+                                          ? 'bg-[#800000] border-[#800000] shadow-sm'
+                                          : 'bg-white border-slate-200 hover:border-slate-300',
+                                        draggedFilter === key ? 'opacity-50' : '',
                                       )}
                                       draggable
                                       onDragStart={(e) => {
@@ -2347,8 +2352,18 @@ export default function FinancialMovements() {
                                       }}
                                       onDragEnd={() => setDraggedFilter(null)}
                                     >
-                                      <Label className="text-xs flex items-center gap-1.5 text-slate-700 font-semibold">
-                                        <GripHorizontal className="h-3.5 w-3.5 text-slate-400 flex-shrink-0" />
+                                      <Label
+                                        className={cn(
+                                          'text-xs flex items-center gap-1.5 font-semibold',
+                                          isNaturezaActive ? 'text-white' : 'text-slate-700',
+                                        )}
+                                      >
+                                        <GripHorizontal
+                                          className={cn(
+                                            'h-3.5 w-3.5 flex-shrink-0',
+                                            isNaturezaActive ? 'text-white/70' : 'text-slate-400',
+                                          )}
+                                        />
                                         Natureza
                                       </Label>
                                       <MultiSelect
@@ -2358,6 +2373,7 @@ export default function FinancialMovements() {
                                           { label: 'Saídas (-)', value: 'negativo' },
                                         ]}
                                         selected={filters['natureza'] || []}
+                                        isActive={isNaturezaActive}
                                         onChange={(v) => {
                                           setFilters((p) => ({ ...p, natureza: v }))
                                           setPage(0)
@@ -2369,13 +2385,17 @@ export default function FinancialMovements() {
 
                                 const h = tableHeaders.find((th) => th.key === key)
                                 if (!h) return null
+                                const isColActive = filters[h.key] && filters[h.key].length > 0
 
                                 return (
                                   <div
                                     key={h.key}
                                     className={cn(
-                                      'space-y-1.5 p-1.5 -m-1.5 border border-transparent hover:border-slate-200 rounded-md cursor-grab active:cursor-grabbing transition-colors',
-                                      draggedFilter === h.key ? 'opacity-50 bg-slate-100' : '',
+                                      'space-y-1.5 p-2 border rounded-md cursor-grab active:cursor-grabbing transition-all duration-200 flex flex-col',
+                                      isColActive
+                                        ? 'bg-[#800000] border-[#800000] shadow-sm'
+                                        : 'bg-white border-slate-200 hover:border-slate-300',
+                                      draggedFilter === h.key ? 'opacity-50' : '',
                                     )}
                                     draggable
                                     onDragStart={(e) => {
@@ -2400,16 +2420,25 @@ export default function FinancialMovements() {
                                     onDragEnd={() => setDraggedFilter(null)}
                                   >
                                     <Label
-                                      className="text-xs truncate flex items-center gap-1.5 text-slate-700 font-semibold"
+                                      className={cn(
+                                        'text-xs truncate flex items-center gap-1.5 font-semibold',
+                                        isColActive ? 'text-white' : 'text-slate-700',
+                                      )}
                                       title={h.label}
                                     >
-                                      <GripHorizontal className="h-3.5 w-3.5 text-slate-400 flex-shrink-0" />
+                                      <GripHorizontal
+                                        className={cn(
+                                          'h-3.5 w-3.5 flex-shrink-0',
+                                          isColActive ? 'text-white/70' : 'text-slate-400',
+                                        )}
+                                      />
                                       {h.label}
                                     </Label>
                                     <MultiSelect
                                       title="Todos"
                                       options={filterOptions[h.key] || []}
                                       selected={filters[h.key] || []}
+                                      isActive={isColActive}
                                       onChange={(v) => {
                                         setFilters((p) => ({ ...p, [h.key]: v }))
                                         setPage(0)
