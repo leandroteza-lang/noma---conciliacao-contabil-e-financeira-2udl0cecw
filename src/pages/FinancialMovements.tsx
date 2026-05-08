@@ -2221,6 +2221,102 @@ export default function FinancialMovements() {
       })
   }, [summaryData, costCenters, mappings, chartOfAccounts])
 
+  const [resumoSortColumn, setResumoSortColumn] = useState<string>('c_custo')
+  const [resumoSortDirection, setResumoSortDirection] = useState<'asc' | 'desc'>('asc')
+  const [resumoFilters, setResumoFilters] = useState<Record<string, string[]>>({})
+
+  const resumoFilterOptions = useMemo(() => {
+    const options: Record<string, { label: string; value: string }[]> = {}
+    const cCustoSet = new Set<string>()
+    const contaContabilSet = new Set<string>()
+    const statusSet = new Set<string>()
+
+    deParaSummary.forEach((item) => {
+      cCustoSet.add(
+        item.c_custo ? `${item.c_custo} - ${item.descricao_c_custo || ''}` : 'Sem Centro de Custo',
+      )
+      contaContabilSet.add(
+        item.mappedAccount
+          ? `${item.mappedAccount.account_code} - ${item.mappedAccount.account_name}`
+          : 'Não vinculado',
+      )
+      statusSet.add(item.status)
+    })
+
+    options['c_custo'] = Array.from(cCustoSet)
+      .sort()
+      .map((v) => ({ label: v, value: v }))
+    options['conta_contabil'] = Array.from(contaContabilSet)
+      .sort()
+      .map((v) => ({ label: v, value: v }))
+    options['status'] = Array.from(statusSet)
+      .sort()
+      .map((v) => ({ label: v, value: v }))
+
+    return options
+  }, [deParaSummary])
+
+  const sortedAndFilteredDeParaSummary = useMemo(() => {
+    const filtered = deParaSummary.filter((item) => {
+      return Object.entries(resumoFilters).every(([key, values]) => {
+        if (!values || values.length === 0) return true
+        if (key === 'c_custo') {
+          const val = item.c_custo
+            ? `${item.c_custo} - ${item.descricao_c_custo || ''}`
+            : 'Sem Centro de Custo'
+          return values.includes(val)
+        }
+        if (key === 'conta_contabil') {
+          const val = item.mappedAccount
+            ? `${item.mappedAccount.account_code} - ${item.mappedAccount.account_name}`
+            : 'Não vinculado'
+          return values.includes(val)
+        }
+        if (key === 'status') {
+          return values.includes(item.status)
+        }
+        return true
+      })
+    })
+
+    return filtered.sort((a, b) => {
+      let valA: any, valB: any
+      if (resumoSortColumn === 'c_custo') {
+        valA = a.c_custo || ''
+        valB = b.c_custo || ''
+      } else if (resumoSortColumn === 'conta_contabil') {
+        valA = a.mappedAccount ? a.mappedAccount.account_code : ''
+        valB = b.mappedAccount ? b.mappedAccount.account_code : ''
+      } else if (resumoSortColumn === 'status') {
+        valA = a.status
+        valB = b.status
+      } else if (resumoSortColumn === 'count') {
+        valA = a.count
+        valB = b.count
+      } else if (resumoSortColumn === 'total_bruto') {
+        valA = a.total_bruto
+        valB = b.total_bruto
+      } else if (resumoSortColumn === 'total_liquido') {
+        valA = a.total
+        valB = b.total
+      }
+
+      if (valA < valB) return resumoSortDirection === 'asc' ? -1 : 1
+      if (valA > valB) return resumoSortDirection === 'asc' ? 1 : -1
+      return 0
+    })
+  }, [deParaSummary, resumoFilters, resumoSortColumn, resumoSortDirection])
+
+  const renderResumoSortIcon = (key: string) => {
+    if (resumoSortColumn !== key)
+      return <ArrowUpDown className="h-3 w-3 ml-1 opacity-50 text-indigo-300" />
+    return resumoSortDirection === 'asc' ? (
+      <ArrowUp className="h-3 w-3 ml-1 text-white" />
+    ) : (
+      <ArrowDown className="h-3 w-3 ml-1 text-white" />
+    )
+  }
+
   const dashboardData = useMemo(() => {
     let revenue = 0
     let expense = 0
@@ -4757,13 +4853,20 @@ export default function FinancialMovements() {
                 </p>
               </div>
             </CardHeader>
-            <CardContent className="p-4 bg-white max-h-[700px] overflow-y-auto custom-scrollbar">
-              <div className="border border-[#2c2f7a] rounded-lg overflow-hidden">
-                <Table className="w-full text-sm relative">
-                  <TableHeader className="bg-[#221c5a] sticky top-0 z-10 shadow-sm border-none">
+            <CardContent className="p-4 bg-white">
+              <div className="border border-[#2c2f7a] rounded-lg overflow-hidden relative">
+                <Table
+                  wrapperClassName="max-h-[650px] overflow-y-auto custom-scrollbar"
+                  className="w-full text-sm relative"
+                >
+                  <TableHeader className="bg-[#221c5a] sticky top-0 z-20 shadow-md border-none">
                     <TableRow className="hover:bg-[#221c5a] border-none">
                       {resumoColOrder.map((key) => {
                         const h = resumoHeaders.find((x) => x.key === key)!
+                        const isFilterable = ['c_custo', 'conta_contabil', 'status'].includes(key)
+                        const activeFilterCount = resumoFilters[key]?.length || 0
+                        const options = resumoFilterOptions[key] || []
+
                         return (
                           <TableHead
                             key={key}
@@ -4790,22 +4893,125 @@ export default function FinancialMovements() {
                             onDragEnd={() => setDraggedResumoCol(null)}
                             className={cn(
                               "bg-[#221c5a] text-white font-['Inter'] text-[11px] font-semibold px-2 py-1 h-8 border-none cursor-grab active:cursor-grabbing",
-                              h.align === 'center'
-                                ? 'text-center'
-                                : h.align === 'right'
-                                  ? 'text-right'
-                                  : 'text-left',
                               draggedResumoCol === key ? 'opacity-50 bg-[#1a1545]' : '',
                             )}
                           >
-                            {h.label}
+                            <div
+                              className={cn(
+                                'flex items-center justify-between gap-1 w-full',
+                                h.align === 'right' ? 'flex-row-reverse' : '',
+                              )}
+                            >
+                              <div
+                                className={cn(
+                                  'flex items-center cursor-pointer hover:bg-white/10 rounded px-1 -ml-1 flex-1',
+                                  h.align === 'right'
+                                    ? 'justify-end'
+                                    : h.align === 'center'
+                                      ? 'justify-center'
+                                      : 'justify-start',
+                                )}
+                                onClick={() => {
+                                  if (key === 'acao') return
+                                  if (resumoSortColumn === key) {
+                                    setResumoSortDirection(
+                                      resumoSortDirection === 'asc' ? 'desc' : 'asc',
+                                    )
+                                  } else {
+                                    setResumoSortColumn(key)
+                                    setResumoSortDirection('asc')
+                                  }
+                                }}
+                              >
+                                {h.label}
+                                {key !== 'acao' && renderResumoSortIcon(key)}
+                              </div>
+
+                              {isFilterable && (
+                                <div className="flex items-center flex-shrink-0">
+                                  <Popover>
+                                    <PopoverTrigger asChild>
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className={cn(
+                                          'h-5 w-5 rounded-sm relative',
+                                          activeFilterCount > 0
+                                            ? 'text-white bg-primary/40'
+                                            : 'text-indigo-200 hover:text-white hover:bg-white/20',
+                                        )}
+                                        title="Filtrar coluna"
+                                      >
+                                        <Filter className="h-3 w-3" />
+                                        {activeFilterCount > 0 && (
+                                          <span className="absolute -top-0.5 -right-0.5 flex h-2 w-2 items-center justify-center rounded-full bg-primary text-[8px] text-primary-foreground"></span>
+                                        )}
+                                      </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-[200px] p-0" align="start">
+                                      <Command>
+                                        <CommandInput
+                                          placeholder="Buscar..."
+                                          className="h-8 text-xs"
+                                        />
+                                        <CommandList className="max-h-[200px] overflow-y-auto">
+                                          <CommandEmpty className="py-2 text-xs text-center text-slate-500">
+                                            Nenhum encontrado.
+                                          </CommandEmpty>
+                                          <CommandGroup>
+                                            {options.map((opt) => {
+                                              const isSelected = resumoFilters[key]?.includes(
+                                                opt.value,
+                                              )
+                                              return (
+                                                <CommandItem
+                                                  key={opt.value}
+                                                  onSelect={() => {
+                                                    const current = resumoFilters[key] || []
+                                                    const updated = isSelected
+                                                      ? current.filter((v) => v !== opt.value)
+                                                      : [...current, opt.value]
+                                                    setResumoFilters((prev) => ({
+                                                      ...prev,
+                                                      [key]: updated,
+                                                    }))
+                                                  }}
+                                                  className="text-xs cursor-pointer"
+                                                >
+                                                  <div
+                                                    className={cn(
+                                                      'mr-2 flex h-3 w-3 flex-shrink-0 items-center justify-center rounded-sm border border-primary',
+                                                      isSelected
+                                                        ? 'bg-primary text-primary-foreground'
+                                                        : 'opacity-50 [&_svg]:invisible',
+                                                    )}
+                                                  >
+                                                    <Check className="h-2 w-2" />
+                                                  </div>
+                                                  <span
+                                                    className="truncate max-w-[140px]"
+                                                    title={opt.label}
+                                                  >
+                                                    {opt.label}
+                                                  </span>
+                                                </CommandItem>
+                                              )
+                                            })}
+                                          </CommandGroup>
+                                        </CommandList>
+                                      </Command>
+                                    </PopoverContent>
+                                  </Popover>
+                                </div>
+                              )}
+                            </div>
                           </TableHead>
                         )
                       })}
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {deParaSummary.map((item, index) => {
+                    {sortedAndFilteredDeParaSummary.map((item, index) => {
                       const isEven = index % 2 === 1
                       const rowClass = isEven
                         ? 'bg-[#bfdbfe] text-black hover:bg-[#93c5fd]'
@@ -4927,10 +5133,10 @@ export default function FinancialMovements() {
                         </TableRow>
                       )
                     })}
-                    {deParaSummary.length === 0 && (
+                    {sortedAndFilteredDeParaSummary.length === 0 && (
                       <TableRow disableZebra>
-                        <TableCell colSpan={7} className="h-32 text-center text-slate-500">
-                          Nenhum registro para exibir.
+                        <TableCell colSpan={7} className="h-32 text-center text-slate-500 border-0">
+                          Nenhum registro para exibir com os filtros atuais.
                         </TableCell>
                       </TableRow>
                     )}
