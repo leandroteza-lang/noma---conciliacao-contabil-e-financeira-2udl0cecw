@@ -1125,7 +1125,10 @@ export default function FinancialMovements() {
     }
 
     const [coa, cc, map] = await Promise.all([
-      fetchAll('chart_of_accounts', 'id, account_code, account_name, organization_id'),
+      fetchAll(
+        'chart_of_accounts',
+        'id, account_code, account_name, classification, organization_id',
+      ),
       fetchAll('cost_centers', 'id, code, description, organization_id'),
       fetchAll('account_mapping', 'cost_center_id, chart_account_id, organization_id'),
     ])
@@ -2156,7 +2159,7 @@ export default function FinancialMovements() {
       const ccName = row.c_custo || 'Sem C.Custo'
       const mapped = getMappedAccount(row)
       const coaName = mapped
-        ? `${mapped.account_code} - ${mapped.account_name}`
+        ? `${mapped.account_code} ${mapped.classification ? mapped.classification + ' ' : ''}- ${mapped.account_name}`
         : 'Não Mapeado (Pendente)'
 
       if (!nodesMap.has(ccName)) nodesMap.set(ccName, nodesMap.size)
@@ -5165,13 +5168,18 @@ export default function FinancialMovements() {
                                 <TableCell key={key} className="px-2 py-0.5 align-middle border-0">
                                   {item.mappedAccount ? (
                                     <div className="flex items-center gap-1.5">
-                                      <span className="bg-[#1e1b4b] text-white px-1.5 py-0.5 rounded text-[10px] font-bold">
+                                      <span className="bg-[#1e1b4b] text-white px-1.5 py-0.5 rounded text-[10px] font-bold font-mono">
                                         {item.mappedAccount.account_code}
                                       </span>
-                                      <span className="truncate">
-                                        {item.mappedAccount.classification
-                                          ? `${item.mappedAccount.classification} `
-                                          : ''}
+                                      {item.mappedAccount.classification && (
+                                        <span className="text-slate-500 font-mono text-[10px] font-semibold whitespace-nowrap">
+                                          {item.mappedAccount.classification}
+                                        </span>
+                                      )}
+                                      <span
+                                        className="truncate text-slate-800 font-semibold"
+                                        title={item.mappedAccount.account_name}
+                                      >
                                         {item.mappedAccount.account_name}
                                       </span>
                                     </div>
@@ -5346,9 +5354,16 @@ export default function FinancialMovements() {
                       >
                         <div className="w-3 h-3 rounded-full bg-emerald-500 shadow-sm ring-2 ring-white"></div>
                         <div className="flex flex-col overflow-hidden">
-                          <span className="font-mono text-xs text-slate-500">
-                            {coa.account_code}
-                          </span>
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-mono text-xs text-slate-500">
+                              {coa.account_code}
+                            </span>
+                            {coa.classification && (
+                              <span className="font-mono text-[10px] text-slate-400">
+                                {coa.classification}
+                              </span>
+                            )}
+                          </div>
                           <span
                             className="font-medium text-sm text-slate-800 truncate"
                             title={coa.account_name}
@@ -5696,7 +5711,7 @@ export default function FinancialMovements() {
                           {chartOfAccounts.map((account) => (
                             <CommandItem
                               key={account.id}
-                              value={`${account.account_code} ${account.account_name}`}
+                              value={`${account.account_code} ${account.classification || ''} ${account.account_name}`}
                               onSelect={() => {
                                 setSelectedAccountId(account.id)
                                 setComboboxOpen(false)
@@ -5709,13 +5724,20 @@ export default function FinancialMovements() {
                                   selectedAccountId === account.id ? 'opacity-100' : 'opacity-0',
                                 )}
                               />
-                              <div className="flex flex-col">
+                              <div className="flex flex-col gap-0.5">
                                 <span className="font-bold text-slate-800">
                                   {account.account_name}
                                 </span>
-                                <span className="font-mono text-xs text-slate-500">
-                                  {account.account_code}
-                                </span>
+                                <div className="flex items-center gap-1.5">
+                                  <span className="bg-[#1e1b4b] text-white px-1.5 py-0.5 rounded text-[10px] font-bold font-mono">
+                                    {account.account_code}
+                                  </span>
+                                  {account.classification && (
+                                    <span className="font-mono text-[10px] text-slate-500 font-semibold">
+                                      {account.classification}
+                                    </span>
+                                  )}
+                                </div>
                               </div>
                             </CommandItem>
                           ))}
