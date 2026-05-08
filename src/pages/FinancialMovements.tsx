@@ -1672,40 +1672,8 @@ export default function FinancialMovements() {
         } else if (key === 'empresa') {
           q = q.in('organization_id', values)
         } else if (key === 'prontidao') {
-          const hasIncompleto = values.includes('Incompleto')
-          const hasMapeado = values.includes('Mapeado')
-          const hasPendente = values.includes('Pendente')
-
-          const allMappedCodes = Array.from(
-            new Set(
-              costCenters
-                .filter((cc) => mappings.some((m) => m.cost_center_id === cc.id))
-                .map((cc) => cc.code?.trim())
-                .filter(Boolean),
-            ),
-          )
-          const inList =
-            allMappedCodes.length > 0
-              ? `(${allMappedCodes.map((c) => `"${c?.replace(/"/g, '""')}"`).join(',')})`
-              : '("@@NONE@@")'
-
-          const orParts: string[] = []
-
-          if (hasIncompleto) {
-            orParts.push('data_emissao.is.null', 'c_custo.is.null', 'valor_liquido.is.null')
-          }
-          if (hasMapeado) {
-            orParts.push('mapped_account_id.not.is.null', `c_custo.in.${inList}`)
-          }
-          if (hasPendente) {
-            orParts.push(
-              `and(mapped_account_id.is.null,c_custo.not.in.${inList},data_emissao.not.is.null,c_custo.not.is.null,valor_liquido.not.is.null)`,
-            )
-          }
-
-          if (orParts.length > 0) {
-            q = q.or(orParts.join(','))
-          }
+          // Filtragem client-side é aplicada após a busca dos resultados da query
+          // em fetchData, fetchDataSilent, e handleExport para garantir precisão
         } else if (dateCols.includes(key)) {
           const orParts = values.map((val) => {
             if (val.length === 7) {
