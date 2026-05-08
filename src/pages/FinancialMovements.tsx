@@ -1733,121 +1733,92 @@ export default function FinancialMovements() {
     if (sortColumn === 'empresa') orderCol = 'organization_id'
     if (sortColumn === 'prontidao') orderCol = 'data_emissao'
 
-    let query = supabase
-      .from('erp_financial_movements')
-      .select('*, organizations(name)', { count: 'exact' })
-      .is('deleted_at', null)
-      .order(orderCol, { ascending: sortDirection === 'asc' })
-      .order('id', { ascending: true })
-    query = applyQueryFilters(query)
-
-    const fetchAllTotals = async () => {
-      let allTotals: any[] = []
+    const fetchAllData = async () => {
+      let allData: any[] = []
       let hasMore = true
       let pageIdx = 0
       const limit = 1000
       while (hasMore) {
         let q = supabase
           .from('erp_financial_movements')
-          .select(
-            'id, valor, valor_liquido, data_emissao, dt_compens, conta_caixa, nome_caixa, c_custo, descricao_c_custo, organization_id, mapped_account_id, historico, nome_cli_fornec, n_documento',
-          )
+          .select('*, organizations(name)')
           .is('deleted_at', null)
+          .order(orderCol, { ascending: sortDirection === 'asc' })
           .order('id', { ascending: true })
+
         q = applyQueryFilters(q)
-        const { data } = await q.range(pageIdx * limit, (pageIdx + 1) * limit - 1)
-        if (!data || data.length === 0) {
+
+        const { data, error } = await q.range(pageIdx * limit, (pageIdx + 1) * limit - 1)
+        if (error) {
+          hasMore = false
+        } else if (!data || data.length === 0) {
           hasMore = false
         } else {
-          allTotals = allTotals.concat(data)
+          allData = allData.concat(data)
           pageIdx++
           if (data.length < limit) {
             hasMore = false
           }
         }
       }
-      return { data: allTotals }
+      return allData
     }
 
-    const [{ data: result, count, error }, { data: totalsData }] = await Promise.all([
-      query.range(page * pageSize, (page + 1) * pageSize - 1),
-      fetchAllTotals(),
-    ])
+    const allData = await fetchAllData()
 
-    if (!error && result) {
-      let finalData = result
+    let finalData = allData
 
-      if (filters['prontidao'] && filters['prontidao'].length > 0) {
-        finalData = finalData.filter((row) => {
+    if (filters['prontidao'] && filters['prontidao'].length > 0) {
+      finalData = finalData.filter((row) => {
+        const missing =
+          !row.data_emissao ||
+          !row.c_custo ||
+          row.valor_liquido === null ||
+          row.valor_liquido === undefined
+        let statusText = 'Pendente'
+        if (missing) statusText = 'Incompleto'
+        else if (getMappedAccount(row)) statusText = 'Mapeado'
+        return filters['prontidao'].includes(statusText)
+      })
+    }
+
+    if (sortColumn === 'prontidao') {
+      finalData.sort((a, b) => {
+        const getStatus = (row: any) => {
           const missing =
             !row.data_emissao ||
             !row.c_custo ||
             row.valor_liquido === null ||
             row.valor_liquido === undefined
-          let statusText = 'Pendente'
-          if (missing) statusText = 'Incompleto'
-          else if (getMappedAccount(row)) statusText = 'Mapeado'
-          return filters['prontidao'].includes(statusText)
-        })
-      }
-
-      if (sortColumn === 'prontidao') {
-        finalData.sort((a, b) => {
-          const getStatus = (row: any) => {
-            const missing =
-              !row.data_emissao ||
-              !row.c_custo ||
-              row.valor_liquido === null ||
-              row.valor_liquido === undefined
-            if (missing) return 2
-            if (getMappedAccount(row)) return 0
-            return 1
-          }
-          const statA = getStatus(a)
-          const statB = getStatus(b)
-          if (statA < statB) return sortDirection === 'asc' ? -1 : 1
-          if (statA > statB) return sortDirection === 'asc' ? 1 : -1
-          return 0
-        })
-      }
-
-      setData(finalData)
-      setTotalCount(count || 0)
+          if (missing) return 2
+          if (getMappedAccount(row)) return 0
+          return 1
+        }
+        const statA = getStatus(a)
+        const statB = getStatus(b)
+        if (statA < statB) return sortDirection === 'asc' ? -1 : 1
+        if (statA > statB) return sortDirection === 'asc' ? 1 : -1
+        return 0
+      })
     }
 
-    if (totalsData) {
-      let finalTotalsData = totalsData
-      if (filters['prontidao'] && filters['prontidao'].length > 0) {
-        finalTotalsData = finalTotalsData.filter((row) => {
-          const missing =
-            !row.data_emissao ||
-            !row.c_custo ||
-            row.valor_liquido === null ||
-            row.valor_liquido === undefined
-          let statusText = 'Pendente'
-          if (missing) statusText = 'Incompleto'
-          else if (getMappedAccount(row)) statusText = 'Mapeado'
-          return filters['prontidao'].includes(statusText)
-        })
-      }
-      setSummaryData(finalTotalsData)
+    setSummaryData(finalData)
 
-      const sumV = finalTotalsData.reduce((acc, curr) => acc + (Number(curr.valor) || 0), 0)
-      const sumVL = finalTotalsData.reduce(
-        (acc, curr) => acc + (Number(curr.valor_liquido) || 0),
-        0,
-      )
-      const sumEntradas = finalTotalsData.reduce((acc, curr) => {
-        const val = Number(curr.valor_liquido) || 0
-        return val > 0 ? acc + val : acc
-      }, 0)
-      const sumSaidas = finalTotalsData.reduce((acc, curr) => {
-        const val = Number(curr.valor_liquido) || 0
-        return val < 0 ? acc + val : acc
-      }, 0)
+    const sumV = finalData.reduce((acc, curr) => acc + (Number(curr.valor) || 0), 0)
+    const sumVL = finalData.reduce((acc, curr) => acc + (Number(curr.valor_liquido) || 0), 0)
+    const sumEntradas = finalData.reduce((acc, curr) => {
+      const val = Number(curr.valor_liquido) || 0
+      return val > 0 ? acc + val : acc
+    }, 0)
+    const sumSaidas = finalData.reduce((acc, curr) => {
+      const val = Number(curr.valor_liquido) || 0
+      return val < 0 ? acc + val : acc
+    }, 0)
 
-      setTotals({ valor: sumV, valor_liquido: sumVL, entradas: sumEntradas, saidas: sumSaidas })
-    }
+    setTotals({ valor: sumV, valor_liquido: sumVL, entradas: sumEntradas, saidas: sumSaidas })
+
+    setTotalCount(finalData.length)
+    setData(finalData.slice(page * pageSize, (page + 1) * pageSize))
   }
 
   useEffect(() => {
@@ -1922,121 +1893,93 @@ export default function FinancialMovements() {
     if (sortColumn === 'empresa') orderCol = 'organization_id'
     if (sortColumn === 'prontidao') orderCol = 'data_emissao'
 
-    let query = supabase
-      .from('erp_financial_movements')
-      .select('*, organizations(name)', { count: 'exact' })
-      .is('deleted_at', null)
-      .order(orderCol, { ascending: sortDirection === 'asc' })
-      .order('id', { ascending: true })
-    query = applyQueryFilters(query)
-
-    const fetchAllTotals = async () => {
-      let allTotals: any[] = []
+    const fetchAllData = async () => {
+      let allData: any[] = []
       let hasMore = true
       let pageIdx = 0
       const limit = 1000
       while (hasMore) {
         let q = supabase
           .from('erp_financial_movements')
-          .select(
-            'id, valor, valor_liquido, data_emissao, dt_compens, conta_caixa, nome_caixa, c_custo, descricao_c_custo, organization_id, mapped_account_id, historico, nome_cli_fornec, n_documento',
-          )
+          .select('*, organizations(name)')
           .is('deleted_at', null)
+          .order(orderCol, { ascending: sortDirection === 'asc' })
           .order('id', { ascending: true })
+
         q = applyQueryFilters(q)
-        const { data } = await q.range(pageIdx * limit, (pageIdx + 1) * limit - 1)
-        if (!data || data.length === 0) {
+
+        const { data, error } = await q.range(pageIdx * limit, (pageIdx + 1) * limit - 1)
+        if (error) {
+          toast.error('Erro ao buscar dados: ' + error.message)
+          hasMore = false
+        } else if (!data || data.length === 0) {
           hasMore = false
         } else {
-          allTotals = allTotals.concat(data)
+          allData = allData.concat(data)
           pageIdx++
           if (data.length < limit) {
             hasMore = false
           }
         }
       }
-      return { data: allTotals }
+      return allData
     }
 
-    const [{ data: result, count, error }, { data: totalsData }] = await Promise.all([
-      query.range(page * pageSize, (page + 1) * pageSize - 1),
-      fetchAllTotals(),
-    ])
+    const allData = await fetchAllData()
 
-    if (!error && result) {
-      let finalData = result
+    let finalData = allData
 
-      if (filters['prontidao'] && filters['prontidao'].length > 0) {
-        finalData = finalData.filter((row) => {
+    if (filters['prontidao'] && filters['prontidao'].length > 0) {
+      finalData = finalData.filter((row) => {
+        const missing =
+          !row.data_emissao ||
+          !row.c_custo ||
+          row.valor_liquido === null ||
+          row.valor_liquido === undefined
+        let statusText = 'Pendente'
+        if (missing) statusText = 'Incompleto'
+        else if (getMappedAccount(row)) statusText = 'Mapeado'
+        return filters['prontidao'].includes(statusText)
+      })
+    }
+
+    if (sortColumn === 'prontidao') {
+      finalData.sort((a, b) => {
+        const getStatus = (row: any) => {
           const missing =
             !row.data_emissao ||
             !row.c_custo ||
             row.valor_liquido === null ||
             row.valor_liquido === undefined
-          let statusText = 'Pendente'
-          if (missing) statusText = 'Incompleto'
-          else if (getMappedAccount(row)) statusText = 'Mapeado'
-          return filters['prontidao'].includes(statusText)
-        })
-      }
-
-      if (sortColumn === 'prontidao') {
-        finalData.sort((a, b) => {
-          const getStatus = (row: any) => {
-            const missing =
-              !row.data_emissao ||
-              !row.c_custo ||
-              row.valor_liquido === null ||
-              row.valor_liquido === undefined
-            if (missing) return 2
-            if (getMappedAccount(row)) return 0
-            return 1
-          }
-          const statA = getStatus(a)
-          const statB = getStatus(b)
-          if (statA < statB) return sortDirection === 'asc' ? -1 : 1
-          if (statA > statB) return sortDirection === 'asc' ? 1 : -1
-          return 0
-        })
-      }
-
-      setData(finalData)
-      setTotalCount(count || 0)
+          if (missing) return 2
+          if (getMappedAccount(row)) return 0
+          return 1
+        }
+        const statA = getStatus(a)
+        const statB = getStatus(b)
+        if (statA < statB) return sortDirection === 'asc' ? -1 : 1
+        if (statA > statB) return sortDirection === 'asc' ? 1 : -1
+        return 0
+      })
     }
 
-    if (totalsData) {
-      let finalTotalsData = totalsData
-      if (filters['prontidao'] && filters['prontidao'].length > 0) {
-        finalTotalsData = finalTotalsData.filter((row) => {
-          const missing =
-            !row.data_emissao ||
-            !row.c_custo ||
-            row.valor_liquido === null ||
-            row.valor_liquido === undefined
-          let statusText = 'Pendente'
-          if (missing) statusText = 'Incompleto'
-          else if (getMappedAccount(row)) statusText = 'Mapeado'
-          return filters['prontidao'].includes(statusText)
-        })
-      }
-      setSummaryData(finalTotalsData)
+    setSummaryData(finalData)
 
-      const sumV = finalTotalsData.reduce((acc, curr) => acc + (Number(curr.valor) || 0), 0)
-      const sumVL = finalTotalsData.reduce(
-        (acc, curr) => acc + (Number(curr.valor_liquido) || 0),
-        0,
-      )
-      const sumEntradas = finalTotalsData.reduce((acc, curr) => {
-        const val = Number(curr.valor_liquido) || 0
-        return val > 0 ? acc + val : acc
-      }, 0)
-      const sumSaidas = finalTotalsData.reduce((acc, curr) => {
-        const val = Number(curr.valor_liquido) || 0
-        return val < 0 ? acc + val : acc
-      }, 0)
+    const sumV = finalData.reduce((acc, curr) => acc + (Number(curr.valor) || 0), 0)
+    const sumVL = finalData.reduce((acc, curr) => acc + (Number(curr.valor_liquido) || 0), 0)
+    const sumEntradas = finalData.reduce((acc, curr) => {
+      const val = Number(curr.valor_liquido) || 0
+      return val > 0 ? acc + val : acc
+    }, 0)
+    const sumSaidas = finalData.reduce((acc, curr) => {
+      const val = Number(curr.valor_liquido) || 0
+      return val < 0 ? acc + val : acc
+    }, 0)
 
-      setTotals({ valor: sumV, valor_liquido: sumVL, entradas: sumEntradas, saidas: sumSaidas })
-    }
+    setTotals({ valor: sumV, valor_liquido: sumVL, entradas: sumEntradas, saidas: sumSaidas })
+
+    setTotalCount(finalData.length)
+    setData(finalData.slice(page * pageSize, (page + 1) * pageSize))
 
     setLoading(false)
   }
