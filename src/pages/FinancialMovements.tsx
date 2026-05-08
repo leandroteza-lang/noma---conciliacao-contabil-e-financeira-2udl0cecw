@@ -1091,7 +1091,7 @@ export default function FinancialMovements() {
     let allMovs: any[] = []
     let fetchHasMore = true
     let fetchPage = 0
-    const pageSize = 10000
+    const fetchLimit = 1000
 
     while (fetchHasMore) {
       const { data, error } = await supabase
@@ -1100,14 +1100,14 @@ export default function FinancialMovements() {
           'data_emissao, dt_compens, data_vencto, data_canc, data_estorno, organization_id, tipo_operacao, status, conta_caixa, nome_caixa, conta_caixa_destino, forma_pagto, c_custo, descricao_c_custo, valor, valor_liquido, n_documento, nome_cli_fornec, historico, fp, n_cheque, nominal_a, emitente_cheque, cnpj_cpf, n_extrato, filial, banco, c_corrente, cod_cli_for, departamento, compensado',
         )
         .is('deleted_at', null)
-        .range(fetchPage * pageSize, (fetchPage + 1) * pageSize - 1)
+        .range(fetchPage * fetchLimit, (fetchPage + 1) * fetchLimit - 1)
 
       if (error || !data || data.length === 0) {
         fetchHasMore = false
       } else {
         allMovs = allMovs.concat(data)
         fetchPage++
-        if (data.length < pageSize) {
+        if (data.length < fetchLimit) {
           fetchHasMore = false
         }
       }
@@ -1153,30 +1153,10 @@ export default function FinancialMovements() {
             ),
           ).sort((a, b) => (b as string).localeCompare(a as string))
 
-          const grouped: Record<string, string[]> = {}
-          uniqueDates.forEach((d) => {
-            const ym = (d as string).substring(0, 7)
-            if (!grouped[ym]) grouped[ym] = []
-            grouped[ym].push(d as string)
+          const dateOptions = uniqueDates.map((d: string) => {
+            const [dy, dm, dd] = d.split('-')
+            return { label: `${dd}/${dm}/${dy}`, value: d }
           })
-
-          const dateOptions: {
-            label: string
-            value: string
-            isParent?: boolean
-            parent?: string
-          }[] = []
-
-          Object.keys(grouped)
-            .sort((a, b) => b.localeCompare(a))
-            .forEach((ym) => {
-              const [y, m] = ym.split('-')
-              dateOptions.push({ label: `${m}/${y}`, value: ym, isParent: true })
-              grouped[ym].forEach((d) => {
-                const [dy, dm, dd] = d.split('-')
-                dateOptions.push({ label: `${dd}/${dm}/${dy}`, value: d, parent: ym })
-              })
-            })
 
           options[h.key] = dateOptions
         } else {
@@ -1513,18 +1493,36 @@ export default function FinancialMovements() {
       .order(orderCol, { ascending: sortDirection === 'asc' })
     query = applyQueryFilters(query)
 
-    let totalsQuery = supabase
-      .from('erp_financial_movements')
-      .select(
-        'id, valor, valor_liquido, data_emissao, dt_compens, conta_caixa, nome_caixa, c_custo, descricao_c_custo, organization_id, mapped_account_id, historico, nome_cli_fornec, n_documento',
-      )
-      .is('deleted_at', null)
-      .limit(100000)
-    totalsQuery = applyQueryFilters(totalsQuery)
+    const fetchAllTotals = async () => {
+      let allTotals: any[] = []
+      let hasMore = true
+      let pageIdx = 0
+      const limit = 1000
+      while (hasMore) {
+        let q = supabase
+          .from('erp_financial_movements')
+          .select(
+            'id, valor, valor_liquido, data_emissao, dt_compens, conta_caixa, nome_caixa, c_custo, descricao_c_custo, organization_id, mapped_account_id, historico, nome_cli_fornec, n_documento',
+          )
+          .is('deleted_at', null)
+        q = applyQueryFilters(q)
+        const { data } = await q.range(pageIdx * limit, (pageIdx + 1) * limit - 1)
+        if (!data || data.length === 0) {
+          hasMore = false
+        } else {
+          allTotals = allTotals.concat(data)
+          pageIdx++
+          if (data.length < limit) {
+            hasMore = false
+          }
+        }
+      }
+      return { data: allTotals }
+    }
 
     const [{ data: result, count, error }, { data: totalsData }] = await Promise.all([
       query.range(page * pageSize, (page + 1) * pageSize - 1),
-      totalsQuery,
+      fetchAllTotals(),
     ])
 
     if (!error && result) {
@@ -1673,18 +1671,36 @@ export default function FinancialMovements() {
       .order(orderCol, { ascending: sortDirection === 'asc' })
     query = applyQueryFilters(query)
 
-    let totalsQuery = supabase
-      .from('erp_financial_movements')
-      .select(
-        'id, valor, valor_liquido, data_emissao, dt_compens, conta_caixa, nome_caixa, c_custo, descricao_c_custo, organization_id, mapped_account_id, historico, nome_cli_fornec, n_documento',
-      )
-      .is('deleted_at', null)
-      .limit(100000)
-    totalsQuery = applyQueryFilters(totalsQuery)
+    const fetchAllTotals = async () => {
+      let allTotals: any[] = []
+      let hasMore = true
+      let pageIdx = 0
+      const limit = 1000
+      while (hasMore) {
+        let q = supabase
+          .from('erp_financial_movements')
+          .select(
+            'id, valor, valor_liquido, data_emissao, dt_compens, conta_caixa, nome_caixa, c_custo, descricao_c_custo, organization_id, mapped_account_id, historico, nome_cli_fornec, n_documento',
+          )
+          .is('deleted_at', null)
+        q = applyQueryFilters(q)
+        const { data } = await q.range(pageIdx * limit, (pageIdx + 1) * limit - 1)
+        if (!data || data.length === 0) {
+          hasMore = false
+        } else {
+          allTotals = allTotals.concat(data)
+          pageIdx++
+          if (data.length < limit) {
+            hasMore = false
+          }
+        }
+      }
+      return { data: allTotals }
+    }
 
     const [{ data: result, count, error }, { data: totalsData }] = await Promise.all([
       query.range(page * pageSize, (page + 1) * pageSize - 1),
-      totalsQuery,
+      fetchAllTotals(),
     ])
 
     if (!error && result) {
