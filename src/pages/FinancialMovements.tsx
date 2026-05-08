@@ -124,14 +124,60 @@ const formatMonthYear = (row: any, dateField: string = 'data_emissao') => {
   return 'Sem Data'
 }
 
+function FloatingPanel({
+  open,
+  onClose,
+  title,
+  children,
+  widthClass = 'w-[calc(100vw-2rem)] max-w-5xl',
+}: {
+  open: boolean
+  onClose: () => void
+  title: string
+  children: React.ReactNode
+  widthClass?: string
+}) {
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (open && e.key === 'Escape') {
+        onClose()
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [open, onClose])
+
+  if (!open) return null
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
+      <div
+        className="absolute inset-0 bg-black/40 backdrop-blur-sm pointer-events-auto transition-opacity"
+        onClick={onClose}
+      />
+      <div className={cn('pointer-events-none relative flex flex-col max-h-full', widthClass)}>
+        <DraggablePopoverContent
+          title={title}
+          onClose={onClose}
+          className="pointer-events-auto shadow-2xl border-slate-300"
+        >
+          {children}
+        </DraggablePopoverContent>
+      </div>
+    </div>
+  )
+}
+
 function DraggablePopoverContent({
   children,
   className,
   title,
+  onClose,
 }: {
   children: React.ReactNode
   className?: string
   title: string
+  onClose?: () => void
 }) {
   const [pos, setPos] = useState({ x: 0, y: 0 })
   const dragRef = useRef<{ startX: number; startY: number; initX: number; initY: number } | null>(
@@ -178,32 +224,51 @@ function DraggablePopoverContent({
       style={{
         transform: `translate(${pos.x}px, ${pos.y}px)`,
         transition: dragRef.current ? 'none' : 'transform 0.1s ease-out',
+        maxHeight: 'calc(100vh - 2rem)',
       }}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
       onPointerCancel={handlePointerUp}
     >
-      <div className="drag-handle bg-[#800000] hover:bg-[#800000]/90 cursor-move flex items-center justify-between px-4 py-2 border-b border-[#800000] rounded-t-md select-none touch-none active:cursor-grabbing">
+      <div className="drag-handle bg-[#800000] hover:bg-[#800000]/90 cursor-move flex items-center justify-between px-4 py-2 border-b border-[#800000] rounded-t-md select-none touch-none active:cursor-grabbing shrink-0">
         <div className="flex items-center gap-2">
           <GripHorizontal className="h-4 w-4 text-white/80" />
           <span className="font-bold text-xs text-white">{title}</span>
         </div>
-        {(pos.x !== 0 || pos.y !== 0) && (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-6 text-[10px] px-2 text-white/80 hover:text-white hover:bg-white/20"
-            onClick={(e) => {
-              e.stopPropagation()
-              setPos({ x: 0, y: 0 })
-            }}
-          >
-            Resetar Posição
-          </Button>
-        )}
+        <div className="flex items-center gap-1">
+          {(pos.x !== 0 || pos.y !== 0) && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 text-[10px] px-2 text-white/80 hover:text-white hover:bg-white/20"
+              onClick={(e) => {
+                e.stopPropagation()
+                setPos({ x: 0, y: 0 })
+              }}
+            >
+              Resetar Posição
+            </Button>
+          )}
+          {onClose && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6 text-white/80 hover:text-white hover:bg-white/20 rounded-full ml-1"
+              onClick={(e) => {
+                e.stopPropagation()
+                onClose()
+              }}
+              title="Fechar"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
       </div>
-      {children}
+      <div className="flex-1 overflow-hidden flex flex-col relative bg-white rounded-b-md">
+        {children}
+      </div>
     </div>
   )
 }
@@ -2257,427 +2322,448 @@ export default function FinancialMovements() {
                   />
                 </div>
                 <div className="flex flex-wrap items-center gap-3 xl:ml-auto bg-white p-1.5 rounded-md border shadow-sm">
-                  <Popover open={filtersOpen} onOpenChange={setFiltersOpen}>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-7 text-xs flex items-center gap-1.5 px-2 relative"
-                      >
-                        <Filter className="h-3.5 w-3.5" />
-                        <span className="hidden sm:inline">Filtros</span>
-                        {hasActiveFilters && (
-                          <span className="absolute -top-1 -right-1 flex h-3 w-3 items-center justify-center rounded-full bg-primary text-[8px] text-primary-foreground">
-                            {Object.values(filters).reduce(
-                              (acc: number, val: any) => acc + (val?.length > 0 ? 1 : 0),
-                              0,
-                            )}
-                          </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7 text-xs flex items-center gap-1.5 px-2 relative"
+                    onClick={() => setFiltersOpen(true)}
+                  >
+                    <Filter className="h-3.5 w-3.5" />
+                    <span className="hidden sm:inline">Filtros</span>
+                    {hasActiveFilters && (
+                      <span className="absolute -top-1 -right-1 flex h-3 w-3 items-center justify-center rounded-full bg-primary text-[8px] text-primary-foreground">
+                        {Object.values(filters).reduce(
+                          (acc: number, val: any) => acc + (val?.length > 0 ? 1 : 0),
+                          0,
                         )}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent
-                      align="end"
-                      className="w-[calc(100vw-2rem)] sm:w-[600px] md:w-[800px] lg:w-[1000px] p-0 bg-transparent border-none shadow-none"
-                    >
-                      <DraggablePopoverContent title="Filtros">
-                        <Tabs defaultValue="filters" className="w-full">
-                          <div className="px-4 pt-4 pb-2 border-b">
-                            <TabsList className="w-full grid grid-cols-2 bg-slate-100 p-1">
-                              <TabsTrigger
-                                value="filters"
-                                className="bg-[#800000] text-white font-bold hover:bg-[#800000]/90 data-[state=active]:bg-[#600000] data-[state=active]:text-white data-[state=inactive]:bg-[#800000] data-[state=inactive]:text-white transition-colors"
-                              >
-                                Filtros
-                              </TabsTrigger>
-                              <TabsTrigger
-                                value="saved"
-                                className="bg-[#800000] text-white font-bold hover:bg-[#800000]/90 data-[state=active]:bg-[#600000] data-[state=active]:text-white data-[state=inactive]:bg-[#800000] data-[state=inactive]:text-white transition-colors"
-                              >
-                                Salvos
-                              </TabsTrigger>
-                            </TabsList>
-                          </div>
-                          <TabsContent
+                      </span>
+                    )}
+                  </Button>
+
+                  <FloatingPanel
+                    open={filtersOpen}
+                    onClose={() => setFiltersOpen(false)}
+                    title="Filtros"
+                    widthClass="w-[calc(100vw-2rem)] sm:w-[600px] md:w-[800px] lg:w-[1000px]"
+                  >
+                    <Tabs defaultValue="filters" className="w-full">
+                      <div className="px-4 pt-4 pb-2 border-b">
+                        <TabsList className="w-full grid grid-cols-2 bg-slate-100 p-1">
+                          <TabsTrigger
                             value="filters"
-                            className="m-0 p-4 max-h-[70vh] overflow-y-auto flex flex-col gap-4"
+                            className="bg-[#800000] text-white font-bold hover:bg-[#800000]/90 data-[state=active]:bg-[#600000] data-[state=active]:text-white data-[state=inactive]:bg-[#800000] data-[state=inactive]:text-white transition-colors"
                           >
-                            <div className="flex items-center justify-between">
-                              <h4 className="font-semibold text-sm">Filtros Combinados</h4>
-                              {hasActiveFilters && (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={clearFilters}
-                                  className="h-6 text-xs px-2 text-slate-500 hover:text-slate-800"
-                                >
-                                  Limpar todos
-                                </Button>
-                              )}
-                            </div>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                              {filterOrder.map((key) => {
-                                if (key === 'natureza') {
-                                  const isNaturezaActive =
-                                    filters['natureza'] && filters['natureza'].length > 0
-                                  return (
-                                    <div
-                                      key={key}
-                                      className={cn(
-                                        'space-y-1.5 p-2 border rounded-md cursor-grab active:cursor-grabbing transition-all duration-200 flex flex-col',
-                                        isNaturezaActive
-                                          ? 'bg-[#800000] border-[#800000] shadow-sm'
-                                          : 'bg-white border-slate-200 hover:border-slate-300',
-                                        draggedFilter === key ? 'opacity-50' : '',
-                                      )}
-                                      draggable
-                                      onDragStart={(e) => {
-                                        setDraggedFilter(key)
-                                        e.dataTransfer.effectAllowed = 'move'
-                                      }}
-                                      onDragOver={(e) => {
-                                        e.preventDefault()
-                                        e.dataTransfer.dropEffect = 'move'
-                                      }}
-                                      onDrop={(e) => {
-                                        e.preventDefault()
-                                        if (!draggedFilter || draggedFilter === key) return
-                                        const newOrder = [...filterOrder]
-                                        const draggedIdx = newOrder.indexOf(draggedFilter)
-                                        const targetIdx = newOrder.indexOf(key)
-                                        newOrder.splice(draggedIdx, 1)
-                                        newOrder.splice(targetIdx, 0, draggedFilter)
-                                        setFilterOrder(newOrder)
-                                        setDraggedFilter(null)
-                                      }}
-                                      onDragEnd={() => setDraggedFilter(null)}
-                                    >
-                                      <Label
-                                        className={cn(
-                                          'text-xs flex items-center gap-1.5 font-semibold',
-                                          isNaturezaActive ? 'text-white' : 'text-slate-700',
-                                        )}
-                                      >
-                                        <GripHorizontal
-                                          className={cn(
-                                            'h-3.5 w-3.5 flex-shrink-0',
-                                            isNaturezaActive ? 'text-white/70' : 'text-slate-400',
-                                          )}
-                                        />
-                                        Natureza
-                                      </Label>
-                                      <MultiSelect
-                                        title="Ambas"
-                                        options={[
-                                          { label: 'Entradas (+)', value: 'positivo' },
-                                          { label: 'Saídas (-)', value: 'negativo' },
-                                        ]}
-                                        selected={filters['natureza'] || []}
-                                        isActive={isNaturezaActive}
-                                        onChange={(v) => {
-                                          setFilters((p) => ({ ...p, natureza: v }))
-                                          setPage(0)
-                                        }}
-                                      />
-                                    </div>
-                                  )
-                                }
-
-                                const h = tableHeaders.find((th) => th.key === key)
-                                if (!h) return null
-                                const isColActive = filters[h.key] && filters[h.key].length > 0
-
-                                return (
-                                  <div
-                                    key={h.key}
-                                    className={cn(
-                                      'space-y-1.5 p-2 border rounded-md cursor-grab active:cursor-grabbing transition-all duration-200 flex flex-col',
-                                      isColActive
-                                        ? 'bg-[#800000] border-[#800000] shadow-sm'
-                                        : 'bg-white border-slate-200 hover:border-slate-300',
-                                      draggedFilter === h.key ? 'opacity-50' : '',
-                                    )}
-                                    draggable
-                                    onDragStart={(e) => {
-                                      setDraggedFilter(h.key)
-                                      e.dataTransfer.effectAllowed = 'move'
-                                    }}
-                                    onDragOver={(e) => {
-                                      e.preventDefault()
-                                      e.dataTransfer.dropEffect = 'move'
-                                    }}
-                                    onDrop={(e) => {
-                                      e.preventDefault()
-                                      if (!draggedFilter || draggedFilter === h.key) return
-                                      const newOrder = [...filterOrder]
-                                      const draggedIdx = newOrder.indexOf(draggedFilter)
-                                      const targetIdx = newOrder.indexOf(h.key)
-                                      newOrder.splice(draggedIdx, 1)
-                                      newOrder.splice(targetIdx, 0, draggedFilter)
-                                      setFilterOrder(newOrder)
-                                      setDraggedFilter(null)
-                                    }}
-                                    onDragEnd={() => setDraggedFilter(null)}
-                                  >
-                                    <Label
-                                      className={cn(
-                                        'text-xs truncate flex items-center gap-1.5 font-semibold',
-                                        isColActive ? 'text-white' : 'text-slate-700',
-                                      )}
-                                      title={h.label}
-                                    >
-                                      <GripHorizontal
-                                        className={cn(
-                                          'h-3.5 w-3.5 flex-shrink-0',
-                                          isColActive ? 'text-white/70' : 'text-slate-400',
-                                        )}
-                                      />
-                                      {h.label}
-                                    </Label>
-                                    <MultiSelect
-                                      title="Todos"
-                                      options={filterOptions[h.key] || []}
-                                      selected={filters[h.key] || []}
-                                      isActive={isColActive}
-                                      onChange={(v) => {
-                                        setFilters((p) => ({ ...p, [h.key]: v }))
-                                        setPage(0)
-                                      }}
-                                    />
-                                  </div>
-                                )
-                              })}
-                            </div>
-                            <div className="pt-4 border-t border-slate-200 flex items-center gap-2">
-                              <Input
-                                value={newFilterName}
-                                onChange={(e) => setNewFilterName(e.target.value)}
-                                placeholder="Nome para salvar filtro..."
-                                className="h-8 text-xs flex-1"
-                              />
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="h-8 text-xs whitespace-nowrap"
-                                onClick={() => setFiltersOpen(false)}
-                              >
-                                Cancelar
-                              </Button>
-                              <Button
-                                size="sm"
-                                className="h-8 text-xs whitespace-nowrap bg-[#800000] hover:bg-[#800000]/90 text-white"
-                                onClick={saveCurrentFilter}
-                              >
-                                <Save className="h-3.5 w-3.5 mr-1" />
-                                Salvar
-                              </Button>
-                            </div>
-                          </TabsContent>
-                          <TabsContent
+                            Filtros
+                          </TabsTrigger>
+                          <TabsTrigger
                             value="saved"
-                            className="m-0 p-4 max-h-[60vh] overflow-y-auto"
+                            className="bg-[#800000] text-white font-bold hover:bg-[#800000]/90 data-[state=active]:bg-[#600000] data-[state=active]:text-white data-[state=inactive]:bg-[#800000] data-[state=inactive]:text-white transition-colors"
                           >
-                            <div className="space-y-2">
-                              {savedFilters.map((sf) => (
-                                <div
-                                  key={sf.id}
-                                  className="flex items-center justify-between p-2 border border-slate-200 bg-slate-50 hover:bg-slate-100 rounded-md text-sm transition-colors"
-                                >
-                                  <span
-                                    className="font-medium text-slate-700 cursor-pointer flex-1"
-                                    onClick={() => applySavedFilter(sf)}
-                                  >
-                                    {sf.name}
-                                  </span>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={() => deleteSavedFilter(sf.id)}
-                                    className="h-6 w-6 text-slate-400 hover:text-red-600 hover:bg-red-50"
-                                    title="Excluir filtro salvo"
-                                  >
-                                    <Trash2 className="h-3.5 w-3.5" />
-                                  </Button>
-                                </div>
-                              ))}
-                              {savedFilters.length === 0 && (
-                                <div className="text-xs text-slate-500 text-center py-6">
-                                  Nenhum filtro salvo ainda.
-                                </div>
-                              )}
-                            </div>
-                          </TabsContent>
-                        </Tabs>
-                      </DraggablePopoverContent>
-                    </PopoverContent>
-                  </Popover>
-
-                  <Popover open={columnsOpen} onOpenChange={setColumnsOpen}>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-7 text-xs flex items-center gap-1.5 px-2 relative"
+                            Salvos
+                          </TabsTrigger>
+                        </TabsList>
+                      </div>
+                      <TabsContent
+                        value="filters"
+                        className="m-0 p-4 max-h-[70vh] overflow-y-auto flex flex-col gap-4"
                       >
-                        <Columns className="h-3.5 w-3.5" />
-                        <span className="hidden sm:inline">
-                          Colunas {hiddenColumnsCount > 0 ? `(${hiddenColumnsCount})` : ''}
-                        </span>
-                        {hiddenColumnsCount > 0 && (
-                          <span className="absolute -top-1 -right-1 flex h-3 w-3 items-center justify-center rounded-full bg-primary text-[8px] text-primary-foreground sm:hidden">
-                            {hiddenColumnsCount}
-                          </span>
-                        )}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent
-                      align="end"
-                      className="w-[calc(100vw-2rem)] sm:w-[500px] md:w-[700px] lg:w-[800px] p-0 bg-transparent border-none shadow-none"
-                    >
-                      <DraggablePopoverContent title="Configuração de Colunas">
-                        <Tabs defaultValue="columns" className="w-full">
-                          <div className="px-4 pt-4 pb-2 border-b">
-                            <TabsList className="w-full grid grid-cols-2 bg-slate-100 p-1">
-                              <TabsTrigger
-                                value="columns"
-                                className="bg-[#800000] text-white font-bold hover:bg-[#800000]/90 data-[state=active]:bg-[#600000] data-[state=active]:text-white data-[state=inactive]:bg-[#800000] data-[state=inactive]:text-white transition-colors"
-                              >
-                                Colunas
-                              </TabsTrigger>
-                              <TabsTrigger
-                                value="saved"
-                                className="bg-[#800000] text-white font-bold hover:bg-[#800000]/90 data-[state=active]:bg-[#600000] data-[state=active]:text-white data-[state=inactive]:bg-[#800000] data-[state=inactive]:text-white transition-colors"
-                              >
-                                Salvas
-                              </TabsTrigger>
-                            </TabsList>
-                          </div>
-                          <TabsContent value="columns" className="m-0 p-4 flex flex-col gap-4">
-                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                              <h4 className="font-semibold text-sm">Gerenciar Colunas</h4>
-                              <div className="flex flex-wrap items-center gap-1">
-                                <Button
-                                  variant="secondary"
-                                  size="sm"
-                                  className="h-6 px-2 text-[10px]"
-                                  onClick={selectAllColumns}
+                        <div className="flex items-center justify-between">
+                          <h4 className="font-semibold text-sm">Filtros Combinados</h4>
+                          {hasActiveFilters && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={clearFilters}
+                              className="h-6 text-xs px-2 text-slate-500 hover:text-slate-800"
+                            >
+                              Limpar todos
+                            </Button>
+                          )}
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                          {filterOrder.map((key) => {
+                            if (key === 'natureza') {
+                              const isNaturezaActive =
+                                filters['natureza'] && filters['natureza'].length > 0
+                              return (
+                                <div
+                                  key={key}
+                                  className={cn(
+                                    'space-y-1.5 p-2 border rounded-md cursor-grab active:cursor-grabbing transition-all duration-200 flex flex-col',
+                                    isNaturezaActive
+                                      ? 'bg-[#800000] border-[#800000] shadow-sm'
+                                      : 'bg-white border-slate-200 hover:border-slate-300',
+                                    draggedFilter === key ? 'opacity-50' : '',
+                                  )}
+                                  draggable
+                                  onDragStart={(e) => {
+                                    setDraggedFilter(key)
+                                    e.dataTransfer.effectAllowed = 'move'
+                                  }}
+                                  onDragOver={(e) => {
+                                    e.preventDefault()
+                                    e.dataTransfer.dropEffect = 'move'
+                                  }}
+                                  onDrop={(e) => {
+                                    e.preventDefault()
+                                    if (!draggedFilter || draggedFilter === key) return
+                                    const newOrder = [...filterOrder]
+                                    const draggedIdx = newOrder.indexOf(draggedFilter)
+                                    const targetIdx = newOrder.indexOf(key)
+                                    newOrder.splice(draggedIdx, 1)
+                                    newOrder.splice(targetIdx, 0, draggedFilter)
+                                    setFilterOrder(newOrder)
+                                    setDraggedFilter(null)
+                                  }}
+                                  onDragEnd={() => setDraggedFilter(null)}
                                 >
-                                  Todos
-                                </Button>
-                                <Button
-                                  variant="secondary"
-                                  size="sm"
-                                  className="h-6 px-2 text-[10px]"
-                                  onClick={selectNoColumns}
-                                >
-                                  Nenhum
-                                </Button>
-                                <Button
-                                  variant="secondary"
-                                  size="sm"
-                                  className="h-6 px-2 text-[10px]"
-                                  onClick={invertColumns}
-                                >
-                                  Inverter
-                                </Button>
-                                {(hiddenColumnsCount > 0 ||
-                                  JSON.stringify(columnOrder) !==
-                                    JSON.stringify(defaultColumnOrder)) && (
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={resetColumns}
-                                    className="h-6 text-xs px-2 text-slate-500 hover:text-slate-800"
+                                  <Label
+                                    className={cn(
+                                      'text-xs flex items-center gap-1.5 font-semibold',
+                                      isNaturezaActive ? 'text-white' : 'text-slate-700',
+                                    )}
                                   >
-                                    Restaurar padrão
-                                  </Button>
+                                    <GripHorizontal
+                                      className={cn(
+                                        'h-3.5 w-3.5 flex-shrink-0',
+                                        isNaturezaActive ? 'text-white/70' : 'text-slate-400',
+                                      )}
+                                    />
+                                    Natureza
+                                  </Label>
+                                  <MultiSelect
+                                    title="Ambas"
+                                    options={[
+                                      { label: 'Entradas (+)', value: 'positivo' },
+                                      { label: 'Saídas (-)', value: 'negativo' },
+                                    ]}
+                                    selected={filters['natureza'] || []}
+                                    isActive={isNaturezaActive}
+                                    onChange={(v) => {
+                                      setFilters((p) => ({ ...p, natureza: v }))
+                                      setPage(0)
+                                    }}
+                                  />
+                                  {isNaturezaActive && (
+                                    <div className="flex flex-wrap gap-1 mt-1">
+                                      {(filters['natureza'] || []).map((val) => (
+                                        <span
+                                          key={val}
+                                          className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-white/20 text-white truncate max-w-full"
+                                        >
+                                          {val === 'positivo' ? 'Entradas (+)' : 'Saídas (-)'}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                              )
+                            }
+
+                            const h = tableHeaders.find((th) => th.key === key)
+                            if (!h) return null
+                            const isColActive = filters[h.key] && filters[h.key].length > 0
+
+                            return (
+                              <div
+                                key={h.key}
+                                className={cn(
+                                  'space-y-1.5 p-2 border rounded-md cursor-grab active:cursor-grabbing transition-all duration-200 flex flex-col',
+                                  isColActive
+                                    ? 'bg-[#800000] border-[#800000] shadow-sm'
+                                    : 'bg-white border-slate-200 hover:border-slate-300',
+                                  draggedFilter === h.key ? 'opacity-50' : '',
+                                )}
+                                draggable
+                                onDragStart={(e) => {
+                                  setDraggedFilter(h.key)
+                                  e.dataTransfer.effectAllowed = 'move'
+                                }}
+                                onDragOver={(e) => {
+                                  e.preventDefault()
+                                  e.dataTransfer.dropEffect = 'move'
+                                }}
+                                onDrop={(e) => {
+                                  e.preventDefault()
+                                  if (!draggedFilter || draggedFilter === h.key) return
+                                  const newOrder = [...filterOrder]
+                                  const draggedIdx = newOrder.indexOf(draggedFilter)
+                                  const targetIdx = newOrder.indexOf(h.key)
+                                  newOrder.splice(draggedIdx, 1)
+                                  newOrder.splice(targetIdx, 0, draggedFilter)
+                                  setFilterOrder(newOrder)
+                                  setDraggedFilter(null)
+                                }}
+                                onDragEnd={() => setDraggedFilter(null)}
+                              >
+                                <Label
+                                  className={cn(
+                                    'text-xs truncate flex items-center gap-1.5 font-semibold',
+                                    isColActive ? 'text-white' : 'text-slate-700',
+                                  )}
+                                  title={h.label}
+                                >
+                                  <GripHorizontal
+                                    className={cn(
+                                      'h-3.5 w-3.5 flex-shrink-0',
+                                      isColActive ? 'text-white/70' : 'text-slate-400',
+                                    )}
+                                  />
+                                  {h.label}
+                                </Label>
+                                <MultiSelect
+                                  title="Todos"
+                                  options={filterOptions[h.key] || []}
+                                  selected={filters[h.key] || []}
+                                  isActive={isColActive}
+                                  onChange={(v) => {
+                                    setFilters((p) => ({ ...p, [h.key]: v }))
+                                    setPage(0)
+                                  }}
+                                />
+                                {isColActive && (
+                                  <div className="flex flex-wrap gap-1 mt-1">
+                                    {(filters[h.key] || []).map((val) => {
+                                      const opt = (filterOptions[h.key] || []).find(
+                                        (o) => o.value === val,
+                                      )
+                                      const label = opt ? opt.label : val
+                                      return (
+                                        <span
+                                          key={val}
+                                          className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-white/20 text-white truncate max-w-full"
+                                          title={label}
+                                        >
+                                          {label}
+                                        </span>
+                                      )
+                                    })}
+                                  </div>
                                 )}
                               </div>
-                            </div>
-                            <div className="max-h-[50vh] overflow-y-auto pr-2">
-                              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-4 gap-y-2.5">
-                                {columnOrder.map((key) => {
-                                  const h = tableHeaders.find((th) => th.key === key)!
-                                  return (
-                                    <div key={h.key} className="flex items-center space-x-2">
-                                      <Checkbox
-                                        id={`col-${h.key}`}
-                                        checked={visibleColumns[h.key] !== false}
-                                        onCheckedChange={() => toggleColumn(h.key)}
-                                      />
-                                      <Label
-                                        htmlFor={`col-${h.key}`}
-                                        className="text-xs font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
-                                      >
-                                        {h.label}
-                                      </Label>
-                                    </div>
-                                  )
-                                })}
-                              </div>
-                            </div>
-                            <div className="pt-4 border-t border-slate-200 flex items-center gap-2">
-                              <Input
-                                value={newColumnPresetName}
-                                onChange={(e) => setNewColumnPresetName(e.target.value)}
-                                placeholder="Nome da visualização..."
-                                className="h-8 text-xs flex-1"
-                              />
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="h-8 text-xs whitespace-nowrap"
-                                onClick={() => setColumnsOpen(false)}
-                              >
-                                Cancelar
-                              </Button>
-                              <Button
-                                size="sm"
-                                className="h-8 text-xs whitespace-nowrap bg-[#800000] hover:bg-[#800000]/90 text-white"
-                                onClick={saveCurrentColumns}
-                              >
-                                <Save className="h-3.5 w-3.5 mr-1" />
-                                Salvar
-                              </Button>
-                            </div>
-                          </TabsContent>
-                          <TabsContent
-                            value="saved"
-                            className="m-0 p-4 max-h-[60vh] overflow-y-auto"
+                            )
+                          })}
+                        </div>
+                        <div className="pt-4 border-t border-slate-200 flex items-center gap-2">
+                          <Input
+                            value={newFilterName}
+                            onChange={(e) => setNewFilterName(e.target.value)}
+                            placeholder="Nome para salvar filtro..."
+                            className="h-8 text-xs flex-1"
+                          />
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-8 text-xs whitespace-nowrap"
+                            onClick={() => setFiltersOpen(false)}
                           >
-                            <div className="space-y-2">
-                              {savedColumns.map((sc) => (
-                                <div
-                                  key={sc.id}
-                                  className="flex items-center justify-between p-2 border border-slate-200 bg-slate-50 hover:bg-slate-100 rounded-md text-sm transition-colors"
-                                >
-                                  <span
-                                    className="font-medium text-slate-700 cursor-pointer flex-1"
-                                    onClick={() => applySavedColumns(sc)}
-                                  >
-                                    {sc.name}
-                                  </span>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={() => deleteSavedColumns(sc.id)}
-                                    className="h-6 w-6 text-slate-400 hover:text-red-600 hover:bg-red-50"
-                                  >
-                                    <Trash2 className="h-3.5 w-3.5" />
-                                  </Button>
-                                </div>
-                              ))}
-                              {savedColumns.length === 0 && (
-                                <div className="text-xs text-slate-500 text-center py-6">
-                                  Nenhuma visualização salva ainda.
-                                </div>
-                              )}
+                            Cancelar
+                          </Button>
+                          <Button
+                            size="sm"
+                            className="h-8 text-xs whitespace-nowrap bg-[#800000] hover:bg-[#800000]/90 text-white"
+                            onClick={saveCurrentFilter}
+                          >
+                            <Save className="h-3.5 w-3.5 mr-1" />
+                            Salvar
+                          </Button>
+                        </div>
+                      </TabsContent>
+                      <TabsContent value="saved" className="m-0 p-4 max-h-[60vh] overflow-y-auto">
+                        <div className="space-y-2">
+                          {savedFilters.map((sf) => (
+                            <div
+                              key={sf.id}
+                              className="flex items-center justify-between p-2 border border-slate-200 bg-slate-50 hover:bg-slate-100 rounded-md text-sm transition-colors"
+                            >
+                              <span
+                                className="font-medium text-slate-700 cursor-pointer flex-1"
+                                onClick={() => applySavedFilter(sf)}
+                              >
+                                {sf.name}
+                              </span>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => deleteSavedFilter(sf.id)}
+                                className="h-6 w-6 text-slate-400 hover:text-red-600 hover:bg-red-50"
+                                title="Excluir filtro salvo"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </Button>
                             </div>
-                          </TabsContent>
-                        </Tabs>
-                      </DraggablePopoverContent>
-                    </PopoverContent>
-                  </Popover>
+                          ))}
+                          {savedFilters.length === 0 && (
+                            <div className="text-xs text-slate-500 text-center py-6">
+                              Nenhum filtro salvo ainda.
+                            </div>
+                          )}
+                        </div>
+                      </TabsContent>
+                    </Tabs>
+                  </FloatingPanel>
+
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7 text-xs flex items-center gap-1.5 px-2 relative"
+                    onClick={() => setColumnsOpen(true)}
+                  >
+                    <Columns className="h-3.5 w-3.5" />
+                    <span className="hidden sm:inline">
+                      Colunas {hiddenColumnsCount > 0 ? `(${hiddenColumnsCount})` : ''}
+                    </span>
+                    {hiddenColumnsCount > 0 && (
+                      <span className="absolute -top-1 -right-1 flex h-3 w-3 items-center justify-center rounded-full bg-primary text-[8px] text-primary-foreground sm:hidden">
+                        {hiddenColumnsCount}
+                      </span>
+                    )}
+                  </Button>
+
+                  <FloatingPanel
+                    open={columnsOpen}
+                    onClose={() => setColumnsOpen(false)}
+                    title="Configuração de Colunas"
+                    widthClass="w-[calc(100vw-2rem)] sm:w-[500px] md:w-[700px] lg:w-[800px]"
+                  >
+                    <Tabs defaultValue="columns" className="w-full">
+                      <div className="px-4 pt-4 pb-2 border-b">
+                        <TabsList className="w-full grid grid-cols-2 bg-slate-100 p-1">
+                          <TabsTrigger
+                            value="columns"
+                            className="bg-[#800000] text-white font-bold hover:bg-[#800000]/90 data-[state=active]:bg-[#600000] data-[state=active]:text-white data-[state=inactive]:bg-[#800000] data-[state=inactive]:text-white transition-colors"
+                          >
+                            Colunas
+                          </TabsTrigger>
+                          <TabsTrigger
+                            value="saved"
+                            className="bg-[#800000] text-white font-bold hover:bg-[#800000]/90 data-[state=active]:bg-[#600000] data-[state=active]:text-white data-[state=inactive]:bg-[#800000] data-[state=inactive]:text-white transition-colors"
+                          >
+                            Salvas
+                          </TabsTrigger>
+                        </TabsList>
+                      </div>
+                      <TabsContent value="columns" className="m-0 p-4 flex flex-col gap-4">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                          <h4 className="font-semibold text-sm">Gerenciar Colunas</h4>
+                          <div className="flex flex-wrap items-center gap-1">
+                            <Button
+                              variant="secondary"
+                              size="sm"
+                              className="h-6 px-2 text-[10px]"
+                              onClick={selectAllColumns}
+                            >
+                              Todos
+                            </Button>
+                            <Button
+                              variant="secondary"
+                              size="sm"
+                              className="h-6 px-2 text-[10px]"
+                              onClick={selectNoColumns}
+                            >
+                              Nenhum
+                            </Button>
+                            <Button
+                              variant="secondary"
+                              size="sm"
+                              className="h-6 px-2 text-[10px]"
+                              onClick={invertColumns}
+                            >
+                              Inverter
+                            </Button>
+                            {(hiddenColumnsCount > 0 ||
+                              JSON.stringify(columnOrder) !==
+                                JSON.stringify(defaultColumnOrder)) && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={resetColumns}
+                                className="h-6 text-xs px-2 text-slate-500 hover:text-slate-800"
+                              >
+                                Restaurar padrão
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                        <div className="max-h-[50vh] overflow-y-auto pr-2">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-4 gap-y-2.5">
+                            {columnOrder.map((key) => {
+                              const h = tableHeaders.find((th) => th.key === key)!
+                              return (
+                                <div key={h.key} className="flex items-center space-x-2">
+                                  <Checkbox
+                                    id={`col-${h.key}`}
+                                    checked={visibleColumns[h.key] !== false}
+                                    onCheckedChange={() => toggleColumn(h.key)}
+                                  />
+                                  <Label
+                                    htmlFor={`col-${h.key}`}
+                                    className="text-xs font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                                  >
+                                    {h.label}
+                                  </Label>
+                                </div>
+                              )
+                            })}
+                          </div>
+                        </div>
+                        <div className="pt-4 border-t border-slate-200 flex items-center gap-2">
+                          <Input
+                            value={newColumnPresetName}
+                            onChange={(e) => setNewColumnPresetName(e.target.value)}
+                            placeholder="Nome da visualização..."
+                            className="h-8 text-xs flex-1"
+                          />
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-8 text-xs whitespace-nowrap"
+                            onClick={() => setColumnsOpen(false)}
+                          >
+                            Cancelar
+                          </Button>
+                          <Button
+                            size="sm"
+                            className="h-8 text-xs whitespace-nowrap bg-[#800000] hover:bg-[#800000]/90 text-white"
+                            onClick={saveCurrentColumns}
+                          >
+                            <Save className="h-3.5 w-3.5 mr-1" />
+                            Salvar
+                          </Button>
+                        </div>
+                      </TabsContent>
+                      <TabsContent value="saved" className="m-0 p-4 max-h-[60vh] overflow-y-auto">
+                        <div className="space-y-2">
+                          {savedColumns.map((sc) => (
+                            <div
+                              key={sc.id}
+                              className="flex items-center justify-between p-2 border border-slate-200 bg-slate-50 hover:bg-slate-100 rounded-md text-sm transition-colors"
+                            >
+                              <span
+                                className="font-medium text-slate-700 cursor-pointer flex-1"
+                                onClick={() => applySavedColumns(sc)}
+                              >
+                                {sc.name}
+                              </span>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => deleteSavedColumns(sc.id)}
+                                className="h-6 w-6 text-slate-400 hover:text-red-600 hover:bg-red-50"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </Button>
+                            </div>
+                          ))}
+                          {savedColumns.length === 0 && (
+                            <div className="text-xs text-slate-500 text-center py-6">
+                              Nenhuma visualização salva ainda.
+                            </div>
+                          )}
+                        </div>
+                      </TabsContent>
+                    </Tabs>
+                  </FloatingPanel>
 
                   <div className="hidden sm:block w-px h-4 bg-slate-200 mx-1"></div>
 
