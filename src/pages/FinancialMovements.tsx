@@ -581,6 +581,13 @@ const tableHeaders = [
 ]
 
 export default function FinancialMovements() {
+  type FilterOption = {
+    label: string
+    value: string
+    isParent?: boolean
+    parent?: string
+  }
+
   const { user } = useAuth()
   const [data, setData] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -1030,9 +1037,7 @@ export default function FinancialMovements() {
     localStorage.setItem('fin_mov_saved_columns', JSON.stringify(updated))
   }
 
-  const [filterOptions, setFilterOptions] = useState<
-    Record<string, { label: string; value: string; isParent?: boolean; parent?: string }[]>
-  >({})
+  const [filterOptions, setFilterOptions] = useState<Record<string, FilterOption[]>>({})
   const [expandedDateGroups, setExpandedDateGroups] = useState<Record<string, boolean>>({})
   const hasActiveFilters = Object.values(filters).some((arr) => arr && arr.length > 0)
 
@@ -1097,9 +1102,10 @@ export default function FinancialMovements() {
       const { data, error } = await supabase
         .from('erp_financial_movements')
         .select(
-          'data_emissao, dt_compens, data_vencto, data_canc, data_estorno, organization_id, tipo_operacao, status, conta_caixa, nome_caixa, conta_caixa_destino, forma_pagto, c_custo, descricao_c_custo, valor, valor_liquido, n_documento, nome_cli_fornec, historico, fp, n_cheque, nominal_a, emitente_cheque, cnpj_cpf, n_extrato, filial, banco, c_corrente, cod_cli_for, departamento, compensado',
+          'id, data_emissao, dt_compens, data_vencto, data_canc, data_estorno, organization_id, tipo_operacao, status, conta_caixa, nome_caixa, conta_caixa_destino, forma_pagto, c_custo, descricao_c_custo, valor, valor_liquido, n_documento, nome_cli_fornec, historico, fp, n_cheque, nominal_a, emitente_cheque, cnpj_cpf, n_extrato, filial, banco, c_corrente, cod_cli_for, departamento, compensado',
         )
         .is('deleted_at', null)
+        .order('id', { ascending: true })
         .range(fetchPage * fetchLimit, (fetchPage + 1) * fetchLimit - 1)
 
       if (error || !data || data.length === 0) {
@@ -1115,7 +1121,7 @@ export default function FinancialMovements() {
 
     const movs = allMovs
 
-    const options: Record<string, { label: string; value: string }[]> = {}
+    const options: Record<string, FilterOption[]> = {}
     options['empresa'] = (orgs || []).map((e) => ({ label: e.name, value: e.id }))
 
     const dateCols = ['data_emissao', 'dt_compens', 'data_vencto', 'data_canc', 'data_estorno']
@@ -1153,9 +1159,33 @@ export default function FinancialMovements() {
             ),
           ).sort((a, b) => (b as string).localeCompare(a as string))
 
-          const dateOptions = uniqueDates.map((d: string) => {
-            const [dy, dm, dd] = d.split('-')
-            return { label: `${dd}/${dm}/${dy}`, value: d }
+          const groupedDates = uniqueDates.reduce<Record<string, string[]>>((acc, d) => {
+            const yearMonth = d.substring(0, 7)
+            if (!acc[yearMonth]) {
+              acc[yearMonth] = []
+            }
+            acc[yearMonth].push(d)
+            return acc
+          }, {})
+
+          const dateOptions = Object.entries(groupedDates).flatMap(([yearMonth, dates]) => {
+            const [year, month] = yearMonth.split('-')
+            const parent: FilterOption = {
+              label: `${month}/${year}`,
+              value: yearMonth,
+              isParent: true,
+            }
+
+            const children = dates.map<FilterOption>((d) => {
+              const [dy, dm, dd] = d.split('-')
+              return {
+                label: `${dd}/${dm}/${dy}`,
+                value: d,
+                parent: yearMonth,
+              }
+            })
+
+            return [parent, ...children]
           })
 
           options[h.key] = dateOptions
@@ -2817,6 +2847,15 @@ export default function FinancialMovements() {
                                               <CommandItem
                                                 key={opt.value}
                                                 onSelect={() => {
+                                                  if (opt.isParent) {
+                                                    setExpandedDateGroups((prev) => ({
+                                                      ...prev,
+                                                      [`${h.key}-${opt.value}`]:
+                                                        !prev[`${h.key}-${opt.value}`],
+                                                    }))
+                                                    return
+                                                  }
+
                                                   const current = filters[h.key] || []
                                                   const updated = isSelected
                                                     ? current.filter((v) => v !== opt.value)
@@ -2829,6 +2868,7 @@ export default function FinancialMovements() {
                                                 }}
                                                 className={cn(
                                                   'text-xs cursor-pointer',
+                                                  opt.isParent ? 'font-medium' : '',
                                                   opt.parent ? 'pl-6' : '',
                                                 )}
                                               >
@@ -2859,9 +2899,11 @@ export default function FinancialMovements() {
                                                 <div
                                                   className={cn(
                                                     'mr-2 flex h-3 w-3 flex-shrink-0 items-center justify-center rounded-sm border border-primary',
-                                                    isSelected
-                                                      ? 'bg-primary text-primary-foreground'
-                                                      : 'opacity-50 [&_svg]:invisible',
+                                                    opt.isParent
+                                                      ? 'border-transparent opacity-0'
+                                                      : isSelected
+                                                        ? 'bg-primary text-primary-foreground'
+                                                        : 'opacity-50 [&_svg]:invisible',
                                                   )}
                                                 >
                                                   <Check className="h-2 w-2" />
