@@ -4805,105 +4805,136 @@ export default function FinancialMovements() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {deParaSummary.map((item) => (
-                      <TableRow key={item.c_custo} className="border-b border-slate-200">
-                        {resumoColOrder.map((key) => {
-                          if (key === 'c_custo')
-                            return (
-                              <TableCell
-                                key={key}
-                                className="py-1.5 px-3 text-black font-normal text-sm align-middle"
-                              >
-                                {item.c_custo
-                                  ? `${item.c_custo} - ${item.descricao_c_custo || ''}`
-                                  : 'Sem Centro de Custo'}
-                              </TableCell>
-                            )
-                          if (key === 'conta_contabil')
-                            return (
-                              <TableCell
-                                key={key}
-                                className="py-1.5 px-3 text-black font-normal text-sm align-middle"
-                              >
-                                {item.mappedAccount ? (
-                                  `${item.mappedAccount.account_code} | ${item.mappedAccount.classification || '-'} | ${item.mappedAccount.account_name}`
-                                ) : (
-                                  <span className="text-slate-400 italic">Não vinculado</span>
-                                )}
-                              </TableCell>
-                            )
-                          if (key === 'status')
-                            return (
-                              <TableCell key={key} className="py-1.5 px-3 text-center align-middle">
-                                <span
-                                  className={cn(
-                                    'inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium border uppercase tracking-wider',
-                                    item.mappedAccount
-                                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                                      : 'bg-rose-50 text-rose-700 border-rose-200',
+                    {deParaSummary.map((item, index) => {
+                      const isEven = index % 2 === 1
+                      const rowClass = isEven
+                        ? 'bg-[#bfdbfe] text-black hover:bg-[#93c5fd]'
+                        : 'bg-transparent text-black dark:text-white hover:bg-slate-50 dark:hover:bg-slate-800/50'
+
+                      return (
+                        <TableRow
+                          key={item.c_custo}
+                          className={cn('border-b border-slate-200 transition-colors', rowClass)}
+                        >
+                          {resumoColOrder.map((key) => {
+                            if (key === 'c_custo')
+                              return (
+                                <TableCell
+                                  key={key}
+                                  className="py-1.5 px-3 font-bold text-sm align-middle text-inherit"
+                                >
+                                  {item.c_custo
+                                    ? `${item.c_custo} - ${item.descricao_c_custo || ''}`
+                                    : 'Sem Centro de Custo'}
+                                </TableCell>
+                              )
+                            if (key === 'conta_contabil')
+                              return (
+                                <TableCell
+                                  key={key}
+                                  className="py-1.5 px-3 font-bold text-sm align-middle text-inherit"
+                                >
+                                  {item.mappedAccount ? (
+                                    <div className="flex items-center gap-2">
+                                      <span className="bg-[#1e1b4b] text-white px-2 py-0.5 rounded text-[11px] font-mono font-semibold shrink-0">
+                                        {item.mappedAccount.account_code}
+                                      </span>
+                                      <span className="truncate">
+                                        {item.mappedAccount.classification
+                                          ? `${item.mappedAccount.classification} `
+                                          : ''}
+                                        {item.mappedAccount.account_name}
+                                      </span>
+                                    </div>
+                                  ) : (
+                                    <span className="text-slate-400 italic font-normal">
+                                      Não vinculado
+                                    </span>
                                   )}
+                                </TableCell>
+                              )
+                            if (key === 'status')
+                              return (
+                                <TableCell
+                                  key={key}
+                                  className="py-1.5 px-3 text-center align-middle text-inherit"
                                 >
-                                  {item.status}
-                                </span>
-                              </TableCell>
-                            )
-                          if (key === 'count')
-                            return (
-                              <TableCell key={key} className="py-1.5 px-3 text-center align-middle">
-                                <button
-                                  onClick={() => handleDrillDownResumo(item)}
-                                  className="text-blue-600 font-medium hover:text-blue-800 hover:underline cursor-pointer"
-                                  title="Visualizar Lançamentos"
+                                  <span
+                                    className={cn(
+                                      'inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium border uppercase tracking-wider',
+                                      item.mappedAccount
+                                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                        : 'bg-rose-50 text-rose-700 border-rose-200',
+                                    )}
+                                  >
+                                    {item.status}
+                                  </span>
+                                </TableCell>
+                              )
+                            if (key === 'count')
+                              return (
+                                <TableCell
+                                  key={key}
+                                  className="py-1.5 px-3 text-center align-middle text-inherit"
                                 >
-                                  {item.count}
-                                </button>
-                              </TableCell>
-                            )
-                          if (key === 'total_bruto')
-                            return (
-                              <TableCell
-                                key={key}
-                                className="py-1.5 px-3 text-right align-middle text-black"
-                              >
-                                {new Intl.NumberFormat('pt-BR', {
-                                  style: 'currency',
-                                  currency: 'BRL',
-                                }).format(item.total_bruto)}
-                              </TableCell>
-                            )
-                          if (key === 'total_liquido')
-                            return (
-                              <TableCell
-                                key={key}
-                                className="py-1.5 px-3 text-right align-middle text-black"
-                              >
-                                {new Intl.NumberFormat('pt-BR', {
-                                  style: 'currency',
-                                  currency: 'BRL',
-                                }).format(item.total)}
-                              </TableCell>
-                            )
-                          if (key === 'acao')
-                            return (
-                              <TableCell key={key} className="py-1.5 px-3 text-center align-middle">
-                                <Button
-                                  size="sm"
-                                  variant={item.mappedAccount ? 'outline' : 'default'}
-                                  className={cn(
-                                    'h-7 text-xs px-3',
-                                    !item.mappedAccount &&
-                                      'bg-[#800000] hover:bg-[#800000]/90 text-white shadow-sm',
-                                  )}
-                                  onClick={() => setMappingRow(item.rows[0])}
+                                  <button
+                                    onClick={() => handleDrillDownResumo(item)}
+                                    className="text-blue-600 font-bold hover:text-blue-800 hover:underline cursor-pointer"
+                                    title="Visualizar Lançamentos"
+                                  >
+                                    {item.count}
+                                  </button>
+                                </TableCell>
+                              )
+                            if (key === 'total_bruto')
+                              return (
+                                <TableCell
+                                  key={key}
+                                  className="py-1.5 px-3 text-right align-middle text-inherit font-medium"
                                 >
-                                  {item.mappedAccount ? 'Editar' : 'Mapear'}
-                                </Button>
-                              </TableCell>
-                            )
-                          return null
-                        })}
-                      </TableRow>
-                    ))}
+                                  {new Intl.NumberFormat('pt-BR', {
+                                    style: 'currency',
+                                    currency: 'BRL',
+                                  }).format(item.total_bruto)}
+                                </TableCell>
+                              )
+                            if (key === 'total_liquido')
+                              return (
+                                <TableCell
+                                  key={key}
+                                  className="py-1.5 px-3 text-right align-middle text-inherit font-medium"
+                                >
+                                  {new Intl.NumberFormat('pt-BR', {
+                                    style: 'currency',
+                                    currency: 'BRL',
+                                  }).format(item.total)}
+                                </TableCell>
+                              )
+                            if (key === 'acao')
+                              return (
+                                <TableCell
+                                  key={key}
+                                  className="py-1.5 px-3 text-center align-middle text-inherit"
+                                >
+                                  <Button
+                                    size="sm"
+                                    variant={item.mappedAccount ? 'outline' : 'default'}
+                                    className={cn(
+                                      'h-7 text-xs px-3',
+                                      !item.mappedAccount &&
+                                        'bg-[#800000] hover:bg-[#800000]/90 text-white shadow-sm',
+                                    )}
+                                    onClick={() => setMappingRow(item.rows[0])}
+                                  >
+                                    {item.mappedAccount ? 'Editar' : 'Mapear'}
+                                  </Button>
+                                </TableCell>
+                              )
+                            return null
+                          })}
+                        </TableRow>
+                      )
+                    })}
                     {deParaSummary.length === 0 && (
                       <TableRow disableZebra>
                         <TableCell colSpan={7} className="h-32 text-center text-slate-500">
