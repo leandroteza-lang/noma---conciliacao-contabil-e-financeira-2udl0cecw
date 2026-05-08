@@ -4789,7 +4789,7 @@ export default function FinancialMovements() {
                             }}
                             onDragEnd={() => setDraggedResumoCol(null)}
                             className={cn(
-                              "bg-[#221c5a] text-white font-['Inter'] text-[15px] font-semibold px-[14px] py-[10px] h-[40px] border-none cursor-grab active:cursor-grabbing",
+                              "bg-[#221c5a] text-white font-['Inter'] text-[11px] font-semibold px-2 py-1 h-8 border-none cursor-grab active:cursor-grabbing",
                               h.align === 'center'
                                 ? 'text-center'
                                 : h.align === 'right'
@@ -4814,15 +4814,12 @@ export default function FinancialMovements() {
                       return (
                         <TableRow
                           key={item.c_custo}
-                          className={cn('border-b border-slate-200 transition-colors', rowClass)}
+                          className={cn('transition-colors border-0 text-[11px]', rowClass)}
                         >
                           {resumoColOrder.map((key) => {
                             if (key === 'c_custo')
                               return (
-                                <TableCell
-                                  key={key}
-                                  className="py-1.5 px-3 text-sm align-middle text-inherit"
-                                >
+                                <TableCell key={key} className="px-2 py-0.5 align-middle border-0">
                                   {item.c_custo
                                     ? `${item.c_custo} - ${item.descricao_c_custo || ''}`
                                     : 'Sem Centro de Custo'}
@@ -4830,18 +4827,19 @@ export default function FinancialMovements() {
                               )
                             if (key === 'conta_contabil')
                               return (
-                                <TableCell
-                                  key={key}
-                                  className="py-1.5 px-3 text-sm align-middle text-inherit"
-                                >
+                                <TableCell key={key} className="px-2 py-0.5 align-middle border-0">
                                   {item.mappedAccount ? (
-                                    <span className="truncate">
-                                      {item.mappedAccount.account_code} |{' '}
-                                      {item.mappedAccount.classification
-                                        ? `${item.mappedAccount.classification} | `
-                                        : ''}
-                                      {item.mappedAccount.account_name}
-                                    </span>
+                                    <div className="flex items-center gap-1.5">
+                                      <span className="bg-[#1e1b4b] text-white px-1.5 py-0.5 rounded text-[10px] font-bold">
+                                        {item.mappedAccount.account_code}
+                                      </span>
+                                      <span className="truncate">
+                                        {item.mappedAccount.classification
+                                          ? `${item.mappedAccount.classification} `
+                                          : ''}
+                                        {item.mappedAccount.account_name}
+                                      </span>
+                                    </div>
                                   ) : (
                                     <span className="text-slate-400 italic">Não vinculado</span>
                                   )}
@@ -4851,11 +4849,11 @@ export default function FinancialMovements() {
                               return (
                                 <TableCell
                                   key={key}
-                                  className="py-1.5 px-3 text-center align-middle text-inherit"
+                                  className="px-2 py-0.5 text-center align-middle border-0"
                                 >
                                   <span
                                     className={cn(
-                                      'inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium border uppercase tracking-wider',
+                                      'inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-bold border uppercase tracking-wider',
                                       item.mappedAccount
                                         ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                                         : 'bg-rose-50 text-rose-700 border-rose-200',
@@ -4869,7 +4867,7 @@ export default function FinancialMovements() {
                               return (
                                 <TableCell
                                   key={key}
-                                  className="py-1.5 px-3 text-center align-middle text-inherit"
+                                  className="px-2 py-0.5 text-center align-middle border-0"
                                 >
                                   <button
                                     onClick={() => handleDrillDownResumo(item)}
@@ -4884,7 +4882,7 @@ export default function FinancialMovements() {
                               return (
                                 <TableCell
                                   key={key}
-                                  className="py-1.5 px-3 text-right align-middle text-inherit font-medium"
+                                  className="px-2 py-0.5 text-right align-middle border-0 font-medium"
                                 >
                                   {new Intl.NumberFormat('pt-BR', {
                                     style: 'currency',
@@ -4896,7 +4894,7 @@ export default function FinancialMovements() {
                               return (
                                 <TableCell
                                   key={key}
-                                  className="py-1.5 px-3 text-right align-middle text-inherit font-medium"
+                                  className="px-2 py-0.5 text-right align-middle border-0 font-medium"
                                 >
                                   {new Intl.NumberFormat('pt-BR', {
                                     style: 'currency',
@@ -4908,13 +4906,13 @@ export default function FinancialMovements() {
                               return (
                                 <TableCell
                                   key={key}
-                                  className="py-1.5 px-3 text-center align-middle text-inherit"
+                                  className="px-2 py-0.5 text-center align-middle border-0"
                                 >
                                   <Button
                                     size="sm"
                                     variant={item.mappedAccount ? 'outline' : 'default'}
                                     className={cn(
-                                      'h-7 text-xs px-3',
+                                      'h-6 text-[10px] px-2',
                                       !item.mappedAccount &&
                                         'bg-[#800000] hover:bg-[#800000]/90 text-white shadow-sm',
                                     )}
