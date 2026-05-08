@@ -3134,10 +3134,18 @@ export default function FinancialMovements() {
                                     return (
                                       <TableCell
                                         key={key}
-                                        className="px-2 py-0.5 whitespace-nowrap text-center border-0"
+                                        className="px-2 py-0.5 whitespace-nowrap text-center border-0 font-medium"
                                       >
                                         {row.valor !== null ? (
-                                          <span>
+                                          <span
+                                            className={cn(
+                                              row.valor > 0
+                                                ? 'text-blue-700 dark:text-blue-400'
+                                                : row.valor < 0
+                                                  ? 'text-rose-700 dark:text-rose-400'
+                                                  : '',
+                                            )}
+                                          >
                                             {new Intl.NumberFormat('pt-BR', {
                                               style: 'currency',
                                               currency: 'BRL',
@@ -3152,7 +3160,7 @@ export default function FinancialMovements() {
                                     return (
                                       <TableCell
                                         key={key}
-                                        className="px-2 py-0.5 whitespace-nowrap text-center border-0"
+                                        className="px-2 py-0.5 whitespace-nowrap text-center border-0 font-medium"
                                       >
                                         {editingId === row.id ? (
                                           <Input
@@ -3168,7 +3176,15 @@ export default function FinancialMovements() {
                                             }
                                           />
                                         ) : (
-                                          <span>
+                                          <span
+                                            className={cn(
+                                              row.valor_liquido > 0
+                                                ? 'text-blue-700 dark:text-blue-400'
+                                                : row.valor_liquido < 0
+                                                  ? 'text-rose-700 dark:text-rose-400'
+                                                  : '',
+                                            )}
+                                          >
                                             {row.valor_liquido !== null
                                               ? new Intl.NumberFormat('pt-BR', {
                                                   style: 'currency',
@@ -3502,9 +3518,9 @@ export default function FinancialMovements() {
                                     className={cn(
                                       'font-bold',
                                       totals.valor > 0
-                                        ? 'text-emerald-600'
+                                        ? 'text-blue-700'
                                         : totals.valor < 0
-                                          ? 'text-rose-600'
+                                          ? 'text-rose-700'
                                           : 'text-slate-800',
                                     )}
                                   >
@@ -3525,9 +3541,9 @@ export default function FinancialMovements() {
                                     className={cn(
                                       'font-bold',
                                       totals.valor_liquido > 0
-                                        ? 'text-emerald-600'
+                                        ? 'text-blue-700'
                                         : totals.valor_liquido < 0
-                                          ? 'text-rose-600'
+                                          ? 'text-rose-700'
                                           : 'text-slate-900',
                                     )}
                                   >
