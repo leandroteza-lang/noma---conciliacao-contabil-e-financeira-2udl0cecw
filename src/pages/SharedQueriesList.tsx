@@ -45,6 +45,15 @@ export default function SharedQueriesList() {
   const { user } = useAuth()
   const { toast } = useToast()
 
+  const [tableFontSize, setTableFontSize] = useState<number>(() => {
+    const saved = localStorage.getItem('shared_queries_table_font_size')
+    return saved ? parseInt(saved, 10) : 13
+  })
+
+  useEffect(() => {
+    localStorage.setItem('shared_queries_table_font_size', tableFontSize.toString())
+  }, [tableFontSize])
+
   useEffect(() => {
     fetchQueries()
 
@@ -262,7 +271,31 @@ export default function SharedQueriesList() {
             </Select>
           </div>
 
-          <div className="flex items-center justify-end gap-2">
+          <div className="flex items-center justify-end gap-2 w-full md:w-auto">
+            <div
+              className="hidden sm:flex items-center gap-1 bg-white rounded-md p-0.5 border border-slate-200 shadow-sm"
+              title="Tamanho da Fonte das Tabelas"
+            >
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-[12px] font-bold text-slate-600 hover:text-slate-900 bg-transparent"
+                onClick={() => setTableFontSize((p) => Math.max(8, p - 1))}
+              >
+                A-
+              </Button>
+              <span className="text-[12px] font-medium text-slate-500 w-5 text-center select-none">
+                {tableFontSize}
+              </span>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-[14px] font-bold text-slate-600 hover:text-slate-900 bg-transparent"
+                onClick={() => setTableFontSize((p) => Math.min(24, p + 1))}
+              >
+                A+
+              </Button>
+            </div>
             {selectedIds.length > 0 && (
               <AlertDialog>
                 <AlertDialogTrigger asChild>
@@ -313,7 +346,7 @@ export default function SharedQueriesList() {
         </CardHeader>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
-            <Table>
+            <Table style={{ fontSize: `${tableFontSize}px` }}>
               <TableHeader>
                 <TableRow className="bg-muted/30 hover:bg-muted/30 border-b">
                   <TableHead className="w-[40px] text-center px-4">

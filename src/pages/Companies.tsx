@@ -194,6 +194,15 @@ export default function Companies() {
 
   const [selectedIds, setSelectedIds] = useState<string[]>([])
 
+  const [tableFontSize, setTableFontSize] = useState<number>(() => {
+    const saved = localStorage.getItem('companies_table_font_size')
+    return saved ? parseInt(saved, 10) : 11
+  })
+
+  useEffect(() => {
+    localStorage.setItem('companies_table_font_size', tableFontSize.toString())
+  }, [tableFontSize])
+
   const { user } = useAuth()
   const { toast } = useToast()
 
@@ -610,6 +619,30 @@ export default function Companies() {
           <p className="text-slate-500 mt-1">Cadastre e gerencie as organizações do sistema.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <div
+            className="hidden sm:flex items-center gap-1 bg-white rounded-md p-0.5 border border-slate-200 shadow-sm"
+            title="Tamanho da Fonte das Tabelas"
+          >
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-[12px] font-bold text-slate-600 hover:text-slate-900 bg-transparent"
+              onClick={() => setTableFontSize((p) => Math.max(8, p - 1))}
+            >
+              A-
+            </Button>
+            <span className="text-[12px] font-medium text-slate-500 w-5 text-center select-none">
+              {tableFontSize}
+            </span>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-[14px] font-bold text-slate-600 hover:text-slate-900 bg-transparent"
+              onClick={() => setTableFontSize((p) => Math.min(24, p + 1))}
+            >
+              A+
+            </Button>
+          </div>
           <Button
             variant="outline"
             className="gap-2 text-indigo-600 border-indigo-200 hover:bg-indigo-50"
@@ -757,7 +790,7 @@ export default function Companies() {
             </div>
           ) : (
             <div className="rounded-md border-2 border-indigo-950 overflow-hidden">
-              <Table>
+              <Table style={{ fontSize: `${tableFontSize}px` }}>
                 <TableHeader className="!bg-indigo-950 [&_tr]:border-b [&_tr]:border-b-indigo-900/50">
                   <TableRow className="border-0 !bg-indigo-950 hover:!bg-indigo-950">
                     <TableHead className="w-12 text-center py-2 px-2 !bg-indigo-950 text-white font-bold text-[14px] border-0">
@@ -823,10 +856,11 @@ export default function Companies() {
                     return (
                       <TableRow
                         key={org.id}
+                        style={{ fontSize: `${tableFontSize}px` }}
                         className={
                           isEven
-                            ? 'bg-[#bfdbfe] text-slate-900 font-normal text-[11px] hover:bg-[#93c5fd] border-0'
-                            : 'bg-white text-slate-900 font-normal text-[11px] hover:bg-slate-50 border-0'
+                            ? 'bg-[#bfdbfe] text-slate-900 font-normal hover:bg-[#93c5fd] border-0'
+                            : 'bg-white text-slate-900 font-normal hover:bg-slate-50 border-0'
                         }
                       >
                         <TableCell className="py-0.5 px-2 text-center font-normal">
@@ -843,19 +877,19 @@ export default function Companies() {
                             }
                           />
                         </TableCell>
-                        <TableCell className="py-0.5 px-2 text-[11px] text-center font-normal">
+                        <TableCell className="py-0.5 px-2 text-[1em] text-center font-normal">
                           <div className="flex items-center justify-center gap-2">
                             <div>
-                              <p className="text-[11px] font-bold text-slate-900">{org.name}</p>
+                              <p className="text-[1em] font-bold text-slate-900">{org.name}</p>
                               {org.address && (
-                                <p className="text-[11px] truncate max-w-[200px] text-slate-500 font-normal">
+                                <p className="text-[0.9em] truncate max-w-[200px] text-slate-500 font-normal">
                                   {org.address}
                                 </p>
                               )}
                             </div>
                           </div>
                         </TableCell>
-                        <TableCell className="py-0.5 px-2 text-[11px] text-center font-normal">
+                        <TableCell className="py-0.5 px-2 text-[1em] text-center font-normal">
                           <div>
                             {org.cnpj && (
                               <p className="text-slate-900 font-normal">
@@ -871,7 +905,7 @@ export default function Companies() {
                             )}
                           </div>
                         </TableCell>
-                        <TableCell className="py-0.5 px-2 text-[11px] text-center font-normal">
+                        <TableCell className="py-0.5 px-2 text-[1em] text-center font-normal">
                           <div className="text-slate-900 font-normal">
                             {org.email && <p>{org.email}</p>}
                             {org.phone && <p>{org.phone}</p>}
@@ -885,14 +919,14 @@ export default function Companies() {
                             variant={org.status ? 'default' : 'secondary'}
                             className={
                               org.status
-                                ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200 font-normal text-[10px] h-4 py-0'
-                                : 'bg-slate-100 text-slate-700 hover:bg-slate-200 font-normal text-[10px] h-4 py-0'
+                                ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200 font-normal text-[0.85em] h-auto py-0.5'
+                                : 'bg-slate-100 text-slate-700 hover:bg-slate-200 font-normal text-[0.85em] h-auto py-0.5'
                             }
                           >
                             {org.status ? 'Ativo' : 'Inativo'}
                           </Badge>
                         </TableCell>
-                        <TableCell className="py-0.5 px-2 text-[11px] text-center text-slate-900 font-normal">
+                        <TableCell className="py-0.5 px-2 text-[1em] text-center text-slate-900 font-normal">
                           {org.created_at
                             ? format(new Date(org.created_at), 'dd/MM/yyyy', { locale: ptBR })
                             : '-'}

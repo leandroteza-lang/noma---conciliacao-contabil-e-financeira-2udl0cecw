@@ -131,6 +131,15 @@ export default function ChartAccounts() {
   const [deleteProgress, setDeleteProgress] = useState({ current: 0, total: 0, step: '' })
 
   const [organizationsList, setOrganizationsList] = useState<{ id: string; name: string }[]>([])
+
+  const [tableFontSize, setTableFontSize] = useState<number>(() => {
+    const saved = localStorage.getItem('chart_accounts_table_font_size')
+    return saved ? parseInt(saved, 10) : 11
+  })
+
+  useEffect(() => {
+    localStorage.setItem('chart_accounts_table_font_size', tableFontSize.toString())
+  }, [tableFontSize])
   const [summary, setSummary] = useState({ ativo: 0, passivo: 0, receita: 0, despesa: 0 })
 
   useEffect(() => {
@@ -729,6 +738,30 @@ export default function ChartAccounts() {
           <p className="text-muted-foreground">Gerencie a hierarquia contábil das suas empresas.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <div
+            className="hidden sm:flex items-center gap-1 bg-white rounded-md p-0.5 border border-slate-200 shadow-sm"
+            title="Tamanho da Fonte das Tabelas"
+          >
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-[12px] font-bold text-slate-600 hover:text-slate-900 bg-transparent"
+              onClick={() => setTableFontSize((p) => Math.max(8, p - 1))}
+            >
+              A-
+            </Button>
+            <span className="text-[12px] font-medium text-slate-500 w-5 text-center select-none">
+              {tableFontSize}
+            </span>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-[14px] font-bold text-slate-600 hover:text-slate-900 bg-transparent"
+              onClick={() => setTableFontSize((p) => Math.min(24, p + 1))}
+            >
+              A+
+            </Button>
+          </div>
           <Button
             variant="outline"
             onClick={() => setIsUndoImportOpen(true)}
@@ -1049,7 +1082,10 @@ export default function ChartAccounts() {
         </CardHeader>
         <CardContent>
           <div className="rounded-md border overflow-x-auto">
-            <Table className="[&_td]:p-1.5 [&_td]:px-2 [&_th]:p-1.5 [&_th]:px-2 text-xs">
+            <Table
+              style={{ fontSize: `${tableFontSize}px` }}
+              className="[&_td]:p-1.5 [&_td]:px-2 [&_th]:p-1.5 [&_th]:px-2"
+            >
               <TableHeader className="bg-slate-50/80">
                 <TableRow disableZebra>
                   <TableHead className="w-10 text-center">
@@ -1115,7 +1151,12 @@ export default function ChartAccounts() {
                     const level = (code.match(/\./g) || []).length + 1
 
                     return (
-                      <TableRow key={acc.id} className={getRowClassName(acc)} disableZebra>
+                      <TableRow
+                        key={acc.id}
+                        className={getRowClassName(acc)}
+                        disableZebra
+                        style={{ fontSize: `${tableFontSize}px` }}
+                      >
                         <TableCell className="text-center">
                           <Checkbox
                             checked={selectedIds.includes(acc.id)}
@@ -1166,7 +1207,7 @@ export default function ChartAccounts() {
                             <Badge
                               variant="outline"
                               className={cn(
-                                'text-[10px] font-medium border-transparent shadow-sm rounded-full px-2.5',
+                                'text-[0.85em] font-medium border-transparent shadow-sm rounded-full px-2.5',
                                 acc.account_level === 'Sintética'
                                   ? level <= 3
                                     ? 'bg-white text-indigo-950'
@@ -1183,7 +1224,7 @@ export default function ChartAccounts() {
                             <Badge
                               variant="outline"
                               className={cn(
-                                'text-[10px] font-medium border-transparent shadow-sm rounded-full px-2.5',
+                                'text-[0.85em] font-medium border-transparent shadow-sm rounded-full px-2.5',
                                 acc.account_behavior === 'Devedora'
                                   ? 'bg-orange-100 text-orange-800'
                                   : 'bg-purple-100 text-purple-800',

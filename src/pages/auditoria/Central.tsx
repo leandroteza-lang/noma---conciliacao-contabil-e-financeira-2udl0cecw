@@ -487,14 +487,14 @@ function ExpandableRow({
               onCheckedChange={() => onToggleSelect(log.id)}
               aria-label="Selecionar linha"
             />
-            <span className="whitespace-nowrap text-[13px] text-muted-foreground font-medium">
+            <span className="whitespace-nowrap text-[1em] text-muted-foreground font-medium">
               {log.created_at && !isNaN(new Date(log.created_at).getTime())
                 ? format(new Date(log.created_at), 'dd/MM/yyyy, HH:mm:ss', { locale: ptBR })
                 : '-'}
             </span>{' '}
           </div>
         </TableCell>
-        <TableCell className="font-medium text-muted-foreground text-[13px]">
+        <TableCell className="font-medium text-muted-foreground text-[1em]">
           {formatEntity(log.entity_type)}
         </TableCell>
         <TableCell>
@@ -508,14 +508,14 @@ function ExpandableRow({
         </TableCell>
         <TableCell>
           <div className="flex flex-col max-w-[280px]">
-            <span className="font-bold text-[13px] text-foreground truncate" title={info.primary}>
+            <span className="font-bold text-[1em] text-foreground truncate" title={info.primary}>
               {info.primary}
             </span>
           </div>
         </TableCell>
         <TableCell>
           <span
-            className="font-medium text-[13px] text-muted-foreground truncate max-w-[140px] inline-block"
+            className="font-medium text-[1em] text-muted-foreground truncate max-w-[140px] inline-block"
             title={
               info.secondary !== log.entity_id ? info.secondary : 'Identificador não disponível'
             }
@@ -523,8 +523,8 @@ function ExpandableRow({
             {info.secondary && info.secondary !== log.entity_id ? info.secondary : '-'}
           </span>
         </TableCell>
-        <TableCell className="text-[13px] font-bold text-foreground">{userName}</TableCell>
-        <TableCell className="text-muted-foreground text-[13px]">
+        <TableCell className="text-[1em] font-bold text-foreground">{userName}</TableCell>
+        <TableCell className="text-muted-foreground text-[1em]">
           {log.ip_address || 'N/A'}
         </TableCell>
         <TableCell className="text-right pr-4">
@@ -739,6 +739,15 @@ export default function CentralAuditoria() {
     direction: 'desc',
   })
   const [activeFilter, setActiveFilter] = useState<string | null>(null)
+
+  const [tableFontSize, setTableFontSize] = useState<number>(() => {
+    const saved = localStorage.getItem('auditoria_central_table_font_size')
+    return saved ? parseInt(saved, 10) : 13
+  })
+
+  useEffect(() => {
+    localStorage.setItem('auditoria_central_table_font_size', tableFontSize.toString())
+  }, [tableFontSize])
 
   useEffect(() => {
     fetchDictionaries()
@@ -1147,6 +1156,30 @@ export default function CentralAuditoria() {
           </div>
         </div>
         <div className="flex items-center gap-2 self-start flex-wrap">
+          <div
+            className="hidden sm:flex items-center gap-1 bg-white rounded-md p-0.5 border border-slate-200 shadow-sm"
+            title="Tamanho da Fonte das Tabelas"
+          >
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-[12px] font-bold text-slate-600 hover:text-slate-900 bg-transparent"
+              onClick={() => setTableFontSize((p) => Math.max(8, p - 1))}
+            >
+              A-
+            </Button>
+            <span className="text-[12px] font-medium text-slate-500 w-5 text-center select-none">
+              {tableFontSize}
+            </span>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-[14px] font-bold text-slate-600 hover:text-slate-900 bg-transparent"
+              onClick={() => setTableFontSize((p) => Math.min(24, p + 1))}
+            >
+              A+
+            </Button>
+          </div>
           <Button variant="outline" className="bg-background" onClick={() => handleExport('csv')}>
             <FileText className="mr-2 h-4 w-4 text-emerald-600" />
             CSV
@@ -1244,7 +1277,7 @@ export default function CentralAuditoria() {
         </CardHeader>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
-            <Table>
+            <Table style={{ fontSize: `${tableFontSize}px` }}>
               <TableHeader>
                 <TableRow disableZebra className="bg-muted/30 hover:bg-muted/30 border-b-2">
                   <TableHead className="w-[180px] py-3">

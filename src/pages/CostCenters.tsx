@@ -157,6 +157,15 @@ export default function CostCenters() {
     observacoes: '',
   })
 
+  const [tableFontSize, setTableFontSize] = useState<number>(() => {
+    const saved = localStorage.getItem('cost_centers_table_font_size')
+    return saved ? parseInt(saved, 10) : 11
+  })
+
+  useEffect(() => {
+    localStorage.setItem('cost_centers_table_font_size', tableFontSize.toString())
+  }, [tableFontSize])
+
   useEffect(() => {
     loadOrgs()
     loadAllTgaOptions()
@@ -654,6 +663,30 @@ export default function CostCenters() {
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
+          <div
+            className="hidden sm:flex items-center gap-1 bg-white rounded-md p-0.5 border border-slate-200 shadow-sm"
+            title="Tamanho da Fonte das Tabelas"
+          >
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-[12px] font-bold text-slate-600 hover:text-slate-900 bg-transparent"
+              onClick={() => setTableFontSize((p) => Math.max(8, p - 1))}
+            >
+              A-
+            </Button>
+            <span className="text-[12px] font-medium text-slate-500 w-5 text-center select-none">
+              {tableFontSize}
+            </span>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-[14px] font-bold text-slate-600 hover:text-slate-900 bg-transparent"
+              onClick={() => setTableFontSize((p) => Math.min(24, p + 1))}
+            >
+              A+
+            </Button>
+          </div>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" className="gap-2">
@@ -1188,7 +1221,7 @@ export default function CostCenters() {
         </CardHeader>
         <CardContent>
           <div className="rounded-md border overflow-x-auto">
-            <Table>
+            <Table style={{ fontSize: `${tableFontSize}px` }}>
               <TableHeader className="bg-slate-100 whitespace-nowrap border-b-2 border-slate-200">
                 <TableRow>
                   <TableHead className="w-12 text-center h-12 px-2">
@@ -1261,7 +1294,8 @@ export default function CostCenters() {
                       <TableRow
                         disableZebra
                         key={cc.id}
-                        className={cn('whitespace-nowrap transition-colors text-xs h-8', rowClass)}
+                        style={{ fontSize: `${tableFontSize}px` }}
+                        className={cn('whitespace-nowrap transition-colors h-auto', rowClass)}
                       >
                         <TableCell className="text-center p-2">
                           <Checkbox
@@ -1307,7 +1341,7 @@ export default function CostCenters() {
                             <Badge
                               variant={isSynthetic ? 'default' : 'outline'}
                               className={cn(
-                                'text-[10px] h-4 py-0 px-1.5',
+                                'text-[0.85em] h-auto py-0.5 px-1.5',
                                 isSynthetic &&
                                   level <= 3 &&
                                   'bg-white/20 text-white hover:bg-white/30 border-none',
@@ -1329,7 +1363,7 @@ export default function CostCenters() {
                             <Badge
                               variant="outline"
                               className={cn(
-                                'text-[10px] h-4 py-0 px-1.5',
+                                'text-[0.85em] h-auto py-0.5 px-1.5',
                                 isSynthetic && level <= 3 && 'border-white/30 text-white',
                               )}
                             >
@@ -1344,7 +1378,7 @@ export default function CostCenters() {
                             <Badge
                               variant="secondary"
                               className={cn(
-                                'text-[10px] h-4 py-0 px-1.5',
+                                'text-[0.85em] h-auto py-0.5 px-1.5',
                                 isSynthetic &&
                                   level <= 3 &&
                                   'bg-white/10 text-white hover:bg-white/20',
@@ -1361,7 +1395,7 @@ export default function CostCenters() {
                             <Badge
                               variant="outline"
                               className={cn(
-                                'bg-primary/5 text-[10px] h-4 py-0 px-1.5',
+                                'bg-primary/5 text-[0.85em] h-auto py-0.5 px-1.5',
                                 isSynthetic &&
                                   level <= 3 &&
                                   'bg-white/5 border-white/20 text-white',
@@ -1387,7 +1421,7 @@ export default function CostCenters() {
                                           : 'secondary'
                                     }
                                     className={cn(
-                                      'text-[10px] h-4 py-0 px-1.5 truncate max-w-full inline-flex',
+                                      'text-[0.85em] h-auto py-0.5 px-1.5 truncate max-w-full inline-flex',
                                       isSynthetic &&
                                         level <= 3 &&
                                         cc.contabiliza === 'SIM' &&

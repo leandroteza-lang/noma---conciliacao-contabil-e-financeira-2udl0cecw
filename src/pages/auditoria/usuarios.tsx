@@ -165,6 +165,15 @@ export default function AuditoriaUsuarios() {
   const [activeDashboardFilter, setActiveDashboardFilter] = useState<string | null>(null)
   const { toast } = useToast()
 
+  const [tableFontSize, setTableFontSize] = useState<number>(() => {
+    const saved = localStorage.getItem('auditoria_usuarios_table_font_size')
+    return saved ? parseInt(saved, 10) : 13
+  })
+
+  useEffect(() => {
+    localStorage.setItem('auditoria_usuarios_table_font_size', tableFontSize.toString())
+  }, [tableFontSize])
+
   const entityType = 'usuario'
 
   const fetchLogs = useCallback(
@@ -498,7 +507,33 @@ export default function AuditoriaUsuarios() {
           </div>
         </div>
 
-        <AuditExport logs={logs} entityType={entityType} />
+        <div className="flex items-center gap-2">
+          <div
+            className="hidden sm:flex items-center gap-1 bg-white rounded-md p-0.5 border border-slate-200 shadow-sm"
+            title="Tamanho da Fonte das Tabelas"
+          >
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-[12px] font-bold text-slate-600 hover:text-slate-900 bg-transparent"
+              onClick={() => setTableFontSize((p) => Math.max(8, p - 1))}
+            >
+              A-
+            </Button>
+            <span className="text-[12px] font-medium text-slate-500 w-5 text-center select-none">
+              {tableFontSize}
+            </span>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-[14px] font-bold text-slate-600 hover:text-slate-900 bg-transparent"
+              onClick={() => setTableFontSize((p) => Math.min(24, p + 1))}
+            >
+              A+
+            </Button>
+          </div>
+          <AuditExport logs={logs} entityType={entityType} />
+        </div>
       </div>
 
       <AuditDashboard
@@ -521,7 +556,7 @@ export default function AuditoriaUsuarios() {
           </div>
         )}
         <div className="overflow-x-auto">
-          <Table>
+          <Table style={{ fontSize: `${tableFontSize}px` }}>
             <TableHeader>
               <TableRow className="bg-muted/50 hover:bg-muted/50">
                 <TableHead className="w-12 text-center">

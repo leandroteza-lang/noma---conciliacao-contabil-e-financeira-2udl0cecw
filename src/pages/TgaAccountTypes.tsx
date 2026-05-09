@@ -65,6 +65,15 @@ export default function TgaAccountTypes() {
   const { toast } = useToast()
   const { user } = useAuth()
 
+  const [tableFontSize, setTableFontSize] = useState<number>(() => {
+    const saved = localStorage.getItem('tga_types_table_font_size')
+    return saved ? parseInt(saved, 10) : 11
+  })
+
+  useEffect(() => {
+    localStorage.setItem('tga_types_table_font_size', tableFontSize.toString())
+  }, [tableFontSize])
+
   const loadData = async () => {
     setLoading(true)
     const { data: records, error } = await supabase
@@ -252,6 +261,30 @@ export default function TgaAccountTypes() {
           <p className="text-muted-foreground">Gerencie as tipificações de contas TGA.</p>
         </div>
         <div className="flex gap-2 flex-wrap">
+          <div
+            className="hidden sm:flex items-center gap-1 bg-white rounded-md p-0.5 border border-slate-200 shadow-sm"
+            title="Tamanho da Fonte das Tabelas"
+          >
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-[12px] font-bold text-slate-600 hover:text-slate-900 bg-transparent"
+              onClick={() => setTableFontSize((p) => Math.max(8, p - 1))}
+            >
+              A-
+            </Button>
+            <span className="text-[12px] font-medium text-slate-500 w-5 text-center select-none">
+              {tableFontSize}
+            </span>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-[14px] font-bold text-slate-600 hover:text-slate-900 bg-transparent"
+              onClick={() => setTableFontSize((p) => Math.min(24, p + 1))}
+            >
+              A+
+            </Button>
+          </div>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline">
@@ -307,7 +340,7 @@ export default function TgaAccountTypes() {
       </div>
 
       <div className="border-2 border-indigo-950 rounded-md bg-card/20 overflow-hidden">
-        <Table>
+        <Table style={{ fontSize: `${tableFontSize}px` }}>
           <TableHeader className="bg-indigo-950">
             <TableRow className="bg-indigo-950 hover:bg-indigo-950 border-0">
               <TableHead className="w-[40px] text-center py-2 px-2 text-white bg-indigo-950 font-normal text-[15px] border-0">
@@ -374,6 +407,7 @@ export default function TgaAccountTypes() {
               sortedData.map((item) => (
                 <TableRow
                   key={item.id}
+                  style={{ fontSize: `${tableFontSize}px` }}
                   className={cn(
                     'border-0 group/row transition-colors',
                     selectedItems.includes(item.id)
@@ -396,16 +430,16 @@ export default function TgaAccountTypes() {
                       )}
                     />
                   </TableCell>
-                  <TableCell className="text-[11px] py-0.5 px-2 text-black dark:text-white group-even/row:text-black group-[.selected]:text-white dark:group-even/row:text-black dark:group-[.selected]:text-white">
+                  <TableCell className="text-[1em] py-0.5 px-2 text-black dark:text-white group-even/row:text-black group-[.selected]:text-white dark:group-even/row:text-black dark:group-[.selected]:text-white">
                     {item.codigo}
                   </TableCell>
-                  <TableCell className="text-[11px] py-0.5 px-2 text-black dark:text-white group-even/row:text-black group-[.selected]:text-white dark:group-even/row:text-black dark:group-[.selected]:text-white">
+                  <TableCell className="text-[1em] py-0.5 px-2 text-black dark:text-white group-even/row:text-black group-[.selected]:text-white dark:group-even/row:text-black dark:group-[.selected]:text-white">
                     {item.nome}
                   </TableCell>
-                  <TableCell className="text-[11px] py-0.5 px-2 text-black dark:text-white group-even/row:text-black group-[.selected]:text-white dark:group-even/row:text-black dark:group-[.selected]:text-white">
+                  <TableCell className="text-[1em] py-0.5 px-2 text-black dark:text-white group-even/row:text-black group-[.selected]:text-white dark:group-even/row:text-black dark:group-[.selected]:text-white">
                     {item.abreviacao || '-'}
                   </TableCell>
-                  <TableCell className="text-[11px] py-0.5 px-2 text-black dark:text-white group-even/row:text-black group-[.selected]:text-white dark:group-even/row:text-black dark:group-[.selected]:text-white">
+                  <TableCell className="text-[1em] py-0.5 px-2 text-black dark:text-white group-even/row:text-black group-[.selected]:text-white dark:group-even/row:text-black dark:group-[.selected]:text-white">
                     {item.organizations?.name || 'Geral'}
                   </TableCell>
                   <TableCell className="text-right py-0.5 px-2">

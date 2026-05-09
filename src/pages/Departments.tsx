@@ -80,6 +80,15 @@ export default function Departments() {
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [isImportModalOpen, setIsImportModalOpen] = useState(false)
   const { user, role, permissions } = useAuth()
+
+  const [tableFontSize, setTableFontSize] = useState<number>(() => {
+    const saved = localStorage.getItem('departments_table_font_size')
+    return saved ? parseInt(saved, 10) : 11
+  })
+
+  useEffect(() => {
+    localStorage.setItem('departments_table_font_size', tableFontSize.toString())
+  }, [tableFontSize])
   const { toast } = useToast()
   const { logAction } = useAuditLog()
 
@@ -456,6 +465,30 @@ export default function Departments() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <div
+            className="hidden sm:flex items-center gap-1 bg-white rounded-md p-0.5 border border-slate-200 shadow-sm"
+            title="Tamanho da Fonte das Tabelas"
+          >
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-[12px] font-bold text-slate-600 hover:text-slate-900 bg-transparent"
+              onClick={() => setTableFontSize((p) => Math.max(8, p - 1))}
+            >
+              A-
+            </Button>
+            <span className="text-[12px] font-medium text-slate-500 w-5 text-center select-none">
+              {tableFontSize}
+            </span>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-[14px] font-bold text-slate-600 hover:text-slate-900 bg-transparent"
+              onClick={() => setTableFontSize((p) => Math.min(24, p + 1))}
+            >
+              A+
+            </Button>
+          </div>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" className="gap-2">
@@ -585,7 +618,7 @@ export default function Departments() {
             </div>
           ) : (
             <div className="border-2 border-indigo-950 rounded-md bg-card/20 overflow-hidden overflow-x-auto">
-              <Table>
+              <Table style={{ fontSize: `${tableFontSize}px` }}>
                 <TableHeader className="bg-[#1e1b4b]">
                   <TableRow disableZebra className="h-9 border-0 hover:bg-transparent">
                     {canDelete && (
@@ -638,8 +671,9 @@ export default function Departments() {
                       <TableRow
                         key={item.id}
                         disableZebra
+                        style={{ fontSize: `${tableFontSize}px` }}
                         className={cn(
-                          'h-6 whitespace-nowrap transition-colors border-0 text-[11px]',
+                          'h-auto whitespace-nowrap transition-colors border-0',
                           isZebra
                             ? 'bg-[#bfdbfe] hover:bg-[#93c5fd] text-black'
                             : 'bg-transparent hover:bg-muted/50 text-black dark:text-white',

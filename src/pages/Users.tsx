@@ -73,6 +73,15 @@ export default function Users() {
   const [sortDesc, setSortDesc] = useState(false)
   const [selectedUsers, setSelectedUsers] = useState<string[]>([])
   const { toast } = useToast()
+
+  const [tableFontSize, setTableFontSize] = useState<number>(() => {
+    const saved = localStorage.getItem('users_table_font_size')
+    return saved ? parseInt(saved, 10) : 11
+  })
+
+  useEffect(() => {
+    localStorage.setItem('users_table_font_size', tableFontSize.toString())
+  }, [tableFontSize])
   const { logAction } = useAuditLog()
 
   const loadUsers = async () => {
@@ -282,6 +291,30 @@ export default function Users() {
           <p className="text-muted-foreground">Gerencie os acessos e perfis do sistema.</p>
         </div>
         <div className="flex gap-2 flex-wrap">
+          <div
+            className="hidden sm:flex items-center gap-1 bg-white rounded-md p-0.5 border border-slate-200 shadow-sm"
+            title="Tamanho da Fonte das Tabelas"
+          >
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-[12px] font-bold text-slate-600 hover:text-slate-900 bg-transparent"
+              onClick={() => setTableFontSize((p) => Math.max(8, p - 1))}
+            >
+              A-
+            </Button>
+            <span className="text-[12px] font-medium text-slate-500 w-5 text-center select-none">
+              {tableFontSize}
+            </span>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-[14px] font-bold text-slate-600 hover:text-slate-900 bg-transparent"
+              onClick={() => setTableFontSize((p) => Math.min(24, p + 1))}
+            >
+              A+
+            </Button>
+          </div>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline">
@@ -350,7 +383,7 @@ export default function Users() {
       </div>
 
       <div className="border-2 border-indigo-950 rounded-md bg-card/20 overflow-hidden">
-        <Table>
+        <Table style={{ fontSize: `${tableFontSize}px` }}>
           <TableHeader className="!bg-indigo-950">
             <TableRow className="border-0 !bg-indigo-950 hover:!bg-indigo-950">
               <TableHead className="w-[40px] text-center py-2 px-2 !bg-indigo-950 text-white font-bold text-[15px] border-0">
@@ -434,7 +467,8 @@ export default function Users() {
                 <TableRow
                   key={user.id}
                   disableZebra
-                  className="border-0 group/row font-normal text-[11px] text-black dark:text-white even:bg-[#bfdbfe] even:text-black hover:even:bg-[#93c5fd]"
+                  style={{ fontSize: `${tableFontSize}px` }}
+                  className="border-0 group/row font-normal text-black dark:text-white even:bg-[#bfdbfe] even:text-black hover:even:bg-[#93c5fd]"
                 >
                   <TableCell className="!font-normal text-center py-0.5 px-2">
                     <Checkbox
@@ -452,7 +486,7 @@ export default function Users() {
                   <TableCell className="!font-normal py-0.5 px-2">
                     <Badge
                       variant="outline"
-                      className="!font-normal text-black dark:text-white border-black dark:border-white h-5 text-[11px] group-even/row:text-black group-even/row:border-black group-even/row:bg-transparent"
+                      className="!font-normal text-black dark:text-white border-black dark:border-white h-auto py-0.5 text-[0.85em] group-even/row:text-black group-even/row:border-black group-even/row:bg-transparent"
                     >
                       {user.role === 'admin'
                         ? 'Administrador'
@@ -470,21 +504,21 @@ export default function Users() {
                     {user.approval_status === 'pending' ? (
                       <Badge
                         variant="secondary"
-                        className="!font-normal bg-amber-100 text-amber-800 hover:bg-amber-100 dark:bg-amber-900/30 dark:text-amber-300 h-5 text-[11px]"
+                        className="!font-normal bg-amber-100 text-amber-800 hover:bg-amber-100 dark:bg-amber-900/30 dark:text-amber-300 h-auto py-0.5 text-[0.85em]"
                       >
                         Pendente de Aprovação
                       </Badge>
                     ) : user.status ? (
                       <Badge
                         variant="secondary"
-                        className="!font-normal bg-emerald-100 text-emerald-800 hover:bg-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-300 h-5 text-[11px]"
+                        className="!font-normal bg-emerald-100 text-emerald-800 hover:bg-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-300 h-auto py-0.5 text-[0.85em]"
                       >
                         Ativo
                       </Badge>
                     ) : (
                       <Badge
                         variant="secondary"
-                        className="!font-normal bg-slate-100 text-slate-800 hover:bg-slate-100 dark:bg-slate-800 dark:text-slate-300 h-5 text-[11px]"
+                        className="!font-normal bg-slate-100 text-slate-800 hover:bg-slate-100 dark:bg-slate-800 dark:text-slate-300 h-auto py-0.5 text-[0.85em]"
                       >
                         Inativo
                       </Badge>

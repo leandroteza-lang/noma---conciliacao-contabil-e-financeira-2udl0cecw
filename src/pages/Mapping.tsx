@@ -96,6 +96,15 @@ export default function Mapping() {
   const [batchActionType, setBatchActionType] = useState<'unlink' | 'delete_cc' | null>(null)
   const [isExporting, setIsExporting] = useState(false)
 
+  const [tableFontSize, setTableFontSize] = useState<number>(() => {
+    const saved = localStorage.getItem('mapping_table_font_size')
+    return saved ? parseInt(saved, 10) : 11
+  })
+
+  useEffect(() => {
+    localStorage.setItem('mapping_table_font_size', tableFontSize.toString())
+  }, [tableFontSize])
+
   const handleExport = async (format: 'excel' | 'csv' | 'txt' | 'pdf' | 'browser') => {
     if (visibleCCs.length === 0) {
       toast.info('Não há dados para exportar com os filtros atuais.')
@@ -861,6 +870,30 @@ export default function Mapping() {
           </p>
         </div>
         <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto mt-4 md:mt-0">
+          <div
+            className="hidden sm:flex items-center gap-1 bg-white rounded-md p-0.5 border border-slate-200 shadow-sm"
+            title="Tamanho da Fonte das Tabelas"
+          >
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-[12px] font-bold text-slate-600 hover:text-slate-900 bg-transparent"
+              onClick={() => setTableFontSize((p) => Math.max(8, p - 1))}
+            >
+              A-
+            </Button>
+            <span className="text-[12px] font-medium text-slate-500 w-5 text-center select-none">
+              {tableFontSize}
+            </span>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-[14px] font-bold text-slate-600 hover:text-slate-900 bg-transparent"
+              onClick={() => setTableFontSize((p) => Math.min(24, p + 1))}
+            >
+              A+
+            </Button>
+          </div>
           <Button
             variant="secondary"
             onClick={handleAutoMap}
@@ -1184,7 +1217,7 @@ export default function Mapping() {
         )}
 
         <div className="overflow-x-auto">
-          <Table className="border-collapse">
+          <Table className="border-collapse" style={{ fontSize: `${tableFontSize}px` }}>
             <TableHeader className="bg-indigo-950 border-b border-indigo-900 shadow-sm sticky top-0 z-10">
               <TableRow className="h-14 hover:bg-indigo-950 border-b-0">
                 <TableHead className="w-[40px] text-center border-r border-indigo-900/50 align-middle">

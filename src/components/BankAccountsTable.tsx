@@ -62,6 +62,15 @@ export function BankAccountsTable({
   const isMobile = useIsMobile()
   const [expandedRows, setExpandedRows] = useState<string[]>([])
 
+  const [tableFontSize, setTableFontSize] = useState<number>(() => {
+    const saved = localStorage.getItem('bank_accounts_table_font_size')
+    return saved ? parseInt(saved, 10) : 11
+  })
+
+  useEffect(() => {
+    localStorage.setItem('bank_accounts_table_font_size', tableFontSize.toString())
+  }, [tableFontSize])
+
   const toggleRow = (id: string) => {
     setExpandedRows((prev) => (prev.includes(id) ? prev.filter((r) => r !== id) : [...prev, id]))
   }
@@ -114,6 +123,30 @@ export function BankAccountsTable({
   return (
     <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="flex flex-wrap items-center justify-end gap-2 px-1">
+        <div
+          className="hidden sm:flex items-center gap-1 bg-white rounded-md p-0.5 border border-slate-200 shadow-sm mr-auto"
+          title="Tamanho da Fonte das Tabelas"
+        >
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 text-[12px] font-bold text-slate-600 hover:text-slate-900 bg-transparent"
+            onClick={() => setTableFontSize((p) => Math.max(8, p - 1))}
+          >
+            A-
+          </Button>
+          <span className="text-[12px] font-medium text-slate-500 w-5 text-center select-none">
+            {tableFontSize}
+          </span>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 text-[14px] font-bold text-slate-600 hover:text-slate-900 bg-transparent"
+            onClick={() => setTableFontSize((p) => Math.min(24, p + 1))}
+          >
+            A+
+          </Button>
+        </div>
         <Button variant="outline" size="sm" onClick={expandAll} className="bg-background">
           <Network className="w-4 h-4 mr-2" /> Expandir Todos
         </Button>
@@ -329,7 +362,7 @@ export function BankAccountsTable({
         </div>
       ) : (
         <div className="border rounded-xl bg-card overflow-hidden">
-          <Table>
+          <Table style={{ fontSize: `${tableFontSize}px` }}>
             <TableHeader>
               <TableRow className="bg-muted/50">
                 <TableHead className="p-1 px-2 w-[40px] text-center">
@@ -432,6 +465,7 @@ export function BankAccountsTable({
                 return (
                   <Fragment key={acc.id}>
                     <TableRow
+                      style={{ fontSize: `${tableFontSize}px` }}
                       className={`transition-opacity group/row ${isEven ? 'bg-[#800000] text-white font-bold hover:bg-[#600000]' : ''} ${acc.pending_deletion ? 'opacity-50 bg-secondary/20' : 'hover:bg-muted/30'} ${selectedAccounts.includes(acc.id) ? 'bg-muted/50' : ''}`}
                     >
                       <TableCell className="p-1 px-2 text-center">
@@ -469,7 +503,7 @@ export function BankAccountsTable({
                       </TableCell>
                       <TableCell className="p-1 px-2">
                         <span
-                          className={`${isEven ? 'bg-white/50 text-black' : 'bg-primary/10 text-primary'} text-[11px] px-2 py-0.5 rounded-full font-bold whitespace-nowrap`}
+                          className={`${isEven ? 'bg-white/50 text-black' : 'bg-primary/10 text-primary'} text-[0.85em] px-2 py-0.5 rounded-full font-bold whitespace-nowrap`}
                         >
                           {acc.account_type || '-'}
                         </span>
@@ -477,7 +511,7 @@ export function BankAccountsTable({
                       <TableCell className="p-1 px-2">
                         {acc.classification ? (
                           <span
-                            className={`${isEven ? 'bg-white/50 text-black' : 'bg-secondary text-secondary-foreground'} text-[11px] px-2 py-0.5 rounded-full font-bold whitespace-nowrap`}
+                            className={`${isEven ? 'bg-white/50 text-black' : 'bg-secondary text-secondary-foreground'} text-[0.85em] px-2 py-0.5 rounded-full font-bold whitespace-nowrap`}
                           >
                             {acc.classification}
                           </span>
