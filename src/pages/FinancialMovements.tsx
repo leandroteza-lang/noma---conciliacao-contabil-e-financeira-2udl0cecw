@@ -5365,13 +5365,28 @@ export default function FinancialMovements() {
                         return (
                           <TableRow
                             key={`${rowItem.data.id}-inline-hdr`}
-                            className="bg-slate-50 hover:bg-slate-50 border-0"
+                            className="bg-slate-100/80 hover:bg-slate-100/80 border-0"
                           >
-                            <TableCell colSpan={resumoColOrder.length} className="p-0 border-0">
-                              <div className="bg-slate-100/80 px-4 py-1 text-[10px] font-bold text-slate-500 uppercase tracking-wider border-y border-slate-200">
-                                ↳ Raiz Hierárquica da Conta Vinculada
-                              </div>
-                            </TableCell>
+                            {resumoColOrder.map((key) => {
+                              if (key === 'conta_contabil') {
+                                return (
+                                  <TableCell
+                                    key={key}
+                                    className="p-0 border-0 border-y border-slate-200"
+                                  >
+                                    <div className="px-4 py-1.5 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                                      ↳ Raiz Hierárquica da Conta Vinculada
+                                    </div>
+                                  </TableCell>
+                                )
+                              }
+                              return (
+                                <TableCell
+                                  key={key}
+                                  className="p-0 border-0 border-y border-slate-200"
+                                ></TableCell>
+                              )
+                            })}
                           </TableRow>
                         )
                       }
@@ -5424,25 +5439,41 @@ export default function FinancialMovements() {
                           <TableRow
                             key={`${node.id}-inline-${hNode.id}`}
                             className="border-0 hover:opacity-90 transition-opacity"
+                            style={{ backgroundColor: bg }}
                           >
-                            <TableCell colSpan={resumoColOrder.length} className="p-0 border-0">
-                              <div
-                                style={{ backgroundColor: bg, color, fontWeight: fw as any }}
-                                className="px-6 py-1.5 flex items-center gap-3 border-b border-white/10 text-[11px]"
-                              >
-                                <span
-                                  style={{
-                                    backgroundColor: badgeBg,
-                                    color: badgeColor,
-                                    borderColor: badgeBorder,
-                                  }}
-                                  className="font-mono text-[10px] px-1.5 py-0.5 rounded border shadow-sm"
-                                >
-                                  {code}
-                                </span>
-                                <span>{hNode.account_name}</span>
-                              </div>
-                            </TableCell>
+                            {resumoColOrder.map((key) => {
+                              if (key === 'conta_contabil') {
+                                return (
+                                  <TableCell
+                                    key={key}
+                                    className="p-0 border-0 border-b border-white/10"
+                                  >
+                                    <div
+                                      style={{ color, fontWeight: fw as any }}
+                                      className="px-6 py-1.5 flex items-center gap-3 text-[11px]"
+                                    >
+                                      <span
+                                        style={{
+                                          backgroundColor: badgeBg,
+                                          color: badgeColor,
+                                          borderColor: badgeBorder,
+                                        }}
+                                        className="font-mono text-[10px] px-1.5 py-0.5 rounded border shadow-sm"
+                                      >
+                                        {code}
+                                      </span>
+                                      <span>{hNode.account_name}</span>
+                                    </div>
+                                  </TableCell>
+                                )
+                              }
+                              return (
+                                <TableCell
+                                  key={key}
+                                  className="p-0 border-0 border-b border-white/10"
+                                ></TableCell>
+                              )
+                            })}
                           </TableRow>
                         )
                       }
