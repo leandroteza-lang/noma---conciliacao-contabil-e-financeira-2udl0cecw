@@ -5526,8 +5526,18 @@ export default function FinancialMovements() {
                           ? 'bg-[#bfdbfe] text-black hover:bg-[#93c5fd]'
                           : 'bg-transparent text-black dark:text-white hover:bg-slate-50 dark:hover:bg-slate-800/50'
 
+                      let badgeBgClass = ''
+
                       if (item.isSynthetic) {
-                        rowClass = 'bg-slate-100 text-slate-800 hover:bg-slate-200'
+                        if (item.level === 0) {
+                          rowClass = 'bg-[#1e1b4b] text-white hover:bg-[#1e1b4b]/90'
+                          badgeBgClass = 'bg-[#312e81] border border-[#3730a3]'
+                        } else if (item.level === 1) {
+                          rowClass = 'bg-[#312e81] text-white hover:bg-[#312e81]/90'
+                          badgeBgClass = 'bg-[#3730a3] border border-[#4338ca]'
+                        } else {
+                          rowClass = 'bg-slate-100 text-slate-800 hover:bg-slate-200'
+                        }
                       } else if (!item.mappedAccount) {
                         rowClass =
                           index % 2 === 0
@@ -5558,7 +5568,7 @@ export default function FinancialMovements() {
                                         }
                                         className={cn(
                                           'p-0.5 rounded transition-colors',
-                                          item.isSynthetic && item.level <= 2
+                                          item.isSynthetic && item.level <= 1
                                             ? 'hover:bg-white/20'
                                             : 'hover:bg-black/10',
                                         )}
@@ -5577,7 +5587,7 @@ export default function FinancialMovements() {
                                       className={cn(
                                         'px-1.5 py-0.5 rounded text-[9px] font-bold shadow-sm',
                                         item.isSynthetic
-                                          ? item.level <= 2
+                                          ? item.level <= 1
                                             ? 'bg-white/20 text-white'
                                             : 'bg-black/10 text-black'
                                           : 'bg-blue-50 text-blue-600 border border-blue-200',
@@ -5588,10 +5598,10 @@ export default function FinancialMovements() {
 
                                     <span
                                       className={cn(
-                                        'font-mono',
+                                        'font-mono px-1.5 py-0.5 rounded text-[10px] min-w-[50px] text-center inline-block shadow-sm',
                                         item.isSynthetic && item.level <= 1
-                                          ? 'bg-[#1e1b4b] text-white px-1.5 py-0.5 rounded text-[10px] font-bold min-w-[50px] text-center inline-block shadow-sm'
-                                          : 'font-semibold',
+                                          ? `text-white font-bold ${badgeBgClass}`
+                                          : 'font-semibold bg-transparent',
                                       )}
                                     >
                                       {item.c_custo || 'SEM_CC'}
@@ -5600,7 +5610,7 @@ export default function FinancialMovements() {
                                       className={cn(
                                         'truncate max-w-[250px]',
                                         item.isSynthetic && item.level <= 1
-                                          ? 'font-bold text-slate-800'
+                                          ? 'font-bold text-white'
                                           : '',
                                       )}
                                       title={item.descricao_c_custo}
@@ -5624,7 +5634,7 @@ export default function FinancialMovements() {
                                         <span
                                           className={cn(
                                             'font-mono text-[10px] font-semibold whitespace-nowrap',
-                                            item.isSynthetic && item.level <= 2
+                                            item.isSynthetic && item.level <= 1
                                               ? 'text-white/80'
                                               : 'text-black',
                                           )}
@@ -5635,7 +5645,7 @@ export default function FinancialMovements() {
                                       <span
                                         className={cn(
                                           'truncate font-semibold max-w-[250px]',
-                                          item.isSynthetic && item.level <= 2
+                                          item.isSynthetic && item.level <= 1
                                             ? 'text-white'
                                             : 'text-slate-800',
                                         )}
@@ -5689,7 +5699,7 @@ export default function FinancialMovements() {
                                       className={cn(
                                         'font-bold hover:underline cursor-pointer',
                                         item.isSynthetic
-                                          ? item.level <= 2
+                                          ? item.level <= 1
                                             ? 'text-white cursor-default hover:no-underline'
                                             : 'text-black cursor-default hover:no-underline'
                                           : 'text-blue-600 hover:text-blue-800',
@@ -5705,7 +5715,7 @@ export default function FinancialMovements() {
                                   ) : (
                                     <span
                                       className={
-                                        item.isSynthetic && item.level <= 2
+                                        item.isSynthetic && item.level <= 1
                                           ? 'text-white/50'
                                           : 'text-slate-400'
                                       }
@@ -5758,7 +5768,7 @@ export default function FinancialMovements() {
                                         !item.mappedAccount &&
                                           'bg-[#800000] hover:bg-[#800000]/90 text-white shadow-sm',
                                         item.isSynthetic &&
-                                          item.level <= 2 &&
+                                          item.level <= 1 &&
                                           item.mappedAccount &&
                                           'border-white/20 text-white hover:bg-white/10',
                                       )}
