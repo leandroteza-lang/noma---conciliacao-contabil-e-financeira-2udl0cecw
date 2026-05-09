@@ -726,6 +726,15 @@ export default function FinancialMovements() {
   const [elapsedSeconds, setElapsedSeconds] = useState(0)
   const [refreshKey, setRefreshKey] = useState(0)
 
+  const [tableFontSize, setTableFontSize] = useState<number>(() => {
+    const saved = localStorage.getItem('fin_mov_table_font_size')
+    return saved ? parseInt(saved, 10) : 11
+  })
+
+  useEffect(() => {
+    localStorage.setItem('fin_mov_table_font_size', tableFontSize.toString())
+  }, [tableFontSize])
+
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [totals, setTotals] = useState({ valor: 0, valor_liquido: 0, entradas: 0, saidas: 0 })
   const [isExporting, setIsExporting] = useState(false)
@@ -3355,6 +3364,31 @@ export default function FinancialMovements() {
                     )}
                   </Button>
 
+                  <div
+                    className="hidden sm:flex items-center gap-1 bg-slate-100 rounded-md p-0.5 border border-slate-200"
+                    title="Tamanho da Fonte da Tabela"
+                  >
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6 text-[10px] font-bold text-slate-600 hover:text-slate-900 bg-transparent"
+                      onClick={() => setTableFontSize((p) => Math.max(8, p - 1))}
+                    >
+                      A-
+                    </Button>
+                    <span className="text-[10px] font-medium text-slate-500 w-4 text-center select-none">
+                      {tableFontSize}
+                    </span>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6 text-[12px] font-bold text-slate-600 hover:text-slate-900 bg-transparent"
+                      onClick={() => setTableFontSize((p) => Math.min(24, p + 1))}
+                    >
+                      A+
+                    </Button>
+                  </div>
+
                   <FloatingPanel
                     open={columnsOpen}
                     onClose={() => setColumnsOpen(false)}
@@ -3990,7 +4024,11 @@ export default function FinancialMovements() {
                           missingFields.push('Valor Líquido')
 
                         return (
-                          <TableRow key={row.id} className="transition-colors border-0 text-[11px]">
+                          <TableRow
+                            key={row.id}
+                            className="transition-colors border-0"
+                            style={{ fontSize: `${tableFontSize}px` }}
+                          >
                             <TableCell className="px-2 py-0.5 text-center align-middle border-0">
                               <div className="flex items-center justify-center">
                                 <Checkbox
@@ -4079,7 +4117,7 @@ export default function FinancialMovements() {
                                         {editingId === row.id ? (
                                           <Input
                                             type="date"
-                                            className="h-6 text-[11px] px-1.5 w-32 !text-slate-900"
+                                            className="h-auto py-1 text-[inherit] px-1.5 w-32 !text-slate-900 min-h-6"
                                             value={editForm.data_emissao || ''}
                                             onChange={(e) =>
                                               setEditForm({
@@ -4115,7 +4153,7 @@ export default function FinancialMovements() {
                                       >
                                         {editingId === row.id ? (
                                           <Input
-                                            className="h-6 text-[11px] px-1.5 w-28 !text-slate-900"
+                                            className="h-auto py-1 text-[inherit] px-1.5 w-28 !text-slate-900 min-h-6"
                                             value={editForm.conta_caixa || ''}
                                             onChange={(e) =>
                                               setEditForm({
@@ -4156,7 +4194,7 @@ export default function FinancialMovements() {
                                       >
                                         {editingId === row.id ? (
                                           <Input
-                                            className="h-6 text-[11px] px-1.5 w-24 !text-slate-900"
+                                            className="h-auto py-1 text-[inherit] px-1.5 w-24 !text-slate-900 min-h-6"
                                             value={editForm.forma_pagto || ''}
                                             onChange={(e) =>
                                               setEditForm({
@@ -4178,7 +4216,7 @@ export default function FinancialMovements() {
                                       >
                                         {editingId === row.id ? (
                                           <Input
-                                            className="h-6 text-[11px] px-1.5 w-24 !text-slate-900"
+                                            className="h-auto py-1 text-[inherit] px-1.5 w-24 !text-slate-900 min-h-6"
                                             value={editForm.c_custo || ''}
                                             onChange={(e) =>
                                               setEditForm({ ...editForm, c_custo: e.target.value })
@@ -4235,7 +4273,7 @@ export default function FinancialMovements() {
                                           <Input
                                             type="number"
                                             step="0.01"
-                                            className="h-6 text-[11px] px-1.5 w-28 text-center mx-auto !text-slate-900"
+                                            className="h-auto py-1 text-[inherit] px-1.5 w-28 text-center mx-auto !text-slate-900 min-h-6"
                                             value={editForm.valor_liquido || ''}
                                             onChange={(e) =>
                                               setEditForm({
@@ -4272,7 +4310,7 @@ export default function FinancialMovements() {
                                       >
                                         {editingId === row.id ? (
                                           <Input
-                                            className="h-6 text-[11px] px-1.5 w-28 !text-slate-900"
+                                            className="h-auto py-1 text-[inherit] px-1.5 w-28 !text-slate-900 min-h-6"
                                             value={editForm.n_documento || ''}
                                             onChange={(e) =>
                                               setEditForm({
@@ -4295,7 +4333,7 @@ export default function FinancialMovements() {
                                       >
                                         {editingId === row.id ? (
                                           <Input
-                                            className="h-6 text-[11px] px-1.5 !text-slate-900"
+                                            className="h-auto py-1 text-[inherit] px-1.5 !text-slate-900 min-h-6"
                                             value={editForm.nome_cli_fornec || ''}
                                             onChange={(e) =>
                                               setEditForm({
@@ -4318,7 +4356,7 @@ export default function FinancialMovements() {
                                       >
                                         {editingId === row.id ? (
                                           <Input
-                                            className="h-6 text-[11px] px-1.5 !text-slate-900"
+                                            className="h-auto py-1 text-[inherit] px-1.5 !text-slate-900 min-h-6"
                                             value={editForm.historico || ''}
                                             onChange={(e) =>
                                               setEditForm({
@@ -4359,7 +4397,7 @@ export default function FinancialMovements() {
                                         {editingId === row.id ? (
                                           <Input
                                             type="date"
-                                            className="h-6 text-[11px] px-1.5 w-32 !text-slate-900"
+                                            className="h-auto py-1 text-[inherit] px-1.5 w-32 !text-slate-900 min-h-6"
                                             value={editForm.data_vencto || ''}
                                             onChange={(e) =>
                                               setEditForm({
@@ -4447,7 +4485,7 @@ export default function FinancialMovements() {
                                       >
                                         {editingId === row.id ? (
                                           <Input
-                                            className="h-6 text-[11px] px-1.5 w-24 !text-slate-900"
+                                            className="h-auto py-1 text-[inherit] px-1.5 w-24 !text-slate-900 min-h-6"
                                             value={editForm.banco || ''}
                                             onChange={(e) =>
                                               setEditForm({ ...editForm, banco: e.target.value })
