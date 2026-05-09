@@ -5585,7 +5585,7 @@ export default function FinancialMovements() {
                                             'font-mono text-[10px] font-semibold whitespace-nowrap',
                                             item.isSynthetic && item.level <= 2
                                               ? 'text-white/80'
-                                              : 'text-slate-500',
+                                              : 'text-black',
                                           )}
                                         >
                                           {item.mappedAccount.classification}
