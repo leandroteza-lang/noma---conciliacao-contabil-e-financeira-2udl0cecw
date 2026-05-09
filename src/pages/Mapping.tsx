@@ -960,6 +960,27 @@ export default function Mapping() {
         </div>
       </div>
 
+      <style>{`
+        .mapping-table-wrapper table {
+          font-size: ${tableFontSize}px !important;
+        }
+        .mapping-table-wrapper th,
+        .mapping-table-wrapper th span,
+        .mapping-table-wrapper th div,
+        .mapping-table-wrapper th .badge {
+          font-size: ${tableFontSize > 12 ? '1em' : '1.1em'} !important;
+        }
+        .mapping-table-wrapper td button,
+        .mapping-table-wrapper td input,
+        .mapping-table-wrapper td .badge,
+        .mapping-table-wrapper td [class*="text-sm"] {
+          font-size: 1em !important;
+        }
+        .mapping-table-wrapper .font-mono {
+          font-size: 0.95em !important;
+        }
+      `}</style>
+
       <Card className="bg-white shadow-sm border-slate-200 overflow-hidden">
         <div className="p-6 border-b flex flex-col md:flex-row items-center gap-8 bg-white rounded-t-xl">
           <div className="flex-1 w-full">
@@ -1216,7 +1237,7 @@ export default function Mapping() {
           </div>
         )}
 
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto mapping-table-wrapper">
           <Table className="border-collapse" style={{ fontSize: `${tableFontSize}px` }}>
             <TableHeader className="bg-indigo-950 border-b border-indigo-900 shadow-sm sticky top-0 z-10">
               <TableRow className="h-14 hover:bg-indigo-950 border-b-0">

@@ -58,18 +58,10 @@ export function BankAccountsTable({
   onSort = () => {},
   itemsPerPage = 100,
   onItemsPerPageChange = () => {},
+  tableFontSize = 11,
 }: any) {
   const isMobile = useIsMobile()
   const [expandedRows, setExpandedRows] = useState<string[]>([])
-
-  const [tableFontSize, setTableFontSize] = useState<number>(() => {
-    const saved = localStorage.getItem('bank_accounts_table_font_size')
-    return saved ? parseInt(saved, 10) : 11
-  })
-
-  useEffect(() => {
-    localStorage.setItem('bank_accounts_table_font_size', tableFontSize.toString())
-  }, [tableFontSize])
 
   const toggleRow = (id: string) => {
     setExpandedRows((prev) => (prev.includes(id) ? prev.filter((r) => r !== id) : [...prev, id]))
@@ -123,31 +115,7 @@ export function BankAccountsTable({
   return (
     <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="flex flex-wrap items-center justify-end gap-2 px-1">
-        <div
-          className="hidden sm:flex items-center gap-1 bg-white rounded-md p-0.5 border border-slate-200 shadow-sm mr-auto"
-          title="Tamanho da Fonte das Tabelas"
-        >
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 text-[12px] font-bold text-slate-600 hover:text-slate-900 bg-transparent"
-            onClick={() => setTableFontSize((p) => Math.max(8, p - 1))}
-          >
-            A-
-          </Button>
-          <span className="text-[12px] font-medium text-slate-500 w-5 text-center select-none">
-            {tableFontSize}
-          </span>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 text-[14px] font-bold text-slate-600 hover:text-slate-900 bg-transparent"
-            onClick={() => setTableFontSize((p) => Math.min(24, p + 1))}
-          >
-            A+
-          </Button>
-        </div>
-        <Button variant="outline" size="sm" onClick={expandAll} className="bg-background">
+        <Button variant="outline" size="sm" onClick={expandAll} className="bg-background mr-auto">
           <Network className="w-4 h-4 mr-2" /> Expandir Todos
         </Button>
         <Button variant="outline" size="sm" onClick={expandAnalytical} className="bg-background">

@@ -59,6 +59,15 @@ export default function Index() {
     null,
   )
 
+  const [tableFontSize, setTableFontSize] = useState<number>(() => {
+    const saved = localStorage.getItem('bank_accounts_table_font_size')
+    return saved ? parseInt(saved, 10) : 11
+  })
+
+  useEffect(() => {
+    localStorage.setItem('bank_accounts_table_font_size', tableFontSize.toString())
+  }, [tableFontSize])
+
   const { toast } = useToast()
   const navigate = useNavigate()
 
@@ -378,6 +387,30 @@ export default function Index() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <div
+            className="hidden sm:flex items-center gap-1 bg-white rounded-md p-0.5 border border-slate-200 shadow-sm"
+            title="Tamanho da Fonte das Tabelas"
+          >
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-[12px] font-bold text-slate-600 hover:text-slate-900 bg-transparent"
+              onClick={() => setTableFontSize((p) => Math.max(8, p - 1))}
+            >
+              A-
+            </Button>
+            <span className="text-[12px] font-medium text-slate-500 w-5 text-center select-none">
+              {tableFontSize}
+            </span>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-[14px] font-bold text-slate-600 hover:text-slate-900 bg-transparent"
+              onClick={() => setTableFontSize((p) => Math.min(24, p + 1))}
+            >
+              A+
+            </Button>
+          </div>
           {selectedAccounts.length > 0 && (
             <>
               <Button variant="secondary" onClick={() => setIsBulkEditOpen(true)}>
@@ -455,7 +488,7 @@ export default function Index() {
         }
         .bank-accounts-table-wrapper th {
           color: #ffffff !important;
-          font-size: 15px !important;
+          font-size: ${Math.min(24, tableFontSize + 4)}px !important;
           font-weight: normal !important;
           padding: 8px !important;
           border: none !important;
@@ -474,7 +507,7 @@ export default function Index() {
           border: none !important;
         }
         .bank-accounts-table-wrapper tbody td {
-          font-size: 11px !important;
+          font-size: ${tableFontSize}px !important;
           padding: 8px !important;
           border: none !important;
           font-weight: normal !important;
@@ -525,7 +558,7 @@ export default function Index() {
         .bank-accounts-table-wrapper tbody td .badge,
         .bank-accounts-table-wrapper tbody td button,
         .bank-accounts-table-wrapper tbody td [class*="bg-"] {
-          font-size: 11px !important;
+          font-size: ${tableFontSize}px !important;
         }
         .bank-accounts-table-wrapper tbody tr:nth-child(even) td button,
         .bank-accounts-table-wrapper tbody tr:nth-child(even) td svg {
@@ -642,6 +675,7 @@ export default function Index() {
             setItemsPerPage(v)
             setCurrentPage(1)
           }}
+          tableFontSize={tableFontSize}
         />
       </div>
 
