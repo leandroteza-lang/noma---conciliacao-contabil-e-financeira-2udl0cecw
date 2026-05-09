@@ -282,7 +282,15 @@ function DraggablePopoverContent({
   )
 }
 
-function PeriodConsolidatedTable({ data, type }: { data: any[]; type: 'account' | 'cost' }) {
+function PeriodConsolidatedTable({
+  data,
+  type,
+  tableFontSize,
+}: {
+  data: any[]
+  type: 'account' | 'cost'
+  tableFontSize?: number
+}) {
   const aggregated = useMemo(() => {
     const map = new Map<string, { name: string; pos: number; neg: number; diff: number }>()
 
@@ -328,7 +336,8 @@ function PeriodConsolidatedTable({ data, type }: { data: any[]; type: 'account' 
 
   return (
     <Table
-      className="w-full text-xs"
+      className="w-full"
+      style={{ fontSize: tableFontSize ? `${tableFontSize}px` : undefined }}
       wrapperClassName="max-h-[500px] overflow-y-auto custom-scrollbar"
     >
       <TableHeader className="sticky top-0 z-10 shadow-sm border-b border-black">
@@ -404,10 +413,12 @@ function SummaryTable({
   data,
   type,
   dateField = 'data_emissao',
+  tableFontSize,
 }: {
   data: any[]
   type: 'month_account' | 'account_month' | 'month_cost' | 'cost_month'
   dateField?: string
+  tableFontSize?: number
 }) {
   let col1Label = ''
   let col2Label = ''
@@ -528,7 +539,8 @@ function SummaryTable({
 
   return (
     <Table
-      className="w-full text-xs"
+      className="w-full"
+      style={{ fontSize: tableFontSize ? `${tableFontSize}px` : undefined }}
       wrapperClassName="max-h-[500px] overflow-y-auto custom-scrollbar"
     >
       <TableHeader className="sticky top-0 z-10 shadow-sm border-b border-black">
@@ -2916,6 +2928,30 @@ export default function FinancialMovements() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <div
+            className="hidden sm:flex items-center gap-1 bg-white rounded-md p-0.5 border border-slate-200 shadow-sm mr-2"
+            title="Tamanho da Fonte das Tabelas"
+          >
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-[12px] font-bold text-slate-600 hover:text-slate-900 bg-transparent"
+              onClick={() => setTableFontSize((p) => Math.max(8, p - 1))}
+            >
+              A-
+            </Button>
+            <span className="text-[12px] font-medium text-slate-500 w-5 text-center select-none">
+              {tableFontSize}
+            </span>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-[14px] font-bold text-slate-600 hover:text-slate-900 bg-transparent"
+              onClick={() => setTableFontSize((p) => Math.min(24, p + 1))}
+            >
+              A+
+            </Button>
+          </div>
           <Button
             variant="outline"
             onClick={syncMappings}
@@ -4070,7 +4106,7 @@ export default function FinancialMovements() {
                                         <Button
                                           variant="ghost"
                                           className={cn(
-                                            'h-6 px-2.5 py-0 text-[10px] font-bold rounded-full border cursor-pointer transition-all',
+                                            'h-6 px-2.5 py-0 text-[0.85em] font-bold rounded-full border cursor-pointer transition-all',
                                             statusColor,
                                           )}
                                           onClick={() => setMappingRow(row)}
@@ -4530,11 +4566,11 @@ export default function FinancialMovements() {
                                         className="px-2 py-0.5 text-center border-0"
                                       >
                                         {missingFields.length > 0 ? (
-                                          <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-red-100 text-red-800 border border-red-200">
+                                          <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[0.85em] font-semibold bg-red-100 text-red-800 border border-red-200">
                                             Dados Incompletos
                                           </span>
                                         ) : (
-                                          <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 !text-black border border-slate-200">
+                                          <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[0.85em] font-semibold bg-slate-100 !text-black border border-slate-200">
                                             {row.status || 'Pendente'}
                                           </span>
                                         )}
@@ -4550,7 +4586,7 @@ export default function FinancialMovements() {
                                   <Button
                                     size="sm"
                                     variant="ghost"
-                                    className="h-6 px-2 text-[10px] text-green-600 font-semibold hover:text-green-700 bg-white/90 hover:bg-white"
+                                    className="h-6 px-2 text-[0.85em] text-green-600 font-semibold hover:text-green-700 bg-white/90 hover:bg-white"
                                     onClick={async () => {
                                       const newMappedAccount = getMappedAccountForCC(
                                         editForm.c_custo,
@@ -4579,7 +4615,7 @@ export default function FinancialMovements() {
                                   <Button
                                     size="sm"
                                     variant="ghost"
-                                    className="h-6 px-2 text-[10px] text-red-600 hover:text-red-700 bg-white/90 hover:bg-white"
+                                    className="h-6 px-2 text-[0.85em] text-red-600 hover:text-red-700 bg-white/90 hover:bg-white"
                                     onClick={() => setEditingId(null)}
                                   >
                                     Cancelar
@@ -4589,7 +4625,7 @@ export default function FinancialMovements() {
                                 <Button
                                   size="sm"
                                   variant="outline"
-                                  className="h-6 px-2 text-[10px]"
+                                  className="h-6 px-2 text-[0.85em]"
                                   onClick={() => {
                                     setEditingId(row.id)
                                     setEditForm(row)
@@ -4669,7 +4705,11 @@ export default function FinancialMovements() {
                 </h2>
               </CardHeader>
               <CardContent className="p-0">
-                <PeriodConsolidatedTable data={summaryData} type="account" />
+                <PeriodConsolidatedTable
+                  data={summaryData}
+                  type="account"
+                  tableFontSize={tableFontSize}
+                />
               </CardContent>
             </Card>
 
@@ -4680,7 +4720,11 @@ export default function FinancialMovements() {
                 </h2>
               </CardHeader>
               <CardContent className="p-0">
-                <PeriodConsolidatedTable data={summaryData} type="cost" />
+                <PeriodConsolidatedTable
+                  data={summaryData}
+                  type="cost"
+                  tableFontSize={tableFontSize}
+                />
               </CardContent>
             </Card>
           </div>
@@ -4693,7 +4737,12 @@ export default function FinancialMovements() {
                 </h2>
               </CardHeader>
               <CardContent className="p-0">
-                <SummaryTable data={summaryData} type="month_account" dateField={summaryDateBase} />
+                <SummaryTable
+                  data={summaryData}
+                  type="month_account"
+                  dateField={summaryDateBase}
+                  tableFontSize={tableFontSize}
+                />
               </CardContent>
             </Card>
 
@@ -4704,7 +4753,12 @@ export default function FinancialMovements() {
                 </h2>
               </CardHeader>
               <CardContent className="p-0">
-                <SummaryTable data={summaryData} type="account_month" dateField={summaryDateBase} />
+                <SummaryTable
+                  data={summaryData}
+                  type="account_month"
+                  dateField={summaryDateBase}
+                  tableFontSize={tableFontSize}
+                />
               </CardContent>
             </Card>
 
@@ -4713,7 +4767,12 @@ export default function FinancialMovements() {
                 <h2 className="text-base font-bold text-center w-full">Custos (Mês ➔ C. Custo)</h2>
               </CardHeader>
               <CardContent className="p-0">
-                <SummaryTable data={summaryData} type="month_cost" dateField={summaryDateBase} />
+                <SummaryTable
+                  data={summaryData}
+                  type="month_cost"
+                  dateField={summaryDateBase}
+                  tableFontSize={tableFontSize}
+                />
               </CardContent>
             </Card>
 
@@ -4722,7 +4781,12 @@ export default function FinancialMovements() {
                 <h2 className="text-base font-bold text-center w-full">Custos (C. Custo ➔ Mês)</h2>
               </CardHeader>
               <CardContent className="p-0">
-                <SummaryTable data={summaryData} type="cost_month" dateField={summaryDateBase} />
+                <SummaryTable
+                  data={summaryData}
+                  type="cost_month"
+                  dateField={summaryDateBase}
+                  tableFontSize={tableFontSize}
+                />
               </CardContent>
             </Card>
           </div>
@@ -4845,17 +4909,18 @@ export default function FinancialMovements() {
             <CardContent className="p-0 flex-1 overflow-hidden bg-white relative">
               <Table
                 wrapperClassName="absolute inset-0 overflow-auto custom-scrollbar border-4 border-indigo-950 rounded-lg"
-                className="w-full text-xs min-w-max border-collapse"
+                className="w-full min-w-max border-collapse"
+                style={{ fontSize: `${tableFontSize}px` }}
               >
                 <TableHeader className="sticky top-0 z-30 shadow-sm border-none bg-indigo-950">
                   <TableRow
                     disableZebra
                     className="bg-indigo-950 text-white font-bold hover:bg-indigo-900 border-none [&>th]:border-none [&>th]:text-white"
                   >
-                    <TableHead className="w-[150px] font-bold text-center sticky left-0 top-0 bg-indigo-950 hover:bg-indigo-900 z-40 uppercase text-[11px]">
+                    <TableHead className="w-[150px] font-bold text-center sticky left-0 top-0 bg-indigo-950 hover:bg-indigo-900 z-40 uppercase text-[0.9em]">
                       Conta
                     </TableHead>
-                    <TableHead className="min-w-[250px] font-bold text-center sticky left-[150px] top-0 bg-indigo-950 hover:bg-indigo-900 z-40 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] uppercase text-[11px]">
+                    <TableHead className="min-w-[250px] font-bold text-center sticky left-[150px] top-0 bg-indigo-950 hover:bg-indigo-900 z-40 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] uppercase text-[0.9em]">
                       Descrição
                     </TableHead>
                     {sortedActivePeriods.map((month) => {
@@ -4866,10 +4931,10 @@ export default function FinancialMovements() {
                           className="text-center font-bold min-w-[140px] px-4 bg-indigo-950 hover:bg-indigo-900 top-0 sticky z-30"
                         >
                           <div className="flex flex-col items-center justify-center">
-                            <span className="text-[12px] leading-tight">
+                            <span className="text-[1em] leading-tight">
                               {m}/{y}
                             </span>
-                            <span>Saldo</span>
+                            <span className="text-[0.85em]">Saldo</span>
                           </div>
                         </TableHead>
                       )
@@ -4891,7 +4956,7 @@ export default function FinancialMovements() {
                       return (
                         <TableRow
                           key={idx}
-                          className="transition-colors group border-0 text-[11px] [&>td.sticky]:bg-inherit"
+                          className="transition-colors group border-0 [&>td.sticky]:bg-inherit"
                         >
                           <TableCell className="border-0 sticky left-0 z-10 text-center px-2 py-0.5 bg-inherit">
                             {row.code}
@@ -4929,12 +4994,12 @@ export default function FinancialMovements() {
                                       currency: 'BRL',
                                     }).format(Math.abs(val))}
                                   </span>
-                                  <span className="text-[10px]">
+                                  <span className="text-[0.85em]">
                                     {val > 0 ? 'D' : val < 0 ? 'C' : ''}
                                   </span>
                                 </div>
                                 {(avEnabled || ahEnabled) && (
-                                  <div className="flex justify-start gap-2 mt-1.5 text-[10px] font-medium">
+                                  <div className="flex justify-start gap-2 mt-1.5 text-[0.85em] font-medium">
                                     {avEnabled && (
                                       <span
                                         className="px-1.5 py-0.5 rounded border border-slate-300 bg-black/5 dark:bg-white/10"
@@ -5272,7 +5337,8 @@ export default function FinancialMovements() {
               <div className="border-4 border-[#221c5a] rounded-lg overflow-hidden relative">
                 <Table
                   wrapperClassName="max-h-[650px] overflow-y-auto custom-scrollbar"
-                  className="w-full text-sm relative"
+                  className="w-full relative"
+                  style={{ fontSize: `${tableFontSize}px` }}
                 >
                   <TableHeader className="bg-[#221c5a] sticky top-0 z-20 shadow-md border-none">
                     <TableRow className="hover:bg-[#221c5a] border-none">
@@ -5312,7 +5378,7 @@ export default function FinancialMovements() {
                             }}
                             onDragEnd={() => setDraggedResumoCol(null)}
                             className={cn(
-                              "bg-[#221c5a] text-white font-['Inter'] text-[11px] font-semibold px-2 py-1 h-8 border-none cursor-grab active:cursor-grabbing",
+                              "bg-[#221c5a] text-white font-['Inter'] text-[0.9em] font-semibold px-2 py-1 h-8 border-none cursor-grab active:cursor-grabbing",
                               draggedResumoCol === key ? 'opacity-50 bg-[#1a1545]' : '',
                             )}
                           >
@@ -5535,7 +5601,7 @@ export default function FinancialMovements() {
                                     key={key}
                                     className="p-0 border-0 border-y border-slate-200"
                                   >
-                                    <div className="px-4 py-1.5 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                                    <div className="px-4 py-1.5 text-[0.85em] font-bold text-slate-500 uppercase tracking-wider">
                                       ↳ Raiz Hierárquica da Conta Vinculada
                                     </div>
                                   </TableCell>
@@ -5611,7 +5677,7 @@ export default function FinancialMovements() {
                                   >
                                     <div
                                       style={{ color, fontWeight: fw as any }}
-                                      className="px-6 py-1.5 flex items-center gap-3 text-[11px]"
+                                      className="px-6 py-1.5 flex items-center gap-3 text-[1em]"
                                     >
                                       <span
                                         style={{
@@ -5619,7 +5685,7 @@ export default function FinancialMovements() {
                                           color: badgeColor,
                                           borderColor: badgeBorder,
                                         }}
-                                        className="font-mono text-[10px] px-1.5 py-0.5 rounded border shadow-sm"
+                                        className="font-mono text-[0.85em] px-1.5 py-0.5 rounded border shadow-sm"
                                       >
                                         {code}
                                       </span>
@@ -5666,7 +5732,7 @@ export default function FinancialMovements() {
                       return (
                         <TableRow
                           key={item.id}
-                          className={cn('transition-colors border-0 text-[11px]', rowClass)}
+                          className={cn('transition-colors border-0', rowClass)}
                         >
                           {resumoColOrder.map((key) => {
                             if (key === 'c_custo') {
@@ -5703,7 +5769,7 @@ export default function FinancialMovements() {
 
                                     <span
                                       className={cn(
-                                        'px-1.5 py-0.5 rounded text-[9px] font-bold shadow-sm',
+                                        'px-1.5 py-0.5 rounded text-[0.8em] font-bold shadow-sm',
                                         item.isSynthetic
                                           ? item.level <= 2
                                             ? 'bg-white/20 text-white'
@@ -5717,7 +5783,7 @@ export default function FinancialMovements() {
                                     <div className="flex items-center gap-1.5">
                                       <span
                                         className={cn(
-                                          'font-mono min-w-[50px] text-center px-1.5 py-0.5 rounded text-[10px] shadow-sm inline-block',
+                                          'font-mono min-w-[50px] text-center px-1.5 py-0.5 rounded text-[0.85em] shadow-sm inline-block',
                                           item.isSynthetic
                                             ? 'font-bold !text-white'
                                             : 'font-semibold bg-transparent',
@@ -5745,11 +5811,11 @@ export default function FinancialMovements() {
                                 <TableCell key={key} className="px-2 py-0.5 align-middle border-0">
                                   {!item.isSynthetic && item.mappedAccount ? (
                                     <div className="flex items-center gap-1.5">
-                                      <span className="bg-[#1e1b4b] text-white px-1.5 py-0.5 rounded text-[10px] font-bold font-mono min-w-[50px] text-center inline-block shadow-sm">
+                                      <span className="bg-[#1e1b4b] text-white px-1.5 py-0.5 rounded text-[0.85em] font-bold font-mono min-w-[50px] text-center inline-block shadow-sm">
                                         {item.mappedAccount.account_code}
                                       </span>
                                       {item.mappedAccount.classification && (
-                                        <span className="font-mono text-[10px] font-semibold whitespace-nowrap text-black">
+                                        <span className="font-mono text-[0.85em] font-semibold whitespace-nowrap text-black">
                                           {item.mappedAccount.classification}
                                         </span>
                                       )}
@@ -5778,7 +5844,7 @@ export default function FinancialMovements() {
                                   {!item.isSynthetic && (
                                     <span
                                       className={cn(
-                                        'inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-bold border uppercase tracking-wider shadow-sm',
+                                        'inline-flex items-center px-1.5 py-0.5 rounded-full text-[0.85em] font-bold border uppercase tracking-wider shadow-sm',
                                         item.mappedAccount
                                           ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                                           : 'bg-rose-50 text-rose-700 border-rose-200',
@@ -6104,7 +6170,10 @@ export default function FinancialMovements() {
               </p>
             </CardHeader>
             <CardContent className="p-0">
-              <div className="p-6 font-mono text-[11px] overflow-x-auto whitespace-pre space-y-1 max-h-[600px] overflow-y-auto custom-scrollbar">
+              <div
+                className="p-6 font-mono overflow-x-auto whitespace-pre space-y-1 max-h-[600px] overflow-y-auto custom-scrollbar"
+                style={{ fontSize: `${tableFontSize}px` }}
+              >
                 <div className="text-slate-500 border-b border-slate-800 pb-2 mb-4 sticky top-0 bg-[#0d1117] z-10">
                   {
                     'DATA       | CONTA DÉBITO   | CONTA CRÉDITO  | VALOR       | C.CUSTO   | HISTÓRICO'
@@ -6179,7 +6248,10 @@ export default function FinancialMovements() {
           </DialogHeader>
 
           <div className="flex-1 overflow-auto p-6 bg-slate-50/50">
-            <Table className="bg-white border border-slate-200 rounded-lg shadow-sm">
+            <Table
+              className="bg-white border border-slate-200 rounded-lg shadow-sm"
+              style={{ fontSize: `${tableFontSize}px` }}
+            >
               <TableHeader className="bg-slate-100 sticky top-0 z-10 shadow-sm">
                 <TableRow className="border-b-slate-200 hover:bg-slate-100">
                   <TableHead className="font-semibold text-slate-700 w-[120px]">
@@ -6201,14 +6273,14 @@ export default function FinancialMovements() {
                     <TableCell className="whitespace-nowrap font-medium text-slate-600">
                       {formatDate(row.data_emissao)}
                     </TableCell>
-                    <TableCell className="font-mono text-xs text-slate-500">
+                    <TableCell className="font-mono text-[0.9em] text-slate-500">
                       {row.n_documento || '-'}
                     </TableCell>
                     <TableCell className="text-slate-700 font-medium">
                       {row.nome_cli_fornec || '-'}
                     </TableCell>
                     <TableCell
-                      className="max-w-[200px] truncate text-slate-600 text-sm"
+                      className="max-w-[200px] truncate text-slate-600"
                       title={row.historico}
                     >
                       {row.historico || '-'}
