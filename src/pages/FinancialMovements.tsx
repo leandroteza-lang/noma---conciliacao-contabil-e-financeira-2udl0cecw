@@ -5527,7 +5527,15 @@ export default function FinancialMovements() {
                           : 'bg-transparent text-black dark:text-white hover:bg-slate-50 dark:hover:bg-slate-800/50'
 
                       if (item.isSynthetic) {
-                        // Mantém a cor padrão de zebra
+                        if (item.level === 0) {
+                          rowClass = 'bg-[#1e1b4b] text-white hover:bg-[#312e81]'
+                        } else if (item.level === 1) {
+                          rowClass = 'bg-[#312e81] text-white hover:bg-[#3730a3]'
+                        } else if (item.level === 2) {
+                          rowClass = 'bg-[#3730a3] text-white hover:bg-[#4338ca]'
+                        } else {
+                          rowClass = 'bg-[#e0e7ff] text-[#1e1b4b] hover:bg-[#c7d2fe]'
+                        }
                       } else if (!item.mappedAccount) {
                         rowClass =
                           index % 2 === 0
@@ -5556,7 +5564,12 @@ export default function FinancialMovements() {
                                             [item.id]: !p[item.id],
                                           }))
                                         }
-                                        className="p-0.5 rounded transition-colors hover:bg-black/10"
+                                        className={cn(
+                                          'p-0.5 rounded transition-colors',
+                                          item.isSynthetic && item.level <= 2
+                                            ? 'hover:bg-white/10'
+                                            : 'hover:bg-black/10',
+                                        )}
                                       >
                                         {isExpanded ? (
                                           <ChevronDown className="h-3 w-3" />
@@ -5572,29 +5585,17 @@ export default function FinancialMovements() {
                                       className={cn(
                                         'px-1.5 py-0.5 rounded text-[9px] font-bold shadow-sm',
                                         item.isSynthetic
-                                          ? 'bg-black/10 text-black'
+                                          ? item.level <= 2
+                                            ? 'bg-white/20 text-white'
+                                            : 'bg-black/10 text-black'
                                           : 'bg-blue-50 text-blue-600 border border-blue-200',
                                       )}
                                     >
                                       {item.isSynthetic ? 'S' : 'A'}
                                     </span>
 
-                                    <div
-                                      className={cn(
-                                        'flex items-center gap-1.5',
-                                        item.isSynthetic && item.level <= 1
-                                          ? 'bg-[#1e1b4b] text-white px-1.5 py-0.5 rounded text-[10px] font-bold shadow-sm inline-flex'
-                                          : '',
-                                      )}
-                                    >
-                                      <span
-                                        className={cn(
-                                          'font-mono min-w-[50px] text-center',
-                                          !(item.isSynthetic && item.level <= 1)
-                                            ? 'px-1.5 py-0.5 rounded text-[10px] font-semibold bg-transparent shadow-sm'
-                                            : '',
-                                        )}
-                                      >
+                                    <div className="flex items-center gap-1.5">
+                                      <span className="font-mono min-w-[50px] text-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-transparent shadow-sm">
                                         {item.c_custo || 'SEM_CC'}
                                       </span>
                                       <span
@@ -5674,7 +5675,9 @@ export default function FinancialMovements() {
                                       className={cn(
                                         'font-bold hover:underline cursor-pointer',
                                         item.isSynthetic
-                                          ? 'text-black cursor-default hover:no-underline'
+                                          ? item.level <= 2
+                                            ? 'text-white cursor-default hover:no-underline'
+                                            : 'text-black cursor-default hover:no-underline'
                                           : 'text-blue-600 hover:text-blue-800',
                                       )}
                                       title={
@@ -5686,7 +5689,15 @@ export default function FinancialMovements() {
                                       {item.count}
                                     </button>
                                   ) : (
-                                    <span className="text-slate-400">0</span>
+                                    <span
+                                      className={cn(
+                                        item.isSynthetic && item.level <= 2
+                                          ? 'text-white/50'
+                                          : 'text-slate-400',
+                                      )}
+                                    >
+                                      0
+                                    </span>
                                   )}
                                 </TableCell>
                               )
