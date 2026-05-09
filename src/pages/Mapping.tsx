@@ -1240,7 +1240,7 @@ export default function Mapping() {
                     >
                       DE
                     </Badge>
-                    <span className="font-bold text-white text-[15px] tracking-wide">
+                    <span className="font-bold text-white text-[1.1em] tracking-wide">
                       Centro de Custo TGA
                     </span>
                   </div>
@@ -1250,7 +1250,7 @@ export default function Mapping() {
                     <Badge className="bg-white/20 hover:bg-white/30 text-white border-0 font-bold">
                       PARA
                     </Badge>
-                    <span className="font-bold text-white text-[15px] tracking-wide">
+                    <span className="font-bold text-white text-[1.1em] tracking-wide">
                       Conta Contábil Vinculada
                     </span>
                   </div>

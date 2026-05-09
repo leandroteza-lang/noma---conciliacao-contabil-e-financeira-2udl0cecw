@@ -129,7 +129,7 @@ function EditableCell({
             {value}
           </Badge>
         ) : (
-          value || <span className="opacity-50 italic text-xs">Vazio</span>
+          value || <span className="opacity-50 italic text-[0.85em]">Vazio</span>
         )}
       </div>
     )
@@ -143,7 +143,7 @@ function EditableCell({
         onChange={(e) => setTempVal(e.target.value)}
         onBlur={handleBlur}
         onKeyDown={handleKeyDown}
-        className="w-full text-[11px] border border-primary/50 rounded p-1 outline-none ring-2 ring-primary/20 bg-background text-foreground"
+        className="w-full text-[1em] border border-primary/50 rounded p-1 outline-none ring-2 ring-primary/20 bg-background text-foreground"
       >
         <option value="">Selecione...</option>
         {organizations.map((org: Organization) => (
@@ -162,7 +162,7 @@ function EditableCell({
       onChange={(e) => setTempVal(e.target.value)}
       onBlur={handleBlur}
       onKeyDown={handleKeyDown}
-      className="h-7 py-1 px-2 text-[11px] border-primary/50 focus-visible:ring-primary min-w-[100px]"
+      className="h-7 py-1 px-2 text-[1em] border-primary/50 focus-visible:ring-primary min-w-[100px]"
     />
   )
 }
@@ -180,6 +180,15 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
   } | null>(null)
   const { toast } = useToast()
   const { logAction } = useAuditLog()
+
+  const [tableFontSize, setTableFontSize] = useState<number>(() => {
+    const saved = localStorage.getItem('bank_accounts_table_font_size')
+    return saved ? parseInt(saved, 10) : 11
+  })
+
+  useEffect(() => {
+    localStorage.setItem('bank_accounts_table_font_size', tableFontSize.toString())
+  }, [tableFontSize])
 
   const handleSort = (key: string) => {
     let direction: 'asc' | 'desc' = 'asc'
@@ -576,6 +585,30 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
           )}
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <div
+            className="hidden sm:flex items-center gap-1 bg-white dark:bg-slate-900 rounded-md p-0.5 border border-slate-200 dark:border-slate-800 shadow-sm"
+            title="Tamanho da Fonte das Tabelas"
+          >
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-[12px] font-bold text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 bg-transparent"
+              onClick={() => setTableFontSize((p) => Math.max(8, p - 1))}
+            >
+              A-
+            </Button>
+            <span className="text-[12px] font-medium text-slate-500 w-5 text-center select-none">
+              {tableFontSize}
+            </span>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-[14px] font-bold text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 bg-transparent"
+              onClick={() => setTableFontSize((p) => Math.min(24, p + 1))}
+            >
+              A+
+            </Button>
+          </div>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" className="gap-2">
@@ -637,10 +670,10 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
       </div>
 
       <div className="hidden lg:block rounded-xl border-2 border-indigo-950 bg-card shadow-sm overflow-hidden">
-        <Table className="border-collapse">
+        <Table className="border-collapse" style={{ fontSize: `${tableFontSize}px` }}>
           <TableHeader className="bg-indigo-950">
             <TableRow className="border-0 hover:bg-transparent">
-              <TableHead className="w-12 text-center py-2 px-2 text-white font-normal text-[15px] border-0">
+              <TableHead className="w-12 text-center py-2 px-2 text-white font-normal text-[1.1em] border-0">
                 <Checkbox
                   className="border-white data-[state=checked]:bg-white data-[state=checked]:text-indigo-950"
                   checked={
@@ -653,7 +686,7 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
                 />
               </TableHead>
               <TableHead
-                className="w-[180px] cursor-pointer hover:bg-indigo-950/80 py-2 px-2 text-white font-normal text-[15px] border-0"
+                className="w-[180px] cursor-pointer hover:bg-indigo-950/80 py-2 px-2 text-white font-normal text-[1.1em] border-0"
                 onClick={() => handleSort('organization_id')}
               >
                 <div className="flex items-center gap-2">
@@ -661,7 +694,7 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
                 </div>
               </TableHead>
               <TableHead
-                className="cursor-pointer hover:bg-indigo-950/80 py-2 px-2 text-white font-normal text-[15px] border-0"
+                className="cursor-pointer hover:bg-indigo-950/80 py-2 px-2 text-white font-normal text-[1.1em] border-0"
                 onClick={() => handleSort('contaContabil')}
               >
                 <div className="flex items-center gap-2">
@@ -669,7 +702,7 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
                 </div>
               </TableHead>
               <TableHead
-                className="cursor-pointer hover:bg-indigo-950/80 py-2 px-2 text-white font-bold text-[15px] border-0"
+                className="cursor-pointer hover:bg-indigo-950/80 py-2 px-2 text-white font-bold text-[1.1em] border-0"
                 onClick={() => handleSort('descricao')}
               >
                 <div className="flex items-center gap-2">
@@ -677,7 +710,7 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
                 </div>
               </TableHead>
               <TableHead
-                className="cursor-pointer hover:bg-indigo-950/80 py-2 px-2 text-white font-normal text-[15px] border-0"
+                className="cursor-pointer hover:bg-indigo-950/80 py-2 px-2 text-white font-normal text-[1.1em] border-0"
                 onClick={() => handleSort('banco')}
               >
                 <div className="flex items-center gap-2">
@@ -685,7 +718,7 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
                 </div>
               </TableHead>
               <TableHead
-                className="cursor-pointer hover:bg-indigo-950/80 py-2 px-2 text-white font-normal text-[15px] border-0"
+                className="cursor-pointer hover:bg-indigo-950/80 py-2 px-2 text-white font-normal text-[1.1em] border-0"
                 onClick={() => handleSort('agencia')}
               >
                 <div className="flex items-center gap-2">
@@ -693,7 +726,7 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
                 </div>
               </TableHead>
               <TableHead
-                className="cursor-pointer hover:bg-indigo-950/80 py-2 px-2 text-white font-normal text-[15px] border-0"
+                className="cursor-pointer hover:bg-indigo-950/80 py-2 px-2 text-white font-normal text-[1.1em] border-0"
                 onClick={() => handleSort('numeroConta')}
               >
                 <div className="flex items-center gap-2">
@@ -701,7 +734,7 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
                 </div>
               </TableHead>
               <TableHead
-                className="cursor-pointer hover:bg-indigo-950/80 py-2 px-2 text-white font-normal text-[15px] border-0"
+                className="cursor-pointer hover:bg-indigo-950/80 py-2 px-2 text-white font-normal text-[1.1em] border-0"
                 onClick={() => handleSort('digitoConta')}
               >
                 <div className="flex items-center gap-2">
@@ -709,7 +742,7 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
                 </div>
               </TableHead>
               <TableHead
-                className="cursor-pointer hover:bg-indigo-950/80 py-2 px-2 text-white font-normal text-[15px] border-0"
+                className="cursor-pointer hover:bg-indigo-950/80 py-2 px-2 text-white font-normal text-[1.1em] border-0"
                 onClick={() => handleSort('tipoConta')}
               >
                 <div className="flex items-center gap-2">
@@ -717,14 +750,14 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
                 </div>
               </TableHead>
               <TableHead
-                className="cursor-pointer hover:bg-indigo-950/80 py-2 px-2 text-white font-normal text-[15px] border-0"
+                className="cursor-pointer hover:bg-indigo-950/80 py-2 px-2 text-white font-normal text-[1.1em] border-0"
                 onClick={() => handleSort('classificacao')}
               >
                 <div className="flex items-center gap-2">
                   Classificação <ArrowUpDown className="h-3 w-3 opacity-50" />
                 </div>
               </TableHead>
-              <TableHead className="text-right py-2 px-2 text-white font-normal text-[15px] border-0">
+              <TableHead className="text-right py-2 px-2 text-white font-normal text-[1.1em] border-0">
                 Ações
               </TableHead>
             </TableRow>
@@ -735,7 +768,7 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
               return (
                 <TableRow
                   key={acc.id}
-                  className="border-0 group/row text-[11px] odd:bg-transparent odd:text-black dark:odd:text-white even:bg-[#bfdbfe] even:text-black dark:even:text-black hover:even:bg-[#93c5fd] hover:odd:bg-muted/50 transition-colors"
+                  className="border-0 group/row text-[1em] odd:bg-transparent odd:text-black dark:odd:text-white even:bg-[#bfdbfe] even:text-black dark:even:text-black hover:even:bg-[#93c5fd] hover:odd:bg-muted/50 transition-colors"
                 >
                   <TableCell className="text-center py-2 px-2 border-0">
                     <Checkbox
@@ -846,17 +879,17 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
                     <div
                       key={field}
                       className={cn(
-                        'flex items-center gap-2 text-[11px]',
+                        'flex items-center gap-2 text-[1em]',
                         field === 'organization_id' || field === 'descricao'
                           ? 'font-bold'
                           : 'font-normal',
-                        field === 'descricao' && 'text-[13px]',
+                        field === 'descricao' && 'text-[1.1em]',
                         field === 'contaContabil' && 'font-mono text-muted-foreground',
                         field === 'tipoConta' ? '!text-black dark:!text-black' : '',
                       )}
                     >
                       {(field === 'tipoConta' || field === 'classificacao') && (
-                        <span className="text-muted-foreground text-xs font-medium uppercase w-24">
+                        <span className="text-muted-foreground text-[0.85em] font-medium uppercase w-24">
                           {field === 'tipoConta' ? 'Tipo:' : 'Classificação:'}
                         </span>
                       )}
