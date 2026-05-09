@@ -652,6 +652,63 @@ const tableHeaders = [
   { label: 'Status Importação', key: 'status', align: 'center' },
 ]
 
+const defaultTabsOrderConfig = [
+  {
+    id: 'grade',
+    label: 'Grade de Movimentos',
+    activeClass: 'data-[state=active]:bg-indigo-900 data-[state=active]:text-white',
+    inactiveClass:
+      'data-[state=inactive]:text-slate-600 data-[state=inactive]:hover:bg-slate-200/50',
+  },
+  {
+    id: 'resumo',
+    label: 'Resumo Consolidado',
+    activeClass: 'data-[state=active]:bg-indigo-800 data-[state=active]:text-white',
+    inactiveClass:
+      'data-[state=inactive]:text-slate-600 data-[state=inactive]:hover:bg-slate-200/50',
+  },
+  {
+    id: 'balancete',
+    label: 'Balancete Comparativo',
+    activeClass:
+      'data-[state=active]:bg-emerald-700 data-[state=active]:text-white text-emerald-700',
+    inactiveClass: 'data-[state=inactive]:hover:bg-emerald-50',
+  },
+  {
+    id: 'dashboard',
+    label: 'Dashboard Gerencial',
+    activeClass: 'data-[state=active]:bg-blue-700 data-[state=active]:text-white text-blue-700',
+    inactiveClass: 'data-[state=inactive]:hover:bg-blue-50',
+  },
+  {
+    id: 'resumo-mapeamento',
+    label: 'Resumo DE/PARA',
+    activeClass: 'data-[state=active]:bg-[#800000] data-[state=active]:text-white text-[#800000]',
+    inactiveClass: 'data-[state=inactive]:hover:bg-red-50',
+  },
+  {
+    id: 'bridge',
+    label: 'Accounting Bridge',
+    activeClass: 'data-[state=active]:bg-indigo-600 data-[state=active]:text-white',
+    inactiveClass:
+      'data-[state=inactive]:text-slate-600 data-[state=inactive]:hover:bg-slate-200/50',
+  },
+  {
+    id: 'sankey',
+    label: 'Análise Sankey',
+    activeClass: 'data-[state=active]:bg-violet-700 data-[state=active]:text-white',
+    inactiveClass:
+      'data-[state=inactive]:text-slate-600 data-[state=inactive]:hover:bg-slate-200/50',
+  },
+  {
+    id: 'dry-run',
+    label: 'Dry Run TXT',
+    activeClass: 'data-[state=active]:bg-slate-900 data-[state=active]:text-emerald-400',
+    inactiveClass:
+      'data-[state=inactive]:text-slate-600 data-[state=inactive]:hover:bg-slate-200/50',
+  },
+]
+
 export default function FinancialMovements() {
   const { user } = useAuth()
   const [data, setData] = useState<any[]>([])
@@ -898,6 +955,29 @@ export default function FinancialMovements() {
   const [columnsOpen, setColumnsOpen] = useState(false)
   const [filters, setFilters] = useState<Record<string, string[]>>({})
   const [activeTab, setActiveTab] = useState('grade')
+  const [draggedTab, setDraggedTab] = useState<string | null>(null)
+
+  const [tabsOrder, setTabsOrder] = useState<string[]>(() => {
+    const saved = localStorage.getItem('fin_mov_tabs_order')
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved)
+        const validKeys = new Set(defaultTabsOrderConfig.map((t) => t.id))
+        const validParsed = parsed.filter((key: string) => validKeys.has(key))
+        const missingKeys = defaultTabsOrderConfig
+          .map((t) => t.id)
+          .filter((key) => !validParsed.includes(key))
+        return [...validParsed, ...missingKeys]
+      } catch (e) {
+        return defaultTabsOrderConfig.map((t) => t.id)
+      }
+    }
+    return defaultTabsOrderConfig.map((t) => t.id)
+  })
+
+  useEffect(() => {
+    localStorage.setItem('fin_mov_tabs_order', JSON.stringify(tabsOrder))
+  }, [tabsOrder])
 
   const [drillDownOpen, setDrillDownOpen] = useState(false)
   const [drillDownData, setDrillDownData] = useState<any[]>([])
@@ -2894,54 +2974,45 @@ export default function FinancialMovements() {
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full space-y-4">
         <TabsList className="bg-slate-100/80 p-1.5 w-full flex flex-wrap gap-1.5 h-auto justify-start border border-slate-200 shadow-sm rounded-lg">
-          <TabsTrigger
-            value="grade"
-            className="whitespace-nowrap px-4 py-2 font-medium transition-all data-[state=active]:bg-indigo-900 data-[state=active]:text-white data-[state=active]:font-bold data-[state=active]:shadow-md data-[state=inactive]:text-slate-600 data-[state=inactive]:hover:bg-slate-200/50 rounded-md"
-          >
-            Grade de Movimentos
-          </TabsTrigger>
-          <TabsTrigger
-            value="resumo"
-            className="whitespace-nowrap px-4 py-2 font-medium transition-all data-[state=active]:bg-indigo-800 data-[state=active]:text-white data-[state=active]:font-bold data-[state=active]:shadow-md data-[state=inactive]:text-slate-600 data-[state=inactive]:hover:bg-slate-200/50 rounded-md"
-          >
-            Resumo Consolidado
-          </TabsTrigger>
-          <TabsTrigger
-            value="balancete"
-            className="whitespace-nowrap px-4 py-2 font-medium transition-all data-[state=active]:bg-emerald-700 data-[state=active]:text-white data-[state=active]:font-bold data-[state=active]:shadow-md text-emerald-700 data-[state=inactive]:hover:bg-emerald-50 rounded-md"
-          >
-            Balancete Comparativo
-          </TabsTrigger>
-          <TabsTrigger
-            value="dashboard"
-            className="whitespace-nowrap px-4 py-2 font-medium transition-all data-[state=active]:bg-blue-700 data-[state=active]:text-white data-[state=active]:font-bold data-[state=active]:shadow-md text-blue-700 data-[state=inactive]:hover:bg-blue-50 rounded-md"
-          >
-            Dashboard Gerencial
-          </TabsTrigger>
-          <TabsTrigger
-            value="resumo-mapeamento"
-            className="whitespace-nowrap px-4 py-2 font-medium transition-all data-[state=active]:bg-[#800000] data-[state=active]:text-white data-[state=active]:font-bold data-[state=active]:shadow-md text-[#800000] data-[state=inactive]:hover:bg-red-50 rounded-md"
-          >
-            Resumo DE/PARA
-          </TabsTrigger>
-          <TabsTrigger
-            value="bridge"
-            className="whitespace-nowrap px-4 py-2 font-medium transition-all data-[state=active]:bg-indigo-600 data-[state=active]:text-white data-[state=active]:font-bold data-[state=active]:shadow-md data-[state=inactive]:text-slate-600 data-[state=inactive]:hover:bg-slate-200/50 rounded-md"
-          >
-            Accounting Bridge
-          </TabsTrigger>
-          <TabsTrigger
-            value="sankey"
-            className="whitespace-nowrap px-4 py-2 font-medium transition-all data-[state=active]:bg-violet-700 data-[state=active]:text-white data-[state=active]:font-bold data-[state=active]:shadow-md data-[state=inactive]:text-slate-600 data-[state=inactive]:hover:bg-slate-200/50 rounded-md"
-          >
-            Análise Sankey
-          </TabsTrigger>
-          <TabsTrigger
-            value="dry-run"
-            className="whitespace-nowrap px-4 py-2 font-medium transition-all data-[state=active]:bg-slate-900 data-[state=active]:text-emerald-400 data-[state=active]:font-bold data-[state=active]:shadow-md data-[state=inactive]:text-slate-600 data-[state=inactive]:hover:bg-slate-200/50 rounded-md"
-          >
-            Dry Run TXT
-          </TabsTrigger>
+          {tabsOrder.map((tabId) => {
+            const tabConfig = defaultTabsOrderConfig.find((t) => t.id === tabId)
+            if (!tabConfig) return null
+            return (
+              <TabsTrigger
+                key={tabId}
+                value={tabId}
+                draggable
+                onDragStart={(e) => {
+                  setDraggedTab(tabId)
+                  e.dataTransfer.effectAllowed = 'move'
+                }}
+                onDragOver={(e) => {
+                  e.preventDefault()
+                  e.dataTransfer.dropEffect = 'move'
+                }}
+                onDrop={(e) => {
+                  e.preventDefault()
+                  if (!draggedTab || draggedTab === tabId) return
+                  const newOrder = [...tabsOrder]
+                  const draggedIdx = newOrder.indexOf(draggedTab)
+                  const targetIdx = newOrder.indexOf(tabId)
+                  newOrder.splice(draggedIdx, 1)
+                  newOrder.splice(targetIdx, 0, draggedTab)
+                  setTabsOrder(newOrder)
+                  setDraggedTab(null)
+                }}
+                onDragEnd={() => setDraggedTab(null)}
+                className={cn(
+                  'whitespace-nowrap px-4 py-2 font-medium transition-all data-[state=active]:font-bold data-[state=active]:shadow-md rounded-md cursor-grab active:cursor-grabbing',
+                  tabConfig.activeClass,
+                  tabConfig.inactiveClass,
+                  draggedTab === tabId ? 'opacity-50' : '',
+                )}
+              >
+                {tabConfig.label}
+              </TabsTrigger>
+            )
+          })}
         </TabsList>
 
         <TabsContent value="grade" className="m-0">
