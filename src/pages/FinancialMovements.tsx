@@ -2893,38 +2893,53 @@ export default function FinancialMovements() {
       )}
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full space-y-4">
-        <TabsList className="bg-slate-100/80 p-1 w-full sm:w-auto flex overflow-x-auto justify-start border border-slate-200">
-          <TabsTrigger value="grade" className="whitespace-nowrap">
+        <TabsList className="bg-slate-100/80 p-1.5 w-full flex flex-wrap gap-1.5 h-auto justify-start border border-slate-200 shadow-sm rounded-lg">
+          <TabsTrigger
+            value="grade"
+            className="whitespace-nowrap px-4 py-2 font-medium transition-all data-[state=active]:bg-indigo-900 data-[state=active]:text-white data-[state=active]:font-bold data-[state=active]:shadow-md data-[state=inactive]:text-slate-600 data-[state=inactive]:hover:bg-slate-200/50 rounded-md"
+          >
             Grade de Movimentos
           </TabsTrigger>
-          <TabsTrigger value="resumo" className="whitespace-nowrap">
+          <TabsTrigger
+            value="resumo"
+            className="whitespace-nowrap px-4 py-2 font-medium transition-all data-[state=active]:bg-indigo-800 data-[state=active]:text-white data-[state=active]:font-bold data-[state=active]:shadow-md data-[state=inactive]:text-slate-600 data-[state=inactive]:hover:bg-slate-200/50 rounded-md"
+          >
             Resumo Consolidado
           </TabsTrigger>
           <TabsTrigger
             value="balancete"
-            className="whitespace-nowrap text-emerald-700 font-bold data-[state=active]:bg-emerald-700 data-[state=active]:text-white"
+            className="whitespace-nowrap px-4 py-2 font-medium transition-all data-[state=active]:bg-emerald-700 data-[state=active]:text-white data-[state=active]:font-bold data-[state=active]:shadow-md text-emerald-700 data-[state=inactive]:hover:bg-emerald-50 rounded-md"
           >
             Balancete Comparativo
           </TabsTrigger>
           <TabsTrigger
             value="dashboard"
-            className="whitespace-nowrap font-bold text-blue-700 data-[state=active]:bg-blue-700 data-[state=active]:text-white"
+            className="whitespace-nowrap px-4 py-2 font-medium transition-all data-[state=active]:bg-blue-700 data-[state=active]:text-white data-[state=active]:font-bold data-[state=active]:shadow-md text-blue-700 data-[state=inactive]:hover:bg-blue-50 rounded-md"
           >
             Dashboard Gerencial
           </TabsTrigger>
           <TabsTrigger
             value="resumo-mapeamento"
-            className="whitespace-nowrap font-bold text-[#800000] data-[state=active]:bg-[#800000] data-[state=active]:text-white"
+            className="whitespace-nowrap px-4 py-2 font-medium transition-all data-[state=active]:bg-[#800000] data-[state=active]:text-white data-[state=active]:font-bold data-[state=active]:shadow-md text-[#800000] data-[state=inactive]:hover:bg-red-50 rounded-md"
           >
             Resumo DE/PARA
           </TabsTrigger>
-          <TabsTrigger value="bridge" className="whitespace-nowrap">
+          <TabsTrigger
+            value="bridge"
+            className="whitespace-nowrap px-4 py-2 font-medium transition-all data-[state=active]:bg-indigo-600 data-[state=active]:text-white data-[state=active]:font-bold data-[state=active]:shadow-md data-[state=inactive]:text-slate-600 data-[state=inactive]:hover:bg-slate-200/50 rounded-md"
+          >
             Accounting Bridge
           </TabsTrigger>
-          <TabsTrigger value="sankey" className="whitespace-nowrap">
+          <TabsTrigger
+            value="sankey"
+            className="whitespace-nowrap px-4 py-2 font-medium transition-all data-[state=active]:bg-violet-700 data-[state=active]:text-white data-[state=active]:font-bold data-[state=active]:shadow-md data-[state=inactive]:text-slate-600 data-[state=inactive]:hover:bg-slate-200/50 rounded-md"
+          >
             Análise Sankey
           </TabsTrigger>
-          <TabsTrigger value="dry-run" className="whitespace-nowrap">
+          <TabsTrigger
+            value="dry-run"
+            className="whitespace-nowrap px-4 py-2 font-medium transition-all data-[state=active]:bg-slate-900 data-[state=active]:text-emerald-400 data-[state=active]:font-bold data-[state=active]:shadow-md data-[state=inactive]:text-slate-600 data-[state=inactive]:hover:bg-slate-200/50 rounded-md"
+          >
             Dry Run TXT
           </TabsTrigger>
         </TabsList>
