@@ -142,17 +142,10 @@ Deno.serve(async (req: Request) => {
     if (format === 'browser') {
       const getRowStyle = (r: any) => {
         if (r.isSynthetic) {
-          switch (r.level) {
-            case 0:
-              return 'background-color: #1e1b4b; color: #ffffff;'
-            case 1:
-              return 'background-color: #312e81; color: #ffffff;'
-            case 2:
-              return 'background-color: #3730a3; color: #ffffff;'
-            case 3:
-              return 'background-color: #e0e7ff; color: #1e1b4b;'
-            default:
-              return 'background-color: #f8fafc; color: #1e293b;'
+          if (r.level <= 2) {
+            return 'background-color: #1e1b4b; color: #ffffff; font-weight: bold;'
+          } else {
+            return 'background-color: #e0e7ff; color: #1e1b4b; font-weight: bold;'
           }
         }
         if (!r.mapped) {
@@ -457,27 +450,14 @@ Deno.serve(async (req: Request) => {
             }
 
             if (rowData.isSynthetic) {
-              switch (rowData.level) {
-                case 0:
-                  cellData.cell.styles.fillColor = [30, 27, 75]
-                  cellData.cell.styles.textColor = [255, 255, 255]
-                  break
-                case 1:
-                  cellData.cell.styles.fillColor = [49, 46, 129]
-                  cellData.cell.styles.textColor = [255, 255, 255]
-                  break
-                case 2:
-                  cellData.cell.styles.fillColor = [55, 48, 163]
-                  cellData.cell.styles.textColor = [255, 255, 255]
-                  break
-                case 3:
-                  cellData.cell.styles.fillColor = [224, 231, 255]
-                  cellData.cell.styles.textColor = [30, 27, 75]
-                  break
-                default:
-                  cellData.cell.styles.fillColor = [248, 250, 252]
-                  cellData.cell.styles.textColor = [30, 41, 59]
-                  break
+              if (rowData.level <= 2) {
+                cellData.cell.styles.fillColor = [30, 27, 75]
+                cellData.cell.styles.textColor = [255, 255, 255]
+                cellData.cell.styles.fontStyle = 'bold'
+              } else {
+                cellData.cell.styles.fillColor = [224, 231, 255]
+                cellData.cell.styles.textColor = [30, 27, 75]
+                cellData.cell.styles.fontStyle = 'bold'
               }
             } else {
               if (!rowData.mapped) {

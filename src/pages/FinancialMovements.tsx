@@ -5527,14 +5527,10 @@ export default function FinancialMovements() {
                           : 'bg-transparent text-black dark:text-white hover:bg-slate-50 dark:hover:bg-slate-800/50'
 
                       if (item.isSynthetic) {
-                        if (item.level === 0) {
-                          rowClass = 'bg-[#1e1b4b] text-white hover:bg-[#312e81]'
-                        } else if (item.level === 1) {
-                          rowClass = 'bg-[#312e81] text-white hover:bg-[#3730a3]'
-                        } else if (item.level === 2) {
-                          rowClass = 'bg-[#3730a3] text-white hover:bg-[#4338ca]'
+                        if (item.level <= 2) {
+                          rowClass = '!bg-[#1e1b4b] !text-white hover:!bg-[#312e81] font-bold'
                         } else {
-                          rowClass = 'bg-[#e0e7ff] text-[#1e1b4b] hover:bg-[#c7d2fe]'
+                          rowClass = '!bg-[#e0e7ff] !text-[#1e1b4b] hover:!bg-[#c7d2fe] font-bold'
                         }
                       } else if (!item.mappedAccount) {
                         rowClass =
@@ -5595,11 +5591,21 @@ export default function FinancialMovements() {
                                     </span>
 
                                     <div className="flex items-center gap-1.5">
-                                      <span className="font-mono min-w-[50px] text-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-transparent shadow-sm">
+                                      <span
+                                        className={cn(
+                                          'font-mono min-w-[50px] text-center px-1.5 py-0.5 rounded text-[10px] shadow-sm inline-block',
+                                          item.isSynthetic
+                                            ? 'font-bold !text-white'
+                                            : 'font-semibold bg-transparent',
+                                        )}
+                                      >
                                         {item.c_custo || 'SEM_CC'}
                                       </span>
                                       <span
-                                        className="truncate max-w-[250px]"
+                                        className={cn(
+                                          'truncate max-w-[250px]',
+                                          item.isSynthetic ? 'font-bold !text-white' : '',
+                                        )}
                                         title={item.descricao_c_custo}
                                       >
                                         {item.descricao_c_custo}
@@ -5676,8 +5682,8 @@ export default function FinancialMovements() {
                                         'font-bold hover:underline cursor-pointer',
                                         item.isSynthetic
                                           ? item.level <= 2
-                                            ? 'text-white cursor-default hover:no-underline'
-                                            : 'text-black cursor-default hover:no-underline'
+                                            ? '!text-white cursor-default hover:no-underline'
+                                            : '!text-[#1e1b4b] cursor-default hover:no-underline'
                                           : 'text-blue-600 hover:text-blue-800',
                                       )}
                                       title={
@@ -5707,7 +5713,10 @@ export default function FinancialMovements() {
                               return (
                                 <TableCell
                                   key={key}
-                                  className="px-2 py-0.5 text-left align-middle border-0 font-medium"
+                                  className={cn(
+                                    'px-2 py-0.5 text-left align-middle border-0',
+                                    item.isSynthetic ? 'font-bold !text-white' : 'font-medium',
+                                  )}
                                 >
                                   {new Intl.NumberFormat('pt-BR', {
                                     style: 'currency',
@@ -5720,7 +5729,10 @@ export default function FinancialMovements() {
                               return (
                                 <TableCell
                                   key={key}
-                                  className="px-2 py-0.5 text-left align-middle border-0 font-medium"
+                                  className={cn(
+                                    'px-2 py-0.5 text-left align-middle border-0',
+                                    item.isSynthetic ? 'font-bold !text-white' : 'font-medium',
+                                  )}
                                 >
                                   {new Intl.NumberFormat('pt-BR', {
                                     style: 'currency',
