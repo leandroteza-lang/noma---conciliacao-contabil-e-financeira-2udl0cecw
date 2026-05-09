@@ -48,6 +48,7 @@ import {
   RefreshCw,
 } from 'lucide-react'
 import { Checkbox } from '@/components/ui/checkbox'
+import { Switch } from '@/components/ui/switch'
 import { toast } from 'sonner'
 import { DeleteConfirmModal } from '@/components/DeleteConfirmModal'
 import {
@@ -2354,6 +2355,7 @@ export default function FinancialMovements() {
   const [resumoSortColumn, setResumoSortColumn] = useState<string>('c_custo')
   const [resumoSortDirection, setResumoSortDirection] = useState<'asc' | 'desc'>('asc')
   const [resumoFilters, setResumoFilters] = useState<Record<string, string[]>>({})
+  const [showSyntheticLevels, setShowSyntheticLevels] = useState(true)
 
   const resumoFilterOptions = useMemo(() => {
     const options: Record<string, { label: string; value: string }[]> = {}
@@ -2479,6 +2481,28 @@ export default function FinancialMovements() {
 
   const flattenedTreeRows = useMemo(() => {
     const result: any[] = []
+
+    if (!showSyntheticLevels) {
+      const getLeaves = (nodes: any[]) => {
+        nodes.forEach((node) => {
+          if (!node.isSynthetic) {
+            result.push({ type: 'node', data: node })
+            if (expandedNodes[node.id] && node.hierarchyArray && node.hierarchyArray.length > 0) {
+              result.push({ type: 'inline-header', data: node })
+              node.hierarchyArray.forEach((hNode: any) => {
+                result.push({ type: 'inline-node', data: node, hNode })
+              })
+            }
+          }
+          if (node.children && node.children.length > 0) {
+            getLeaves(node.children)
+          }
+        })
+      }
+      getLeaves(filteredAndSortedTree)
+      return result
+    }
+
     const traverse = (nodes: any[]) => {
       nodes.forEach((node) => {
         result.push({ type: 'node', data: node })
@@ -2496,7 +2520,7 @@ export default function FinancialMovements() {
     }
     traverse(filteredAndSortedTree)
     return result
-  }, [filteredAndSortedTree, expandedNodes])
+  }, [filteredAndSortedTree, expandedNodes, showSyntheticLevels])
 
   const expandAll = () => {
     const all: Record<string, boolean> = {}
@@ -5081,6 +5105,19 @@ export default function FinancialMovements() {
                 </p>
               </div>
               <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 mr-2 bg-white px-3 py-1.5 rounded-md border border-slate-200 shadow-sm">
+                  <Switch
+                    id="show-synthetic"
+                    checked={showSyntheticLevels}
+                    onCheckedChange={setShowSyntheticLevels}
+                  />
+                  <Label
+                    htmlFor="show-synthetic"
+                    className="text-xs text-slate-600 font-bold cursor-pointer whitespace-nowrap"
+                  >
+                    Níveis Sintéticos
+                  </Label>
+                </div>
                 <Button
                   variant="outline"
                   size="sm"
@@ -5490,15 +5527,7 @@ export default function FinancialMovements() {
                           : 'bg-transparent text-black dark:text-white hover:bg-slate-50 dark:hover:bg-slate-800/50'
 
                       if (item.isSynthetic) {
-                        if (item.level === 0)
-                          rowClass = 'bg-[#1e1b4b] text-white hover:bg-[#1e1b4b]/90'
-                        else if (item.level === 1)
-                          rowClass = 'bg-[#312e81] text-white hover:bg-[#312e81]/90'
-                        else if (item.level === 2)
-                          rowClass = 'bg-[#3730a3] text-white hover:bg-[#3730a3]/90'
-                        else if (item.level === 3)
-                          rowClass = 'bg-[#e0e7ff] text-[#1e1b4b] hover:bg-[#c7d2fe]'
-                        else rowClass = 'bg-slate-100 text-slate-800 hover:bg-slate-200'
+                        rowClass = 'bg-slate-100 text-slate-800 hover:bg-slate-200'
                       } else if (!item.mappedAccount) {
                         rowClass =
                           index % 2 === 0
@@ -5557,11 +5586,23 @@ export default function FinancialMovements() {
                                       {item.isSynthetic ? 'S' : 'A'}
                                     </span>
 
-                                    <span className="font-mono font-semibold">
+                                    <span
+                                      className={cn(
+                                        'font-mono',
+                                        item.isSynthetic && item.level <= 1
+                                          ? 'bg-[#1e1b4b] text-white px-1.5 py-0.5 rounded text-[10px] font-bold min-w-[50px] text-center inline-block shadow-sm'
+                                          : 'font-semibold',
+                                      )}
+                                    >
                                       {item.c_custo || 'SEM_CC'}
                                     </span>
                                     <span
-                                      className="truncate max-w-[250px]"
+                                      className={cn(
+                                        'truncate max-w-[250px]',
+                                        item.isSynthetic && item.level <= 1
+                                          ? 'font-bold text-slate-800'
+                                          : '',
+                                      )}
                                       title={item.descricao_c_custo}
                                     >
                                       {item.descricao_c_custo}
