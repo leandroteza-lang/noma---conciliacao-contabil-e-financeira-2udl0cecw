@@ -51,6 +51,7 @@ import {
   BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb'
 import { Chatbot } from '@/components/Chatbot'
+import { ThemeToggle } from '@/components/ThemeToggle'
 
 export default function Layout() {
   const { user, role, signOut } = useAuth()
@@ -310,6 +311,7 @@ export default function Layout() {
               </BreadcrumbList>
             </Breadcrumb>
             <div className="flex-1" />
+            <ThemeToggle />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="gap-2 px-2 hover:bg-slate-100">

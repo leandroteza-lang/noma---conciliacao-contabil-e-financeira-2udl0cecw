@@ -1,138 +1,73 @@
-import { Moon, Sun, Palette, Check, Monitor } from 'lucide-react'
+import { Moon, Sun } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
-  DropdownMenuGroup,
+  DropdownMenuLabel,
 } from '@/components/ui/dropdown-menu'
 import { useTheme } from '@/components/ThemeProvider'
-import { useAuth } from '@/hooks/use-auth'
-import { supabase } from '@/lib/supabase/client'
 
 export function ThemeToggle() {
-  const { mode, setMode, colorTheme, setColorTheme } = useTheme()
-  const { user } = useAuth()
-
-  const handleModeChange = async (newMode: 'light' | 'dark' | 'system') => {
-    setMode(newMode)
-    if (user) {
-      await supabase
-        .from('cadastro_usuarios')
-        .update({ theme_mode: newMode })
-        .eq('user_id', user.id)
-    }
-  }
-
-  const handleColorChange = async (newColor: 'default' | 'ocean' | 'emerald' | 'midnight') => {
-    setColorTheme(newColor)
-    if (user) {
-      await supabase
-        .from('cadastro_usuarios')
-        .update({ color_theme: newColor })
-        .eq('user_id', user.id)
-    }
-  }
+  const themeContext = useTheme() as any
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button
-          variant="outline"
-          size="icon"
-          className="shrink-0 rounded-full h-9 w-9 bg-background/50 backdrop-blur-sm border-border hover:bg-accent transition-all"
-        >
-          <Palette className="h-[1.2rem] w-[1.2rem] text-foreground" />
+        <Button variant="ghost" size="icon" className="w-9 h-9 text-slate-700 dark:text-slate-200">
+          <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+          <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
           <span className="sr-only">Alternar tema</span>
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-52">
-        <DropdownMenuLabel className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-          Modo Visual
-        </DropdownMenuLabel>
-        <DropdownMenuGroup>
-          <DropdownMenuItem
-            onClick={() => handleModeChange('light')}
-            className="justify-between cursor-pointer"
-          >
-            <div className="flex items-center gap-2">
-              <Sun className="h-4 w-4 text-amber-500" />
-              <span>Claro</span>
-            </div>
-            {mode === 'light' && <Check className="h-4 w-4 text-primary" />}
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            onClick={() => handleModeChange('dark')}
-            className="justify-between cursor-pointer"
-          >
-            <div className="flex items-center gap-2">
-              <Moon className="h-4 w-4 text-indigo-400" />
-              <span>Escuro</span>
-            </div>
-            {mode === 'dark' && <Check className="h-4 w-4 text-primary" />}
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            onClick={() => handleModeChange('system')}
-            className="justify-between cursor-pointer"
-          >
-            <div className="flex items-center gap-2">
-              <Monitor className="h-4 w-4 text-slate-500" />
-              <span>Sistema</span>
-            </div>
-            {mode === 'system' && <Check className="h-4 w-4 text-primary" />}
-          </DropdownMenuItem>
-        </DropdownMenuGroup>
+      <DropdownMenuContent align="end">
+        <DropdownMenuLabel>Modo de Exibição</DropdownMenuLabel>
+        <DropdownMenuItem
+          onClick={() => {
+            if (themeContext.setMode) themeContext.setMode('light')
+            else if (themeContext.setTheme) themeContext.setTheme('light')
+          }}
+        >
+          Claro
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          onClick={() => {
+            if (themeContext.setMode) themeContext.setMode('dark')
+            else if (themeContext.setTheme) themeContext.setTheme('dark')
+          }}
+        >
+          Escuro
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          onClick={() => {
+            if (themeContext.setMode) themeContext.setMode('system')
+            else if (themeContext.setTheme) themeContext.setTheme('system')
+          }}
+        >
+          Sistema
+        </DropdownMenuItem>
 
-        <DropdownMenuSeparator />
-
-        <DropdownMenuLabel className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-          Tema de Cores
-        </DropdownMenuLabel>
-        <DropdownMenuGroup>
-          <DropdownMenuItem
-            onClick={() => handleColorChange('default')}
-            className="justify-between cursor-pointer"
-          >
-            <div className="flex items-center gap-2">
-              <div className="h-4 w-4 rounded-full bg-slate-800 dark:bg-slate-200 shadow-sm border border-border" />
-              <span>Padrão</span>
-            </div>
-            {colorTheme === 'default' && <Check className="h-4 w-4 text-primary" />}
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            onClick={() => handleColorChange('ocean')}
-            className="justify-between cursor-pointer"
-          >
-            <div className="flex items-center gap-2">
-              <div className="h-4 w-4 rounded-full bg-[#0284c7] shadow-sm border border-border" />
-              <span>Ocean Blue</span>
-            </div>
-            {colorTheme === 'ocean' && <Check className="h-4 w-4 text-primary" />}
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            onClick={() => handleColorChange('emerald')}
-            className="justify-between cursor-pointer"
-          >
-            <div className="flex items-center gap-2">
-              <div className="h-4 w-4 rounded-full bg-[#10b981] shadow-sm border border-border" />
-              <span>Emerald</span>
-            </div>
-            {colorTheme === 'emerald' && <Check className="h-4 w-4 text-primary" />}
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            onClick={() => handleColorChange('midnight')}
-            className="justify-between cursor-pointer"
-          >
-            <div className="flex items-center gap-2">
-              <div className="h-4 w-4 rounded-full bg-[#7c3aed] shadow-sm border border-border" />
-              <span>Midnight</span>
-            </div>
-            {colorTheme === 'midnight' && <Check className="h-4 w-4 text-primary" />}
-          </DropdownMenuItem>
-        </DropdownMenuGroup>
+        {themeContext.setColorTheme && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuLabel>Cor do Tema</DropdownMenuLabel>
+            <DropdownMenuItem onClick={() => themeContext.setColorTheme('default')}>
+              <div className="w-4 h-4 rounded-full bg-slate-900 dark:bg-slate-100 mr-2 border border-slate-200 dark:border-slate-800" />{' '}
+              Padrão
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => themeContext.setColorTheme('ocean')}>
+              <div className="w-4 h-4 rounded-full bg-blue-600 mr-2" /> Ocean
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => themeContext.setColorTheme('emerald')}>
+              <div className="w-4 h-4 rounded-full bg-emerald-600 mr-2" /> Emerald
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => themeContext.setColorTheme('midnight')}>
+              <div className="w-4 h-4 rounded-full bg-indigo-900 mr-2" /> Midnight
+            </DropdownMenuItem>
+          </>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   )
