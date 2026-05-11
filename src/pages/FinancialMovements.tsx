@@ -745,6 +745,12 @@ export default function FinancialMovements() {
   const [isExporting, setIsExporting] = useState(false)
   const [isSyncing, setIsSyncing] = useState(false)
 
+  const [resumoData, setResumoData] = useState<any[]>([])
+  const [resumoLoading, setResumoLoading] = useState(false)
+  const [resumoSearch, setResumoSearch] = useState('')
+  const [resumoFilters, setResumoFilters] = useState<Record<string, string[]>>({})
+  const [resumoFiltersOpen, setResumoFiltersOpen] = useState(false)
+
   const syncMappings = async () => {
     if (!user) return
     setIsSyncing(true)
@@ -837,7 +843,7 @@ export default function FinancialMovements() {
         .order('id', { ascending: true })
 
       if (scope === 'filtered') {
-        q = applyQueryFilters(q)
+        q = applyQueryFilters(q, search, filters)
       }
 
       while (hasMore) {
@@ -1861,10 +1867,14 @@ export default function FinancialMovements() {
     }
   }
 
-  const applyQueryFilters = (query: any) => {
+  const applyQueryFilters = (
+    query: any,
+    searchStr: string,
+    filterObj: Record<string, string[]>,
+  ) => {
     let q = query
-    if (search) {
-      const cleanW = search
+    if (searchStr) {
+      const cleanW = searchStr
         .trim()
         .replace(/\s+/g, '%')
         .replace(/[aeiouáàãâäéèêëíìîïóòõôöúùûücç]/gi, '_')
@@ -1875,7 +1885,7 @@ export default function FinancialMovements() {
 
     const dateCols = ['data_emissao', 'dt_compens', 'data_vencto', 'data_canc', 'data_estorno']
 
-    Object.entries(filters).forEach(([key, values]) => {
+    Object.entries(filterObj).forEach(([key, values]) => {
       if (values && values.length > 0) {
         if (key === 'natureza') {
           const orParts: string[] = []
@@ -1933,7 +1943,7 @@ export default function FinancialMovements() {
           .order(orderCol, { ascending: sortDirection === 'asc' })
           .order('id', { ascending: true })
 
-        q = applyQueryFilters(q)
+        q = applyQueryFilters(q, search, filters)
 
         const { data, error } = await q.range(pageIdx * limit, (pageIdx + 1) * limit - 1)
         if (error) {
@@ -2073,6 +2083,63 @@ export default function FinancialMovements() {
     filters,
   ])
 
+  const fetchResumoData = async () => {
+    if (!user) return
+    setResumoLoading(true)
+    let allData: any[] = []
+    let hasMore = true
+    let pageIdx = 0
+    const limit = 1000
+
+    let q = supabase
+      .from('erp_financial_movements')
+      .select('*, organizations(name)')
+      .is('deleted_at', null)
+      .order('data_emissao', { ascending: false })
+      .order('id', { ascending: true })
+
+    q = applyQueryFilters(q, resumoSearch, resumoFilters)
+
+    while (hasMore) {
+      const { data, error } = await q.range(pageIdx * limit, (pageIdx + 1) * limit - 1)
+      if (error) {
+        toast.error('Erro ao buscar dados do resumo: ' + error.message)
+        hasMore = false
+      } else if (!data || data.length === 0) {
+        hasMore = false
+      } else {
+        allData = allData.concat(data)
+        pageIdx++
+        if (data.length < limit) {
+          hasMore = false
+        }
+      }
+    }
+
+    if (resumoFilters['prontidao'] && resumoFilters['prontidao'].length > 0) {
+      allData = allData.filter((row) => {
+        const missing =
+          !row.data_emissao ||
+          !row.c_custo ||
+          row.valor_liquido === null ||
+          row.valor_liquido === undefined
+        let statusText = 'Pendente'
+        if (missing) statusText = 'Incompleto'
+        else if (getMappedAccount(row)) statusText = 'Mapeado'
+        return resumoFilters['prontidao'].includes(statusText)
+      })
+    }
+
+    setResumoData(allData)
+    setResumoLoading(false)
+  }
+
+  useEffect(() => {
+    if (activeTab === 'resumo') {
+      fetchResumoData()
+    }
+  }, [user, resumoSearch, resumoFilters, refreshKey, activeTab])
+
   const fetchData = async () => {
     if (!user) return
     setLoading(true)
@@ -2093,7 +2160,7 @@ export default function FinancialMovements() {
           .order(orderCol, { ascending: sortDirection === 'asc' })
           .order('id', { ascending: true })
 
-        q = applyQueryFilters(q)
+        q = applyQueryFilters(q, search, filters)
 
         const { data, error } = await q.range(pageIdx * limit, (pageIdx + 1) * limit - 1)
         if (error) {
@@ -4605,8 +4672,211 @@ export default function FinancialMovements() {
         </TabsContent>
 
         <TabsContent value="resumo" className="m-0 animate-in fade-in-up duration-500">
-          <div className="flex justify-between mb-4 items-center flex-wrap gap-4">
-            <h2 className="text-xl font-bold text-slate-800 hidden sm:block">Painel Gerencial</h2>
+          <div className="flex flex-col md:flex-row justify-between mb-4 items-start md:items-center flex-wrap gap-4">
+            <div className="flex items-center gap-3">
+              <h2 className="text-xl font-bold text-slate-800 hidden sm:block">Painel Gerencial</h2>
+              {resumoLoading && <Loader2 className="h-4 w-4 animate-spin text-indigo-600" />}
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2 bg-white border border-slate-200 p-1.5 rounded-lg shadow-sm w-full md:w-auto">
+              <div className="relative flex-1 min-w-[200px]">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                <Input
+                  placeholder="Buscar no resumo..."
+                  className="pl-8 h-8 text-xs bg-slate-50 border-transparent hover:border-slate-200 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all"
+                  value={resumoSearch}
+                  onChange={(e) => setResumoSearch(e.target.value)}
+                />
+              </div>
+
+              <div className="h-4 w-px bg-slate-200 mx-1"></div>
+
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 text-xs flex items-center gap-1.5 px-2.5 relative border-slate-200 hover:bg-slate-50"
+                onClick={() => setResumoFiltersOpen(true)}
+              >
+                <Filter className="h-3.5 w-3.5 text-slate-500" />
+                <span>Filtros do Resumo</span>
+                {Object.values(resumoFilters).some((arr) => arr && arr.length > 0) && (
+                  <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-indigo-600 text-[9px] font-bold text-white shadow-sm border-2 border-white">
+                    {Object.values(resumoFilters).reduce(
+                      (acc: number, val: any) => acc + (val?.length > 0 ? 1 : 0),
+                      0,
+                    )}
+                  </span>
+                )}
+              </Button>
+
+              {(Object.values(resumoFilters).some((arr) => arr && arr.length > 0) ||
+                resumoSearch) && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 text-xs px-2.5 text-slate-500 hover:text-red-600 hover:bg-red-50"
+                  onClick={() => {
+                    setResumoFilters({})
+                    setResumoSearch('')
+                  }}
+                  title="Limpar Filtros do Resumo"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </Button>
+              )}
+
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 text-xs px-2.5 text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 font-medium ml-1"
+                onClick={() => {
+                  setResumoFilters(filters)
+                  setResumoSearch(search)
+                  toast.success('Filtros importados da grade com sucesso!')
+                }}
+                title="Importar filtros atualmente aplicados na grade de movimentos"
+              >
+                <Download className="h-3.5 w-3.5 mr-1.5" />
+                Importar da Grade
+              </Button>
+            </div>
+
+            <FloatingPanel
+              open={resumoFiltersOpen}
+              onClose={() => setResumoFiltersOpen(false)}
+              title="Filtros Específicos do Resumo"
+              widthClass="w-[calc(100vw-2rem)] sm:w-[600px] md:w-[800px] lg:w-[1000px]"
+            >
+              <div className="p-4 max-h-[70vh] overflow-y-auto flex flex-col gap-4">
+                <div className="flex items-center justify-between">
+                  <h4 className="font-semibold text-sm">Filtros do Resumo Consolidado</h4>
+                  {Object.values(resumoFilters).some((arr) => arr && arr.length > 0) && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setResumoFilters({})}
+                      className="h-6 text-xs px-2 text-slate-500 hover:text-slate-800"
+                    >
+                      Limpar todos
+                    </Button>
+                  )}
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                  {filterOrder.map((key) => {
+                    if (key === 'natureza') {
+                      const isNaturezaActive =
+                        resumoFilters['natureza'] && resumoFilters['natureza'].length > 0
+                      return (
+                        <div
+                          key={key}
+                          className={cn(
+                            'space-y-1.5 p-2 border rounded-md transition-all duration-200 flex flex-col',
+                            isNaturezaActive
+                              ? 'bg-[#800000] border-[#800000] shadow-sm'
+                              : 'bg-white border-slate-200 hover:border-slate-300',
+                          )}
+                        >
+                          <Label
+                            className={cn(
+                              'text-xs flex items-center gap-1.5 font-semibold',
+                              isNaturezaActive ? 'text-white' : 'text-slate-700',
+                            )}
+                          >
+                            Natureza
+                          </Label>
+                          <MultiSelect
+                            title="Ambas"
+                            options={[
+                              { label: 'Entradas (+)', value: 'positivo' },
+                              { label: 'Saídas (-)', value: 'negativo' },
+                            ]}
+                            selected={resumoFilters['natureza'] || []}
+                            isActive={isNaturezaActive}
+                            onChange={(v) => {
+                              setResumoFilters((p) => ({ ...p, natureza: v }))
+                            }}
+                          />
+                          {isNaturezaActive && (
+                            <div className="flex flex-wrap gap-1 mt-1">
+                              {(resumoFilters['natureza'] || []).map((val) => (
+                                <span
+                                  key={val}
+                                  className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-white/20 text-white truncate max-w-full"
+                                >
+                                  {val === 'positivo' ? 'Entradas (+)' : 'Saídas (-)'}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )
+                    }
+
+                    const h = tableHeaders.find((th) => th.key === key)
+                    if (!h) return null
+                    const isColActive = resumoFilters[h.key] && resumoFilters[h.key].length > 0
+
+                    return (
+                      <div
+                        key={h.key}
+                        className={cn(
+                          'space-y-1.5 p-2 border rounded-md transition-all duration-200 flex flex-col',
+                          isColActive
+                            ? 'bg-[#800000] border-[#800000] shadow-sm'
+                            : 'bg-white border-slate-200 hover:border-slate-300',
+                        )}
+                      >
+                        <Label
+                          className={cn(
+                            'text-xs truncate flex items-center gap-1.5 font-semibold',
+                            isColActive ? 'text-white' : 'text-slate-700',
+                          )}
+                          title={h.label}
+                        >
+                          {h.label}
+                        </Label>
+                        <MultiSelect
+                          title="Todos"
+                          options={filterOptions[h.key] || []}
+                          selected={resumoFilters[h.key] || []}
+                          isActive={isColActive}
+                          onChange={(v) => {
+                            setResumoFilters((p) => ({ ...p, [h.key]: v }))
+                          }}
+                        />
+                        {isColActive && (
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {(resumoFilters[h.key] || []).map((val) => {
+                              const opt = (filterOptions[h.key] || []).find((o) => o.value === val)
+                              const label = opt ? opt.label : val
+                              return (
+                                <span
+                                  key={val}
+                                  className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-white/20 text-white truncate max-w-full"
+                                  title={label}
+                                >
+                                  {label}
+                                </span>
+                              )
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+                <div className="pt-4 border-t border-slate-200 flex justify-end">
+                  <Button
+                    size="sm"
+                    className="h-8 text-xs bg-[#800000] hover:bg-[#800000]/90 text-white"
+                    onClick={() => setResumoFiltersOpen(false)}
+                  >
+                    Aplicar Filtros
+                  </Button>
+                </div>
+              </div>
+            </FloatingPanel>
+
             <div className="flex items-center gap-2 bg-white border border-slate-200 p-1.5 rounded-lg shadow-sm ml-auto">
               <span className="text-sm font-medium text-slate-600 px-2">Data Base:</span>
               <Tabs
@@ -4641,7 +4911,7 @@ export default function FinancialMovements() {
               </CardHeader>
               <CardContent className="p-0">
                 <PeriodConsolidatedTable
-                  data={summaryData}
+                  data={resumoData}
                   type="account"
                   tableFontSize={tableFontSize}
                 />
@@ -4656,7 +4926,7 @@ export default function FinancialMovements() {
               </CardHeader>
               <CardContent className="p-0">
                 <PeriodConsolidatedTable
-                  data={summaryData}
+                  data={resumoData}
                   type="cost"
                   tableFontSize={tableFontSize}
                 />
@@ -4673,7 +4943,7 @@ export default function FinancialMovements() {
               </CardHeader>
               <CardContent className="p-0">
                 <SummaryTable
-                  data={summaryData}
+                  data={resumoData}
                   type="month_account"
                   dateField={summaryDateBase}
                   tableFontSize={tableFontSize}
@@ -4689,7 +4959,7 @@ export default function FinancialMovements() {
               </CardHeader>
               <CardContent className="p-0">
                 <SummaryTable
-                  data={summaryData}
+                  data={resumoData}
                   type="account_month"
                   dateField={summaryDateBase}
                   tableFontSize={tableFontSize}
@@ -4703,7 +4973,7 @@ export default function FinancialMovements() {
               </CardHeader>
               <CardContent className="p-0">
                 <SummaryTable
-                  data={summaryData}
+                  data={resumoData}
                   type="month_cost"
                   dateField={summaryDateBase}
                   tableFontSize={tableFontSize}
@@ -4717,7 +4987,7 @@ export default function FinancialMovements() {
               </CardHeader>
               <CardContent className="p-0">
                 <SummaryTable
-                  data={summaryData}
+                  data={resumoData}
                   type="cost_month"
                   dateField={summaryDateBase}
                   tableFontSize={tableFontSize}
