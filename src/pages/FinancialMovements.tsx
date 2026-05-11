@@ -353,26 +353,37 @@ function ColumnFilter({
               </CommandGroup>
             </CommandList>
             <div className="p-1 border-t border-slate-100 bg-slate-50 flex flex-col gap-1">
-              {selected.length > 0 && (
+              <div className="flex items-center gap-1 w-full">
                 <Button
-                  variant="ghost"
+                  variant="secondary"
                   size="sm"
-                  className="h-6 w-full text-[10px] text-red-600 hover:text-red-700 hover:bg-red-50"
+                  className="h-6 flex-1 text-[10px]"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onChange(options)
+                  }}
+                >
+                  Todos
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="h-6 flex-1 text-[10px]"
                   onClick={(e) => {
                     e.stopPropagation()
                     onChange([])
                   }}
                 >
-                  Limpar Filtros
+                  Nenhum
                 </Button>
-              )}
+              </div>
               <Button
                 variant="outline"
                 size="sm"
                 className="h-6 w-full text-[10px]"
                 onClick={() => setOpen(false)}
               >
-                Cancelar
+                Fechar
               </Button>
             </div>
           </Command>
@@ -4085,6 +4096,38 @@ export default function FinancialMovements() {
                                         placeholder="Buscar..."
                                         className="h-8 text-xs"
                                       />
+                                      <div className="flex items-center gap-1 p-1 border-b border-slate-100 bg-slate-50">
+                                        <Button
+                                          variant="secondary"
+                                          size="sm"
+                                          className="h-6 flex-1 text-[10px]"
+                                          onClick={(e) => {
+                                            e.stopPropagation()
+                                            setFilters((prev) => ({
+                                              ...prev,
+                                              [h.key]: options.map((o) => o.value),
+                                            }))
+                                            setPage(0)
+                                          }}
+                                        >
+                                          Todos
+                                        </Button>
+                                        <Button
+                                          variant="secondary"
+                                          size="sm"
+                                          className="h-6 flex-1 text-[10px]"
+                                          onClick={(e) => {
+                                            e.stopPropagation()
+                                            setFilters((prev) => ({
+                                              ...prev,
+                                              [h.key]: [],
+                                            }))
+                                            setPage(0)
+                                          }}
+                                        >
+                                          Nenhum
+                                        </Button>
+                                      </div>
                                       <CommandList className="max-h-[200px] overflow-y-auto">
                                         <CommandEmpty className="py-2 text-xs text-center text-slate-500">
                                           Nenhum encontrado.
@@ -5938,6 +5981,36 @@ export default function FinancialMovements() {
                                           placeholder="Buscar..."
                                           className="h-8 text-xs"
                                         />
+                                        <div className="flex items-center gap-1 p-1 border-b border-slate-100 bg-slate-50">
+                                          <Button
+                                            variant="secondary"
+                                            size="sm"
+                                            className="h-6 flex-1 text-[10px]"
+                                            onClick={(e) => {
+                                              e.stopPropagation()
+                                              setResumoFilters((prev) => ({
+                                                ...prev,
+                                                [key]: options.map((o) => o.value),
+                                              }))
+                                            }}
+                                          >
+                                            Todos
+                                          </Button>
+                                          <Button
+                                            variant="secondary"
+                                            size="sm"
+                                            className="h-6 flex-1 text-[10px]"
+                                            onClick={(e) => {
+                                              e.stopPropagation()
+                                              setResumoFilters((prev) => ({
+                                                ...prev,
+                                                [key]: [],
+                                              }))
+                                            }}
+                                          >
+                                            Nenhum
+                                          </Button>
+                                        </div>
                                         <CommandList className="max-h-[200px] overflow-y-auto">
                                           <CommandEmpty className="py-2 text-xs text-center text-slate-500">
                                             Nenhum encontrado.
