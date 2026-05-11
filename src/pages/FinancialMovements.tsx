@@ -195,6 +195,7 @@ function DraggablePopoverContent({
 
   const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     const target = e.target as HTMLElement
+    if (target.closest('button')) return // Prevent dragging when clicking buttons
     if (target.closest('.drag-handle')) {
       e.currentTarget.setPointerCapture(e.pointerId)
       dragRef.current = {
@@ -4864,7 +4865,15 @@ export default function FinancialMovements() {
                     )
                   })}
                 </div>
-                <div className="pt-4 border-t border-slate-200 flex justify-end">
+                <div className="pt-4 border-t border-slate-200 flex justify-end gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 text-xs whitespace-nowrap"
+                    onClick={() => setResumoFiltersOpen(false)}
+                  >
+                    Cancelar
+                  </Button>
                   <Button
                     size="sm"
                     className="h-8 text-xs bg-[#800000] hover:bg-[#800000]/90 text-white"
