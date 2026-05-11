@@ -2451,7 +2451,6 @@ export default function FinancialMovements() {
 
   const [resumoSortColumn, setResumoSortColumn] = useState<string>('c_custo')
   const [resumoSortDirection, setResumoSortDirection] = useState<'asc' | 'desc'>('asc')
-  const [resumoFilters, setResumoFilters] = useState<Record<string, string[]>>({})
   const [showSyntheticLevels, setShowSyntheticLevels] = useState(true)
 
   const resumoFilterOptions = useMemo(() => {
