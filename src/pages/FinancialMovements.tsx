@@ -4615,10 +4615,16 @@ export default function FinancialMovements() {
                 className="w-[200px] sm:w-[300px]"
               >
                 <TabsList className="grid w-full grid-cols-2 h-8">
-                  <TabsTrigger value="data_emissao" className="text-xs">
+                  <TabsTrigger
+                    value="data_emissao"
+                    className="text-xs data-[state=active]:bg-indigo-950 data-[state=active]:text-white transition-all"
+                  >
                     Emissão
                   </TabsTrigger>
-                  <TabsTrigger value="dt_compens" className="text-xs">
+                  <TabsTrigger
+                    value="dt_compens"
+                    className="text-xs data-[state=active]:bg-indigo-950 data-[state=active]:text-white transition-all"
+                  >
                     Compensação
                   </TabsTrigger>
                 </TabsList>
@@ -4740,10 +4746,16 @@ export default function FinancialMovements() {
                       className="w-[180px]"
                     >
                       <TabsList className="grid w-full grid-cols-2 h-7">
-                        <TabsTrigger value="data_emissao" className="text-[10px]">
+                        <TabsTrigger
+                          value="data_emissao"
+                          className="text-[10px] data-[state=active]:bg-indigo-950 data-[state=active]:text-white transition-all"
+                        >
                           Emissão
                         </TabsTrigger>
-                        <TabsTrigger value="dt_compens" className="text-[10px]">
+                        <TabsTrigger
+                          value="dt_compens"
+                          className="text-[10px] data-[state=active]:bg-indigo-950 data-[state=active]:text-white transition-all"
+                        >
                           Compens.
                         </TabsTrigger>
                       </TabsList>
@@ -4977,10 +4989,16 @@ export default function FinancialMovements() {
                 className="w-[200px] sm:w-[300px]"
               >
                 <TabsList className="grid w-full grid-cols-2 h-8">
-                  <TabsTrigger value="data_emissao" className="text-xs">
+                  <TabsTrigger
+                    value="data_emissao"
+                    className="text-xs data-[state=active]:bg-indigo-950 data-[state=active]:text-white transition-all"
+                  >
                     Emissão
                   </TabsTrigger>
-                  <TabsTrigger value="dt_compens" className="text-xs">
+                  <TabsTrigger
+                    value="dt_compens"
+                    className="text-xs data-[state=active]:bg-indigo-950 data-[state=active]:text-white transition-all"
+                  >
                     Compensação
                   </TabsTrigger>
                 </TabsList>
