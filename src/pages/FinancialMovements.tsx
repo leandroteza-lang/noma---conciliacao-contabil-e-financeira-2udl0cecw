@@ -699,13 +699,6 @@ const defaultTabsOrderConfig = [
     inactiveClass: 'data-[state=inactive]:hover:bg-red-50',
   },
   {
-    id: 'bridge',
-    label: 'Accounting Bridge',
-    activeClass: 'data-[state=active]:bg-indigo-600 data-[state=active]:text-white',
-    inactiveClass:
-      'data-[state=inactive]:text-slate-600 data-[state=inactive]:hover:bg-slate-200/50',
-  },
-  {
     id: 'sankey',
     label: 'Análise Sankey',
     activeClass: 'data-[state=active]:bg-violet-700 data-[state=active]:text-white',
@@ -1196,11 +1189,6 @@ export default function FinancialMovements() {
   const [mappingRow, setMappingRow] = useState<any | null>(null)
   const [comboboxOpen, setComboboxOpen] = useState(false)
   const [selectedAccountId, setSelectedAccountId] = useState<string>('')
-
-  const bridgeRef = useRef<HTMLDivElement>(null)
-  const [bridgeLines, setBridgeLines] = useState<
-    { x1: number; y1: number; x2: number; y2: number; mapped: boolean }[]
-  >([])
 
   const fetchAuxData = async () => {
     if (!user) return
@@ -2193,65 +2181,6 @@ export default function FinancialMovements() {
   useEffect(() => {
     fetchData()
   }, [user, page, search, pageSize, sortColumn, sortDirection, refreshKey, filters])
-
-  useEffect(() => {
-    if (activeTab !== 'bridge') return
-    const updateLines = () => {
-      if (!bridgeRef.current) return
-      const containerRect = bridgeRef.current.getBoundingClientRect()
-      const newLines: any[] = []
-
-      const ccs = Array.from(new Set(data.map((d) => d.c_custo || 'SEM_CC')))
-
-      ccs.forEach((cc) => {
-        const el1 = document.getElementById(`bridge-cc-${cc}`)
-        if (!el1) return
-        const rect1 = el1.getBoundingClientRect()
-        const startX = rect1.right - containerRect.left
-        const startY = rect1.top + rect1.height / 2 - containerRect.top
-
-        const rowForCc = data.find((d) => (d.c_custo || 'SEM_CC') === cc)
-        const mappedAcct = getMappedAccountForCC(
-          cc === 'SEM_CC' ? null : cc,
-          rowForCc?.organization_id || null,
-        )
-        if (mappedAcct) {
-          const el2 = document.getElementById(`bridge-coa-${mappedAcct.id}`)
-          if (el2) {
-            const rect2 = el2.getBoundingClientRect()
-            newLines.push({
-              x1: startX,
-              y1: startY,
-              x2: rect2.left - containerRect.left,
-              y2: rect2.top + rect2.height / 2 - containerRect.top,
-              mapped: true,
-            })
-          }
-        } else {
-          newLines.push({
-            x1: startX,
-            y1: startY,
-            x2: startX + 60,
-            y2: startY,
-            mapped: false,
-          })
-        }
-      })
-      setBridgeLines(newLines)
-    }
-
-    const timeout = setTimeout(updateLines, 300)
-    window.addEventListener('resize', updateLines)
-    return () => {
-      clearTimeout(timeout)
-      window.removeEventListener('resize', updateLines)
-    }
-  }, [data, mappings, activeTab])
-
-  const drawPath = (x1: number, y1: number, x2: number, y2: number) => {
-    const curve = Math.abs(x2 - x1) * 0.4
-    return `M ${x1} ${y1} C ${x1 + curve} ${y1}, ${x2 - curve} ${y2}, ${x2} ${y2}`
-  }
 
   const getSankeyData = () => {
     const nodesMap = new Map()
@@ -5968,138 +5897,6 @@ export default function FinancialMovements() {
                     )}
                   </TableBody>
                 </Table>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="bridge" className="m-0 animate-in fade-in-up duration-500">
-          <Card className="border-slate-200 overflow-hidden shadow-sm">
-            <CardHeader className="bg-slate-50/50 border-b pb-4">
-              <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
-                <ArrowRightIcon className="h-5 w-5 text-primary" />
-                Accounting Bridge (Ponte Contábil)
-              </h2>
-              <p className="text-sm text-slate-500">
-                Visualização interativa dos mapeamentos DE/PARA entre centros de custo do ERP e
-                contas contábeis.
-              </p>
-            </CardHeader>
-            <CardContent className="p-0 bg-slate-50">
-              <div ref={bridgeRef} className="relative min-h-[600px] p-8 grid grid-cols-2 gap-32">
-                <div className="space-y-4 flex flex-col items-end z-10 w-full pr-8 border-r border-slate-200/50">
-                  <h3 className="font-bold text-slate-800 text-lg mb-6 text-right w-full">
-                    Origem (ERP)
-                  </h3>
-                  {Array.from(new Set(data.map((d) => d.c_custo || 'SEM_CC'))).map((cc) => (
-                    <div
-                      id={`bridge-cc-${cc}`}
-                      key={cc}
-                      className="bg-white border border-slate-200 shadow-sm rounded-lg p-3 w-64 flex justify-between items-center transition-all hover:border-primary/50 relative group"
-                    >
-                      <span
-                        className="font-medium text-sm text-slate-700 truncate pr-2"
-                        title={cc === 'SEM_CC' ? 'Sem C.Custo' : cc}
-                      >
-                        {cc === 'SEM_CC' ? 'Sem C.Custo' : cc}
-                      </span>
-                      <div
-                        className={cn(
-                          'w-3 h-3 rounded-full shadow-sm ring-2 ring-white',
-                          getMappedAccountForCC(
-                            cc === 'SEM_CC' ? null : cc,
-                            data.find((d) => (d.c_custo || 'SEM_CC') === cc)?.organization_id ||
-                              null,
-                          )
-                            ? 'bg-primary'
-                            : 'bg-red-400',
-                        )}
-                      ></div>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="space-y-4 flex flex-col items-start z-10 w-full pl-8">
-                  <h3 className="font-bold text-slate-800 text-lg mb-6 w-full">
-                    Destino (Contábil)
-                  </h3>
-                  {Array.from(
-                    new Set(
-                      data
-                        .map((d) => {
-                          const m = getMappedAccountForCC(d.c_custo, d.organization_id)
-                          return m ? m.id : null
-                        })
-                        .filter(Boolean),
-                    ),
-                  ).map((coaId) => {
-                    const coa = chartOfAccounts.find((c) => c.id === coaId)
-                    if (!coa) return null
-                    return (
-                      <div
-                        id={`bridge-coa-${coa.id}`}
-                        key={coa.id}
-                        className="bg-white border border-slate-200 shadow-sm rounded-lg p-3 w-72 flex items-center gap-3 transition-all hover:border-primary/50 relative group"
-                      >
-                        <div className="w-3 h-3 rounded-full bg-emerald-500 shadow-sm ring-2 ring-white"></div>
-                        <div className="flex flex-col overflow-hidden">
-                          <div className="flex items-center gap-1.5">
-                            <span className="font-mono text-xs text-slate-500">
-                              {coa.account_code}
-                            </span>
-                            {coa.classification && (
-                              <span className="font-mono text-[10px] text-slate-400">
-                                {coa.classification}
-                              </span>
-                            )}
-                          </div>
-                          <span
-                            className="font-medium text-sm text-slate-800 truncate"
-                            title={coa.account_name}
-                          >
-                            {coa.account_name}
-                          </span>
-                        </div>
-                      </div>
-                    )
-                  })}
-                  {bridgeLines.some((l) => !l.mapped) && (
-                    <div className="bg-red-50 border border-red-200 border-dashed rounded-lg p-4 w-72 flex items-center justify-center text-red-600 font-medium text-sm mt-8 opacity-70">
-                      Pendente de Mapeamento
-                    </div>
-                  )}
-                </div>
-
-                <svg className="absolute inset-0 w-full h-full pointer-events-none z-0">
-                  <defs>
-                    <linearGradient id="bridge-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                      <stop offset="0%" stopColor="#3b82f6" />
-                      <stop offset="100%" stopColor="#10b981" />
-                    </linearGradient>
-                  </defs>
-                  {bridgeLines.map((line, i) =>
-                    line.mapped ? (
-                      <path
-                        key={i}
-                        d={drawPath(line.x1, line.y1, line.x2, line.y2)}
-                        stroke="url(#bridge-gradient)"
-                        strokeWidth="2.5"
-                        fill="none"
-                        className="opacity-60"
-                      />
-                    ) : (
-                      <path
-                        key={i}
-                        d={`M ${line.x1} ${line.y1} L ${line.x2} ${line.y2}`}
-                        stroke="#ef4444"
-                        strokeWidth="2"
-                        strokeDasharray="4 4"
-                        fill="none"
-                        className="opacity-50"
-                      />
-                    ),
-                  )}
-                </svg>
               </div>
             </CardContent>
           </Card>
