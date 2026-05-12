@@ -327,6 +327,10 @@ function ColumnFilter({
                   <CommandItem
                     key={opt}
                     className="text-xs cursor-pointer"
+                    onMouseDown={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                    }}
                     onSelect={() => {
                       onChange(
                         selected.includes(opt)
@@ -358,6 +362,10 @@ function ColumnFilter({
                   variant="secondary"
                   size="sm"
                   className="h-6 flex-1 text-[10px]"
+                  onMouseDown={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                  }}
                   onClick={(e) => {
                     e.stopPropagation()
                     onChange(options)
@@ -369,6 +377,10 @@ function ColumnFilter({
                   variant="secondary"
                   size="sm"
                   className="h-6 flex-1 text-[10px]"
+                  onMouseDown={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                  }}
                   onClick={(e) => {
                     e.stopPropagation()
                     onChange([])
@@ -4124,6 +4136,10 @@ export default function FinancialMovements() {
                                           variant="secondary"
                                           size="sm"
                                           className="h-6 flex-1 text-[10px]"
+                                          onMouseDown={(e) => {
+                                            e.preventDefault()
+                                            e.stopPropagation()
+                                          }}
                                           onClick={(e) => {
                                             e.stopPropagation()
                                             setFilters((prev) => ({
@@ -4139,6 +4155,10 @@ export default function FinancialMovements() {
                                           variant="secondary"
                                           size="sm"
                                           className="h-6 flex-1 text-[10px]"
+                                          onMouseDown={(e) => {
+                                            e.preventDefault()
+                                            e.stopPropagation()
+                                          }}
                                           onClick={(e) => {
                                             e.stopPropagation()
                                             setFilters((prev) => ({
@@ -4168,6 +4188,10 @@ export default function FinancialMovements() {
                                             return (
                                               <CommandItem
                                                 key={opt.value}
+                                                onMouseDown={(e) => {
+                                                  e.preventDefault()
+                                                  e.stopPropagation()
+                                                }}
                                                 onSelect={() => {
                                                   const current = filters[h.key] || []
                                                   const updated = isSelected
@@ -6088,6 +6112,10 @@ export default function FinancialMovements() {
                                             variant="secondary"
                                             size="sm"
                                             className="h-6 flex-1 text-[10px]"
+                                            onMouseDown={(e) => {
+                                              e.preventDefault()
+                                              e.stopPropagation()
+                                            }}
                                             onClick={(e) => {
                                               e.stopPropagation()
                                               setResumoFilters((prev) => ({
@@ -6102,6 +6130,10 @@ export default function FinancialMovements() {
                                             variant="secondary"
                                             size="sm"
                                             className="h-6 flex-1 text-[10px]"
+                                            onMouseDown={(e) => {
+                                              e.preventDefault()
+                                              e.stopPropagation()
+                                            }}
                                             onClick={(e) => {
                                               e.stopPropagation()
                                               setResumoFilters((prev) => ({
@@ -6125,6 +6157,10 @@ export default function FinancialMovements() {
                                               return (
                                                 <CommandItem
                                                   key={opt.value}
+                                                  onMouseDown={(e) => {
+                                                    e.preventDefault()
+                                                    e.stopPropagation()
+                                                  }}
                                                   onSelect={() => {
                                                     const current = resumoFilters[key] || []
                                                     const updated = isSelected

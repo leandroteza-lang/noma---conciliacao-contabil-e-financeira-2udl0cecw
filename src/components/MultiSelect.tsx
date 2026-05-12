@@ -94,6 +94,10 @@ export function MultiSelect({
               variant="secondary"
               size="sm"
               className="h-6 flex-1 text-[10px]"
+              onMouseDown={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+              }}
               onClick={(e) => {
                 e.stopPropagation()
                 onChange(options.map((o) => o.value))
@@ -105,6 +109,10 @@ export function MultiSelect({
               variant="secondary"
               size="sm"
               className="h-6 flex-1 text-[10px]"
+              onMouseDown={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+              }}
               onClick={(e) => {
                 e.stopPropagation()
                 onChange([])
@@ -123,6 +131,10 @@ export function MultiSelect({
                 return (
                   <CommandItem
                     key={option.value}
+                    onMouseDown={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                    }}
                     onSelect={() => {
                       if (isSelected) {
                         onChange(selected.filter((s) => s !== option.value))
