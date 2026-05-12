@@ -7419,75 +7419,257 @@ export default function FinancialMovements() {
                 </div>
               </div>
 
-              <div className="mt-8">
-                <h3 className="text-lg font-bold text-slate-800 mb-4">
-                  Detalhamento dos Subníveis
-                </h3>
-                <div className="overflow-x-auto border border-slate-200 rounded-lg">
-                  <Table>
-                    <TableHeader className="bg-slate-50">
-                      <TableRow>
-                        <TableHead>Código</TableHead>
-                        <TableHead>Descrição</TableHead>
-                        <TableHead className="text-right">Receitas</TableHead>
-                        <TableHead className="text-right">Despesas</TableHead>
-                        <TableHead className="text-right">Resultado</TableHead>
-                        <TableHead className="text-center">Ações</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {participationChartData.map((item: any, idx: number) => {
-                        const child = currentGroupAnalysisNodes.find((c: any) => c.id === item.id)
-                        if (!child) return null
-                        return (
-                          <TableRow key={item.id || idx}>
-                            <TableCell className="font-mono font-medium text-slate-700">
-                              {child.code || 'S/C'}
-                            </TableCell>
-                            <TableCell className="font-medium text-slate-900">
-                              {child.description}
-                            </TableCell>
-                            <TableCell className="text-right text-emerald-600 font-medium">
-                              {new Intl.NumberFormat('pt-BR', {
-                                style: 'currency',
-                                currency: 'BRL',
-                              }).format(child.revenue || 0)}
-                            </TableCell>
-                            <TableCell className="text-right text-rose-600 font-medium">
-                              {new Intl.NumberFormat('pt-BR', {
-                                style: 'currency',
-                                currency: 'BRL',
-                              }).format(child.expense || 0)}
-                            </TableCell>
-                            <TableCell className="text-right font-bold text-slate-800">
-                              {new Intl.NumberFormat('pt-BR', {
-                                style: 'currency',
-                                currency: 'BRL',
-                              }).format((child.revenue || 0) - (child.expense || 0))}
-                            </TableCell>
-                            <TableCell className="text-center">
-                              {child.children && child.children.length > 0 && (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => handleGroupAnalysisDrillDown(child.id)}
+              <div className="mt-8 space-y-6">
+                <Card className="shadow-sm border-slate-200 rounded-xl overflow-hidden">
+                  <CardHeader className="bg-slate-50 border-b border-slate-100 py-4 px-6 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                    <div>
+                      <h3 className="text-lg font-bold text-slate-800">Comparativo Inter-Grupos</h3>
+                      <p className="text-sm text-slate-500">
+                        Confronte a performance entre dois grupos ou centros de custo específicos.
+                      </p>
+                    </div>
+                    <div className="flex flex-col sm:flex-row items-center gap-3 w-full lg:w-auto">
+                      <Select value={compareGroup1} onValueChange={setCompareGroup1}>
+                        <SelectTrigger className="w-full sm:w-[250px] bg-white text-xs">
+                          <SelectValue placeholder="Selecione o Grupo A" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {compareGroupOptions.map((opt) => (
+                            <SelectItem key={opt.value} value={opt.value} className="text-xs">
+                              {opt.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <span className="text-slate-400 font-medium hidden sm:inline">vs</span>
+                      <Select value={compareGroup2} onValueChange={setCompareGroup2}>
+                        <SelectTrigger className="w-full sm:w-[250px] bg-white text-xs">
+                          <SelectValue placeholder="Selecione o Grupo B" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {compareGroupOptions.map((opt) => (
+                            <SelectItem key={opt.value} value={opt.value} className="text-xs">
+                              {opt.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="p-6">
+                    {compareGroup1 && compareGroup2 ? (
+                      <div className="flex flex-col lg:flex-row gap-8">
+                        <div className="w-full lg:w-1/3 flex flex-col gap-4">
+                          <h4 className="text-sm font-bold text-slate-700 uppercase tracking-wider mb-2">
+                            Indicadores de Variação (Delta)
+                          </h4>
+                          {interGroupSummary && (
+                            <div className="bg-slate-50 rounded-xl p-5 border border-slate-100 flex flex-col gap-4">
+                              <div>
+                                <p
+                                  className="text-xs font-semibold text-slate-500 mb-1 truncate"
+                                  title={interGroupSummary.name1}
                                 >
-                                  Explorar Nível <ChevronRight className="h-4 w-4 ml-1" />
-                                </Button>
-                              )}
+                                  Grupo A: {interGroupSummary.name1}
+                                </p>
+                                <p className="text-xl font-bold text-indigo-700">
+                                  {new Intl.NumberFormat('pt-BR', {
+                                    style: 'currency',
+                                    currency: 'BRL',
+                                  }).format(interGroupSummary.total1)}
+                                </p>
+                              </div>
+                              <div>
+                                <p
+                                  className="text-xs font-semibold text-slate-500 mb-1 truncate"
+                                  title={interGroupSummary.name2}
+                                >
+                                  Grupo B: {interGroupSummary.name2}
+                                </p>
+                                <p className="text-xl font-bold text-rose-700">
+                                  {new Intl.NumberFormat('pt-BR', {
+                                    style: 'currency',
+                                    currency: 'BRL',
+                                  }).format(interGroupSummary.total2)}
+                                </p>
+                              </div>
+                              <div className="pt-4 border-t border-slate-200">
+                                <p className="text-xs font-bold text-slate-800 uppercase mb-2">
+                                  Diferença Absoluta
+                                </p>
+                                <div className="flex items-center justify-between">
+                                  <p className="text-lg font-black text-slate-900">
+                                    {new Intl.NumberFormat('pt-BR', {
+                                      style: 'currency',
+                                      currency: 'BRL',
+                                    }).format(Math.abs(interGroupSummary.diffAbs))}
+                                  </p>
+                                  <span
+                                    className={cn(
+                                      'px-2.5 py-1 rounded-md text-xs font-bold',
+                                      interGroupSummary.diffAbs > 0
+                                        ? 'bg-indigo-100 text-indigo-700'
+                                        : interGroupSummary.diffAbs < 0
+                                          ? 'bg-rose-100 text-rose-700'
+                                          : 'bg-slate-200 text-slate-700',
+                                    )}
+                                  >
+                                    {interGroupSummary.diffPct.toFixed(1)}%
+                                  </span>
+                                </div>
+                                <p className="text-[10px] text-slate-500 mt-2">
+                                  {interGroupSummary.diffAbs > 0
+                                    ? 'Grupo A superior ao Grupo B'
+                                    : interGroupSummary.diffAbs < 0
+                                      ? 'Grupo B superior ao Grupo A'
+                                      : 'Grupos equivalentes'}
+                                </p>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex-1">
+                          <h4 className="text-sm font-bold text-slate-700 uppercase tracking-wider mb-4 text-center">
+                            Evolução Comparativa
+                          </h4>
+                          <ChartContainer
+                            config={{
+                              group1: {
+                                label: interGroupSummary?.name1 || 'Grupo A',
+                                color: '#4338ca',
+                              },
+                              group2: {
+                                label: interGroupSummary?.name2 || 'Grupo B',
+                                color: '#be123c',
+                              },
+                            }}
+                            className="h-[300px] w-full"
+                          >
+                            <LineChart
+                              data={interGroupComparisonData}
+                              margin={{ top: 20, right: 20, left: 0, bottom: 0 }}
+                            >
+                              <CartesianGrid
+                                strokeDasharray="3 3"
+                                vertical={false}
+                                stroke="#e2e8f0"
+                              />
+                              <XAxis
+                                dataKey="month"
+                                tickFormatter={(val) => val.split('-').reverse().join('/')}
+                                tickLine={false}
+                                axisLine={false}
+                                tick={{ fill: '#64748b', fontSize: 11 }}
+                                dy={10}
+                              />
+                              <YAxis
+                                tickFormatter={(val) => `R$ ${(val / 1000).toFixed(0)}k`}
+                                tickLine={false}
+                                axisLine={false}
+                                tick={{ fill: '#64748b', fontSize: 11 }}
+                                dx={-10}
+                              />
+                              <ChartTooltip content={<ChartTooltipContent />} />
+                              <ChartLegend content={<ChartLegendContent />} />
+                              <Line
+                                type="monotone"
+                                dataKey="group1"
+                                stroke="#4338ca"
+                                strokeWidth={3}
+                                dot={{ r: 4, strokeWidth: 2, fill: '#fff' }}
+                                activeDot={{ r: 6, strokeWidth: 0 }}
+                              />
+                              <Line
+                                type="monotone"
+                                dataKey="group2"
+                                stroke="#be123c"
+                                strokeWidth={3}
+                                dot={{ r: 4, strokeWidth: 2, fill: '#fff' }}
+                                activeDot={{ r: 6, strokeWidth: 0 }}
+                              />
+                            </LineChart>
+                          </ChartContainer>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-center h-[300px] text-slate-400 border border-dashed rounded-xl bg-slate-50 flex-col gap-2">
+                        <Columns className="h-8 w-8 opacity-50" />
+                        <p>Selecione dois grupos acima para visualizar a comparação.</p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                <div>
+                  <h3 className="text-lg font-bold text-slate-800 mb-4">
+                    Detalhamento dos Subníveis
+                  </h3>
+                  <div className="overflow-x-auto border border-slate-200 rounded-lg">
+                    <Table>
+                      <TableHeader className="bg-slate-50">
+                        <TableRow>
+                          <TableHead>Código</TableHead>
+                          <TableHead>Descrição</TableHead>
+                          <TableHead className="text-right">Receitas</TableHead>
+                          <TableHead className="text-right">Despesas</TableHead>
+                          <TableHead className="text-right">Resultado</TableHead>
+                          <TableHead className="text-center">Ações</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {participationChartData.map((item: any, idx: number) => {
+                          const child = currentGroupAnalysisNodes.find((c: any) => c.id === item.id)
+                          if (!child) return null
+                          return (
+                            <TableRow key={item.id || idx}>
+                              <TableCell className="font-mono font-medium text-slate-700">
+                                {child.code || 'S/C'}
+                              </TableCell>
+                              <TableCell className="font-medium text-slate-900">
+                                {child.description}
+                              </TableCell>
+                              <TableCell className="text-right text-emerald-600 font-medium">
+                                {new Intl.NumberFormat('pt-BR', {
+                                  style: 'currency',
+                                  currency: 'BRL',
+                                }).format(child.revenue || 0)}
+                              </TableCell>
+                              <TableCell className="text-right text-rose-600 font-medium">
+                                {new Intl.NumberFormat('pt-BR', {
+                                  style: 'currency',
+                                  currency: 'BRL',
+                                }).format(child.expense || 0)}
+                              </TableCell>
+                              <TableCell className="text-right font-bold text-slate-800">
+                                {new Intl.NumberFormat('pt-BR', {
+                                  style: 'currency',
+                                  currency: 'BRL',
+                                }).format((child.revenue || 0) - (child.expense || 0))}
+                              </TableCell>
+                              <TableCell className="text-center">
+                                {child.children && child.children.length > 0 && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleGroupAnalysisDrillDown(child.id)}
+                                  >
+                                    Explorar Nível <ChevronRight className="h-4 w-4 ml-1" />
+                                  </Button>
+                                )}
+                              </TableCell>
+                            </TableRow>
+                          )
+                        })}
+                        {participationChartData.length === 0 && (
+                          <TableRow>
+                            <TableCell colSpan={6} className="text-center py-8 text-slate-500">
+                              Nenhum subnível com movimento neste grupo.
                             </TableCell>
                           </TableRow>
-                        )
-                      })}
-                      {participationChartData.length === 0 && (
-                        <TableRow>
-                          <TableCell colSpan={6} className="text-center py-8 text-slate-500">
-                            Nenhum subnível com movimento neste grupo.
-                          </TableCell>
-                        </TableRow>
-                      )}
-                    </TableBody>
-                  </Table>
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
                 </div>
               </div>
             </CardContent>
