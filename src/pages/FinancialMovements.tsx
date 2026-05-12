@@ -3071,6 +3071,10 @@ export default function FinancialMovements() {
   )
   const [groupAnalysisPath, setGroupAnalysisPath] = useState<any[]>([])
 
+  // --- States for Comparativo Inter-Grupos ---
+  const [compareGroup1, setCompareGroup1] = useState<string>('')
+  const [compareGroup2, setCompareGroup2] = useState<string>('')
+
   const groupAnalysisData = useMemo(() => {
     const monthsSet = new Set<string>()
     summaryData.forEach((row) => {
@@ -3251,6 +3255,99 @@ export default function FinancialMovements() {
       setGroupAnalysisPath((prev) => prev.slice(0, index + 1))
     }
   }
+
+  const compareGroupOptions = useMemo(() => {
+    const options = Array.from(groupAnalysisData.nodesMap.values())
+      .map((node) => ({
+        label: node.code ? `${node.code} - ${node.description}` : node.description,
+        value: node.id,
+      }))
+      .sort((a, b) => a.label.localeCompare(b.label))
+
+    options.push({ label: 'S/C - Sem Centro de Custo', value: 'unmapped' })
+    return options
+  }, [groupAnalysisData])
+
+  const interGroupComparisonData = useMemo(() => {
+    if (!compareGroup1 || !compareGroup2) return []
+
+    const node1 =
+      compareGroup1 === 'unmapped'
+        ? groupAnalysisData.unmappedRoot
+        : groupAnalysisData.nodesMap.get(compareGroup1)
+    const node2 =
+      compareGroup2 === 'unmapped'
+        ? groupAnalysisData.unmappedRoot
+        : groupAnalysisData.nodesMap.get(compareGroup2)
+
+    if (!node1 || !node2) return []
+
+    return groupAnalysisData.months.map((month) => {
+      let val1 = 0
+      let val2 = 0
+
+      if (analiseGrupoTipo === 'receita') {
+        val1 = node1.monthlyRevenue[month] || 0
+        val2 = node2.monthlyRevenue[month] || 0
+      } else if (analiseGrupoTipo === 'despesa') {
+        val1 = node1.monthlyExpense[month] || 0
+        val2 = node2.monthlyExpense[month] || 0
+      } else {
+        val1 = node1.monthlyTotals[month] || 0
+        val2 = node2.monthlyTotals[month] || 0
+      }
+
+      return {
+        month,
+        group1: Math.abs(val1),
+        group2: Math.abs(val2),
+      }
+    })
+  }, [compareGroup1, compareGroup2, groupAnalysisData, analiseGrupoTipo])
+
+  const interGroupSummary = useMemo(() => {
+    if (!compareGroup1 || !compareGroup2) return null
+
+    const node1 =
+      compareGroup1 === 'unmapped'
+        ? groupAnalysisData.unmappedRoot
+        : groupAnalysisData.nodesMap.get(compareGroup1)
+    const node2 =
+      compareGroup2 === 'unmapped'
+        ? groupAnalysisData.unmappedRoot
+        : groupAnalysisData.nodesMap.get(compareGroup2)
+
+    if (!node1 || !node2) return null
+
+    let total1 = 0
+    let total2 = 0
+
+    if (analiseGrupoTipo === 'receita') {
+      total1 = node1.revenue || 0
+      total2 = node2.revenue || 0
+    } else if (analiseGrupoTipo === 'despesa') {
+      total1 = node1.expense || 0
+      total2 = node2.expense || 0
+    } else {
+      total1 = node1.total || 0
+      total2 = node2.total || 0
+    }
+
+    // Comparing absolute values
+    const val1 = Math.abs(total1)
+    const val2 = Math.abs(total2)
+    const diffAbs = val1 - val2
+    const diffPct = val2 !== 0 ? (diffAbs / val2) * 100 : val1 !== 0 ? 100 : 0
+
+    return {
+      name1: node1.code ? `${node1.code} - ${node1.description}` : node1.description,
+      name2: node2.code ? `${node2.code} - ${node2.description}` : node2.description,
+      total1: val1,
+      total2: val2,
+      diffAbs,
+      diffPct,
+    }
+  }, [compareGroup1, compareGroup2, groupAnalysisData, analiseGrupoTipo])
 
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize))
   const visibleCount = tableHeaders.filter((h) => visibleColumns[h.key] !== false).length + 2
