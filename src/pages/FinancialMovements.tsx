@@ -914,6 +914,13 @@ const defaultTabsOrderConfig = [
       'data-[state=inactive]:text-slate-600 data-[state=inactive]:hover:bg-slate-200/50',
   },
   {
+    id: 'analise-grupos',
+    label: 'Análise por Grupos',
+    activeClass: 'data-[state=active]:bg-orange-700 data-[state=active]:text-white',
+    inactiveClass:
+      'data-[state=inactive]:text-slate-600 data-[state=inactive]:hover:bg-slate-200/50',
+  },
+  {
     id: 'dry-run',
     label: 'Dry Run TXT',
     activeClass: 'data-[state=active]:bg-slate-900 data-[state=active]:text-emerald-400',
@@ -3057,6 +3064,193 @@ export default function FinancialMovements() {
     dashSelectedPeriodEnd,
     dashSelectedCCs,
   ])
+
+  // --- New states for "Análise por Grupos" ---
+  const [analiseGrupoTipo, setAnaliseGrupoTipo] = useState<'receita' | 'despesa' | 'resultado'>(
+    'despesa',
+  )
+  const [groupAnalysisPath, setGroupAnalysisPath] = useState<any[]>([])
+
+  const groupAnalysisData = useMemo(() => {
+    const monthsSet = new Set<string>()
+    summaryData.forEach((row) => {
+      const d = row[summaryDateBase]
+      if (d) monthsSet.add(d.substring(0, 7))
+    })
+    const months = Array.from(monthsSet).sort()
+
+    const nodesMap = new Map<string, any>()
+    costCenters.forEach((cc) => {
+      nodesMap.set(cc.id, {
+        ...cc,
+        children: [],
+        total: 0,
+        revenue: 0,
+        expense: 0,
+        monthlyTotals: {},
+        monthlyRevenue: {},
+        monthlyExpense: {},
+      })
+    })
+
+    const roots: any[] = []
+    costCenters.forEach((cc) => {
+      if (cc.parent_id && nodesMap.has(cc.parent_id)) {
+        nodesMap.get(cc.parent_id).children.push(nodesMap.get(cc.id))
+      } else {
+        roots.push(nodesMap.get(cc.id))
+      }
+    })
+
+    const unmappedRoot = {
+      id: 'unmapped',
+      code: 'S/C',
+      description: 'Sem Centro de Custo',
+      children: [],
+      total: 0,
+      revenue: 0,
+      expense: 0,
+      monthlyTotals: {} as Record<string, number>,
+      monthlyRevenue: {} as Record<string, number>,
+      monthlyExpense: {} as Record<string, number>,
+    }
+
+    const addValueToNodeAndAncestors = (nodeId: string, month: string, value: number) => {
+      let curr = nodesMap.get(nodeId)
+      while (curr) {
+        curr.total += value
+        if (value > 0) curr.revenue += value
+        else curr.expense += Math.abs(value)
+
+        curr.monthlyTotals[month] = (curr.monthlyTotals[month] || 0) + value
+        if (value > 0) {
+          curr.monthlyRevenue[month] = (curr.monthlyRevenue[month] || 0) + value
+        } else {
+          curr.monthlyExpense[month] = (curr.monthlyExpense[month] || 0) + Math.abs(value)
+        }
+
+        curr = curr.parent_id ? nodesMap.get(curr.parent_id) : null
+      }
+    }
+
+    summaryData.forEach((row) => {
+      const val = Number(row.valor_liquido || row.valor || 0)
+      const d = row[summaryDateBase]
+      const month = d ? d.substring(0, 7) : 'unknown'
+      const orgId = row.organization_id
+      const ccCode = row.c_custo?.trim().toUpperCase()
+
+      let matchedCcId = null
+      if (ccCode && orgId) {
+        const match = costCenters.find(
+          (c) => c.organization_id === orgId && c.code?.trim().toUpperCase() === ccCode,
+        )
+        if (match) matchedCcId = match.id
+      }
+
+      if (matchedCcId) {
+        addValueToNodeAndAncestors(matchedCcId, month, val)
+      } else {
+        unmappedRoot.total += val
+        if (val > 0) unmappedRoot.revenue += val
+        else unmappedRoot.expense += Math.abs(val)
+
+        unmappedRoot.monthlyTotals[month] = (unmappedRoot.monthlyTotals[month] || 0) + val
+        if (val > 0) {
+          unmappedRoot.monthlyRevenue[month] = (unmappedRoot.monthlyRevenue[month] || 0) + val
+        } else {
+          unmappedRoot.monthlyExpense[month] =
+            (unmappedRoot.monthlyExpense[month] || 0) + Math.abs(val)
+        }
+      }
+    })
+
+    return { roots, nodesMap, unmappedRoot, months }
+  }, [summaryData, costCenters, summaryDateBase])
+
+  const currentGroupAnalysisNodes = useMemo(() => {
+    const currentNode =
+      groupAnalysisPath.length > 0 ? groupAnalysisPath[groupAnalysisPath.length - 1] : null
+    const childNodes = currentNode
+      ? currentNode.children
+      : [...groupAnalysisData.roots, groupAnalysisData.unmappedRoot]
+    return childNodes.filter((c: any) => c.revenue > 0 || c.expense > 0 || Math.abs(c.total) > 0)
+  }, [groupAnalysisPath, groupAnalysisData])
+
+  const participationChartData = useMemo(() => {
+    return currentGroupAnalysisNodes
+      .map((child: any) => {
+        let val = 0
+        if (analiseGrupoTipo === 'receita') val = child.revenue || 0
+        else if (analiseGrupoTipo === 'despesa') val = child.expense || 0
+        else val = child.total || 0
+        return {
+          name: child.code ? `${child.code} - ${child.description}` : child.description,
+          code: child.code || 'S/C',
+          id: child.id,
+          value: Math.abs(val),
+        }
+      })
+      .sort((a: any, b: any) => b.value - a.value)
+  }, [currentGroupAnalysisNodes, analiseGrupoTipo])
+
+  const evolutionGroupChartData = useMemo(() => {
+    return groupAnalysisData.months.map((month) => {
+      const dataPoint: any = { month }
+      currentGroupAnalysisNodes.forEach((child: any) => {
+        let val = 0
+        if (analiseGrupoTipo === 'receita') val = child.monthlyRevenue[month] || 0
+        else if (analiseGrupoTipo === 'despesa') val = child.monthlyExpense[month] || 0
+        else val = child.monthlyTotals[month] || 0
+        dataPoint[child.code || 'S/C'] = val
+      })
+      return dataPoint
+    })
+  }, [groupAnalysisData.months, currentGroupAnalysisNodes, analiseGrupoTipo])
+
+  const groupChartColors = [
+    '#4f46e5',
+    '#10b981',
+    '#f59e0b',
+    '#ef4444',
+    '#8b5cf6',
+    '#0ea5e9',
+    '#f97316',
+    '#ec4899',
+    '#14b8a6',
+    '#84cc16',
+    '#6366f1',
+    '#14b8a6',
+    '#f43f5e',
+    '#8b5cf6',
+    '#06b6d4',
+  ]
+
+  const evolutionGroupChartConfig = useMemo(() => {
+    const config: any = {}
+    currentGroupAnalysisNodes.forEach((child: any, index: number) => {
+      config[child.code || 'S/C'] = {
+        label: child.code ? `${child.code} - ${child.description}` : child.description,
+        color: groupChartColors[index % groupChartColors.length],
+      }
+    })
+    return config
+  }, [currentGroupAnalysisNodes])
+
+  const handleGroupAnalysisDrillDown = (nodeId: string) => {
+    const node = groupAnalysisData.nodesMap.get(nodeId)
+    if (node && node.children.length > 0) {
+      setGroupAnalysisPath((prev) => [...prev, node])
+    }
+  }
+
+  const handleGroupAnalysisBreadcrumb = (index: number) => {
+    if (index === -1) {
+      setGroupAnalysisPath([])
+    } else {
+      setGroupAnalysisPath((prev) => prev.slice(0, index + 1))
+    }
+  }
 
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize))
   const visibleCount = tableHeaders.filter((h) => visibleColumns[h.key] !== false).length + 2
@@ -6936,6 +7130,268 @@ export default function FinancialMovements() {
                     </div>
                   )
                 })}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="analise-grupos" className="m-0 animate-in fade-in-up duration-500">
+          <div className="flex flex-col xl:flex-row justify-between mb-6 items-start xl:items-center gap-4 bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+            <div>
+              <h2 className="text-2xl font-bold text-slate-800">Análise por Grupos e Subníveis</h2>
+              <p className="text-sm text-slate-500 mt-1">
+                Navegue na hierarquia dos centros de custo para análises verticais e evolutivas
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 p-1.5 rounded-lg">
+                <Button
+                  variant={analiseGrupoTipo === 'receita' ? 'default' : 'ghost'}
+                  size="sm"
+                  className={cn(
+                    'h-8 text-xs',
+                    analiseGrupoTipo === 'receita' && 'bg-emerald-600 hover:bg-emerald-700',
+                  )}
+                  onClick={() => setAnaliseGrupoTipo('receita')}
+                >
+                  Receitas
+                </Button>
+                <Button
+                  variant={analiseGrupoTipo === 'despesa' ? 'default' : 'ghost'}
+                  size="sm"
+                  className={cn(
+                    'h-8 text-xs',
+                    analiseGrupoTipo === 'despesa' && 'bg-rose-600 hover:bg-rose-700',
+                  )}
+                  onClick={() => setAnaliseGrupoTipo('despesa')}
+                >
+                  Despesas
+                </Button>
+                <Button
+                  variant={analiseGrupoTipo === 'resultado' ? 'default' : 'ghost'}
+                  size="sm"
+                  className={cn(
+                    'h-8 text-xs',
+                    analiseGrupoTipo === 'resultado' && 'bg-blue-600 hover:bg-blue-700',
+                  )}
+                  onClick={() => setAnaliseGrupoTipo('resultado')}
+                >
+                  Resultado Líquido
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          <Card className="shadow-sm border-slate-200 rounded-xl mb-6 overflow-hidden">
+            <CardHeader className="bg-slate-50 border-b border-slate-100 py-3 px-4">
+              <div className="flex items-center gap-2 text-sm font-medium text-slate-600 overflow-x-auto">
+                <button
+                  className="hover:text-indigo-600 transition-colors whitespace-nowrap flex items-center gap-1"
+                  onClick={() => handleGroupAnalysisBreadcrumb(-1)}
+                >
+                  Todos os Grupos
+                </button>
+                {groupAnalysisPath.map((node, idx) => (
+                  <React.Fragment key={node.id}>
+                    <ChevronRight className="h-4 w-4 text-slate-400 shrink-0" />
+                    <button
+                      className={cn(
+                        'hover:text-indigo-600 transition-colors whitespace-nowrap',
+                        idx === groupAnalysisPath.length - 1 ? 'text-indigo-700 font-bold' : '',
+                      )}
+                      onClick={() => handleGroupAnalysisBreadcrumb(idx)}
+                    >
+                      {node.code} - {node.description}
+                    </button>
+                  </React.Fragment>
+                ))}
+              </div>
+            </CardHeader>
+            <CardContent className="p-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <div className="flex flex-col gap-4">
+                  <h3 className="text-lg font-bold text-slate-800 text-center">
+                    Participação Vertical (Total do Período)
+                  </h3>
+                  {participationChartData.length > 0 ? (
+                    <ChartContainer config={evolutionGroupChartConfig} className="h-[350px] w-full">
+                      <PieChart>
+                        <Pie
+                          data={participationChartData}
+                          dataKey="value"
+                          nameKey="code"
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={80}
+                          outerRadius={120}
+                          paddingAngle={2}
+                          cursor="pointer"
+                          onClick={(data) => {
+                            if (
+                              data &&
+                              data.payload &&
+                              data.payload.id &&
+                              data.payload.id !== 'unmapped'
+                            ) {
+                              handleGroupAnalysisDrillDown(data.payload.id)
+                            }
+                          }}
+                        >
+                          {participationChartData.map((entry: any, index: number) => (
+                            <Cell
+                              key={`cell-${index}`}
+                              fill={groupChartColors[index % groupChartColors.length]}
+                            />
+                          ))}
+                        </Pie>
+                        <ChartTooltip
+                          content={({ active, payload }) => {
+                            if (active && payload && payload.length) {
+                              const data = payload[0].payload
+                              return (
+                                <div className="bg-white p-2 border border-slate-200 shadow-sm rounded-md text-xs">
+                                  <div className="font-bold text-slate-800 mb-1">{data.name}</div>
+                                  <div className="text-slate-600">
+                                    {new Intl.NumberFormat('pt-BR', {
+                                      style: 'currency',
+                                      currency: 'BRL',
+                                    }).format(data.value)}
+                                  </div>
+                                </div>
+                              )
+                            }
+                            return null
+                          }}
+                        />
+                      </PieChart>
+                    </ChartContainer>
+                  ) : (
+                    <div className="flex items-center justify-center h-[350px] text-slate-400 border border-dashed rounded-xl bg-slate-50">
+                      Sem dados no período
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex flex-col gap-4">
+                  <h3 className="text-lg font-bold text-slate-800 text-center">
+                    Evolução por Subnível
+                  </h3>
+                  {evolutionGroupChartData.length > 0 && currentGroupAnalysisNodes.length > 0 ? (
+                    <ChartContainer config={evolutionGroupChartConfig} className="h-[350px] w-full">
+                      <LineChart
+                        data={evolutionGroupChartData}
+                        margin={{ top: 20, right: 20, left: 0, bottom: 0 }}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                        <XAxis
+                          dataKey="month"
+                          tickFormatter={(val) => val.split('-').reverse().join('/')}
+                          tickLine={false}
+                          axisLine={false}
+                          tick={{ fill: '#64748b', fontSize: 11 }}
+                          dy={10}
+                        />
+                        <YAxis
+                          tickFormatter={(val) => `R$ ${(val / 1000).toFixed(0)}k`}
+                          tickLine={false}
+                          axisLine={false}
+                          tick={{ fill: '#64748b', fontSize: 11 }}
+                          dx={-10}
+                        />
+                        <ChartTooltip content={<ChartTooltipContent />} />
+                        <ChartLegend content={<ChartLegendContent />} />
+
+                        {currentGroupAnalysisNodes.map((child: any, idx: number) => (
+                          <Line
+                            key={child.code || 'S/C'}
+                            type="monotone"
+                            dataKey={child.code || 'S/C'}
+                            stroke={groupChartColors[idx % groupChartColors.length]}
+                            strokeWidth={3}
+                            dot={false}
+                            activeDot={{ r: 6, strokeWidth: 0 }}
+                          />
+                        ))}
+                      </LineChart>
+                    </ChartContainer>
+                  ) : (
+                    <div className="flex items-center justify-center h-[350px] text-slate-400 border border-dashed rounded-xl bg-slate-50">
+                      Sem dados no período
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="mt-8">
+                <h3 className="text-lg font-bold text-slate-800 mb-4">
+                  Detalhamento dos Subníveis
+                </h3>
+                <div className="overflow-x-auto border border-slate-200 rounded-lg">
+                  <Table>
+                    <TableHeader className="bg-slate-50">
+                      <TableRow>
+                        <TableHead>Código</TableHead>
+                        <TableHead>Descrição</TableHead>
+                        <TableHead className="text-right">Receitas</TableHead>
+                        <TableHead className="text-right">Despesas</TableHead>
+                        <TableHead className="text-right">Resultado</TableHead>
+                        <TableHead className="text-center">Ações</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {participationChartData.map((item: any, idx: number) => {
+                        const child = currentGroupAnalysisNodes.find((c: any) => c.id === item.id)
+                        if (!child) return null
+                        return (
+                          <TableRow key={item.id || idx}>
+                            <TableCell className="font-mono font-medium text-slate-700">
+                              {child.code || 'S/C'}
+                            </TableCell>
+                            <TableCell className="font-medium text-slate-900">
+                              {child.description}
+                            </TableCell>
+                            <TableCell className="text-right text-emerald-600 font-medium">
+                              {new Intl.NumberFormat('pt-BR', {
+                                style: 'currency',
+                                currency: 'BRL',
+                              }).format(child.revenue || 0)}
+                            </TableCell>
+                            <TableCell className="text-right text-rose-600 font-medium">
+                              {new Intl.NumberFormat('pt-BR', {
+                                style: 'currency',
+                                currency: 'BRL',
+                              }).format(child.expense || 0)}
+                            </TableCell>
+                            <TableCell className="text-right font-bold text-slate-800">
+                              {new Intl.NumberFormat('pt-BR', {
+                                style: 'currency',
+                                currency: 'BRL',
+                              }).format((child.revenue || 0) - (child.expense || 0))}
+                            </TableCell>
+                            <TableCell className="text-center">
+                              {child.children && child.children.length > 0 && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleGroupAnalysisDrillDown(child.id)}
+                                >
+                                  Explorar Nível <ChevronRight className="h-4 w-4 ml-1" />
+                                </Button>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        )
+                      })}
+                      {participationChartData.length === 0 && (
+                        <TableRow>
+                          <TableCell colSpan={6} className="text-center py-8 text-slate-500">
+                            Nenhum subnível com movimento neste grupo.
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
               </div>
             </CardContent>
           </Card>
