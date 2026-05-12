@@ -102,7 +102,7 @@ import {
   XAxis,
   YAxis,
   CartesianGrid,
-  Label,
+  Label as RechartsLabel,
 } from 'recharts'
 import {
   ChartContainer,
@@ -5892,7 +5892,7 @@ export default function FinancialMovements() {
                             if (data && data.name) handleDrillDown(data.name)
                           }}
                         >
-                          <Label
+                          <RechartsLabel
                             content={({ viewBox }) => {
                               if (viewBox && 'cx' in viewBox && 'cy' in viewBox) {
                                 return (
