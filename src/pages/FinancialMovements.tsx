@@ -5015,8 +5015,8 @@ export default function FinancialMovements() {
 
               <div className="h-4 w-px bg-slate-200 mx-1"></div>
 
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
+              <Popover>
+                <PopoverTrigger asChild>
                   <Button
                     variant="outline"
                     size="sm"
@@ -5025,58 +5025,82 @@ export default function FinancialMovements() {
                     <Eye className="h-3.5 w-3.5 text-slate-500" />
                     <span>Exibir Cards</span>
                   </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-64">
-                  <DropdownMenuLabel className="text-xs">Ocultar/Exibir Cards</DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuCheckboxItem
-                    checked={visibleCards.consolidado_conta !== false}
-                    onCheckedChange={(c) =>
-                      setVisibleCards((p) => ({ ...p, consolidado_conta: c }))
-                    }
-                    className="text-xs cursor-pointer"
-                  >
-                    Consolidado por Conta/Caixa
-                  </DropdownMenuCheckboxItem>
-                  <DropdownMenuCheckboxItem
-                    checked={visibleCards.consolidado_custo !== false}
-                    onCheckedChange={(c) =>
-                      setVisibleCards((p) => ({ ...p, consolidado_custo: c }))
-                    }
-                    className="text-xs cursor-pointer"
-                  >
-                    Consolidado por Centro de Custo
-                  </DropdownMenuCheckboxItem>
-                  <DropdownMenuCheckboxItem
-                    checked={visibleCards.mes_conta !== false}
-                    onCheckedChange={(c) => setVisibleCards((p) => ({ ...p, mes_conta: c }))}
-                    className="text-xs cursor-pointer"
-                  >
-                    Financeiro (Mês ➔ Conta/Caixa)
-                  </DropdownMenuCheckboxItem>
-                  <DropdownMenuCheckboxItem
-                    checked={visibleCards.conta_mes !== false}
-                    onCheckedChange={(c) => setVisibleCards((p) => ({ ...p, conta_mes: c }))}
-                    className="text-xs cursor-pointer"
-                  >
-                    Financeiro (Conta/Caixa ➔ Mês)
-                  </DropdownMenuCheckboxItem>
-                  <DropdownMenuCheckboxItem
-                    checked={visibleCards.mes_custo !== false}
-                    onCheckedChange={(c) => setVisibleCards((p) => ({ ...p, mes_custo: c }))}
-                    className="text-xs cursor-pointer"
-                  >
-                    Custos (Mês ➔ C. Custo)
-                  </DropdownMenuCheckboxItem>
-                  <DropdownMenuCheckboxItem
-                    checked={visibleCards.custo_mes !== false}
-                    onCheckedChange={(c) => setVisibleCards((p) => ({ ...p, custo_mes: c }))}
-                    className="text-xs cursor-pointer"
-                  >
-                    Custos (C. Custo ➔ Mês)
-                  </DropdownMenuCheckboxItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+                </PopoverTrigger>
+                <PopoverContent align="end" className="w-72 p-2">
+                  <div className="flex flex-col gap-2">
+                    <div className="flex items-center justify-between px-1">
+                      <span className="text-xs font-semibold text-slate-700">
+                        Ocultar/Exibir Cards
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1 pb-2 border-b border-slate-100">
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        className="h-6 flex-1 text-[10px]"
+                        onClick={() => {
+                          setVisibleCards({
+                            consolidado_conta: true,
+                            consolidado_custo: true,
+                            mes_conta: true,
+                            conta_mes: true,
+                            mes_custo: true,
+                            custo_mes: true,
+                          })
+                        }}
+                      >
+                        Todos
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        className="h-6 flex-1 text-[10px]"
+                        onClick={() => {
+                          setVisibleCards({
+                            consolidado_conta: false,
+                            consolidado_custo: false,
+                            mes_conta: false,
+                            conta_mes: false,
+                            mes_custo: false,
+                            custo_mes: false,
+                          })
+                        }}
+                      >
+                        Nenhum
+                      </Button>
+                    </div>
+                    <div className="flex flex-col gap-1 max-h-[300px] overflow-y-auto custom-scrollbar pr-1">
+                      {[
+                        { id: 'consolidado_conta', label: 'Consolidado por Conta/Caixa' },
+                        { id: 'consolidado_custo', label: 'Consolidado por Centro de Custo' },
+                        { id: 'mes_conta', label: 'Financeiro (Mês ➔ Conta/Caixa)' },
+                        { id: 'conta_mes', label: 'Financeiro (Conta/Caixa ➔ Mês)' },
+                        { id: 'mes_custo', label: 'Custos (Mês ➔ C. Custo)' },
+                        { id: 'custo_mes', label: 'Custos (C. Custo ➔ Mês)' },
+                      ].map((card) => (
+                        <div
+                          key={card.id}
+                          className="flex items-center space-x-2 py-1.5 px-2 hover:bg-slate-100 rounded-md cursor-pointer transition-colors"
+                          onClick={() =>
+                            setVisibleCards((p) => ({
+                              ...p,
+                              [card.id]: p[card.id] === false ? true : false,
+                            }))
+                          }
+                        >
+                          <Checkbox
+                            checked={visibleCards[card.id] !== false}
+                            className="pointer-events-none"
+                          />
+                          <span className="text-xs flex-1 select-none text-slate-700">
+                            {card.label}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </PopoverContent>
+              </Popover>
             </div>
 
             <FloatingPanel
