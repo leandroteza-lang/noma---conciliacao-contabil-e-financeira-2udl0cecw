@@ -2648,6 +2648,29 @@ export default function FinancialMovements() {
   const [resumoSortDirection, setResumoSortDirection] = useState<'asc' | 'desc'>('asc')
   const [showSyntheticLevels, setShowSyntheticLevels] = useState(true)
 
+  const [visibleCards, setVisibleCards] = useState<Record<string, boolean>>(() => {
+    const saved = localStorage.getItem('fin_mov_visible_cards')
+    if (saved) {
+      try {
+        return JSON.parse(saved)
+      } catch (e) {
+        return {}
+      }
+    }
+    return {
+      consolidado_conta: true,
+      consolidado_custo: true,
+      mes_conta: true,
+      conta_mes: true,
+      mes_custo: true,
+      custo_mes: true,
+    }
+  })
+
+  useEffect(() => {
+    localStorage.setItem('fin_mov_visible_cards', JSON.stringify(visibleCards))
+  }, [visibleCards])
+
   const resumoFilterOptions = useMemo(() => {
     const options: Record<string, { label: string; value: string }[]> = {}
     const cCustoSet = new Set<string>()
@@ -4965,6 +4988,71 @@ export default function FinancialMovements() {
                 <Download className="h-3.5 w-3.5 mr-1.5" />
                 Importar da Grade
               </Button>
+
+              <div className="h-4 w-px bg-slate-200 mx-1"></div>
+
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 text-xs flex items-center gap-1.5 px-2.5 relative border-slate-200 hover:bg-slate-50"
+                  >
+                    <Eye className="h-3.5 w-3.5 text-slate-500" />
+                    <span>Exibir Cards</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-64">
+                  <DropdownMenuLabel className="text-xs">Ocultar/Exibir Cards</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuCheckboxItem
+                    checked={visibleCards.consolidado_conta !== false}
+                    onCheckedChange={(c) =>
+                      setVisibleCards((p) => ({ ...p, consolidado_conta: c }))
+                    }
+                    className="text-xs cursor-pointer"
+                  >
+                    Consolidado por Conta/Caixa
+                  </DropdownMenuCheckboxItem>
+                  <DropdownMenuCheckboxItem
+                    checked={visibleCards.consolidado_custo !== false}
+                    onCheckedChange={(c) =>
+                      setVisibleCards((p) => ({ ...p, consolidado_custo: c }))
+                    }
+                    className="text-xs cursor-pointer"
+                  >
+                    Consolidado por Centro de Custo
+                  </DropdownMenuCheckboxItem>
+                  <DropdownMenuCheckboxItem
+                    checked={visibleCards.mes_conta !== false}
+                    onCheckedChange={(c) => setVisibleCards((p) => ({ ...p, mes_conta: c }))}
+                    className="text-xs cursor-pointer"
+                  >
+                    Financeiro (Mês ➔ Conta/Caixa)
+                  </DropdownMenuCheckboxItem>
+                  <DropdownMenuCheckboxItem
+                    checked={visibleCards.conta_mes !== false}
+                    onCheckedChange={(c) => setVisibleCards((p) => ({ ...p, conta_mes: c }))}
+                    className="text-xs cursor-pointer"
+                  >
+                    Financeiro (Conta/Caixa ➔ Mês)
+                  </DropdownMenuCheckboxItem>
+                  <DropdownMenuCheckboxItem
+                    checked={visibleCards.mes_custo !== false}
+                    onCheckedChange={(c) => setVisibleCards((p) => ({ ...p, mes_custo: c }))}
+                    className="text-xs cursor-pointer"
+                  >
+                    Custos (Mês ➔ C. Custo)
+                  </DropdownMenuCheckboxItem>
+                  <DropdownMenuCheckboxItem
+                    checked={visibleCards.custo_mes !== false}
+                    onCheckedChange={(c) => setVisibleCards((p) => ({ ...p, custo_mes: c }))}
+                    className="text-xs cursor-pointer"
+                  >
+                    Custos (C. Custo ➔ Mês)
+                  </DropdownMenuCheckboxItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
 
             <FloatingPanel
@@ -5137,97 +5225,111 @@ export default function FinancialMovements() {
           </div>
 
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 mb-6">
-            <Card className="shadow-sm border-4 border-indigo-950 overflow-hidden">
-              <CardHeader className="bg-indigo-950 text-white hover:bg-indigo-900 border-none pb-3 pt-4 transition-colors relative">
-                <h2 className="text-base font-bold text-center w-full uppercase tracking-wider">
-                  Totais Consolidados por Conta/Caixa
-                </h2>
-              </CardHeader>
-              <CardContent className="p-0">
-                <PeriodConsolidatedTable
-                  data={resumoData}
-                  type="account"
-                  tableFontSize={tableFontSize}
-                />
-              </CardContent>
-            </Card>
+            {visibleCards.consolidado_conta !== false && (
+              <Card className="shadow-sm border-4 border-indigo-950 overflow-hidden">
+                <CardHeader className="bg-indigo-950 text-white hover:bg-indigo-900 border-none pb-3 pt-4 transition-colors relative">
+                  <h2 className="text-base font-bold text-center w-full uppercase tracking-wider">
+                    Totais Consolidados por Conta/Caixa
+                  </h2>
+                </CardHeader>
+                <CardContent className="p-0">
+                  <PeriodConsolidatedTable
+                    data={resumoData}
+                    type="account"
+                    tableFontSize={tableFontSize}
+                  />
+                </CardContent>
+              </Card>
+            )}
 
-            <Card className="shadow-sm border-4 border-indigo-950 overflow-hidden">
-              <CardHeader className="bg-indigo-950 text-white hover:bg-indigo-900 border-none pb-3 pt-4 transition-colors relative">
-                <h2 className="text-base font-bold text-center w-full uppercase tracking-wider">
-                  Totais Consolidados por Centro de Custo
-                </h2>
-              </CardHeader>
-              <CardContent className="p-0">
-                <PeriodConsolidatedTable
-                  data={resumoData}
-                  type="cost"
-                  tableFontSize={tableFontSize}
-                />
-              </CardContent>
-            </Card>
-          </div>
+            {visibleCards.consolidado_custo !== false && (
+              <Card className="shadow-sm border-4 border-indigo-950 overflow-hidden">
+                <CardHeader className="bg-indigo-950 text-white hover:bg-indigo-900 border-none pb-3 pt-4 transition-colors relative">
+                  <h2 className="text-base font-bold text-center w-full uppercase tracking-wider">
+                    Totais Consolidados por Centro de Custo
+                  </h2>
+                </CardHeader>
+                <CardContent className="p-0">
+                  <PeriodConsolidatedTable
+                    data={resumoData}
+                    type="cost"
+                    tableFontSize={tableFontSize}
+                  />
+                </CardContent>
+              </Card>
+            )}
 
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-            <Card className="shadow-sm border-4 border-indigo-950 overflow-hidden">
-              <CardHeader className="bg-indigo-950 text-white hover:bg-indigo-900 border-none pb-3 pt-4 transition-colors relative">
-                <h2 className="text-base font-bold text-center w-full">
-                  Financeiro (Mês ➔ Conta/Caixa)
-                </h2>
-              </CardHeader>
-              <CardContent className="p-0">
-                <SummaryTable
-                  data={resumoData}
-                  type="month_account"
-                  dateField={summaryDateBase}
-                  tableFontSize={tableFontSize}
-                />
-              </CardContent>
-            </Card>
+            {visibleCards.mes_conta !== false && (
+              <Card className="shadow-sm border-4 border-indigo-950 overflow-hidden">
+                <CardHeader className="bg-indigo-950 text-white hover:bg-indigo-900 border-none pb-3 pt-4 transition-colors relative">
+                  <h2 className="text-base font-bold text-center w-full">
+                    Financeiro (Mês ➔ Conta/Caixa)
+                  </h2>
+                </CardHeader>
+                <CardContent className="p-0">
+                  <SummaryTable
+                    data={resumoData}
+                    type="month_account"
+                    dateField={summaryDateBase}
+                    tableFontSize={tableFontSize}
+                  />
+                </CardContent>
+              </Card>
+            )}
 
-            <Card className="shadow-sm border-4 border-indigo-950 overflow-hidden">
-              <CardHeader className="bg-indigo-950 text-white hover:bg-indigo-900 border-none pb-3 pt-4 transition-colors relative">
-                <h2 className="text-base font-bold text-center w-full">
-                  Financeiro (Conta/Caixa ➔ Mês)
-                </h2>
-              </CardHeader>
-              <CardContent className="p-0">
-                <SummaryTable
-                  data={resumoData}
-                  type="account_month"
-                  dateField={summaryDateBase}
-                  tableFontSize={tableFontSize}
-                />
-              </CardContent>
-            </Card>
+            {visibleCards.conta_mes !== false && (
+              <Card className="shadow-sm border-4 border-indigo-950 overflow-hidden">
+                <CardHeader className="bg-indigo-950 text-white hover:bg-indigo-900 border-none pb-3 pt-4 transition-colors relative">
+                  <h2 className="text-base font-bold text-center w-full">
+                    Financeiro (Conta/Caixa ➔ Mês)
+                  </h2>
+                </CardHeader>
+                <CardContent className="p-0">
+                  <SummaryTable
+                    data={resumoData}
+                    type="account_month"
+                    dateField={summaryDateBase}
+                    tableFontSize={tableFontSize}
+                  />
+                </CardContent>
+              </Card>
+            )}
 
-            <Card className="shadow-sm border-4 border-indigo-950 overflow-hidden">
-              <CardHeader className="bg-indigo-950 text-white hover:bg-indigo-900 border-none pb-3 pt-4 transition-colors relative">
-                <h2 className="text-base font-bold text-center w-full">Custos (Mês ➔ C. Custo)</h2>
-              </CardHeader>
-              <CardContent className="p-0">
-                <SummaryTable
-                  data={resumoData}
-                  type="month_cost"
-                  dateField={summaryDateBase}
-                  tableFontSize={tableFontSize}
-                />
-              </CardContent>
-            </Card>
+            {visibleCards.mes_custo !== false && (
+              <Card className="shadow-sm border-4 border-indigo-950 overflow-hidden">
+                <CardHeader className="bg-indigo-950 text-white hover:bg-indigo-900 border-none pb-3 pt-4 transition-colors relative">
+                  <h2 className="text-base font-bold text-center w-full">
+                    Custos (Mês ➔ C. Custo)
+                  </h2>
+                </CardHeader>
+                <CardContent className="p-0">
+                  <SummaryTable
+                    data={resumoData}
+                    type="month_cost"
+                    dateField={summaryDateBase}
+                    tableFontSize={tableFontSize}
+                  />
+                </CardContent>
+              </Card>
+            )}
 
-            <Card className="shadow-sm border-4 border-indigo-950 overflow-hidden">
-              <CardHeader className="bg-indigo-950 text-white hover:bg-indigo-900 border-none pb-3 pt-4 transition-colors relative">
-                <h2 className="text-base font-bold text-center w-full">Custos (C. Custo ➔ Mês)</h2>
-              </CardHeader>
-              <CardContent className="p-0">
-                <SummaryTable
-                  data={resumoData}
-                  type="cost_month"
-                  dateField={summaryDateBase}
-                  tableFontSize={tableFontSize}
-                />
-              </CardContent>
-            </Card>
+            {visibleCards.custo_mes !== false && (
+              <Card className="shadow-sm border-4 border-indigo-950 overflow-hidden">
+                <CardHeader className="bg-indigo-950 text-white hover:bg-indigo-900 border-none pb-3 pt-4 transition-colors relative">
+                  <h2 className="text-base font-bold text-center w-full">
+                    Custos (C. Custo ➔ Mês)
+                  </h2>
+                </CardHeader>
+                <CardContent className="p-0">
+                  <SummaryTable
+                    data={resumoData}
+                    type="cost_month"
+                    dateField={summaryDateBase}
+                    tableFontSize={tableFontSize}
+                  />
+                </CardContent>
+              </Card>
+            )}
           </div>
         </TabsContent>
 
