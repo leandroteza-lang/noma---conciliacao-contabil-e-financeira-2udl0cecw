@@ -480,13 +480,13 @@ function PeriodConsolidatedTable({
               onChange={setColFilter}
             />
           </TableHead>
-          <TableHead className="w-[20%] text-center font-bold text-emerald-700 border-r border-black px-2 py-1 h-8">
+          <TableHead className="w-[20%] text-left font-bold text-emerald-700 border-r border-black px-2 py-1 h-8">
             Entradas (+)
           </TableHead>
-          <TableHead className="w-[20%] text-center font-bold text-rose-700 border-r border-black px-2 py-1 h-8">
+          <TableHead className="w-[20%] text-left font-bold text-rose-700 border-r border-black px-2 py-1 h-8">
             Saídas (-)
           </TableHead>
-          <TableHead className="w-[20%] text-center font-bold text-blue-700 px-2 py-1 h-8">
+          <TableHead className="w-[20%] text-left font-bold text-blue-700 px-2 py-1 h-8">
             Diferença
           </TableHead>
         </TableRow>
@@ -500,13 +500,13 @@ function PeriodConsolidatedTable({
             <TableCell className="px-2 py-1 border-r border-black text-slate-700 font-medium">
               {item.name}
             </TableCell>
-            <TableCell className="px-2 py-1 text-right text-emerald-600/90 border-r border-black">
+            <TableCell className="px-2 py-1 text-left text-emerald-600/90 border-r border-black">
               {formatVal(item.pos)}
             </TableCell>
-            <TableCell className="px-2 py-1 text-right text-rose-600/90 border-r border-black">
+            <TableCell className="px-2 py-1 text-left text-rose-600/90 border-r border-black">
               {formatVal(item.neg)}
             </TableCell>
-            <TableCell className="px-2 py-1 text-right font-semibold text-slate-700">
+            <TableCell className="px-2 py-1 text-left font-semibold text-slate-700">
               {formatVal(item.diff)}
             </TableCell>
           </TableRow>
@@ -528,13 +528,13 @@ function PeriodConsolidatedTable({
             <TableCell className="px-2 py-1 border-r border-black text-right text-slate-900 uppercase">
               Total Geral do Período:
             </TableCell>
-            <TableCell className="px-2 py-1 text-right text-emerald-700 border-r border-black">
+            <TableCell className="px-2 py-1 text-left text-emerald-700 border-r border-black">
               {formatVal(totalPos)}
             </TableCell>
-            <TableCell className="px-2 py-1 text-right text-rose-700 border-r border-black">
+            <TableCell className="px-2 py-1 text-left text-rose-700 border-r border-black">
               {formatVal(totalNeg)}
             </TableCell>
-            <TableCell className="px-2 py-1 text-right text-blue-800">
+            <TableCell className="px-2 py-1 text-left text-blue-800">
               {formatVal(totalDiff)}
             </TableCell>
           </TableRow>
@@ -756,13 +756,13 @@ function SummaryTable({
               onChange={setCol2Filter}
             />
           </TableHead>
-          <TableHead className="w-[15%] text-center font-bold text-emerald-700 border-r border-black px-2 py-1 h-8">
+          <TableHead className="w-[15%] text-left font-bold text-emerald-700 border-r border-black px-2 py-1 h-8">
             Entradas (+)
           </TableHead>
-          <TableHead className="w-[15%] text-center font-bold text-rose-700 border-r border-black px-2 py-1 h-8">
+          <TableHead className="w-[15%] text-left font-bold text-rose-700 border-r border-black px-2 py-1 h-8">
             Saídas (-)
           </TableHead>
-          <TableHead className="w-[15%] text-center font-bold text-blue-700 px-2 py-1 h-8">
+          <TableHead className="w-[15%] text-left font-bold text-blue-700 px-2 py-1 h-8">
             Diferença
           </TableHead>
         </TableRow>
@@ -777,13 +777,13 @@ function SummaryTable({
               <TableCell className="px-2 py-1 border-r border-black text-slate-500 font-medium">
                 Totais do agrupamento
               </TableCell>
-              <TableCell className="px-2 py-1 text-right text-emerald-700 border-r border-black">
+              <TableCell className="px-2 py-1 text-left text-emerald-700 border-r border-black">
                 {formatVal(group.pos)}
               </TableCell>
-              <TableCell className="px-2 py-1 text-right text-rose-700 border-r border-black">
+              <TableCell className="px-2 py-1 text-left text-rose-700 border-r border-black">
                 {formatVal(group.neg)}
               </TableCell>
-              <TableCell className="px-2 py-1 text-right text-blue-800">
+              <TableCell className="px-2 py-1 text-left text-blue-800">
                 {formatVal(group.diff)}
               </TableCell>
             </TableRow>
@@ -796,13 +796,13 @@ function SummaryTable({
                 <TableCell className="px-2 py-1 border-r border-black text-slate-700 font-medium">
                   {item.name}
                 </TableCell>
-                <TableCell className="px-2 py-1 text-right text-emerald-600/90 border-r border-black">
+                <TableCell className="px-2 py-1 text-left text-emerald-600/90 border-r border-black">
                   {formatVal(item.pos)}
                 </TableCell>
-                <TableCell className="px-2 py-1 text-right text-rose-600/90 border-r border-black">
+                <TableCell className="px-2 py-1 text-left text-rose-600/90 border-r border-black">
                   {formatVal(item.neg)}
                 </TableCell>
-                <TableCell className="px-2 py-1 text-right font-semibold text-slate-700">
+                <TableCell className="px-2 py-1 text-left font-semibold text-slate-700">
                   {formatVal(item.diff)}
                 </TableCell>
               </TableRow>
@@ -837,8 +837,8 @@ const tableHeaders = [
   { label: 'Forma Pagto', key: 'forma_pagto' },
   { label: 'C.Custo', key: 'c_custo' },
   { label: 'Descrição C.Custo', key: 'descricao_c_custo', className: 'min-w-[150px]' },
-  { label: 'Valor', key: 'valor', align: 'center' },
-  { label: 'Valor Líquido', key: 'valor_liquido', align: 'center' },
+  { label: 'Valor', key: 'valor', align: 'left' },
+  { label: 'Valor Líquido', key: 'valor_liquido', align: 'left' },
   { label: 'Nº Documento', key: 'n_documento' },
   { label: 'Nome Cli/Fornec', key: 'nome_cli_fornec' },
   { label: 'Histórico', key: 'historico', className: 'min-w-[200px]' },
@@ -4499,7 +4499,7 @@ export default function FinancialMovements() {
                                     return (
                                       <TableCell
                                         key={key}
-                                        className="px-2 py-0.5 whitespace-nowrap text-center border-0 font-medium"
+                                        className="px-2 py-0.5 whitespace-nowrap text-left border-0 font-medium"
                                       >
                                         {row.valor !== null ? (
                                           <span
@@ -4525,13 +4525,13 @@ export default function FinancialMovements() {
                                     return (
                                       <TableCell
                                         key={key}
-                                        className="px-2 py-0.5 whitespace-nowrap text-center border-0 font-medium"
+                                        className="px-2 py-0.5 whitespace-nowrap text-left border-0 font-medium"
                                       >
                                         {editingId === row.id ? (
                                           <Input
                                             type="number"
                                             step="0.01"
-                                            className="h-auto py-1 text-[inherit] px-1.5 w-28 text-center mx-auto !text-slate-900 min-h-6"
+                                            className="h-auto py-1 text-[inherit] px-1.5 w-28 text-left !text-slate-900 min-h-6"
                                             value={editForm.valor_liquido || ''}
                                             onChange={(e) =>
                                               setEditForm({
@@ -5373,9 +5373,9 @@ export default function FinancialMovements() {
                       return (
                         <TableHead
                           key={month}
-                          className="text-center font-bold min-w-[140px] px-4 bg-indigo-950 hover:bg-indigo-900 top-0 sticky z-30"
+                          className="text-left font-bold min-w-[140px] px-4 bg-indigo-950 hover:bg-indigo-900 top-0 sticky z-30"
                         >
-                          <div className="flex flex-col items-center justify-center">
+                          <div className="flex flex-col items-start justify-center">
                             <span className="text-[1em] leading-tight">
                               {m}/{y}
                             </span>
@@ -6611,7 +6611,7 @@ export default function FinancialMovements() {
                   </TableHead>
                   <TableHead className="font-semibold text-slate-700">Fornecedor/Cliente</TableHead>
                   <TableHead className="font-semibold text-slate-700">Histórico</TableHead>
-                  <TableHead className="font-semibold text-slate-700 text-right w-[150px]">
+                  <TableHead className="font-semibold text-slate-700 text-left w-[150px]">
                     Valor
                   </TableHead>
                 </TableRow>
@@ -6634,7 +6634,7 @@ export default function FinancialMovements() {
                     >
                       {row.historico || '-'}
                     </TableCell>
-                    <TableCell className="text-right text-rose-600 font-bold whitespace-nowrap">
+                    <TableCell className="text-left text-rose-600 font-bold whitespace-nowrap">
                       {new Intl.NumberFormat('pt-BR', {
                         style: 'currency',
                         currency: 'BRL',
