@@ -102,6 +102,7 @@ import {
   XAxis,
   YAxis,
   CartesianGrid,
+  Label,
 } from 'recharts'
 import {
   ChartContainer,
@@ -1209,6 +1210,11 @@ export default function FinancialMovements() {
   const [drillDownOpen, setDrillDownOpen] = useState(false)
   const [drillDownData, setDrillDownData] = useState<any[]>([])
   const [drillDownTitle, setDrillDownTitle] = useState('')
+
+  // Dashboard Gerencial State
+  const [dashSelectedPeriodStart, setDashSelectedPeriodStart] = useState<string>('')
+  const [dashSelectedPeriodEnd, setDashSelectedPeriodEnd] = useState<string>('')
+  const [dashSelectedCCs, setDashSelectedCCs] = useState<string[]>([])
 
   // Balancete Comparativo State
   const [balanceteView, setBalanceteView] = useState<'c_custo' | 'conta_caixa'>('c_custo')
@@ -2901,38 +2907,72 @@ export default function FinancialMovements() {
 
     const costCenterMap = new Map<string, number>()
     const monthlyMap = new Map<string, { month: string; revenue: number; expense: number }>()
+    const ccMonthlyMap = new Map<string, Record<string, number>>()
+
+    const availableMonthsSet = new Set<string>()
 
     summaryData.forEach((row) => {
+      const dateStr = row[summaryDateBase] as string
+      if (!dateStr) return
+      const month = dateStr.substring(0, 7) // YYYY-MM
+      availableMonthsSet.add(month)
+    })
+
+    const allMonths = Array.from(availableMonthsSet).sort()
+
+    let startM = dashSelectedPeriodStart
+    let endM = dashSelectedPeriodEnd
+    if (!startM && allMonths.length > 0) startM = allMonths[Math.max(0, allMonths.length - 12)]
+    if (!endM && allMonths.length > 0) endM = allMonths[allMonths.length - 1]
+
+    const filteredData = summaryData.filter((row) => {
+      const dateStr = row[summaryDateBase] as string
+      if (!dateStr) return false
+      const m = dateStr.substring(0, 7)
+      if (startM && m < startM) return false
+      if (endM && m > endM) return false
+      return true
+    })
+
+    filteredData.forEach((row) => {
       const val = Number(row.valor_liquido || 0)
       if (val > 0) revenue += val
       else expense += Math.abs(val)
 
+      const ccName = row.descricao_c_custo || row.c_custo || 'Sem C. Custo'
+
       if (val < 0) {
-        const ccName = row.descricao_c_custo || row.c_custo || 'Sem C. Custo'
         costCenterMap.set(ccName, (costCenterMap.get(ccName) || 0) + Math.abs(val))
       }
 
       const dateStr = row[summaryDateBase] as string
       if (dateStr) {
-        const month = dateStr.substring(0, 7) // YYYY-MM
+        const month = dateStr.substring(0, 7)
+
         if (!monthlyMap.has(month)) monthlyMap.set(month, { month, revenue: 0, expense: 0 })
         const mData = monthlyMap.get(month)!
         if (val > 0) mData.revenue += val
         else mData.expense += Math.abs(val)
+
+        if (val < 0) {
+          if (!ccMonthlyMap.has(month)) ccMonthlyMap.set(month, {})
+          const ccMonth = ccMonthlyMap.get(month)!
+          ccMonth[ccName] = (ccMonth[ccName] || 0) + Math.abs(val)
+        }
       }
     })
 
     const COLORS = [
-      '#ef4444',
-      '#f97316',
-      '#f59e0b',
-      '#84cc16',
+      '#4f46e5',
       '#10b981',
-      '#06b6d4',
-      '#3b82f6',
-      '#6366f1',
+      '#f59e0b',
+      '#ef4444',
       '#8b5cf6',
-      '#d946ef',
+      '#0ea5e9',
+      '#f97316',
+      '#ec4899',
+      '#14b8a6',
+      '#84cc16',
     ]
 
     const topExpenses = Array.from(costCenterMap.entries())
@@ -2941,23 +2981,59 @@ export default function FinancialMovements() {
       .slice(0, 10)
       .map((item, index) => ({
         ...item,
-        fill: `var(--color-expense_${index})`,
+        fill: COLORS[index % COLORS.length],
       }))
 
     const pieConfig = topExpenses.reduce(
       (acc, curr, index) => {
-        acc[`expense_${index}`] = { label: curr.name, color: COLORS[index % COLORS.length] }
+        acc[`expense_${index}`] = { label: curr.name, color: curr.fill }
         return acc
       },
       {} as Record<string, any>,
     )
 
-    const monthlyTrends = Array.from(monthlyMap.values())
-      .sort((a, b) => a.month.localeCompare(b.month))
-      .map((m) => {
-        const [y, mo] = m.month.split('-')
-        return { ...m, monthLabel: `${mo}/${y}` }
-      })
+    const activeMonths = allMonths.filter((m) => (!startM || m >= startM) && (!endM || m <= endM))
+
+    const monthlyTrends = activeMonths.map((month) => {
+      const [y, mo] = month.split('-')
+      const mData = monthlyMap.get(month) || { month, revenue: 0, expense: 0 }
+      const ccData = ccMonthlyMap.get(month) || {}
+      return {
+        ...mData,
+        monthLabel: `${mo}/${y}`,
+        ...ccData,
+      }
+    })
+
+    const availableCCs = Array.from(costCenterMap.entries())
+      .sort((a, b) => b[1] - a[1])
+      .map((e) => e[0])
+    let compareCCs = dashSelectedCCs.length > 0 ? dashSelectedCCs : availableCCs.slice(0, 5)
+
+    const ccMetrics = compareCCs.map((ccName, idx) => {
+      const values = activeMonths.map((m) => ccMonthlyMap.get(m)?.[ccName] || 0)
+      const firstVal = values[0] || 0
+      const lastVal = values[values.length - 1] || 0
+      const growth =
+        firstVal === 0 ? (lastVal > 0 ? 100 : 0) : ((lastVal - firstVal) / firstVal) * 100
+      const peakValue = Math.max(...values, 0)
+      const color = COLORS[idx % COLORS.length]
+
+      return {
+        name: ccName,
+        growth,
+        peakValue,
+        color,
+      }
+    })
+
+    const compareConfig = compareCCs.reduce(
+      (acc, ccName, idx) => {
+        acc[ccName] = { label: ccName, color: COLORS[idx % COLORS.length] }
+        return acc
+      },
+      {} as Record<string, any>,
+    )
 
     return {
       revenue,
@@ -2966,8 +3042,21 @@ export default function FinancialMovements() {
       topExpenses,
       pieConfig,
       monthlyTrends,
+      allMonths,
+      startM,
+      endM,
+      availableCCs,
+      compareCCs,
+      ccMetrics,
+      compareConfig,
     }
-  }, [summaryData, summaryDateBase])
+  }, [
+    summaryData,
+    summaryDateBase,
+    dashSelectedPeriodStart,
+    dashSelectedPeriodEnd,
+    dashSelectedCCs,
+  ])
 
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize))
   const visibleCount = tableHeaders.filter((h) => visibleColumns[h.key] !== false).length + 2
@@ -5631,254 +5720,385 @@ export default function FinancialMovements() {
         </TabsContent>
 
         <TabsContent value="dashboard" className="m-0 animate-in fade-in-up duration-500">
-          <div className="flex justify-between mb-4 items-center flex-wrap gap-4">
-            <h2 className="text-xl font-bold text-slate-800 hidden sm:block">
-              Dashboard Gerencial
-            </h2>
-            <div className="flex items-center gap-2 bg-white border border-slate-200 p-1.5 rounded-lg shadow-sm ml-auto">
-              <span className="text-sm font-medium text-slate-600 px-2">Data Base:</span>
-              <Tabs
-                value={summaryDateBase}
-                onValueChange={setSummaryDateBase}
-                className="w-[200px] sm:w-[300px]"
-              >
-                <TabsList className="grid w-full grid-cols-2 h-8">
-                  <TabsTrigger
-                    value="data_emissao"
-                    className="text-xs data-[state=active]:bg-indigo-950 data-[state=active]:text-white transition-all"
-                  >
-                    Emissão
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="dt_compens"
-                    className="text-xs data-[state=active]:bg-indigo-950 data-[state=active]:text-white transition-all"
-                  >
-                    Compensação
-                  </TabsTrigger>
-                </TabsList>
-              </Tabs>
+          <div className="flex flex-col xl:flex-row justify-between mb-6 items-start xl:items-center gap-4 bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+            <div>
+              <h2 className="text-2xl font-bold text-slate-800">Dashboard Gerencial Estratégico</h2>
+              <p className="text-sm text-slate-500 mt-1">
+                Visão consolidada de indicadores e evolução financeira
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 p-1.5 rounded-lg">
+                <span className="text-xs font-semibold text-slate-600 px-2 uppercase tracking-wider">
+                  Período:
+                </span>
+                <Select
+                  value={dashboardData.startM}
+                  onValueChange={(v) => setDashSelectedPeriodStart(v)}
+                >
+                  <SelectTrigger className="h-8 w-[130px] text-xs bg-white">
+                    <SelectValue placeholder="Início" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {dashboardData.allMonths.map((m) => (
+                      <SelectItem key={m} value={m}>
+                        {m.split('-').reverse().join('/')}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <span className="text-slate-400">-</span>
+                <Select
+                  value={dashboardData.endM}
+                  onValueChange={(v) => setDashSelectedPeriodEnd(v)}
+                >
+                  <SelectTrigger className="h-8 w-[130px] text-xs bg-white">
+                    <SelectValue placeholder="Fim" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {dashboardData.allMonths.map((m) => (
+                      <SelectItem key={m} value={m}>
+                        {m.split('-').reverse().join('/')}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 p-1.5 rounded-lg">
+                <span className="text-xs font-semibold text-slate-600 px-2 uppercase tracking-wider">
+                  Data Base:
+                </span>
+                <Tabs
+                  value={summaryDateBase}
+                  onValueChange={setSummaryDateBase}
+                  className="w-[180px]"
+                >
+                  <TabsList className="grid w-full grid-cols-2 h-8">
+                    <TabsTrigger
+                      value="data_emissao"
+                      className="text-xs data-[state=active]:bg-indigo-900 data-[state=active]:text-white"
+                    >
+                      Emissão
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="dt_compens"
+                      className="text-xs data-[state=active]:bg-indigo-900 data-[state=active]:text-white"
+                    >
+                      Compensação
+                    </TabsTrigger>
+                  </TabsList>
+                </Tabs>
+              </div>
             </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-            <Card className="shadow-sm border-l-4 border-l-emerald-500 relative overflow-hidden group">
-              <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                <ArrowUp className="h-16 w-16 text-emerald-500" />
-              </div>
+            <Card className="shadow-sm border-0 border-l-4 border-l-emerald-500 rounded-xl overflow-hidden hover:shadow-md transition-shadow">
               <CardContent className="p-6">
-                <p className="text-sm text-slate-500 font-medium uppercase tracking-wider">
-                  Receitas Totais
-                </p>
-                <h3 className="text-3xl font-bold text-emerald-600 mt-2">
-                  {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(
-                    dashboardData.revenue,
-                  )}
-                </h3>
+                <div className="flex justify-between items-start">
+                  <div>
+                    <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">
+                      Receitas / Entradas (+)
+                    </p>
+                    <h3 className="text-3xl font-black text-slate-800">
+                      {new Intl.NumberFormat('pt-BR', {
+                        style: 'currency',
+                        currency: 'BRL',
+                      }).format(dashboardData.revenue)}
+                    </h3>
+                  </div>
+                  <div className="p-3 bg-emerald-100 rounded-lg">
+                    <TrendingUp className="h-6 w-6 text-emerald-600" />
+                  </div>
+                </div>
               </CardContent>
             </Card>
-            <Card className="shadow-sm border-l-4 border-l-rose-500 relative overflow-hidden group">
-              <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                <ArrowDown className="h-16 w-16 text-rose-500" />
-              </div>
+            <Card className="shadow-sm border-0 border-l-4 border-l-rose-500 rounded-xl overflow-hidden hover:shadow-md transition-shadow">
               <CardContent className="p-6">
-                <p className="text-sm text-slate-500 font-medium uppercase tracking-wider">
-                  Despesas Totais
-                </p>
-                <h3 className="text-3xl font-bold text-rose-600 mt-2">
-                  {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(
-                    dashboardData.expense,
-                  )}
-                </h3>
+                <div className="flex justify-between items-start">
+                  <div>
+                    <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">
+                      Despesas / Saídas (-)
+                    </p>
+                    <h3 className="text-3xl font-black text-slate-800">
+                      {new Intl.NumberFormat('pt-BR', {
+                        style: 'currency',
+                        currency: 'BRL',
+                      }).format(dashboardData.expense)}
+                    </h3>
+                  </div>
+                  <div className="p-3 bg-rose-100 rounded-lg">
+                    <TrendingDown className="h-6 w-6 text-rose-600" />
+                  </div>
+                </div>
               </CardContent>
             </Card>
-            <Card className="shadow-sm border-l-4 border-l-blue-500 relative overflow-hidden group">
-              <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                <div className="h-16 w-16 text-blue-500 flex items-center justify-center font-bold text-4xl">
-                  %
+            <Card className="shadow-sm border-0 border-l-4 border-l-blue-500 rounded-xl overflow-hidden hover:shadow-md transition-shadow">
+              <CardContent className="p-6">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">
+                      Resultado Líquido
+                    </p>
+                    <h3
+                      className={cn(
+                        'text-3xl font-black',
+                        dashboardData.balance >= 0 ? 'text-blue-600' : 'text-rose-600',
+                      )}
+                    >
+                      {new Intl.NumberFormat('pt-BR', {
+                        style: 'currency',
+                        currency: 'BRL',
+                      }).format(dashboardData.balance)}
+                    </h3>
+                  </div>
+                  <div className="p-3 bg-blue-100 rounded-lg">
+                    <Wallet className="h-6 w-6 text-blue-600" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          <Card className="shadow-sm border-slate-200 rounded-xl mb-6 overflow-hidden">
+            <CardHeader className="bg-slate-50 border-b border-slate-100 py-4 px-6 flex flex-row items-center justify-between">
+              <div>
+                <h3 className="text-lg font-bold text-slate-800">
+                  Composição de Despesas (Top 10)
+                </h3>
+                <p className="text-sm text-slate-500">
+                  Análise de representatividade no período filtrado
+                </p>
+              </div>
+            </CardHeader>
+            <CardContent className="p-6">
+              <div className="flex flex-col lg:flex-row items-center justify-center gap-12">
+                <div className="w-full max-w-[400px]">
+                  {dashboardData.topExpenses.length > 0 ? (
+                    <ChartContainer config={dashboardData.pieConfig} className="h-[350px] w-full">
+                      <PieChart>
+                        <Pie
+                          data={dashboardData.topExpenses}
+                          dataKey="value"
+                          nameKey="name"
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={80}
+                          outerRadius={120}
+                          paddingAngle={2}
+                          cursor="pointer"
+                          onClick={(data) => {
+                            if (data && data.name) handleDrillDown(data.name)
+                          }}
+                        >
+                          <Label
+                            content={({ viewBox }) => {
+                              if (viewBox && 'cx' in viewBox && 'cy' in viewBox) {
+                                return (
+                                  <text
+                                    x={viewBox.cx}
+                                    y={viewBox.cy}
+                                    textAnchor="middle"
+                                    dominantBaseline="middle"
+                                  >
+                                    <tspan
+                                      x={viewBox.cx}
+                                      y={viewBox.cy}
+                                      className="fill-slate-500 text-xs font-bold uppercase tracking-widest"
+                                    >
+                                      Total
+                                    </tspan>
+                                    <tspan
+                                      x={viewBox.cx}
+                                      y={(viewBox.cy || 0) + 24}
+                                      className="fill-slate-900 text-xl font-black"
+                                    >
+                                      {new Intl.NumberFormat('pt-BR', {
+                                        style: 'currency',
+                                        currency: 'BRL',
+                                        maximumFractionDigits: 0,
+                                      }).format(dashboardData.expense)}
+                                    </tspan>
+                                  </text>
+                                )
+                              }
+                            }}
+                          />
+                        </Pie>
+                        <ChartTooltip content={<ChartTooltipContent />} />
+                      </PieChart>
+                    </ChartContainer>
+                  ) : (
+                    <div className="flex items-center justify-center h-[350px] text-slate-400">
+                      Nenhum dado para analisar
+                    </div>
+                  )}
+                </div>
+                <div className="flex-1 w-full grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {dashboardData.topExpenses.map((item, idx) => (
+                    <div
+                      key={item.name}
+                      className="flex items-start gap-3 p-3 rounded-lg hover:bg-slate-50 border border-transparent hover:border-slate-100 transition-colors cursor-pointer"
+                      onClick={() => handleDrillDown(item.name)}
+                    >
+                      <div
+                        className="w-3 h-3 rounded-full mt-1.5 shrink-0"
+                        style={{ backgroundColor: item.fill }}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex justify-between items-baseline mb-1">
+                          <span className="text-sm font-bold text-slate-700 truncate pr-2">
+                            {item.name}
+                          </span>
+                          <span className="text-sm font-black text-slate-900">
+                            {((item.value / dashboardData.expense) * 100).toFixed(1)}%
+                          </span>
+                        </div>
+                        <p className="text-xs font-medium text-slate-500">
+                          {new Intl.NumberFormat('pt-BR', {
+                            style: 'currency',
+                            currency: 'BRL',
+                          }).format(item.value)}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
-              <CardContent className="p-6">
-                <p className="text-sm text-slate-500 font-medium uppercase tracking-wider">
-                  Saldo (Margem)
-                </p>
-                <h3
-                  className={cn(
-                    'text-3xl font-bold mt-2',
-                    dashboardData.balance >= 0 ? 'text-blue-600' : 'text-rose-600',
-                  )}
-                >
-                  {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(
-                    dashboardData.balance,
-                  )}
-                </h3>
-              </CardContent>
-            </Card>
-          </div>
+            </CardContent>
+          </Card>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-            <Card className="shadow-sm border-0 border-t-4 border-t-indigo-950">
-              <CardHeader className="bg-slate-50/50 border-b pb-4">
-                <h3 className="text-lg font-bold text-slate-800">Evolução Temporal</h3>
-                <p className="text-sm text-slate-500">Receitas vs Despesas ao longo dos meses</p>
-              </CardHeader>
-              <CardContent className="p-6">
-                {dashboardData.monthlyTrends.length > 0 ? (
-                  <ChartContainer
-                    config={{
-                      revenue: { label: 'Receitas', color: '#10b981' },
-                      expense: { label: 'Despesas', color: '#f43f5e' },
-                    }}
-                    className="h-[300px] w-full"
-                  >
-                    <LineChart
-                      data={dashboardData.monthlyTrends}
-                      margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
-                    >
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                      <XAxis
-                        dataKey="monthLabel"
-                        tickLine={false}
-                        axisLine={false}
-                        tick={{ fill: '#64748b', fontSize: 12 }}
-                      />
-                      <YAxis
-                        tickFormatter={(val) => `R$ ${(val / 1000).toFixed(0)}k`}
-                        tickLine={false}
-                        axisLine={false}
-                        tick={{ fill: '#64748b', fontSize: 12 }}
-                      />
-                      <ChartTooltip content={<ChartTooltipContent />} />
-                      <ChartLegend content={<ChartLegendContent />} />
-                      <Line
-                        type="monotone"
-                        dataKey="revenue"
-                        stroke="var(--color-revenue)"
-                        strokeWidth={3}
-                        dot={{ r: 4, fill: 'var(--color-revenue)' }}
-                        activeDot={{ r: 6 }}
-                      />
-                      <Line
-                        type="monotone"
-                        dataKey="expense"
-                        stroke="var(--color-expense)"
-                        strokeWidth={3}
-                        dot={{ r: 4, fill: 'var(--color-expense)' }}
-                        activeDot={{ r: 6 }}
-                      />
-                    </LineChart>
-                  </ChartContainer>
-                ) : (
-                  <div className="flex items-center justify-center h-[300px] text-slate-400">
-                    Nenhum dado no período
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            <Card className="shadow-sm border-0 border-t-4 border-t-indigo-950">
-              <CardHeader className="bg-slate-50/50 border-b pb-4">
+          <Card className="shadow-sm border-slate-200 rounded-xl overflow-hidden">
+            <CardHeader className="bg-slate-50 border-b border-slate-100 py-4 px-6 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+              <div>
                 <h3 className="text-lg font-bold text-slate-800">
-                  Top 10 Despesas (Centros de Custo)
+                  Gráfico Comparativo de Evolução
                 </h3>
                 <p className="text-sm text-slate-500">
-                  Os maiores ofensores no período selecionado
+                  Comparativo de centros de custo e resultado (Até 5 seleções simultâneas).
                 </p>
-              </CardHeader>
-              <CardContent className="p-6">
-                {dashboardData.topExpenses.length > 0 ? (
-                  <ChartContainer
-                    config={{ value: { label: 'Valor', color: '#f43f5e' } }}
-                    className="h-[300px] w-full"
-                  >
-                    <BarChart
-                      data={dashboardData.topExpenses}
-                      layout="vertical"
-                      margin={{ top: 0, right: 0, left: -20, bottom: 0 }}
-                      onClick={(state) => {
-                        if (state && state.activePayload && state.activePayload.length > 0) {
-                          handleDrillDown(state.activePayload[0].payload.name)
-                        }
-                      }}
-                      className="cursor-pointer"
+              </div>
+              <div className="w-full lg:w-[400px]">
+                <MultiSelect
+                  title="Selecionar Centros de Custo (Max 5)"
+                  options={dashboardData.availableCCs.map((cc) => ({ label: cc, value: cc }))}
+                  selected={dashSelectedCCs}
+                  onChange={(vals) => setDashSelectedCCs(vals.slice(0, 5))}
+                />
+              </div>
+            </CardHeader>
+            <CardContent className="p-0">
+              <div className="flex flex-col lg:flex-row">
+                <div className="w-full lg:w-[280px] p-6 border-b lg:border-b-0 lg:border-r border-slate-100 bg-slate-50/50 flex flex-col gap-4 overflow-y-auto max-h-[500px] custom-scrollbar">
+                  {dashboardData.ccMetrics.map((metric) => (
+                    <div
+                      key={metric.name}
+                      className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm relative overflow-hidden"
                     >
-                      <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e2e8f0" />
-                      <XAxis
-                        type="number"
-                        tickFormatter={(val) => `R$ ${(val / 1000).toFixed(0)}k`}
-                        tickLine={false}
-                        axisLine={false}
-                        tick={{ fill: '#64748b', fontSize: 12 }}
+                      <div
+                        className="absolute left-0 top-0 bottom-0 w-1"
+                        style={{ backgroundColor: metric.color }}
                       />
-                      <YAxis
-                        dataKey="name"
-                        type="category"
-                        width={120}
-                        tickLine={false}
-                        axisLine={false}
-                        tick={{ fill: '#475569', fontSize: 11 }}
-                      />
-                      <ChartTooltip content={<ChartTooltipContent />} />
-                      <Bar
-                        dataKey="value"
-                        fill="var(--color-value)"
-                        radius={[0, 4, 4, 0]}
-                        maxBarSize={30}
-                        cursor="pointer"
-                      />
-                    </BarChart>
-                  </ChartContainer>
-                ) : (
-                  <div className="flex items-center justify-center h-[300px] text-slate-400">
-                    Nenhuma despesa no período
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
+                      <h4 className="text-sm font-bold text-slate-800 mb-4 pr-2">{metric.name}</h4>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card className="shadow-sm border-0 border-t-4 border-t-indigo-950">
-              <CardHeader className="bg-slate-50/50 border-b pb-4">
-                <h3 className="text-lg font-bold text-slate-800">
-                  Análise Vertical (Composição de Custos)
-                </h3>
-                <p className="text-sm text-slate-500">
-                  Participação de cada centro de custo no total de despesas
-                </p>
-              </CardHeader>
-              <CardContent className="p-6 flex justify-center items-center">
-                {dashboardData.topExpenses.length > 0 ? (
-                  <ChartContainer
-                    config={dashboardData.pieConfig}
-                    className="h-[300px] w-full max-w-[400px]"
-                  >
-                    <PieChart>
-                      <Pie
-                        data={dashboardData.topExpenses}
-                        dataKey="value"
-                        nameKey="name"
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={60}
-                        outerRadius={90}
-                        paddingAngle={2}
-                        cursor="pointer"
-                        onClick={(data) => {
-                          if (data && data.name) handleDrillDown(data.name)
-                        }}
-                      ></Pie>
-                      <ChartTooltip content={<ChartTooltipContent />} />
-                      <ChartLegend content={<ChartLegendContent className="flex-wrap" />} />
-                    </PieChart>
-                  </ChartContainer>
-                ) : (
-                  <div className="flex items-center justify-center h-[300px] text-slate-400">
-                    Nenhum dado para analisar
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
+                      <div className="space-y-3">
+                        <div>
+                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">
+                            Crescimento Período
+                          </p>
+                          <div className="flex items-center gap-1.5">
+                            {metric.growth > 0 ? (
+                              <TrendingUp className="h-4 w-4 text-rose-500" />
+                            ) : metric.growth < 0 ? (
+                              <TrendingDown className="h-4 w-4 text-emerald-500" />
+                            ) : (
+                              <ArrowRightIcon className="h-4 w-4 text-slate-400" />
+                            )}
+                            <span
+                              className={cn(
+                                'text-sm font-black',
+                                metric.growth > 0
+                                  ? 'text-rose-600'
+                                  : metric.growth < 0
+                                    ? 'text-emerald-600'
+                                    : 'text-slate-600',
+                              )}
+                            >
+                              {metric.growth > 0 ? '+' : ''}
+                              {metric.growth.toFixed(1)}%
+                            </span>
+                          </div>
+                        </div>
+                        <div>
+                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">
+                            Pico Registrado
+                          </p>
+                          <p className="text-base font-black text-slate-900">
+                            {new Intl.NumberFormat('pt-BR', {
+                              style: 'currency',
+                              currency: 'BRL',
+                            }).format(metric.peakValue)}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="flex-1 p-6">
+                  {dashboardData.monthlyTrends.length > 0 && dashboardData.compareCCs.length > 0 ? (
+                    <ChartContainer
+                      config={dashboardData.compareConfig}
+                      className="h-[450px] w-full"
+                    >
+                      <LineChart
+                        data={dashboardData.monthlyTrends}
+                        margin={{ top: 20, right: 20, left: 0, bottom: 0 }}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                        <XAxis
+                          dataKey="monthLabel"
+                          tickLine={false}
+                          axisLine={false}
+                          tick={{ fill: '#64748b', fontSize: 12, fontWeight: 500 }}
+                          dy={10}
+                        />
+                        <YAxis
+                          tickFormatter={(val) => `R$ ${(val / 1000).toFixed(0)}k`}
+                          tickLine={false}
+                          axisLine={false}
+                          tick={{ fill: '#64748b', fontSize: 11 }}
+                          dx={-10}
+                        />
+                        <ChartTooltip content={<ChartTooltipContent />} />
+                        <ChartLegend content={<ChartLegendContent />} verticalAlign="top" />
+
+                        {dashboardData.compareCCs.map((ccName, idx) => {
+                          const color = dashboardData.ccMetrics[idx]?.color || '#000'
+                          return (
+                            <Line
+                              key={ccName}
+                              type="monotone"
+                              dataKey={ccName}
+                              stroke={color}
+                              strokeWidth={3}
+                              dot={{ r: 4, fill: color, strokeWidth: 2, stroke: '#fff' }}
+                              activeDot={{ r: 6, strokeWidth: 0 }}
+                            />
+                          )
+                        })}
+                      </LineChart>
+                    </ChartContainer>
+                  ) : (
+                    <div className="flex items-center justify-center h-[450px] text-slate-400">
+                      Selecione ao menos um centro de custo para comparar.
+                    </div>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="resumo-mapeamento" className="m-0 animate-in fade-in-up duration-500">
