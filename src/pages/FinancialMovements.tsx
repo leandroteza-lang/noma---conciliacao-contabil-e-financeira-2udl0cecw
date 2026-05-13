@@ -3075,6 +3075,34 @@ export default function FinancialMovements() {
   const [compareGroup1, setCompareGroup1] = useState<string>('')
   const [compareGroup2, setCompareGroup2] = useState<string>('')
 
+  // --- States for Group Analysis Period Filters ---
+  const [grupoGlobalPeriodStart, setGrupoGlobalPeriodStart] = useState<string>('')
+  const [grupoGlobalPeriodEnd, setGrupoGlobalPeriodEnd] = useState<string>('')
+
+  const [grupoPartPeriodStart, setGrupoPartPeriodStart] = useState<string>('')
+  const [grupoPartPeriodEnd, setGrupoPartPeriodEnd] = useState<string>('')
+
+  const [grupoEvolPeriodStart, setGrupoEvolPeriodStart] = useState<string>('')
+  const [grupoEvolPeriodEnd, setGrupoEvolPeriodEnd] = useState<string>('')
+
+  const [grupoCompPeriodStart, setGrupoCompPeriodStart] = useState<string>('')
+  const [grupoCompPeriodEnd, setGrupoCompPeriodEnd] = useState<string>('')
+
+  const [grupoTablePeriodStart, setGrupoTablePeriodStart] = useState<string>('')
+  const [grupoTablePeriodEnd, setGrupoTablePeriodEnd] = useState<string>('')
+
+  const effPartStart = grupoPartPeriodStart || grupoGlobalPeriodStart
+  const effPartEnd = grupoPartPeriodEnd || grupoGlobalPeriodEnd
+
+  const effEvolStart = grupoEvolPeriodStart || grupoGlobalPeriodStart
+  const effEvolEnd = grupoEvolPeriodEnd || grupoGlobalPeriodEnd
+
+  const effCompStart = grupoCompPeriodStart || grupoGlobalPeriodStart
+  const effCompEnd = grupoCompPeriodEnd || grupoGlobalPeriodEnd
+
+  const effTableStart = grupoTablePeriodStart || grupoGlobalPeriodStart
+  const effTableEnd = grupoTablePeriodEnd || grupoGlobalPeriodEnd
+
   const groupAnalysisData = useMemo(() => {
     const monthsSet = new Set<string>()
     summaryData.forEach((row) => {
@@ -3185,9 +3213,13 @@ export default function FinancialMovements() {
     return currentGroupAnalysisNodes
       .map((child: any) => {
         let val = 0
-        if (analiseGrupoTipo === 'receita') val = child.revenue || 0
-        else if (analiseGrupoTipo === 'despesa') val = child.expense || 0
-        else val = child.total || 0
+        groupAnalysisData.months.forEach((month: string) => {
+          if (effPartStart && month < effPartStart) return
+          if (effPartEnd && month > effPartEnd) return
+          if (analiseGrupoTipo === 'receita') val += child.monthlyRevenue[month] || 0
+          else if (analiseGrupoTipo === 'despesa') val += child.monthlyExpense[month] || 0
+          else val += child.monthlyTotals[month] || 0
+        })
         return {
           name: child.code ? `${child.code} - ${child.description}` : child.description,
           code: child.code || 'S/C',
@@ -3195,11 +3227,24 @@ export default function FinancialMovements() {
           value: Math.abs(val),
         }
       })
+      .filter((c: any) => c.value > 0)
       .sort((a: any, b: any) => b.value - a.value)
-  }, [currentGroupAnalysisNodes, analiseGrupoTipo])
+  }, [
+    currentGroupAnalysisNodes,
+    analiseGrupoTipo,
+    groupAnalysisData.months,
+    effPartStart,
+    effPartEnd,
+  ])
 
   const evolutionGroupChartData = useMemo(() => {
-    return groupAnalysisData.months.map((month) => {
+    const activeMonths = groupAnalysisData.months.filter((m) => {
+      if (effEvolStart && m < effEvolStart) return false
+      if (effEvolEnd && m > effEvolEnd) return false
+      return true
+    })
+
+    return activeMonths.map((month) => {
       const dataPoint: any = { month }
       currentGroupAnalysisNodes.forEach((child: any) => {
         let val = 0
@@ -3210,7 +3255,13 @@ export default function FinancialMovements() {
       })
       return dataPoint
     })
-  }, [groupAnalysisData.months, currentGroupAnalysisNodes, analiseGrupoTipo])
+  }, [
+    groupAnalysisData.months,
+    currentGroupAnalysisNodes,
+    analiseGrupoTipo,
+    effEvolStart,
+    effEvolEnd,
+  ])
 
   const groupChartColors = [
     '#4f46e5',
@@ -3256,6 +3307,50 @@ export default function FinancialMovements() {
     }
   }
 
+  const detailedSublevelsData = useMemo(() => {
+    return currentGroupAnalysisNodes
+      .map((child: any) => {
+        let revenue = 0
+        let expense = 0
+        let total = 0
+        groupAnalysisData.months.forEach((month: string) => {
+          if (effTableStart && month < effTableStart) return
+          if (effTableEnd && month > effTableEnd) return
+          revenue += child.monthlyRevenue[month] || 0
+          expense += child.monthlyExpense[month] || 0
+          total += child.monthlyTotals[month] || 0
+        })
+        return {
+          ...child,
+          periodRevenue: revenue,
+          periodExpense: expense,
+          periodTotal: total,
+        }
+      })
+      .filter((c: any) => c.periodRevenue > 0 || c.periodExpense > 0 || Math.abs(c.periodTotal) > 0)
+      .sort((a: any, b: any) => {
+        let valA = 0
+        let valB = 0
+        if (analiseGrupoTipo === 'receita') {
+          valA = a.periodRevenue
+          valB = b.periodRevenue
+        } else if (analiseGrupoTipo === 'despesa') {
+          valA = a.periodExpense
+          valB = b.periodExpense
+        } else {
+          valA = Math.abs(a.periodTotal)
+          valB = Math.abs(b.periodTotal)
+        }
+        return valB - valA
+      })
+  }, [
+    currentGroupAnalysisNodes,
+    groupAnalysisData.months,
+    effTableStart,
+    effTableEnd,
+    analiseGrupoTipo,
+  ])
+
   const compareGroupOptions = useMemo(() => {
     const options = Array.from(groupAnalysisData.nodesMap.values())
       .map((node) => ({
@@ -3282,7 +3377,13 @@ export default function FinancialMovements() {
 
     if (!node1 || !node2) return []
 
-    return groupAnalysisData.months.map((month) => {
+    const activeMonths = groupAnalysisData.months.filter((m) => {
+      if (effCompStart && m < effCompStart) return false
+      if (effCompEnd && m > effCompEnd) return false
+      return true
+    })
+
+    return activeMonths.map((month) => {
       let val1 = 0
       let val2 = 0
 
@@ -3303,7 +3404,7 @@ export default function FinancialMovements() {
         group2: Math.abs(val2),
       }
     })
-  }, [compareGroup1, compareGroup2, groupAnalysisData, analiseGrupoTipo])
+  }, [compareGroup1, compareGroup2, groupAnalysisData, analiseGrupoTipo, effCompStart, effCompEnd])
 
   const interGroupSummary = useMemo(() => {
     if (!compareGroup1 || !compareGroup2) return null
@@ -3322,16 +3423,24 @@ export default function FinancialMovements() {
     let total1 = 0
     let total2 = 0
 
-    if (analiseGrupoTipo === 'receita') {
-      total1 = node1.revenue || 0
-      total2 = node2.revenue || 0
-    } else if (analiseGrupoTipo === 'despesa') {
-      total1 = node1.expense || 0
-      total2 = node2.expense || 0
-    } else {
-      total1 = node1.total || 0
-      total2 = node2.total || 0
-    }
+    const activeMonths = groupAnalysisData.months.filter((m) => {
+      if (effCompStart && m < effCompStart) return false
+      if (effCompEnd && m > effCompEnd) return false
+      return true
+    })
+
+    activeMonths.forEach((month) => {
+      if (analiseGrupoTipo === 'receita') {
+        total1 += node1.monthlyRevenue[month] || 0
+        total2 += node2.monthlyRevenue[month] || 0
+      } else if (analiseGrupoTipo === 'despesa') {
+        total1 += node1.monthlyExpense[month] || 0
+        total2 += node2.monthlyExpense[month] || 0
+      } else {
+        total1 += node1.monthlyTotals[month] || 0
+        total2 += node2.monthlyTotals[month] || 0
+      }
+    })
 
     // Comparing absolute values
     const val1 = Math.abs(total1)
@@ -3347,7 +3456,7 @@ export default function FinancialMovements() {
       diffAbs,
       diffPct,
     }
-  }, [compareGroup1, compareGroup2, groupAnalysisData, analiseGrupoTipo])
+  }, [compareGroup1, compareGroup2, groupAnalysisData, analiseGrupoTipo, effCompStart, effCompEnd])
 
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize))
   const visibleCount = tableHeaders.filter((h) => visibleColumns[h.key] !== false).length + 2
@@ -7242,6 +7351,45 @@ export default function FinancialMovements() {
             </div>
             <div className="flex flex-wrap items-center gap-3">
               <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 p-1.5 rounded-lg">
+                <span className="text-xs font-semibold text-slate-600 px-2 uppercase tracking-wider hidden sm:inline">
+                  Período Global:
+                </span>
+                <Select
+                  value={grupoGlobalPeriodStart || 'all'}
+                  onValueChange={(v) => setGrupoGlobalPeriodStart(v === 'all' ? '' : v)}
+                >
+                  <SelectTrigger className="h-8 w-[110px] text-xs bg-white">
+                    <SelectValue placeholder="Início" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todo Período</SelectItem>
+                    {groupAnalysisData.months.map((m) => (
+                      <SelectItem key={`start-${m}`} value={m}>
+                        {m.split('-').reverse().join('/')}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <span className="text-slate-400">-</span>
+                <Select
+                  value={grupoGlobalPeriodEnd || 'all'}
+                  onValueChange={(v) => setGrupoGlobalPeriodEnd(v === 'all' ? '' : v)}
+                >
+                  <SelectTrigger className="h-8 w-[110px] text-xs bg-white">
+                    <SelectValue placeholder="Fim" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todo Período</SelectItem>
+                    {groupAnalysisData.months.map((m) => (
+                      <SelectItem key={`end-${m}`} value={m}>
+                        {m.split('-').reverse().join('/')}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 p-1.5 rounded-lg">
                 <Button
                   variant={analiseGrupoTipo === 'receita' ? 'default' : 'ghost'}
                   size="sm"
@@ -7307,9 +7455,45 @@ export default function FinancialMovements() {
             <CardContent className="p-6">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 <div className="flex flex-col gap-4">
-                  <h3 className="text-lg font-bold text-slate-800 text-center">
-                    Participação Vertical (Total do Período)
-                  </h3>
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50 p-3 rounded-lg border border-slate-100">
+                    <h3 className="text-sm font-bold text-slate-800 text-center sm:text-left">
+                      Participação Vertical
+                    </h3>
+                    <div className="flex items-center justify-center sm:justify-end gap-2">
+                      <Select
+                        value={grupoPartPeriodStart || 'global'}
+                        onValueChange={(v) => setGrupoPartPeriodStart(v === 'global' ? '' : v)}
+                      >
+                        <SelectTrigger className="h-7 w-[90px] text-[10px] bg-white border-slate-200">
+                          <SelectValue placeholder="Início" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="global">C/ Global</SelectItem>
+                          {groupAnalysisData.months.map((m) => (
+                            <SelectItem key={`part-start-${m}`} value={m}>
+                              {m.split('-').reverse().join('/')}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Select
+                        value={grupoPartPeriodEnd || 'global'}
+                        onValueChange={(v) => setGrupoPartPeriodEnd(v === 'global' ? '' : v)}
+                      >
+                        <SelectTrigger className="h-7 w-[90px] text-[10px] bg-white border-slate-200">
+                          <SelectValue placeholder="Fim" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="global">C/ Global</SelectItem>
+                          {groupAnalysisData.months.map((m) => (
+                            <SelectItem key={`part-end-${m}`} value={m}>
+                              {m.split('-').reverse().join('/')}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
                   {participationChartData.length > 0 ? (
                     <ChartContainer config={evolutionGroupChartConfig} className="h-[350px] w-full">
                       <PieChart>
@@ -7370,9 +7554,45 @@ export default function FinancialMovements() {
                 </div>
 
                 <div className="flex flex-col gap-4">
-                  <h3 className="text-lg font-bold text-slate-800 text-center">
-                    Evolução por Subnível
-                  </h3>
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50 p-3 rounded-lg border border-slate-100">
+                    <h3 className="text-sm font-bold text-slate-800 text-center sm:text-left">
+                      Evolução por Subnível
+                    </h3>
+                    <div className="flex items-center justify-center sm:justify-end gap-2">
+                      <Select
+                        value={grupoEvolPeriodStart || 'global'}
+                        onValueChange={(v) => setGrupoEvolPeriodStart(v === 'global' ? '' : v)}
+                      >
+                        <SelectTrigger className="h-7 w-[90px] text-[10px] bg-white border-slate-200">
+                          <SelectValue placeholder="Início" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="global">C/ Global</SelectItem>
+                          {groupAnalysisData.months.map((m) => (
+                            <SelectItem key={`evol-start-${m}`} value={m}>
+                              {m.split('-').reverse().join('/')}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Select
+                        value={grupoEvolPeriodEnd || 'global'}
+                        onValueChange={(v) => setGrupoEvolPeriodEnd(v === 'global' ? '' : v)}
+                      >
+                        <SelectTrigger className="h-7 w-[90px] text-[10px] bg-white border-slate-200">
+                          <SelectValue placeholder="Fim" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="global">C/ Global</SelectItem>
+                          {groupAnalysisData.months.map((m) => (
+                            <SelectItem key={`evol-end-${m}`} value={m}>
+                              {m.split('-').reverse().join('/')}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
                   {evolutionGroupChartData.length > 0 && currentGroupAnalysisNodes.length > 0 ? (
                     <ChartContainer config={evolutionGroupChartConfig} className="h-[350px] w-full">
                       <LineChart
@@ -7421,39 +7641,80 @@ export default function FinancialMovements() {
 
               <div className="mt-8 space-y-6">
                 <Card className="shadow-sm border-slate-200 rounded-xl overflow-hidden">
-                  <CardHeader className="bg-slate-50 border-b border-slate-100 py-4 px-6 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                  <CardHeader className="bg-slate-50 border-b border-slate-100 py-4 px-6 flex flex-col xl:flex-row xl:items-center justify-between gap-4">
                     <div>
                       <h3 className="text-lg font-bold text-slate-800">Comparativo Inter-Grupos</h3>
                       <p className="text-sm text-slate-500">
                         Confronte a performance entre dois grupos ou centros de custo específicos.
                       </p>
                     </div>
-                    <div className="flex flex-col sm:flex-row items-center gap-3 w-full lg:w-auto">
-                      <Select value={compareGroup1} onValueChange={setCompareGroup1}>
-                        <SelectTrigger className="w-full sm:w-[250px] bg-white text-xs">
-                          <SelectValue placeholder="Selecione o Grupo A" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {compareGroupOptions.map((opt) => (
-                            <SelectItem key={opt.value} value={opt.value} className="text-xs">
-                              {opt.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <span className="text-slate-400 font-medium hidden sm:inline">vs</span>
-                      <Select value={compareGroup2} onValueChange={setCompareGroup2}>
-                        <SelectTrigger className="w-full sm:w-[250px] bg-white text-xs">
-                          <SelectValue placeholder="Selecione o Grupo B" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {compareGroupOptions.map((opt) => (
-                            <SelectItem key={opt.value} value={opt.value} className="text-xs">
-                              {opt.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                    <div className="flex flex-col lg:flex-row items-start lg:items-center gap-4 w-full xl:w-auto">
+                      <div className="flex items-center gap-2 bg-white px-2 py-1.5 rounded-lg border border-slate-200 w-full lg:w-auto">
+                        <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider hidden sm:inline px-2">
+                          Período:
+                        </span>
+                        <Select
+                          value={grupoCompPeriodStart || 'global'}
+                          onValueChange={(v) => setGrupoCompPeriodStart(v === 'global' ? '' : v)}
+                        >
+                          <SelectTrigger className="h-8 w-[100px] text-xs bg-slate-50">
+                            <SelectValue placeholder="Início" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="global">C/ Global</SelectItem>
+                            {groupAnalysisData.months.map((m) => (
+                              <SelectItem key={`comp-start-${m}`} value={m}>
+                                {m.split('-').reverse().join('/')}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <span className="text-slate-300">-</span>
+                        <Select
+                          value={grupoCompPeriodEnd || 'global'}
+                          onValueChange={(v) => setGrupoCompPeriodEnd(v === 'global' ? '' : v)}
+                        >
+                          <SelectTrigger className="h-8 w-[100px] text-xs bg-slate-50">
+                            <SelectValue placeholder="Fim" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="global">C/ Global</SelectItem>
+                            {groupAnalysisData.months.map((m) => (
+                              <SelectItem key={`comp-end-${m}`} value={m}>
+                                {m.split('-').reverse().join('/')}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="flex flex-col sm:flex-row items-center gap-3 w-full lg:w-auto">
+                        <Select value={compareGroup1} onValueChange={setCompareGroup1}>
+                          <SelectTrigger className="w-full sm:w-[250px] bg-white text-xs">
+                            <SelectValue placeholder="Selecione o Grupo A" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {compareGroupOptions.map((opt) => (
+                              <SelectItem key={opt.value} value={opt.value} className="text-xs">
+                                {opt.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <span className="text-slate-400 font-medium hidden sm:inline">vs</span>
+                        <Select value={compareGroup2} onValueChange={setCompareGroup2}>
+                          <SelectTrigger className="w-full sm:w-[250px] bg-white text-xs">
+                            <SelectValue placeholder="Selecione o Grupo B" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {compareGroupOptions.map((opt) => (
+                              <SelectItem key={opt.value} value={opt.value} className="text-xs">
+                                {opt.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
                     </div>
                   </CardHeader>
                   <CardContent className="p-6">
@@ -7601,9 +7862,47 @@ export default function FinancialMovements() {
                 </Card>
 
                 <div>
-                  <h3 className="text-lg font-bold text-slate-800 mb-4">
-                    Detalhamento dos Subníveis
-                  </h3>
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-4">
+                    <h3 className="text-lg font-bold text-slate-800">Detalhamento dos Subníveis</h3>
+                    <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 p-1.5 rounded-lg">
+                      <span className="text-xs font-semibold text-slate-500 uppercase px-2">
+                        Período:
+                      </span>
+                      <Select
+                        value={grupoTablePeriodStart || 'global'}
+                        onValueChange={(v) => setGrupoTablePeriodStart(v === 'global' ? '' : v)}
+                      >
+                        <SelectTrigger className="h-8 w-[100px] text-xs bg-white border-slate-200">
+                          <SelectValue placeholder="Início" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="global">C/ Global</SelectItem>
+                          {groupAnalysisData.months.map((m) => (
+                            <SelectItem key={`tab-start-${m}`} value={m}>
+                              {m.split('-').reverse().join('/')}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <span className="text-slate-300">-</span>
+                      <Select
+                        value={grupoTablePeriodEnd || 'global'}
+                        onValueChange={(v) => setGrupoTablePeriodEnd(v === 'global' ? '' : v)}
+                      >
+                        <SelectTrigger className="h-8 w-[100px] text-xs bg-white border-slate-200">
+                          <SelectValue placeholder="Fim" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="global">C/ Global</SelectItem>
+                          {groupAnalysisData.months.map((m) => (
+                            <SelectItem key={`tab-end-${m}`} value={m}>
+                              {m.split('-').reverse().join('/')}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
                   <div className="overflow-x-auto border border-slate-200 rounded-lg">
                     <Table>
                       <TableHeader className="bg-slate-50">
@@ -7617,11 +7916,9 @@ export default function FinancialMovements() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {participationChartData.map((item: any, idx: number) => {
-                          const child = currentGroupAnalysisNodes.find((c: any) => c.id === item.id)
-                          if (!child) return null
+                        {detailedSublevelsData.map((child: any, idx: number) => {
                           return (
-                            <TableRow key={item.id || idx}>
+                            <TableRow key={child.id || idx}>
                               <TableCell className="font-mono font-medium text-slate-700">
                                 {child.code || 'S/C'}
                               </TableCell>
@@ -7632,19 +7929,19 @@ export default function FinancialMovements() {
                                 {new Intl.NumberFormat('pt-BR', {
                                   style: 'currency',
                                   currency: 'BRL',
-                                }).format(child.revenue || 0)}
+                                }).format(child.periodRevenue || 0)}
                               </TableCell>
                               <TableCell className="text-right text-rose-600 font-medium">
                                 {new Intl.NumberFormat('pt-BR', {
                                   style: 'currency',
                                   currency: 'BRL',
-                                }).format(child.expense || 0)}
+                                }).format(child.periodExpense || 0)}
                               </TableCell>
                               <TableCell className="text-right font-bold text-slate-800">
                                 {new Intl.NumberFormat('pt-BR', {
                                   style: 'currency',
                                   currency: 'BRL',
-                                }).format((child.revenue || 0) - (child.expense || 0))}
+                                }).format(child.periodTotal || 0)}
                               </TableCell>
                               <TableCell className="text-center">
                                 {child.children && child.children.length > 0 && (
@@ -7660,10 +7957,10 @@ export default function FinancialMovements() {
                             </TableRow>
                           )
                         })}
-                        {participationChartData.length === 0 && (
+                        {detailedSublevelsData.length === 0 && (
                           <TableRow>
                             <TableCell colSpan={6} className="text-center py-8 text-slate-500">
-                              Nenhum subnível com movimento neste grupo.
+                              Nenhum subnível com movimento neste grupo para o período.
                             </TableCell>
                           </TableRow>
                         )}
