@@ -7681,6 +7681,17 @@ export default function FinancialMovements() {
                       </div>
                     </h3>
                     <div className="flex flex-wrap items-center justify-center xl:justify-end gap-2">
+                      {groupAnalysisPath.length > 0 && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-7 text-[10px] px-2.5 shadow-sm bg-white hover:bg-slate-50 text-slate-700"
+                          onClick={() => setGroupAnalysisPath([])}
+                        >
+                          <RefreshCw className="h-3 w-3 mr-1.5 text-slate-400" />
+                          Todos os Grupos
+                        </Button>
+                      )}
                       <Button
                         variant={isPartSynced ? 'default' : 'outline'}
                         size="sm"
@@ -7888,6 +7899,17 @@ export default function FinancialMovements() {
                       </div>
                     </h3>
                     <div className="flex flex-wrap items-center justify-center sm:justify-end gap-2">
+                      {groupAnalysisPath.length > 0 && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-7 text-[10px] px-2.5 shadow-sm bg-white hover:bg-slate-50 text-slate-700"
+                          onClick={() => setGroupAnalysisPath([])}
+                        >
+                          <RefreshCw className="h-3 w-3 mr-1.5 text-slate-400" />
+                          Todos os Grupos
+                        </Button>
+                      )}
                       <Button
                         variant={isEvolSynced ? 'default' : 'outline'}
                         size="sm"
@@ -8364,6 +8386,11 @@ export default function FinancialMovements() {
                   <div className="flex flex-col xl:flex-row xl:items-center justify-between mb-4 gap-4">
                     <h3 className="text-lg font-bold text-slate-800 flex flex-wrap items-center gap-2">
                       Detalhamento dos Subníveis
+                      {groupAnalysisPath.length > 0 && (
+                        <span className="text-sm font-medium text-slate-500 ml-1">
+                          ({groupAnalysisPath[groupAnalysisPath.length - 1].code})
+                        </span>
+                      )}
                       <div className="flex gap-1.5 items-center bg-white px-2 py-0.5 rounded-full border border-slate-200 text-[10px] text-slate-500 font-normal shadow-sm">
                         <span
                           className={cn(
@@ -8411,6 +8438,17 @@ export default function FinancialMovements() {
                       </div>
                     </h3>
                     <div className="flex flex-wrap items-center gap-2 w-full xl:w-auto">
+                      {groupAnalysisPath.length > 0 && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-8 text-[11px] px-3 shadow-sm bg-white hover:bg-slate-50 text-slate-700"
+                          onClick={() => setGroupAnalysisPath([])}
+                        >
+                          <RefreshCw className="h-3.5 w-3.5 mr-1.5 text-slate-400" />
+                          Todos os Grupos
+                        </Button>
+                      )}
                       <Button
                         variant={isTableSynced ? 'default' : 'outline'}
                         size="sm"
