@@ -3091,6 +3091,12 @@ export default function FinancialMovements() {
   const [grupoTablePeriodStart, setGrupoTablePeriodStart] = useState<string>('')
   const [grupoTablePeriodEnd, setGrupoTablePeriodEnd] = useState<string>('')
 
+  // New states for Group Analysis Date Base Overrides
+  const [grupoPartDateBase, setGrupoPartDateBase] = useState<string>('')
+  const [grupoEvolDateBase, setGrupoEvolDateBase] = useState<string>('')
+  const [grupoCompDateBase, setGrupoCompDateBase] = useState<string>('')
+  const [grupoTableDateBase, setGrupoTableDateBase] = useState<string>('')
+
   const effPartStart = grupoPartPeriodStart || grupoGlobalPeriodStart
   const effPartEnd = grupoPartPeriodEnd || grupoGlobalPeriodEnd
 
@@ -3103,13 +3109,24 @@ export default function FinancialMovements() {
   const effTableStart = grupoTablePeriodStart || grupoGlobalPeriodStart
   const effTableEnd = grupoTablePeriodEnd || grupoGlobalPeriodEnd
 
+  const effPartDateBase = grupoPartDateBase || summaryDateBase
+  const effEvolDateBase = grupoEvolDateBase || summaryDateBase
+  const effCompDateBase = grupoCompDateBase || summaryDateBase
+  const effTableDateBase = grupoTableDateBase || summaryDateBase
+
   const groupAnalysisData = useMemo(() => {
-    const monthsSet = new Set<string>()
+    const monthsSetEmissao = new Set<string>()
+    const monthsSetCompens = new Set<string>()
+
     summaryData.forEach((row) => {
-      const d = row[summaryDateBase]
-      if (d) monthsSet.add(d.substring(0, 7))
+      const de = row.data_emissao
+      if (de) monthsSetEmissao.add(de.substring(0, 7))
+      const dc = row.dt_compens
+      if (dc) monthsSetCompens.add(dc.substring(0, 7))
     })
-    const months = Array.from(monthsSet).sort()
+
+    const monthsEmissao = Array.from(monthsSetEmissao).sort()
+    const monthsCompens = Array.from(monthsSetCompens).sort()
 
     const nodesMap = new Map<string, any>()
     costCenters.forEach((cc) => {
@@ -3119,9 +3136,9 @@ export default function FinancialMovements() {
         total: 0,
         revenue: 0,
         expense: 0,
-        monthlyTotals: {},
-        monthlyRevenue: {},
-        monthlyExpense: {},
+        monthlyTotals: { data_emissao: {}, dt_compens: {} },
+        monthlyRevenue: { data_emissao: {}, dt_compens: {} },
+        monthlyExpense: { data_emissao: {}, dt_compens: {} },
       })
     })
 
@@ -3142,23 +3159,38 @@ export default function FinancialMovements() {
       total: 0,
       revenue: 0,
       expense: 0,
-      monthlyTotals: {} as Record<string, number>,
-      monthlyRevenue: {} as Record<string, number>,
-      monthlyExpense: {} as Record<string, number>,
+      monthlyTotals: { data_emissao: {}, dt_compens: {} } as any,
+      monthlyRevenue: { data_emissao: {}, dt_compens: {} } as any,
+      monthlyExpense: { data_emissao: {}, dt_compens: {} } as any,
     }
 
-    const addValueToNodeAndAncestors = (nodeId: string, month: string, value: number) => {
+    const addValueToNodeAndAncestors = (
+      nodeId: string,
+      monthEmissao: string,
+      monthCompens: string,
+      value: number,
+    ) => {
       let curr = nodesMap.get(nodeId)
       while (curr) {
         curr.total += value
         if (value > 0) curr.revenue += value
         else curr.expense += Math.abs(value)
 
-        curr.monthlyTotals[month] = (curr.monthlyTotals[month] || 0) + value
+        curr.monthlyTotals.data_emissao[monthEmissao] =
+          (curr.monthlyTotals.data_emissao[monthEmissao] || 0) + value
+        curr.monthlyTotals.dt_compens[monthCompens] =
+          (curr.monthlyTotals.dt_compens[monthCompens] || 0) + value
+
         if (value > 0) {
-          curr.monthlyRevenue[month] = (curr.monthlyRevenue[month] || 0) + value
+          curr.monthlyRevenue.data_emissao[monthEmissao] =
+            (curr.monthlyRevenue.data_emissao[monthEmissao] || 0) + value
+          curr.monthlyRevenue.dt_compens[monthCompens] =
+            (curr.monthlyRevenue.dt_compens[monthCompens] || 0) + value
         } else {
-          curr.monthlyExpense[month] = (curr.monthlyExpense[month] || 0) + Math.abs(value)
+          curr.monthlyExpense.data_emissao[monthEmissao] =
+            (curr.monthlyExpense.data_emissao[monthEmissao] || 0) + Math.abs(value)
+          curr.monthlyExpense.dt_compens[monthCompens] =
+            (curr.monthlyExpense.dt_compens[monthCompens] || 0) + Math.abs(value)
         }
 
         curr = curr.parent_id ? nodesMap.get(curr.parent_id) : null
@@ -3167,8 +3199,11 @@ export default function FinancialMovements() {
 
     summaryData.forEach((row) => {
       const val = Number(row.valor_liquido || row.valor || 0)
-      const d = row[summaryDateBase]
-      const month = d ? d.substring(0, 7) : 'unknown'
+      const de = row.data_emissao
+      const dc = row.dt_compens
+      const monthEmissao = de ? de.substring(0, 7) : 'unknown'
+      const monthCompens = dc ? dc.substring(0, 7) : 'unknown'
+
       const orgId = row.organization_id
       const ccCode = row.c_custo?.trim().toUpperCase()
 
@@ -3181,24 +3216,32 @@ export default function FinancialMovements() {
       }
 
       if (matchedCcId) {
-        addValueToNodeAndAncestors(matchedCcId, month, val)
+        addValueToNodeAndAncestors(matchedCcId, monthEmissao, monthCompens, val)
       } else {
         unmappedRoot.total += val
         if (val > 0) unmappedRoot.revenue += val
         else unmappedRoot.expense += Math.abs(val)
 
-        unmappedRoot.monthlyTotals[month] = (unmappedRoot.monthlyTotals[month] || 0) + val
+        unmappedRoot.monthlyTotals.data_emissao[monthEmissao] =
+          (unmappedRoot.monthlyTotals.data_emissao[monthEmissao] || 0) + val
+        unmappedRoot.monthlyTotals.dt_compens[monthCompens] =
+          (unmappedRoot.monthlyTotals.dt_compens[monthCompens] || 0) + val
         if (val > 0) {
-          unmappedRoot.monthlyRevenue[month] = (unmappedRoot.monthlyRevenue[month] || 0) + val
+          unmappedRoot.monthlyRevenue.data_emissao[monthEmissao] =
+            (unmappedRoot.monthlyRevenue.data_emissao[monthEmissao] || 0) + val
+          unmappedRoot.monthlyRevenue.dt_compens[monthCompens] =
+            (unmappedRoot.monthlyRevenue.dt_compens[monthCompens] || 0) + val
         } else {
-          unmappedRoot.monthlyExpense[month] =
-            (unmappedRoot.monthlyExpense[month] || 0) + Math.abs(val)
+          unmappedRoot.monthlyExpense.data_emissao[monthEmissao] =
+            (unmappedRoot.monthlyExpense.data_emissao[monthEmissao] || 0) + Math.abs(val)
+          unmappedRoot.monthlyExpense.dt_compens[monthCompens] =
+            (unmappedRoot.monthlyExpense.dt_compens[monthCompens] || 0) + Math.abs(val)
         }
       }
     })
 
-    return { roots, nodesMap, unmappedRoot, months }
-  }, [summaryData, costCenters, summaryDateBase])
+    return { roots, nodesMap, unmappedRoot, monthsEmissao, monthsCompens }
+  }, [summaryData, costCenters])
 
   const currentGroupAnalysisNodes = useMemo(() => {
     const currentNode =
@@ -3210,15 +3253,21 @@ export default function FinancialMovements() {
   }, [groupAnalysisPath, groupAnalysisData])
 
   const participationChartData = useMemo(() => {
+    const months =
+      effPartDateBase === 'data_emissao'
+        ? groupAnalysisData.monthsEmissao
+        : groupAnalysisData.monthsCompens
     return currentGroupAnalysisNodes
       .map((child: any) => {
         let val = 0
-        groupAnalysisData.months.forEach((month: string) => {
+        months.forEach((month: string) => {
           if (effPartStart && month < effPartStart) return
           if (effPartEnd && month > effPartEnd) return
-          if (analiseGrupoTipo === 'receita') val += child.monthlyRevenue[month] || 0
-          else if (analiseGrupoTipo === 'despesa') val += child.monthlyExpense[month] || 0
-          else val += child.monthlyTotals[month] || 0
+          if (analiseGrupoTipo === 'receita')
+            val += child.monthlyRevenue[effPartDateBase][month] || 0
+          else if (analiseGrupoTipo === 'despesa')
+            val += child.monthlyExpense[effPartDateBase][month] || 0
+          else val += child.monthlyTotals[effPartDateBase][month] || 0
         })
         return {
           name: child.code ? `${child.code} - ${child.description}` : child.description,
@@ -3232,13 +3281,18 @@ export default function FinancialMovements() {
   }, [
     currentGroupAnalysisNodes,
     analiseGrupoTipo,
-    groupAnalysisData.months,
+    groupAnalysisData,
     effPartStart,
     effPartEnd,
+    effPartDateBase,
   ])
 
   const evolutionGroupChartData = useMemo(() => {
-    const activeMonths = groupAnalysisData.months.filter((m) => {
+    const months =
+      effEvolDateBase === 'data_emissao'
+        ? groupAnalysisData.monthsEmissao
+        : groupAnalysisData.monthsCompens
+    const activeMonths = months.filter((m) => {
       if (effEvolStart && m < effEvolStart) return false
       if (effEvolEnd && m > effEvolEnd) return false
       return true
@@ -3248,19 +3302,21 @@ export default function FinancialMovements() {
       const dataPoint: any = { month }
       currentGroupAnalysisNodes.forEach((child: any) => {
         let val = 0
-        if (analiseGrupoTipo === 'receita') val = child.monthlyRevenue[month] || 0
-        else if (analiseGrupoTipo === 'despesa') val = child.monthlyExpense[month] || 0
-        else val = child.monthlyTotals[month] || 0
+        if (analiseGrupoTipo === 'receita') val = child.monthlyRevenue[effEvolDateBase][month] || 0
+        else if (analiseGrupoTipo === 'despesa')
+          val = child.monthlyExpense[effEvolDateBase][month] || 0
+        else val = child.monthlyTotals[effEvolDateBase][month] || 0
         dataPoint[child.code || 'S/C'] = val
       })
       return dataPoint
     })
   }, [
-    groupAnalysisData.months,
+    groupAnalysisData,
     currentGroupAnalysisNodes,
     analiseGrupoTipo,
     effEvolStart,
     effEvolEnd,
+    effEvolDateBase,
   ])
 
   const groupChartColors = [
@@ -3308,17 +3364,21 @@ export default function FinancialMovements() {
   }
 
   const detailedSublevelsData = useMemo(() => {
+    const months =
+      effTableDateBase === 'data_emissao'
+        ? groupAnalysisData.monthsEmissao
+        : groupAnalysisData.monthsCompens
     return currentGroupAnalysisNodes
       .map((child: any) => {
         let revenue = 0
         let expense = 0
         let total = 0
-        groupAnalysisData.months.forEach((month: string) => {
+        months.forEach((month: string) => {
           if (effTableStart && month < effTableStart) return
           if (effTableEnd && month > effTableEnd) return
-          revenue += child.monthlyRevenue[month] || 0
-          expense += child.monthlyExpense[month] || 0
-          total += child.monthlyTotals[month] || 0
+          revenue += child.monthlyRevenue[effTableDateBase][month] || 0
+          expense += child.monthlyExpense[effTableDateBase][month] || 0
+          total += child.monthlyTotals[effTableDateBase][month] || 0
         })
         return {
           ...child,
@@ -3345,10 +3405,11 @@ export default function FinancialMovements() {
       })
   }, [
     currentGroupAnalysisNodes,
-    groupAnalysisData.months,
+    groupAnalysisData,
     effTableStart,
     effTableEnd,
     analiseGrupoTipo,
+    effTableDateBase,
   ])
 
   const compareGroupOptions = useMemo(() => {
@@ -3377,7 +3438,11 @@ export default function FinancialMovements() {
 
     if (!node1 || !node2) return []
 
-    const activeMonths = groupAnalysisData.months.filter((m) => {
+    const months =
+      effCompDateBase === 'data_emissao'
+        ? groupAnalysisData.monthsEmissao
+        : groupAnalysisData.monthsCompens
+    const activeMonths = months.filter((m) => {
       if (effCompStart && m < effCompStart) return false
       if (effCompEnd && m > effCompEnd) return false
       return true
@@ -3388,14 +3453,14 @@ export default function FinancialMovements() {
       let val2 = 0
 
       if (analiseGrupoTipo === 'receita') {
-        val1 = node1.monthlyRevenue[month] || 0
-        val2 = node2.monthlyRevenue[month] || 0
+        val1 = node1.monthlyRevenue[effCompDateBase][month] || 0
+        val2 = node2.monthlyRevenue[effCompDateBase][month] || 0
       } else if (analiseGrupoTipo === 'despesa') {
-        val1 = node1.monthlyExpense[month] || 0
-        val2 = node2.monthlyExpense[month] || 0
+        val1 = node1.monthlyExpense[effCompDateBase][month] || 0
+        val2 = node2.monthlyExpense[effCompDateBase][month] || 0
       } else {
-        val1 = node1.monthlyTotals[month] || 0
-        val2 = node2.monthlyTotals[month] || 0
+        val1 = node1.monthlyTotals[effCompDateBase][month] || 0
+        val2 = node2.monthlyTotals[effCompDateBase][month] || 0
       }
 
       return {
@@ -3404,7 +3469,15 @@ export default function FinancialMovements() {
         group2: Math.abs(val2),
       }
     })
-  }, [compareGroup1, compareGroup2, groupAnalysisData, analiseGrupoTipo, effCompStart, effCompEnd])
+  }, [
+    compareGroup1,
+    compareGroup2,
+    groupAnalysisData,
+    analiseGrupoTipo,
+    effCompStart,
+    effCompEnd,
+    effCompDateBase,
+  ])
 
   const interGroupSummary = useMemo(() => {
     if (!compareGroup1 || !compareGroup2) return null
@@ -3423,7 +3496,11 @@ export default function FinancialMovements() {
     let total1 = 0
     let total2 = 0
 
-    const activeMonths = groupAnalysisData.months.filter((m) => {
+    const months =
+      effCompDateBase === 'data_emissao'
+        ? groupAnalysisData.monthsEmissao
+        : groupAnalysisData.monthsCompens
+    const activeMonths = months.filter((m) => {
       if (effCompStart && m < effCompStart) return false
       if (effCompEnd && m > effCompEnd) return false
       return true
@@ -3431,14 +3508,14 @@ export default function FinancialMovements() {
 
     activeMonths.forEach((month) => {
       if (analiseGrupoTipo === 'receita') {
-        total1 += node1.monthlyRevenue[month] || 0
-        total2 += node2.monthlyRevenue[month] || 0
+        total1 += node1.monthlyRevenue[effCompDateBase][month] || 0
+        total2 += node2.monthlyRevenue[effCompDateBase][month] || 0
       } else if (analiseGrupoTipo === 'despesa') {
-        total1 += node1.monthlyExpense[month] || 0
-        total2 += node2.monthlyExpense[month] || 0
+        total1 += node1.monthlyExpense[effCompDateBase][month] || 0
+        total2 += node2.monthlyExpense[effCompDateBase][month] || 0
       } else {
-        total1 += node1.monthlyTotals[month] || 0
-        total2 += node2.monthlyTotals[month] || 0
+        total1 += node1.monthlyTotals[effCompDateBase][month] || 0
+        total2 += node2.monthlyTotals[effCompDateBase][month] || 0
       }
     })
 
@@ -3456,7 +3533,15 @@ export default function FinancialMovements() {
       diffAbs,
       diffPct,
     }
-  }, [compareGroup1, compareGroup2, groupAnalysisData, analiseGrupoTipo, effCompStart, effCompEnd])
+  }, [
+    compareGroup1,
+    compareGroup2,
+    groupAnalysisData,
+    analiseGrupoTipo,
+    effCompStart,
+    effCompEnd,
+    effCompDateBase,
+  ])
 
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize))
   const visibleCount = tableHeaders.filter((h) => visibleColumns[h.key] !== false).length + 2
@@ -7363,7 +7448,10 @@ export default function FinancialMovements() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Todo Período</SelectItem>
-                    {groupAnalysisData.months.map((m) => (
+                    {(summaryDateBase === 'data_emissao'
+                      ? groupAnalysisData.monthsEmissao
+                      : groupAnalysisData.monthsCompens
+                    ).map((m) => (
                       <SelectItem key={`start-${m}`} value={m}>
                         {m.split('-').reverse().join('/')}
                       </SelectItem>
@@ -7380,13 +7468,42 @@ export default function FinancialMovements() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Todo Período</SelectItem>
-                    {groupAnalysisData.months.map((m) => (
+                    {(summaryDateBase === 'data_emissao'
+                      ? groupAnalysisData.monthsEmissao
+                      : groupAnalysisData.monthsCompens
+                    ).map((m) => (
                       <SelectItem key={`end-${m}`} value={m}>
                         {m.split('-').reverse().join('/')}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
+              </div>
+
+              <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 p-1.5 rounded-lg">
+                <span className="text-xs font-semibold text-slate-600 px-2 uppercase tracking-wider hidden sm:inline">
+                  Data Base:
+                </span>
+                <Tabs
+                  value={summaryDateBase}
+                  onValueChange={setSummaryDateBase}
+                  className="w-[180px]"
+                >
+                  <TabsList className="grid w-full grid-cols-2 h-8">
+                    <TabsTrigger
+                      value="data_emissao"
+                      className="text-xs data-[state=active]:bg-indigo-900 data-[state=active]:text-white"
+                    >
+                      Emissão
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="dt_compens"
+                      className="text-xs data-[state=active]:bg-indigo-900 data-[state=active]:text-white"
+                    >
+                      Compens.
+                    </TabsTrigger>
+                  </TabsList>
+                </Tabs>
               </div>
 
               <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 p-1.5 rounded-lg">
@@ -7455,11 +7572,27 @@ export default function FinancialMovements() {
             <CardContent className="p-6">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 <div className="flex flex-col gap-4">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50 p-3 rounded-lg border border-slate-100">
-                    <h3 className="text-sm font-bold text-slate-800 text-center sm:text-left">
-                      Participação Vertical
+                  <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-3 bg-slate-50 p-3 rounded-lg border border-slate-100">
+                    <h3 className="text-sm font-bold text-slate-800 text-center xl:text-left">
+                      Participação Vertical{' '}
+                      <span className="text-xs text-slate-500 font-normal">
+                        ({effPartDateBase === 'data_emissao' ? 'Emissão' : 'Compensação'})
+                      </span>
                     </h3>
-                    <div className="flex items-center justify-center sm:justify-end gap-2">
+                    <div className="flex flex-wrap items-center justify-center xl:justify-end gap-2">
+                      <Select
+                        value={grupoPartDateBase || 'global'}
+                        onValueChange={(v) => setGrupoPartDateBase(v === 'global' ? '' : v)}
+                      >
+                        <SelectTrigger className="h-7 w-[100px] text-[10px] bg-white border-slate-200">
+                          <SelectValue placeholder="Data Base" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="global">C/ Global</SelectItem>
+                          <SelectItem value="data_emissao">Emissão</SelectItem>
+                          <SelectItem value="dt_compens">Compensação</SelectItem>
+                        </SelectContent>
+                      </Select>
                       <Select
                         value={grupoPartPeriodStart || 'global'}
                         onValueChange={(v) => setGrupoPartPeriodStart(v === 'global' ? '' : v)}
@@ -7469,7 +7602,10 @@ export default function FinancialMovements() {
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="global">C/ Global</SelectItem>
-                          {groupAnalysisData.months.map((m) => (
+                          {(effPartDateBase === 'data_emissao'
+                            ? groupAnalysisData.monthsEmissao
+                            : groupAnalysisData.monthsCompens
+                          ).map((m) => (
                             <SelectItem key={`part-start-${m}`} value={m}>
                               {m.split('-').reverse().join('/')}
                             </SelectItem>
@@ -7485,7 +7621,10 @@ export default function FinancialMovements() {
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="global">C/ Global</SelectItem>
-                          {groupAnalysisData.months.map((m) => (
+                          {(effPartDateBase === 'data_emissao'
+                            ? groupAnalysisData.monthsEmissao
+                            : groupAnalysisData.monthsCompens
+                          ).map((m) => (
                             <SelectItem key={`part-end-${m}`} value={m}>
                               {m.split('-').reverse().join('/')}
                             </SelectItem>
