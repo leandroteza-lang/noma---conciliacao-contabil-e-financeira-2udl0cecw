@@ -7707,7 +7707,10 @@ export default function FinancialMovements() {
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="global">C/ Global</SelectItem>
-                          {groupAnalysisData.months.map((m) => (
+                          {(effEvolDateBase === 'data_emissao'
+                            ? groupAnalysisData.monthsEmissao
+                            : groupAnalysisData.monthsCompens
+                          ).map((m) => (
                             <SelectItem key={`evol-start-${m}`} value={m}>
                               {m.split('-').reverse().join('/')}
                             </SelectItem>
@@ -7723,7 +7726,10 @@ export default function FinancialMovements() {
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="global">C/ Global</SelectItem>
-                          {groupAnalysisData.months.map((m) => (
+                          {(effEvolDateBase === 'data_emissao'
+                            ? groupAnalysisData.monthsEmissao
+                            : groupAnalysisData.monthsCompens
+                          ).map((m) => (
                             <SelectItem key={`evol-end-${m}`} value={m}>
                               {m.split('-').reverse().join('/')}
                             </SelectItem>
@@ -7801,7 +7807,10 @@ export default function FinancialMovements() {
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="global">C/ Global</SelectItem>
-                            {groupAnalysisData.months.map((m) => (
+                            {(effCompDateBase === 'data_emissao'
+                              ? groupAnalysisData.monthsEmissao
+                              : groupAnalysisData.monthsCompens
+                            ).map((m) => (
                               <SelectItem key={`comp-start-${m}`} value={m}>
                                 {m.split('-').reverse().join('/')}
                               </SelectItem>
@@ -7818,7 +7827,10 @@ export default function FinancialMovements() {
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="global">C/ Global</SelectItem>
-                            {groupAnalysisData.months.map((m) => (
+                            {(effCompDateBase === 'data_emissao'
+                              ? groupAnalysisData.monthsEmissao
+                              : groupAnalysisData.monthsCompens
+                            ).map((m) => (
                               <SelectItem key={`comp-end-${m}`} value={m}>
                                 {m.split('-').reverse().join('/')}
                               </SelectItem>
@@ -8016,7 +8028,10 @@ export default function FinancialMovements() {
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="global">C/ Global</SelectItem>
-                          {groupAnalysisData.months.map((m) => (
+                          {(effTableDateBase === 'data_emissao'
+                            ? groupAnalysisData.monthsEmissao
+                            : groupAnalysisData.monthsCompens
+                          ).map((m) => (
                             <SelectItem key={`tab-start-${m}`} value={m}>
                               {m.split('-').reverse().join('/')}
                             </SelectItem>
@@ -8033,7 +8048,10 @@ export default function FinancialMovements() {
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="global">C/ Global</SelectItem>
-                          {groupAnalysisData.months.map((m) => (
+                          {(effTableDateBase === 'data_emissao'
+                            ? groupAnalysisData.monthsEmissao
+                            : groupAnalysisData.monthsCompens
+                          ).map((m) => (
                             <SelectItem key={`tab-end-${m}`} value={m}>
                               {m.split('-').reverse().join('/')}
                             </SelectItem>
