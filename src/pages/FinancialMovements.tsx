@@ -3068,7 +3068,11 @@ export default function FinancialMovements() {
   ])
 
   // --- New states for "Análise por Grupos" ---
-  const [analiseGrupoTipo, setAnaliseGrupoTipo] = useState<string[]>(['despesa'])
+  const [analiseGrupoTipo, setAnaliseGrupoTipo] = useState<string[]>([
+    'receita',
+    'despesa',
+    'resultado',
+  ])
   const [groupAnalysisPath, setGroupAnalysisPath] = useState<any[]>([])
 
   // --- States for Comparativo Inter-Grupos ---
@@ -3106,38 +3110,22 @@ export default function FinancialMovements() {
   const effPartStart = isPartSynced ? grupoGlobalPeriodStart : grupoPartPeriodStart
   const effPartEnd = isPartSynced ? grupoGlobalPeriodEnd : grupoPartPeriodEnd
   const effPartDateBase = isPartSynced ? summaryDateBase : grupoPartDateBase || summaryDateBase
-  const effPartTipo = isPartSynced
-    ? analiseGrupoTipo
-    : grupoPartTipo.length > 0
-      ? grupoPartTipo
-      : analiseGrupoTipo
+  const effPartTipo = isPartSynced ? analiseGrupoTipo : grupoPartTipo
 
   const effEvolStart = isEvolSynced ? grupoGlobalPeriodStart : grupoEvolPeriodStart
   const effEvolEnd = isEvolSynced ? grupoGlobalPeriodEnd : grupoEvolPeriodEnd
   const effEvolDateBase = isEvolSynced ? summaryDateBase : grupoEvolDateBase || summaryDateBase
-  const effEvolTipo = isEvolSynced
-    ? analiseGrupoTipo
-    : grupoEvolTipo.length > 0
-      ? grupoEvolTipo
-      : analiseGrupoTipo
+  const effEvolTipo = isEvolSynced ? analiseGrupoTipo : grupoEvolTipo
 
   const effCompStart = isCompSynced ? grupoGlobalPeriodStart : grupoCompPeriodStart
   const effCompEnd = isCompSynced ? grupoGlobalPeriodEnd : grupoCompPeriodEnd
   const effCompDateBase = isCompSynced ? summaryDateBase : grupoCompDateBase || summaryDateBase
-  const effCompTipo = isCompSynced
-    ? analiseGrupoTipo
-    : grupoCompTipo.length > 0
-      ? grupoCompTipo
-      : analiseGrupoTipo
+  const effCompTipo = isCompSynced ? analiseGrupoTipo : grupoCompTipo
 
   const effTableStart = isTableSynced ? grupoGlobalPeriodStart : grupoTablePeriodStart
   const effTableEnd = isTableSynced ? grupoGlobalPeriodEnd : grupoTablePeriodEnd
   const effTableDateBase = isTableSynced ? summaryDateBase : grupoTableDateBase || summaryDateBase
-  const effTableTipo = isTableSynced
-    ? analiseGrupoTipo
-    : grupoTableTipo.length > 0
-      ? grupoTableTipo
-      : analiseGrupoTipo
+  const effTableTipo = isTableSynced ? analiseGrupoTipo : grupoTableTipo
 
   const groupAnalysisData = useMemo(() => {
     const monthsSetEmissao = new Set<string>()
@@ -7596,8 +7584,8 @@ export default function FinancialMovements() {
           </div>
 
           <Card className="shadow-sm border-slate-200 rounded-xl mb-6 overflow-hidden">
-            <CardHeader className="bg-slate-50 border-b border-slate-100 py-3 px-4">
-              <div className="flex items-center gap-2 text-sm font-medium text-slate-600 overflow-x-auto">
+            <CardHeader className="bg-slate-50 border-b border-slate-100 py-3 px-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="flex items-center gap-2 text-sm font-medium text-slate-600 overflow-x-auto w-full sm:w-auto">
                 <button
                   className="hover:text-indigo-600 transition-colors whitespace-nowrap flex items-center gap-1"
                   onClick={() => handleGroupAnalysisBreadcrumb(-1)}
@@ -7619,6 +7607,26 @@ export default function FinancialMovements() {
                   </React.Fragment>
                 ))}
               </div>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 text-xs whitespace-nowrap shrink-0 shadow-sm bg-white"
+                onClick={() => {
+                  setGroupAnalysisPath([])
+                  setAnaliseGrupoTipo(['receita', 'despesa', 'resultado'])
+                  setGrupoGlobalPeriodStart('')
+                  setGrupoGlobalPeriodEnd('')
+                  setIsPartSynced(true)
+                  setIsEvolSynced(true)
+                  setIsCompSynced(true)
+                  setIsTableSynced(true)
+                  setCompareGroup1('')
+                  setCompareGroup2('')
+                }}
+              >
+                <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
+                Restaurar Tudo
+              </Button>
             </CardHeader>
             <CardContent className="p-6">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -7712,10 +7720,8 @@ export default function FinancialMovements() {
                                 { label: 'Despesas', value: 'despesa' },
                                 { label: 'Resultado', value: 'resultado' },
                               ]}
-                              selected={grupoPartTipo.length > 0 ? grupoPartTipo : analiseGrupoTipo}
-                              onChange={(v) => {
-                                if (v.length > 0) setGrupoPartTipo(v)
-                              }}
+                              selected={grupoPartTipo}
+                              onChange={setGrupoPartTipo}
                             />
                           </div>
                           <Select
@@ -7833,10 +7839,112 @@ export default function FinancialMovements() {
 
                 <div className="flex flex-col gap-4">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50 p-3 rounded-lg border border-slate-100">
-                    <h3 className="text-sm font-bold text-slate-800 text-center sm:text-left">
+                    <h3 className="text-sm font-bold text-slate-800 text-center sm:text-left flex flex-wrap items-center gap-2">
                       Evolução por Subnível
+                      <div className="flex gap-1.5 items-center bg-white px-2 py-0.5 rounded-full border border-slate-200 text-[10px] text-slate-500 font-normal shadow-sm">
+                        <span
+                          className={cn(
+                            'px-1.5 py-0.5 rounded font-semibold',
+                            effEvolDateBase === 'data_emissao'
+                              ? 'bg-indigo-100 text-indigo-700'
+                              : 'bg-slate-100 text-slate-700',
+                          )}
+                        >
+                          Emissão
+                        </span>
+                        <span
+                          className={cn(
+                            'px-1.5 py-0.5 rounded font-semibold',
+                            effEvolDateBase === 'dt_compens'
+                              ? 'bg-indigo-100 text-indigo-700'
+                              : 'bg-slate-100 text-slate-700',
+                          )}
+                        >
+                          Compens.
+                        </span>
+                        <div className="w-px h-3 bg-slate-300 mx-0.5"></div>
+                        <span
+                          className={cn(
+                            'px-1.5 py-0.5 rounded font-semibold',
+                            effEvolTipo.includes('receita') && effEvolTipo.length === 1
+                              ? 'bg-emerald-100 text-emerald-700'
+                              : effEvolTipo.includes('despesa') && effEvolTipo.length === 1
+                                ? 'bg-rose-100 text-rose-700'
+                                : effEvolTipo.includes('resultado') && effEvolTipo.length === 1
+                                  ? 'bg-blue-100 text-blue-700'
+                                  : 'bg-purple-100 text-purple-700',
+                          )}
+                        >
+                          {effEvolTipo
+                            .map((t: string) =>
+                              t === 'receita'
+                                ? 'Receitas'
+                                : t === 'despesa'
+                                  ? 'Despesas'
+                                  : 'Resultado',
+                            )
+                            .join(' + ')}
+                        </span>
+                      </div>
                     </h3>
-                    <div className="flex items-center justify-center sm:justify-end gap-2">
+                    <div className="flex flex-wrap items-center justify-center sm:justify-end gap-2">
+                      <Button
+                        variant={isEvolSynced ? 'default' : 'outline'}
+                        size="sm"
+                        className={cn(
+                          'h-7 text-[10px] px-2.5 shadow-sm transition-all',
+                          isEvolSynced
+                            ? 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200'
+                            : 'bg-white text-slate-600 hover:text-slate-900 border-dashed',
+                        )}
+                        onClick={() => {
+                          if (!isEvolSynced) setIsEvolSynced(true)
+                          else {
+                            setIsEvolSynced(false)
+                            setGrupoEvolPeriodStart(grupoGlobalPeriodStart)
+                            setGrupoEvolPeriodEnd(grupoGlobalPeriodEnd)
+                            setGrupoEvolDateBase(summaryDateBase)
+                            setGrupoEvolTipo(analiseGrupoTipo)
+                          }
+                        }}
+                      >
+                        {isEvolSynced ? (
+                          <Link className="h-3 w-3 mr-1.5" />
+                        ) : (
+                          <Unlink className="h-3 w-3 mr-1.5" />
+                        )}
+                        {isEvolSynced ? 'Sincronizado' : 'Customizado'}
+                      </Button>
+
+                      {!isEvolSynced && (
+                        <>
+                          <div className="w-[120px]">
+                            <MultiSelect
+                              title="Tipos"
+                              options={[
+                                { label: 'Receitas', value: 'receita' },
+                                { label: 'Despesas', value: 'despesa' },
+                                { label: 'Resultado', value: 'resultado' },
+                              ]}
+                              selected={grupoEvolTipo}
+                              onChange={setGrupoEvolTipo}
+                            />
+                          </div>
+                          <Select
+                            value={grupoEvolDateBase || summaryDateBase}
+                            onValueChange={setGrupoEvolDateBase}
+                          >
+                            <SelectTrigger className="h-7 w-[90px] text-[10px] bg-white border-slate-200 font-medium">
+                              <SelectValue placeholder="Data Base" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="data_emissao">Emissão</SelectItem>
+                              <SelectItem value="dt_compens">Compensação</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </>
+                      )}
+
                       <Select
                         value={grupoEvolPeriodStart || 'global'}
                         onValueChange={(v) => setGrupoEvolPeriodStart(v === 'global' ? '' : v)}
@@ -8020,12 +8128,8 @@ export default function FinancialMovements() {
                                   { label: 'Despesas', value: 'despesa' },
                                   { label: 'Resultado', value: 'resultado' },
                                 ]}
-                                selected={
-                                  grupoCompTipo.length > 0 ? grupoCompTipo : analiseGrupoTipo
-                                }
-                                onChange={(v) => {
-                                  if (v.length > 0) setGrupoCompTipo(v)
-                                }}
+                                selected={grupoCompTipo}
+                                onChange={setGrupoCompTipo}
                               />
                             </div>
                             <Select
@@ -8346,12 +8450,8 @@ export default function FinancialMovements() {
                                 { label: 'Despesas', value: 'despesa' },
                                 { label: 'Resultado', value: 'resultado' },
                               ]}
-                              selected={
-                                grupoTableTipo.length > 0 ? grupoTableTipo : analiseGrupoTipo
-                              }
-                              onChange={(v) => {
-                                if (v.length > 0) setGrupoTableTipo(v)
-                              }}
+                              selected={grupoTableTipo}
+                              onChange={setGrupoTableTipo}
                             />
                           </div>
                           <Select
