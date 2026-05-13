@@ -46,6 +46,8 @@ import {
   TrendingDown,
   CircleDollarSign,
   RefreshCw,
+  Link,
+  Unlink,
 } from 'lucide-react'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Switch } from '@/components/ui/switch'
@@ -3079,40 +3081,49 @@ export default function FinancialMovements() {
   const [grupoGlobalPeriodStart, setGrupoGlobalPeriodStart] = useState<string>('')
   const [grupoGlobalPeriodEnd, setGrupoGlobalPeriodEnd] = useState<string>('')
 
+  const [isPartSynced, setIsPartSynced] = useState<boolean>(true)
   const [grupoPartPeriodStart, setGrupoPartPeriodStart] = useState<string>('')
   const [grupoPartPeriodEnd, setGrupoPartPeriodEnd] = useState<string>('')
+  const [grupoPartDateBase, setGrupoPartDateBase] = useState<string>('')
+  const [grupoPartTipo, setGrupoPartTipo] = useState<'receita' | 'despesa' | 'resultado' | ''>('')
 
+  const [isEvolSynced, setIsEvolSynced] = useState<boolean>(true)
   const [grupoEvolPeriodStart, setGrupoEvolPeriodStart] = useState<string>('')
   const [grupoEvolPeriodEnd, setGrupoEvolPeriodEnd] = useState<string>('')
+  const [grupoEvolDateBase, setGrupoEvolDateBase] = useState<string>('')
+  const [grupoEvolTipo, setGrupoEvolTipo] = useState<'receita' | 'despesa' | 'resultado' | ''>('')
 
+  const [isCompSynced, setIsCompSynced] = useState<boolean>(true)
   const [grupoCompPeriodStart, setGrupoCompPeriodStart] = useState<string>('')
   const [grupoCompPeriodEnd, setGrupoCompPeriodEnd] = useState<string>('')
+  const [grupoCompDateBase, setGrupoCompDateBase] = useState<string>('')
+  const [grupoCompTipo, setGrupoCompTipo] = useState<'receita' | 'despesa' | 'resultado' | ''>('')
 
+  const [isTableSynced, setIsTableSynced] = useState<boolean>(true)
   const [grupoTablePeriodStart, setGrupoTablePeriodStart] = useState<string>('')
   const [grupoTablePeriodEnd, setGrupoTablePeriodEnd] = useState<string>('')
-
-  // New states for Group Analysis Date Base Overrides
-  const [grupoPartDateBase, setGrupoPartDateBase] = useState<string>('')
-  const [grupoEvolDateBase, setGrupoEvolDateBase] = useState<string>('')
-  const [grupoCompDateBase, setGrupoCompDateBase] = useState<string>('')
   const [grupoTableDateBase, setGrupoTableDateBase] = useState<string>('')
+  const [grupoTableTipo, setGrupoTableTipo] = useState<'receita' | 'despesa' | 'resultado' | ''>('')
 
-  const effPartStart = grupoPartPeriodStart || grupoGlobalPeriodStart
-  const effPartEnd = grupoPartPeriodEnd || grupoGlobalPeriodEnd
+  const effPartStart = isPartSynced ? grupoGlobalPeriodStart : grupoPartPeriodStart
+  const effPartEnd = isPartSynced ? grupoGlobalPeriodEnd : grupoPartPeriodEnd
+  const effPartDateBase = isPartSynced ? summaryDateBase : grupoPartDateBase || summaryDateBase
+  const effPartTipo = isPartSynced ? analiseGrupoTipo : grupoPartTipo || analiseGrupoTipo
 
-  const effEvolStart = grupoEvolPeriodStart || grupoGlobalPeriodStart
-  const effEvolEnd = grupoEvolPeriodEnd || grupoGlobalPeriodEnd
+  const effEvolStart = isEvolSynced ? grupoGlobalPeriodStart : grupoEvolPeriodStart
+  const effEvolEnd = isEvolSynced ? grupoGlobalPeriodEnd : grupoEvolPeriodEnd
+  const effEvolDateBase = isEvolSynced ? summaryDateBase : grupoEvolDateBase || summaryDateBase
+  const effEvolTipo = isEvolSynced ? analiseGrupoTipo : grupoEvolTipo || analiseGrupoTipo
 
-  const effCompStart = grupoCompPeriodStart || grupoGlobalPeriodStart
-  const effCompEnd = grupoCompPeriodEnd || grupoGlobalPeriodEnd
+  const effCompStart = isCompSynced ? grupoGlobalPeriodStart : grupoCompPeriodStart
+  const effCompEnd = isCompSynced ? grupoGlobalPeriodEnd : grupoCompPeriodEnd
+  const effCompDateBase = isCompSynced ? summaryDateBase : grupoCompDateBase || summaryDateBase
+  const effCompTipo = isCompSynced ? analiseGrupoTipo : grupoCompTipo || analiseGrupoTipo
 
-  const effTableStart = grupoTablePeriodStart || grupoGlobalPeriodStart
-  const effTableEnd = grupoTablePeriodEnd || grupoGlobalPeriodEnd
-
-  const effPartDateBase = grupoPartDateBase || summaryDateBase
-  const effEvolDateBase = grupoEvolDateBase || summaryDateBase
-  const effCompDateBase = grupoCompDateBase || summaryDateBase
-  const effTableDateBase = grupoTableDateBase || summaryDateBase
+  const effTableStart = isTableSynced ? grupoGlobalPeriodStart : grupoTablePeriodStart
+  const effTableEnd = isTableSynced ? grupoGlobalPeriodEnd : grupoTablePeriodEnd
+  const effTableDateBase = isTableSynced ? summaryDateBase : grupoTableDateBase || summaryDateBase
+  const effTableTipo = isTableSynced ? analiseGrupoTipo : grupoTableTipo || analiseGrupoTipo
 
   const groupAnalysisData = useMemo(() => {
     const monthsSetEmissao = new Set<string>()
@@ -3263,9 +3274,8 @@ export default function FinancialMovements() {
         months.forEach((month: string) => {
           if (effPartStart && month < effPartStart) return
           if (effPartEnd && month > effPartEnd) return
-          if (analiseGrupoTipo === 'receita')
-            val += child.monthlyRevenue[effPartDateBase][month] || 0
-          else if (analiseGrupoTipo === 'despesa')
+          if (effPartTipo === 'receita') val += child.monthlyRevenue[effPartDateBase][month] || 0
+          else if (effPartTipo === 'despesa')
             val += child.monthlyExpense[effPartDateBase][month] || 0
           else val += child.monthlyTotals[effPartDateBase][month] || 0
         })
@@ -3280,7 +3290,7 @@ export default function FinancialMovements() {
       .sort((a: any, b: any) => b.value - a.value)
   }, [
     currentGroupAnalysisNodes,
-    analiseGrupoTipo,
+    effPartTipo,
     groupAnalysisData,
     effPartStart,
     effPartEnd,
@@ -3302,9 +3312,8 @@ export default function FinancialMovements() {
       const dataPoint: any = { month }
       currentGroupAnalysisNodes.forEach((child: any) => {
         let val = 0
-        if (analiseGrupoTipo === 'receita') val = child.monthlyRevenue[effEvolDateBase][month] || 0
-        else if (analiseGrupoTipo === 'despesa')
-          val = child.monthlyExpense[effEvolDateBase][month] || 0
+        if (effEvolTipo === 'receita') val = child.monthlyRevenue[effEvolDateBase][month] || 0
+        else if (effEvolTipo === 'despesa') val = child.monthlyExpense[effEvolDateBase][month] || 0
         else val = child.monthlyTotals[effEvolDateBase][month] || 0
         dataPoint[child.code || 'S/C'] = val
       })
@@ -3313,7 +3322,7 @@ export default function FinancialMovements() {
   }, [
     groupAnalysisData,
     currentGroupAnalysisNodes,
-    analiseGrupoTipo,
+    effEvolTipo,
     effEvolStart,
     effEvolEnd,
     effEvolDateBase,
@@ -3391,10 +3400,10 @@ export default function FinancialMovements() {
       .sort((a: any, b: any) => {
         let valA = 0
         let valB = 0
-        if (analiseGrupoTipo === 'receita') {
+        if (effTableTipo === 'receita') {
           valA = a.periodRevenue
           valB = b.periodRevenue
-        } else if (analiseGrupoTipo === 'despesa') {
+        } else if (effTableTipo === 'despesa') {
           valA = a.periodExpense
           valB = b.periodExpense
         } else {
@@ -3408,7 +3417,7 @@ export default function FinancialMovements() {
     groupAnalysisData,
     effTableStart,
     effTableEnd,
-    analiseGrupoTipo,
+    effTableTipo,
     effTableDateBase,
   ])
 
@@ -3452,10 +3461,10 @@ export default function FinancialMovements() {
       let val1 = 0
       let val2 = 0
 
-      if (analiseGrupoTipo === 'receita') {
+      if (effCompTipo === 'receita') {
         val1 = node1.monthlyRevenue[effCompDateBase][month] || 0
         val2 = node2.monthlyRevenue[effCompDateBase][month] || 0
-      } else if (analiseGrupoTipo === 'despesa') {
+      } else if (effCompTipo === 'despesa') {
         val1 = node1.monthlyExpense[effCompDateBase][month] || 0
         val2 = node2.monthlyExpense[effCompDateBase][month] || 0
       } else {
@@ -3473,7 +3482,7 @@ export default function FinancialMovements() {
     compareGroup1,
     compareGroup2,
     groupAnalysisData,
-    analiseGrupoTipo,
+    effCompTipo,
     effCompStart,
     effCompEnd,
     effCompDateBase,
@@ -3507,10 +3516,10 @@ export default function FinancialMovements() {
     })
 
     activeMonths.forEach((month) => {
-      if (analiseGrupoTipo === 'receita') {
+      if (effCompTipo === 'receita') {
         total1 += node1.monthlyRevenue[effCompDateBase][month] || 0
         total2 += node2.monthlyRevenue[effCompDateBase][month] || 0
-      } else if (analiseGrupoTipo === 'despesa') {
+      } else if (effCompTipo === 'despesa') {
         total1 += node1.monthlyExpense[effCompDateBase][month] || 0
         total2 += node2.monthlyExpense[effCompDateBase][month] || 0
       } else {
@@ -3537,7 +3546,7 @@ export default function FinancialMovements() {
     compareGroup1,
     compareGroup2,
     groupAnalysisData,
-    analiseGrupoTipo,
+    effCompTipo,
     effCompStart,
     effCompEnd,
     effCompDateBase,
@@ -7573,64 +7582,145 @@ export default function FinancialMovements() {
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 <div className="flex flex-col gap-4">
                   <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-3 bg-slate-50 p-3 rounded-lg border border-slate-100">
-                    <h3 className="text-sm font-bold text-slate-800 text-center xl:text-left">
-                      Participação Vertical{' '}
-                      <span className="text-xs text-slate-500 font-normal">
-                        ({effPartDateBase === 'data_emissao' ? 'Emissão' : 'Compensação'})
-                      </span>
+                    <h3 className="text-sm font-bold text-slate-800 text-center xl:text-left flex flex-wrap items-center justify-center gap-2">
+                      Participação Vertical
+                      <div className="flex gap-1.5 items-center bg-white px-2 py-0.5 rounded-full border border-slate-200 text-[10px] text-slate-500 font-normal shadow-sm">
+                        <span
+                          className={cn(
+                            'px-1.5 py-0.5 rounded font-semibold',
+                            effPartDateBase === 'data_emissao'
+                              ? 'bg-indigo-100 text-indigo-700'
+                              : 'bg-slate-100 text-slate-700',
+                          )}
+                        >
+                          Emissão
+                        </span>
+                        <span
+                          className={cn(
+                            'px-1.5 py-0.5 rounded font-semibold',
+                            effPartDateBase === 'dt_compens'
+                              ? 'bg-indigo-100 text-indigo-700'
+                              : 'bg-slate-100 text-slate-700',
+                          )}
+                        >
+                          Compens.
+                        </span>
+                        <div className="w-px h-3 bg-slate-300 mx-0.5"></div>
+                        <span
+                          className={cn(
+                            'px-1.5 py-0.5 rounded font-semibold',
+                            effPartTipo === 'receita'
+                              ? 'bg-emerald-100 text-emerald-700'
+                              : effPartTipo === 'despesa'
+                                ? 'bg-rose-100 text-rose-700'
+                                : 'bg-blue-100 text-blue-700',
+                          )}
+                        >
+                          {effPartTipo === 'receita'
+                            ? 'Receitas'
+                            : effPartTipo === 'despesa'
+                              ? 'Despesas'
+                              : 'Resultado'}
+                        </span>
+                      </div>
                     </h3>
                     <div className="flex flex-wrap items-center justify-center xl:justify-end gap-2">
-                      <Select
-                        value={grupoPartDateBase || 'global'}
-                        onValueChange={(v) => setGrupoPartDateBase(v === 'global' ? '' : v)}
+                      <Button
+                        variant={isPartSynced ? 'default' : 'outline'}
+                        size="sm"
+                        className={cn(
+                          'h-7 text-[10px] px-2.5 shadow-sm transition-all',
+                          isPartSynced
+                            ? 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200'
+                            : 'bg-white text-slate-600 hover:text-slate-900 border-dashed',
+                        )}
+                        onClick={() => {
+                          if (!isPartSynced) {
+                            setIsPartSynced(true)
+                          } else {
+                            setIsPartSynced(false)
+                            setGrupoPartPeriodStart(grupoGlobalPeriodStart)
+                            setGrupoPartPeriodEnd(grupoGlobalPeriodEnd)
+                            setGrupoPartDateBase(summaryDateBase)
+                            setGrupoPartTipo(analiseGrupoTipo)
+                          }
+                        }}
                       >
-                        <SelectTrigger className="h-7 w-[100px] text-[10px] bg-white border-slate-200">
-                          <SelectValue placeholder="Data Base" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="global">C/ Global</SelectItem>
-                          <SelectItem value="data_emissao">Emissão</SelectItem>
-                          <SelectItem value="dt_compens">Compensação</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <Select
-                        value={grupoPartPeriodStart || 'global'}
-                        onValueChange={(v) => setGrupoPartPeriodStart(v === 'global' ? '' : v)}
-                      >
-                        <SelectTrigger className="h-7 w-[90px] text-[10px] bg-white border-slate-200">
-                          <SelectValue placeholder="Início" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="global">C/ Global</SelectItem>
-                          {(effPartDateBase === 'data_emissao'
-                            ? groupAnalysisData.monthsEmissao
-                            : groupAnalysisData.monthsCompens
-                          ).map((m) => (
-                            <SelectItem key={`part-start-${m}`} value={m}>
-                              {m.split('-').reverse().join('/')}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <Select
-                        value={grupoPartPeriodEnd || 'global'}
-                        onValueChange={(v) => setGrupoPartPeriodEnd(v === 'global' ? '' : v)}
-                      >
-                        <SelectTrigger className="h-7 w-[90px] text-[10px] bg-white border-slate-200">
-                          <SelectValue placeholder="Fim" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="global">C/ Global</SelectItem>
-                          {(effPartDateBase === 'data_emissao'
-                            ? groupAnalysisData.monthsEmissao
-                            : groupAnalysisData.monthsCompens
-                          ).map((m) => (
-                            <SelectItem key={`part-end-${m}`} value={m}>
-                              {m.split('-').reverse().join('/')}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                        {isPartSynced ? (
+                          <Link className="h-3 w-3 mr-1.5" />
+                        ) : (
+                          <Unlink className="h-3 w-3 mr-1.5" />
+                        )}
+                        {isPartSynced ? 'Sincronizado ao Global' : 'Filtro Customizado'}
+                      </Button>
+
+                      {!isPartSynced && (
+                        <>
+                          <Select
+                            value={grupoPartTipo || analiseGrupoTipo}
+                            onValueChange={(v) => setGrupoPartTipo(v as any)}
+                          >
+                            <SelectTrigger className="h-7 w-[90px] text-[10px] bg-white border-slate-200 font-medium">
+                              <SelectValue placeholder="Tipo" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="receita">Receitas</SelectItem>
+                              <SelectItem value="despesa">Despesas</SelectItem>
+                              <SelectItem value="resultado">Resultado</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <Select
+                            value={grupoPartDateBase || summaryDateBase}
+                            onValueChange={(v) => setGrupoPartDateBase(v)}
+                          >
+                            <SelectTrigger className="h-7 w-[90px] text-[10px] bg-white border-slate-200 font-medium">
+                              <SelectValue placeholder="Data Base" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="data_emissao">Emissão</SelectItem>
+                              <SelectItem value="dt_compens">Compensação</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <Select
+                            value={grupoPartPeriodStart || 'all'}
+                            onValueChange={(v) => setGrupoPartPeriodStart(v === 'all' ? '' : v)}
+                          >
+                            <SelectTrigger className="h-7 w-[85px] text-[10px] bg-white border-slate-200 font-medium">
+                              <SelectValue placeholder="Início" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="all">Todo Período</SelectItem>
+                              {(effPartDateBase === 'data_emissao'
+                                ? groupAnalysisData.monthsEmissao
+                                : groupAnalysisData.monthsCompens
+                              ).map((m) => (
+                                <SelectItem key={`p-start-${m}`} value={m}>
+                                  {m.split('-').reverse().join('/')}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <Select
+                            value={grupoPartPeriodEnd || 'all'}
+                            onValueChange={(v) => setGrupoPartPeriodEnd(v === 'all' ? '' : v)}
+                          >
+                            <SelectTrigger className="h-7 w-[85px] text-[10px] bg-white border-slate-200 font-medium">
+                              <SelectValue placeholder="Fim" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="all">Todo Período</SelectItem>
+                              {(effPartDateBase === 'data_emissao'
+                                ? groupAnalysisData.monthsEmissao
+                                : groupAnalysisData.monthsCompens
+                              ).map((m) => (
+                                <SelectItem key={`p-end-${m}`} value={m}>
+                                  {m.split('-').reverse().join('/')}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </>
+                      )}
                     </div>
                   </div>
                   {participationChartData.length > 0 ? (
@@ -7788,60 +7878,156 @@ export default function FinancialMovements() {
                 <Card className="shadow-sm border-slate-200 rounded-xl overflow-hidden">
                   <CardHeader className="bg-slate-50 border-b border-slate-100 py-4 px-6 flex flex-col xl:flex-row xl:items-center justify-between gap-4">
                     <div>
-                      <h3 className="text-lg font-bold text-slate-800">Comparativo Inter-Grupos</h3>
+                      <h3 className="text-lg font-bold text-slate-800 flex flex-wrap items-center gap-2">
+                        Comparativo Inter-Grupos
+                        <div className="flex gap-1.5 items-center bg-white px-2 py-0.5 rounded-full border border-slate-200 text-[10px] text-slate-500 font-normal shadow-sm">
+                          <span
+                            className={cn(
+                              'px-1.5 py-0.5 rounded font-semibold',
+                              effCompDateBase === 'data_emissao'
+                                ? 'bg-indigo-100 text-indigo-700'
+                                : 'bg-slate-100 text-slate-700',
+                            )}
+                          >
+                            Emissão
+                          </span>
+                          <span
+                            className={cn(
+                              'px-1.5 py-0.5 rounded font-semibold',
+                              effCompDateBase === 'dt_compens'
+                                ? 'bg-indigo-100 text-indigo-700'
+                                : 'bg-slate-100 text-slate-700',
+                            )}
+                          >
+                            Compens.
+                          </span>
+                          <div className="w-px h-3 bg-slate-300 mx-0.5"></div>
+                          <span
+                            className={cn(
+                              'px-1.5 py-0.5 rounded font-semibold',
+                              effCompTipo === 'receita'
+                                ? 'bg-emerald-100 text-emerald-700'
+                                : effCompTipo === 'despesa'
+                                  ? 'bg-rose-100 text-rose-700'
+                                  : 'bg-blue-100 text-blue-700',
+                            )}
+                          >
+                            {effCompTipo === 'receita'
+                              ? 'Receitas'
+                              : effCompTipo === 'despesa'
+                                ? 'Despesas'
+                                : 'Resultado'}
+                          </span>
+                        </div>
+                      </h3>
                       <p className="text-sm text-slate-500">
                         Confronte a performance entre dois grupos ou centros de custo específicos.
                       </p>
                     </div>
                     <div className="flex flex-col lg:flex-row items-start lg:items-center gap-4 w-full xl:w-auto">
-                      <div className="flex items-center gap-2 bg-white px-2 py-1.5 rounded-lg border border-slate-200 w-full lg:w-auto">
-                        <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider hidden sm:inline px-2">
-                          Período:
-                        </span>
-                        <Select
-                          value={grupoCompPeriodStart || 'global'}
-                          onValueChange={(v) => setGrupoCompPeriodStart(v === 'global' ? '' : v)}
+                      <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto">
+                        <Button
+                          variant={isCompSynced ? 'default' : 'outline'}
+                          size="sm"
+                          className={cn(
+                            'h-8 text-[11px] px-3 shadow-sm transition-all',
+                            isCompSynced
+                              ? 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200'
+                              : 'bg-white text-slate-600 hover:text-slate-900 border-dashed',
+                          )}
+                          onClick={() => {
+                            if (!isCompSynced) {
+                              setIsCompSynced(true)
+                            } else {
+                              setIsCompSynced(false)
+                              setGrupoCompPeriodStart(grupoGlobalPeriodStart)
+                              setGrupoCompPeriodEnd(grupoGlobalPeriodEnd)
+                              setGrupoCompDateBase(summaryDateBase)
+                              setGrupoCompTipo(analiseGrupoTipo)
+                            }
+                          }}
                         >
-                          <SelectTrigger className="h-8 w-[100px] text-xs bg-slate-50">
-                            <SelectValue placeholder="Início" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="global">C/ Global</SelectItem>
-                            {(effCompDateBase === 'data_emissao'
-                              ? groupAnalysisData.monthsEmissao
-                              : groupAnalysisData.monthsCompens
-                            ).map((m) => (
-                              <SelectItem key={`comp-start-${m}`} value={m}>
-                                {m.split('-').reverse().join('/')}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <span className="text-slate-300">-</span>
-                        <Select
-                          value={grupoCompPeriodEnd || 'global'}
-                          onValueChange={(v) => setGrupoCompPeriodEnd(v === 'global' ? '' : v)}
-                        >
-                          <SelectTrigger className="h-8 w-[100px] text-xs bg-slate-50">
-                            <SelectValue placeholder="Fim" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="global">C/ Global</SelectItem>
-                            {(effCompDateBase === 'data_emissao'
-                              ? groupAnalysisData.monthsEmissao
-                              : groupAnalysisData.monthsCompens
-                            ).map((m) => (
-                              <SelectItem key={`comp-end-${m}`} value={m}>
-                                {m.split('-').reverse().join('/')}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                          {isCompSynced ? (
+                            <Link className="h-3.5 w-3.5 mr-1.5" />
+                          ) : (
+                            <Unlink className="h-3.5 w-3.5 mr-1.5" />
+                          )}
+                          {isCompSynced ? 'Sincronizado ao Global' : 'Filtro Customizado'}
+                        </Button>
+
+                        {!isCompSynced && (
+                          <div className="flex flex-wrap items-center gap-2 bg-white px-2 py-1.5 rounded-lg border border-slate-200 w-full lg:w-auto">
+                            <Select
+                              value={grupoCompTipo || analiseGrupoTipo}
+                              onValueChange={(v) => setGrupoCompTipo(v as any)}
+                            >
+                              <SelectTrigger className="h-7 w-[95px] text-[10px] bg-slate-50 border-slate-200 font-medium">
+                                <SelectValue placeholder="Tipo" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="receita">Receitas</SelectItem>
+                                <SelectItem value="despesa">Despesas</SelectItem>
+                                <SelectItem value="resultado">Resultado</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <Select
+                              value={grupoCompDateBase || summaryDateBase}
+                              onValueChange={(v) => setGrupoCompDateBase(v)}
+                            >
+                              <SelectTrigger className="h-7 w-[95px] text-[10px] bg-slate-50 border-slate-200 font-medium">
+                                <SelectValue placeholder="Data Base" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="data_emissao">Emissão</SelectItem>
+                                <SelectItem value="dt_compens">Compensação</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <Select
+                              value={grupoCompPeriodStart || 'all'}
+                              onValueChange={(v) => setGrupoCompPeriodStart(v === 'all' ? '' : v)}
+                            >
+                              <SelectTrigger className="h-7 w-[85px] text-[10px] bg-slate-50 border-slate-200 font-medium">
+                                <SelectValue placeholder="Início" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="all">Todo Período</SelectItem>
+                                {(effCompDateBase === 'data_emissao'
+                                  ? groupAnalysisData.monthsEmissao
+                                  : groupAnalysisData.monthsCompens
+                                ).map((m) => (
+                                  <SelectItem key={`c-start-${m}`} value={m}>
+                                    {m.split('-').reverse().join('/')}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <span className="text-slate-300">-</span>
+                            <Select
+                              value={grupoCompPeriodEnd || 'all'}
+                              onValueChange={(v) => setGrupoCompPeriodEnd(v === 'all' ? '' : v)}
+                            >
+                              <SelectTrigger className="h-7 w-[85px] text-[10px] bg-slate-50 border-slate-200 font-medium">
+                                <SelectValue placeholder="Fim" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="all">Todo Período</SelectItem>
+                                {(effCompDateBase === 'data_emissao'
+                                  ? groupAnalysisData.monthsEmissao
+                                  : groupAnalysisData.monthsCompens
+                                ).map((m) => (
+                                  <SelectItem key={`c-end-${m}`} value={m}>
+                                    {m.split('-').reverse().join('/')}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        )}
                       </div>
 
                       <div className="flex flex-col sm:flex-row items-center gap-3 w-full lg:w-auto">
                         <Select value={compareGroup1} onValueChange={setCompareGroup1}>
-                          <SelectTrigger className="w-full sm:w-[250px] bg-white text-xs">
+                          <SelectTrigger className="w-full sm:w-[220px] bg-white text-xs">
                             <SelectValue placeholder="Selecione o Grupo A" />
                           </SelectTrigger>
                           <SelectContent>
@@ -7854,7 +8040,7 @@ export default function FinancialMovements() {
                         </Select>
                         <span className="text-slate-400 font-medium hidden sm:inline">vs</span>
                         <Select value={compareGroup2} onValueChange={setCompareGroup2}>
-                          <SelectTrigger className="w-full sm:w-[250px] bg-white text-xs">
+                          <SelectTrigger className="w-full sm:w-[220px] bg-white text-xs">
                             <SelectValue placeholder="Selecione o Grupo B" />
                           </SelectTrigger>
                           <SelectContent>
@@ -8013,51 +8199,147 @@ export default function FinancialMovements() {
                 </Card>
 
                 <div>
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-4">
-                    <h3 className="text-lg font-bold text-slate-800">Detalhamento dos Subníveis</h3>
-                    <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 p-1.5 rounded-lg">
-                      <span className="text-xs font-semibold text-slate-500 uppercase px-2">
-                        Período:
-                      </span>
-                      <Select
-                        value={grupoTablePeriodStart || 'global'}
-                        onValueChange={(v) => setGrupoTablePeriodStart(v === 'global' ? '' : v)}
+                  <div className="flex flex-col xl:flex-row xl:items-center justify-between mb-4 gap-4">
+                    <h3 className="text-lg font-bold text-slate-800 flex flex-wrap items-center gap-2">
+                      Detalhamento dos Subníveis
+                      <div className="flex gap-1.5 items-center bg-white px-2 py-0.5 rounded-full border border-slate-200 text-[10px] text-slate-500 font-normal shadow-sm">
+                        <span
+                          className={cn(
+                            'px-1.5 py-0.5 rounded font-semibold',
+                            effTableDateBase === 'data_emissao'
+                              ? 'bg-indigo-100 text-indigo-700'
+                              : 'bg-slate-100 text-slate-700',
+                          )}
+                        >
+                          Emissão
+                        </span>
+                        <span
+                          className={cn(
+                            'px-1.5 py-0.5 rounded font-semibold',
+                            effTableDateBase === 'dt_compens'
+                              ? 'bg-indigo-100 text-indigo-700'
+                              : 'bg-slate-100 text-slate-700',
+                          )}
+                        >
+                          Compens.
+                        </span>
+                        <div className="w-px h-3 bg-slate-300 mx-0.5"></div>
+                        <span
+                          className={cn(
+                            'px-1.5 py-0.5 rounded font-semibold',
+                            effTableTipo === 'receita'
+                              ? 'bg-emerald-100 text-emerald-700'
+                              : effTableTipo === 'despesa'
+                                ? 'bg-rose-100 text-rose-700'
+                                : 'bg-blue-100 text-blue-700',
+                          )}
+                        >
+                          {effTableTipo === 'receita'
+                            ? 'Receitas'
+                            : effTableTipo === 'despesa'
+                              ? 'Despesas'
+                              : 'Resultado'}
+                        </span>
+                      </div>
+                    </h3>
+                    <div className="flex flex-wrap items-center gap-2 w-full xl:w-auto">
+                      <Button
+                        variant={isTableSynced ? 'default' : 'outline'}
+                        size="sm"
+                        className={cn(
+                          'h-8 text-[11px] px-3 shadow-sm transition-all',
+                          isTableSynced
+                            ? 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200'
+                            : 'bg-white text-slate-600 hover:text-slate-900 border-dashed',
+                        )}
+                        onClick={() => {
+                          if (!isTableSynced) {
+                            setIsTableSynced(true)
+                          } else {
+                            setIsTableSynced(false)
+                            setGrupoTablePeriodStart(grupoGlobalPeriodStart)
+                            setGrupoTablePeriodEnd(grupoGlobalPeriodEnd)
+                            setGrupoTableDateBase(summaryDateBase)
+                            setGrupoTableTipo(analiseGrupoTipo)
+                          }
+                        }}
                       >
-                        <SelectTrigger className="h-8 w-[100px] text-xs bg-white border-slate-200">
-                          <SelectValue placeholder="Início" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="global">C/ Global</SelectItem>
-                          {(effTableDateBase === 'data_emissao'
-                            ? groupAnalysisData.monthsEmissao
-                            : groupAnalysisData.monthsCompens
-                          ).map((m) => (
-                            <SelectItem key={`tab-start-${m}`} value={m}>
-                              {m.split('-').reverse().join('/')}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <span className="text-slate-300">-</span>
-                      <Select
-                        value={grupoTablePeriodEnd || 'global'}
-                        onValueChange={(v) => setGrupoTablePeriodEnd(v === 'global' ? '' : v)}
-                      >
-                        <SelectTrigger className="h-8 w-[100px] text-xs bg-white border-slate-200">
-                          <SelectValue placeholder="Fim" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="global">C/ Global</SelectItem>
-                          {(effTableDateBase === 'data_emissao'
-                            ? groupAnalysisData.monthsEmissao
-                            : groupAnalysisData.monthsCompens
-                          ).map((m) => (
-                            <SelectItem key={`tab-end-${m}`} value={m}>
-                              {m.split('-').reverse().join('/')}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                        {isTableSynced ? (
+                          <Link className="h-3.5 w-3.5 mr-1.5" />
+                        ) : (
+                          <Unlink className="h-3.5 w-3.5 mr-1.5" />
+                        )}
+                        {isTableSynced ? 'Sincronizado ao Global' : 'Filtro Customizado'}
+                      </Button>
+
+                      {!isTableSynced && (
+                        <div className="flex flex-wrap items-center gap-2 bg-slate-50 border border-slate-200 p-1.5 rounded-lg w-full sm:w-auto">
+                          <Select
+                            value={grupoTableTipo || analiseGrupoTipo}
+                            onValueChange={(v) => setGrupoTableTipo(v as any)}
+                          >
+                            <SelectTrigger className="h-7 w-[95px] text-[10px] bg-white border-slate-200 font-medium">
+                              <SelectValue placeholder="Tipo" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="receita">Receitas</SelectItem>
+                              <SelectItem value="despesa">Despesas</SelectItem>
+                              <SelectItem value="resultado">Resultado</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <Select
+                            value={grupoTableDateBase || summaryDateBase}
+                            onValueChange={(v) => setGrupoTableDateBase(v)}
+                          >
+                            <SelectTrigger className="h-7 w-[95px] text-[10px] bg-white border-slate-200 font-medium">
+                              <SelectValue placeholder="Data Base" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="data_emissao">Emissão</SelectItem>
+                              <SelectItem value="dt_compens">Compensação</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <Select
+                            value={grupoTablePeriodStart || 'all'}
+                            onValueChange={(v) => setGrupoTablePeriodStart(v === 'all' ? '' : v)}
+                          >
+                            <SelectTrigger className="h-7 w-[85px] text-[10px] bg-white border-slate-200 font-medium">
+                              <SelectValue placeholder="Início" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="all">Todo Período</SelectItem>
+                              {(effTableDateBase === 'data_emissao'
+                                ? groupAnalysisData.monthsEmissao
+                                : groupAnalysisData.monthsCompens
+                              ).map((m) => (
+                                <SelectItem key={`t-start-${m}`} value={m}>
+                                  {m.split('-').reverse().join('/')}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <span className="text-slate-300">-</span>
+                          <Select
+                            value={grupoTablePeriodEnd || 'all'}
+                            onValueChange={(v) => setGrupoTablePeriodEnd(v === 'all' ? '' : v)}
+                          >
+                            <SelectTrigger className="h-7 w-[85px] text-[10px] bg-white border-slate-200 font-medium">
+                              <SelectValue placeholder="Fim" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="all">Todo Período</SelectItem>
+                              {(effTableDateBase === 'data_emissao'
+                                ? groupAnalysisData.monthsEmissao
+                                : groupAnalysisData.monthsCompens
+                              ).map((m) => (
+                                <SelectItem key={`t-end-${m}`} value={m}>
+                                  {m.split('-').reverse().join('/')}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
                     </div>
                   </div>
                   <div className="overflow-x-auto border border-slate-200 rounded-lg">
