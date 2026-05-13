@@ -3379,41 +3379,63 @@ export default function FinancialMovements() {
     }
   }
 
-  const detailedSublevelsData = useMemo(() => {
+  const [grupoTableExpanded, setGrupoTableExpanded] = useState<Record<string, boolean>>({})
+
+  const flattenedTableData = useMemo(() => {
     const months =
       effTableDateBase === 'data_emissao'
         ? groupAnalysisData.monthsEmissao
         : groupAnalysisData.monthsCompens
-    return currentGroupAnalysisNodes
-      .map((child: any) => {
-        let revenue = 0
-        let expense = 0
-        let total = 0
-        months.forEach((month: string) => {
-          if (effTableStart && month < effTableStart) return
-          if (effTableEnd && month > effTableEnd) return
-          revenue += child.monthlyRevenue[effTableDateBase][month] || 0
-          expense += child.monthlyExpense[effTableDateBase][month] || 0
-          total += child.monthlyTotals[effTableDateBase][month] || 0
+
+    const processNodes = (nodes: any[], level: number) => {
+      return nodes
+        .map((child: any) => {
+          let revenue = 0
+          let expense = 0
+          let total = 0
+          months.forEach((month: string) => {
+            if (effTableStart && month < effTableStart) return
+            if (effTableEnd && month > effTableEnd) return
+            revenue += child.monthlyRevenue[effTableDateBase][month] || 0
+            expense += child.monthlyExpense[effTableDateBase][month] || 0
+            total += child.monthlyTotals[effTableDateBase][month] || 0
+          })
+          return {
+            ...child,
+            periodRevenue: revenue,
+            periodExpense: expense,
+            periodTotal: total,
+            level,
+          }
         })
-        return {
-          ...child,
-          periodRevenue: revenue,
-          periodExpense: expense,
-          periodTotal: total,
+        .filter(
+          (c: any) => c.periodRevenue > 0 || c.periodExpense > 0 || Math.abs(c.periodTotal) > 0,
+        )
+        .sort((a: any, b: any) => {
+          const getVal = (item: any, types: string[]) => {
+            let v = 0
+            if (types.includes('receita')) v += item.periodRevenue
+            if (types.includes('despesa')) v += item.periodExpense
+            if (types.includes('resultado')) v += Math.abs(item.periodTotal)
+            return v
+          }
+          return getVal(b, effTableTipo) - getVal(a, effTableTipo)
+        })
+    }
+
+    const result: any[] = []
+    const traverse = (nodes: any[], level: number) => {
+      const processed = processNodes(nodes, level)
+      processed.forEach((node) => {
+        result.push(node)
+        if (grupoTableExpanded[node.id] && node.children && node.children.length > 0) {
+          traverse(node.children, level + 1)
         }
       })
-      .filter((c: any) => c.periodRevenue > 0 || c.periodExpense > 0 || Math.abs(c.periodTotal) > 0)
-      .sort((a: any, b: any) => {
-        const getVal = (item: any, types: string[]) => {
-          let v = 0
-          if (types.includes('receita')) v += item.periodRevenue
-          if (types.includes('despesa')) v += item.periodExpense
-          if (types.includes('resultado')) v += Math.abs(item.periodTotal)
-          return v
-        }
-        return getVal(b, effTableTipo) - getVal(a, effTableTipo)
-      })
+    }
+
+    traverse(currentGroupAnalysisNodes, 0)
+    return result
   }, [
     currentGroupAnalysisNodes,
     groupAnalysisData,
@@ -3421,7 +3443,26 @@ export default function FinancialMovements() {
     effTableEnd,
     effTableTipo,
     effTableDateBase,
+    grupoTableExpanded,
   ])
+
+  const handleExpandAllTable = () => {
+    const all: Record<string, boolean> = {}
+    const traverse = (nodes: any[]) => {
+      nodes.forEach((n) => {
+        if (n.children && n.children.length > 0) {
+          all[n.id] = true
+          traverse(n.children)
+        }
+      })
+    }
+    traverse(currentGroupAnalysisNodes)
+    setGrupoTableExpanded(all)
+  }
+
+  const handleCollapseAllTable = () => {
+    setGrupoTableExpanded({})
+  }
 
   const compareGroupOptions = useMemo(() => {
     const options = Array.from(groupAnalysisData.nodesMap.values())
@@ -8438,6 +8479,24 @@ export default function FinancialMovements() {
                       </div>
                     </h3>
                     <div className="flex flex-wrap items-center gap-2 w-full xl:w-auto">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-8 text-[11px] px-3 shadow-sm bg-white hover:bg-slate-50 text-slate-700"
+                        onClick={handleExpandAllTable}
+                      >
+                        <ChevronsUpDown className="h-3.5 w-3.5 mr-1.5 text-slate-400" />
+                        Expandir Todos
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-8 text-[11px] px-3 shadow-sm bg-white text-rose-600 hover:text-rose-700 hover:bg-rose-50 border-rose-200"
+                        onClick={handleCollapseAllTable}
+                      >
+                        <ChevronRight className="h-3.5 w-3.5 mr-1.5" />
+                        Recolher Todos
+                      </Button>
                       {groupAnalysisPath.length > 0 && (
                         <Button
                           variant="outline"
@@ -8560,11 +8619,40 @@ export default function FinancialMovements() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {detailedSublevelsData.map((child: any, idx: number) => {
+                        {flattenedTableData.map((child: any, idx: number) => {
+                          const hasChildren = child.children && child.children.length > 0
+                          const isExpanded = grupoTableExpanded[child.id]
                           return (
-                            <TableRow key={child.id || idx}>
+                            <TableRow
+                              key={child.id || idx}
+                              className={child.level > 0 ? 'bg-slate-50/50' : ''}
+                            >
                               <TableCell className="font-mono font-medium text-slate-700">
-                                {child.code || 'S/C'}
+                                <div
+                                  className="flex items-center gap-1.5"
+                                  style={{ paddingLeft: `${(child.level || 0) * 16}px` }}
+                                >
+                                  {hasChildren ? (
+                                    <button
+                                      onClick={() =>
+                                        setGrupoTableExpanded((p) => ({
+                                          ...p,
+                                          [child.id]: !p[child.id],
+                                        }))
+                                      }
+                                      className="p-0.5 rounded hover:bg-black/10 transition-colors"
+                                    >
+                                      {isExpanded ? (
+                                        <ChevronDown className="h-3.5 w-3.5" />
+                                      ) : (
+                                        <ChevronRight className="h-3.5 w-3.5" />
+                                      )}
+                                    </button>
+                                  ) : (
+                                    <span className="w-4 inline-block" />
+                                  )}
+                                  {child.code || 'S/C'}
+                                </div>
                               </TableCell>
                               <TableCell className="font-medium text-slate-900">
                                 {child.description}
@@ -8588,7 +8676,7 @@ export default function FinancialMovements() {
                                 }).format(child.periodTotal || 0)}
                               </TableCell>
                               <TableCell className="text-center">
-                                {child.children && child.children.length > 0 && (
+                                {hasChildren && (
                                   <Button
                                     variant="ghost"
                                     size="sm"
@@ -8601,7 +8689,7 @@ export default function FinancialMovements() {
                             </TableRow>
                           )
                         })}
-                        {detailedSublevelsData.length === 0 && (
+                        {flattenedTableData.length === 0 && (
                           <TableRow>
                             <TableCell colSpan={6} className="text-center py-8 text-slate-500">
                               Nenhum subnível com movimento neste grupo para o período.
