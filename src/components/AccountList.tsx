@@ -48,6 +48,7 @@ import { useToast } from '@/hooks/use-toast'
 import { useAuditLog } from '@/hooks/use-audit-log'
 import { supabase } from '@/lib/supabase/client'
 import { AccountCombobox } from '@/components/AccountCombobox'
+import { MultiSelect } from '@/components/MultiSelect'
 
 interface Props {
   accounts: any[]
@@ -261,9 +262,9 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
   const [isSaving, setIsSaving] = useState(false)
   const [modalChartAccounts, setModalChartAccounts] = useState<any[]>([])
 
-  const [filterOrg, setFilterOrg] = useState<string>('ALL')
-  const [filterType, setFilterType] = useState<string>('ALL')
-  const [filterClass, setFilterClass] = useState<string>('ALL')
+  const [filterOrg, setFilterOrg] = useState<string[]>([])
+  const [filterType, setFilterType] = useState<string[]>([])
+  const [filterClass, setFilterClass] = useState<string[]>([])
 
   useEffect(() => {
     if (editModalAccount?.organization_id) {
@@ -384,14 +385,14 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
   const visibleAccounts = useMemo(() => {
     let filtered = accounts
 
-    if (filterOrg !== 'ALL') {
-      filtered = filtered.filter((a) => a.organization_id === filterOrg)
+    if (filterOrg.length > 0) {
+      filtered = filtered.filter((a) => filterOrg.includes(a.organization_id))
     }
-    if (filterType !== 'ALL') {
-      filtered = filtered.filter((a) => a.tipoConta === filterType)
+    if (filterType.length > 0) {
+      filtered = filtered.filter((a) => filterType.includes(a.tipoConta || ''))
     }
-    if (filterClass !== 'ALL') {
-      filtered = filtered.filter((a) => a.classificacao === filterClass)
+    if (filterClass.length > 0) {
+      filtered = filtered.filter((a) => filterClass.includes(a.classificacao || ''))
     }
 
     let sortable = [...filtered]
@@ -801,49 +802,56 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
             </div>
           )}
 
-          <div className="flex flex-wrap items-center gap-1.5 bg-white dark:bg-slate-900 p-1 rounded-md border border-slate-200 dark:border-slate-800 shadow-sm">
-            <Select value={filterOrg} onValueChange={setFilterOrg}>
-              <SelectTrigger className="w-[180px] h-8 border-0 bg-transparent shadow-none focus:ring-0">
-                <SelectValue placeholder="Empresa" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="ALL">Todas Empresas</SelectItem>
-                {organizations.map((org) => (
-                  <SelectItem key={org.id} value={org.id}>
-                    {org.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <div
+            className={cn(
+              'flex flex-wrap items-center gap-1.5 p-1 rounded-md border shadow-sm transition-colors',
+              filterOrg.length > 0 || filterType.length > 0 || filterClass.length > 0
+                ? 'bg-indigo-50 border-indigo-200 dark:bg-indigo-900/30 dark:border-indigo-800'
+                : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800',
+            )}
+          >
+            <div className="w-[180px]">
+              <MultiSelect
+                title="Empresa"
+                options={organizations.map((org) => ({ label: org.name || '', value: org.id }))}
+                selected={filterOrg}
+                onChange={setFilterOrg}
+                isActive={filterOrg.length > 0}
+              />
+            </div>
 
             <div className="w-px h-5 bg-slate-200 dark:bg-slate-800 hidden sm:block"></div>
 
-            <Select value={filterType} onValueChange={setFilterType}>
-              <SelectTrigger className="w-[130px] h-8 border-0 bg-transparent shadow-none focus:ring-0">
-                <SelectValue placeholder="Tipo" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="ALL">Todos Tipos</SelectItem>
-                <SelectItem value="CAIXA">CAIXA</SelectItem>
-                <SelectItem value="CORRENTE">CORRENTE</SelectItem>
-                <SelectItem value="POUPANÇA">POUPANÇA</SelectItem>
-                <SelectItem value="APLICAÇÕES">APLICAÇÕES</SelectItem>
-                <SelectItem value="OUTRAS">OUTRAS</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="w-[130px]">
+              <MultiSelect
+                title="Tipo"
+                options={[
+                  { label: 'CAIXA', value: 'CAIXA' },
+                  { label: 'CORRENTE', value: 'CORRENTE' },
+                  { label: 'POUPANÇA', value: 'POUPANÇA' },
+                  { label: 'APLICAÇÕES', value: 'APLICAÇÕES' },
+                  { label: 'OUTRAS', value: 'OUTRAS' },
+                ]}
+                selected={filterType}
+                onChange={setFilterType}
+                isActive={filterType.length > 0}
+              />
+            </div>
 
             <div className="w-px h-5 bg-slate-200 dark:bg-slate-800 hidden sm:block"></div>
 
-            <Select value={filterClass} onValueChange={setFilterClass}>
-              <SelectTrigger className="w-[140px] h-8 border-0 bg-transparent shadow-none focus:ring-0">
-                <SelectValue placeholder="Classificação" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="ALL">Todas Classif.</SelectItem>
-                <SelectItem value="C">C</SelectItem>
-                <SelectItem value="B">B</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="w-[140px]">
+              <MultiSelect
+                title="Classificação"
+                options={[
+                  { label: 'C', value: 'C' },
+                  { label: 'B', value: 'B' },
+                ]}
+                selected={filterClass}
+                onChange={setFilterClass}
+                isActive={filterClass.length > 0}
+              />
+            </div>
           </div>
         </div>
 
@@ -934,7 +942,7 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
       </div>
 
       <div className="hidden lg:flex flex-col flex-1 min-h-0 rounded-xl border-2 border-indigo-950 bg-card shadow-sm overflow-hidden">
-        <div className="flex justify-between items-center p-2 bg-white dark:bg-slate-950 border-b border-indigo-100 dark:border-indigo-900 shrink-0">
+        <div className="flex justify-start items-center gap-2 p-2 bg-white dark:bg-slate-950 border-b border-indigo-100 dark:border-indigo-900 shrink-0">
           <Button
             variant="outline"
             size="sm"
@@ -943,36 +951,31 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
           >
             <ListTree className="h-4 w-4" /> Expandir Todos
           </Button>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleExpandAnalytic}
-              className="h-8 text-xs font-medium"
-            >
-              Expandir Analítico
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleCollapseAll}
-              className="h-8 text-xs font-medium"
-            >
-              Recolher Todos
-            </Button>
-          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleExpandAnalytic}
+            className="h-8 text-xs font-medium"
+          >
+            Expandir Analítico
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleCollapseAll}
+            className="h-8 text-xs font-medium"
+          >
+            Recolher Todos
+          </Button>
         </div>
         <Table
           className="border-collapse"
-          wrapperClassName="flex-1 overflow-auto"
+          wrapperClassName="flex-1 overflow-auto max-h-[calc(100vh-230px)]"
           style={{ fontSize: `${tableFontSize}px` }}
         >
           <TableHeader className="bg-indigo-950 sticky top-0 z-20 shadow-md">
-            <TableRow
-              disableZebra
-              className="border-0 hover:bg-transparent hover:!bg-transparent bg-indigo-950"
-            >
-              <TableHead className="w-12 text-center py-1 px-2 text-white font-normal text-[1.1em] border-0 sticky top-0 bg-indigo-950 z-20">
+            <TableRow disableZebra className="border-0 hover:bg-indigo-950 bg-indigo-950">
+              <TableHead className="w-12 text-center py-1 px-2 text-white font-normal text-[1.1em] border-0 sticky top-0 bg-indigo-950 z-20 hover:bg-indigo-950">
                 <Checkbox
                   className="border-white data-[state=checked]:bg-white data-[state=checked]:text-indigo-950"
                   checked={
@@ -992,7 +995,7 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
                   onDragStart={(e) => handleDragStart(e, idx)}
                   onDragOver={(e) => e.preventDefault()}
                   onDrop={(e) => handleDrop(e, idx)}
-                  className="cursor-move py-1 px-2 text-white font-normal text-[1.1em] border-0 select-none sticky top-0 bg-indigo-950 z-20"
+                  className="cursor-move py-1 px-2 text-white font-normal text-[1.1em] border-0 select-none sticky top-0 bg-indigo-950 z-20 hover:bg-indigo-950"
                 >
                   {' '}
                   <div
@@ -1007,7 +1010,7 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
                   </div>
                 </TableHead>
               ))}
-              <TableHead className="text-right py-1 px-2 text-white font-normal text-[1.1em] border-0 w-24 sticky top-0 bg-indigo-950 z-20">
+              <TableHead className="text-right py-1 px-2 text-white font-normal text-[1.1em] border-0 w-24 sticky top-0 bg-indigo-950 z-20 hover:bg-indigo-950">
                 Ações
               </TableHead>
             </TableRow>

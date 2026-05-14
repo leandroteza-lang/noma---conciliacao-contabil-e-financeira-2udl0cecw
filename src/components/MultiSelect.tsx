@@ -36,8 +36,8 @@ export function MultiSelect({
           className={cn(
             'w-full justify-between min-h-8 h-auto py-1 text-xs font-normal whitespace-normal',
             isActive
-              ? 'bg-white/10 border-white/20 text-white hover:bg-white/20 hover:text-white'
-              : 'bg-white text-slate-700 hover:bg-slate-50',
+              ? 'bg-indigo-100 border-indigo-200 text-indigo-900 hover:bg-indigo-200 hover:text-indigo-900 dark:bg-indigo-900/50 dark:border-indigo-800 dark:text-indigo-100'
+              : 'bg-white text-slate-700 hover:bg-slate-50 dark:bg-slate-950 dark:text-slate-300 dark:hover:bg-slate-900 dark:border-slate-800',
           )}
         >
           <div className="flex-1 overflow-hidden flex items-center text-left">
@@ -48,7 +48,9 @@ export function MultiSelect({
                     variant="secondary"
                     className={cn(
                       'text-[10px] px-1.5 py-0 h-5 font-medium whitespace-nowrap',
-                      isActive ? 'bg-white text-[#800000] hover:bg-white/90' : '',
+                      isActive
+                        ? 'bg-indigo-600 text-white hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600'
+                        : '',
                     )}
                   >
                     {selected.length} selecionados
@@ -62,7 +64,9 @@ export function MultiSelect({
                         variant="secondary"
                         className={cn(
                           'text-[10px] px-1.5 py-0 h-auto min-h-[20px] font-medium max-w-full break-words whitespace-normal text-left leading-tight',
-                          isActive ? 'bg-white text-[#800000] hover:bg-white/90' : '',
+                          isActive
+                            ? 'bg-indigo-600 text-white hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600'
+                            : '',
                         )}
                         title={opt?.label || s}
                       >
@@ -76,7 +80,9 @@ export function MultiSelect({
               <span
                 className={cn(
                   'truncate block w-full',
-                  isActive ? 'text-white/80' : 'text-slate-500',
+                  isActive
+                    ? 'text-indigo-800 font-medium dark:text-indigo-200'
+                    : 'text-slate-500 dark:text-slate-400',
                 )}
               >
                 {title}
