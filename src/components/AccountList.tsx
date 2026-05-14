@@ -14,6 +14,10 @@ import {
   Search,
   X,
   AlertTriangle,
+  AlignLeft,
+  AlignCenter,
+  AlignRight,
+  MoreVertical,
 } from 'lucide-react'
 import { useState, useRef, useEffect, useMemo, Fragment } from 'react'
 import { Link } from 'react-router-dom'
@@ -139,6 +143,7 @@ function EditableCell({
   onEditCancel,
   organizations,
   isChartNode,
+  align = 'left',
 }: any) {
   const [tempVal, setTempVal] = useState(value)
   const inputRef = useRef<any>(null)
@@ -163,8 +168,13 @@ function EditableCell({
       return (
         <div
           className={cn(
-            'p-0.5 -m-0.5 rounded min-h-[20px] flex items-center',
+            'p-0.5 -m-0.5 rounded min-h-[20px] flex items-center w-full',
             !isChartNode && 'cursor-pointer hover:bg-muted/50',
+            align === 'center'
+              ? 'justify-center'
+              : align === 'right'
+                ? 'justify-end'
+                : 'justify-start',
           )}
           onClick={onEditStart}
         >
@@ -180,7 +190,14 @@ function EditableCell({
 
     return (
       <div
-        className="p-0.5 -m-0.5 rounded min-h-[20px] flex items-center w-full min-w-0 cursor-pointer hover:bg-muted/50"
+        className={cn(
+          'p-0.5 -m-0.5 rounded min-h-[20px] flex items-center w-full min-w-0 cursor-pointer hover:bg-muted/50',
+          align === 'center'
+            ? 'justify-center'
+            : align === 'right'
+              ? 'justify-end'
+              : 'justify-start',
+        )}
         onClick={onEditStart}
       >
         {field === 'classificacao' ? (
@@ -338,6 +355,26 @@ export function AccountList({
   useEffect(() => {
     localStorage.setItem('bank_accounts_columns', JSON.stringify(columns))
   }, [columns])
+
+  const [alignments, setAlignments] = useState<Record<string, 'left' | 'center' | 'right'>>(() => {
+    const saved = localStorage.getItem('bank_accounts_col_align')
+    if (saved) {
+      try {
+        return JSON.parse(saved)
+      } catch {
+        /* ignore */
+      }
+    }
+    return {}
+  })
+
+  useEffect(() => {
+    localStorage.setItem('bank_accounts_col_align', JSON.stringify(alignments))
+  }, [alignments])
+
+  const handleAlign = (key: string, align: 'left' | 'center' | 'right') => {
+    setAlignments((prev) => ({ ...prev, [key]: align }))
+  }
 
   const [sortConfig, setSortConfig] = useState<{
     key: string
@@ -1106,28 +1143,82 @@ export function AccountList({
                       }}
                     />
                   </TableHead>
-                  {columns.map((col, idx) => (
-                    <TableHead
-                      key={col.id}
-                      draggable
-                      onDragStart={(e) => handleDragStart(e, idx)}
-                      onDragOver={(e) => e.preventDefault()}
-                      onDrop={(e) => handleDrop(e, idx)}
-                      className="cursor-move py-1 px-2 text-white font-normal text-[1.1em] border-0 select-none sticky top-0 bg-indigo-950 z-20 hover:bg-indigo-950"
-                    >
-                      {' '}
-                      <div
-                        className="flex items-center gap-2"
-                        onClick={() => col.sortable && handleSort(col.id)}
-                      >
-                        <GripVertical className="h-3 w-3 opacity-30 cursor-grab active:cursor-grabbing shrink-0" />
-                        {col.label}
-                        {col.sortable && (
-                          <ArrowUpDown className="h-3 w-3 opacity-50 cursor-pointer shrink-0" />
+                  {columns.map((col, idx) => {
+                    const align = alignments[col.id] || 'left'
+                    return (
+                      <TableHead
+                        key={col.id}
+                        draggable
+                        onDragStart={(e) => handleDragStart(e, idx)}
+                        onDragOver={(e) => e.preventDefault()}
+                        onDrop={(e) => handleDrop(e, idx)}
+                        className={cn(
+                          'cursor-move py-1 px-2 text-white font-normal text-[1.1em] border-0 select-none sticky top-0 bg-indigo-950 z-20 hover:bg-indigo-950',
+                          align === 'center'
+                            ? 'text-center'
+                            : align === 'right'
+                              ? 'text-right'
+                              : 'text-left',
                         )}
-                      </div>
-                    </TableHead>
-                  ))}
+                      >
+                        <div
+                          className={cn(
+                            'flex items-center gap-1',
+                            align === 'center'
+                              ? 'justify-center'
+                              : align === 'right'
+                                ? 'justify-end'
+                                : 'justify-start',
+                          )}
+                        >
+                          <GripVertical className="h-3 w-3 opacity-30 cursor-grab active:cursor-grabbing shrink-0" />
+                          <span
+                            className="cursor-pointer whitespace-nowrap"
+                            onClick={() => col.sortable && handleSort(col.id)}
+                          >
+                            {col.label}
+                          </span>
+                          {col.sortable && (
+                            <ArrowUpDown
+                              className="h-3 w-3 opacity-50 cursor-pointer shrink-0"
+                              onClick={() => handleSort(col.id)}
+                            />
+                          )}
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-5 w-5 hover:bg-white/20 p-0 text-white rounded-sm shrink-0 ml-0.5"
+                              >
+                                <MoreVertical className="h-3.5 w-3.5 opacity-70" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="start">
+                              <DropdownMenuItem
+                                onClick={() => handleAlign(col.id, 'left')}
+                                className="gap-2 cursor-pointer"
+                              >
+                                <AlignLeft className="h-4 w-4" /> Alinhar à Esquerda
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => handleAlign(col.id, 'center')}
+                                className="gap-2 cursor-pointer"
+                              >
+                                <AlignCenter className="h-4 w-4" /> Centralizar
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => handleAlign(col.id, 'right')}
+                                className="gap-2 cursor-pointer"
+                              >
+                                <AlignRight className="h-4 w-4" /> Alinhar à Direita
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                      </TableHead>
+                    )
+                  })}
                   <TableHead className="text-right py-1 px-2 text-white font-normal text-[1.1em] border-0 w-24 sticky top-0 bg-indigo-950 z-20 hover:bg-indigo-950">
                     Ações
                   </TableHead>
@@ -1164,6 +1255,7 @@ export function AccountList({
                         {columns.map((col) => {
                           const isCodeCol = col.id === 'code' || col.id === 'descricao'
                           const isEmptyAccount = col.id === 'contaContabil' && !acc[col.id]
+                          const align = alignments[col.id] || 'left'
 
                           return (
                             <TableCell
@@ -1175,19 +1267,39 @@ export function AccountList({
                                 col.id === 'tipoConta'
                                   ? '!text-slate-800 dark:!text-slate-300'
                                   : '',
-                                isEmptyAccount && !isExpanded
-                                  ? 'bg-amber-50 dark:bg-amber-950/20'
-                                  : '',
+                                align === 'center'
+                                  ? 'text-center'
+                                  : align === 'right'
+                                    ? 'text-right'
+                                    : 'text-left',
                               )}
                             >
-                              <div className="flex items-center gap-1.5 w-full min-w-0">
+                              <div
+                                className={cn(
+                                  'flex items-center gap-1.5 w-full min-w-0',
+                                  align === 'center'
+                                    ? 'justify-center'
+                                    : align === 'right'
+                                      ? 'justify-end'
+                                      : 'justify-start',
+                                )}
+                              >
                                 {isEmptyAccount && (
                                   <AlertTriangle
                                     className="h-3.5 w-3.5 text-amber-500 shrink-0"
                                     title="Conta Contábil ausente"
                                   />
                                 )}
-                                <div className="flex-1 min-w-0">
+                                <div
+                                  className={cn(
+                                    'flex-1 min-w-0',
+                                    align === 'center'
+                                      ? 'text-center'
+                                      : align === 'right'
+                                        ? 'text-right'
+                                        : 'text-left',
+                                  )}
+                                >
                                   <EditableCell
                                     value={acc[col.id]}
                                     field={col.id}
@@ -1201,6 +1313,7 @@ export function AccountList({
                                     }
                                     onEditCancel={() => setEditing(null)}
                                     isChartNode={false}
+                                    align={align}
                                   />
                                 </div>
                               </div>
