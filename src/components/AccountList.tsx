@@ -261,6 +261,10 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
   const [isSaving, setIsSaving] = useState(false)
   const [modalChartAccounts, setModalChartAccounts] = useState<any[]>([])
 
+  const [filterOrg, setFilterOrg] = useState<string>('ALL')
+  const [filterType, setFilterType] = useState<string>('ALL')
+  const [filterClass, setFilterClass] = useState<string>('ALL')
+
   useEffect(() => {
     if (editModalAccount?.organization_id) {
       const fetchAccounts = async () => {
@@ -378,7 +382,19 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
   }
 
   const visibleAccounts = useMemo(() => {
-    let sortable = [...accounts]
+    let filtered = accounts
+
+    if (filterOrg !== 'ALL') {
+      filtered = filtered.filter((a) => a.organization_id === filterOrg)
+    }
+    if (filterType !== 'ALL') {
+      filtered = filtered.filter((a) => a.tipoConta === filterType)
+    }
+    if (filterClass !== 'ALL') {
+      filtered = filtered.filter((a) => a.classificacao === filterClass)
+    }
+
+    let sortable = [...filtered]
 
     if (sortConfig) {
       sortable.sort((a, b) => {
@@ -403,7 +419,7 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
     }
 
     return sortable
-  }, [accounts, sortConfig, organizations])
+  }, [accounts, sortConfig, organizations, filterOrg, filterType, filterClass])
 
   const handleExpandAll = () => {
     const allIds = accounts.map((a) => a.id)
@@ -757,10 +773,10 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
 
   return (
     <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
-        <div>
+      <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 mb-4">
+        <div className="flex flex-wrap items-center gap-2 flex-1">
           {selectedIds.length > 0 && (
-            <div className="bg-muted/50 border border-border rounded-md p-2 px-3 flex items-center gap-4 animate-in fade-in">
+            <div className="bg-muted/50 border border-border rounded-md p-1.5 px-3 flex items-center gap-3 animate-in fade-in mr-2">
               <span className="text-sm font-medium text-foreground">
                 {selectedIds.length} item(ns) selecionado(s)
               </span>
@@ -769,7 +785,7 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
                   variant="secondary"
                   size="sm"
                   onClick={() => setIsBulkEditOpen(true)}
-                  className="gap-2"
+                  className="h-8 gap-2"
                 >
                   <Edit className="h-4 w-4" /> Editar em Lote
                 </Button>
@@ -777,17 +793,63 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
                   variant="destructive"
                   size="sm"
                   onClick={handleBulkDelete}
-                  className="gap-2"
+                  className="h-8 gap-2"
                 >
                   <Trash2 className="h-4 w-4" /> Excluir Selecionados
                 </Button>
               </div>
             </div>
           )}
+
+          <div className="flex flex-wrap items-center gap-1.5 bg-white dark:bg-slate-900 p-1 rounded-md border border-slate-200 dark:border-slate-800 shadow-sm">
+            <Select value={filterOrg} onValueChange={setFilterOrg}>
+              <SelectTrigger className="w-[180px] h-8 border-0 bg-transparent shadow-none focus:ring-0">
+                <SelectValue placeholder="Empresa" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">Todas Empresas</SelectItem>
+                {organizations.map((org) => (
+                  <SelectItem key={org.id} value={org.id}>
+                    {org.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <div className="w-px h-5 bg-slate-200 dark:bg-slate-800 hidden sm:block"></div>
+
+            <Select value={filterType} onValueChange={setFilterType}>
+              <SelectTrigger className="w-[130px] h-8 border-0 bg-transparent shadow-none focus:ring-0">
+                <SelectValue placeholder="Tipo" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">Todos Tipos</SelectItem>
+                <SelectItem value="CAIXA">CAIXA</SelectItem>
+                <SelectItem value="CORRENTE">CORRENTE</SelectItem>
+                <SelectItem value="POUPANÇA">POUPANÇA</SelectItem>
+                <SelectItem value="APLICAÇÕES">APLICAÇÕES</SelectItem>
+                <SelectItem value="OUTRAS">OUTRAS</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <div className="w-px h-5 bg-slate-200 dark:bg-slate-800 hidden sm:block"></div>
+
+            <Select value={filterClass} onValueChange={setFilterClass}>
+              <SelectTrigger className="w-[140px] h-8 border-0 bg-transparent shadow-none focus:ring-0">
+                <SelectValue placeholder="Classificação" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">Todas Classif.</SelectItem>
+                <SelectItem value="C">C</SelectItem>
+                <SelectItem value="B">B</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
+
         <div className="flex flex-wrap items-center gap-2">
           <div
-            className="hidden sm:flex items-center gap-1 bg-white dark:bg-slate-900 rounded-md p-0.5 border border-slate-200 dark:border-slate-800 shadow-sm"
+            className="hidden sm:flex items-center gap-1 bg-white dark:bg-slate-900 rounded-md p-0.5 border border-slate-200 dark:border-slate-800 shadow-sm h-10"
             title="Tamanho da Fonte das Tabelas"
           >
             <Button
