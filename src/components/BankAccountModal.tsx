@@ -294,14 +294,14 @@ export function BankAccountModal({
                 onChange={(e) => setFormData({ ...formData, bank_code: e.target.value })}
               />
             </div>
-            <div className="space-y-2">
-              <Label>Agência</Label>
-              <Input
-                value={formData.agency || ''}
-                onChange={(e) => setFormData({ ...formData, agency: e.target.value })}
-              />
-            </div>
-            <div className="grid grid-cols-[1fr_80px] gap-4 md:col-span-2">
+            <div className="grid grid-cols-[1fr_1fr_80px] gap-4 md:col-span-2">
+              <div className="space-y-2">
+                <Label>Agência</Label>
+                <Input
+                  value={formData.agency || ''}
+                  onChange={(e) => setFormData({ ...formData, agency: e.target.value })}
+                />
+              </div>
               <div className="space-y-2">
                 <Label>Número da Conta</Label>
                 <Input

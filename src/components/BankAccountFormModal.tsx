@@ -248,11 +248,11 @@ export function BankAccountFormModal({ isOpen, onClose, onSave, initialData }: a
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2">
-              <Label>Agência</Label>
-              <Input {...register('agency')} placeholder="Ex: 1234" />
-            </div>
-            <div className="grid grid-cols-[1fr_80px] gap-2">
+            <div className="grid grid-cols-[1fr_1fr_80px] gap-4 col-span-2">
+              <div className="space-y-2">
+                <Label>Agência</Label>
+                <Input {...register('agency')} placeholder="Ex: 1234" />
+              </div>
               <div className="space-y-2">
                 <Label>Número da Conta</Label>
                 <Input {...register('account_number')} placeholder="Ex: 12345" />
