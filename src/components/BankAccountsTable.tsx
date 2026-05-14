@@ -184,9 +184,9 @@ export function BankAccountsTable({
       </div>
       <div className="overflow-x-auto w-full">
         <Table style={{ fontSize: `${tableFontSize}px` }}>
-          <TableHeader className="bg-slate-50">
-            <TableRow>
-              <TableHead className="w-[50px] text-center">
+          <TableHeader className="bg-slate-50 sticky top-0 z-20 shadow-sm">
+            <TableRow disableZebra className="bg-slate-50 hover:bg-slate-50 hover:!bg-slate-50">
+              <TableHead className="w-[50px] text-center sticky top-0 bg-slate-50 z-20">
                 <Checkbox
                   checked={accounts.length > 0 && selectedAccounts.length === accounts.length}
                   onCheckedChange={onToggleSelectAll}
@@ -200,7 +200,7 @@ export function BankAccountsTable({
                   onDrop={(e) => handleDrop(e, index)}
                   onDragOver={handleDragOver}
                   onClick={() => onSort(col.key)}
-                  className="cursor-move hover:bg-slate-100 whitespace-nowrap group transition-colors"
+                  className="cursor-move whitespace-nowrap group transition-colors sticky top-0 bg-slate-50 z-20"
                   title="Clique e arraste para reordenar a coluna. Clique para ordenar."
                 >
                   <div className="flex items-center gap-2">
@@ -213,7 +213,9 @@ export function BankAccountsTable({
                   </div>
                 </TableHead>
               ))}
-              <TableHead className="w-[100px] text-right">Ações</TableHead>
+              <TableHead className="w-[100px] text-right sticky top-0 bg-slate-50 z-20">
+                Ações
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>

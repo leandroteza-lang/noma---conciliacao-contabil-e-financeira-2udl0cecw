@@ -967,9 +967,12 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
           wrapperClassName="flex-1 overflow-auto"
           style={{ fontSize: `${tableFontSize}px` }}
         >
-          <TableHeader className="bg-indigo-950 sticky top-0 z-10 shadow-md">
-            <TableRow className="border-0 hover:bg-transparent">
-              <TableHead className="w-12 text-center py-1 px-2 text-white font-normal text-[1.1em] border-0">
+          <TableHeader className="bg-indigo-950 sticky top-0 z-20 shadow-md">
+            <TableRow
+              disableZebra
+              className="border-0 hover:bg-transparent hover:!bg-transparent bg-indigo-950"
+            >
+              <TableHead className="w-12 text-center py-1 px-2 text-white font-normal text-[1.1em] border-0 sticky top-0 bg-indigo-950 z-20">
                 <Checkbox
                   className="border-white data-[state=checked]:bg-white data-[state=checked]:text-indigo-950"
                   checked={
@@ -989,7 +992,7 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
                   onDragStart={(e) => handleDragStart(e, idx)}
                   onDragOver={(e) => e.preventDefault()}
                   onDrop={(e) => handleDrop(e, idx)}
-                  className="cursor-move py-1 px-2 text-white font-normal text-[1.1em] border-0 select-none"
+                  className="cursor-move py-1 px-2 text-white font-normal text-[1.1em] border-0 select-none sticky top-0 bg-indigo-950 z-20"
                 >
                   {' '}
                   <div
@@ -1004,7 +1007,7 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
                   </div>
                 </TableHead>
               ))}
-              <TableHead className="text-right py-1 px-2 text-white font-normal text-[1.1em] border-0 w-24">
+              <TableHead className="text-right py-1 px-2 text-white font-normal text-[1.1em] border-0 w-24 sticky top-0 bg-indigo-950 z-20">
                 Ações
               </TableHead>
             </TableRow>
