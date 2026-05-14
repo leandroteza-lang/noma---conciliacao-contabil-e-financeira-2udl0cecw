@@ -4,6 +4,9 @@ import { AccountList } from '@/components/AccountList'
 import { useToast } from '@/hooks/use-toast'
 import { Button } from '@/components/ui/button'
 import { Plus, Search } from 'lucide-react'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Label } from '@/components/ui/label'
+import { Input } from '@/components/ui/input'
 
 export default function AccountsList() {
   const [accounts, setAccounts] = useState<any[]>([])
@@ -12,6 +15,9 @@ export default function AccountsList() {
   const { toast } = useToast()
 
   const [searchTerm, setSearchTerm] = useState('')
+  const [isNewModalOpen, setIsNewModalOpen] = useState(false)
+  const [newAccount, setNewAccount] = useState<any>({})
+  const [isSaving, setIsSaving] = useState(false)
 
   const fetchOrganizations = async () => {
     const { data } = await supabase.from('organizations').select('*').is('deleted_at', null)
@@ -21,35 +27,104 @@ export default function AccountsList() {
   const fetchAccounts = async () => {
     setLoading(true)
     try {
-      let query = supabase
+      let queryBank = supabase
         .from('bank_accounts')
         .select('*, organizations (name)')
         .is('deleted_at', null)
 
+      let queryChart = supabase.from('chart_of_accounts').select('*').is('deleted_at', null)
+
       if (searchTerm) {
-        query = query.or(
+        queryBank = queryBank.or(
           `description.ilike.%${searchTerm}%,code.ilike.%${searchTerm}%,account_number.ilike.%${searchTerm}%`,
         )
       }
 
-      const { data, error } = await query
+      const [bankRes, chartRes] = await Promise.all([queryBank, queryChart])
 
-      if (error) throw error
+      if (bankRes.error) throw bankRes.error
+      if (chartRes.error) throw chartRes.error
 
-      const formatted = (data || []).map((a) => ({
-        ...a,
-        company_name: a.organizations?.name || a.company_name,
-        contaContabil: a.account_code,
-        descricao: a.description,
-        banco: a.bank_code,
-        agencia: a.agency,
-        numeroConta: a.account_number,
-        digitoConta: a.check_digit,
-        tipoConta: a.account_type,
-        classificacao: a.classification,
-      }))
+      const bankData = bankRes.data || []
+      const chartData = chartRes.data || []
 
-      setAccounts(formatted)
+      const chartMap = new Map()
+      const chartByClass = new Map()
+      chartData.forEach((c) => {
+        if (c.account_code) chartMap.set(c.account_code.trim(), c)
+        if (c.classification) chartByClass.set(c.classification.trim(), c)
+      })
+
+      const finalAccounts: any[] = []
+      const addedChartClasses = new Set<string>()
+
+      bankData.forEach((a) => {
+        const chart = a.account_code ? chartMap.get(a.account_code.trim()) : null
+        const bankClass = chart ? chart.classification : a.classification
+        const hierarchyPath = bankClass ? `${bankClass}.${a.id}` : a.id
+
+        if (bankClass) {
+          const parts = bankClass.split('.')
+          let currentClass = ''
+          for (let i = 0; i < parts.length; i++) {
+            currentClass = currentClass ? `${currentClass}.${parts[i]}` : parts[i]
+            if (!addedChartClasses.has(currentClass)) {
+              addedChartClasses.add(currentClass)
+              const parentChart = chartByClass.get(currentClass)
+              if (parentChart) {
+                finalAccounts.push({
+                  id: `chart-${currentClass}`,
+                  organization_id: parentChart.organization_id,
+                  code: '',
+                  contaContabil: parentChart.account_code,
+                  descricao: parentChart.account_name,
+                  banco: '',
+                  agencia: '',
+                  numeroConta: '',
+                  digitoConta: '',
+                  tipoConta: '',
+                  classificacao: currentClass,
+                  isChartNode: true,
+                  hierarchyPath: currentClass,
+                })
+              } else {
+                finalAccounts.push({
+                  id: `chart-${currentClass}`,
+                  organization_id: a.organization_id,
+                  code: '',
+                  contaContabil: '',
+                  descricao: `Nível ${currentClass}`,
+                  banco: '',
+                  agencia: '',
+                  numeroConta: '',
+                  digitoConta: '',
+                  tipoConta: '',
+                  classificacao: currentClass,
+                  isChartNode: true,
+                  hierarchyPath: currentClass,
+                })
+              }
+            }
+          }
+        }
+
+        finalAccounts.push({
+          ...a,
+          company_name: a.organizations?.name || a.company_name,
+          contaContabil: a.account_code,
+          descricao: a.description,
+          banco: a.bank_code,
+          agencia: a.agency,
+          numeroConta: a.account_number,
+          digitoConta: a.check_digit,
+          tipoConta: a.account_type,
+          classificacao: bankClass || a.classification,
+          hierarchyPath: hierarchyPath,
+          isBankNode: true,
+        })
+      })
+
+      setAccounts(finalAccounts)
     } catch (error: any) {
       toast({
         variant: 'destructive',
@@ -91,6 +166,34 @@ export default function AccountsList() {
     }
   }
 
+  const handleCreateAccount = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setIsSaving(true)
+    try {
+      const { error } = await supabase.from('bank_accounts').insert({
+        organization_id: newAccount.organization_id,
+        code: newAccount.code,
+        account_code: newAccount.contaContabil,
+        description: newAccount.descricao,
+        bank_code: newAccount.banco,
+        agency: newAccount.agencia,
+        account_number: newAccount.numeroConta,
+        check_digit: newAccount.digitoConta,
+        account_type: newAccount.tipoConta,
+        classification: newAccount.classificacao,
+      })
+      if (error) throw error
+      toast({ title: 'Conta criada com sucesso!' })
+      setIsNewModalOpen(false)
+      setNewAccount({})
+      fetchAccounts()
+    } catch (error: any) {
+      toast({ variant: 'destructive', title: 'Erro ao criar conta', description: error.message })
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
   return (
     <div className="p-6 h-full flex flex-col gap-4">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -108,7 +211,10 @@ export default function AccountsList() {
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          <Button className="bg-indigo-600 hover:bg-indigo-700">
+          <Button
+            className="bg-indigo-600 hover:bg-indigo-700"
+            onClick={() => setIsNewModalOpen(true)}
+          >
             <Plus className="w-4 h-4 mr-2" />
             Nova Conta
           </Button>
@@ -159,6 +265,112 @@ export default function AccountsList() {
           />
         )}
       </div>
+
+      <Dialog open={isNewModalOpen} onOpenChange={setIsNewModalOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Nova Conta Bancária</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleCreateAccount} className="space-y-4 mt-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2 md:col-span-2">
+                <Label>Empresa</Label>
+                <select
+                  value={newAccount.organization_id || ''}
+                  onChange={(e) =>
+                    setNewAccount({ ...newAccount, organization_id: e.target.value })
+                  }
+                  className="flex h-10 w-full rounded-md border border-input bg-background text-foreground px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  required
+                >
+                  <option value="">Selecione...</option>
+                  {organizations.map((org: any) => (
+                    <option key={org.id} value={org.id}>
+                      {org.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-2">
+                <Label>Código</Label>
+                <Input
+                  value={newAccount.code || ''}
+                  onChange={(e) => setNewAccount({ ...newAccount, code: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Conta Contábil</Label>
+                <Input
+                  value={newAccount.contaContabil || ''}
+                  onChange={(e) => setNewAccount({ ...newAccount, contaContabil: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Descrição</Label>
+                <Input
+                  value={newAccount.descricao || ''}
+                  onChange={(e) => setNewAccount({ ...newAccount, descricao: e.target.value })}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Banco</Label>
+                <Input
+                  value={newAccount.banco || ''}
+                  onChange={(e) => setNewAccount({ ...newAccount, banco: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Agência</Label>
+                <Input
+                  value={newAccount.agencia || ''}
+                  onChange={(e) => setNewAccount({ ...newAccount, agencia: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Número da Conta</Label>
+                <Input
+                  value={newAccount.numeroConta || ''}
+                  onChange={(e) => setNewAccount({ ...newAccount, numeroConta: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Dígito</Label>
+                <Input
+                  value={newAccount.digitoConta || ''}
+                  onChange={(e) => setNewAccount({ ...newAccount, digitoConta: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Tipo Conta</Label>
+                <Input
+                  value={newAccount.tipoConta || ''}
+                  onChange={(e) => setNewAccount({ ...newAccount, tipoConta: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2 md:col-span-2">
+                <Label>Classificação</Label>
+                <Input
+                  value={newAccount.classificacao || ''}
+                  onChange={(e) => setNewAccount({ ...newAccount, classificacao: e.target.value })}
+                />
+              </div>
+            </div>
+            <div className="flex justify-end gap-3 pt-4 border-t border-border mt-4">
+              <Button type="button" variant="outline" onClick={() => setIsNewModalOpen(false)}>
+                Cancelar
+              </Button>
+              <Button
+                type="submit"
+                disabled={isSaving}
+                className="bg-primary hover:bg-primary/90 text-primary-foreground"
+              >
+                {isSaving ? 'Salvando...' : 'Salvar'}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

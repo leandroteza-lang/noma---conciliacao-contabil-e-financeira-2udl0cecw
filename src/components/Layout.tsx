@@ -170,7 +170,6 @@ export default function Layout() {
           { title: 'Tipos de Conta TGA', path: '/tipo-conta-tga' },
           { title: 'Centros de Custo', path: '/centros-de-custo' },
           { title: 'Listagem de Contas', path: '/contas' },
-          { title: 'Contas Bancárias', path: '/contas-bancarias' },
           { title: 'Mapeamento DE/PARA', path: '/mapeamento' },
         ],
       },

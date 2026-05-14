@@ -76,12 +76,14 @@ const getTheme = (name: string | null | undefined) => {
   }
 }
 
-const getRowStyle = (level: number, hasChildren: boolean) => {
-  if (level === 0 && hasChildren)
-    return 'font-bold bg-indigo-50/50 dark:bg-indigo-950/20 text-indigo-950 dark:text-indigo-200'
-  if (level === 1 && hasChildren)
-    return 'font-semibold bg-slate-50/50 dark:bg-slate-900/50 text-slate-800 dark:text-slate-300'
-  if (level === 2 && hasChildren) return 'font-medium bg-slate-50/30 dark:bg-slate-900/30'
+const getRowStyle = (acc: any) => {
+  if (acc.isChartNode) {
+    if (acc.level === 0)
+      return 'font-bold bg-indigo-50/80 dark:bg-indigo-950/40 text-indigo-950 dark:text-indigo-200 border-b border-indigo-100 dark:border-indigo-900'
+    if (acc.level === 1)
+      return 'font-semibold bg-slate-50/80 dark:bg-slate-900/60 text-slate-800 dark:text-slate-300'
+    return 'font-medium bg-slate-50/40 dark:bg-slate-900/40'
+  }
   return ''
 }
 
@@ -93,6 +95,7 @@ function EditableCell({
   onEditCommit,
   onEditCancel,
   organizations,
+  isChartNode,
 }: any) {
   const [tempVal, setTempVal] = useState(value)
   const inputRef = useRef<any>(null)
@@ -116,14 +119,17 @@ function EditableCell({
       const theme = getTheme(org?.name)
       return (
         <div
-          className="cursor-pointer hover:bg-muted/50 p-1 -m-1 rounded min-h-[28px] flex items-center"
+          className={cn(
+            'p-1 -m-1 rounded min-h-[28px] flex items-center',
+            !isChartNode && 'cursor-pointer hover:bg-muted/50',
+          )}
           onClick={onEditStart}
         >
           <Badge
             variant="outline"
             className={cn('py-0.5 whitespace-nowrap shadow-sm', theme.badge)}
           >
-            {org?.name || 'Desconhecida'}
+            {org?.name || (isChartNode ? '-' : 'Desconhecida')}
           </Badge>
         </div>
       )
@@ -131,7 +137,10 @@ function EditableCell({
 
     return (
       <div
-        className="cursor-pointer hover:bg-muted/50 p-1 -m-1 rounded min-h-[28px] flex items-center w-full min-w-0"
+        className={cn(
+          'p-1 -m-1 rounded min-h-[28px] flex items-center w-full min-w-0',
+          !isChartNode && 'cursor-pointer hover:bg-muted/50',
+        )}
         onClick={onEditStart}
       >
         {field === 'classificacao' ? (
@@ -142,7 +151,14 @@ function EditableCell({
             {value}
           </Badge>
         ) : (
-          <span className="truncate w-full block">
+          <span
+            className={cn(
+              'truncate w-full block',
+              isChartNode &&
+                field === 'descricao' &&
+                'font-bold text-indigo-900 dark:text-indigo-200',
+            )}
+          >
             {value || <span className="opacity-50 italic text-[0.85em]">Vazio</span>}
           </span>
         )}
@@ -274,7 +290,7 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
 
     sortable = sortable.map((a) => ({
       ...a,
-      hierarchyPath: String(a.code || a.classificacao || '').trim(),
+      hierarchyPath: String(a.hierarchyPath ?? a.classificacao ?? a.code ?? '').trim(),
     }))
 
     if (!sortConfig) {
@@ -301,30 +317,36 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
     })
 
     return sortable.map((a) => {
-      const parts = a.hierarchyPath.split('.')
+      const parts = (a.hierarchyPath || '').split('.')
       let parentId = null
-      if (parts.length > 1) {
-        parts.pop()
-        const parentPath = parts.join('.')
-        parentId = pathToId.get(parentPath) || null
+      let tempParts = [...parts]
+      while (tempParts.length > 1) {
+        tempParts.pop()
+        const parentPath = tempParts.join('.')
+        if (pathToId.has(parentPath)) {
+          parentId = pathToId.get(parentPath)
+          break
+        }
       }
 
       const hasChildren = sortable.some(
         (b) =>
-          b.hierarchyPath.startsWith(a.hierarchyPath + '.') && b.hierarchyPath !== a.hierarchyPath,
+          b.hierarchyPath &&
+          b.hierarchyPath.startsWith(a.hierarchyPath + '.') &&
+          b.hierarchyPath !== a.hierarchyPath,
       )
 
       return {
         ...a,
         parentId,
         hasChildren,
-        level: parts.length > 0 && a.hierarchyPath ? a.hierarchyPath.split('.').length - 1 : 0,
+        level: parts.length > 0 && a.hierarchyPath ? parts.length - 1 : 0,
       }
     })
   }, [accounts, sortConfig, organizations])
 
   const visibleAccounts = useMemo(() => {
-    if (sortConfig !== null) return accountsWithHierarchy
+    if (sortConfig !== null) return accountsWithHierarchy.filter((a) => !a.isChartNode)
 
     return accountsWithHierarchy.filter((a) => {
       if (!a.parentId) return true
@@ -492,18 +514,20 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
 
       const payload = {
         format: formatType === 'browser' ? 'pdf' : formatType,
-        data: visibleAccounts.map((acc) => ({
-          Empresa: organizations.find((o: any) => o.id === acc.organization_id)?.name || '-',
-          Código: acc.code || '-',
-          'Conta Contábil': acc.contaContabil || '-',
-          Descrição: acc.descricao || '-',
-          Banco: acc.banco || '-',
-          Agência: acc.agencia || '-',
-          Número: acc.numeroConta || '-',
-          Dígito: acc.digitoConta || '-',
-          'Tipo Conta': acc.tipoConta || '-',
-          Classificação: acc.classificacao || '-',
-        })),
+        data: visibleAccounts
+          .filter((a) => !a.isChartNode)
+          .map((acc) => ({
+            Empresa: organizations.find((o: any) => o.id === acc.organization_id)?.name || '-',
+            Código: acc.code || '-',
+            'Conta Contábil': acc.contaContabil || '-',
+            Descrição: acc.descricao || '-',
+            Banco: acc.banco || '-',
+            Agência: acc.agencia || '-',
+            Número: acc.numeroConta || '-',
+            Dígito: acc.digitoConta || '-',
+            'Tipo Conta': acc.tipoConta || '-',
+            Classificação: acc.classificacao || '-',
+          })),
       }
 
       const res = await fetch(
@@ -668,6 +692,8 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
     }
   }
 
+  const selectableAccounts = visibleAccounts.filter((a) => !a.isChartNode)
+
   if (accounts.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-16 px-4 text-muted-foreground bg-card rounded-xl border border-dashed border-border shadow-sm animate-in fade-in">
@@ -815,10 +841,11 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
                 <Checkbox
                   className="border-white data-[state=checked]:bg-white data-[state=checked]:text-indigo-950"
                   checked={
-                    visibleAccounts.length > 0 && selectedIds.length === visibleAccounts.length
+                    selectableAccounts.length > 0 &&
+                    selectedIds.length === selectableAccounts.length
                   }
                   onCheckedChange={(checked) => {
-                    if (checked) setSelectedIds(visibleAccounts.map((a) => a.id))
+                    if (checked) setSelectedIds(selectableAccounts.map((a) => a.id))
                     else setSelectedIds([])
                   }}
                 />
@@ -852,7 +879,7 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
           <TableBody>
             {visibleAccounts.map((acc, index) => {
               const isEven = index % 2 === 1
-              const rowStyle = sortConfig === null ? getRowStyle(acc.level, acc.hasChildren) : ''
+              const rowStyle = sortConfig === null ? getRowStyle(acc) : ''
 
               return (
                 <TableRow
@@ -865,22 +892,24 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
                   )}
                 >
                   <TableCell className="text-center py-2 px-2 border-0">
-                    <Checkbox
-                      className={cn(
-                        'data-[state=checked]:bg-indigo-950 data-[state=checked]:border-indigo-950 data-[state=checked]:text-white',
-                        isEven && 'border-black/50',
-                      )}
-                      checked={selectedIds.includes(acc.id)}
-                      onCheckedChange={(checked) => {
-                        if (checked) setSelectedIds((prev) => [...prev, acc.id])
-                        else setSelectedIds((prev) => prev.filter((id) => id !== acc.id))
-                      }}
-                    />
+                    {!acc.isChartNode && (
+                      <Checkbox
+                        className={cn(
+                          'data-[state=checked]:bg-indigo-950 data-[state=checked]:border-indigo-950 data-[state=checked]:text-white',
+                          isEven && 'border-black/50',
+                        )}
+                        checked={selectedIds.includes(acc.id)}
+                        onCheckedChange={(checked) => {
+                          if (checked) setSelectedIds((prev) => [...prev, acc.id])
+                          else setSelectedIds((prev) => prev.filter((id) => id !== acc.id))
+                        }}
+                      />
+                    )}
                   </TableCell>
 
                   {columns.map((col) => {
                     const isCodeCol = col.id === 'code' || col.id === 'descricao'
-                    const showHierarchy = !sortConfig && col.id === 'code'
+                    const showHierarchy = !sortConfig && col.id === 'descricao'
 
                     return (
                       <TableCell
@@ -920,13 +949,16 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
                               field={col.id}
                               organizations={organizations}
                               isEditing={editing?.id === acc.id && editing?.field === col.id}
-                              onEditStart={() => setEditing({ id: acc.id, field: col.id })}
+                              onEditStart={() =>
+                                !acc.isChartNode && setEditing({ id: acc.id, field: col.id })
+                              }
                               onEditCommit={(val: string) =>
                                 val !== acc[col.id]
                                   ? handleEditCommit(acc.id, col.id, val)
                                   : setEditing(null)
                               }
                               onEditCancel={() => setEditing(null)}
+                              isChartNode={acc.isChartNode}
                             />
                           </div>
                         </div>
@@ -934,36 +966,38 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
                     )
                   })}
                   <TableCell className="text-right py-2 px-2 border-0">
-                    <div className="flex justify-end gap-1 opacity-0 group-hover/row:opacity-100 transition-opacity">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className={cn(
-                          'h-7 w-7 transition-colors',
-                          isEven
-                            ? 'text-black/70 hover:text-indigo-950 hover:bg-black/10'
-                            : 'text-muted-foreground hover:text-primary hover:bg-primary/10',
-                        )}
-                        onClick={() => setEditModalAccount(acc)}
-                        title="Editar"
-                      >
-                        <Edit className="h-3.5 w-3.5" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className={cn(
-                          'h-7 w-7 transition-colors',
-                          isEven
-                            ? 'text-black/70 hover:text-red-700 hover:bg-red-500/20'
-                            : 'text-muted-foreground hover:text-destructive hover:bg-destructive/10',
-                        )}
-                        onClick={() => onDelete(acc.id)}
-                        title="Excluir"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
-                    </div>
+                    {!acc.isChartNode && (
+                      <div className="flex justify-end gap-1 opacity-0 group-hover/row:opacity-100 transition-opacity">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className={cn(
+                            'h-7 w-7 transition-colors',
+                            isEven
+                              ? 'text-black/70 hover:text-indigo-950 hover:bg-black/10'
+                              : 'text-muted-foreground hover:text-primary hover:bg-primary/10',
+                          )}
+                          onClick={() => setEditModalAccount(acc)}
+                          title="Editar"
+                        >
+                          <Edit className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className={cn(
+                            'h-7 w-7 transition-colors',
+                            isEven
+                              ? 'text-black/70 hover:text-red-700 hover:bg-red-500/20'
+                              : 'text-muted-foreground hover:text-destructive hover:bg-destructive/10',
+                          )}
+                          onClick={() => onDelete(acc.id)}
+                          title="Excluir"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    )}
                   </TableCell>
                 </TableRow>
               )
@@ -974,9 +1008,41 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:hidden">
         {visibleAccounts.map((acc) => {
+          if (acc.isChartNode) {
+            return (
+              <div
+                key={acc.id}
+                className="col-span-1 md:col-span-2 bg-indigo-50 dark:bg-indigo-950/30 p-3 rounded-md flex items-center gap-2"
+              >
+                <div
+                  style={{ paddingLeft: `${acc.level * 1}rem` }}
+                  className="flex items-center gap-2"
+                >
+                  {acc.hasChildren ? (
+                    <button
+                      onClick={() => toggleExpand(acc.id)}
+                      className="p-1 hover:bg-indigo-100 dark:hover:bg-indigo-900 rounded"
+                    >
+                      {expandedIds.has(acc.id) ? (
+                        <ChevronDown className="w-4 h-4 text-indigo-700 dark:text-indigo-300" />
+                      ) : (
+                        <ChevronRight className="w-4 h-4 text-indigo-700 dark:text-indigo-300" />
+                      )}
+                    </button>
+                  ) : (
+                    <span className="w-6 shrink-0" />
+                  )}
+                  <span className="font-bold text-indigo-900 dark:text-indigo-200">
+                    {acc.classificacao} - {acc.descricao}
+                  </span>
+                </div>
+              </div>
+            )
+          }
+
           const org = organizations.find((o) => o.id === acc.organization_id)
           const theme = getTheme(org?.name)
-          const rowStyle = sortConfig === null ? getRowStyle(acc.level, acc.hasChildren) : ''
+          const rowStyle = sortConfig === null ? getRowStyle(acc) : ''
 
           return (
             <Card
@@ -1002,18 +1068,6 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
                         {col.label}:
                       </span>
                       <div className="flex-1 min-w-0 flex items-center">
-                        {col.id === 'code' && !sortConfig && acc.hasChildren && (
-                          <button
-                            onClick={() => toggleExpand(acc.id)}
-                            className="p-1 hover:bg-slate-200 dark:hover:bg-slate-700 rounded mr-2 shrink-0"
-                          >
-                            {expandedIds.has(acc.id) ? (
-                              <ChevronDown className="w-4 h-4 text-slate-500" />
-                            ) : (
-                              <ChevronRight className="w-4 h-4 text-slate-500" />
-                            )}
-                          </button>
-                        )}
                         <EditableCell
                           value={acc[col.id]}
                           field={col.id}
@@ -1026,6 +1080,7 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
                               : setEditing(null)
                           }
                           onEditCancel={() => setEditing(null)}
+                          isChartNode={acc.isChartNode}
                         />
                       </div>
                     </div>

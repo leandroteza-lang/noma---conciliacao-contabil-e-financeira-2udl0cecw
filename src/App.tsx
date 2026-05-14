@@ -2,7 +2,6 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { Toaster } from '@/components/ui/toaster'
 import { Toaster as Sonner } from '@/components/ui/sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
-import Index from './pages/Index'
 import AccountsList from './pages/AccountsList'
 import Import from './pages/Import'
 import Companies from './pages/Companies'
@@ -54,7 +53,6 @@ const App = () => {
               <Route element={<Layout />}>
                 <Route path="/app" element={<AccountsList />} />
                 <Route path="/contas" element={<AccountsList />} />
-                <Route path="/contas-bancarias" element={<Index />} />
                 <Route path="/empresas" element={<Companies />} />
                 <Route path="/departamentos" element={<Departments />} />
                 <Route path="/usuarios" element={<Users />} />
