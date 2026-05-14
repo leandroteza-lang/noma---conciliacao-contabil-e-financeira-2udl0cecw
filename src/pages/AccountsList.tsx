@@ -321,13 +321,13 @@ export default function AccountsList() {
       </div>
 
       <Dialog open={isNewModalOpen} onOpenChange={setIsNewModalOpen}>
-        <DialogContent className="sm:max-w-[500px]">
+        <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
             <DialogTitle>Nova Conta Bancária</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleCreateAccount} className="space-y-4 mt-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2 md:col-span-2">
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+              <div className="space-y-2 md:col-span-12">
                 <Label>Empresa</Label>
                 <select
                   value={newAccount.organization_id || ''}
@@ -345,14 +345,14 @@ export default function AccountsList() {
                   ))}
                 </select>
               </div>
-              <div className="space-y-2">
+              <div className="space-y-2 md:col-span-6">
                 <Label>Código</Label>
                 <Input
                   value={newAccount.code || ''}
                   onChange={(e) => setNewAccount({ ...newAccount, code: e.target.value })}
                 />
               </div>
-              <div className="space-y-2">
+              <div className="space-y-2 md:col-span-6">
                 <Label>Conta Contábil</Label>
                 <AccountCombobox
                   accounts={chartAccounts}
@@ -366,7 +366,7 @@ export default function AccountsList() {
                   disabled={!newAccount.organization_id}
                 />
               </div>
-              <div className="space-y-2">
+              <div className="space-y-2 md:col-span-6">
                 <Label>Descrição</Label>
                 <Input
                   value={newAccount.descricao || ''}
@@ -374,35 +374,35 @@ export default function AccountsList() {
                   required
                 />
               </div>
-              <div className="space-y-2">
+              <div className="space-y-2 md:col-span-6">
                 <Label>Banco</Label>
                 <Input
                   value={newAccount.banco || ''}
                   onChange={(e) => setNewAccount({ ...newAccount, banco: e.target.value })}
                 />
               </div>
-              <div className="space-y-2">
+              <div className="space-y-2 md:col-span-4">
                 <Label>Agência</Label>
                 <Input
                   value={newAccount.agencia || ''}
                   onChange={(e) => setNewAccount({ ...newAccount, agencia: e.target.value })}
                 />
               </div>
-              <div className="space-y-2">
+              <div className="space-y-2 md:col-span-5">
                 <Label>Número da Conta</Label>
                 <Input
                   value={newAccount.numeroConta || ''}
                   onChange={(e) => setNewAccount({ ...newAccount, numeroConta: e.target.value })}
                 />
               </div>
-              <div className="space-y-2">
+              <div className="space-y-2 md:col-span-3">
                 <Label>Dígito</Label>
                 <Input
                   value={newAccount.digitoConta || ''}
                   onChange={(e) => setNewAccount({ ...newAccount, digitoConta: e.target.value })}
                 />
               </div>
-              <div className="space-y-2">
+              <div className="space-y-2 md:col-span-6">
                 <Label>Tipo Conta</Label>
                 <Select
                   value={newAccount.tipoConta || 'NONE'}
@@ -423,7 +423,7 @@ export default function AccountsList() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2 md:col-span-2">
+              <div className="space-y-2 md:col-span-6">
                 <Label>Classificação</Label>
                 <Select
                   value={newAccount.classificacao || 'NONE'}
