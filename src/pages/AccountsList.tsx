@@ -327,7 +327,9 @@ export default function AccountsList() {
       }
 
       const parentCa = chartAccounts.find(
-        (c) => c.classification === parentClass && c.organization_id === ca.organization_id,
+        (c) =>
+          c.classification === parentClass &&
+          (!c.organization_id || c.organization_id === ca.organization_id),
       )
       if (parentCa) {
         addChartAcc(parentCa)
@@ -336,7 +338,9 @@ export default function AccountsList() {
 
     const mappedBanks = accounts.map((acc) => {
       const ca = chartAccounts.find(
-        (c) => c.account_code === acc.account_code && c.organization_id === acc.organization_id,
+        (c) =>
+          c.account_code === acc.account_code &&
+          (!c.organization_id || c.organization_id === acc.organization_id),
       )
 
       let treeClass = acc.classification || acc.id
@@ -436,28 +440,31 @@ export default function AccountsList() {
     setSortConfig({ key, direction })
   }
 
-  const sortedAccounts = [...filteredData].sort((a, b) => {
-    if (!sortConfig) return 0
-    const { key, direction } = sortConfig
+  const sortedAccounts = useMemo(() => {
+    return [...filteredData].sort((a, b) => {
+      const treeA = a.tree_classification || ''
+      const treeB = b.tree_classification || ''
 
-    let valA = a[key]
-    let valB = b[key]
+      if (sortConfig && sortConfig.key !== 'classification') {
+        const { key, direction } = sortConfig
+        let valA = a[key] || ''
+        let valB = b[key] || ''
 
-    if (key === 'classification') {
-      valA = a.tree_classification || ''
-      valB = b.tree_classification || ''
-    } else if (key === 'company_name') {
-      valA = a.organizations?.name || a.company_name || ''
-      valB = b.organizations?.name || b.company_name || ''
-    }
+        if (key === 'company_name') {
+          valA = a.organizations?.name || a.company_name || ''
+          valB = b.organizations?.name || b.company_name || ''
+        }
 
-    valA = valA || ''
-    valB = valB || ''
+        if (valA < valB) return direction === 'asc' ? -1 : 1
+        if (valA > valB) return direction === 'asc' ? 1 : -1
+      }
 
-    if (valA < valB) return direction === 'asc' ? -1 : 1
-    if (valA > valB) return direction === 'asc' ? 1 : -1
-    return 0
-  })
+      const dir = sortConfig?.key === 'classification' ? sortConfig.direction : 'asc'
+      if (treeA < treeB) return dir === 'asc' ? -1 : 1
+      if (treeA > treeB) return dir === 'asc' ? 1 : -1
+      return 0
+    })
+  }, [filteredData, sortConfig])
 
   const handleToggleExpandAll = () => {
     if (expandAll) {
