@@ -31,6 +31,7 @@ import { Label } from '@/components/ui/label'
 
 const SYSTEM_FIELDS = [
   { value: 'EMPRESA', label: 'Empresa' },
+  { value: 'CODIGO', label: 'Código' },
   { value: 'CONTACONTABIL', label: 'Conta Contábil' },
   { value: 'TIPODECONTA', label: 'Tipo de Conta' },
   { value: 'DESCRICAO', label: 'Descrição' },
@@ -76,6 +77,7 @@ export function ImportBankAccountsModal({ isOpen, onClose, onSuccess }: any) {
   const downloadTemplate = () => {
     const defaultHeaders = [
       'EMPRESA',
+      'CODIGO',
       'CONTACONTABIL',
       'TIPODECONTA',
       'DESCRICAO',
@@ -87,6 +89,7 @@ export function ImportBankAccountsModal({ isOpen, onClose, onSuccess }: any) {
     ]
     const example = [
       'MINHA EMPRESA LTDA',
+      'CX01',
       '1.1.1.01.0001',
       'CORRENTE',
       'CONTA PRINCIPAL',
@@ -141,6 +144,7 @@ export function ImportBankAccountsModal({ isOpen, onClose, onSuccess }: any) {
           .replace(/[^a-z0-9]/gi, '')
           .toLowerCase()
         if (f.value === 'EMPRESA' && norm.includes('empresa')) return true
+        if (f.value === 'CODIGO' && (norm === 'codigo' || norm === 'cod')) return true
         if (
           f.value === 'CONTACONTABIL' &&
           (norm.includes('contacontabil') || norm.includes('reduzido') || norm.includes('contabil'))

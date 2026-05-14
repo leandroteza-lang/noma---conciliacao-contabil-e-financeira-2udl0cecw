@@ -39,9 +39,10 @@ Deno.serve(async (req: Request) => {
     }
 
     if (format === 'csv') {
-      let csvContent = 'Empresa;Conta Contábil;Descrição;Banco;Agência;Conta;Tipo;Classificação\n'
+      let csvContent =
+        'Empresa;Código;Conta Contábil;Descrição;Banco;Agência;Conta;Tipo;Classificação\n'
       data.forEach((r: any) => {
-        csvContent += `"${r['Empresa'] || ''}";"${r['Conta Contábil'] || ''}";"${r['Descrição'] || ''}";"${r['Banco'] || ''}";"${r['Agência'] || ''}";"${r['Número'] || r['Conta'] || ''}";"${r['Tipo'] || ''}";"${r['Classificação'] || ''}"\n`
+        csvContent += `"${r['Empresa'] || ''}";"${r['Código'] || ''}";"${r['Conta Contábil'] || ''}";"${r['Descrição'] || ''}";"${r['Banco'] || ''}";"${r['Agência'] || ''}";"${r['Número'] || r['Conta'] || ''}";"${r['Tipo'] || ''}";"${r['Classificação'] || ''}"\n`
       })
       return new Response(JSON.stringify({ csv: csvContent }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -53,6 +54,7 @@ Deno.serve(async (req: Request) => {
         'RELATÓRIO DE CONTAS BANCÁRIAS\n=========================================\n\n'
       data.forEach((r: any) => {
         txtContent += `Empresa: ${r['Empresa'] || '-'}\n`
+        txtContent += `Código: ${r['Código'] || '-'}\n`
         txtContent += `Conta Contábil: ${r['Conta Contábil'] || '-'}\n`
         txtContent += `Descrição: ${r['Descrição'] || '-'}\n`
         txtContent += `Banco: ${r['Banco'] || '-'}\n`
@@ -74,6 +76,7 @@ Deno.serve(async (req: Request) => {
 
       const body = data.map((r: any) => [
         r['Empresa'] || '-',
+        r['Código'] || '-',
         r['Conta Contábil'] || '-',
         r['Descrição'] || '-',
         r['Banco'] || '-',
@@ -88,6 +91,7 @@ Deno.serve(async (req: Request) => {
         head: [
           [
             'Empresa',
+            'Código',
             'Conta Contábil',
             'Descrição',
             'Banco',

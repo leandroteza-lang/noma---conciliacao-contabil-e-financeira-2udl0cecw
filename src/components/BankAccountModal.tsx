@@ -54,6 +54,7 @@ export function BankAccountModal({
 
   const [formData, setFormData] = useState({
     organization_id: '',
+    code: '',
     account_code: '',
     description: '',
     bank_code: '',
@@ -86,6 +87,7 @@ export function BankAccountModal({
       if (accountToEdit) {
         setFormData({
           organization_id: accountToEdit.organization_id || '',
+          code: accountToEdit.code || '',
           account_code: accountToEdit.account_code || '',
           description: accountToEdit.description || '',
           bank_code: accountToEdit.bank_code || '',
@@ -98,6 +100,7 @@ export function BankAccountModal({
       } else {
         setFormData({
           organization_id: '',
+          code: '',
           account_code: '',
           description: '',
           bank_code: '',
@@ -296,6 +299,14 @@ export function BankAccountModal({
                   </Command>
                 </PopoverContent>
               </Popover>
+            </div>
+            <div className="space-y-2">
+              <Label>Código</Label>
+              <Input
+                value={formData.code || ''}
+                onChange={(e) => setFormData({ ...formData, code: e.target.value })}
+                placeholder="Ex: CX01"
+              />
             </div>
             <div className="space-y-2">
               <Label>Descrição</Label>

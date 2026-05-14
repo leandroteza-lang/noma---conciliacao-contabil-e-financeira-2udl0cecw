@@ -25,6 +25,7 @@ import { AccountCombobox } from '@/components/AccountCombobox'
 
 const schema = z.object({
   organization_id: z.string().min(1, 'Selecione uma empresa'),
+  code: z.string().optional(),
   account_code: z.string().optional(),
   description: z.string().min(1, 'Campo obrigatório'),
   bank_code: z.string().optional(),
@@ -64,6 +65,7 @@ export function BankAccountFormModal({ isOpen, onClose, onSave, initialData }: a
     resolver: zodResolver(schema),
     defaultValues: {
       organization_id: '',
+      code: '',
       account_code: '',
       description: '',
       bank_code: '',
@@ -119,6 +121,7 @@ export function BankAccountFormModal({ isOpen, onClose, onSave, initialData }: a
     if (isOpen && initialData) {
       reset({
         organization_id: initialData.organization_id || '',
+        code: initialData.code || '',
         account_code: initialData.account_code || '',
         description: initialData.description || '',
         bank_code: initialData.bank_code || '',
@@ -131,6 +134,7 @@ export function BankAccountFormModal({ isOpen, onClose, onSave, initialData }: a
     } else if (isOpen) {
       reset({
         organization_id: '',
+        code: '',
         account_code: '',
         description: '',
         bank_code: '',
@@ -174,7 +178,11 @@ export function BankAccountFormModal({ isOpen, onClose, onSave, initialData }: a
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2 col-span-2">
+            <div className="space-y-2 col-span-2 md:col-span-1">
+              <Label>Código</Label>
+              <Input {...register('code')} placeholder="Ex: CX01" />
+            </div>
+            <div className="space-y-2 col-span-2 md:col-span-1">
               <Label>Descrição da Conta</Label>
               <Input
                 {...register('description')}

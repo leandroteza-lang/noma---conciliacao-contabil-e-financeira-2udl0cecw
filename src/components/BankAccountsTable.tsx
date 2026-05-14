@@ -204,6 +204,10 @@ export function BankAccountsTable({
                       {acc.check_digit ? `-${acc.check_digit}` : ''}
                     </div>
                     <div>
+                      <span className="text-muted-foreground block text-xs">Código</span>
+                      {acc.code || '-'}
+                    </div>
+                    <div>
                       <span className="text-muted-foreground block text-xs">Conta Contábil</span>
                       {acc.account_code || '-'}
                     </div>
@@ -350,6 +354,14 @@ export function BankAccountsTable({
                 </TableHead>
                 <TableHead
                   className="p-1 px-2 cursor-pointer select-none hover:bg-muted/50 transition-colors group"
+                  onClick={() => onSort('code')}
+                >
+                  <div className="flex items-center">
+                    Código <SortIcon columnKey="code" />
+                  </div>
+                </TableHead>
+                <TableHead
+                  className="p-1 px-2 cursor-pointer select-none hover:bg-muted/50 transition-colors group"
                   onClick={() => onSort('account_code')}
                 >
                   <div className="flex items-center">
@@ -456,6 +468,9 @@ export function BankAccountsTable({
                           />
                           {acc.organizations?.name || acc.company_name}
                         </div>
+                      </TableCell>
+                      <TableCell className="p-1 px-2 font-mono text-sm font-semibold">
+                        {acc.code || '-'}
                       </TableCell>
                       <TableCell className="p-1 px-2 font-mono text-sm">
                         {acc.account_code || '-'}

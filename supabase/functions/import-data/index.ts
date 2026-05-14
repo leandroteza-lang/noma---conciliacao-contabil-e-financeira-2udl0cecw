@@ -1337,6 +1337,7 @@ Deno.serve(async (req: Request) => {
 
         const payloadData = {
           organization_id: orgId || null,
+          code: String(getVal(['CODIGO', 'COD']) || ''),
           account_code: String(getVal(['CONTACONTABIL', 'CONTA_CONTABIL']) || ''),
           account_type: String(getVal(['CODCAIXA', 'TIPODECONTA', 'TIPO']) || ''),
           description: descriptionStr,
