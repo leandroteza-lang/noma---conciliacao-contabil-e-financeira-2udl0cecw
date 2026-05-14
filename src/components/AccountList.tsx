@@ -361,12 +361,20 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
     })
   }, [accountsWithHierarchy, expandedIds, sortConfig])
 
-  const toggleExpandAll = () => {
-    if (expandedIds.size > 0) setExpandedIds(new Set())
-    else {
-      const allWithChildren = accountsWithHierarchy.filter((a) => a.hasChildren).map((a) => a.id)
-      setExpandedIds(new Set(allWithChildren))
-    }
+  const handleExpandAll = () => {
+    const allWithChildren = accountsWithHierarchy.filter((a) => a.hasChildren).map((a) => a.id)
+    setExpandedIds(new Set(allWithChildren))
+  }
+
+  const handleCollapseAll = () => {
+    setExpandedIds(new Set())
+  }
+
+  const handleExpandAnalytic = () => {
+    const allChartNodes = accountsWithHierarchy
+      .filter((a) => a.isChartNode && a.hasChildren)
+      .map((a) => a.id)
+    setExpandedIds(new Set(allChartNodes))
   }
 
   const handleBulkEditSave = async (e: React.FormEvent) => {
@@ -764,15 +772,6 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
             </Button>
           </div>
 
-          <Button
-            variant="outline"
-            className="gap-2"
-            onClick={toggleExpandAll}
-            title="Expandir/Recolher Todos"
-          >
-            <ListTree className="h-4 w-4" /> {expandedIds.size > 0 ? 'Recolher' : 'Expandir'}
-          </Button>
-
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" className="gap-2">
@@ -834,6 +833,34 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
       </div>
 
       <div className="hidden lg:block rounded-xl border-2 border-indigo-950 bg-card shadow-sm overflow-hidden">
+        <div className="flex justify-between items-center p-2 bg-white dark:bg-slate-950 border-b border-indigo-100 dark:border-indigo-900">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleExpandAll}
+            className="h-8 gap-2 text-xs font-medium"
+          >
+            <ListTree className="h-4 w-4" /> Expandir Todos
+          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleExpandAnalytic}
+              className="h-8 text-xs font-medium"
+            >
+              Expandir Analítico
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleCollapseAll}
+              className="h-8 text-xs font-medium"
+            >
+              Recolher Todos
+            </Button>
+          </div>
+        </div>
         <Table className="border-collapse" style={{ fontSize: `${tableFontSize}px` }}>
           <TableHeader className="bg-indigo-950">
             <TableRow className="border-0 hover:bg-transparent">
@@ -929,8 +956,13 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
                             >
                               {acc.hasChildren ? (
                                 <button
-                                  onClick={() => toggleExpand(acc.id)}
-                                  className="p-0.5 hover:bg-slate-200 dark:hover:bg-slate-700 rounded mr-1 transition-colors"
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.preventDefault()
+                                    e.stopPropagation()
+                                    toggleExpand(acc.id)
+                                  }}
+                                  className="p-0.5 hover:bg-slate-200 dark:hover:bg-slate-700 rounded mr-1 transition-colors flex items-center justify-center cursor-pointer"
                                 >
                                   {expandedIds.has(acc.id) ? (
                                     <ChevronDown className="w-4 h-4 text-slate-500" />
@@ -1020,8 +1052,13 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
                 >
                   {acc.hasChildren ? (
                     <button
-                      onClick={() => toggleExpand(acc.id)}
-                      className="p-1 hover:bg-indigo-100 dark:hover:bg-indigo-900 rounded"
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault()
+                        e.stopPropagation()
+                        toggleExpand(acc.id)
+                      }}
+                      className="p-1 hover:bg-indigo-100 dark:hover:bg-indigo-900 rounded flex items-center justify-center cursor-pointer"
                     >
                       {expandedIds.has(acc.id) ? (
                         <ChevronDown className="w-4 h-4 text-indigo-700 dark:text-indigo-300" />

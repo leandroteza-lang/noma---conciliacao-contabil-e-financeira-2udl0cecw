@@ -3,7 +3,8 @@ import { supabase } from '@/lib/supabase/client'
 import { AccountList } from '@/components/AccountList'
 import { useToast } from '@/hooks/use-toast'
 import { Button } from '@/components/ui/button'
-import { Plus, Search } from 'lucide-react'
+import { Plus, Search, Sparkles } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
@@ -201,7 +202,7 @@ export default function AccountsList() {
           Listagem de Contas
         </h1>
         <div className="flex items-center gap-2 w-full sm:w-auto">
-          <div className="relative flex-1 sm:w-64">
+          <div className="relative flex-1 sm:w-64 hidden md:block">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
             <input
               type="text"
@@ -211,6 +212,15 @@ export default function AccountsList() {
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
+          <Button
+            variant="outline"
+            asChild
+            className="gap-2 hidden md:flex text-rose-600 border-rose-200 hover:bg-rose-50 hover:text-rose-700 dark:border-rose-900 dark:text-rose-400 dark:hover:bg-rose-950"
+          >
+            <Link to="/mapeamento">
+              <Sparkles className="w-4 h-4" /> Mapeamento Inteligente
+            </Link>
+          </Button>
           <Button
             className="bg-indigo-600 hover:bg-indigo-700"
             onClick={() => setIsNewModalOpen(true)}
