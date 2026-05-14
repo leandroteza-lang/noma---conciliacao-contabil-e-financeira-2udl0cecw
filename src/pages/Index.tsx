@@ -494,10 +494,6 @@ export default function Index() {
           border: none !important;
           background-color: #1e1b4b !important;
         }
-        /* Coluna Descrição */
-        .bank-accounts-table-wrapper th:nth-child(4) {
-          font-weight: bold !important;
-        }
         .bank-accounts-table-wrapper th svg {
           color: #ffffff !important;
           opacity: 0.7 !important;
@@ -511,12 +507,6 @@ export default function Index() {
           padding: 8px !important;
           border: none !important;
           font-weight: normal !important;
-        }
-        
-        /* Colunas Empresa e Descrição em negrito */
-        .bank-accounts-table-wrapper tbody td:nth-child(2),
-        .bank-accounts-table-wrapper tbody td:nth-child(4) {
-          font-weight: bold !important;
         }
         
         /* Linhas Ímpares */
@@ -545,12 +535,6 @@ export default function Index() {
         }
         .bank-accounts-table-wrapper tbody tr:nth-child(even):hover {
           background-color: #93c5fd !important;
-        }
-        
-        /* Força coluna Tipo a ficar com texto preto em ambos os temas e linhas */
-        .bank-accounts-table-wrapper tbody tr td:nth-child(8),
-        .bank-accounts-table-wrapper tbody tr td:nth-child(9) {
-          color: #000000 !important;
         }
         
         .bank-accounts-table-wrapper tbody td input,
