@@ -18,6 +18,7 @@ import {
   AlignCenter,
   AlignRight,
   MoreVertical,
+  Grid3X3,
 } from 'lucide-react'
 import { useState, useRef, useEffect, useMemo, Fragment } from 'react'
 import { Link } from 'react-router-dom'
@@ -441,6 +442,14 @@ export function AccountList({
   useEffect(() => {
     localStorage.setItem('bank_accounts_table_font_size', tableFontSize.toString())
   }, [tableFontSize])
+
+  const [showGridlines, setShowGridlines] = useState<boolean>(() => {
+    return localStorage.getItem('bank_accounts_gridlines') === 'true'
+  })
+
+  useEffect(() => {
+    localStorage.setItem('bank_accounts_gridlines', showGridlines.toString())
+  }, [showGridlines])
 
   const handleDragStart = (e: React.DragEvent, index: number) => {
     e.dataTransfer.effectAllowed = 'move'
@@ -993,6 +1002,21 @@ export function AccountList({
           </div>
 
           <div className="flex items-center gap-2 shrink-0 justify-end">
+            <Button
+              variant="outline"
+              size="icon"
+              className={cn(
+                'hidden sm:flex h-10 w-10 shrink-0 shadow-sm transition-colors',
+                showGridlines
+                  ? 'bg-indigo-50 border-indigo-200 text-indigo-600 hover:bg-indigo-100 hover:text-indigo-700 dark:bg-indigo-900/30 dark:border-indigo-800 dark:text-indigo-400'
+                  : 'bg-white border-slate-200 text-slate-400 hover:text-slate-600 dark:bg-slate-900 dark:border-slate-800 dark:text-slate-500',
+              )}
+              onClick={() => setShowGridlines(!showGridlines)}
+              title="Alternar Linhas de Grade"
+            >
+              <Grid3X3 className="h-4 w-4" />
+            </Button>
+
             <div
               className="hidden sm:flex items-center gap-1 bg-white dark:bg-slate-900 rounded-md p-0.5 border border-slate-200 dark:border-slate-800 shadow-sm h-10"
               title="Tamanho da Fonte das Tabelas"
@@ -1124,7 +1148,7 @@ export function AccountList({
               </Button>
             </div>
             <Table
-              className="border-collapse"
+              className={cn('border-collapse', showGridlines && 'table-gridlines')}
               wrapperClassName="flex-1 overflow-auto max-h-[calc(100vh-230px)]"
               style={{ fontSize: `${tableFontSize}px` }}
             >

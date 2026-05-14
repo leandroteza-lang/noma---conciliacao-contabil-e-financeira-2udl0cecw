@@ -105,3 +105,18 @@ tr.group\/row:nth-child(odd) td:nth-child(8) [class*='bg-'] {
 .finance-table-scrollbar::-webkit-scrollbar-thumb:hover {
   background-color: #64748b;
 }
+
+/* Table Gridlines */
+.table-gridlines th,
+.table-gridlines td {
+  border: 1px solid #cbd5e1 !important;
+}
+
+.dark .table-gridlines th,
+.dark .table-gridlines td {
+  border: 1px solid #334155 !important;
+}
+
+.table-gridlines th {
+  border-color: #312e81 !important; /* indigo-900 */
+}
