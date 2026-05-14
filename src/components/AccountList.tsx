@@ -78,13 +78,35 @@ const getTheme = (name: string | null | undefined) => {
 
 const getRowStyle = (acc: any) => {
   if (acc.isChartNode) {
-    if (acc.level === 0)
-      return 'font-bold bg-indigo-50/80 dark:bg-indigo-950/40 text-indigo-950 dark:text-indigo-200 border-b border-indigo-100 dark:border-indigo-900'
-    if (acc.level === 1)
-      return 'font-semibold bg-slate-50/80 dark:bg-slate-900/60 text-slate-800 dark:text-slate-300'
-    return 'font-medium bg-slate-50/40 dark:bg-slate-900/40'
+    switch (acc.level) {
+      case 0:
+        return 'bg-[#1e1b4b] text-white border-b border-white/10'
+      case 1:
+        return 'bg-[#312e81] text-white border-b border-white/10'
+      case 2:
+        return 'bg-[#4338ca] text-white border-b border-white/10'
+      case 3:
+        return 'bg-[#e0e7ff] text-[#1e1b4b] border-b border-[#c7d2fe]'
+      default:
+        return 'bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-300 border-b border-slate-200 dark:border-slate-800'
+    }
   }
   return ''
+}
+
+const getHierarchyBadgeStyle = (level: number) => {
+  switch (level) {
+    case 0:
+      return 'bg-[#312e81] text-white hover:bg-[#312e81] border border-[#3730a3]'
+    case 1:
+      return 'bg-[#3730a3] text-white hover:bg-[#3730a3] border border-[#4338ca]'
+    case 2:
+      return 'bg-[#4f46e5] text-white hover:bg-[#4f46e5] border border-[#6366f1]'
+    case 3:
+      return 'bg-[#c7d2fe] text-[#1e1b4b] hover:bg-[#c7d2fe] border border-[#a5b4fc]'
+    default:
+      return 'bg-slate-200 text-slate-800 hover:bg-slate-200 border border-slate-300'
+  }
 }
 
 function EditableCell({
@@ -910,6 +932,56 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
               const rowStyle =
                 sortConfig === null && viewMode === 'hierarchy' ? getRowStyle(acc) : ''
 
+              if (acc.isChartNode && sortConfig === null && viewMode === 'hierarchy') {
+                return (
+                  <TableRow
+                    key={acc.id}
+                    className={cn(
+                      'border-0 group/row text-[1em] transition-colors hover:opacity-95',
+                      rowStyle,
+                    )}
+                  >
+                    <TableCell className="py-2 px-2 border-0" colSpan={columns.length + 2}>
+                      <div
+                        className="flex items-center gap-2"
+                        style={{ paddingLeft: `${acc.level * 1.5}rem` }}
+                      >
+                        {acc.hasChildren ? (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.preventDefault()
+                              e.stopPropagation()
+                              toggleExpand(acc.id)
+                            }}
+                            className="p-0.5 hover:bg-black/10 dark:hover:bg-white/10 rounded mr-1 transition-colors flex items-center justify-center cursor-pointer"
+                          >
+                            {expandedIds.has(acc.id) ? (
+                              <ChevronDown className="w-4 h-4" />
+                            ) : (
+                              <ChevronRight className="w-4 h-4" />
+                            )}
+                          </button>
+                        ) : (
+                          <span className="w-5 h-5 mr-1 inline-block shrink-0" />
+                        )}
+                        <Badge
+                          className={cn(
+                            'font-mono text-[11px] font-bold px-2 py-0.5 rounded shadow-sm',
+                            getHierarchyBadgeStyle(acc.level),
+                          )}
+                        >
+                          {acc.classificacao}
+                        </Badge>
+                        <span className="font-semibold text-[0.95em] uppercase tracking-wide ml-1">
+                          {acc.descricao}
+                        </span>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                )
+              }
+
               return (
                 <TableRow
                   key={acc.id}
@@ -921,19 +993,17 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
                   )}
                 >
                   <TableCell className="text-center py-2 px-2 border-0">
-                    {!acc.isChartNode && (
-                      <Checkbox
-                        className={cn(
-                          'data-[state=checked]:bg-indigo-950 data-[state=checked]:border-indigo-950 data-[state=checked]:text-white',
-                          isEven && 'border-black/50',
-                        )}
-                        checked={selectedIds.includes(acc.id)}
-                        onCheckedChange={(checked) => {
-                          if (checked) setSelectedIds((prev) => [...prev, acc.id])
-                          else setSelectedIds((prev) => prev.filter((id) => id !== acc.id))
-                        }}
-                      />
-                    )}
+                    <Checkbox
+                      className={cn(
+                        'data-[state=checked]:bg-indigo-950 data-[state=checked]:border-indigo-950 data-[state=checked]:text-white',
+                        isEven && 'border-black/50',
+                      )}
+                      checked={selectedIds.includes(acc.id)}
+                      onCheckedChange={(checked) => {
+                        if (checked) setSelectedIds((prev) => [...prev, acc.id])
+                        else setSelectedIds((prev) => prev.filter((id) => id !== acc.id))
+                      }}
+                    />
                   </TableCell>
 
                   {columns.map((col) => {
@@ -957,25 +1027,9 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
                               className="flex items-center shrink-0"
                               style={{ paddingLeft: `${acc.level * 1.5}rem` }}
                             >
-                              {acc.hasChildren ? (
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.preventDefault()
-                                    e.stopPropagation()
-                                    toggleExpand(acc.id)
-                                  }}
-                                  className="p-0.5 hover:bg-slate-200 dark:hover:bg-slate-700 rounded mr-1 transition-colors flex items-center justify-center cursor-pointer"
-                                >
-                                  {expandedIds.has(acc.id) ? (
-                                    <ChevronDown className="w-4 h-4 text-slate-500" />
-                                  ) : (
-                                    <ChevronRight className="w-4 h-4 text-slate-500" />
-                                  )}
-                                </button>
-                              ) : (
-                                <span className="w-5 h-5 mr-1 inline-block shrink-0" />
-                              )}
+                              <span className="w-5 h-5 mr-1 inline-block shrink-0 flex items-center justify-center">
+                                <div className="w-1.5 h-1.5 rounded-full bg-slate-300 dark:bg-slate-600" />
+                              </span>
                             </div>
                           )}
                           <div className="flex-1 min-w-0">
@@ -984,16 +1038,14 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
                               field={col.id}
                               organizations={organizations}
                               isEditing={editing?.id === acc.id && editing?.field === col.id}
-                              onEditStart={() =>
-                                !acc.isChartNode && setEditing({ id: acc.id, field: col.id })
-                              }
+                              onEditStart={() => setEditing({ id: acc.id, field: col.id })}
                               onEditCommit={(val: string) =>
                                 val !== acc[col.id]
                                   ? handleEditCommit(acc.id, col.id, val)
                                   : setEditing(null)
                               }
                               onEditCancel={() => setEditing(null)}
-                              isChartNode={acc.isChartNode}
+                              isChartNode={false}
                             />
                           </div>
                         </div>
@@ -1001,38 +1053,36 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
                     )
                   })}
                   <TableCell className="text-right py-2 px-2 border-0">
-                    {!acc.isChartNode && (
-                      <div className="flex justify-end gap-1 opacity-0 group-hover/row:opacity-100 transition-opacity">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className={cn(
-                            'h-7 w-7 transition-colors',
-                            isEven
-                              ? 'text-black/70 hover:text-indigo-950 hover:bg-black/10'
-                              : 'text-muted-foreground hover:text-primary hover:bg-primary/10',
-                          )}
-                          onClick={() => setEditModalAccount(acc)}
-                          title="Editar"
-                        >
-                          <Edit className="h-3.5 w-3.5" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className={cn(
-                            'h-7 w-7 transition-colors',
-                            isEven
-                              ? 'text-black/70 hover:text-red-700 hover:bg-red-500/20'
-                              : 'text-muted-foreground hover:text-destructive hover:bg-destructive/10',
-                          )}
-                          onClick={() => onDelete(acc.id)}
-                          title="Excluir"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
-                      </div>
-                    )}
+                    <div className="flex justify-end gap-1 opacity-0 group-hover/row:opacity-100 transition-opacity">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className={cn(
+                          'h-7 w-7 transition-colors',
+                          isEven
+                            ? 'text-black/70 hover:text-indigo-950 hover:bg-black/10'
+                            : 'text-muted-foreground hover:text-primary hover:bg-primary/10',
+                        )}
+                        onClick={() => setEditModalAccount(acc)}
+                        title="Editar"
+                      >
+                        <Edit className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className={cn(
+                          'h-7 w-7 transition-colors',
+                          isEven
+                            ? 'text-black/70 hover:text-red-700 hover:bg-red-500/20'
+                            : 'text-muted-foreground hover:text-destructive hover:bg-destructive/10',
+                        )}
+                        onClick={() => onDelete(acc.id)}
+                        title="Excluir"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               )
@@ -1044,14 +1094,18 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:hidden">
         {visibleAccounts.map((acc) => {
           if (acc.isChartNode) {
+            const rowStyle = getRowStyle(acc)
             return (
               <div
                 key={acc.id}
-                className="col-span-1 md:col-span-2 bg-indigo-50 dark:bg-indigo-950/30 p-3 rounded-md flex items-center gap-2"
+                className={cn(
+                  'col-span-1 md:col-span-2 p-3 rounded-md flex items-center gap-2 shadow-sm transition-colors',
+                  rowStyle,
+                )}
               >
                 <div
                   style={{ paddingLeft: `${acc.level * 1}rem` }}
-                  className="flex items-center gap-2"
+                  className="flex items-center gap-2 w-full"
                 >
                   {acc.hasChildren ? (
                     <button
@@ -1061,19 +1115,27 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
                         e.stopPropagation()
                         toggleExpand(acc.id)
                       }}
-                      className="p-1 hover:bg-indigo-100 dark:hover:bg-indigo-900 rounded flex items-center justify-center cursor-pointer"
+                      className="p-1 hover:bg-black/10 dark:hover:bg-white/10 rounded flex items-center justify-center cursor-pointer"
                     >
                       {expandedIds.has(acc.id) ? (
-                        <ChevronDown className="w-4 h-4 text-indigo-700 dark:text-indigo-300" />
+                        <ChevronDown className="w-4 h-4" />
                       ) : (
-                        <ChevronRight className="w-4 h-4 text-indigo-700 dark:text-indigo-300" />
+                        <ChevronRight className="w-4 h-4" />
                       )}
                     </button>
                   ) : (
                     <span className="w-6 shrink-0" />
                   )}
-                  <span className="font-bold text-indigo-900 dark:text-indigo-200">
-                    {acc.classificacao} - {acc.descricao}
+                  <Badge
+                    className={cn(
+                      'font-mono text-[11px] font-bold px-2 py-0.5 rounded shadow-sm',
+                      getHierarchyBadgeStyle(acc.level),
+                    )}
+                  >
+                    {acc.classificacao}
+                  </Badge>
+                  <span className="font-semibold text-[0.95em] uppercase tracking-wide truncate ml-1">
+                    {acc.descricao}
                   </span>
                 </div>
               </div>
@@ -1082,13 +1144,9 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
 
           const org = organizations.find((o) => o.id === acc.organization_id)
           const theme = getTheme(org?.name)
-          const rowStyle = sortConfig === null && viewMode === 'hierarchy' ? getRowStyle(acc) : ''
 
           return (
-            <Card
-              key={acc.id}
-              className={cn('border-l-4 shadow-sm bg-card', theme.border, rowStyle)}
-            >
+            <Card key={acc.id} className={cn('border-l-4 shadow-sm bg-card', theme.border)}>
               <CardContent className="p-4 flex justify-between items-start">
                 <div className="space-y-3 flex-1 pr-4 text-foreground min-w-0">
                   {columns.map((col) => (
