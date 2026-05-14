@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase/client'
-import { BankAccountsTable } from '@/components/BankAccountsTable'
 import { BankAccountFormModal } from '@/components/BankAccountFormModal'
 import { BankAccountBulkEditModal } from '@/components/BankAccountBulkEditModal'
 import { Button } from '@/components/ui/button'
@@ -18,6 +17,16 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import { Checkbox } from '@/components/ui/checkbox'
+import { cn } from '@/lib/utils'
 import { useToast } from '@/hooks/use-toast'
 import {
   Search,
@@ -30,6 +39,13 @@ import {
   Sparkles,
   FileText,
   FileSpreadsheet,
+  ChevronRight,
+  ChevronDown,
+  ArrowUpDown,
+  Pencil,
+  ChevronLeft,
+  ChevronsLeft,
+  ChevronsRight,
 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { ImportBankAccountsModal } from '@/components/ImportBankAccountsModal'
@@ -59,6 +75,16 @@ export default function Index() {
     key: 'classification',
     direction: 'asc',
   })
+
+  const [collapsedClasses, setCollapsedClasses] = useState<Set<string>>(new Set())
+  const toggleCollapse = (classification: string) => {
+    setCollapsedClasses((prev) => {
+      const next = new Set(prev)
+      if (next.has(classification)) next.delete(classification)
+      else next.add(classification)
+      return next
+    })
+  }
 
   const [tableFontSize, setTableFontSize] = useState<number>(() => {
     const saved = localStorage.getItem('bank_accounts_table_font_size')
@@ -358,11 +384,25 @@ export default function Index() {
     return 0
   })
 
-  const paginatedAccounts = sortedAccounts.slice(
+  const visibleAccounts = sortedAccounts.filter((acc) => {
+    if (!acc.classification) return true
+    for (const collapsed of collapsedClasses) {
+      if (
+        acc.classification !== collapsed &&
+        (acc.classification.startsWith(collapsed + '.') ||
+          acc.classification.startsWith(collapsed + '-'))
+      ) {
+        return false
+      }
+    }
+    return true
+  })
+
+  const paginatedAccounts = visibleAccounts.slice(
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage,
   )
-  const totalPages = Math.max(1, Math.ceil(sortedAccounts.length / itemsPerPage))
+  const totalPages = Math.max(1, Math.ceil(visibleAccounts.length / itemsPerPage))
 
   const toggleSelect = (id: string) => {
     setSelectedAccounts((prev) =>
@@ -376,6 +416,36 @@ export default function Index() {
     } else {
       setSelectedAccounts(paginatedAccounts.map((a) => a.id))
     }
+  }
+
+  const isSyntheticAccount = (acc: any) => {
+    if (!acc.classification) return false
+    return sortedAccounts.some(
+      (other) =>
+        other.id !== acc.id &&
+        other.classification &&
+        (other.classification.startsWith(acc.classification + '.') ||
+          other.classification.startsWith(acc.classification + '-')),
+    )
+  }
+
+  const getRowClassName = (acc: any, isSynth: boolean) => {
+    const code = acc.classification || ''
+    const level = (code.match(/\./g) || []).length + 1
+
+    if (isSynth) {
+      if (level === 1)
+        return 'bg-indigo-950 font-bold text-white hover:bg-indigo-900 border-b border-indigo-900'
+      if (level === 2)
+        return 'bg-blue-800 font-semibold text-white hover:bg-blue-700 border-b border-blue-700'
+      if (level === 3)
+        return 'bg-blue-500 font-medium text-white hover:bg-blue-400 border-b border-blue-400'
+      if (level === 4)
+        return 'bg-blue-200 font-medium text-blue-950 hover:bg-blue-300 border-b border-blue-300'
+      return 'bg-blue-50 font-medium text-blue-900 hover:bg-blue-100 border-b border-blue-200'
+    }
+
+    return 'bg-white font-normal text-slate-700 hover:bg-slate-50 border-b border-slate-100'
   }
 
   return (
@@ -531,32 +601,304 @@ export default function Index() {
         </div>
       </div>
 
-      <div className="bank-accounts-table-wrapper border-2 border-indigo-950 rounded-lg overflow-hidden">
-        <BankAccountsTable
-          accounts={paginatedAccounts}
-          allAccounts={sortedAccounts}
-          chartAccounts={chartAccounts}
-          selectedAccounts={selectedAccounts}
-          onToggleSelect={toggleSelect}
-          onToggleSelectAll={toggleSelectAll}
-          loading={loading}
-          onEdit={(acc: any) => {
-            setEditingAccount(acc)
-            setIsFormOpen(true)
-          }}
-          onDelete={handleDeleteAccount}
-          currentPage={currentPage}
-          totalPages={totalPages}
-          onPageChange={setCurrentPage}
-          sortConfig={sortConfig}
-          onSort={handleSort}
-          itemsPerPage={itemsPerPage}
-          onItemsPerPageChange={(v: number) => {
-            setItemsPerPage(v)
-            setCurrentPage(1)
-          }}
-          tableFontSize={tableFontSize}
-        />
+      <div className="bank-accounts-table-wrapper border-2 border-indigo-950 rounded-lg overflow-hidden bg-white">
+        <div className="overflow-x-auto">
+          <Table
+            style={{ fontSize: `${tableFontSize}px` }}
+            className="[&_td]:p-1.5 [&_td]:px-2 [&_th]:p-1.5 [&_th]:px-2"
+          >
+            <TableHeader className="bg-slate-100 border-b-2 border-slate-300">
+              <TableRow disableZebra className="hover:bg-slate-100">
+                <TableHead className="w-10 text-center">
+                  <Checkbox
+                    checked={
+                      paginatedAccounts.length > 0 &&
+                      selectedAccounts.length === paginatedAccounts.length
+                    }
+                    onCheckedChange={toggleSelectAll}
+                  />
+                </TableHead>
+                <TableHead
+                  className="w-[160px] cursor-pointer hover:bg-slate-200 font-bold text-slate-700 whitespace-nowrap"
+                  onClick={() => handleSort('classification')}
+                >
+                  <div className="flex items-center gap-2">
+                    Classificação <ArrowUpDown className="h-3 w-3 text-slate-400" />
+                  </div>
+                </TableHead>
+                <TableHead
+                  className="w-[110px] cursor-pointer hover:bg-slate-200 font-bold text-slate-700 whitespace-nowrap"
+                  onClick={() => handleSort('code')}
+                >
+                  <div className="flex items-center gap-2">
+                    Código <ArrowUpDown className="h-3 w-3 text-slate-400" />
+                  </div>
+                </TableHead>
+                <TableHead
+                  className="w-[120px] cursor-pointer hover:bg-slate-200 font-bold text-slate-700 whitespace-nowrap"
+                  onClick={() => handleSort('company_name')}
+                >
+                  <div className="flex items-center gap-2">
+                    Empresa <ArrowUpDown className="h-3 w-3 text-slate-400" />
+                  </div>
+                </TableHead>
+                <TableHead
+                  className="w-[120px] cursor-pointer hover:bg-slate-200 font-bold text-slate-700 whitespace-nowrap"
+                  onClick={() => handleSort('account_code')}
+                >
+                  <div className="flex items-center gap-2">
+                    Conta Contábil <ArrowUpDown className="h-3 w-3 text-slate-400" />
+                  </div>
+                </TableHead>
+                <TableHead
+                  className="min-w-[200px] cursor-pointer hover:bg-slate-200 font-bold text-slate-700 whitespace-nowrap"
+                  onClick={() => handleSort('description')}
+                >
+                  <div className="flex items-center gap-2">
+                    Descrição <ArrowUpDown className="h-3 w-3 text-slate-400" />
+                  </div>
+                </TableHead>
+                <TableHead
+                  className="w-[100px] cursor-pointer hover:bg-slate-200 font-bold text-slate-700 whitespace-nowrap"
+                  onClick={() => handleSort('bank_code')}
+                >
+                  <div className="flex items-center gap-2">
+                    Banco <ArrowUpDown className="h-3 w-3 text-slate-400" />
+                  </div>
+                </TableHead>
+                <TableHead className="w-[90px] font-bold text-slate-700 whitespace-nowrap">
+                  Agência
+                </TableHead>
+                <TableHead className="w-[110px] font-bold text-slate-700 whitespace-nowrap">
+                  Conta
+                </TableHead>
+                <TableHead className="w-[110px] font-bold text-slate-700 whitespace-nowrap">
+                  Tipo
+                </TableHead>
+                <TableHead className="w-[80px] text-right font-bold text-slate-700 whitespace-nowrap">
+                  Ações
+                </TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {loading ? (
+                <TableRow disableZebra>
+                  <TableCell colSpan={11} className="h-24 text-center">
+                    Carregando contas...
+                  </TableCell>
+                </TableRow>
+              ) : paginatedAccounts.length > 0 ? (
+                paginatedAccounts.map((acc) => {
+                  const isSynth = isSyntheticAccount(acc)
+                  const code = acc.classification || ''
+                  const level = (code.match(/\./g) || []).length + 1
+
+                  return (
+                    <TableRow
+                      key={acc.id}
+                      className={getRowClassName(acc, isSynth)}
+                      disableZebra
+                      style={{ fontSize: `${tableFontSize}px` }}
+                    >
+                      <TableCell className="text-center">
+                        <Checkbox
+                          checked={selectedAccounts.includes(acc.id)}
+                          onCheckedChange={() => toggleSelect(acc.id)}
+                          className={cn(
+                            isSynth && level <= 3
+                              ? 'border-white/70 data-[state=checked]:!bg-white data-[state=checked]:!text-indigo-950'
+                              : isSynth && level === 4
+                                ? 'border-blue-950/50 data-[state=checked]:!bg-blue-950 data-[state=checked]:!text-white'
+                                : '',
+                          )}
+                        />
+                      </TableCell>
+                      <TableCell className="font-bold whitespace-nowrap">
+                        <div
+                          className="flex items-center"
+                          style={{ paddingLeft: `${(level - 1) * 1.5}rem` }}
+                        >
+                          {isSynth ? (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                toggleCollapse(acc.classification || '')
+                              }}
+                              className={cn(
+                                'h-5 w-5 mr-1 p-0 rounded-sm shrink-0 transition-colors',
+                                level <= 3
+                                  ? 'hover:bg-white/20 hover:text-white'
+                                  : 'hover:bg-black/10',
+                              )}
+                            >
+                              {collapsedClasses.has(acc.classification || '') ? (
+                                <ChevronRight className="h-4 w-4" />
+                              ) : (
+                                <ChevronDown className="h-4 w-4" />
+                              )}
+                            </Button>
+                          ) : (
+                            <span className="w-6 shrink-0" />
+                          )}
+                          {acc.classification || '-'}
+                        </div>
+                      </TableCell>
+                      <TableCell className="font-medium whitespace-nowrap">
+                        {acc.code || '-'}
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap">
+                        <div className="flex items-center gap-1.5">
+                          <Building2 className="h-3 w-3 opacity-60 shrink-0" />
+                          <span className="truncate max-w-[100px]">
+                            {acc.organizations?.name || acc.company_name || '-'}
+                          </span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="font-medium whitespace-nowrap">
+                        {acc.account_code || '-'}
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap">
+                        <span
+                          className={cn(
+                            isSynth ? 'font-bold uppercase tracking-tight' : 'font-medium',
+                          )}
+                        >
+                          {acc.description}
+                        </span>
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap">{acc.bank_code || '-'}</TableCell>
+                      <TableCell className="whitespace-nowrap">{acc.agency || '-'}</TableCell>
+                      <TableCell className="whitespace-nowrap">
+                        {acc.account_number
+                          ? `${acc.account_number}${acc.check_digit ? '-' + acc.check_digit : ''}`
+                          : '-'}
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap">{acc.account_type || '-'}</TableCell>
+                      <TableCell className="text-right whitespace-nowrap">
+                        <div className="flex items-center justify-end gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => {
+                              setEditingAccount(acc)
+                              setIsFormOpen(true)
+                            }}
+                            className={cn(
+                              'h-7 w-7 opacity-70 hover:opacity-100 transition-colors',
+                              level <= 3 && isSynth
+                                ? 'hover:bg-white/20 !text-white'
+                                : isSynth && level === 4
+                                  ? 'hover:bg-black/10 hover:!text-blue-800 !text-blue-900'
+                                  : 'hover:bg-black/5 hover:!text-blue-600 !text-slate-500',
+                            )}
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleDeleteAccount(acc)}
+                            className={cn(
+                              'h-7 w-7 opacity-70 hover:opacity-100 transition-colors',
+                              level <= 3 && isSynth
+                                ? 'hover:bg-white/20 !text-white'
+                                : isSynth && level === 4
+                                  ? 'hover:bg-black/10 hover:!text-red-600 !text-blue-900'
+                                  : 'hover:bg-black/5 hover:!text-red-600 !text-slate-500',
+                            )}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  )
+                })
+              ) : (
+                <TableRow disableZebra>
+                  <TableCell colSpan={11} className="h-24 text-center">
+                    Nenhuma conta encontrada.
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </div>
+
+        {!loading && visibleAccounts.length > 0 && (
+          <div className="flex flex-col sm:flex-row items-center justify-between p-4 border-t border-slate-200 gap-4 bg-slate-50">
+            <p className="text-sm text-slate-500">
+              Mostrando {(currentPage - 1) * itemsPerPage + 1} até{' '}
+              {Math.min(currentPage * itemsPerPage, visibleAccounts.length)} de{' '}
+              {visibleAccounts.length}
+            </p>
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <p className="text-sm text-slate-500 hidden sm:block">Itens por página:</p>
+                <Select
+                  value={itemsPerPage.toString()}
+                  onValueChange={(v) => {
+                    setItemsPerPage(Number(v))
+                    setCurrentPage(1)
+                  }}
+                >
+                  <SelectTrigger className="h-8 w-[70px] bg-white">
+                    <SelectValue placeholder={itemsPerPage} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="10">10</SelectItem>
+                    <SelectItem value="50">50</SelectItem>
+                    <SelectItem value="100">100</SelectItem>
+                    <SelectItem value="1000">1000</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="bg-white"
+                  onClick={() => setCurrentPage(1)}
+                  disabled={currentPage === 1}
+                >
+                  <ChevronsLeft className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="bg-white"
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <span className="text-sm font-medium px-2 whitespace-nowrap">
+                  {currentPage} / {totalPages}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="bg-white"
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="bg-white"
+                  onClick={() => setCurrentPage(totalPages)}
+                  disabled={currentPage === totalPages}
+                >
+                  <ChevronsRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       <BankAccountFormModal
