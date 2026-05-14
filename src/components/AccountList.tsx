@@ -147,7 +147,7 @@ function EditableCell({
       return (
         <div
           className={cn(
-            'p-1 -m-1 rounded min-h-[28px] flex items-center',
+            'p-0.5 -m-0.5 rounded min-h-[20px] flex items-center',
             !isChartNode && 'cursor-pointer hover:bg-muted/50',
           )}
           onClick={onEditStart}
@@ -164,7 +164,7 @@ function EditableCell({
 
     return (
       <div
-        className="p-1 -m-1 rounded min-h-[28px] flex items-center w-full min-w-0 cursor-pointer hover:bg-muted/50"
+        className="p-0.5 -m-0.5 rounded min-h-[20px] flex items-center w-full min-w-0 cursor-pointer hover:bg-muted/50"
         onClick={onEditStart}
       >
         {field === 'classificacao' ? (
@@ -211,7 +211,7 @@ function EditableCell({
         onChange={(e) => setTempVal(e.target.value)}
         onBlur={handleBlur}
         onKeyDown={handleKeyDown}
-        className="w-full text-[1em] border border-primary/50 rounded p-1 outline-none ring-2 ring-primary/20 bg-background text-foreground h-7"
+        className="w-full text-[1em] border border-primary/50 rounded p-0.5 outline-none ring-2 ring-primary/20 bg-background text-foreground h-6"
       >
         <option value="">Selecione...</option>
         <option value="CAIXA">CAIXA</option>
@@ -231,7 +231,7 @@ function EditableCell({
         onChange={(e) => setTempVal(e.target.value)}
         onBlur={handleBlur}
         onKeyDown={handleKeyDown}
-        className="w-full text-[1em] border border-primary/50 rounded p-1 outline-none ring-2 ring-primary/20 bg-background text-foreground h-7"
+        className="w-full text-[1em] border border-primary/50 rounded p-0.5 outline-none ring-2 ring-primary/20 bg-background text-foreground h-6"
       >
         <option value="">Selecione...</option>
         <option value="C">C</option>
@@ -247,7 +247,7 @@ function EditableCell({
       onChange={(e) => setTempVal(e.target.value)}
       onBlur={handleBlur}
       onKeyDown={handleKeyDown}
-      className="h-7 py-1 px-2 text-[1em] border-primary/50 focus-visible:ring-primary min-w-[100px] w-full"
+      className="h-6 py-0 px-1 text-[1em] border-primary/50 focus-visible:ring-primary min-w-[100px] w-full"
     />
   )
 }
@@ -903,7 +903,7 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
         <Table className="border-collapse" style={{ fontSize: `${tableFontSize}px` }}>
           <TableHeader className="bg-indigo-950">
             <TableRow className="border-0 hover:bg-transparent">
-              <TableHead className="w-12 text-center py-2 px-2 text-white font-normal text-[1.1em] border-0">
+              <TableHead className="w-12 text-center py-1 px-2 text-white font-normal text-[1.1em] border-0">
                 <Checkbox
                   className="border-white data-[state=checked]:bg-white data-[state=checked]:text-indigo-950"
                   checked={
@@ -923,8 +923,9 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
                   onDragStart={(e) => handleDragStart(e, idx)}
                   onDragOver={(e) => e.preventDefault()}
                   onDrop={(e) => handleDrop(e, idx)}
-                  className="cursor-move hover:bg-indigo-950/80 py-2 px-2 text-white font-normal text-[1.1em] border-0 select-none"
+                  className="cursor-move hover:bg-indigo-950/80 py-1 px-2 text-white font-normal text-[1.1em] border-0 select-none"
                 >
+                  {' '}
                   <div
                     className="flex items-center gap-2"
                     onClick={() => col.sortable && handleSort(col.id)}
@@ -937,7 +938,7 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
                   </div>
                 </TableHead>
               ))}
-              <TableHead className="text-right py-2 px-2 text-white font-normal text-[1.1em] border-0 w-24">
+              <TableHead className="text-right py-1 px-2 text-white font-normal text-[1.1em] border-0 w-24">
                 Ações
               </TableHead>
             </TableRow>
@@ -951,12 +952,12 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
                 <Fragment key={acc.id}>
                   <TableRow
                     className={cn(
-                      'border-0 group/row text-[1em] transition-colors',
+                      'border-0 group/row text-[1em] transition-colors h-7',
                       isEven ? 'bg-[#bfdbfe]/40 dark:bg-slate-800/40' : 'bg-transparent',
                       'hover:bg-muted/50 dark:hover:bg-slate-700/50',
                     )}
                   >
-                    <TableCell className="text-center py-2 px-2 border-0">
+                    <TableCell className="text-center py-0 px-2 border-0 h-7">
                       <Checkbox
                         className={cn(
                           'data-[state=checked]:bg-indigo-950 data-[state=checked]:border-indigo-950 data-[state=checked]:text-white',
@@ -977,7 +978,7 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
                         <TableCell
                           key={col.id}
                           className={cn(
-                            'py-2 px-2 border-0',
+                            'py-0 px-2 border-0 h-7',
                             col.id === 'contaContabil' ? 'font-mono text-[0.95em]' : '',
                             isCodeCol ? 'font-medium' : '',
                             col.id === 'tipoConta' ? '!text-slate-800 dark:!text-slate-300' : '',
@@ -1004,14 +1005,14 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
                         </TableCell>
                       )
                     })}
-                    <TableCell className="text-right py-2 px-2 border-0">
-                      <div className="flex justify-end gap-1 opacity-100 transition-opacity">
+                    <TableCell className="text-right py-0 px-2 border-0 h-7">
+                      <div className="flex justify-end items-center gap-1 opacity-100 transition-opacity">
                         {acc.hierarchyArray && acc.hierarchyArray.length > 0 && (
                           <Button
                             variant="ghost"
                             size="sm"
                             className={cn(
-                              'h-7 px-2 text-xs transition-colors gap-1 border',
+                              'h-6 px-1.5 text-[10px] transition-colors gap-1 border',
                               isEven
                                 ? 'text-black/70 hover:text-indigo-950 hover:bg-black/10 border-black/10'
                                 : 'text-muted-foreground hover:text-primary hover:bg-primary/10 border-border',
@@ -1020,11 +1021,11 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
                           >
                             {isExpanded ? (
                               <>
-                                <ChevronDown className="h-3.5 w-3.5" /> Recolher
+                                <ChevronDown className="h-3 w-3" /> Recolher
                               </>
                             ) : (
                               <>
-                                <ChevronRight className="h-3.5 w-3.5" /> Expandir
+                                <ChevronRight className="h-3 w-3" /> Expandir
                               </>
                             )}
                           </Button>
@@ -1033,7 +1034,7 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
                           variant="ghost"
                           size="icon"
                           className={cn(
-                            'h-7 w-7 transition-colors',
+                            'h-6 w-6 transition-colors',
                             isEven
                               ? 'text-black/70 hover:text-indigo-950 hover:bg-black/10'
                               : 'text-muted-foreground hover:text-primary hover:bg-primary/10',
@@ -1041,13 +1042,13 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
                           onClick={() => setEditModalAccount(acc)}
                           title="Editar"
                         >
-                          <Edit className="h-3.5 w-3.5" />
+                          <Edit className="h-3 w-3" />
                         </Button>
                         <Button
                           variant="ghost"
                           size="icon"
                           className={cn(
-                            'h-7 w-7 transition-colors',
+                            'h-6 w-6 transition-colors',
                             isEven
                               ? 'text-black/70 hover:text-red-700 hover:bg-red-500/20'
                               : 'text-muted-foreground hover:text-destructive hover:bg-destructive/10',
@@ -1055,7 +1056,7 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
                           onClick={() => onDelete(acc.id)}
                           title="Excluir"
                         >
-                          <Trash2 className="h-3.5 w-3.5" />
+                          <Trash2 className="h-3 w-3" />
                         </Button>
                       </div>
                     </TableCell>
