@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { supabase } from '@/lib/supabase/client'
 import {
   Dialog,
@@ -55,12 +55,57 @@ export function ChartAccountBulkEditModal({ isOpen, onClose, onSave, count }: an
     onSave(payload)
   }
 
+  const [position, setPosition] = useState({ x: 0, y: 0 })
+  const [isDragging, setIsDragging] = useState(false)
+  const dragStart = useRef({ x: 0, y: 0 })
+
+  const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.button !== 0) return
+    const target = e.target as HTMLElement
+    if (target.tagName === 'BUTTON' || target.tagName === 'INPUT' || target.tagName === 'SELECT')
+      return
+    setIsDragging(true)
+    dragStart.current = { x: e.clientX - position.x, y: e.clientY - position.y }
+    e.currentTarget.setPointerCapture(e.pointerId)
+  }
+
+  const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (isDragging) {
+      setPosition({
+        x: e.clientX - dragStart.current.x,
+        y: e.clientY - dragStart.current.y,
+      })
+    }
+  }
+
+  const handlePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (isDragging) {
+      setIsDragging(false)
+      e.currentTarget.releasePointerCapture(e.pointerId)
+    }
+  }
+
+  useEffect(() => {
+    if (isOpen) setPosition({ x: 0, y: 0 })
+  }, [isOpen])
+
   const hasChanges = accountLevel || accountBehavior || nature || accountType || organizationId
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-[600px]">
-        <DialogHeader>
+      <DialogContent
+        className="sm:max-w-[600px]"
+        overlayClassName="bg-black/20"
+        style={{
+          transform: `translate(calc(-50% + ${position.x}px), calc(-50% + ${position.y}px))`,
+        }}
+      >
+        <DialogHeader
+          className="cursor-move select-none"
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUp}
+        >
           <DialogTitle>Edição em Lote ({count} itens)</DialogTitle>
         </DialogHeader>
         <div className="grid grid-cols-2 gap-4 py-4">

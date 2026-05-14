@@ -180,7 +180,7 @@ export default function AccountsList() {
           numeroConta: a.account_number,
           digitoConta: a.check_digit,
           tipoConta: a.account_type,
-          classificacao: bankClass || a.classification,
+          classificacao: a.classification || bankClass,
           hierarchyArray: hierarchyArray,
         })
       })
@@ -309,6 +309,7 @@ export default function AccountsList() {
           onFilterTypeChange={setFilterType}
           filterClass={filterClass}
           onFilterClassChange={setFilterClass}
+          onRefresh={fetchAccounts}
           onUpdateInline={async (id, field, value) => {
             try {
               const dbFieldMap: Record<string, string> = {
