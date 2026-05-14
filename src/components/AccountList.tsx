@@ -1064,8 +1064,8 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
                   {isExpanded && acc.hierarchyArray && acc.hierarchyArray.length > 0 && (
                     <TableRow className="border-0 hover:bg-transparent">
                       <TableCell colSpan={columns.length + 2} className="p-0 border-0">
-                        <div className="bg-slate-50 dark:bg-slate-900/50 p-4 border-b border-indigo-100 dark:border-indigo-900 shadow-inner">
-                          <div className="text-[10px] font-bold text-slate-500 uppercase mb-2 tracking-wider">
+                        <div className="bg-slate-50 dark:bg-slate-900/50 p-1.5 border-b border-indigo-100 dark:border-indigo-900 shadow-inner">
+                          <div className="text-[10px] font-bold text-slate-500 uppercase mb-1 tracking-wider px-1">
                             Raiz Hierárquica
                           </div>
                           <div className="flex flex-col rounded-md overflow-hidden border border-slate-200 dark:border-slate-700">
@@ -1073,22 +1073,24 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
                               <div
                                 key={node.classification}
                                 className={cn(
-                                  'px-4 py-2 flex items-center justify-between text-sm',
+                                  'px-2 py-0.5 flex items-center justify-between text-[0.95em] h-6',
                                   getHierarchyNodeStyle(i),
                                 )}
                               >
-                                <div className="flex items-center gap-3">
+                                <div className="flex items-center gap-2">
                                   <Badge
                                     className={cn(
-                                      'font-mono text-[11px] font-bold px-2 py-0.5 rounded shadow-sm',
+                                      'font-mono text-[10px] font-bold px-1.5 py-0 rounded shadow-sm h-4 leading-tight flex items-center',
                                       getHierarchyBadgeStyle(i),
                                     )}
                                   >
                                     {node.classification}
                                   </Badge>
-                                  <span className="font-semibold">{node.account_name}</span>
+                                  <span className="font-semibold leading-none">
+                                    {node.account_name}
+                                  </span>
                                 </div>
-                                <div className="text-xs opacity-70 font-mono">
+                                <div className="text-[11px] opacity-70 font-mono leading-none">
                                   Cód: {node.account_code || '-'}
                                 </div>
                               </div>
@@ -1191,8 +1193,8 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
                 </div>
               </CardContent>
               {isExpanded && acc.hierarchyArray && acc.hierarchyArray.length > 0 && (
-                <div className="bg-slate-50 dark:bg-slate-900/50 p-4 border-t border-indigo-100 dark:border-indigo-900 shadow-inner">
-                  <div className="text-[10px] font-bold text-slate-500 uppercase mb-2 tracking-wider">
+                <div className="bg-slate-50 dark:bg-slate-900/50 p-2 border-t border-indigo-100 dark:border-indigo-900 shadow-inner">
+                  <div className="text-[10px] font-bold text-slate-500 uppercase mb-1 tracking-wider px-1">
                     Raiz Hierárquica
                   </div>
                   <div className="flex flex-col rounded-md overflow-hidden border border-slate-200 dark:border-slate-700">
@@ -1200,24 +1202,26 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
                       <div
                         key={node.classification}
                         className={cn(
-                          'px-3 py-2 flex flex-col gap-1 text-sm',
+                          'px-2 py-1 flex flex-col gap-0.5 text-sm',
                           getHierarchyNodeStyle(i),
                         )}
                       >
                         <div className="flex items-center gap-2">
                           <Badge
                             className={cn(
-                              'font-mono text-[10px] font-bold px-1.5 py-0 rounded shadow-sm',
+                              'font-mono text-[10px] font-bold px-1.5 py-0 rounded shadow-sm h-4 leading-tight flex items-center',
                               getHierarchyBadgeStyle(i),
                             )}
                           >
                             {node.classification}
                           </Badge>
-                          <span className="text-xs opacity-70 font-mono ml-auto">
+                          <span className="text-[11px] opacity-70 font-mono ml-auto leading-none">
                             Cód: {node.account_code || '-'}
                           </span>
                         </div>
-                        <span className="font-semibold text-[13px] mt-1">{node.account_name}</span>
+                        <span className="font-semibold text-[12px] leading-tight">
+                          {node.account_name}
+                        </span>
                       </div>
                     ))}
                   </div>
