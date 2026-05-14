@@ -30,6 +30,7 @@ import { cn } from '@/lib/utils'
 import { useToast } from '@/hooks/use-toast'
 import { supabase } from '@/lib/supabase/client'
 import { useAuditLog } from '@/hooks/use-audit-log'
+import { AccountCombobox } from '@/components/AccountCombobox'
 
 interface BankAccountModalProps {
   isOpen: boolean
@@ -50,7 +51,6 @@ export function BankAccountModal({
   const { logAction } = useAuditLog()
   const [isSaving, setIsSaving] = useState(false)
   const [chartAccounts, setChartAccounts] = useState<any[]>([])
-  const [openChartAccount, setOpenChartAccount] = useState(false)
 
   const [formData, setFormData] = useState({
     organization_id: '',
@@ -68,19 +68,37 @@ export function BankAccountModal({
   useEffect(() => {
     if (formData.organization_id) {
       const fetchAccounts = async () => {
-        const { data } = await supabase
-          .from('chart_of_accounts')
-          .select('id, account_code, account_name, classification')
-          .eq('organization_id', formData.organization_id)
-          .is('deleted_at', null)
-          .order('account_code')
-        if (data) setChartAccounts(data)
+        let allAccounts: any[] = []
+        let page = 0
+        let hasMore = true
+        while (hasMore) {
+          const { data } = await supabase
+            .from('chart_of_accounts')
+            .select('*')
+            .eq('organization_id', formData.organization_id)
+            .is('deleted_at', null)
+            .order('classification')
+            .range(page * 1000, (page + 1) * 1000 - 1)
+
+          if (data && data.length > 0) {
+            allAccounts = [...allAccounts, ...data]
+            page++
+            if (data.length < 1000) hasMore = false
+          } else {
+            hasMore = false
+          }
+        }
+        setChartAccounts(allAccounts)
       }
       fetchAccounts()
     } else {
       setChartAccounts([])
     }
   }, [formData.organization_id])
+
+  const selectedChartAccountId = formData.account_code
+    ? chartAccounts.find((a) => a.account_code === formData.account_code)?.id
+    : undefined
 
   useEffect(() => {
     if (isOpen) {
@@ -241,64 +259,17 @@ export function BankAccountModal({
             </div>
             <div className="space-y-2">
               <Label>Conta Contábil</Label>
-              <Popover open={openChartAccount} onOpenChange={setOpenChartAccount}>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    role="combobox"
-                    aria-expanded={openChartAccount}
-                    className="w-full justify-between font-normal"
-                    disabled={!formData.organization_id}
-                  >
-                    <span className="truncate">
-                      {formData.account_code
-                        ? chartAccounts.find(
-                            (account) => account.account_code === formData.account_code,
-                          )
-                          ? `${chartAccounts.find((account) => account.account_code === formData.account_code)?.account_code} - ${chartAccounts.find((account) => account.account_code === formData.account_code)?.account_name}`
-                          : formData.account_code
-                        : 'Selecione uma conta...'}
-                    </span>
-                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent
-                  className="w-[var(--radix-popover-trigger-width)] p-0"
-                  align="start"
-                >
-                  <Command>
-                    <CommandInput placeholder="Buscar conta contábil..." />
-                    <CommandList>
-                      <CommandEmpty>Nenhuma conta encontrada.</CommandEmpty>
-                      <CommandGroup>
-                        {chartAccounts.map((account) => (
-                          <CommandItem
-                            key={account.id}
-                            value={`${account.account_code} ${account.account_name} ${account.classification}`}
-                            onSelect={() => {
-                              setFormData({ ...formData, account_code: account.account_code })
-                              setOpenChartAccount(false)
-                            }}
-                          >
-                            <Check
-                              className={cn(
-                                'mr-2 h-4 w-4 shrink-0',
-                                formData.account_code === account.account_code
-                                  ? 'opacity-100'
-                                  : 'opacity-0',
-                              )}
-                            />
-                            <span className="truncate">
-                              {account.account_code} - {account.account_name}
-                              {account.classification && ` (${account.classification})`}
-                            </span>
-                          </CommandItem>
-                        ))}
-                      </CommandGroup>
-                    </CommandList>
-                  </Command>
-                </PopoverContent>
-              </Popover>
+              <AccountCombobox
+                accounts={chartAccounts}
+                value={selectedChartAccountId}
+                onChange={(val) => {
+                  const acc = chartAccounts.find((a) => a.id === val)
+                  if (acc) setFormData({ ...formData, account_code: acc.account_code || '' })
+                }}
+                onClear={() => setFormData({ ...formData, account_code: '' })}
+                placeholder="Selecione a conta contábil..."
+                disabled={!formData.organization_id}
+              />
             </div>
             <div className="space-y-2">
               <Label>Código</Label>

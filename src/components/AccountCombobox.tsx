@@ -114,7 +114,7 @@ export function AccountCombobox({
     })
 
     return { roots: rts, childrenMap: cmap }
-  }, [])
+  }, [accounts])
 
   const toggleExpand = (id: string) => {
     setExpanded((prev) => {

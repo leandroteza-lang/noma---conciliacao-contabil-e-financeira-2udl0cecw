@@ -8,6 +8,7 @@ import { Link } from 'react-router-dom'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
+import { AccountCombobox } from '@/components/AccountCombobox'
 
 export default function AccountsList() {
   const [accounts, setAccounts] = useState<any[]>([])
@@ -19,6 +20,42 @@ export default function AccountsList() {
   const [isNewModalOpen, setIsNewModalOpen] = useState(false)
   const [newAccount, setNewAccount] = useState<any>({})
   const [isSaving, setIsSaving] = useState(false)
+  const [chartAccounts, setChartAccounts] = useState<any[]>([])
+
+  useEffect(() => {
+    if (newAccount.organization_id) {
+      const fetchChartAccounts = async () => {
+        let allAccounts: any[] = []
+        let page = 0
+        let hasMore = true
+        while (hasMore) {
+          const { data } = await supabase
+            .from('chart_of_accounts')
+            .select('*')
+            .eq('organization_id', newAccount.organization_id)
+            .is('deleted_at', null)
+            .order('classification')
+            .range(page * 1000, (page + 1) * 1000 - 1)
+
+          if (data && data.length > 0) {
+            allAccounts = [...allAccounts, ...data]
+            page++
+            if (data.length < 1000) hasMore = false
+          } else {
+            hasMore = false
+          }
+        }
+        setChartAccounts(allAccounts)
+      }
+      fetchChartAccounts()
+    } else {
+      setChartAccounts([])
+    }
+  }, [newAccount.organization_id])
+
+  const selectedChartAccountId = newAccount.contaContabil
+    ? chartAccounts.find((a) => a.account_code === newAccount.contaContabil)?.id
+    : undefined
 
   const fetchOrganizations = async () => {
     const { data } = await supabase.from('organizations').select('*').is('deleted_at', null)
@@ -318,9 +355,16 @@ export default function AccountsList() {
               </div>
               <div className="space-y-2">
                 <Label>Conta Contábil</Label>
-                <Input
-                  value={newAccount.contaContabil || ''}
-                  onChange={(e) => setNewAccount({ ...newAccount, contaContabil: e.target.value })}
+                <AccountCombobox
+                  accounts={chartAccounts}
+                  value={selectedChartAccountId}
+                  onChange={(val) => {
+                    const acc = chartAccounts.find((a) => a.id === val)
+                    if (acc) setNewAccount({ ...newAccount, contaContabil: acc.account_code || '' })
+                  }}
+                  onClear={() => setNewAccount({ ...newAccount, contaContabil: '' })}
+                  placeholder="Selecione a conta contábil..."
+                  disabled={!newAccount.organization_id}
                 />
               </div>
               <div className="space-y-2">
