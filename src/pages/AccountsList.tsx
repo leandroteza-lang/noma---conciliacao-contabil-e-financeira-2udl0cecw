@@ -9,6 +9,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { AccountCombobox } from '@/components/AccountCombobox'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 
 export default function AccountsList() {
   const [accounts, setAccounts] = useState<any[]>([])
@@ -405,17 +412,42 @@ export default function AccountsList() {
               </div>
               <div className="space-y-2">
                 <Label>Tipo Conta</Label>
-                <Input
-                  value={newAccount.tipoConta || ''}
-                  onChange={(e) => setNewAccount({ ...newAccount, tipoConta: e.target.value })}
-                />
+                <Select
+                  value={newAccount.tipoConta || 'NONE'}
+                  onValueChange={(val) =>
+                    setNewAccount({ ...newAccount, tipoConta: val === 'NONE' ? '' : val })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="NONE">Selecione...</SelectItem>
+                    <SelectItem value="CAIXA">CAIXA</SelectItem>
+                    <SelectItem value="CORRENTE">CORRENTE</SelectItem>
+                    <SelectItem value="POUPANÇA">POUPANÇA</SelectItem>
+                    <SelectItem value="APLICAÇÕES">APLICAÇÕES</SelectItem>
+                    <SelectItem value="OUTRAS">OUTRAS</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-2 md:col-span-2">
                 <Label>Classificação</Label>
-                <Input
-                  value={newAccount.classificacao || ''}
-                  onChange={(e) => setNewAccount({ ...newAccount, classificacao: e.target.value })}
-                />
+                <Select
+                  value={newAccount.classificacao || 'NONE'}
+                  onValueChange={(val) =>
+                    setNewAccount({ ...newAccount, classificacao: val === 'NONE' ? '' : val })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="NONE">Selecione...</SelectItem>
+                    <SelectItem value="C">C</SelectItem>
+                    <SelectItem value="B">B</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
             <div className="flex justify-end gap-3 pt-4 border-t border-border mt-4">

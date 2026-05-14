@@ -30,6 +30,13 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Checkbox } from '@/components/ui/checkbox'
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -192,6 +199,43 @@ function EditableCell({
             {org.name}
           </option>
         ))}
+      </select>
+    )
+  }
+
+  if (field === 'tipoConta') {
+    return (
+      <select
+        ref={inputRef}
+        value={tempVal || ''}
+        onChange={(e) => setTempVal(e.target.value)}
+        onBlur={handleBlur}
+        onKeyDown={handleKeyDown}
+        className="w-full text-[1em] border border-primary/50 rounded p-1 outline-none ring-2 ring-primary/20 bg-background text-foreground h-7"
+      >
+        <option value="">Selecione...</option>
+        <option value="CAIXA">CAIXA</option>
+        <option value="CORRENTE">CORRENTE</option>
+        <option value="POUPANÇA">POUPANÇA</option>
+        <option value="APLICAÇÕES">APLICAÇÕES</option>
+        <option value="OUTRAS">OUTRAS</option>
+      </select>
+    )
+  }
+
+  if (field === 'classificacao') {
+    return (
+      <select
+        ref={inputRef}
+        value={tempVal || ''}
+        onChange={(e) => setTempVal(e.target.value)}
+        onBlur={handleBlur}
+        onKeyDown={handleKeyDown}
+        className="w-full text-[1em] border border-primary/50 rounded p-1 outline-none ring-2 ring-primary/20 bg-background text-foreground h-7"
+      >
+        <option value="">Selecione...</option>
+        <option value="C">C</option>
+        <option value="B">B</option>
       </select>
     )
   }
@@ -1216,21 +1260,42 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
             </div>
             <div className="space-y-2">
               <Label>Novo Tipo de Conta</Label>
-              <Input
-                placeholder="Manter original..."
-                value={bulkEditData.tipoConta || ''}
-                onChange={(e) => setBulkEditData({ ...bulkEditData, tipoConta: e.target.value })}
-              />
+              <Select
+                value={bulkEditData.tipoConta || 'NONE'}
+                onValueChange={(val) =>
+                  setBulkEditData({ ...bulkEditData, tipoConta: val === 'NONE' ? '' : val })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Manter original..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="NONE">Manter original...</SelectItem>
+                  <SelectItem value="CAIXA">CAIXA</SelectItem>
+                  <SelectItem value="CORRENTE">CORRENTE</SelectItem>
+                  <SelectItem value="POUPANÇA">POUPANÇA</SelectItem>
+                  <SelectItem value="APLICAÇÕES">APLICAÇÕES</SelectItem>
+                  <SelectItem value="OUTRAS">OUTRAS</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-2">
               <Label>Nova Classificação</Label>
-              <Input
-                placeholder="Manter original..."
-                value={bulkEditData.classificacao || ''}
-                onChange={(e) =>
-                  setBulkEditData({ ...bulkEditData, classificacao: e.target.value })
+              <Select
+                value={bulkEditData.classificacao || 'NONE'}
+                onValueChange={(val) =>
+                  setBulkEditData({ ...bulkEditData, classificacao: val === 'NONE' ? '' : val })
                 }
-              />
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Manter original..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="NONE">Manter original...</SelectItem>
+                  <SelectItem value="C">C</SelectItem>
+                  <SelectItem value="B">B</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-2">
               <Label>Novo Banco</Label>
@@ -1360,21 +1425,48 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Tipo Conta</Label>
-                    <Input
-                      value={editModalAccount.tipoConta || ''}
-                      onChange={(e) =>
-                        setEditModalAccount({ ...editModalAccount, tipoConta: e.target.value })
+                    <Select
+                      value={editModalAccount.tipoConta || 'NONE'}
+                      onValueChange={(val) =>
+                        setEditModalAccount({
+                          ...editModalAccount,
+                          tipoConta: val === 'NONE' ? '' : val,
+                        })
                       }
-                    />
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="NONE">Selecione...</SelectItem>
+                        <SelectItem value="CAIXA">CAIXA</SelectItem>
+                        <SelectItem value="CORRENTE">CORRENTE</SelectItem>
+                        <SelectItem value="POUPANÇA">POUPANÇA</SelectItem>
+                        <SelectItem value="APLICAÇÕES">APLICAÇÕES</SelectItem>
+                        <SelectItem value="OUTRAS">OUTRAS</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div className="space-y-2">
                     <Label>Classificação</Label>
-                    <Input
-                      value={editModalAccount.classificacao || ''}
-                      onChange={(e) =>
-                        setEditModalAccount({ ...editModalAccount, classificacao: e.target.value })
+                    <Select
+                      value={editModalAccount.classificacao || 'NONE'}
+                      onValueChange={(val) =>
+                        setEditModalAccount({
+                          ...editModalAccount,
+                          classificacao: val === 'NONE' ? '' : val,
+                        })
                       }
-                    />
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="NONE">Selecione...</SelectItem>
+                        <SelectItem value="C">C</SelectItem>
+                        <SelectItem value="B">B</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
               </div>
