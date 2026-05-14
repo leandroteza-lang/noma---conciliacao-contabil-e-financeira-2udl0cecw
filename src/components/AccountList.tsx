@@ -12,7 +12,7 @@ import {
   GripVertical,
   ListTree,
 } from 'lucide-react'
-import { useState, useRef, useEffect, useMemo } from 'react'
+import { useState, useRef, useEffect, useMemo, Fragment } from 'react'
 import { Link } from 'react-router-dom'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
@@ -865,7 +865,7 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
               const isExpanded = expandedIds.has(acc.id)
 
               return (
-                <React.Fragment key={acc.id}>
+                <Fragment key={acc.id}>
                   <TableRow
                     className={cn(
                       'border-0 group/row text-[1em] transition-colors',
@@ -1014,7 +1014,7 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
                       </TableCell>
                     </TableRow>
                   )}
-                </React.Fragment>
+                </Fragment>
               )
             })}
           </TableBody>
