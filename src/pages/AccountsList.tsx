@@ -57,54 +57,30 @@ export default function AccountsList() {
       })
 
       const finalAccounts: any[] = []
-      const addedChartClasses = new Set<string>()
 
       bankData.forEach((a) => {
         const chart = a.account_code ? chartMap.get(a.account_code.trim()) : null
         const bankClass = chart ? chart.classification : a.classification
-        const hierarchyPath = bankClass ? `${bankClass}.${a.id}` : a.id
 
+        const hierarchyArray = []
         if (bankClass) {
           const parts = bankClass.split('.')
           let currentClass = ''
           for (let i = 0; i < parts.length; i++) {
             currentClass = currentClass ? `${currentClass}.${parts[i]}` : parts[i]
-            if (!addedChartClasses.has(currentClass)) {
-              addedChartClasses.add(currentClass)
-              const parentChart = chartByClass.get(currentClass)
-              if (parentChart) {
-                finalAccounts.push({
-                  id: `chart-${currentClass}`,
-                  organization_id: parentChart.organization_id,
-                  code: '',
-                  contaContabil: parentChart.account_code,
-                  descricao: parentChart.account_name,
-                  banco: '',
-                  agencia: '',
-                  numeroConta: '',
-                  digitoConta: '',
-                  tipoConta: '',
-                  classificacao: currentClass,
-                  isChartNode: true,
-                  hierarchyPath: currentClass,
-                })
-              } else {
-                finalAccounts.push({
-                  id: `chart-${currentClass}`,
-                  organization_id: a.organization_id,
-                  code: '',
-                  contaContabil: '',
-                  descricao: `Nível ${currentClass}`,
-                  banco: '',
-                  agencia: '',
-                  numeroConta: '',
-                  digitoConta: '',
-                  tipoConta: '',
-                  classificacao: currentClass,
-                  isChartNode: true,
-                  hierarchyPath: currentClass,
-                })
-              }
+            const parentChart = chartByClass.get(currentClass)
+            if (parentChart) {
+              hierarchyArray.push({
+                classification: currentClass,
+                account_code: parentChart.account_code,
+                account_name: parentChart.account_name,
+              })
+            } else {
+              hierarchyArray.push({
+                classification: currentClass,
+                account_code: '',
+                account_name: `Nível ${currentClass}`,
+              })
             }
           }
         }
@@ -120,8 +96,7 @@ export default function AccountsList() {
           digitoConta: a.check_digit,
           tipoConta: a.account_type,
           classificacao: bankClass || a.classification,
-          hierarchyPath: hierarchyPath,
-          isBankNode: true,
+          hierarchyArray: hierarchyArray,
         })
       })
 

@@ -76,36 +76,33 @@ const getTheme = (name: string | null | undefined) => {
   }
 }
 
-const getRowStyle = (acc: any) => {
-  if (acc.isChartNode) {
-    switch (acc.level) {
-      case 0:
-        return 'bg-[#1e1b4b] text-white border-b border-white/10'
-      case 1:
-        return 'bg-[#312e81] text-white border-b border-white/10'
-      case 2:
-        return 'bg-[#4338ca] text-white border-b border-white/10'
-      case 3:
-        return 'bg-[#e0e7ff] text-[#1e1b4b] border-b border-[#c7d2fe]'
-      default:
-        return 'bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-300 border-b border-slate-200 dark:border-slate-800'
-    }
+const getHierarchyNodeStyle = (level: number) => {
+  switch (level) {
+    case 0:
+      return 'bg-[#1e1b4b] text-white border-b border-white/10'
+    case 1:
+      return 'bg-[#312e81] text-white border-b border-white/10'
+    case 2:
+      return 'bg-[#4338ca] text-white border-b border-white/10'
+    case 3:
+      return 'bg-[#e0e7ff] text-[#1e1b4b] border-b border-[#c7d2fe]'
+    default:
+      return 'bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 border-b border-slate-100 dark:border-slate-800'
   }
-  return ''
 }
 
 const getHierarchyBadgeStyle = (level: number) => {
   switch (level) {
     case 0:
-      return 'bg-[#312e81] text-white hover:bg-[#312e81] border border-[#3730a3]'
+      return 'bg-[#312e81] text-white border border-[#3730a3]'
     case 1:
-      return 'bg-[#3730a3] text-white hover:bg-[#3730a3] border border-[#4338ca]'
+      return 'bg-[#3730a3] text-white border border-[#4338ca]'
     case 2:
-      return 'bg-[#4f46e5] text-white hover:bg-[#4f46e5] border border-[#6366f1]'
+      return 'bg-[#4f46e5] text-white border border-[#6366f1]'
     case 3:
-      return 'bg-[#c7d2fe] text-[#1e1b4b] hover:bg-[#c7d2fe] border border-[#a5b4fc]'
+      return 'bg-[#c7d2fe] text-[#1e1b4b] border border-[#a5b4fc]'
     default:
-      return 'bg-slate-200 text-slate-800 hover:bg-slate-200 border border-slate-300'
+      return 'bg-slate-100 text-slate-600 border border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700'
   }
 }
 
@@ -151,7 +148,7 @@ function EditableCell({
             variant="outline"
             className={cn('py-0.5 whitespace-nowrap shadow-sm', theme.badge)}
           >
-            {org?.name || (isChartNode ? '-' : 'Desconhecida')}
+            {org?.name || 'Desconhecida'}
           </Badge>
         </div>
       )
@@ -159,10 +156,7 @@ function EditableCell({
 
     return (
       <div
-        className={cn(
-          'p-1 -m-1 rounded min-h-[28px] flex items-center w-full min-w-0',
-          !isChartNode && 'cursor-pointer hover:bg-muted/50',
-        )}
+        className="p-1 -m-1 rounded min-h-[28px] flex items-center w-full min-w-0 cursor-pointer hover:bg-muted/50"
         onClick={onEditStart}
       >
         {field === 'classificacao' ? (
@@ -173,14 +167,7 @@ function EditableCell({
             {value}
           </Badge>
         ) : (
-          <span
-            className={cn(
-              'truncate w-full block',
-              isChartNode &&
-                field === 'descricao' &&
-                'font-bold text-indigo-900 dark:text-indigo-200',
-            )}
-          >
+          <span className="truncate w-full block">
             {value || <span className="opacity-50 italic text-[0.85em]">Vazio</span>}
           </span>
         )}
@@ -267,7 +254,6 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
   } | null>(null)
 
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
-  const [viewMode, setViewMode] = useState<'hierarchy' | 'analytic'>('hierarchy')
   const { toast } = useToast()
   const { logAction } = useAuditLog()
 
@@ -308,17 +294,10 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
     setExpandedIds(next)
   }
 
-  const accountsWithHierarchy = useMemo(() => {
+  const visibleAccounts = useMemo(() => {
     let sortable = [...accounts]
 
-    sortable = sortable.map((a) => ({
-      ...a,
-      hierarchyPath: String(a.hierarchyPath ?? a.classificacao ?? a.code ?? '').trim(),
-    }))
-
-    if (!sortConfig) {
-      sortable.sort((a, b) => a.hierarchyPath.localeCompare(b.hierarchyPath))
-    } else {
+    if (sortConfig) {
       sortable.sort((a, b) => {
         let aVal = a[sortConfig.key]
         let bVal = b[sortConfig.key]
@@ -332,72 +311,28 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
         if (aVal > bVal) return sortConfig.direction === 'asc' ? 1 : -1
         return 0
       })
+    } else {
+      sortable.sort((a, b) => {
+        const cA = String(a.classificacao || '').toLowerCase()
+        const cB = String(b.classificacao || '').toLowerCase()
+        return cA.localeCompare(cB)
+      })
     }
 
-    const pathToId = new Map<string, string>()
-    sortable.forEach((a) => {
-      if (a.hierarchyPath) pathToId.set(a.hierarchyPath, a.id)
-    })
-
-    return sortable.map((a) => {
-      const parts = (a.hierarchyPath || '').split('.')
-      let parentId = null
-      let tempParts = [...parts]
-      while (tempParts.length > 1) {
-        tempParts.pop()
-        const parentPath = tempParts.join('.')
-        if (pathToId.has(parentPath)) {
-          parentId = pathToId.get(parentPath)
-          break
-        }
-      }
-
-      const hasChildren = sortable.some(
-        (b) =>
-          b.hierarchyPath &&
-          b.hierarchyPath.startsWith(a.hierarchyPath + '.') &&
-          b.hierarchyPath !== a.hierarchyPath,
-      )
-
-      return {
-        ...a,
-        parentId,
-        hasChildren,
-        level: parts.length > 0 && a.hierarchyPath ? parts.length - 1 : 0,
-      }
-    })
+    return sortable
   }, [accounts, sortConfig, organizations])
 
-  const visibleAccounts = useMemo(() => {
-    if (sortConfig !== null || viewMode === 'analytic')
-      return accountsWithHierarchy.filter((a) => !a.isChartNode)
-
-    return accountsWithHierarchy.filter((a) => {
-      if (!a.parentId) return true
-      let current = a
-      while (current.parentId) {
-        if (!expandedIds.has(current.parentId)) return false
-        const parent = accountsWithHierarchy.find((x) => x.id === current.parentId)
-        if (!parent) break
-        current = parent
-      }
-      return true
-    })
-  }, [accountsWithHierarchy, expandedIds, sortConfig, viewMode])
-
   const handleExpandAll = () => {
-    setViewMode('hierarchy')
-    const allWithChildren = accountsWithHierarchy.filter((a) => a.hasChildren).map((a) => a.id)
-    setExpandedIds(new Set(allWithChildren))
+    const allIds = accounts.map((a) => a.id)
+    setExpandedIds(new Set(allIds))
   }
 
   const handleCollapseAll = () => {
-    setViewMode('hierarchy')
     setExpandedIds(new Set())
   }
 
   const handleExpandAnalytic = () => {
-    setViewMode('analytic')
+    setExpandedIds(new Set())
   }
 
   const handleBulkEditSave = async (e: React.FormEvent) => {
@@ -545,20 +480,18 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
 
       const payload = {
         format: formatType === 'browser' ? 'pdf' : formatType,
-        data: visibleAccounts
-          .filter((a) => !a.isChartNode)
-          .map((acc) => ({
-            Empresa: organizations.find((o: any) => o.id === acc.organization_id)?.name || '-',
-            Código: acc.code || '-',
-            'Conta Contábil': acc.contaContabil || '-',
-            Descrição: acc.descricao || '-',
-            Banco: acc.banco || '-',
-            Agência: acc.agencia || '-',
-            Número: acc.numeroConta || '-',
-            Dígito: acc.digitoConta || '-',
-            'Tipo Conta': acc.tipoConta || '-',
-            Classificação: acc.classificacao || '-',
-          })),
+        data: visibleAccounts.map((acc) => ({
+          Empresa: organizations.find((o: any) => o.id === acc.organization_id)?.name || '-',
+          Código: acc.code || '-',
+          'Conta Contábil': acc.contaContabil || '-',
+          Descrição: acc.descricao || '-',
+          Banco: acc.banco || '-',
+          Agência: acc.agencia || '-',
+          Número: acc.numeroConta || '-',
+          Dígito: acc.digitoConta || '-',
+          'Tipo Conta': acc.tipoConta || '-',
+          Classificação: acc.classificacao || '-',
+        })),
       }
 
       const res = await fetch(
@@ -723,7 +656,7 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
     }
   }
 
-  const selectableAccounts = visibleAccounts.filter((a) => !a.isChartNode)
+  const selectableAccounts = visibleAccounts
 
   if (accounts.length === 0) {
     return (
@@ -929,162 +862,159 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
           <TableBody>
             {visibleAccounts.map((acc, index) => {
               const isEven = index % 2 === 1
-              const rowStyle =
-                sortConfig === null && viewMode === 'hierarchy' ? getRowStyle(acc) : ''
+              const isExpanded = expandedIds.has(acc.id)
 
-              if (acc.isChartNode && sortConfig === null && viewMode === 'hierarchy') {
-                return (
+              return (
+                <React.Fragment key={acc.id}>
                   <TableRow
-                    key={acc.id}
                     className={cn(
-                      'border-0 group/row text-[1em] transition-colors hover:opacity-95',
-                      rowStyle,
+                      'border-0 group/row text-[1em] transition-colors',
+                      isEven ? 'bg-[#bfdbfe]/40 dark:bg-slate-800/40' : 'bg-transparent',
+                      'hover:bg-muted/50 dark:hover:bg-slate-700/50',
                     )}
                   >
-                    <TableCell className="py-2 px-2 border-0" colSpan={columns.length + 2}>
-                      <div
-                        className="flex items-center gap-2"
-                        style={{ paddingLeft: `${acc.level * 1.5}rem` }}
-                      >
-                        {acc.hasChildren ? (
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.preventDefault()
-                              e.stopPropagation()
-                              toggleExpand(acc.id)
-                            }}
-                            className="p-0.5 hover:bg-black/10 dark:hover:bg-white/10 rounded mr-1 transition-colors flex items-center justify-center cursor-pointer"
-                          >
-                            {expandedIds.has(acc.id) ? (
-                              <ChevronDown className="w-4 h-4" />
-                            ) : (
-                              <ChevronRight className="w-4 h-4" />
-                            )}
-                          </button>
-                        ) : (
-                          <span className="w-5 h-5 mr-1 inline-block shrink-0" />
+                    <TableCell className="text-center py-2 px-2 border-0">
+                      <Checkbox
+                        className={cn(
+                          'data-[state=checked]:bg-indigo-950 data-[state=checked]:border-indigo-950 data-[state=checked]:text-white',
+                          isEven && 'border-black/50',
                         )}
-                        <Badge
+                        checked={selectedIds.includes(acc.id)}
+                        onCheckedChange={(checked) => {
+                          if (checked) setSelectedIds((prev) => [...prev, acc.id])
+                          else setSelectedIds((prev) => prev.filter((id) => id !== acc.id))
+                        }}
+                      />
+                    </TableCell>
+
+                    {columns.map((col) => {
+                      const isCodeCol = col.id === 'code' || col.id === 'descricao'
+
+                      return (
+                        <TableCell
+                          key={col.id}
                           className={cn(
-                            'font-mono text-[11px] font-bold px-2 py-0.5 rounded shadow-sm',
-                            getHierarchyBadgeStyle(acc.level),
+                            'py-2 px-2 border-0',
+                            col.id === 'contaContabil' ? 'font-mono text-[0.95em]' : '',
+                            isCodeCol ? 'font-medium' : '',
+                            col.id === 'tipoConta' ? '!text-slate-800 dark:!text-slate-300' : '',
                           )}
                         >
-                          {acc.classificacao}
-                        </Badge>
-                        <span className="font-semibold text-[0.95em] uppercase tracking-wide ml-1">
-                          {acc.descricao}
-                        </span>
+                          <div className="flex items-center gap-1 w-full min-w-0">
+                            <div className="flex-1 min-w-0">
+                              <EditableCell
+                                value={acc[col.id]}
+                                field={col.id}
+                                organizations={organizations}
+                                isEditing={editing?.id === acc.id && editing?.field === col.id}
+                                onEditStart={() => setEditing({ id: acc.id, field: col.id })}
+                                onEditCommit={(val: string) =>
+                                  val !== acc[col.id]
+                                    ? handleEditCommit(acc.id, col.id, val)
+                                    : setEditing(null)
+                                }
+                                onEditCancel={() => setEditing(null)}
+                                isChartNode={false}
+                              />
+                            </div>
+                          </div>
+                        </TableCell>
+                      )
+                    })}
+                    <TableCell className="text-right py-2 px-2 border-0">
+                      <div className="flex justify-end gap-1 opacity-100 transition-opacity">
+                        {acc.hierarchyArray && acc.hierarchyArray.length > 0 && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className={cn(
+                              'h-7 px-2 text-xs transition-colors gap-1 border',
+                              isEven
+                                ? 'text-black/70 hover:text-indigo-950 hover:bg-black/10 border-black/10'
+                                : 'text-muted-foreground hover:text-primary hover:bg-primary/10 border-border',
+                            )}
+                            onClick={() => toggleExpand(acc.id)}
+                          >
+                            {isExpanded ? (
+                              <>
+                                <ChevronDown className="h-3.5 w-3.5" /> Recolher
+                              </>
+                            ) : (
+                              <>
+                                <ChevronRight className="h-3.5 w-3.5" /> Expandir
+                              </>
+                            )}
+                          </Button>
+                        )}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className={cn(
+                            'h-7 w-7 transition-colors',
+                            isEven
+                              ? 'text-black/70 hover:text-indigo-950 hover:bg-black/10'
+                              : 'text-muted-foreground hover:text-primary hover:bg-primary/10',
+                          )}
+                          onClick={() => setEditModalAccount(acc)}
+                          title="Editar"
+                        >
+                          <Edit className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className={cn(
+                            'h-7 w-7 transition-colors',
+                            isEven
+                              ? 'text-black/70 hover:text-red-700 hover:bg-red-500/20'
+                              : 'text-muted-foreground hover:text-destructive hover:bg-destructive/10',
+                          )}
+                          onClick={() => onDelete(acc.id)}
+                          title="Excluir"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
                       </div>
                     </TableCell>
                   </TableRow>
-                )
-              }
-
-              return (
-                <TableRow
-                  key={acc.id}
-                  className={cn(
-                    'border-0 group/row text-[1em] transition-colors',
-                    isEven ? 'bg-[#bfdbfe]/40 dark:bg-slate-800/40' : 'bg-transparent',
-                    'hover:bg-muted/50 dark:hover:bg-slate-700/50',
-                    rowStyle,
-                  )}
-                >
-                  <TableCell className="text-center py-2 px-2 border-0">
-                    <Checkbox
-                      className={cn(
-                        'data-[state=checked]:bg-indigo-950 data-[state=checked]:border-indigo-950 data-[state=checked]:text-white',
-                        isEven && 'border-black/50',
-                      )}
-                      checked={selectedIds.includes(acc.id)}
-                      onCheckedChange={(checked) => {
-                        if (checked) setSelectedIds((prev) => [...prev, acc.id])
-                        else setSelectedIds((prev) => prev.filter((id) => id !== acc.id))
-                      }}
-                    />
-                  </TableCell>
-
-                  {columns.map((col) => {
-                    const isCodeCol = col.id === 'code' || col.id === 'descricao'
-                    const showHierarchy =
-                      !sortConfig && viewMode === 'hierarchy' && col.id === 'descricao'
-
-                    return (
-                      <TableCell
-                        key={col.id}
-                        className={cn(
-                          'py-2 px-2 border-0',
-                          col.id === 'contaContabil' ? 'font-mono text-[0.95em]' : '',
-                          isCodeCol && !rowStyle ? 'font-medium' : '',
-                          col.id === 'tipoConta' ? '!text-slate-800 dark:!text-slate-300' : '',
-                        )}
-                      >
-                        <div className="flex items-center gap-1 w-full min-w-0">
-                          {showHierarchy && (
-                            <div
-                              className="flex items-center shrink-0"
-                              style={{ paddingLeft: `${acc.level * 1.5}rem` }}
-                            >
-                              <span className="w-5 h-5 mr-1 inline-block shrink-0 flex items-center justify-center">
-                                <div className="w-1.5 h-1.5 rounded-full bg-slate-300 dark:bg-slate-600" />
-                              </span>
-                            </div>
-                          )}
-                          <div className="flex-1 min-w-0">
-                            <EditableCell
-                              value={acc[col.id]}
-                              field={col.id}
-                              organizations={organizations}
-                              isEditing={editing?.id === acc.id && editing?.field === col.id}
-                              onEditStart={() => setEditing({ id: acc.id, field: col.id })}
-                              onEditCommit={(val: string) =>
-                                val !== acc[col.id]
-                                  ? handleEditCommit(acc.id, col.id, val)
-                                  : setEditing(null)
-                              }
-                              onEditCancel={() => setEditing(null)}
-                              isChartNode={false}
-                            />
+                  {isExpanded && acc.hierarchyArray && acc.hierarchyArray.length > 0 && (
+                    <TableRow className="border-0 hover:bg-transparent">
+                      <TableCell colSpan={columns.length + 2} className="p-0 border-0">
+                        <div className="bg-slate-50 dark:bg-slate-900/50 p-4 border-b border-indigo-100 dark:border-indigo-900 shadow-inner">
+                          <div className="text-[10px] font-bold text-slate-500 uppercase mb-2 tracking-wider">
+                            Raiz Hierárquica
+                          </div>
+                          <div className="flex flex-col rounded-md overflow-hidden border border-slate-200 dark:border-slate-700">
+                            {acc.hierarchyArray.map((node: any, i: number) => (
+                              <div
+                                key={node.classification}
+                                className={cn(
+                                  'px-4 py-2 flex items-center justify-between text-sm',
+                                  getHierarchyNodeStyle(i),
+                                )}
+                              >
+                                <div className="flex items-center gap-3">
+                                  <Badge
+                                    className={cn(
+                                      'font-mono text-[11px] font-bold px-2 py-0.5 rounded shadow-sm',
+                                      getHierarchyBadgeStyle(i),
+                                    )}
+                                  >
+                                    {node.classification}
+                                  </Badge>
+                                  <span className="font-semibold">{node.account_name}</span>
+                                </div>
+                                <div className="text-xs opacity-70 font-mono">
+                                  Cód: {node.account_code || '-'}
+                                </div>
+                              </div>
+                            ))}
                           </div>
                         </div>
                       </TableCell>
-                    )
-                  })}
-                  <TableCell className="text-right py-2 px-2 border-0">
-                    <div className="flex justify-end gap-1 opacity-0 group-hover/row:opacity-100 transition-opacity">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className={cn(
-                          'h-7 w-7 transition-colors',
-                          isEven
-                            ? 'text-black/70 hover:text-indigo-950 hover:bg-black/10'
-                            : 'text-muted-foreground hover:text-primary hover:bg-primary/10',
-                        )}
-                        onClick={() => setEditModalAccount(acc)}
-                        title="Editar"
-                      >
-                        <Edit className="h-3.5 w-3.5" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className={cn(
-                          'h-7 w-7 transition-colors',
-                          isEven
-                            ? 'text-black/70 hover:text-red-700 hover:bg-red-500/20'
-                            : 'text-muted-foreground hover:text-destructive hover:bg-destructive/10',
-                        )}
-                        onClick={() => onDelete(acc.id)}
-                        title="Excluir"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
+                    </TableRow>
+                  )}
+                </React.Fragment>
               )
             })}
           </TableBody>
@@ -1093,60 +1023,15 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:hidden">
         {visibleAccounts.map((acc) => {
-          if (acc.isChartNode) {
-            const rowStyle = getRowStyle(acc)
-            return (
-              <div
-                key={acc.id}
-                className={cn(
-                  'col-span-1 md:col-span-2 p-3 rounded-md flex items-center gap-2 shadow-sm transition-colors',
-                  rowStyle,
-                )}
-              >
-                <div
-                  style={{ paddingLeft: `${acc.level * 1}rem` }}
-                  className="flex items-center gap-2 w-full"
-                >
-                  {acc.hasChildren ? (
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.preventDefault()
-                        e.stopPropagation()
-                        toggleExpand(acc.id)
-                      }}
-                      className="p-1 hover:bg-black/10 dark:hover:bg-white/10 rounded flex items-center justify-center cursor-pointer"
-                    >
-                      {expandedIds.has(acc.id) ? (
-                        <ChevronDown className="w-4 h-4" />
-                      ) : (
-                        <ChevronRight className="w-4 h-4" />
-                      )}
-                    </button>
-                  ) : (
-                    <span className="w-6 shrink-0" />
-                  )}
-                  <Badge
-                    className={cn(
-                      'font-mono text-[11px] font-bold px-2 py-0.5 rounded shadow-sm',
-                      getHierarchyBadgeStyle(acc.level),
-                    )}
-                  >
-                    {acc.classificacao}
-                  </Badge>
-                  <span className="font-semibold text-[0.95em] uppercase tracking-wide truncate ml-1">
-                    {acc.descricao}
-                  </span>
-                </div>
-              </div>
-            )
-          }
-
           const org = organizations.find((o) => o.id === acc.organization_id)
           const theme = getTheme(org?.name)
+          const isExpanded = expandedIds.has(acc.id)
 
           return (
-            <Card key={acc.id} className={cn('border-l-4 shadow-sm bg-card', theme.border)}>
+            <Card
+              key={acc.id}
+              className={cn('border-l-4 shadow-sm bg-card overflow-hidden', theme.border)}
+            >
               <CardContent className="p-4 flex justify-between items-start">
                 <div className="space-y-3 flex-1 pr-4 text-foreground min-w-0">
                   {columns.map((col) => (
@@ -1178,9 +1063,9 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
                               : setEditing(null)
                           }
                           onEditCancel={() => setEditing(null)}
-                          isChartNode={acc.isChartNode}
+                          isChartNode={false}
                         />
-                      </div>
+                      </div>{' '}
                     </div>
                   ))}
                 </div>
@@ -1201,8 +1086,59 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
                   >
                     <Trash2 className="h-3.5 w-3.5 mr-2" /> Excluir
                   </Button>
+                  {acc.hierarchyArray && acc.hierarchyArray.length > 0 && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="text-muted-foreground hover:text-primary hover:bg-primary/10 bg-background border-border justify-start"
+                      onClick={() => toggleExpand(acc.id)}
+                    >
+                      {isExpanded ? (
+                        <>
+                          <ChevronDown className="h-3.5 w-3.5 mr-2" /> Recolher
+                        </>
+                      ) : (
+                        <>
+                          <ChevronRight className="h-3.5 w-3.5 mr-2" /> Expandir
+                        </>
+                      )}
+                    </Button>
+                  )}
                 </div>
               </CardContent>
+              {isExpanded && acc.hierarchyArray && acc.hierarchyArray.length > 0 && (
+                <div className="bg-slate-50 dark:bg-slate-900/50 p-4 border-t border-indigo-100 dark:border-indigo-900 shadow-inner">
+                  <div className="text-[10px] font-bold text-slate-500 uppercase mb-2 tracking-wider">
+                    Raiz Hierárquica
+                  </div>
+                  <div className="flex flex-col rounded-md overflow-hidden border border-slate-200 dark:border-slate-700">
+                    {acc.hierarchyArray.map((node: any, i: number) => (
+                      <div
+                        key={node.classification}
+                        className={cn(
+                          'px-3 py-2 flex flex-col gap-1 text-sm',
+                          getHierarchyNodeStyle(i),
+                        )}
+                      >
+                        <div className="flex items-center gap-2">
+                          <Badge
+                            className={cn(
+                              'font-mono text-[10px] font-bold px-1.5 py-0 rounded shadow-sm',
+                              getHierarchyBadgeStyle(i),
+                            )}
+                          >
+                            {node.classification}
+                          </Badge>
+                          <span className="text-xs opacity-70 font-mono ml-auto">
+                            Cód: {node.account_code || '-'}
+                          </span>
+                        </div>
+                        <span className="font-semibold text-[13px] mt-1">{node.account_name}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </Card>
           )
         })}
