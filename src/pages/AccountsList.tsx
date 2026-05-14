@@ -231,7 +231,7 @@ export default function AccountsList() {
 
       if (error) throw error
       toast({ title: 'Exclusão solicitada com sucesso' })
-      loadData(false)
+      fetchAccounts()
     } catch (error: any) {
       toast({ variant: 'destructive', title: 'Erro ao excluir conta', description: error.message })
     }
@@ -257,7 +257,7 @@ export default function AccountsList() {
       toast({ title: 'Conta criada com sucesso!' })
       setIsNewModalOpen(false)
       setNewAccount({})
-      loadData(false)
+      fetchAccounts()
     } catch (error: any) {
       toast({ variant: 'destructive', title: 'Erro ao criar conta', description: error.message })
     } finally {
@@ -292,14 +292,14 @@ export default function AccountsList() {
       </div>
 
       <div className="flex-1 min-h-0 bg-white dark:bg-slate-900 rounded-md border-0 shadow-sm flex flex-col overflow-visible relative z-10">
-        {!isDataLoaded ? (
+        {loading ? (
           <div className="flex items-center justify-center p-8 text-muted-foreground">
             Carregando...
           </div>
         ) : (
           <AccountList
             accounts={accounts}
-            allChartAccounts={allChartAccounts}
+            allChartAccounts={[]}
             organizations={organizations}
             onDelete={handleDelete}
             searchTerm={searchTerm}
@@ -330,7 +330,7 @@ export default function AccountsList() {
                   .update({ [dbField]: value })
                   .eq('id', id)
                 if (error) throw error
-                loadData(false)
+                fetchAccounts()
                 return true
               } catch (e: any) {
                 toast({
@@ -380,10 +380,10 @@ export default function AccountsList() {
               <div className="space-y-2 col-span-12 sm:col-span-8">
                 <Label>Conta Contábil</Label>
                 <AccountCombobox
-                  accounts={chartAccountsForNewModal}
+                  accounts={chartAccounts}
                   value={selectedChartAccountId}
                   onChange={(val) => {
-                    const acc = chartAccountsForNewModal.find((a) => a.id === val)
+                    const acc = chartAccounts.find((a) => a.id === val)
                     if (acc) setNewAccount({ ...newAccount, contaContabil: acc.account_code || '' })
                   }}
                   onClear={() => setNewAccount({ ...newAccount, contaContabil: '' })}
