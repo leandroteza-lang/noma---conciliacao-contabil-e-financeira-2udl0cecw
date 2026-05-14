@@ -11,6 +11,8 @@ import {
   ChevronDown,
   GripVertical,
   ListTree,
+  Search,
+  X,
 } from 'lucide-react'
 import { useState, useRef, useEffect, useMemo, Fragment } from 'react'
 import { Link } from 'react-router-dom'
@@ -29,7 +31,6 @@ import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Checkbox } from '@/components/ui/checkbox'
-import { Search } from 'lucide-react'
 import {
   Select,
   SelectContent,
@@ -53,6 +54,7 @@ import { MultiSelect } from '@/components/MultiSelect'
 
 interface Props {
   accounts: any[]
+  allChartAccounts?: any[]
   organizations: Organization[]
   onDelete: (id: string) => void
   onUpdateInline?: (id: string, field: string, value: string) => Promise<boolean>
@@ -264,6 +266,7 @@ function EditableCell({
 
 export function AccountList({
   accounts,
+  allChartAccounts,
   organizations,
   onDelete,
   onUpdateInline,
@@ -282,38 +285,13 @@ export function AccountList({
   const [isBulkEditOpen, setIsBulkEditOpen] = useState(false)
   const [bulkEditData, setBulkEditData] = useState<any>({})
   const [isSaving, setIsSaving] = useState(false)
-  const [modalChartAccounts, setModalChartAccounts] = useState<any[]>([])
 
-  useEffect(() => {
-    if (editModalAccount?.organization_id) {
-      const fetchAccounts = async () => {
-        let allAccounts: any[] = []
-        let page = 0
-        let hasMore = true
-        while (hasMore) {
-          const { data } = await supabase
-            .from('chart_of_accounts')
-            .select('*')
-            .eq('organization_id', editModalAccount.organization_id)
-            .is('deleted_at', null)
-            .order('classification')
-            .range(page * 1000, (page + 1) * 1000 - 1)
-
-          if (data && data.length > 0) {
-            allAccounts = [...allAccounts, ...data]
-            page++
-            if (data.length < 1000) hasMore = false
-          } else {
-            hasMore = false
-          }
-        }
-        setModalChartAccounts(allAccounts)
-      }
-      fetchAccounts()
-    } else {
-      setModalChartAccounts([])
-    }
-  }, [editModalAccount?.organization_id])
+  const modalChartAccounts = useMemo(() => {
+    if (!editModalAccount?.organization_id || !allChartAccounts) return []
+    return allChartAccounts
+      .filter((a) => a.organization_id === editModalAccount.organization_id)
+      .sort((a, b) => (a.classification || '').localeCompare(b.classification || ''))
+  }, [editModalAccount?.organization_id, allChartAccounts])
 
   const selectedChartAccountId = useMemo(() => {
     if (!editModalAccount?.contaContabil) return undefined
@@ -859,7 +837,10 @@ export function AccountList({
               />
             </div>
 
-            {(filterOrg.length > 0 || filterType.length > 0 || filterClass.length > 0) && (
+            {(filterOrg.length > 0 ||
+              filterType.length > 0 ||
+              filterClass.length > 0 ||
+              searchTerm) && (
               <div className="flex items-center pl-1 border-l border-slate-200 dark:border-slate-800 ml-1">
                 <Button
                   variant="ghost"
@@ -869,9 +850,10 @@ export function AccountList({
                     onFilterOrgChange?.([])
                     onFilterTypeChange?.([])
                     onFilterClassChange?.([])
+                    onSearchChange?.('')
                   }}
                 >
-                  Limpar
+                  Limpar Todos
                 </Button>
               </div>
             )}
@@ -882,10 +864,20 @@ export function AccountList({
             <Input
               type="text"
               placeholder="Buscar contas..."
-              className="w-full h-full pl-9 border border-slate-300 dark:border-slate-700 hover:border-indigo-300 focus-visible:border-indigo-500 focus-visible:ring-2 focus-visible:ring-indigo-500/20 bg-white dark:bg-slate-900 transition-all shadow-sm font-medium text-slate-900 dark:text-slate-100 placeholder:text-slate-500"
+              className="w-full h-full pl-9 pr-9 border border-slate-300 dark:border-slate-700 hover:border-indigo-300 focus-visible:border-indigo-500 focus-visible:ring-2 focus-visible:ring-indigo-500/20 bg-white dark:bg-slate-900 transition-all shadow-sm font-medium text-slate-900 dark:text-slate-100 placeholder:text-slate-500"
               value={searchTerm || ''}
               onChange={(e) => onSearchChange?.(e.target.value)}
             />
+            {searchTerm && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                onClick={() => onSearchChange?.('')}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            )}
           </div>
 
           <div className="flex items-center gap-2 shrink-0 justify-end">
