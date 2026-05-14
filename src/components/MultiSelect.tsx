@@ -44,17 +44,19 @@ export function MultiSelect({
             {selected.length > 0 ? (
               <div className="flex gap-1 flex-wrap items-center py-0.5 w-full">
                 {selected.length > 2 ? (
-                  <Badge
-                    variant="secondary"
+                  <span
                     className={cn(
-                      'text-[10px] px-1.5 py-0 h-5 font-medium whitespace-nowrap',
+                      'truncate block w-full text-[11px] leading-tight',
                       isActive
-                        ? 'bg-indigo-600 text-white hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600'
-                        : '',
+                        ? 'text-indigo-800 font-medium dark:text-indigo-200'
+                        : 'text-slate-700 dark:text-slate-300',
                     )}
+                    title={selected
+                      .map((s) => options.find((o) => o.value === s)?.label || s)
+                      .join(', ')}
                   >
-                    {selected.length} selecionados
-                  </Badge>
+                    {selected.map((s) => options.find((o) => o.value === s)?.label || s).join(', ')}
+                  </span>
                 ) : (
                   selected.map((s) => {
                     const opt = options.find((o) => o.value === s)

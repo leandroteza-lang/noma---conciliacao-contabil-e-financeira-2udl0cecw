@@ -221,6 +221,35 @@ export default function AccountsList() {
     return () => clearTimeout(delayDebounceFn)
   }, [searchTerm, filterOrg, filterType, filterClass])
 
+  const fetchAccountsRef = useRef(fetchAccounts)
+  useEffect(() => {
+    fetchAccountsRef.current = fetchAccounts
+  })
+
+  useEffect(() => {
+    let timeoutId: any
+    const channel = supabase
+      .channel('accounts_changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'bank_accounts' }, () => {
+        clearTimeout(timeoutId)
+        timeoutId = setTimeout(() => {
+          fetchAccountsRef.current()
+        }, 500)
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'chart_of_accounts' }, () => {
+        clearTimeout(timeoutId)
+        timeoutId = setTimeout(() => {
+          fetchAccountsRef.current()
+        }, 500)
+      })
+      .subscribe()
+
+    return () => {
+      clearTimeout(timeoutId)
+      supabase.removeChannel(channel)
+    }
+  }, [])
+
   const handleDelete = async (id: string) => {
     if (!confirm('Deseja realmente solicitar a exclusão desta conta?')) return
     try {
