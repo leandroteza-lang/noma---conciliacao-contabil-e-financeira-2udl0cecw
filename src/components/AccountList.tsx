@@ -54,6 +54,7 @@ import { MultiSelect } from '@/components/MultiSelect'
 
 interface Props {
   accounts: any[]
+  loading?: boolean
   allChartAccounts?: any[]
   organizations: Organization[]
   onDelete: (id: string) => void
@@ -266,6 +267,7 @@ function EditableCell({
 
 export function AccountList({
   accounts,
+  loading,
   allChartAccounts,
   organizations,
   onDelete,
@@ -742,20 +744,6 @@ export function AccountList({
 
   const selectableAccounts = visibleAccounts
 
-  if (accounts.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center py-16 px-4 text-muted-foreground bg-card rounded-xl border border-dashed border-border shadow-sm animate-in fade-in">
-        <div className="bg-muted p-4 rounded-full mb-4">
-          <Building className="h-8 w-8 text-muted-foreground/70" />
-        </div>
-        <p className="text-lg font-semibold text-foreground">Nenhuma conta encontrada</p>
-        <p className="text-sm text-muted-foreground mt-1">
-          Cadastre uma nova conta ou ajuste os filtros.
-        </p>
-      </div>
-    )
-  }
-
   return (
     <div className="flex flex-col h-full space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="flex flex-col gap-3">
@@ -967,368 +955,391 @@ export function AccountList({
         </div>
       </div>
 
-      <div className="hidden lg:flex flex-col flex-1 min-h-0 rounded-xl border-2 border-indigo-950 bg-card shadow-sm overflow-hidden">
-        <div className="flex justify-start items-center gap-2 p-2 bg-white dark:bg-slate-950 border-b border-indigo-100 dark:border-indigo-900 shrink-0">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleExpandAll}
-            className="h-8 gap-2 text-xs font-medium"
-          >
-            <ListTree className="h-4 w-4" /> Expandir Todos
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleExpandAnalytic}
-            className="h-8 text-xs font-medium"
-          >
-            Expandir Analítico
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleCollapseAll}
-            className="h-8 text-xs font-medium"
-          >
-            Recolher Todos
-          </Button>
+      {loading ? (
+        <div className="flex flex-col items-center justify-center py-16 px-4 text-muted-foreground bg-card rounded-xl border border-dashed border-border shadow-sm animate-in fade-in flex-1">
+          <div className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mb-4"></div>
+          <p className="text-lg font-semibold text-foreground">Carregando contas...</p>
         </div>
-        <Table
-          className="border-collapse"
-          wrapperClassName="flex-1 overflow-auto max-h-[calc(100vh-230px)]"
-          style={{ fontSize: `${tableFontSize}px` }}
-        >
-          <TableHeader className="bg-indigo-950 sticky top-0 z-20 shadow-md">
-            <TableRow disableZebra className="border-0 hover:bg-indigo-950 bg-indigo-950">
-              <TableHead className="w-12 text-center py-1 px-2 text-white font-normal text-[1.1em] border-0 sticky top-0 bg-indigo-950 z-20 hover:bg-indigo-950">
-                <Checkbox
-                  className="border-white data-[state=checked]:bg-white data-[state=checked]:text-indigo-950"
-                  checked={
-                    selectableAccounts.length > 0 &&
-                    selectedIds.length === selectableAccounts.length
-                  }
-                  onCheckedChange={(checked) => {
-                    if (checked) setSelectedIds(selectableAccounts.map((a) => a.id))
-                    else setSelectedIds([])
-                  }}
-                />
-              </TableHead>
-              {columns.map((col, idx) => (
-                <TableHead
-                  key={col.id}
-                  draggable
-                  onDragStart={(e) => handleDragStart(e, idx)}
-                  onDragOver={(e) => e.preventDefault()}
-                  onDrop={(e) => handleDrop(e, idx)}
-                  className="cursor-move py-1 px-2 text-white font-normal text-[1.1em] border-0 select-none sticky top-0 bg-indigo-950 z-20 hover:bg-indigo-950"
-                >
-                  {' '}
-                  <div
-                    className="flex items-center gap-2"
-                    onClick={() => col.sortable && handleSort(col.id)}
-                  >
-                    <GripVertical className="h-3 w-3 opacity-30 cursor-grab active:cursor-grabbing shrink-0" />
-                    {col.label}
-                    {col.sortable && (
-                      <ArrowUpDown className="h-3 w-3 opacity-50 cursor-pointer shrink-0" />
-                    )}
-                  </div>
-                </TableHead>
-              ))}
-              <TableHead className="text-right py-1 px-2 text-white font-normal text-[1.1em] border-0 w-24 sticky top-0 bg-indigo-950 z-20 hover:bg-indigo-950">
-                Ações
-              </TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {visibleAccounts.map((acc, index) => {
-              const isEven = index % 2 === 1
+      ) : accounts.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-16 px-4 text-muted-foreground bg-card rounded-xl border border-dashed border-border shadow-sm animate-in fade-in flex-1">
+          <div className="bg-muted p-4 rounded-full mb-4">
+            <Building className="h-8 w-8 text-muted-foreground/70" />
+          </div>
+          <p className="text-lg font-semibold text-foreground">Nenhuma conta encontrada</p>
+          <p className="text-sm text-muted-foreground mt-1">
+            Cadastre uma nova conta ou ajuste os filtros.
+          </p>
+        </div>
+      ) : (
+        <>
+          <div className="hidden lg:flex flex-col flex-1 min-h-0 rounded-xl border-2 border-indigo-950 bg-card shadow-sm overflow-hidden">
+            <div className="flex justify-start items-center gap-2 p-2 bg-white dark:bg-slate-950 border-b border-indigo-100 dark:border-indigo-900 shrink-0">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleExpandAll}
+                className="h-8 gap-2 text-xs font-medium"
+              >
+                <ListTree className="h-4 w-4" /> Expandir Todos
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleExpandAnalytic}
+                className="h-8 text-xs font-medium"
+              >
+                Expandir Analítico
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleCollapseAll}
+                className="h-8 text-xs font-medium"
+              >
+                Recolher Todos
+              </Button>
+            </div>
+            <Table
+              className="border-collapse"
+              wrapperClassName="flex-1 overflow-auto max-h-[calc(100vh-230px)]"
+              style={{ fontSize: `${tableFontSize}px` }}
+            >
+              <TableHeader className="bg-indigo-950 sticky top-0 z-20 shadow-md">
+                <TableRow disableZebra className="border-0 hover:bg-indigo-950 bg-indigo-950">
+                  <TableHead className="w-12 text-center py-1 px-2 text-white font-normal text-[1.1em] border-0 sticky top-0 bg-indigo-950 z-20 hover:bg-indigo-950">
+                    <Checkbox
+                      className="border-white data-[state=checked]:bg-white data-[state=checked]:text-indigo-950"
+                      checked={
+                        selectableAccounts.length > 0 &&
+                        selectedIds.length === selectableAccounts.length
+                      }
+                      onCheckedChange={(checked) => {
+                        if (checked) setSelectedIds(selectableAccounts.map((a) => a.id))
+                        else setSelectedIds([])
+                      }}
+                    />
+                  </TableHead>
+                  {columns.map((col, idx) => (
+                    <TableHead
+                      key={col.id}
+                      draggable
+                      onDragStart={(e) => handleDragStart(e, idx)}
+                      onDragOver={(e) => e.preventDefault()}
+                      onDrop={(e) => handleDrop(e, idx)}
+                      className="cursor-move py-1 px-2 text-white font-normal text-[1.1em] border-0 select-none sticky top-0 bg-indigo-950 z-20 hover:bg-indigo-950"
+                    >
+                      {' '}
+                      <div
+                        className="flex items-center gap-2"
+                        onClick={() => col.sortable && handleSort(col.id)}
+                      >
+                        <GripVertical className="h-3 w-3 opacity-30 cursor-grab active:cursor-grabbing shrink-0" />
+                        {col.label}
+                        {col.sortable && (
+                          <ArrowUpDown className="h-3 w-3 opacity-50 cursor-pointer shrink-0" />
+                        )}
+                      </div>
+                    </TableHead>
+                  ))}
+                  <TableHead className="text-right py-1 px-2 text-white font-normal text-[1.1em] border-0 w-24 sticky top-0 bg-indigo-950 z-20 hover:bg-indigo-950">
+                    Ações
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {visibleAccounts.map((acc, index) => {
+                  const isEven = index % 2 === 1
+                  const isExpanded = expandedIds.has(acc.id)
+
+                  return (
+                    <Fragment key={acc.id}>
+                      <TableRow
+                        className={cn(
+                          'border-0 group/row text-[1em] transition-colors h-7',
+                          isEven ? 'bg-[#bfdbfe]/40 dark:bg-slate-800/40' : 'bg-transparent',
+                          'hover:bg-muted/50 dark:hover:bg-slate-700/50',
+                        )}
+                      >
+                        <TableCell className="text-center py-0 px-2 border-0 h-7">
+                          <Checkbox
+                            className={cn(
+                              'data-[state=checked]:bg-indigo-950 data-[state=checked]:border-indigo-950 data-[state=checked]:text-white',
+                              isEven && 'border-black/50',
+                            )}
+                            checked={selectedIds.includes(acc.id)}
+                            onCheckedChange={(checked) => {
+                              if (checked) setSelectedIds((prev) => [...prev, acc.id])
+                              else setSelectedIds((prev) => prev.filter((id) => id !== acc.id))
+                            }}
+                          />
+                        </TableCell>
+
+                        {columns.map((col) => {
+                          const isCodeCol = col.id === 'code' || col.id === 'descricao'
+
+                          return (
+                            <TableCell
+                              key={col.id}
+                              className={cn(
+                                'py-0 px-2 border-0 h-7',
+                                col.id === 'contaContabil' ? 'font-mono text-[0.95em]' : '',
+                                isCodeCol ? 'font-medium' : '',
+                                col.id === 'tipoConta'
+                                  ? '!text-slate-800 dark:!text-slate-300'
+                                  : '',
+                              )}
+                            >
+                              <div className="flex items-center gap-1 w-full min-w-0">
+                                <div className="flex-1 min-w-0">
+                                  <EditableCell
+                                    value={acc[col.id]}
+                                    field={col.id}
+                                    organizations={organizations}
+                                    isEditing={editing?.id === acc.id && editing?.field === col.id}
+                                    onEditStart={() => setEditing({ id: acc.id, field: col.id })}
+                                    onEditCommit={(val: string) =>
+                                      val !== acc[col.id]
+                                        ? handleEditCommit(acc.id, col.id, val)
+                                        : setEditing(null)
+                                    }
+                                    onEditCancel={() => setEditing(null)}
+                                    isChartNode={false}
+                                  />
+                                </div>
+                              </div>
+                            </TableCell>
+                          )
+                        })}
+                        <TableCell className="text-right py-0 px-2 border-0 h-7">
+                          <div className="flex justify-end items-center gap-1 opacity-100 transition-opacity">
+                            {acc.hierarchyArray && acc.hierarchyArray.length > 0 && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className={cn(
+                                  'h-6 px-1.5 text-[10px] transition-colors gap-1 border',
+                                  isEven
+                                    ? 'text-black/70 hover:text-indigo-950 hover:bg-black/10 border-black/10'
+                                    : 'text-muted-foreground hover:text-primary hover:bg-primary/10 border-border',
+                                )}
+                                onClick={() => toggleExpand(acc.id)}
+                              >
+                                {isExpanded ? (
+                                  <>
+                                    <ChevronDown className="h-3 w-3" /> Recolher
+                                  </>
+                                ) : (
+                                  <>
+                                    <ChevronRight className="h-3 w-3" /> Expandir
+                                  </>
+                                )}
+                              </Button>
+                            )}
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className={cn(
+                                'h-6 w-6 transition-colors',
+                                isEven
+                                  ? 'text-black/70 hover:text-indigo-950 hover:bg-black/10'
+                                  : 'text-muted-foreground hover:text-primary hover:bg-primary/10',
+                              )}
+                              onClick={() => setEditModalAccount(acc)}
+                              title="Editar"
+                            >
+                              <Edit className="h-3 w-3" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className={cn(
+                                'h-6 w-6 transition-colors',
+                                isEven
+                                  ? 'text-black/70 hover:text-red-700 hover:bg-red-500/20'
+                                  : 'text-muted-foreground hover:text-destructive hover:bg-destructive/10',
+                              )}
+                              onClick={() => onDelete(acc.id)}
+                              title="Excluir"
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                      {isExpanded && acc.hierarchyArray && acc.hierarchyArray.length > 0 && (
+                        <TableRow className="border-0 hover:bg-transparent">
+                          <TableCell colSpan={columns.length + 2} className="p-0 border-0">
+                            <div className="bg-slate-50 dark:bg-slate-900/50 p-1.5 border-b border-indigo-100 dark:border-indigo-900 shadow-inner">
+                              <div className="text-[10px] font-bold text-slate-500 uppercase mb-1 tracking-wider px-1">
+                                Raiz Hierárquica
+                              </div>
+                              <div className="flex flex-col rounded-md overflow-hidden border border-slate-200 dark:border-slate-700">
+                                {acc.hierarchyArray.map((node: any, i: number) => (
+                                  <div
+                                    key={node.classification}
+                                    className={cn(
+                                      'px-2 py-0.5 flex items-center justify-between text-[0.95em] h-6',
+                                      getHierarchyNodeStyle(i),
+                                    )}
+                                  >
+                                    <div className="flex items-center gap-2">
+                                      <Badge
+                                        className={cn(
+                                          'font-mono text-[10px] font-bold px-1.5 py-0 rounded shadow-sm h-4 leading-tight flex items-center',
+                                          getHierarchyBadgeStyle(i),
+                                        )}
+                                      >
+                                        {node.classification}
+                                      </Badge>
+                                      <span className="font-semibold leading-none">
+                                        {node.account_name}
+                                      </span>
+                                    </div>
+                                    <div className="text-[11px] opacity-70 font-mono leading-none">
+                                      Cód: {node.account_code || '-'}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </Fragment>
+                  )
+                })}
+              </TableBody>
+            </Table>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:hidden flex-1 overflow-auto p-1">
+            {visibleAccounts.map((acc) => {
+              const org = organizations.find((o) => o.id === acc.organization_id)
+              const theme = getTheme(org?.name)
               const isExpanded = expandedIds.has(acc.id)
 
               return (
-                <Fragment key={acc.id}>
-                  <TableRow
-                    className={cn(
-                      'border-0 group/row text-[1em] transition-colors h-7',
-                      isEven ? 'bg-[#bfdbfe]/40 dark:bg-slate-800/40' : 'bg-transparent',
-                      'hover:bg-muted/50 dark:hover:bg-slate-700/50',
-                    )}
-                  >
-                    <TableCell className="text-center py-0 px-2 border-0 h-7">
-                      <Checkbox
-                        className={cn(
-                          'data-[state=checked]:bg-indigo-950 data-[state=checked]:border-indigo-950 data-[state=checked]:text-white',
-                          isEven && 'border-black/50',
-                        )}
-                        checked={selectedIds.includes(acc.id)}
-                        onCheckedChange={(checked) => {
-                          if (checked) setSelectedIds((prev) => [...prev, acc.id])
-                          else setSelectedIds((prev) => prev.filter((id) => id !== acc.id))
-                        }}
-                      />
-                    </TableCell>
-
-                    {columns.map((col) => {
-                      const isCodeCol = col.id === 'code' || col.id === 'descricao'
-
-                      return (
-                        <TableCell
+                <Card
+                  key={acc.id}
+                  className={cn('border-l-4 shadow-sm bg-card overflow-hidden', theme.border)}
+                >
+                  <CardContent className="p-4 flex justify-between items-start">
+                    <div className="space-y-3 flex-1 pr-4 text-foreground min-w-0">
+                      {columns.map((col) => (
+                        <div
                           key={col.id}
                           className={cn(
-                            'py-0 px-2 border-0 h-7',
-                            col.id === 'contaContabil' ? 'font-mono text-[0.95em]' : '',
-                            isCodeCol ? 'font-medium' : '',
+                            'flex items-center gap-2 text-[1em]',
+                            col.id === 'organization_id' ||
+                              col.id === 'code' ||
+                              col.id === 'descricao'
+                              ? 'font-bold'
+                              : 'font-normal',
+                            col.id === 'descricao' && 'text-[1.1em]',
+                            col.id === 'contaContabil' && 'font-mono text-muted-foreground',
                             col.id === 'tipoConta' ? '!text-slate-800 dark:!text-slate-300' : '',
                           )}
                         >
-                          <div className="flex items-center gap-1 w-full min-w-0">
-                            <div className="flex-1 min-w-0">
-                              <EditableCell
-                                value={acc[col.id]}
-                                field={col.id}
-                                organizations={organizations}
-                                isEditing={editing?.id === acc.id && editing?.field === col.id}
-                                onEditStart={() => setEditing({ id: acc.id, field: col.id })}
-                                onEditCommit={(val: string) =>
-                                  val !== acc[col.id]
-                                    ? handleEditCommit(acc.id, col.id, val)
-                                    : setEditing(null)
-                                }
-                                onEditCancel={() => setEditing(null)}
-                                isChartNode={false}
-                              />
-                            </div>
-                          </div>
-                        </TableCell>
-                      )
-                    })}
-                    <TableCell className="text-right py-0 px-2 border-0 h-7">
-                      <div className="flex justify-end items-center gap-1 opacity-100 transition-opacity">
-                        {acc.hierarchyArray && acc.hierarchyArray.length > 0 && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className={cn(
-                              'h-6 px-1.5 text-[10px] transition-colors gap-1 border',
-                              isEven
-                                ? 'text-black/70 hover:text-indigo-950 hover:bg-black/10 border-black/10'
-                                : 'text-muted-foreground hover:text-primary hover:bg-primary/10 border-border',
-                            )}
-                            onClick={() => toggleExpand(acc.id)}
-                          >
-                            {isExpanded ? (
-                              <>
-                                <ChevronDown className="h-3 w-3" /> Recolher
-                              </>
-                            ) : (
-                              <>
-                                <ChevronRight className="h-3 w-3" /> Expandir
-                              </>
-                            )}
-                          </Button>
-                        )}
+                          <span className="text-muted-foreground text-[0.85em] font-medium uppercase w-24 shrink-0">
+                            {col.label}:
+                          </span>
+                          <div className="flex-1 min-w-0 flex items-center">
+                            <EditableCell
+                              value={acc[col.id]}
+                              field={col.id}
+                              organizations={organizations}
+                              isEditing={editing?.id === acc.id && editing?.field === col.id}
+                              onEditStart={() => setEditing({ id: acc.id, field: col.id })}
+                              onEditCommit={(val: string) =>
+                                val !== acc[col.id]
+                                  ? handleEditCommit(acc.id, col.id, val)
+                                  : setEditing(null)
+                              }
+                              onEditCancel={() => setEditing(null)}
+                              isChartNode={false}
+                            />
+                          </div>{' '}
+                        </div>
+                      ))}
+                    </div>
+                    <div className="flex flex-col gap-2 shrink-0">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="text-muted-foreground hover:text-primary hover:bg-primary/10 bg-background border-border justify-start"
+                        onClick={() => setEditModalAccount(acc)}
+                      >
+                        <Edit className="h-3.5 w-3.5 mr-2" /> Editar
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 bg-background border-border justify-start"
+                        onClick={() => onDelete(acc.id)}
+                      >
+                        <Trash2 className="h-3.5 w-3.5 mr-2" /> Excluir
+                      </Button>
+                      {acc.hierarchyArray && acc.hierarchyArray.length > 0 && (
                         <Button
-                          variant="ghost"
-                          size="icon"
-                          className={cn(
-                            'h-6 w-6 transition-colors',
-                            isEven
-                              ? 'text-black/70 hover:text-indigo-950 hover:bg-black/10'
-                              : 'text-muted-foreground hover:text-primary hover:bg-primary/10',
-                          )}
-                          onClick={() => setEditModalAccount(acc)}
-                          title="Editar"
+                          variant="outline"
+                          size="sm"
+                          className="text-muted-foreground hover:text-primary hover:bg-primary/10 bg-background border-border justify-start"
+                          onClick={() => toggleExpand(acc.id)}
                         >
-                          <Edit className="h-3 w-3" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className={cn(
-                            'h-6 w-6 transition-colors',
-                            isEven
-                              ? 'text-black/70 hover:text-red-700 hover:bg-red-500/20'
-                              : 'text-muted-foreground hover:text-destructive hover:bg-destructive/10',
+                          {isExpanded ? (
+                            <>
+                              <ChevronDown className="h-3.5 w-3.5 mr-2" /> Recolher
+                            </>
+                          ) : (
+                            <>
+                              <ChevronRight className="h-3.5 w-3.5 mr-2" /> Expandir
+                            </>
                           )}
-                          onClick={() => onDelete(acc.id)}
-                          title="Excluir"
-                        >
-                          <Trash2 className="h-3 w-3" />
                         </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
+                      )}
+                    </div>
+                  </CardContent>
                   {isExpanded && acc.hierarchyArray && acc.hierarchyArray.length > 0 && (
-                    <TableRow className="border-0 hover:bg-transparent">
-                      <TableCell colSpan={columns.length + 2} className="p-0 border-0">
-                        <div className="bg-slate-50 dark:bg-slate-900/50 p-1.5 border-b border-indigo-100 dark:border-indigo-900 shadow-inner">
-                          <div className="text-[10px] font-bold text-slate-500 uppercase mb-1 tracking-wider px-1">
-                            Raiz Hierárquica
-                          </div>
-                          <div className="flex flex-col rounded-md overflow-hidden border border-slate-200 dark:border-slate-700">
-                            {acc.hierarchyArray.map((node: any, i: number) => (
-                              <div
-                                key={node.classification}
+                    <div className="bg-slate-50 dark:bg-slate-900/50 p-2 border-t border-indigo-100 dark:border-indigo-900 shadow-inner">
+                      <div className="text-[10px] font-bold text-slate-500 uppercase mb-1 tracking-wider px-1">
+                        Raiz Hierárquica
+                      </div>
+                      <div className="flex flex-col rounded-md overflow-hidden border border-slate-200 dark:border-slate-700">
+                        {acc.hierarchyArray.map((node: any, i: number) => (
+                          <div
+                            key={node.classification}
+                            className={cn(
+                              'px-2 py-1 flex flex-col gap-0.5 text-sm',
+                              getHierarchyNodeStyle(i),
+                            )}
+                          >
+                            <div className="flex items-center gap-2">
+                              <Badge
                                 className={cn(
-                                  'px-2 py-0.5 flex items-center justify-between text-[0.95em] h-6',
-                                  getHierarchyNodeStyle(i),
+                                  'font-mono text-[10px] font-bold px-1.5 py-0 rounded shadow-sm h-4 leading-tight flex items-center',
+                                  getHierarchyBadgeStyle(i),
                                 )}
                               >
-                                <div className="flex items-center gap-2">
-                                  <Badge
-                                    className={cn(
-                                      'font-mono text-[10px] font-bold px-1.5 py-0 rounded shadow-sm h-4 leading-tight flex items-center',
-                                      getHierarchyBadgeStyle(i),
-                                    )}
-                                  >
-                                    {node.classification}
-                                  </Badge>
-                                  <span className="font-semibold leading-none">
-                                    {node.account_name}
-                                  </span>
-                                </div>
-                                <div className="text-[11px] opacity-70 font-mono leading-none">
-                                  Cód: {node.account_code || '-'}
-                                </div>
-                              </div>
-                            ))}
+                                {node.classification}
+                              </Badge>
+                              <span className="text-[11px] opacity-70 font-mono ml-auto leading-none">
+                                Cód: {node.account_code || '-'}
+                              </span>
+                            </div>
+                            <span className="font-semibold text-[12px] leading-tight">
+                              {node.account_name}
+                            </span>
                           </div>
-                        </div>
-                      </TableCell>
-                    </TableRow>
+                        ))}
+                      </div>
+                    </div>
                   )}
-                </Fragment>
+                </Card>
               )
             })}
-          </TableBody>
-        </Table>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:hidden flex-1 overflow-auto p-1">
-        {visibleAccounts.map((acc) => {
-          const org = organizations.find((o) => o.id === acc.organization_id)
-          const theme = getTheme(org?.name)
-          const isExpanded = expandedIds.has(acc.id)
-
-          return (
-            <Card
-              key={acc.id}
-              className={cn('border-l-4 shadow-sm bg-card overflow-hidden', theme.border)}
-            >
-              <CardContent className="p-4 flex justify-between items-start">
-                <div className="space-y-3 flex-1 pr-4 text-foreground min-w-0">
-                  {columns.map((col) => (
-                    <div
-                      key={col.id}
-                      className={cn(
-                        'flex items-center gap-2 text-[1em]',
-                        col.id === 'organization_id' || col.id === 'code' || col.id === 'descricao'
-                          ? 'font-bold'
-                          : 'font-normal',
-                        col.id === 'descricao' && 'text-[1.1em]',
-                        col.id === 'contaContabil' && 'font-mono text-muted-foreground',
-                        col.id === 'tipoConta' ? '!text-slate-800 dark:!text-slate-300' : '',
-                      )}
-                    >
-                      <span className="text-muted-foreground text-[0.85em] font-medium uppercase w-24 shrink-0">
-                        {col.label}:
-                      </span>
-                      <div className="flex-1 min-w-0 flex items-center">
-                        <EditableCell
-                          value={acc[col.id]}
-                          field={col.id}
-                          organizations={organizations}
-                          isEditing={editing?.id === acc.id && editing?.field === col.id}
-                          onEditStart={() => setEditing({ id: acc.id, field: col.id })}
-                          onEditCommit={(val: string) =>
-                            val !== acc[col.id]
-                              ? handleEditCommit(acc.id, col.id, val)
-                              : setEditing(null)
-                          }
-                          onEditCancel={() => setEditing(null)}
-                          isChartNode={false}
-                        />
-                      </div>{' '}
-                    </div>
-                  ))}
-                </div>
-                <div className="flex flex-col gap-2 shrink-0">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="text-muted-foreground hover:text-primary hover:bg-primary/10 bg-background border-border justify-start"
-                    onClick={() => setEditModalAccount(acc)}
-                  >
-                    <Edit className="h-3.5 w-3.5 mr-2" /> Editar
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 bg-background border-border justify-start"
-                    onClick={() => onDelete(acc.id)}
-                  >
-                    <Trash2 className="h-3.5 w-3.5 mr-2" /> Excluir
-                  </Button>
-                  {acc.hierarchyArray && acc.hierarchyArray.length > 0 && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="text-muted-foreground hover:text-primary hover:bg-primary/10 bg-background border-border justify-start"
-                      onClick={() => toggleExpand(acc.id)}
-                    >
-                      {isExpanded ? (
-                        <>
-                          <ChevronDown className="h-3.5 w-3.5 mr-2" /> Recolher
-                        </>
-                      ) : (
-                        <>
-                          <ChevronRight className="h-3.5 w-3.5 mr-2" /> Expandir
-                        </>
-                      )}
-                    </Button>
-                  )}
-                </div>
-              </CardContent>
-              {isExpanded && acc.hierarchyArray && acc.hierarchyArray.length > 0 && (
-                <div className="bg-slate-50 dark:bg-slate-900/50 p-2 border-t border-indigo-100 dark:border-indigo-900 shadow-inner">
-                  <div className="text-[10px] font-bold text-slate-500 uppercase mb-1 tracking-wider px-1">
-                    Raiz Hierárquica
-                  </div>
-                  <div className="flex flex-col rounded-md overflow-hidden border border-slate-200 dark:border-slate-700">
-                    {acc.hierarchyArray.map((node: any, i: number) => (
-                      <div
-                        key={node.classification}
-                        className={cn(
-                          'px-2 py-1 flex flex-col gap-0.5 text-sm',
-                          getHierarchyNodeStyle(i),
-                        )}
-                      >
-                        <div className="flex items-center gap-2">
-                          <Badge
-                            className={cn(
-                              'font-mono text-[10px] font-bold px-1.5 py-0 rounded shadow-sm h-4 leading-tight flex items-center',
-                              getHierarchyBadgeStyle(i),
-                            )}
-                          >
-                            {node.classification}
-                          </Badge>
-                          <span className="text-[11px] opacity-70 font-mono ml-auto leading-none">
-                            Cód: {node.account_code || '-'}
-                          </span>
-                        </div>
-                        <span className="font-semibold text-[12px] leading-tight">
-                          {node.account_name}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </Card>
-          )
-        })}
-      </div>
+          </div>
+        </>
+      )}
 
       <Dialog
         open={isBulkEditOpen}

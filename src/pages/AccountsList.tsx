@@ -92,9 +92,6 @@ export default function AccountsList() {
         queryBank = queryBank.in('organization_id', filterOrg)
         queryChart = queryChart.in('organization_id', filterOrg)
       }
-      if (filterType.length > 0) {
-        queryBank = queryBank.in('account_type', filterType)
-      }
 
       const bankRes = await queryBank
       if (bankRes.error) throw bankRes.error
@@ -189,10 +186,16 @@ export default function AccountsList() {
       })
 
       if (filterType.length > 0) {
-        finalAccounts = finalAccounts.filter((a) => filterType.includes(a.tipoConta || ''))
+        const lowerFilterType = filterType.map((t) => t.toLowerCase())
+        finalAccounts = finalAccounts.filter((a) =>
+          lowerFilterType.includes((a.tipoConta || '').toLowerCase()),
+        )
       }
       if (filterClass.length > 0) {
-        finalAccounts = finalAccounts.filter((a) => filterClass.includes(a.classificacao || ''))
+        const lowerFilterClass = filterClass.map((c) => c.toLowerCase())
+        finalAccounts = finalAccounts.filter((a) =>
+          lowerFilterClass.includes((a.classificacao || '').toLowerCase()),
+        )
       }
 
       setAccounts(finalAccounts)
@@ -292,57 +295,52 @@ export default function AccountsList() {
       </div>
 
       <div className="flex-1 min-h-0 bg-white dark:bg-slate-900 rounded-md border-0 shadow-sm flex flex-col overflow-visible relative z-10">
-        {loading ? (
-          <div className="flex items-center justify-center p-8 text-muted-foreground">
-            Carregando...
-          </div>
-        ) : (
-          <AccountList
-            accounts={accounts}
-            allChartAccounts={[]}
-            organizations={organizations}
-            onDelete={handleDelete}
-            searchTerm={searchTerm}
-            onSearchChange={setSearchTerm}
-            filterOrg={filterOrg}
-            onFilterOrgChange={setFilterOrg}
-            filterType={filterType}
-            onFilterTypeChange={setFilterType}
-            filterClass={filterClass}
-            onFilterClassChange={setFilterClass}
-            onUpdateInline={async (id, field, value) => {
-              try {
-                const dbFieldMap: Record<string, string> = {
-                  organization_id: 'organization_id',
-                  code: 'code',
-                  contaContabil: 'account_code',
-                  descricao: 'description',
-                  banco: 'bank_code',
-                  agencia: 'agency',
-                  numeroConta: 'account_number',
-                  digitoConta: 'check_digit',
-                  tipoConta: 'account_type',
-                  classificacao: 'classification',
-                }
-                const dbField = dbFieldMap[field] || field
-                const { error } = await supabase
-                  .from('bank_accounts')
-                  .update({ [dbField]: value })
-                  .eq('id', id)
-                if (error) throw error
-                fetchAccounts()
-                return true
-              } catch (e: any) {
-                toast({
-                  variant: 'destructive',
-                  title: 'Erro ao atualizar',
-                  description: e.message,
-                })
-                return false
+        <AccountList
+          accounts={accounts}
+          loading={loading}
+          allChartAccounts={[]}
+          organizations={organizations}
+          onDelete={handleDelete}
+          searchTerm={searchTerm}
+          onSearchChange={setSearchTerm}
+          filterOrg={filterOrg}
+          onFilterOrgChange={setFilterOrg}
+          filterType={filterType}
+          onFilterTypeChange={setFilterType}
+          filterClass={filterClass}
+          onFilterClassChange={setFilterClass}
+          onUpdateInline={async (id, field, value) => {
+            try {
+              const dbFieldMap: Record<string, string> = {
+                organization_id: 'organization_id',
+                code: 'code',
+                contaContabil: 'account_code',
+                descricao: 'description',
+                banco: 'bank_code',
+                agencia: 'agency',
+                numeroConta: 'account_number',
+                digitoConta: 'check_digit',
+                tipoConta: 'account_type',
+                classificacao: 'classification',
               }
-            }}
-          />
-        )}
+              const dbField = dbFieldMap[field] || field
+              const { error } = await supabase
+                .from('bank_accounts')
+                .update({ [dbField]: value })
+                .eq('id', id)
+              if (error) throw error
+              fetchAccounts()
+              return true
+            } catch (e: any) {
+              toast({
+                variant: 'destructive',
+                title: 'Erro ao atualizar',
+                description: e.message,
+              })
+              return false
+            }
+          }}
+        />
       </div>
 
       <Dialog open={isNewModalOpen} onOpenChange={setIsNewModalOpen}>
