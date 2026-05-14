@@ -55,9 +55,10 @@ export default function Index() {
 
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(100)
-  const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(
-    null,
-  )
+  const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>({
+    key: 'classification',
+    direction: 'asc',
+  })
 
   const [tableFontSize, setTableFontSize] = useState<number>(() => {
     const saved = localStorage.getItem('bank_accounts_table_font_size')
@@ -533,6 +534,7 @@ export default function Index() {
       <div className="bank-accounts-table-wrapper border-2 border-indigo-950 rounded-lg overflow-hidden">
         <BankAccountsTable
           accounts={paginatedAccounts}
+          allAccounts={sortedAccounts}
           chartAccounts={chartAccounts}
           selectedAccounts={selectedAccounts}
           onToggleSelect={toggleSelect}
