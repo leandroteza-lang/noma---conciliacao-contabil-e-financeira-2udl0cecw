@@ -135,7 +135,7 @@ export default function AccountsList() {
           chartByClassByOrg.get(c.organization_id).set(c.classification.trim(), c)
       })
 
-      const finalAccounts: any[] = []
+      let finalAccounts: any[] = []
 
       bankData.forEach((a) => {
         const orgId = a.organization_id
