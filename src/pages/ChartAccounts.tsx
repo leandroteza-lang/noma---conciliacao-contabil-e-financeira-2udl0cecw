@@ -1553,6 +1553,4 @@ export default function ChartAccounts() {
           )}
         </CardContent>
       </Card>
-    </div>
-  )
-}
+    </di
