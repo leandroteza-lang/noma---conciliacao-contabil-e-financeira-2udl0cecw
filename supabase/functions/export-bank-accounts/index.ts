@@ -39,7 +39,8 @@ Deno.serve(async (req: Request) => {
     }
 
     if (format === 'csv') {
-      let csvContent = 'Empresa;Código;Conta Contábil;Descrição;Banco;Agência;Conta;Tipo;Classificação\n'
+      let csvContent =
+        'Empresa;Código;Conta Contábil;Descrição;Banco;Agência;Conta;Tipo;Classificação\n'
       data.forEach((r: any) => {
         csvContent += `"${r['Empresa'] || ''}";"${r['Código'] || ''}";"${r['Conta Contábil'] || ''}";"${r['Descrição'] || ''}";"${r['Banco'] || ''}";"${r['Agência'] || ''}";"${r['Número'] || r['Conta'] || ''}";"${r['Tipo'] || ''}";"${r['Classificação'] || ''}"\n`
       })

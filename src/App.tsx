@@ -1,8 +1,8 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { Toaster } from '@/components/ui/toaster'
 import { Toaster as Sonner } from '@/components/ui/sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
-import Index from './pages/Index'
+import AccountsList from './pages/AccountsList'
 import Import from './pages/Import'
 import Companies from './pages/Companies'
 import Departments from './pages/Departments'
@@ -51,7 +51,8 @@ const App = () => {
               <Route path="/" element={<Landing />} />
               <Route path="/consulta/:id" element={<SharedQuery />} />
               <Route element={<Layout />}>
-                <Route path="/app" element={<Index />} />
+                <Route path="/app" element={<Navigate to="/contas" replace />} />
+                <Route path="/contas" element={<AccountsList />} />
                 <Route path="/empresas" element={<Companies />} />
                 <Route path="/departamentos" element={<Departments />} />
                 <Route path="/usuarios" element={<Users />} />
