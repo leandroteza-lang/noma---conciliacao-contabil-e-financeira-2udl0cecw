@@ -220,8 +220,8 @@ export function BankAccountFormModal({ isOpen, onClose, onSave, initialData }: a
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="NONE">Selecione...</SelectItem>
-                  <SelectItem value="B">B</SelectItem>
                   <SelectItem value="C">C</SelectItem>
+                  <SelectItem value="B">B</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -244,7 +244,7 @@ export function BankAccountFormModal({ isOpen, onClose, onSave, initialData }: a
                   <SelectItem value="CORRENTE">CORRENTE</SelectItem>
                   <SelectItem value="POUPANÇA">POUPANÇA</SelectItem>
                   <SelectItem value="APLICAÇÕES">APLICAÇÕES</SelectItem>
-                  <SelectItem value="OUTROS">OUTROS</SelectItem>
+                  <SelectItem value="OUTRAS">OUTRAS</SelectItem>
                 </SelectContent>
               </Select>
             </div>
