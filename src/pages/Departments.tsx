@@ -20,6 +20,8 @@ import {
 import { Link } from 'react-router-dom'
 import { supabase } from '@/lib/supabase/client'
 import { ImportDepartmentsModal } from '@/components/ImportDepartmentsModal'
+import { useTablePreferences } from '@/hooks/use-table-preferences'
+import { TableSettingsControls } from '@/components/TableSettingsControls'
 import { useAuth } from '@/hooks/use-auth'
 import { useToast } from '@/hooks/use-toast'
 import { useAuditLog } from '@/hooks/use-audit-log'
@@ -89,6 +91,9 @@ export default function Departments() {
   useEffect(() => {
     localStorage.setItem('departments_table_font_size', tableFontSize.toString())
   }, [tableFontSize])
+
+  const { prefs, updatePrefs } = useTablePreferences('departments')
+
   const { toast } = useToast()
   const { logAction } = useAuditLog()
 
@@ -488,6 +493,8 @@ export default function Departments() {
             >
               A+
             </Button>
+            <div className="w-[1px] h-4 bg-slate-300 mx-1"></div>
+            <TableSettingsControls prefs={prefs} updatePrefs={updatePrefs} />
           </div>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -618,7 +625,12 @@ export default function Departments() {
             </div>
           ) : (
             <div className="border-2 border-indigo-950 rounded-md bg-card/20 overflow-hidden overflow-x-auto">
-              <Table style={{ fontSize: `${tableFontSize}px` }}>
+              <Table
+                style={{ fontSize: `${tableFontSize}px` }}
+                showGridlines={prefs.showGridlines}
+                gridlineWidth={prefs.gridlineWidth}
+                gridlineColor={prefs.gridlineColor}
+              >
                 <TableHeader className="bg-[#1e1b4b]">
                   <TableRow disableZebra className="h-9 border-0 hover:bg-transparent">
                     {canDelete && (

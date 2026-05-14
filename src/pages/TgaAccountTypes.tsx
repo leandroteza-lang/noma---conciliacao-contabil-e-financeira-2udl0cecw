@@ -50,6 +50,8 @@ import {
 import { format } from 'date-fns'
 import { useAuth } from '@/hooks/use-auth'
 import { cn } from '@/lib/utils'
+import { useTablePreferences } from '@/hooks/use-table-preferences'
+import { TableSettingsControls } from '@/components/TableSettingsControls'
 
 type SortField = 'codigo' | 'nome' | 'abreviacao' | 'empresa'
 
@@ -73,6 +75,8 @@ export default function TgaAccountTypes() {
   useEffect(() => {
     localStorage.setItem('tga_types_table_font_size', tableFontSize.toString())
   }, [tableFontSize])
+
+  const { prefs, updatePrefs } = useTablePreferences('tga_account_types')
 
   const loadData = async () => {
     setLoading(true)
@@ -284,6 +288,8 @@ export default function TgaAccountTypes() {
             >
               A+
             </Button>
+            <div className="w-[1px] h-4 bg-slate-300 mx-1"></div>
+            <TableSettingsControls prefs={prefs} updatePrefs={updatePrefs} />
           </div>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -340,7 +346,12 @@ export default function TgaAccountTypes() {
       </div>
 
       <div className="border-2 border-indigo-950 rounded-md bg-card/20 overflow-hidden">
-        <Table style={{ fontSize: `${tableFontSize}px` }}>
+        <Table
+          style={{ fontSize: `${tableFontSize}px` }}
+          showGridlines={prefs.showGridlines}
+          gridlineWidth={prefs.gridlineWidth}
+          gridlineColor={prefs.gridlineColor}
+        >
           <TableHeader className="bg-indigo-950">
             <TableRow className="bg-indigo-950 hover:bg-indigo-950 border-0">
               <TableHead className="w-[40px] text-center py-2 px-2 text-white bg-indigo-950 font-normal text-[15px] border-0">

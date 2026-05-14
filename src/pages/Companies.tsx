@@ -20,6 +20,8 @@ import {
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { supabase } from '@/lib/supabase/client'
+import { useTablePreferences } from '@/hooks/use-table-preferences'
+import { TableSettingsControls } from '@/components/TableSettingsControls'
 import { useAuth } from '@/hooks/use-auth'
 import { useToast } from '@/hooks/use-toast'
 import { Button } from '@/components/ui/button'
@@ -202,6 +204,8 @@ export default function Companies() {
   useEffect(() => {
     localStorage.setItem('companies_table_font_size', tableFontSize.toString())
   }, [tableFontSize])
+
+  const { prefs, updatePrefs } = useTablePreferences('companies')
 
   const { user } = useAuth()
   const { toast } = useToast()
@@ -642,6 +646,8 @@ export default function Companies() {
             >
               A+
             </Button>
+            <div className="w-[1px] h-4 bg-slate-300 mx-1"></div>
+            <TableSettingsControls prefs={prefs} updatePrefs={updatePrefs} />
           </div>
           <Button
             variant="outline"
@@ -790,7 +796,12 @@ export default function Companies() {
             </div>
           ) : (
             <div className="rounded-md border-2 border-indigo-950 overflow-hidden">
-              <Table style={{ fontSize: `${tableFontSize}px` }}>
+              <Table
+                style={{ fontSize: `${tableFontSize}px` }}
+                showGridlines={prefs.showGridlines}
+                gridlineWidth={prefs.gridlineWidth}
+                gridlineColor={prefs.gridlineColor}
+              >
                 <TableHeader className="!bg-indigo-950 [&_tr]:border-b [&_tr]:border-b-indigo-900/50">
                   <TableRow className="border-0 !bg-indigo-950 hover:!bg-indigo-950">
                     <TableHead className="w-12 text-center py-2 px-2 !bg-indigo-950 text-white font-bold text-[14px] border-0">

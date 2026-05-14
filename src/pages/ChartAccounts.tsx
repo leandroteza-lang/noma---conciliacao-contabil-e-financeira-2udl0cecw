@@ -61,6 +61,8 @@ import {
 } from '@/components/ui/select'
 import { useAuth } from '@/hooks/use-auth'
 import { useToast } from '@/hooks/use-toast'
+import { useTablePreferences } from '@/hooks/use-table-preferences'
+import { TableSettingsControls } from '@/components/TableSettingsControls'
 import { useAuditLog } from '@/hooks/use-audit-log'
 import { Progress } from '@/components/ui/progress'
 import {
@@ -140,6 +142,9 @@ export default function ChartAccounts() {
   useEffect(() => {
     localStorage.setItem('chart_accounts_table_font_size', tableFontSize.toString())
   }, [tableFontSize])
+
+  const { prefs, updatePrefs } = useTablePreferences('chart_accounts')
+
   const [summary, setSummary] = useState({ ativo: 0, passivo: 0, receita: 0, despesa: 0 })
 
   useEffect(() => {
@@ -761,6 +766,8 @@ export default function ChartAccounts() {
             >
               A+
             </Button>
+            <div className="w-[1px] h-4 bg-slate-300 mx-1"></div>
+            <TableSettingsControls prefs={prefs} updatePrefs={updatePrefs} />
           </div>
           <Button
             variant="outline"
@@ -1085,6 +1092,9 @@ export default function ChartAccounts() {
             <Table
               style={{ fontSize: `${tableFontSize}px` }}
               className="[&_td]:p-1.5 [&_td]:px-2 [&_th]:p-1.5 [&_th]:px-2"
+              showGridlines={prefs.showGridlines}
+              gridlineWidth={prefs.gridlineWidth}
+              gridlineColor={prefs.gridlineColor}
             >
               <TableHeader className="bg-slate-50/80">
                 <TableRow disableZebra>

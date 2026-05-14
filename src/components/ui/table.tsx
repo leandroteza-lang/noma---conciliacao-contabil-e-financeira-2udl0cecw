@@ -5,12 +5,53 @@ import { cn } from '@/lib/utils'
 
 const Table = React.forwardRef<
   HTMLTableElement,
-  React.HTMLAttributes<HTMLTableElement> & { wrapperClassName?: string }
->(({ className, wrapperClassName, ...props }, ref) => (
-  <div className={cn('relative w-full overflow-auto', wrapperClassName)}>
-    <table ref={ref} className={cn('w-full caption-bottom text-sm', className)} {...props} />
-  </div>
-))
+  React.HTMLAttributes<HTMLTableElement> & {
+    wrapperClassName?: string
+    showGridlines?: boolean
+    gridlineWidth?: number
+    gridlineColor?: string
+  }
+>(
+  (
+    { className, wrapperClassName, showGridlines, gridlineWidth, gridlineColor, style, ...props },
+    ref,
+  ) => (
+    <div
+      className={cn('relative w-full overflow-auto', wrapperClassName)}
+      style={
+        {
+          ...(showGridlines
+            ? {
+                '--grid-width': `${gridlineWidth || 1}px`,
+                '--grid-color': gridlineColor || '#cbd5e1',
+              }
+            : {}),
+        } as React.CSSProperties
+      }
+    >
+      {showGridlines && (
+        <style>{`
+        .table-gridlines th, .table-gridlines td {
+          border: var(--grid-width) solid var(--grid-color) !important;
+        }
+        .table-gridlines {
+          border-collapse: collapse;
+        }
+      `}</style>
+      )}
+      <table
+        ref={ref}
+        className={cn(
+          'w-full caption-bottom text-sm',
+          showGridlines && 'table-gridlines',
+          className,
+        )}
+        style={style}
+        {...props}
+      />
+    </div>
+  ),
+)
 Table.displayName = 'Table'
 
 const TableHeader = React.forwardRef<

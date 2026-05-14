@@ -55,6 +55,8 @@ import {
 import * as XLSX from 'xlsx'
 import { format } from 'date-fns'
 import { useAuditLog } from '@/hooks/use-audit-log'
+import { useTablePreferences } from '@/hooks/use-table-preferences'
+import { TableSettingsControls } from '@/components/TableSettingsControls'
 import { useAuth } from '@/hooks/use-auth'
 import { cn, isValidCPF, formatCPF } from '@/lib/utils'
 
@@ -82,6 +84,9 @@ export default function Users() {
   useEffect(() => {
     localStorage.setItem('users_table_font_size', tableFontSize.toString())
   }, [tableFontSize])
+
+  const { prefs, updatePrefs } = useTablePreferences('users')
+
   const { logAction } = useAuditLog()
 
   const loadUsers = async () => {
@@ -314,6 +319,8 @@ export default function Users() {
             >
               A+
             </Button>
+            <div className="w-[1px] h-4 bg-slate-300 mx-1"></div>
+            <TableSettingsControls prefs={prefs} updatePrefs={updatePrefs} />
           </div>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -383,7 +390,12 @@ export default function Users() {
       </div>
 
       <div className="border-2 border-indigo-950 rounded-md bg-card/20 overflow-hidden">
-        <Table style={{ fontSize: `${tableFontSize}px` }}>
+        <Table
+          style={{ fontSize: `${tableFontSize}px` }}
+          showGridlines={prefs.showGridlines}
+          gridlineWidth={prefs.gridlineWidth}
+          gridlineColor={prefs.gridlineColor}
+        >
           <TableHeader className="!bg-indigo-950">
             <TableRow className="border-0 !bg-indigo-950 hover:!bg-indigo-950">
               <TableHead className="w-[40px] text-center py-2 px-2 !bg-indigo-950 text-white font-bold text-[15px] border-0">

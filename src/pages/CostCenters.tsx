@@ -76,6 +76,8 @@ import {
 } from '@/components/ui/alert-dialog'
 import { useAuth } from '@/hooks/use-auth'
 import { useToast } from '@/hooks/use-toast'
+import { useTablePreferences } from '@/hooks/use-table-preferences'
+import { TableSettingsControls } from '@/components/TableSettingsControls'
 import { useAuditLog } from '@/hooks/use-audit-log'
 import { cn } from '@/lib/utils'
 
@@ -165,6 +167,8 @@ export default function CostCenters() {
   useEffect(() => {
     localStorage.setItem('cost_centers_table_font_size', tableFontSize.toString())
   }, [tableFontSize])
+
+  const { prefs, updatePrefs } = useTablePreferences('cost_centers')
 
   useEffect(() => {
     loadOrgs()
@@ -686,6 +690,8 @@ export default function CostCenters() {
             >
               A+
             </Button>
+            <div className="w-[1px] h-4 bg-slate-300 mx-1"></div>
+            <TableSettingsControls prefs={prefs} updatePrefs={updatePrefs} />
           </div>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -1221,7 +1227,12 @@ export default function CostCenters() {
         </CardHeader>
         <CardContent>
           <div className="rounded-md border overflow-x-auto">
-            <Table style={{ fontSize: `${tableFontSize}px` }}>
+            <Table
+              style={{ fontSize: `${tableFontSize}px` }}
+              showGridlines={prefs.showGridlines}
+              gridlineWidth={prefs.gridlineWidth}
+              gridlineColor={prefs.gridlineColor}
+            >
               <TableHeader className="bg-slate-100 whitespace-nowrap border-b-2 border-slate-200">
                 <TableRow>
                   <TableHead className="w-12 text-center h-12 px-2">
