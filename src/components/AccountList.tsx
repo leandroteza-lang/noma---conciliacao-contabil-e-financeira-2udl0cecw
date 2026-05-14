@@ -29,6 +29,7 @@ import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Checkbox } from '@/components/ui/checkbox'
+import { Search } from 'lucide-react'
 import {
   Select,
   SelectContent,
@@ -55,6 +56,8 @@ interface Props {
   organizations: Organization[]
   onDelete: (id: string) => void
   onUpdateInline?: (id: string, field: string, value: string) => Promise<boolean>
+  searchTerm?: string
+  onSearchChange?: (val: string) => void
 }
 
 const getTheme = (name: string | null | undefined) => {
@@ -253,7 +256,14 @@ function EditableCell({
   )
 }
 
-export function AccountList({ accounts, organizations, onDelete, onUpdateInline }: Props) {
+export function AccountList({
+  accounts,
+  organizations,
+  onDelete,
+  onUpdateInline,
+  searchTerm,
+  onSearchChange,
+}: Props) {
   const [editing, setEditing] = useState<{ id: string; field: string } | null>(null)
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [editModalAccount, setEditModalAccount] = useState<any | null>(null)
@@ -774,12 +784,12 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
 
   return (
     <div className="flex flex-col h-full space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 shrink-0">
-        <div className="flex flex-wrap items-center gap-2 flex-1">
+      <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 shrink-0 w-full">
+        <div className="flex flex-wrap items-center gap-3 flex-1 w-full">
           {selectedIds.length > 0 && (
-            <div className="bg-muted/50 border border-border rounded-md p-1.5 px-3 flex items-center gap-3 animate-in fade-in mr-2">
+            <div className="bg-muted/50 border border-border rounded-md p-1.5 px-3 flex items-center gap-3 animate-in fade-in">
               <span className="text-sm font-medium text-foreground">
-                {selectedIds.length} item(ns) selecionado(s)
+                {selectedIds.length} selecionado(s)
               </span>
               <div className="flex items-center gap-2">
                 <Button
@@ -788,7 +798,7 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
                   onClick={() => setIsBulkEditOpen(true)}
                   className="h-8 gap-2"
                 >
-                  <Edit className="h-4 w-4" /> Editar em Lote
+                  <Edit className="h-4 w-4" /> Editar Lote
                 </Button>
                 <Button
                   variant="destructive"
@@ -796,7 +806,7 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
                   onClick={handleBulkDelete}
                   className="h-8 gap-2"
                 >
-                  <Trash2 className="h-4 w-4" /> Excluir Selecionados
+                  <Trash2 className="h-4 w-4" /> Excluir
                 </Button>
               </div>
             </div>
@@ -853,9 +863,20 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
               />
             </div>
           </div>
+
+          <div className="relative flex-1 min-w-[280px] max-w-lg">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-indigo-500" />
+            <Input
+              type="text"
+              placeholder="Buscar contas (descrição, código, banco)..."
+              className="w-full h-10 pl-10 border-2 border-indigo-200 hover:border-indigo-300 focus-visible:border-indigo-500 focus-visible:ring-4 focus-visible:ring-indigo-500/20 bg-indigo-50/30 dark:bg-indigo-950/20 dark:border-indigo-800 transition-all shadow-sm font-medium text-slate-900 dark:text-slate-100 placeholder:text-slate-500"
+              value={searchTerm || ''}
+              onChange={(e) => onSearchChange?.(e.target.value)}
+            />
+          </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 ml-auto">
           <div
             className="hidden sm:flex items-center gap-1 bg-white dark:bg-slate-900 rounded-md p-0.5 border border-slate-200 dark:border-slate-800 shadow-sm h-10"
             title="Tamanho da Fonte das Tabelas"

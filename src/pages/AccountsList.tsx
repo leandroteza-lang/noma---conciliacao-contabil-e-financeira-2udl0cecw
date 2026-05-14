@@ -3,7 +3,7 @@ import { supabase } from '@/lib/supabase/client'
 import { AccountList } from '@/components/AccountList'
 import { useToast } from '@/hooks/use-toast'
 import { Button } from '@/components/ui/button'
-import { Plus, Search, Sparkles } from 'lucide-react'
+import { Plus, Sparkles } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
@@ -253,17 +253,7 @@ export default function AccountsList() {
         <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">
           Listagem de Contas
         </h1>
-        <div className="flex items-center gap-2 w-full sm:w-auto">
-          <div className="relative flex-1 sm:w-64 hidden md:block">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-            <input
-              type="text"
-              placeholder="Buscar contas..."
-              className="w-full h-10 pl-9 pr-4 rounded-md border border-slate-200 bg-white text-sm outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all dark:bg-slate-900 dark:border-slate-800 dark:text-slate-100"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
+        <div className="flex items-center gap-2 w-full sm:w-auto ml-auto">
           <Button
             variant="outline"
             asChild
@@ -293,6 +283,8 @@ export default function AccountsList() {
             accounts={accounts}
             organizations={organizations}
             onDelete={handleDelete}
+            searchTerm={searchTerm}
+            onSearchChange={setSearchTerm}
             onUpdateInline={async (id, field, value) => {
               try {
                 const dbFieldMap: Record<string, string> = {
