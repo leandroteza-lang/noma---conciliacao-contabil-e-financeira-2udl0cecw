@@ -45,57 +45,15 @@ export function AccountCombobox({
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState('')
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
-  const [localAccounts, setLocalAccounts] = useState<Account[]>(accounts)
-
-  useEffect(() => {
-    let isMounted = true
-
-    const orgId = accounts[0]?.organization_id
-    if (orgId) {
-      const fetchAll = async () => {
-        let all: Account[] = []
-        let page = 0
-        let hasMore = true
-        while (hasMore) {
-          const { data } = await supabase
-            .from('chart_of_accounts')
-            .select('*')
-            .eq('organization_id', orgId)
-            .is('deleted_at', null)
-            .order('classification')
-            .range(page * 1000, (page + 1) * 1000 - 1)
-
-          if (data && data.length > 0) {
-            all = [...all, ...data]
-            page++
-            if (data.length < 1000) hasMore = false
-          } else {
-            hasMore = false
-          }
-        }
-        if (isMounted) {
-          setLocalAccounts(all)
-        }
-      }
-      fetchAll()
-    } else {
-      setLocalAccounts(accounts)
-    }
-
-    return () => {
-      isMounted = false
-    }
-  }, [accounts.length, accounts[0]?.organization_id])
-
   useEffect(() => {
     const allIds = new Set<string>()
-    localAccounts.forEach((a) => {
+    accounts.forEach((a) => {
       allIds.add(a.id)
     })
     setExpanded(allIds)
-  }, [localAccounts])
+  }, [accounts])
 
-  const selected = useMemo(() => localAccounts.find((a) => a.id === value), [localAccounts, value])
+  const selected = useMemo(() => accounts.find((a) => a.id === value), [accounts, value])
 
   const { roots, childrenMap } = useMemo(() => {
     const cmap = new Map<string, Account[]>()
@@ -103,7 +61,7 @@ export function AccountCombobox({
 
     const getSortKey = (a: Account) => (a.classification || a.account_code || '').trim()
 
-    const sorted = [...localAccounts].sort((a, b) =>
+    const sorted = [...accounts].sort((a, b) =>
       getSortKey(a).localeCompare(getSortKey(b), undefined, { numeric: true }),
     )
 
@@ -156,7 +114,7 @@ export function AccountCombobox({
     })
 
     return { roots: rts, childrenMap: cmap }
-  }, [localAccounts])
+  }, [])
 
   const toggleExpand = (id: string) => {
     setExpanded((prev) => {
@@ -220,7 +178,7 @@ export function AccountCombobox({
             </div>
 
             <div className="flex flex-col min-w-0 flex-1">
-              <span className="truncate text-[13px] flex items-center gap-1.5 min-w-0">
+              <span className="text-[13px] flex items-center gap-1.5 min-w-0">
                 {node.classification && (
                   <span className="font-mono text-slate-500 shrink-0">{node.classification}</span>
                 )}
@@ -229,8 +187,9 @@ export function AccountCombobox({
                     'truncate',
                     hasChildren ? 'font-bold text-slate-800' : 'font-medium text-slate-700',
                   )}
+                  title={node.account_name || 'Sem nome'}
                 >
-                  {node.account_name}
+                  {node.account_name || <span className="italic opacity-50">Sem nome</span>}
                 </span>
               </span>
             </div>
@@ -264,7 +223,7 @@ export function AccountCombobox({
 
   const renderFlat = () => {
     const searchLower = search.toLowerCase()
-    const matches = localAccounts.filter((account) => {
+    const matches = accounts.filter((account) => {
       const searchString =
         `${account.account_code || ''} ${account.classification || ''} ${account.account_name || ''}`.toLowerCase()
       return searchString.includes(searchLower)
@@ -299,13 +258,18 @@ export function AccountCombobox({
               </Badge>
             )}
             <div className="flex flex-col truncate">
-              <span className="truncate text-[13px] flex items-center gap-1.5 min-w-0">
+              <span className="text-[13px] flex items-center gap-1.5 min-w-0">
                 {account.classification && (
                   <span className="font-mono text-slate-500 shrink-0">
                     {account.classification}
                   </span>
                 )}
-                <span className="font-medium text-slate-700 truncate">{account.account_name}</span>
+                <span
+                  className="font-medium text-slate-700 truncate"
+                  title={account.account_name || 'Sem nome'}
+                >
+                  {account.account_name || <span className="italic opacity-50">Sem nome</span>}
+                </span>
               </span>
               {account.hierarchyPath && account.hierarchyPath !== account.account_name && (
                 <span className="text-[10px] text-slate-400 truncate mt-0.5">
@@ -343,13 +307,18 @@ export function AccountCombobox({
                   {selected.account_code}
                 </Badge>
               )}
-              <span className="truncate text-[13px] flex items-center gap-1.5 min-w-0">
+              <span className="text-[13px] flex items-center gap-1.5 min-w-0">
                 {selected.classification && (
                   <span className="font-mono text-slate-500 shrink-0">
                     {selected.classification}
                   </span>
                 )}
-                <span className="font-medium text-slate-700 truncate">{selected.account_name}</span>
+                <span
+                  className="font-medium text-slate-700 truncate"
+                  title={selected.account_name || 'Sem nome'}
+                >
+                  {selected.account_name || <span className="italic opacity-50">Sem nome</span>}
+                </span>
               </span>
             </div>
           ) : (
@@ -374,7 +343,10 @@ export function AccountCombobox({
           </div>
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+      <PopoverContent
+        className="w-[var(--radix-popover-trigger-width)] min-w-[350px] max-w-[90vw] p-0"
+        align="start"
+      >
         <Command shouldFilter={false}>
           <CommandInput
             placeholder="Buscar conta..."
@@ -391,7 +363,7 @@ export function AccountCombobox({
                     type="button"
                     onClick={() => {
                       const allIds = new Set<string>()
-                      localAccounts.forEach((a) => {
+                      accounts.forEach((a) => {
                         if (childrenMap.has(a.id)) allIds.add(a.id)
                       })
                       setExpanded(allIds)

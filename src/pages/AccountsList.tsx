@@ -41,26 +41,59 @@ export default function AccountsList() {
         )
       }
 
-      const [bankRes, chartRes] = await Promise.all([queryBank, queryChart])
-
+      const bankRes = await queryBank
       if (bankRes.error) throw bankRes.error
-      if (chartRes.error) throw chartRes.error
-
       const bankData = bankRes.data || []
-      const chartData = chartRes.data || []
 
-      const chartMap = new Map()
-      const chartByClass = new Map()
+      let chartData: any[] = []
+      let page = 0
+      let hasMore = true
+      while (hasMore) {
+        const { data, error } = await supabase
+          .from('chart_of_accounts')
+          .select('*')
+          .is('deleted_at', null)
+          .range(page * 1000, (page + 1) * 1000 - 1)
+        if (error) throw error
+        if (data && data.length > 0) {
+          chartData = [...chartData, ...data]
+          page++
+          if (data.length < 1000) hasMore = false
+        } else {
+          hasMore = false
+        }
+      }
+
+      // Group chart accounts by organization_id to avoid collisions between orgs
+      const chartMapByOrg = new Map()
+      const chartByClassByOrg = new Map()
       chartData.forEach((c) => {
-        if (c.account_code) chartMap.set(c.account_code.trim(), c)
-        if (c.classification) chartByClass.set(c.classification.trim(), c)
+        if (!c.organization_id) return
+
+        if (!chartMapByOrg.has(c.organization_id)) {
+          chartMapByOrg.set(c.organization_id, new Map())
+          chartByClassByOrg.set(c.organization_id, new Map())
+        }
+
+        if (c.account_code) chartMapByOrg.get(c.organization_id).set(c.account_code.trim(), c)
+        if (c.classification)
+          chartByClassByOrg.get(c.organization_id).set(c.classification.trim(), c)
       })
 
       const finalAccounts: any[] = []
 
       bankData.forEach((a) => {
-        const chart = a.account_code ? chartMap.get(a.account_code.trim()) : null
-        const bankClass = chart ? chart.classification : a.classification
+        const orgId = a.organization_id
+        let chart = null
+
+        if (orgId) {
+          const orgChartMap = chartMapByOrg.get(orgId)
+          if (a.account_code && orgChartMap) {
+            chart = orgChartMap.get(a.account_code.trim())
+          }
+        }
+
+        const bankClass = chart ? chart.classification : null
 
         const hierarchyArray = []
         if (bankClass) {
@@ -68,7 +101,7 @@ export default function AccountsList() {
           let currentClass = ''
           for (let i = 0; i < parts.length; i++) {
             currentClass = currentClass ? `${currentClass}.${parts[i]}` : parts[i]
-            const parentChart = chartByClass.get(currentClass)
+            const parentChart = chartByClassByOrg.get(orgId)?.get(currentClass)
             if (parentChart) {
               hierarchyArray.push({
                 classification: currentClass,
