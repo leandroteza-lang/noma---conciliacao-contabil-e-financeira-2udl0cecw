@@ -37,6 +37,9 @@ import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Checkbox } from '@/components/ui/checkbox'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Switch } from '@/components/ui/switch'
+import { Slider } from '@/components/ui/slider'
 import {
   Select,
   SelectContent,
@@ -450,6 +453,22 @@ export function AccountList({
   useEffect(() => {
     localStorage.setItem('bank_accounts_gridlines', showGridlines.toString())
   }, [showGridlines])
+
+  const [gridlineThickness, setGridlineThickness] = useState<number>(() => {
+    return parseInt(localStorage.getItem('bank_accounts_gridline_thickness') || '1', 10)
+  })
+
+  useEffect(() => {
+    localStorage.setItem('bank_accounts_gridline_thickness', gridlineThickness.toString())
+  }, [gridlineThickness])
+
+  const [gridlineColor, setGridlineColor] = useState<string>(() => {
+    return localStorage.getItem('bank_accounts_gridline_color') || '#e2e8f0'
+  })
+
+  useEffect(() => {
+    localStorage.setItem('bank_accounts_gridline_color', gridlineColor)
+  }, [gridlineColor])
 
   const handleDragStart = (e: React.DragEvent, index: number) => {
     e.dataTransfer.effectAllowed = 'move'
@@ -1002,20 +1021,77 @@ export function AccountList({
           </div>
 
           <div className="flex items-center gap-2 shrink-0 justify-end">
-            <Button
-              variant="outline"
-              size="icon"
-              className={cn(
-                'hidden sm:flex h-10 w-10 shrink-0 shadow-sm transition-colors',
-                showGridlines
-                  ? 'bg-indigo-50 border-indigo-200 text-indigo-600 hover:bg-indigo-100 hover:text-indigo-700 dark:bg-indigo-900/30 dark:border-indigo-800 dark:text-indigo-400'
-                  : 'bg-white border-slate-200 text-slate-400 hover:text-slate-600 dark:bg-slate-900 dark:border-slate-800 dark:text-slate-500',
-              )}
-              onClick={() => setShowGridlines(!showGridlines)}
-              title="Alternar Linhas de Grade"
-            >
-              <Grid3X3 className="h-4 w-4" />
-            </Button>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className={cn(
+                    'hidden sm:flex h-10 w-10 shrink-0 shadow-sm transition-colors',
+                    showGridlines
+                      ? 'bg-indigo-50 border-indigo-200 text-indigo-600 hover:bg-indigo-100 hover:text-indigo-700 dark:bg-indigo-900/30 dark:border-indigo-800 dark:text-indigo-400'
+                      : 'bg-white border-slate-200 text-slate-400 hover:text-slate-600 dark:bg-slate-900 dark:border-slate-800 dark:text-slate-500',
+                  )}
+                  title="Aparência da Tabela"
+                >
+                  <Grid3X3 className="h-4 w-4" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent align="end" className="w-72 space-y-4">
+                <div className="space-y-3">
+                  <h4 className="font-semibold text-sm">Linhas de Grade</h4>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="show-gridlines" className="text-sm cursor-pointer">
+                      Exibir linhas de grade
+                    </Label>
+                    <Switch
+                      id="show-gridlines"
+                      checked={showGridlines}
+                      onCheckedChange={setShowGridlines}
+                    />
+                  </div>
+                </div>
+
+                {showGridlines && (
+                  <>
+                    <div className="space-y-3 pt-3 border-t border-border">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-sm">Espessura</Label>
+                        <span className="text-xs font-mono bg-muted px-1.5 py-0.5 rounded">
+                          {gridlineThickness}px
+                        </span>
+                      </div>
+                      <Slider
+                        value={[gridlineThickness]}
+                        min={1}
+                        max={5}
+                        step={1}
+                        onValueChange={([val]) => setGridlineThickness(val)}
+                      />
+                    </div>
+
+                    <div className="space-y-3 pt-3 border-t border-border">
+                      <Label className="text-sm block">Cor da Linha</Label>
+                      <div className="flex items-center gap-3">
+                        <div className="relative h-8 w-14 rounded-md overflow-hidden border border-input cursor-pointer">
+                          <input
+                            type="color"
+                            value={gridlineColor}
+                            onChange={(e) => setGridlineColor(e.target.value)}
+                            className="absolute -top-2 -left-2 h-12 w-20 cursor-pointer"
+                          />
+                        </div>
+                        <Input
+                          value={gridlineColor}
+                          onChange={(e) => setGridlineColor(e.target.value)}
+                          className="h-8 flex-1 font-mono text-xs uppercase"
+                        />
+                      </div>
+                    </div>
+                  </>
+                )}
+              </PopoverContent>
+            </Popover>
 
             <div
               className="hidden sm:flex items-center gap-1 bg-white dark:bg-slate-900 rounded-md p-0.5 border border-slate-200 dark:border-slate-800 shadow-sm h-10"
@@ -1147,8 +1223,21 @@ export function AccountList({
                 Recolher Todos
               </Button>
             </div>
+            {showGridlines && (
+              <style
+                dangerouslySetInnerHTML={{
+                  __html: `
+                .custom-gridlines th, .custom-gridlines td {
+                  border-width: ${gridlineThickness}px !important;
+                  border-color: ${gridlineColor} !important;
+                  border-style: solid !important;
+                }
+              `,
+                }}
+              />
+            )}
             <Table
-              className={cn('border-collapse', showGridlines && 'table-gridlines')}
+              className={cn('border-collapse', showGridlines && 'table-gridlines custom-gridlines')}
               wrapperClassName="flex-1 overflow-auto max-h-[calc(100vh-230px)]"
               style={{ fontSize: `${tableFontSize}px` }}
             >
