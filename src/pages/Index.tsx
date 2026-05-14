@@ -759,13 +759,42 @@ export default function Index() {
                         if (col.id === 'description') {
                           return (
                             <TableCell key={col.id} className="whitespace-nowrap">
-                              <span
-                                className={cn(
-                                  isSynth ? 'font-bold uppercase tracking-tight' : 'font-medium',
-                                )}
+                              <div
+                                className="flex items-center"
+                                style={{ paddingLeft: `${(level - 1) * 1.5}rem` }}
                               >
-                                {acc.description}
-                              </span>
+                                {isSynth ? (
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      toggleCollapse(acc.classification || '')
+                                    }}
+                                    className={cn(
+                                      'h-5 w-5 mr-1 p-0 rounded-sm shrink-0 transition-colors',
+                                      level <= 3
+                                        ? 'hover:bg-white/20 text-white hover:text-white'
+                                        : 'hover:bg-black/10 text-slate-800',
+                                    )}
+                                  >
+                                    {collapsedClasses.has(acc.classification || '') ? (
+                                      <ChevronRight className="h-4 w-4" />
+                                    ) : (
+                                      <ChevronDown className="h-4 w-4" />
+                                    )}
+                                  </Button>
+                                ) : (
+                                  <span className="w-6 shrink-0" />
+                                )}
+                                <span
+                                  className={cn(
+                                    isSynth ? 'font-bold uppercase tracking-tight' : 'font-medium',
+                                  )}
+                                >
+                                  {acc.description}
+                                </span>
+                              </div>
                             </TableCell>
                           )
                         }
@@ -802,36 +831,7 @@ export default function Index() {
                         if (col.id === 'classification') {
                           return (
                             <TableCell key={col.id} className="whitespace-nowrap font-bold">
-                              <div
-                                className="flex items-center"
-                                style={{ paddingLeft: `${(level - 1) * 1.5}rem` }}
-                              >
-                                {isSynth ? (
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={(e) => {
-                                      e.stopPropagation()
-                                      toggleCollapse(acc.classification || '')
-                                    }}
-                                    className={cn(
-                                      'h-5 w-5 mr-1 p-0 rounded-sm shrink-0 transition-colors',
-                                      level <= 3
-                                        ? 'hover:bg-white/20 text-white hover:text-white'
-                                        : 'hover:bg-black/10 text-slate-800',
-                                    )}
-                                  >
-                                    {collapsedClasses.has(acc.classification || '') ? (
-                                      <ChevronRight className="h-4 w-4" />
-                                    ) : (
-                                      <ChevronDown className="h-4 w-4" />
-                                    )}
-                                  </Button>
-                                ) : (
-                                  <span className="w-6 shrink-0" />
-                                )}
-                                {acc.classification || '-'}
-                              </div>
+                              {acc.classification || '-'}
                             </TableCell>
                           )
                         }
