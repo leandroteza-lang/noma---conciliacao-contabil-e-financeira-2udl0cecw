@@ -368,6 +368,7 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
         format: formatType === 'browser' ? 'pdf' : formatType,
         data: sortedAccounts.map((acc) => ({
           Empresa: organizations.find((o: any) => o.id === acc.organization_id)?.name || '-',
+          Código: acc.code || '-',
           'Conta Contábil': acc.contaContabil || '-',
           Descrição: acc.descricao || '-',
           Banco: acc.banco || '-',
@@ -455,6 +456,7 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
       if (success !== false && oldAcc && String(oldAcc[field]) !== String(val)) {
         const dbFieldMap: Record<string, string> = {
           organization_id: 'organization_id',
+          code: 'code',
           contaContabil: 'account_code',
           descricao: 'description',
           banco: 'bank_code',
@@ -486,6 +488,7 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
         .from('bank_accounts')
         .update({
           organization_id: editModalAccount.organization_id,
+          code: editModalAccount.code,
           account_code: editModalAccount.contaContabil,
           description: editModalAccount.descricao,
           bank_code: editModalAccount.banco,
@@ -501,6 +504,8 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
 
       if (oldAcc) {
         const changes: any = {}
+        if (String(oldAcc.code) !== String(editModalAccount.code))
+          changes.code = { old: oldAcc.code, new: editModalAccount.code }
         if (String(oldAcc.organization_id) !== String(editModalAccount.organization_id))
           changes.organization_id = {
             old: oldAcc.organization_id,
@@ -695,6 +700,14 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
               </TableHead>
               <TableHead
                 className="cursor-pointer hover:bg-indigo-950/80 py-2 px-2 text-white font-normal text-[1.1em] border-0"
+                onClick={() => handleSort('code')}
+              >
+                <div className="flex items-center gap-2">
+                  Código <ArrowUpDown className="h-3 w-3 opacity-50" />
+                </div>
+              </TableHead>
+              <TableHead
+                className="cursor-pointer hover:bg-indigo-950/80 py-2 px-2 text-white font-normal text-[1.1em] border-0"
                 onClick={() => handleSort('contaContabil')}
               >
                 <div className="flex items-center gap-2">
@@ -786,6 +799,7 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
                   {(
                     [
                       'organization_id',
+                      'code',
                       'contaContabil',
                       'descricao',
                       'banco',
@@ -870,6 +884,7 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
                   {(
                     [
                       'organization_id',
+                      'code',
                       'descricao',
                       'contaContabil',
                       'tipoConta',
@@ -1033,6 +1048,15 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
                       </option>
                     ))}
                   </select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Código</Label>
+                  <Input
+                    value={editModalAccount.code || ''}
+                    onChange={(e) =>
+                      setEditModalAccount({ ...editModalAccount, code: e.target.value })
+                    }
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label>Conta Contábil</Label>

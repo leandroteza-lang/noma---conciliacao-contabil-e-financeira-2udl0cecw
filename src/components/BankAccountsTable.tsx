@@ -41,6 +41,7 @@ interface BankAccountsTableProps {
 
 const defaultColumns = [
   { id: 'company_name', label: 'Empresa', sortKey: 'company_name' },
+  { id: 'code', label: 'Código', sortKey: 'code' },
   { id: 'account_code', label: 'Conta Contábil', sortKey: 'account_code' },
   { id: 'description', label: 'Descrição', sortKey: 'description' },
   { id: 'bank_code', label: 'Banco', sortKey: 'bank_code' },
