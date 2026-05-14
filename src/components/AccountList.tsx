@@ -785,9 +785,9 @@ export function AccountList({
   return (
     <div className="flex flex-col h-full space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 shrink-0 w-full">
-        <div className="flex flex-wrap items-center gap-3 flex-1 w-full">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 flex-1 w-full">
           {selectedIds.length > 0 && (
-            <div className="bg-muted/50 border border-border rounded-md p-1.5 px-3 flex items-center gap-3 animate-in fade-in">
+            <div className="bg-muted/50 border border-border rounded-md p-1.5 px-3 flex items-center gap-3 animate-in fade-in shrink-0">
               <span className="text-sm font-medium text-foreground">
                 {selectedIds.length} selecionado(s)
               </span>
@@ -812,71 +812,73 @@ export function AccountList({
             </div>
           )}
 
-          <div
-            className={cn(
-              'flex flex-wrap items-center gap-1.5 p-1 rounded-md border shadow-sm transition-colors',
-              filterOrg.length > 0 || filterType.length > 0 || filterClass.length > 0
-                ? 'bg-indigo-50 border-indigo-200 dark:bg-indigo-900/30 dark:border-indigo-800'
-                : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800',
-            )}
-          >
-            <div className="w-[180px]">
-              <MultiSelect
-                title="Empresa"
-                options={organizations.map((org) => ({ label: org.name || '', value: org.id }))}
-                selected={filterOrg}
-                onChange={setFilterOrg}
-                isActive={filterOrg.length > 0}
-              />
+          <div className="flex flex-wrap sm:flex-nowrap items-center gap-3 w-full max-w-5xl">
+            <div
+              className={cn(
+                'flex flex-nowrap items-center gap-1.5 p-1 rounded-md border shadow-sm transition-colors h-10 shrink-0 overflow-x-auto custom-scrollbar',
+                filterOrg.length > 0 || filterType.length > 0 || filterClass.length > 0
+                  ? 'bg-indigo-50 border-indigo-200 dark:bg-indigo-900/30 dark:border-indigo-800'
+                  : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800',
+              )}
+            >
+              <div className="w-[180px] shrink-0">
+                <MultiSelect
+                  title="Empresa"
+                  options={organizations.map((org) => ({ label: org.name || '', value: org.id }))}
+                  selected={filterOrg}
+                  onChange={setFilterOrg}
+                  isActive={filterOrg.length > 0}
+                />
+              </div>
+
+              <div className="w-px h-5 bg-slate-200 dark:bg-slate-800 shrink-0"></div>
+
+              <div className="w-[130px] shrink-0">
+                <MultiSelect
+                  title="Tipo"
+                  options={[
+                    { label: 'CAIXA', value: 'CAIXA' },
+                    { label: 'CORRENTE', value: 'CORRENTE' },
+                    { label: 'POUPANÇA', value: 'POUPANÇA' },
+                    { label: 'APLICAÇÕES', value: 'APLICAÇÕES' },
+                    { label: 'OUTRAS', value: 'OUTRAS' },
+                  ]}
+                  selected={filterType}
+                  onChange={setFilterType}
+                  isActive={filterType.length > 0}
+                />
+              </div>
+
+              <div className="w-px h-5 bg-slate-200 dark:bg-slate-800 shrink-0"></div>
+
+              <div className="w-[140px] shrink-0">
+                <MultiSelect
+                  title="Classificação"
+                  options={[
+                    { label: 'C', value: 'C' },
+                    { label: 'B', value: 'B' },
+                  ]}
+                  selected={filterClass}
+                  onChange={setFilterClass}
+                  isActive={filterClass.length > 0}
+                />
+              </div>
             </div>
 
-            <div className="w-px h-5 bg-slate-200 dark:bg-slate-800 hidden sm:block"></div>
-
-            <div className="w-[130px]">
-              <MultiSelect
-                title="Tipo"
-                options={[
-                  { label: 'CAIXA', value: 'CAIXA' },
-                  { label: 'CORRENTE', value: 'CORRENTE' },
-                  { label: 'POUPANÇA', value: 'POUPANÇA' },
-                  { label: 'APLICAÇÕES', value: 'APLICAÇÕES' },
-                  { label: 'OUTRAS', value: 'OUTRAS' },
-                ]}
-                selected={filterType}
-                onChange={setFilterType}
-                isActive={filterType.length > 0}
+            <div className="relative flex-1 min-w-[250px] h-10">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-indigo-500" />
+              <Input
+                type="text"
+                placeholder="Buscar contas..."
+                className="w-full h-full pl-9 border-2 border-indigo-200 hover:border-indigo-300 focus-visible:border-indigo-500 focus-visible:ring-4 focus-visible:ring-indigo-500/20 bg-white dark:bg-slate-900 dark:border-indigo-800 transition-all shadow-sm font-medium text-slate-900 dark:text-slate-100 placeholder:text-slate-500"
+                value={searchTerm || ''}
+                onChange={(e) => onSearchChange?.(e.target.value)}
               />
             </div>
-
-            <div className="w-px h-5 bg-slate-200 dark:bg-slate-800 hidden sm:block"></div>
-
-            <div className="w-[140px]">
-              <MultiSelect
-                title="Classificação"
-                options={[
-                  { label: 'C', value: 'C' },
-                  { label: 'B', value: 'B' },
-                ]}
-                selected={filterClass}
-                onChange={setFilterClass}
-                isActive={filterClass.length > 0}
-              />
-            </div>
-          </div>
-
-          <div className="relative flex-1 min-w-[280px] max-w-lg">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-indigo-500" />
-            <Input
-              type="text"
-              placeholder="Buscar contas (descrição, código, banco)..."
-              className="w-full h-10 pl-10 border-2 border-indigo-200 hover:border-indigo-300 focus-visible:border-indigo-500 focus-visible:ring-4 focus-visible:ring-indigo-500/20 bg-indigo-50/30 dark:bg-indigo-950/20 dark:border-indigo-800 transition-all shadow-sm font-medium text-slate-900 dark:text-slate-100 placeholder:text-slate-500"
-              value={searchTerm || ''}
-              onChange={(e) => onSearchChange?.(e.target.value)}
-            />
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 ml-auto">
+        <div className="flex flex-wrap items-center gap-2 shrink-0 ml-auto xl:ml-0">
           <div
             className="hidden sm:flex items-center gap-1 bg-white dark:bg-slate-900 rounded-md p-0.5 border border-slate-200 dark:border-slate-800 shadow-sm h-10"
             title="Tamanho da Fonte das Tabelas"
@@ -1426,8 +1428,8 @@ export function AccountList({
           </DialogHeader>
           {editModalAccount && (
             <form onSubmit={handleEditSave} className="space-y-4 mt-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2 md:col-span-2">
+              <div className="grid grid-cols-12 gap-4">
+                <div className="space-y-2 col-span-12">
                   <Label>Empresa</Label>
                   <select
                     value={editModalAccount.organization_id || ''}
@@ -1445,7 +1447,7 @@ export function AccountList({
                     ))}
                   </select>
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-2 col-span-12 sm:col-span-4">
                   <Label>Código</Label>
                   <Input
                     value={editModalAccount.code || ''}
@@ -1454,7 +1456,7 @@ export function AccountList({
                     }
                   />
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-2 col-span-12 sm:col-span-8">
                   <Label>Conta Contábil</Label>
                   <AccountCombobox
                     accounts={modalChartAccounts}
@@ -1473,7 +1475,7 @@ export function AccountList({
                     disabled={!editModalAccount.organization_id}
                   />
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-2 col-span-12">
                   <Label>Descrição</Label>
                   <Input
                     value={editModalAccount.descricao || ''}
@@ -1482,7 +1484,7 @@ export function AccountList({
                     }
                   />
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-2 col-span-12 sm:col-span-6">
                   <Label>Banco</Label>
                   <Input
                     value={editModalAccount.banco || ''}
@@ -1491,7 +1493,7 @@ export function AccountList({
                     }
                   />
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-2 col-span-12 sm:col-span-6">
                   <Label>Agência</Label>
                   <Input
                     value={editModalAccount.agencia || ''}
@@ -1500,72 +1502,68 @@ export function AccountList({
                     }
                   />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Número da Conta</Label>
-                    <Input
-                      value={editModalAccount.numeroConta || ''}
-                      onChange={(e) =>
-                        setEditModalAccount({ ...editModalAccount, numeroConta: e.target.value })
-                      }
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Dígito</Label>
-                    <Input
-                      value={editModalAccount.digitoConta || ''}
-                      onChange={(e) =>
-                        setEditModalAccount({ ...editModalAccount, digitoConta: e.target.value })
-                      }
-                    />
-                  </div>
+                <div className="space-y-2 col-span-12 sm:col-span-8">
+                  <Label>Número da Conta</Label>
+                  <Input
+                    value={editModalAccount.numeroConta || ''}
+                    onChange={(e) =>
+                      setEditModalAccount({ ...editModalAccount, numeroConta: e.target.value })
+                    }
+                  />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Tipo Conta</Label>
-                    <Select
-                      value={editModalAccount.tipoConta || 'NONE'}
-                      onValueChange={(val) =>
-                        setEditModalAccount({
-                          ...editModalAccount,
-                          tipoConta: val === 'NONE' ? '' : val,
-                        })
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="NONE">Selecione...</SelectItem>
-                        <SelectItem value="CAIXA">CAIXA</SelectItem>
-                        <SelectItem value="CORRENTE">CORRENTE</SelectItem>
-                        <SelectItem value="POUPANÇA">POUPANÇA</SelectItem>
-                        <SelectItem value="APLICAÇÕES">APLICAÇÕES</SelectItem>
-                        <SelectItem value="OUTRAS">OUTRAS</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Classificação</Label>
-                    <Select
-                      value={editModalAccount.classificacao || 'NONE'}
-                      onValueChange={(val) =>
-                        setEditModalAccount({
-                          ...editModalAccount,
-                          classificacao: val === 'NONE' ? '' : val,
-                        })
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="NONE">Selecione...</SelectItem>
-                        <SelectItem value="C">C</SelectItem>
-                        <SelectItem value="B">B</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+                <div className="space-y-2 col-span-12 sm:col-span-4">
+                  <Label>Dígito</Label>
+                  <Input
+                    value={editModalAccount.digitoConta || ''}
+                    onChange={(e) =>
+                      setEditModalAccount({ ...editModalAccount, digitoConta: e.target.value })
+                    }
+                  />
+                </div>
+                <div className="space-y-2 col-span-12 sm:col-span-6">
+                  <Label>Tipo Conta</Label>
+                  <Select
+                    value={editModalAccount.tipoConta || 'NONE'}
+                    onValueChange={(val) =>
+                      setEditModalAccount({
+                        ...editModalAccount,
+                        tipoConta: val === 'NONE' ? '' : val,
+                      })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="NONE">Selecione...</SelectItem>
+                      <SelectItem value="CAIXA">CAIXA</SelectItem>
+                      <SelectItem value="CORRENTE">CORRENTE</SelectItem>
+                      <SelectItem value="POUPANÇA">POUPANÇA</SelectItem>
+                      <SelectItem value="APLICAÇÕES">APLICAÇÕES</SelectItem>
+                      <SelectItem value="OUTRAS">OUTRAS</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2 col-span-12 sm:col-span-6">
+                  <Label>Classificação</Label>
+                  <Select
+                    value={editModalAccount.classificacao || 'NONE'}
+                    onValueChange={(val) =>
+                      setEditModalAccount({
+                        ...editModalAccount,
+                        classificacao: val === 'NONE' ? '' : val,
+                      })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="NONE">Selecione...</SelectItem>
+                      <SelectItem value="C">C</SelectItem>
+                      <SelectItem value="B">B</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
               <div className="flex justify-end gap-3 pt-4 border-t border-border mt-4">
