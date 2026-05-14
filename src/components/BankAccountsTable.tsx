@@ -1,4 +1,4 @@
-import React, { useState, useEffect, Fragment } from 'react'
+import { useState, useEffect, Fragment } from 'react'
 import {
   Table,
   TableBody,
@@ -18,33 +18,19 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import {
-  ArrowUpDown,
+  Pencil,
+  Trash2,
   ChevronDown,
   ChevronRight,
-  CornerDownRight,
   GripVertical,
-  Edit,
-  Trash2,
+  ArrowUpDown,
+  CornerDownRight,
   ChevronsLeft,
+  ChevronLeft,
   ChevronsRight,
-  ArrowLeft,
-  ArrowRight,
   Loader2,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-
-const COLUMNS_DEF = [
-  { id: 'company_name', label: 'Empresa', width: 'w-[180px]' },
-  { id: 'code', label: 'Código', width: 'w-[100px]' },
-  { id: 'account_code', label: 'Conta Contábil', width: 'w-[140px]' },
-  { id: 'description', label: 'Descrição', width: 'min-w-[200px]' },
-  { id: 'bank_code', label: 'Banco', width: 'w-[100px]' },
-  { id: 'agency', label: 'Agência', width: 'w-[100px]' },
-  { id: 'account_number', label: 'Conta', width: 'w-[120px]' },
-  { id: 'check_digit', label: 'Dígito', width: 'w-[80px]' },
-  { id: 'account_type', label: 'Tipo', width: 'w-[120px]' },
-  { id: 'classification', label: 'Classificação', width: 'w-[140px]' },
-]
 
 export function BankAccountsTable({
   accounts,
@@ -64,6 +50,19 @@ export function BankAccountsTable({
   onItemsPerPageChange,
   tableFontSize,
 }: any) {
+  const COLUMNS_DEF = [
+    { id: 'organization_id', label: 'Empresa', width: 'w-[180px]' },
+    { id: 'code', label: 'Código', width: 'w-[100px]' },
+    { id: 'account_code', label: 'Conta Contábil', width: 'w-[140px]' },
+    { id: 'description', label: 'Descrição', width: 'min-w-[200px]' },
+    { id: 'bank_code', label: 'Banco', width: 'w-[100px]' },
+    { id: 'agency', label: 'Agência', width: 'w-[100px]' },
+    { id: 'account_number', label: 'Conta', width: 'w-[120px]' },
+    { id: 'check_digit', label: 'Dígito', width: 'w-[80px]' },
+    { id: 'account_type', label: 'Tipo', width: 'w-[120px]' },
+    { id: 'classification', label: 'Classificação', width: 'w-[140px]' },
+  ]
+
   const [columnOrder, setColumnOrder] = useState<string[]>(() => {
     const saved = localStorage.getItem('bank_accounts_col_order_v2')
     if (saved) {
@@ -88,12 +87,10 @@ export function BankAccountsTable({
     setDraggedCol(col)
     e.dataTransfer.effectAllowed = 'move'
   }
-
   const handleDragOver = (e: React.DragEvent, col: string) => {
     e.preventDefault()
     e.dataTransfer.dropEffect = 'move'
   }
-
   const handleDrop = (e: React.DragEvent, col: string) => {
     e.preventDefault()
     if (!draggedCol || draggedCol === col) return
@@ -108,27 +105,15 @@ export function BankAccountsTable({
 
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set())
 
-  const toggleRow = (acc: any) => {
+  const toggleRow = (accId: string) => {
     const newSet = new Set(expandedRows)
-    if (newSet.has(acc.id)) {
-      newSet.delete(acc.id)
-    } else {
-      newSet.add(acc.id)
-    }
+    if (newSet.has(accId)) newSet.delete(accId)
+    else newSet.add(accId)
     setExpandedRows(newSet)
   }
 
-  const expandAll = () => {
-    const newSet = new Set<string>()
-    accounts.forEach((acc: any) => {
-      newSet.add(acc.id)
-    })
-    setExpandedRows(newSet)
-  }
-
-  const collapseAll = () => {
-    setExpandedRows(new Set())
-  }
+  const expandAll = () => setExpandedRows(new Set(accounts.map((a: any) => a.id)))
+  const collapseAll = () => setExpandedRows(new Set())
 
   const getHierarchy = (acc: any) => {
     const orgId = acc.organization_id
@@ -140,17 +125,14 @@ export function BankAccountsTable({
         ca.organization_id === orgId &&
         (ca.account_code === accountCode || ca.classification === accountCode),
     )
-
     if (!targetAcc || !targetAcc.classification) return []
 
     const parts = targetAcc.classification.split('.')
     const prefixes = parts.map((_: any, i: number) => parts.slice(0, i + 1).join('.'))
 
-    const hierarchy = chartAccounts
+    return chartAccounts
       .filter((ca: any) => ca.organization_id === orgId && prefixes.includes(ca.classification))
       .sort((a: any, b: any) => a.classification.localeCompare(b.classification))
-
-    return hierarchy
   }
 
   const getHierarchyNodeStyle = (nodeLevel: number, isSyntheticNode: boolean) => {
@@ -212,43 +194,65 @@ export function BankAccountsTable({
     }
   }
 
+  const renderCellContent = (acc: any, field: string) => {
+    switch (field) {
+      case 'organization_id':
+        return acc.organizations?.name || acc.company_name || '-'
+      case 'code':
+        return acc.code || '-'
+      case 'account_code':
+        return <span className="font-mono">{acc.account_code || '-'}</span>
+      case 'description':
+        return acc.description || '-'
+      case 'bank_code':
+        return acc.bank_code || '-'
+      case 'agency':
+        return acc.agency || '-'
+      case 'account_number':
+        return acc.account_number || '-'
+      case 'check_digit':
+        return acc.check_digit || '-'
+      case 'account_type':
+        return acc.account_type || '-'
+      case 'classification':
+        return (
+          <Badge variant="secondary" className="bg-black/5 font-normal">
+            {acc.classification || '-'}
+          </Badge>
+        )
+      default:
+        return acc[field] || '-'
+    }
+  }
+
   return (
-    <div className="flex flex-col bg-white">
-      <div className="flex items-center justify-between p-2 border-b border-indigo-950 bg-slate-50/50">
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={expandAll}
-            className="h-8 text-xs bg-white text-slate-700 shadow-sm border-slate-200"
-          >
-            <ChevronDown className="h-3.5 w-3.5 mr-1" /> Expandir Todos
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={collapseAll}
-            className="h-8 text-xs bg-white text-slate-700 shadow-sm border-slate-200"
-          >
-            <ChevronRight className="h-3.5 w-3.5 mr-1" /> Recolher Todos
-          </Button>
-        </div>
+    <div className="flex flex-col h-full bg-white dark:bg-slate-950">
+      <div className="p-2 flex gap-2 border-b bg-slate-50 dark:bg-slate-900/50">
+        <Button variant="outline" size="sm" onClick={expandAll} className="h-8 text-xs font-medium">
+          <ChevronDown className="h-3.5 w-3.5 mr-1" /> Expandir Todos
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={collapseAll}
+          className="h-8 text-xs font-medium"
+        >
+          <ChevronRight className="h-3.5 w-3.5 mr-1" /> Recolher Todos
+        </Button>
       </div>
 
-      <div className="overflow-x-auto w-full custom-scrollbar pb-2">
-        <Table style={{ fontSize: `${tableFontSize}px` }} className="min-w-max border-collapse">
+      <div className="overflow-x-auto">
+        <Table className="border-collapse min-w-full" style={{ fontSize: `${tableFontSize}px` }}>
           <TableHeader className="bg-indigo-950">
             <TableRow className="border-0 hover:bg-transparent">
               <TableHead className="w-12 text-center py-2 px-2 text-white font-normal text-[1.1em] border-0">
                 <Checkbox
-                  className="border-white data-[state=checked]:bg-white data-[state=checked]:text-indigo-950 h-5 w-5 rounded-md"
+                  className="border-white data-[state=checked]:bg-white data-[state=checked]:text-indigo-950"
                   checked={accounts.length > 0 && selectedAccounts.length === accounts.length}
                   onCheckedChange={onToggleSelectAll}
                 />
               </TableHead>
-              <TableHead className="w-10 py-2 px-2 text-white border-0 text-center">
-                <div className="w-5" />
-              </TableHead>
+              <TableHead className="w-10 py-2 px-2 text-white border-0"></TableHead>
               {columnOrder.map((colId) => {
                 const colDef = COLUMNS_DEF.find((c) => c.id === colId)
                 if (!colDef) return null
@@ -259,31 +263,22 @@ export function BankAccountsTable({
                     onDragStart={(e) => handleDragStart(e, colDef.id)}
                     onDragOver={(e) => handleDragOver(e, colDef.id)}
                     onDrop={(e) => handleDrop(e, colDef.id)}
-                    onClick={() => onSort && onSort(colDef.id)}
+                    onClick={() => onSort(colDef.id)}
                     className={cn(
-                      'cursor-pointer hover:bg-indigo-900 py-3 px-3 text-white font-semibold text-[1.1em] border-0 transition-colors select-none',
+                      'cursor-pointer hover:bg-indigo-950/80 py-2 px-2 text-white font-normal text-[1.1em] border-0 transition-opacity',
                       colDef.width,
                       draggedCol === colDef.id &&
                         'opacity-30 border-dashed border-2 border-white/50',
                     )}
                   >
-                    <div className="flex items-center gap-2 group whitespace-nowrap">
-                      <GripVertical className="h-3.5 w-3.5 opacity-0 group-hover:opacity-50 cursor-grab active:cursor-grabbing shrink-0" />
-                      {colDef.label}
-                      {sortConfig?.key === colDef.id ? (
-                        sortConfig.direction === 'asc' ? (
-                          <ArrowUpDown className="h-3.5 w-3.5 text-white shrink-0" />
-                        ) : (
-                          <ArrowUpDown className="h-3.5 w-3.5 text-white shrink-0 transform rotate-180" />
-                        )
-                      ) : (
-                        <ArrowUpDown className="h-3.5 w-3.5 opacity-30 shrink-0" />
-                      )}
+                    <div className="flex items-center gap-2 select-none group whitespace-nowrap">
+                      <GripVertical className="h-3 w-3 opacity-0 group-hover:opacity-50 cursor-grab active:cursor-grabbing shrink-0" />
+                      {colDef.label} <ArrowUpDown className="h-3 w-3 opacity-50 shrink-0" />
                     </div>
                   </TableHead>
                 )
               })}
-              <TableHead className="text-right py-3 px-3 text-white font-semibold text-[1.1em] border-0">
+              <TableHead className="text-right py-2 px-2 text-white font-normal text-[1.1em] border-0">
                 Ações
               </TableHead>
             </TableRow>
@@ -291,16 +286,16 @@ export function BankAccountsTable({
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={columnOrder.length + 3} className="text-center py-10">
-                  <Loader2 className="h-6 w-6 animate-spin mx-auto text-indigo-600" />
-                  <span className="text-slate-500 mt-2 block">Carregando contas...</span>
+                <TableCell colSpan={columnOrder.length + 3} className="h-32 text-center">
+                  <Loader2 className="h-6 w-6 animate-spin mx-auto text-indigo-950" />
+                  <p className="mt-2 text-slate-500">Carregando contas...</p>
                 </TableCell>
               </TableRow>
             ) : accounts.length === 0 ? (
               <TableRow>
                 <TableCell
                   colSpan={columnOrder.length + 3}
-                  className="text-center py-10 text-slate-500"
+                  className="h-32 text-center text-slate-500"
                 >
                   Nenhuma conta encontrada.
                 </TableCell>
@@ -309,23 +304,23 @@ export function BankAccountsTable({
               accounts.map((acc: any, index: number) => {
                 const isEven = index % 2 === 1
                 const isExpanded = expandedRows.has(acc.id)
-                const hierarchy = getHierarchy(acc)
+                const hierarchy = isExpanded ? getHierarchy(acc) : []
 
                 return (
                   <Fragment key={acc.id}>
                     <TableRow
                       className={cn(
-                        'border-0 group/row text-[1em] transition-colors',
+                        'border-0 group/row transition-colors text-[1em]',
                         isEven
                           ? 'bg-[#bfdbfe] text-black hover:bg-[#93c5fd]'
-                          : 'bg-white text-black hover:bg-slate-50',
+                          : 'bg-transparent text-foreground hover:bg-muted/50',
                       )}
                     >
                       <TableCell className="text-center py-2 px-2 border-0">
                         <Checkbox
                           className={cn(
-                            'h-5 w-5 rounded-md data-[state=checked]:bg-indigo-950 data-[state=checked]:border-indigo-950 data-[state=checked]:text-white',
-                            isEven ? 'border-black/50 bg-white/50' : 'border-slate-300',
+                            'data-[state=checked]:bg-indigo-950 data-[state=checked]:border-indigo-950 data-[state=checked]:text-white',
+                            isEven && 'border-black/50',
                           )}
                           checked={selectedAccounts.includes(acc.id)}
                           onCheckedChange={() => onToggleSelect(acc.id)}
@@ -336,13 +331,10 @@ export function BankAccountsTable({
                           variant="ghost"
                           size="icon"
                           className={cn(
-                            'h-7 w-7 rounded-full',
-                            isEven
-                              ? 'hover:bg-black/10 text-black'
-                              : 'hover:bg-slate-200 text-slate-600',
-                            isExpanded && (isEven ? 'bg-black/5' : 'bg-slate-100'),
+                            'h-6 w-6 rounded-full hover:bg-black/10',
+                            isExpanded && 'bg-black/5',
                           )}
-                          onClick={() => toggleRow(acc)}
+                          onClick={() => toggleRow(acc.id)}
                         >
                           {isExpanded ? (
                             <ChevronDown className="h-4 w-4" />
@@ -351,89 +343,67 @@ export function BankAccountsTable({
                           )}
                         </Button>
                       </TableCell>
-                      {columnOrder.map((field) => {
-                        let value = acc[field]
-                        if (field === 'company_name') {
-                          value = acc.organizations?.name || acc.company_name || '-'
-                        }
-                        return (
-                          <TableCell
-                            key={field}
-                            className={cn(
-                              'py-2 px-3 border-0',
-                              field === 'account_code' ? 'font-mono' : '',
-                              field === 'company_name' || field === 'description'
-                                ? 'font-bold'
-                                : 'font-normal',
-                            )}
-                          >
-                            {field === 'classification' ? (
-                              value ? (
-                                <Badge
-                                  variant="secondary"
-                                  className="bg-black/5 text-inherit border-transparent font-normal"
-                                >
-                                  {value}
-                                </Badge>
-                              ) : (
-                                '-'
-                              )
-                            ) : (
-                              value || <span className="opacity-50 italic text-[0.85em]">-</span>
-                            )}
-                          </TableCell>
-                        )
-                      })}
+
+                      {columnOrder.map((field) => (
+                        <TableCell
+                          key={field}
+                          className={cn(
+                            'py-2 px-2 border-0 whitespace-nowrap',
+                            field === 'description' || field === 'organization_id'
+                              ? 'font-bold'
+                              : '',
+                          )}
+                        >
+                          {renderCellContent(acc, field)}
+                        </TableCell>
+                      ))}
+
                       <TableCell className="text-right py-2 px-2 border-0">
-                        <div className="flex justify-end gap-1 transition-opacity">
+                        <div className="flex justify-end gap-1 opacity-50 group-hover/row:opacity-100 transition-opacity">
                           <Button
                             variant="ghost"
                             size="icon"
                             className={cn(
-                              'h-8 w-8 transition-colors',
+                              'h-7 w-7 transition-colors',
                               isEven
-                                ? 'text-black/70 hover:text-indigo-950 hover:bg-black/10'
-                                : 'text-slate-500 hover:text-indigo-600 hover:bg-indigo-50',
+                                ? 'hover:bg-black/10 hover:text-indigo-950'
+                                : 'hover:bg-primary/10 hover:text-primary',
                             )}
                             onClick={() => onEdit(acc)}
-                            title="Editar"
                           >
-                            <Edit className="h-4 w-4" />
+                            <Pencil className="h-3.5 w-3.5" />
                           </Button>
                           <Button
                             variant="ghost"
                             size="icon"
                             className={cn(
-                              'h-8 w-8 transition-colors',
+                              'h-7 w-7 transition-colors',
                               isEven
-                                ? 'text-black/70 hover:text-red-700 hover:bg-red-500/20'
-                                : 'text-slate-500 hover:text-red-600 hover:bg-red-50',
+                                ? 'hover:bg-red-500/20 hover:text-red-700'
+                                : 'hover:bg-destructive/10 hover:text-destructive',
                             )}
                             onClick={() => onDelete(acc)}
-                            title="Excluir"
                           >
-                            <Trash2 className="h-4 w-4" />
+                            <Trash2 className="h-3.5 w-3.5" />
                           </Button>
                         </div>
                       </TableCell>
                     </TableRow>
 
                     {isExpanded && (
-                      <TableRow className="border-0 bg-slate-50">
+                      <TableRow className="border-0 bg-slate-50 dark:bg-slate-900/50">
                         <TableCell colSpan={columnOrder.length + 3} className="p-0 border-0">
-                          <div className="bg-slate-50 p-4 shadow-inner border-y border-slate-200">
+                          <div className="bg-slate-50 dark:bg-slate-900/50 p-4 shadow-inner border-y border-slate-200 dark:border-slate-800">
                             <div className="text-xs font-bold text-slate-500 mb-2 uppercase flex items-center gap-2">
                               <CornerDownRight className="h-4 w-4" /> Raiz Hierárquica da Conta
                               Vinculada
                             </div>
 
                             {hierarchy.length > 0 ? (
-                              <div className="flex flex-col rounded-md overflow-hidden border border-slate-200 shadow-sm ml-6">
+                              <div className="flex flex-col rounded-md overflow-hidden border border-slate-200 dark:border-slate-800 shadow-sm ml-6">
                                 {hierarchy.map((node: any) => {
-                                  const code = node.classification || node.account_code || ''
-                                  const level = (code.match(/\./g) || []).length + 1
+                                  const level = (node.classification?.match(/\./g) || []).length + 1
                                   const isSyn = node.account_level === 'Sintética'
-
                                   return (
                                     <div
                                       key={node.id}
@@ -441,12 +411,12 @@ export function BankAccountsTable({
                                       style={getHierarchyNodeStyle(level, isSyn)}
                                     >
                                       <span
-                                        className="font-mono text-[11px] px-2 py-0.5 rounded shadow-sm"
+                                        className="font-mono text-xs px-2 py-0.5 rounded shadow-sm"
                                         style={getHierarchyBadgeStyle(level, isSyn)}
                                       >
-                                        {code}
+                                        {node.classification}
                                       </span>
-                                      <span className="text-[13px] font-medium tracking-wide">
+                                      <span className="text-sm font-medium">
                                         {node.account_name}
                                       </span>
                                     </div>
@@ -473,65 +443,60 @@ export function BankAccountsTable({
       </div>
 
       {!loading && accounts.length > 0 && (
-        <div className="flex flex-col sm:flex-row items-center justify-between p-3 border-t bg-slate-50/50 gap-4">
-          <div className="text-sm font-medium text-slate-500">
-            Mostrando Página {currentPage} de {totalPages}
-          </div>
+        <div className="flex flex-col sm:flex-row items-center justify-between p-4 border-t border-slate-200 bg-white dark:bg-slate-950 gap-4 mt-auto">
+          <p className="text-sm text-slate-500">
+            Página {currentPage} de {totalPages}
+          </p>
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
-              <span className="text-sm font-medium text-slate-500">Itens por página:</span>
+              <p className="text-sm text-slate-500 hidden sm:block">Itens por página:</p>
               <Select
                 value={itemsPerPage.toString()}
                 onValueChange={(v) => onItemsPerPageChange(Number(v))}
               >
-                <SelectTrigger className="h-8 w-[70px] text-xs bg-white border-slate-200">
-                  <SelectValue />
+                <SelectTrigger className="h-8 w-[70px]">
+                  <SelectValue placeholder={itemsPerPage} />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="10">10</SelectItem>
                   <SelectItem value="50">50</SelectItem>
                   <SelectItem value="100">100</SelectItem>
-                  <SelectItem value="500">500</SelectItem>
                   <SelectItem value="1000">1000</SelectItem>
                 </SelectContent>
               </Select>
             </div>
-
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-2">
               <Button
                 variant="outline"
-                size="icon"
-                className="h-8 w-8 bg-white border-slate-200"
+                size="sm"
                 onClick={() => onPageChange(1)}
-                disabled={currentPage <= 1 || loading}
+                disabled={currentPage === 1}
               >
-                <ChevronsLeft className="h-4 w-4 text-slate-600" />
+                <ChevronsLeft className="h-4 w-4" />
               </Button>
               <Button
                 variant="outline"
-                size="icon"
-                className="h-8 w-8 bg-white border-slate-200"
+                size="sm"
                 onClick={() => onPageChange(Math.max(1, currentPage - 1))}
-                disabled={currentPage <= 1 || loading}
+                disabled={currentPage === 1}
               >
-                <ArrowLeft className="h-4 w-4 text-slate-600" />
+                <ChevronLeft className="h-4 w-4" />
               </Button>
               <Button
                 variant="outline"
-                size="icon"
-                className="h-8 w-8 bg-white border-slate-200"
+                size="sm"
                 onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
-                disabled={currentPage >= totalPages || loading}
+                disabled={currentPage === totalPages}
               >
-                <ArrowRight className="h-4 w-4 text-slate-600" />
+                <ChevronRight className="h-4 w-4" />
               </Button>
               <Button
                 variant="outline"
-                size="icon"
-                className="h-8 w-8 bg-white border-slate-200"
+                size="sm"
                 onClick={() => onPageChange(totalPages)}
-                disabled={currentPage >= totalPages || loading}
+                disabled={currentPage === totalPages}
               >
-                <ChevronsRight className="h-4 w-4 text-slate-600" />
+                <ChevronsRight className="h-4 w-4" />
               </Button>
             </div>
           </div>
