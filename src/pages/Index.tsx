@@ -46,6 +46,7 @@ import {
   ChevronLeft,
   ChevronsLeft,
   ChevronsRight,
+  GripVertical,
 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { ImportBankAccountsModal } from '@/components/ImportBankAccountsModal'
@@ -75,6 +76,56 @@ export default function Index() {
     key: 'classification',
     direction: 'asc',
   })
+
+  const defaultCols = [
+    { id: 'company_name', label: 'Empresa' },
+    { id: 'code', label: 'Código' },
+    { id: 'account_code', label: 'Conta Contábil' },
+    { id: 'description', label: 'Descrição' },
+    { id: 'bank_code', label: 'Banco' },
+    { id: 'agency', label: 'Agência' },
+    { id: 'account_number', label: 'Conta' },
+    { id: 'account_type', label: 'Tipo' },
+    { id: 'classification', label: 'Classificação' },
+  ]
+
+  const [columns, setColumns] = useState(() => {
+    const saved = localStorage.getItem('bank_accounts_columns')
+    if (saved) {
+      try {
+        return JSON.parse(saved)
+      } catch {
+        /* intentionally ignored */
+      }
+    }
+    return defaultCols
+  })
+
+  useEffect(() => {
+    localStorage.setItem('bank_accounts_columns', JSON.stringify(columns))
+  }, [columns])
+
+  const [draggedCol, setDraggedCol] = useState<number | null>(null)
+
+  const handleDragStart = (e: React.DragEvent, index: number) => {
+    setDraggedCol(index)
+    e.dataTransfer.effectAllowed = 'move'
+  }
+
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+  }
+
+  const handleDrop = (e: React.DragEvent, index: number) => {
+    e.preventDefault()
+    if (draggedCol === null) return
+    const newCols = [...columns]
+    const [moved] = newCols.splice(draggedCol, 1)
+    newCols.splice(index, 0, moved)
+    setColumns(newCols)
+    setDraggedCol(null)
+  }
 
   const [collapsedClasses, setCollapsedClasses] = useState<Set<string>>(new Set())
   const toggleCollapse = (classification: string) => {
@@ -429,23 +480,25 @@ export default function Index() {
     )
   }
 
-  const getRowClassName = (acc: any, isSynth: boolean) => {
+  const getRowClassName = (acc: any, isSynth: boolean, index: number) => {
     const code = acc.classification || ''
     const level = (code.match(/\./g) || []).length + 1
 
     if (isSynth) {
       if (level === 1)
-        return 'bg-indigo-950 font-bold text-white hover:bg-indigo-900 border-b border-indigo-900'
+        return 'bg-indigo-950 font-bold text-white hover:bg-indigo-900 border-b border-indigo-900/50'
       if (level === 2)
-        return 'bg-blue-800 font-semibold text-white hover:bg-blue-700 border-b border-blue-700'
+        return 'bg-blue-800 font-semibold text-white hover:bg-blue-700 border-b border-blue-700/50'
       if (level === 3)
-        return 'bg-blue-500 font-medium text-white hover:bg-blue-400 border-b border-blue-400'
+        return 'bg-blue-500 font-medium text-white hover:bg-blue-400 border-b border-blue-400/50'
       if (level === 4)
-        return 'bg-blue-200 font-medium text-blue-950 hover:bg-blue-300 border-b border-blue-300'
-      return 'bg-blue-50 font-medium text-blue-900 hover:bg-blue-100 border-b border-blue-200'
+        return 'bg-blue-200 font-medium text-blue-950 hover:bg-blue-300 border-b border-blue-300/50'
+      return 'bg-blue-100 font-medium text-blue-900 hover:bg-blue-200 border-b border-blue-200/50'
     }
 
-    return 'bg-white font-normal text-slate-700 hover:bg-slate-50 border-b border-slate-100'
+    return index % 2 === 0
+      ? 'bg-white font-normal text-slate-700 hover:bg-slate-50 border-b border-slate-100'
+      : 'bg-blue-50 font-normal text-slate-800 hover:bg-blue-100 border-b border-blue-100'
   }
 
   return (
@@ -607,75 +660,37 @@ export default function Index() {
             style={{ fontSize: `${tableFontSize}px` }}
             className="[&_td]:p-1.5 [&_td]:px-2 [&_th]:p-1.5 [&_th]:px-2"
           >
-            <TableHeader className="bg-slate-100 border-b-2 border-slate-300">
-              <TableRow disableZebra className="hover:bg-slate-100">
-                <TableHead className="w-10 text-center">
+            <TableHeader className="bg-[#1e1b4b] border-b-0">
+              <TableRow disableZebra className="hover:bg-[#1e1b4b]">
+                <TableHead className="w-10 text-center border-none">
                   <Checkbox
                     checked={
                       paginatedAccounts.length > 0 &&
                       selectedAccounts.length === paginatedAccounts.length
                     }
                     onCheckedChange={toggleSelectAll}
+                    className="border-white/50 data-[state=checked]:bg-white data-[state=checked]:text-[#1e1b4b]"
                   />
                 </TableHead>
-                <TableHead
-                  className="w-[160px] cursor-pointer hover:bg-slate-200 font-bold text-slate-700 whitespace-nowrap"
-                  onClick={() => handleSort('classification')}
-                >
-                  <div className="flex items-center gap-2">
-                    Classificação <ArrowUpDown className="h-3 w-3 text-slate-400" />
-                  </div>
-                </TableHead>
-                <TableHead
-                  className="w-[110px] cursor-pointer hover:bg-slate-200 font-bold text-slate-700 whitespace-nowrap"
-                  onClick={() => handleSort('code')}
-                >
-                  <div className="flex items-center gap-2">
-                    Código <ArrowUpDown className="h-3 w-3 text-slate-400" />
-                  </div>
-                </TableHead>
-                <TableHead
-                  className="w-[120px] cursor-pointer hover:bg-slate-200 font-bold text-slate-700 whitespace-nowrap"
-                  onClick={() => handleSort('company_name')}
-                >
-                  <div className="flex items-center gap-2">
-                    Empresa <ArrowUpDown className="h-3 w-3 text-slate-400" />
-                  </div>
-                </TableHead>
-                <TableHead
-                  className="w-[120px] cursor-pointer hover:bg-slate-200 font-bold text-slate-700 whitespace-nowrap"
-                  onClick={() => handleSort('account_code')}
-                >
-                  <div className="flex items-center gap-2">
-                    Conta Contábil <ArrowUpDown className="h-3 w-3 text-slate-400" />
-                  </div>
-                </TableHead>
-                <TableHead
-                  className="min-w-[200px] cursor-pointer hover:bg-slate-200 font-bold text-slate-700 whitespace-nowrap"
-                  onClick={() => handleSort('description')}
-                >
-                  <div className="flex items-center gap-2">
-                    Descrição <ArrowUpDown className="h-3 w-3 text-slate-400" />
-                  </div>
-                </TableHead>
-                <TableHead
-                  className="w-[100px] cursor-pointer hover:bg-slate-200 font-bold text-slate-700 whitespace-nowrap"
-                  onClick={() => handleSort('bank_code')}
-                >
-                  <div className="flex items-center gap-2">
-                    Banco <ArrowUpDown className="h-3 w-3 text-slate-400" />
-                  </div>
-                </TableHead>
-                <TableHead className="w-[90px] font-bold text-slate-700 whitespace-nowrap">
-                  Agência
-                </TableHead>
-                <TableHead className="w-[110px] font-bold text-slate-700 whitespace-nowrap">
-                  Conta
-                </TableHead>
-                <TableHead className="w-[110px] font-bold text-slate-700 whitespace-nowrap">
-                  Tipo
-                </TableHead>
-                <TableHead className="w-[80px] text-right font-bold text-slate-700 whitespace-nowrap">
+                {columns.map((col, index) => (
+                  <TableHead
+                    key={col.id}
+                    draggable
+                    onDragStart={(e) => handleDragStart(e, index)}
+                    onDragOver={(e) => handleDragOver(e, index)}
+                    onDrop={(e) => handleDrop(e, index)}
+                    className="cursor-grab active:cursor-grabbing font-semibold text-white whitespace-nowrap border-none"
+                  >
+                    <div className="flex items-center gap-1.5" onClick={() => handleSort(col.id)}>
+                      <GripVertical className="h-3.5 w-3.5 opacity-50 shrink-0 cursor-grab hover:opacity-100" />
+                      <span className="cursor-pointer hover:underline decoration-white/50 underline-offset-4">
+                        {col.label}
+                      </span>
+                      <ArrowUpDown className="h-3 w-3 opacity-50 shrink-0 cursor-pointer" />
+                    </div>
+                  </TableHead>
+                ))}
+                <TableHead className="w-[80px] text-right font-semibold text-white whitespace-nowrap border-none">
                   Ações
                 </TableHead>
               </TableRow>
@@ -683,12 +698,12 @@ export default function Index() {
             <TableBody>
               {loading ? (
                 <TableRow disableZebra>
-                  <TableCell colSpan={11} className="h-24 text-center">
+                  <TableCell colSpan={columns.length + 2} className="h-24 text-center">
                     Carregando contas...
                   </TableCell>
                 </TableRow>
               ) : paginatedAccounts.length > 0 ? (
-                paginatedAccounts.map((acc) => {
+                paginatedAccounts.map((acc, rowIndex) => {
                   const isSynth = isSyntheticAccount(acc)
                   const code = acc.classification || ''
                   const level = (code.match(/\./g) || []).length + 1
@@ -696,7 +711,7 @@ export default function Index() {
                   return (
                     <TableRow
                       key={acc.id}
-                      className={getRowClassName(acc, isSynth)}
+                      className={getRowClassName(acc, isSynth, rowIndex)}
                       disableZebra
                       style={{ fontSize: `${tableFontSize}px` }}
                     >
@@ -709,73 +724,120 @@ export default function Index() {
                               ? 'border-white/70 data-[state=checked]:!bg-white data-[state=checked]:!text-indigo-950'
                               : isSynth && level === 4
                                 ? 'border-blue-950/50 data-[state=checked]:!bg-blue-950 data-[state=checked]:!text-white'
-                                : '',
+                                : 'border-slate-300 data-[state=checked]:!bg-blue-600 data-[state=checked]:!border-blue-600',
                           )}
                         />
                       </TableCell>
-                      <TableCell className="font-bold whitespace-nowrap">
-                        <div
-                          className="flex items-center"
-                          style={{ paddingLeft: `${(level - 1) * 1.5}rem` }}
-                        >
-                          {isSynth ? (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                toggleCollapse(acc.classification || '')
-                              }}
-                              className={cn(
-                                'h-5 w-5 mr-1 p-0 rounded-sm shrink-0 transition-colors',
-                                level <= 3
-                                  ? 'hover:bg-white/20 hover:text-white'
-                                  : 'hover:bg-black/10',
-                              )}
-                            >
-                              {collapsedClasses.has(acc.classification || '') ? (
-                                <ChevronRight className="h-4 w-4" />
-                              ) : (
-                                <ChevronDown className="h-4 w-4" />
-                              )}
-                            </Button>
-                          ) : (
-                            <span className="w-6 shrink-0" />
-                          )}
-                          {acc.classification || '-'}
-                        </div>
-                      </TableCell>
-                      <TableCell className="font-medium whitespace-nowrap">
-                        {acc.code || '-'}
-                      </TableCell>
-                      <TableCell className="whitespace-nowrap">
-                        <div className="flex items-center gap-1.5">
-                          <Building2 className="h-3 w-3 opacity-60 shrink-0" />
-                          <span className="truncate max-w-[100px]">
-                            {acc.organizations?.name || acc.company_name || '-'}
-                          </span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="font-medium whitespace-nowrap">
-                        {acc.account_code || '-'}
-                      </TableCell>
-                      <TableCell className="whitespace-nowrap">
-                        <span
-                          className={cn(
-                            isSynth ? 'font-bold uppercase tracking-tight' : 'font-medium',
-                          )}
-                        >
-                          {acc.description}
-                        </span>
-                      </TableCell>
-                      <TableCell className="whitespace-nowrap">{acc.bank_code || '-'}</TableCell>
-                      <TableCell className="whitespace-nowrap">{acc.agency || '-'}</TableCell>
-                      <TableCell className="whitespace-nowrap">
-                        {acc.account_number
-                          ? `${acc.account_number}${acc.check_digit ? '-' + acc.check_digit : ''}`
-                          : '-'}
-                      </TableCell>
-                      <TableCell className="whitespace-nowrap">{acc.account_type || '-'}</TableCell>
+
+                      {columns.map((col) => {
+                        if (col.id === 'company_name') {
+                          return (
+                            <TableCell key={col.id} className="whitespace-nowrap">
+                              <div className="flex items-center gap-1.5">
+                                <Building2 className="h-3 w-3 opacity-60 shrink-0" />
+                                <span className="truncate max-w-[150px]">
+                                  {acc.organizations?.name || acc.company_name || '-'}
+                                </span>
+                              </div>
+                            </TableCell>
+                          )
+                        }
+                        if (col.id === 'code') {
+                          return (
+                            <TableCell key={col.id} className="whitespace-nowrap font-medium">
+                              {acc.code || '-'}
+                            </TableCell>
+                          )
+                        }
+                        if (col.id === 'account_code') {
+                          return (
+                            <TableCell key={col.id} className="whitespace-nowrap font-medium">
+                              {acc.account_code || '-'}
+                            </TableCell>
+                          )
+                        }
+                        if (col.id === 'description') {
+                          return (
+                            <TableCell key={col.id} className="whitespace-nowrap">
+                              <span
+                                className={cn(
+                                  isSynth ? 'font-bold uppercase tracking-tight' : 'font-medium',
+                                )}
+                              >
+                                {acc.description}
+                              </span>
+                            </TableCell>
+                          )
+                        }
+                        if (col.id === 'bank_code') {
+                          return (
+                            <TableCell key={col.id} className="whitespace-nowrap">
+                              {acc.bank_code || '-'}
+                            </TableCell>
+                          )
+                        }
+                        if (col.id === 'agency') {
+                          return (
+                            <TableCell key={col.id} className="whitespace-nowrap">
+                              {acc.agency || '-'}
+                            </TableCell>
+                          )
+                        }
+                        if (col.id === 'account_number') {
+                          return (
+                            <TableCell key={col.id} className="whitespace-nowrap">
+                              {acc.account_number
+                                ? `${acc.account_number}${acc.check_digit ? '-' + acc.check_digit : ''}`
+                                : '-'}
+                            </TableCell>
+                          )
+                        }
+                        if (col.id === 'account_type') {
+                          return (
+                            <TableCell key={col.id} className="whitespace-nowrap">
+                              {acc.account_type || '-'}
+                            </TableCell>
+                          )
+                        }
+                        if (col.id === 'classification') {
+                          return (
+                            <TableCell key={col.id} className="whitespace-nowrap font-bold">
+                              <div
+                                className="flex items-center"
+                                style={{ paddingLeft: `${(level - 1) * 1.5}rem` }}
+                              >
+                                {isSynth ? (
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      toggleCollapse(acc.classification || '')
+                                    }}
+                                    className={cn(
+                                      'h-5 w-5 mr-1 p-0 rounded-sm shrink-0 transition-colors',
+                                      level <= 3
+                                        ? 'hover:bg-white/20 text-white hover:text-white'
+                                        : 'hover:bg-black/10 text-slate-800',
+                                    )}
+                                  >
+                                    {collapsedClasses.has(acc.classification || '') ? (
+                                      <ChevronRight className="h-4 w-4" />
+                                    ) : (
+                                      <ChevronDown className="h-4 w-4" />
+                                    )}
+                                  </Button>
+                                ) : (
+                                  <span className="w-6 shrink-0" />
+                                )}
+                                {acc.classification || '-'}
+                              </div>
+                            </TableCell>
+                          )
+                        }
+                        return <TableCell key={col.id}>-</TableCell>
+                      })}
+
                       <TableCell className="text-right whitespace-nowrap">
                         <div className="flex items-center justify-end gap-1">
                           <Button
@@ -818,7 +880,7 @@ export default function Index() {
                 })
               ) : (
                 <TableRow disableZebra>
-                  <TableCell colSpan={11} className="h-24 text-center">
+                  <TableCell colSpan={columns.length + 2} className="h-24 text-center">
                     Nenhuma conta encontrada.
                   </TableCell>
                 </TableRow>
