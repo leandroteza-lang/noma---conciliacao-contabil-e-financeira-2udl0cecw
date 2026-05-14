@@ -245,6 +245,7 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
   } | null>(null)
 
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
+  const [viewMode, setViewMode] = useState<'hierarchy' | 'analytic'>('hierarchy')
   const { toast } = useToast()
   const { logAction } = useAuditLog()
 
@@ -346,7 +347,8 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
   }, [accounts, sortConfig, organizations])
 
   const visibleAccounts = useMemo(() => {
-    if (sortConfig !== null) return accountsWithHierarchy.filter((a) => !a.isChartNode)
+    if (sortConfig !== null || viewMode === 'analytic')
+      return accountsWithHierarchy.filter((a) => !a.isChartNode)
 
     return accountsWithHierarchy.filter((a) => {
       if (!a.parentId) return true
@@ -359,22 +361,21 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
       }
       return true
     })
-  }, [accountsWithHierarchy, expandedIds, sortConfig])
+  }, [accountsWithHierarchy, expandedIds, sortConfig, viewMode])
 
   const handleExpandAll = () => {
+    setViewMode('hierarchy')
     const allWithChildren = accountsWithHierarchy.filter((a) => a.hasChildren).map((a) => a.id)
     setExpandedIds(new Set(allWithChildren))
   }
 
   const handleCollapseAll = () => {
+    setViewMode('hierarchy')
     setExpandedIds(new Set())
   }
 
   const handleExpandAnalytic = () => {
-    const allChartNodes = accountsWithHierarchy
-      .filter((a) => a.isChartNode && a.hasChildren)
-      .map((a) => a.id)
-    setExpandedIds(new Set(allChartNodes))
+    setViewMode('analytic')
   }
 
   const handleBulkEditSave = async (e: React.FormEvent) => {
@@ -906,7 +907,8 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
           <TableBody>
             {visibleAccounts.map((acc, index) => {
               const isEven = index % 2 === 1
-              const rowStyle = sortConfig === null ? getRowStyle(acc) : ''
+              const rowStyle =
+                sortConfig === null && viewMode === 'hierarchy' ? getRowStyle(acc) : ''
 
               return (
                 <TableRow
@@ -936,7 +938,8 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
 
                   {columns.map((col) => {
                     const isCodeCol = col.id === 'code' || col.id === 'descricao'
-                    const showHierarchy = !sortConfig && col.id === 'descricao'
+                    const showHierarchy =
+                      !sortConfig && viewMode === 'hierarchy' && col.id === 'descricao'
 
                     return (
                       <TableCell
@@ -1079,7 +1082,7 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
 
           const org = organizations.find((o) => o.id === acc.organization_id)
           const theme = getTheme(org?.name)
-          const rowStyle = sortConfig === null ? getRowStyle(acc) : ''
+          const rowStyle = sortConfig === null && viewMode === 'hierarchy' ? getRowStyle(acc) : ''
 
           return (
             <Card
