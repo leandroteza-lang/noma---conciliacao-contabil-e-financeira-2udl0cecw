@@ -24,6 +24,9 @@ export default function AccountsList() {
   const { toast } = useToast()
 
   const [searchTerm, setSearchTerm] = useState('')
+  const [filterOrg, setFilterOrg] = useState<string[]>([])
+  const [filterType, setFilterType] = useState<string[]>([])
+  const [filterClass, setFilterClass] = useState<string[]>([])
   const [isNewModalOpen, setIsNewModalOpen] = useState(false)
   const [newAccount, setNewAccount] = useState<any>({})
   const [isSaving, setIsSaving] = useState(false)
@@ -83,6 +86,14 @@ export default function AccountsList() {
         queryBank = queryBank.or(
           `description.ilike.%${searchTerm}%,code.ilike.%${searchTerm}%,account_number.ilike.%${searchTerm}%`,
         )
+      }
+
+      if (filterOrg.length > 0) {
+        queryBank = queryBank.in('organization_id', filterOrg)
+        queryChart = queryChart.in('organization_id', filterOrg)
+      }
+      if (filterType.length > 0) {
+        queryBank = queryBank.in('account_type', filterType)
       }
 
       const bankRes = await queryBank
@@ -177,6 +188,13 @@ export default function AccountsList() {
         })
       })
 
+      if (filterType.length > 0) {
+        finalAccounts = finalAccounts.filter((a) => filterType.includes(a.tipoConta || ''))
+      }
+      if (filterClass.length > 0) {
+        finalAccounts = finalAccounts.filter((a) => filterClass.includes(a.classificacao || ''))
+      }
+
       setAccounts(finalAccounts)
     } catch (error: any) {
       toast({
@@ -198,7 +216,7 @@ export default function AccountsList() {
       fetchAccounts()
     }, 300)
     return () => clearTimeout(delayDebounceFn)
-  }, [searchTerm])
+  }, [searchTerm, filterOrg, filterType, filterClass])
 
   const handleDelete = async (id: string) => {
     if (!confirm('Deseja realmente solicitar a exclusão desta conta?')) return
@@ -285,6 +303,12 @@ export default function AccountsList() {
             onDelete={handleDelete}
             searchTerm={searchTerm}
             onSearchChange={setSearchTerm}
+            filterOrg={filterOrg}
+            onFilterOrgChange={setFilterOrg}
+            filterType={filterType}
+            onFilterTypeChange={setFilterType}
+            filterClass={filterClass}
+            onFilterClassChange={setFilterClass}
             onUpdateInline={async (id, field, value) => {
               try {
                 const dbFieldMap: Record<string, string> = {

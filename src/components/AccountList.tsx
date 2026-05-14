@@ -58,6 +58,12 @@ interface Props {
   onUpdateInline?: (id: string, field: string, value: string) => Promise<boolean>
   searchTerm?: string
   onSearchChange?: (val: string) => void
+  filterOrg?: string[]
+  onFilterOrgChange?: (val: string[]) => void
+  filterType?: string[]
+  onFilterTypeChange?: (val: string[]) => void
+  filterClass?: string[]
+  onFilterClassChange?: (val: string[]) => void
 }
 
 const getTheme = (name: string | null | undefined) => {
@@ -263,6 +269,12 @@ export function AccountList({
   onUpdateInline,
   searchTerm,
   onSearchChange,
+  filterOrg = [],
+  onFilterOrgChange,
+  filterType = [],
+  onFilterTypeChange,
+  filterClass = [],
+  onFilterClassChange,
 }: Props) {
   const [editing, setEditing] = useState<{ id: string; field: string } | null>(null)
   const [selectedIds, setSelectedIds] = useState<string[]>([])
@@ -271,10 +283,6 @@ export function AccountList({
   const [bulkEditData, setBulkEditData] = useState<any>({})
   const [isSaving, setIsSaving] = useState(false)
   const [modalChartAccounts, setModalChartAccounts] = useState<any[]>([])
-
-  const [filterOrg, setFilterOrg] = useState<string[]>([])
-  const [filterType, setFilterType] = useState<string[]>([])
-  const [filterClass, setFilterClass] = useState<string[]>([])
 
   useEffect(() => {
     if (editModalAccount?.organization_id) {
@@ -393,19 +401,7 @@ export function AccountList({
   }
 
   const visibleAccounts = useMemo(() => {
-    let filtered = accounts
-
-    if (filterOrg.length > 0) {
-      filtered = filtered.filter((a) => filterOrg.includes(a.organization_id))
-    }
-    if (filterType.length > 0) {
-      filtered = filtered.filter((a) => filterType.includes(a.tipoConta || ''))
-    }
-    if (filterClass.length > 0) {
-      filtered = filtered.filter((a) => filterClass.includes(a.classificacao || ''))
-    }
-
-    let sortable = [...filtered]
+    let sortable = [...accounts]
 
     if (sortConfig) {
       sortable.sort((a, b) => {
@@ -430,7 +426,7 @@ export function AccountList({
     }
 
     return sortable
-  }, [accounts, sortConfig, organizations, filterOrg, filterType, filterClass])
+  }, [accounts, sortConfig, organizations])
 
   const handleExpandAll = () => {
     const allIds = accounts.map((a) => a.id)
@@ -784,183 +780,198 @@ export function AccountList({
 
   return (
     <div className="flex flex-col h-full space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 shrink-0 w-full">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 flex-1 w-full">
-          {selectedIds.length > 0 && (
-            <div className="bg-muted/50 border border-border rounded-md p-1.5 px-3 flex items-center gap-3 animate-in fade-in shrink-0">
-              <span className="text-sm font-medium text-foreground">
-                {selectedIds.length} selecionado(s)
-              </span>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => setIsBulkEditOpen(true)}
-                  className="h-8 gap-2"
-                >
-                  <Edit className="h-4 w-4" /> Editar Lote
-                </Button>
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  onClick={handleBulkDelete}
-                  className="h-8 gap-2"
-                >
-                  <Trash2 className="h-4 w-4" /> Excluir
-                </Button>
-              </div>
+      <div className="flex flex-col gap-3">
+        {selectedIds.length > 0 && (
+          <div className="bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-200 dark:border-indigo-800 rounded-md p-2 flex items-center justify-between animate-in fade-in shrink-0">
+            <span className="text-sm font-semibold text-indigo-900 dark:text-indigo-200">
+              {selectedIds.length} conta(s) selecionada(s)
+            </span>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => setIsBulkEditOpen(true)}
+                className="h-8 gap-2 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700"
+              >
+                <Edit className="h-4 w-4" /> Editar Lote
+              </Button>
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={handleBulkDelete}
+                className="h-8 gap-2"
+              >
+                <Trash2 className="h-4 w-4" /> Excluir
+              </Button>
             </div>
-          )}
+          </div>
+        )}
 
-          <div className="flex flex-wrap sm:flex-nowrap items-center gap-3 w-full max-w-5xl">
-            <div
-              className={cn(
-                'flex flex-nowrap items-center gap-1.5 p-1 rounded-md border shadow-sm transition-colors h-10 shrink-0 overflow-x-auto custom-scrollbar',
-                filterOrg.length > 0 || filterType.length > 0 || filterClass.length > 0
-                  ? 'bg-indigo-50 border-indigo-200 dark:bg-indigo-900/30 dark:border-indigo-800'
-                  : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800',
-              )}
-            >
-              <div className="w-[180px] shrink-0">
-                <MultiSelect
-                  title="Empresa"
-                  options={organizations.map((org) => ({ label: org.name || '', value: org.id }))}
-                  selected={filterOrg}
-                  onChange={setFilterOrg}
-                  isActive={filterOrg.length > 0}
-                />
-              </div>
-
-              <div className="w-px h-5 bg-slate-200 dark:bg-slate-800 shrink-0"></div>
-
-              <div className="w-[130px] shrink-0">
-                <MultiSelect
-                  title="Tipo"
-                  options={[
-                    { label: 'CAIXA', value: 'CAIXA' },
-                    { label: 'CORRENTE', value: 'CORRENTE' },
-                    { label: 'POUPANÇA', value: 'POUPANÇA' },
-                    { label: 'APLICAÇÕES', value: 'APLICAÇÕES' },
-                    { label: 'OUTRAS', value: 'OUTRAS' },
-                  ]}
-                  selected={filterType}
-                  onChange={setFilterType}
-                  isActive={filterType.length > 0}
-                />
-              </div>
-
-              <div className="w-px h-5 bg-slate-200 dark:bg-slate-800 shrink-0"></div>
-
-              <div className="w-[140px] shrink-0">
-                <MultiSelect
-                  title="Classificação"
-                  options={[
-                    { label: 'C', value: 'C' },
-                    { label: 'B', value: 'B' },
-                  ]}
-                  selected={filterClass}
-                  onChange={setFilterClass}
-                  isActive={filterClass.length > 0}
-                />
-              </div>
-            </div>
-
-            <div className="relative flex-1 min-w-[250px] h-10">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-indigo-500" />
-              <Input
-                type="text"
-                placeholder="Buscar contas..."
-                className="w-full h-full pl-9 border-2 border-indigo-200 hover:border-indigo-300 focus-visible:border-indigo-500 focus-visible:ring-4 focus-visible:ring-indigo-500/20 bg-white dark:bg-slate-900 dark:border-indigo-800 transition-all shadow-sm font-medium text-slate-900 dark:text-slate-100 placeholder:text-slate-500"
-                value={searchTerm || ''}
-                onChange={(e) => onSearchChange?.(e.target.value)}
+        <div className="grid grid-cols-1 xl:grid-cols-[auto_1fr_auto] gap-3 items-center w-full bg-slate-50/50 dark:bg-slate-900/50 p-2 rounded-lg border border-slate-100 dark:border-slate-800 shadow-sm">
+          <div
+            className={cn(
+              'flex items-center gap-1.5 h-10 px-1 rounded-md border shadow-sm shrink-0 bg-white dark:bg-slate-900 transition-colors',
+              filterOrg.length > 0 || filterType.length > 0 || filterClass.length > 0
+                ? 'border-indigo-300 dark:border-indigo-700 ring-1 ring-indigo-500/20'
+                : 'border-slate-200 dark:border-slate-800',
+            )}
+          >
+            <div className="w-[180px] shrink-0">
+              <MultiSelect
+                title="Empresa"
+                options={organizations.map((org) => ({ label: org.name || '', value: org.id }))}
+                selected={filterOrg}
+                onChange={(val) => onFilterOrgChange?.(val)}
+                isActive={filterOrg.length > 0}
               />
             </div>
+
+            <div className="w-px h-5 bg-slate-200 dark:bg-slate-800 shrink-0"></div>
+
+            <div className="w-[130px] shrink-0">
+              <MultiSelect
+                title="Tipo"
+                options={[
+                  { label: 'CAIXA', value: 'CAIXA' },
+                  { label: 'CORRENTE', value: 'CORRENTE' },
+                  { label: 'POUPANÇA', value: 'POUPANÇA' },
+                  { label: 'APLICAÇÕES', value: 'APLICAÇÕES' },
+                  { label: 'OUTRAS', value: 'OUTRAS' },
+                ]}
+                selected={filterType}
+                onChange={(val) => onFilterTypeChange?.(val)}
+                isActive={filterType.length > 0}
+              />
+            </div>
+
+            <div className="w-px h-5 bg-slate-200 dark:bg-slate-800 shrink-0"></div>
+
+            <div className="w-[140px] shrink-0">
+              <MultiSelect
+                title="Classificação"
+                options={[
+                  { label: 'C', value: 'C' },
+                  { label: 'B', value: 'B' },
+                ]}
+                selected={filterClass}
+                onChange={(val) => onFilterClassChange?.(val)}
+                isActive={filterClass.length > 0}
+              />
+            </div>
+
+            {(filterOrg.length > 0 || filterType.length > 0 || filterClass.length > 0) && (
+              <div className="flex items-center pl-1 border-l border-slate-200 dark:border-slate-800 ml-1">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 px-2 text-xs text-slate-500 hover:text-slate-900 dark:hover:text-slate-100"
+                  onClick={() => {
+                    onFilterOrgChange?.([])
+                    onFilterTypeChange?.([])
+                    onFilterClassChange?.([])
+                  }}
+                >
+                  Limpar
+                </Button>
+              </div>
+            )}
           </div>
-        </div>
 
-        <div className="flex flex-wrap items-center gap-2 shrink-0 ml-auto xl:ml-0">
-          <div
-            className="hidden sm:flex items-center gap-1 bg-white dark:bg-slate-900 rounded-md p-0.5 border border-slate-200 dark:border-slate-800 shadow-sm h-10"
-            title="Tamanho da Fonte das Tabelas"
-          >
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 text-[12px] font-bold text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 bg-transparent"
-              onClick={() => setTableFontSize((p) => Math.max(8, p - 1))}
-            >
-              A-
-            </Button>
-            <span className="text-[12px] font-medium text-slate-500 w-5 text-center select-none">
-              {tableFontSize}
-            </span>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 text-[14px] font-bold text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 bg-transparent"
-              onClick={() => setTableFontSize((p) => Math.min(24, p + 1))}
-            >
-              A+
-            </Button>
+          <div className="relative flex-1 w-full min-w-[200px] h-10">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-indigo-500" />
+            <Input
+              type="text"
+              placeholder="Buscar contas..."
+              className="w-full h-full pl-9 border border-slate-300 dark:border-slate-700 hover:border-indigo-300 focus-visible:border-indigo-500 focus-visible:ring-2 focus-visible:ring-indigo-500/20 bg-white dark:bg-slate-900 transition-all shadow-sm font-medium text-slate-900 dark:text-slate-100 placeholder:text-slate-500"
+              value={searchTerm || ''}
+              onChange={(e) => onSearchChange?.(e.target.value)}
+            />
           </div>
 
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="gap-2">
-                <Download className="h-4 w-4" /> Exportar
+          <div className="flex items-center gap-2 shrink-0 justify-end">
+            <div
+              className="hidden sm:flex items-center gap-1 bg-white dark:bg-slate-900 rounded-md p-0.5 border border-slate-200 dark:border-slate-800 shadow-sm h-10"
+              title="Tamanho da Fonte das Tabelas"
+            >
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-[12px] font-bold text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 bg-transparent"
+                onClick={() => setTableFontSize((p) => Math.max(8, p - 1))}
+              >
+                A-
               </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem
-                onClick={() => handleExport('txt')}
-                className="cursor-pointer gap-2"
+              <span className="text-[12px] font-medium text-slate-500 w-5 text-center select-none">
+                {tableFontSize}
+              </span>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-[14px] font-bold text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 bg-transparent"
+                onClick={() => setTableFontSize((p) => Math.min(24, p + 1))}
               >
-                <FileText className="h-4 w-4" /> TXT
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => handleExport('csv')}
-                className="cursor-pointer gap-2"
-              >
-                <FileText className="h-4 w-4" /> CSV
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => handleExport('excel')}
-                className="cursor-pointer gap-2"
-              >
-                <FileSpreadsheet className="h-4 w-4" /> Excel (XLSX)
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => handleExport('pdf')}
-                className="cursor-pointer gap-2"
-              >
-                <FileText className="h-4 w-4" /> PDF
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => handleExport('browser')}
-                className="cursor-pointer gap-2"
-              >
-                <FileText className="h-4 w-4" /> Abrir no Browser
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+                A+
+              </Button>
+            </div>
 
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button className="gap-2 bg-cyan-400 hover:bg-cyan-500 text-white border-none">
-                <Upload className="h-4 w-4" /> Importar em Lote
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={handleExportTemplate} className="cursor-pointer gap-2">
-                <Download className="h-4 w-4 text-blue-600" /> Exportar Modelo Padrão
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild className="cursor-pointer gap-2">
-                <Link to="/import">
-                  <Upload className="h-4 w-4 text-green-600" /> Importar Planilha
-                </Link>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="gap-2 h-10 bg-white dark:bg-slate-900">
+                  <Download className="h-4 w-4" /> Exportar
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  onClick={() => handleExport('txt')}
+                  className="cursor-pointer gap-2"
+                >
+                  <FileText className="h-4 w-4" /> TXT
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => handleExport('csv')}
+                  className="cursor-pointer gap-2"
+                >
+                  <FileText className="h-4 w-4" /> CSV
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => handleExport('excel')}
+                  className="cursor-pointer gap-2"
+                >
+                  <FileSpreadsheet className="h-4 w-4" /> Excel (XLSX)
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => handleExport('pdf')}
+                  className="cursor-pointer gap-2"
+                >
+                  <FileText className="h-4 w-4" /> PDF
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => handleExport('browser')}
+                  className="cursor-pointer gap-2"
+                >
+                  <FileText className="h-4 w-4" /> Abrir no Browser
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button className="gap-2 h-10 bg-indigo-600 hover:bg-indigo-700 text-white border-none shadow-sm">
+                  <Upload className="h-4 w-4" /> Importar em Lote
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={handleExportTemplate} className="cursor-pointer gap-2">
+                  <Download className="h-4 w-4 text-blue-600" /> Exportar Modelo Padrão
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild className="cursor-pointer gap-2">
+                  <Link to="/import">
+                    <Upload className="h-4 w-4 text-green-600" /> Importar Planilha
+                  </Link>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
       </div>
 
