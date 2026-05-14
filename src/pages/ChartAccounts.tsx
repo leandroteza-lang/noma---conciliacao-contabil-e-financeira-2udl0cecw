@@ -12,6 +12,7 @@ import {
   ChevronsLeft,
   ChevronsRight,
   ArrowUpDown,
+  ChevronDown,
   Download,
   Upload,
   FileText,
@@ -106,9 +107,18 @@ export default function ChartAccounts() {
 
   const [loading, setLoading] = useState(true)
   const [selectedIds, setSelectedIds] = useState<string[]>([])
-  const [totalCount, setTotalCount] = useState(0)
 
   const [isImportOpen, setIsImportOpen] = useState(false)
+  const [collapsedClasses, setCollapsedClasses] = useState<Set<string>>(new Set())
+
+  const toggleCollapse = (classification: string) => {
+    setCollapsedClasses((prev) => {
+      const next = new Set(prev)
+      if (next.has(classification)) next.delete(classification)
+      else next.add(classification)
+      return next
+    })
+  }
 
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(50)
@@ -202,9 +212,10 @@ export default function ChartAccounts() {
 
     let query = supabase
       .from('chart_of_accounts')
-      .select('*, organization:organizations(name)', { count: 'exact' })
+      .select('*, organization:organizations(name)')
       .neq('pending_deletion', true)
       .is('deleted_at', null)
+      .limit(10000)
 
     if (debouncedSearch) {
       query = query.or(
@@ -238,19 +249,10 @@ export default function ChartAccounts() {
       query = query.eq('organization_id', orgFilter)
     }
 
-    const sortCol = sortConfig?.key || 'classification'
-    const sortDir = sortConfig?.direction === 'asc'
-    query = query.order(sortCol, { ascending: sortDir })
-
-    const from = (currentPage - 1) * itemsPerPage
-    const to = from + itemsPerPage - 1
-    query = query.range(from, to)
-
-    const { data, count, error } = await query
+    const { data, error } = await query
 
     if (!error && data) {
       setAccounts(data)
-      setTotalCount(count || 0)
       setSelectedIds((prev) => prev.filter((id) => data.some((d) => d.id === id)))
     }
 
@@ -303,14 +305,18 @@ export default function ChartAccounts() {
     const level = (code.match(/\./g) || []).length + 1
 
     if (acc.account_level === 'Sintética') {
-      if (level === 1) return 'bg-indigo-950 font-bold text-white hover:bg-indigo-900 border-none'
-      if (level === 2) return 'bg-blue-800 font-semibold text-white hover:bg-blue-700 border-none'
-      if (level === 3) return 'bg-blue-500 font-medium text-white hover:bg-blue-400 border-none'
-      if (level === 4) return 'bg-blue-200 font-medium text-blue-950 hover:bg-blue-300 border-none'
-      return 'bg-blue-50 font-medium text-blue-900 hover:bg-blue-100 border-none'
+      if (level === 1)
+        return 'bg-indigo-950 font-bold text-white hover:bg-indigo-900 border-b border-indigo-900'
+      if (level === 2)
+        return 'bg-blue-800 font-semibold text-white hover:bg-blue-700 border-b border-blue-700'
+      if (level === 3)
+        return 'bg-blue-500 font-medium text-white hover:bg-blue-400 border-b border-blue-400'
+      if (level === 4)
+        return 'bg-blue-200 font-medium text-blue-950 hover:bg-blue-300 border-b border-blue-300'
+      return 'bg-blue-50 font-medium text-blue-900 hover:bg-blue-100 border-b border-blue-200'
     }
 
-    return 'bg-white font-normal text-slate-700 hover:bg-slate-50 border-b-slate-100'
+    return 'bg-white font-normal text-slate-700 hover:bg-slate-50 border-b border-slate-100'
   }
 
   const handleSaveAccount = async (data: any) => {
@@ -424,11 +430,51 @@ export default function ChartAccounts() {
     setSortConfig({ key, direction })
   }
 
-  const totalPages = Math.max(1, Math.ceil(totalCount / itemsPerPage))
-  const paginatedData = accounts
+  const sortedAccounts = useMemo(() => {
+    let sorted = [...accounts]
+    if (sortConfig) {
+      const { key, direction } = sortConfig
+      sorted.sort((a, b) => {
+        let valA = (a as any)[key] || ''
+        let valB = (b as any)[key] || ''
+        if (key === 'organization') {
+          valA = a.organization?.name || ''
+          valB = b.organization?.name || ''
+        }
+        if (valA < valB) return direction === 'asc' ? -1 : 1
+        if (valA > valB) return direction === 'asc' ? 1 : -1
+        return 0
+      })
+    }
+    return sorted
+  }, [accounts, sortConfig])
+
+  const visibleAccounts = useMemo(() => {
+    return sortedAccounts.filter((acc) => {
+      if (!acc.classification) return true
+      for (const collapsed of collapsedClasses) {
+        if (
+          acc.classification !== collapsed &&
+          (acc.classification.startsWith(collapsed + '.') ||
+            acc.classification.startsWith(collapsed + '-'))
+        ) {
+          return false
+        }
+      }
+      return true
+    })
+  }, [sortedAccounts, collapsedClasses])
+
+  const totalVisible = visibleAccounts.length
+  const totalPages = Math.max(1, Math.ceil(totalVisible / itemsPerPage))
+
+  const paginatedData = useMemo(() => {
+    const from = (currentPage - 1) * itemsPerPage
+    return visibleAccounts.slice(from, from + itemsPerPage)
+  }, [visibleAccounts, currentPage, itemsPerPage])
 
   const getIndentFromAcc = (acc: ChartAccount) => {
-    const code = acc.classification || acc.account_code || ''
+    const code = acc.classification || ''
     const level = (code.match(/\./g) || []).length
     return level * 1.5
   }
@@ -1086,8 +1132,8 @@ export default function ChartAccounts() {
               style={{ fontSize: `${tableFontSize}px` }}
               className="[&_td]:p-1.5 [&_td]:px-2 [&_th]:p-1.5 [&_th]:px-2"
             >
-              <TableHeader className="bg-slate-50/80">
-                <TableRow disableZebra>
+              <TableHeader className="bg-slate-100 border-b-2 border-slate-300">
+                <TableRow disableZebra className="hover:bg-slate-100">
                   <TableHead className="w-10 text-center">
                     <Checkbox
                       checked={
@@ -1100,7 +1146,7 @@ export default function ChartAccounts() {
                     />
                   </TableHead>
                   <TableHead
-                    className="w-[120px] cursor-pointer hover:bg-slate-100 whitespace-nowrap"
+                    className="w-[120px] cursor-pointer hover:bg-slate-200 font-bold text-slate-700 whitespace-nowrap"
                     onClick={() => handleSort('organization')}
                   >
                     <div className="flex items-center gap-2">
@@ -1108,7 +1154,15 @@ export default function ChartAccounts() {
                     </div>
                   </TableHead>
                   <TableHead
-                    className="w-[110px] cursor-pointer hover:bg-slate-100 whitespace-nowrap"
+                    className="w-[130px] cursor-pointer hover:bg-slate-200 font-bold text-slate-700 whitespace-nowrap"
+                    onClick={() => handleSort('classification')}
+                  >
+                    <div className="flex items-center gap-2">
+                      Conta Contábil <ArrowUpDown className="h-3 w-3 text-slate-400" />
+                    </div>
+                  </TableHead>
+                  <TableHead
+                    className="w-[110px] cursor-pointer hover:bg-slate-200 font-bold text-slate-700 whitespace-nowrap"
                     onClick={() => handleSort('account_code')}
                   >
                     <div className="flex items-center gap-2">
@@ -1116,26 +1170,28 @@ export default function ChartAccounts() {
                     </div>
                   </TableHead>
                   <TableHead
-                    className="w-[120px] cursor-pointer hover:bg-slate-100 whitespace-nowrap"
-                    onClick={() => handleSort('classification')}
-                  >
-                    <div className="flex items-center gap-2">
-                      Classificação <ArrowUpDown className="h-3 w-3 text-slate-400" />
-                    </div>
-                  </TableHead>
-                  <TableHead
-                    className="min-w-[200px] cursor-pointer hover:bg-slate-100 whitespace-nowrap"
+                    className="min-w-[250px] cursor-pointer hover:bg-slate-200 font-bold text-slate-700 whitespace-nowrap"
                     onClick={() => handleSort('account_name')}
                   >
                     <div className="flex items-center gap-2">
                       Nome da Conta <ArrowUpDown className="h-3 w-3 text-slate-400" />
                     </div>
                   </TableHead>
-                  <TableHead className="w-[90px] text-center whitespace-nowrap">Nível</TableHead>
-                  <TableHead className="w-[90px] text-center whitespace-nowrap">Tipo</TableHead>
-                  <TableHead className="w-[140px] whitespace-nowrap">Natureza</TableHead>
-                  <TableHead className="min-w-[150px] whitespace-nowrap">Finalidade</TableHead>
-                  <TableHead className="w-[80px] text-right whitespace-nowrap">Ações</TableHead>
+                  <TableHead className="w-[90px] text-center font-bold text-slate-700 whitespace-nowrap">
+                    Nível
+                  </TableHead>
+                  <TableHead className="w-[90px] text-center font-bold text-slate-700 whitespace-nowrap">
+                    Tipo
+                  </TableHead>
+                  <TableHead className="w-[140px] font-bold text-slate-700 whitespace-nowrap">
+                    Natureza
+                  </TableHead>
+                  <TableHead className="min-w-[150px] font-bold text-slate-700 whitespace-nowrap">
+                    Finalidade
+                  </TableHead>
+                  <TableHead className="w-[80px] text-right font-bold text-slate-700 whitespace-nowrap">
+                    Ações
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -1181,21 +1237,47 @@ export default function ChartAccounts() {
                             </span>
                           </div>
                         </TableCell>
-                        <TableCell className="font-medium whitespace-nowrap">
-                          {acc.account_code || '-'}
+                        <TableCell className="font-bold whitespace-nowrap">
+                          {acc.classification || '-'}
                         </TableCell>
                         <TableCell className="font-medium whitespace-nowrap">
-                          {acc.classification || '-'}
+                          {acc.account_code || '-'}
                         </TableCell>
                         <TableCell className="whitespace-nowrap">
                           <div
                             className="flex items-center"
                             style={{ paddingLeft: `${getIndentFromAcc(acc)}rem` }}
                           >
+                            {acc.account_level === 'Sintética' ? (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  if (acc.classification) toggleCollapse(acc.classification)
+                                }}
+                                className={cn(
+                                  'h-5 w-5 mr-1 p-0 rounded-sm shrink-0 transition-colors',
+                                  level <= 3
+                                    ? 'hover:bg-white/20 hover:text-white'
+                                    : 'hover:bg-black/10',
+                                )}
+                              >
+                                {collapsedClasses.has(acc.classification || '') ? (
+                                  <ChevronRight className="h-4 w-4" />
+                                ) : (
+                                  <ChevronDown className="h-4 w-4" />
+                                )}
+                              </Button>
+                            ) : (
+                              <span className="w-6 shrink-0" />
+                            )}
                             <AlignLeft className="h-3 w-3 opacity-40 shrink-0 mr-2" />
                             <span
                               className={cn(
-                                acc.account_level === 'Sintética' ? 'font-semibold uppercase' : '',
+                                acc.account_level === 'Sintética'
+                                  ? 'font-bold uppercase tracking-tight'
+                                  : 'font-medium',
                               )}
                             >
                               {acc.account_name}
@@ -1402,11 +1484,11 @@ export default function ChartAccounts() {
             </AlertDialogContent>
           </AlertDialog>
 
-          {!loading && totalCount > 0 && (
+          {!loading && totalVisible > 0 && (
             <div className="flex flex-col sm:flex-row items-center justify-between p-4 border-t border-slate-100 gap-4">
               <p className="text-sm text-slate-500">
                 Mostrando {(currentPage - 1) * itemsPerPage + 1} até{' '}
-                {Math.min(currentPage * itemsPerPage, totalCount)} de {totalCount}
+                {Math.min(currentPage * itemsPerPage, totalVisible)} de {totalVisible}
               </p>
               <div className="flex items-center gap-4">
                 <div className="flex items-center gap-2">
