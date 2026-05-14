@@ -772,8 +772,8 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
   }
 
   return (
-    <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 mb-4">
+    <div className="flex flex-col h-full space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 shrink-0">
         <div className="flex flex-wrap items-center gap-2 flex-1">
           {selectedIds.length > 0 && (
             <div className="bg-muted/50 border border-border rounded-md p-1.5 px-3 flex items-center gap-3 animate-in fade-in mr-2">
@@ -933,8 +933,8 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
         </div>
       </div>
 
-      <div className="hidden lg:block rounded-xl border-2 border-indigo-950 bg-card shadow-sm overflow-hidden">
-        <div className="flex justify-between items-center p-2 bg-white dark:bg-slate-950 border-b border-indigo-100 dark:border-indigo-900">
+      <div className="hidden lg:flex flex-col flex-1 min-h-0 rounded-xl border-2 border-indigo-950 bg-card shadow-sm overflow-hidden">
+        <div className="flex justify-between items-center p-2 bg-white dark:bg-slate-950 border-b border-indigo-100 dark:border-indigo-900 shrink-0">
           <Button
             variant="outline"
             size="sm"
@@ -962,8 +962,12 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
             </Button>
           </div>
         </div>
-        <Table className="border-collapse" style={{ fontSize: `${tableFontSize}px` }}>
-          <TableHeader className="bg-indigo-950">
+        <Table
+          className="border-collapse"
+          wrapperClassName="flex-1 overflow-auto"
+          style={{ fontSize: `${tableFontSize}px` }}
+        >
+          <TableHeader className="bg-indigo-950 sticky top-0 z-10 shadow-md">
             <TableRow className="border-0 hover:bg-transparent">
               <TableHead className="w-12 text-center py-1 px-2 text-white font-normal text-[1.1em] border-0">
                 <Checkbox
@@ -985,7 +989,7 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
                   onDragStart={(e) => handleDragStart(e, idx)}
                   onDragOver={(e) => e.preventDefault()}
                   onDrop={(e) => handleDrop(e, idx)}
-                  className="cursor-move hover:bg-indigo-950/80 py-1 px-2 text-white font-normal text-[1.1em] border-0 select-none"
+                  className="cursor-move py-1 px-2 text-white font-normal text-[1.1em] border-0 select-none"
                 >
                   {' '}
                   <div
@@ -1169,7 +1173,7 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
         </Table>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:hidden">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:hidden flex-1 overflow-auto p-1">
         {visibleAccounts.map((acc) => {
           const org = organizations.find((o) => o.id === acc.organization_id)
           const theme = getTheme(org?.name)
