@@ -40,6 +40,7 @@ import { cn } from '@/lib/utils'
 import { useToast } from '@/hooks/use-toast'
 import { useAuditLog } from '@/hooks/use-audit-log'
 import { supabase } from '@/lib/supabase/client'
+import { AccountCombobox } from '@/components/AccountCombobox'
 
 interface Props {
   accounts: any[]
@@ -214,6 +215,44 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
   const [isBulkEditOpen, setIsBulkEditOpen] = useState(false)
   const [bulkEditData, setBulkEditData] = useState<any>({})
   const [isSaving, setIsSaving] = useState(false)
+  const [modalChartAccounts, setModalChartAccounts] = useState<any[]>([])
+
+  useEffect(() => {
+    if (editModalAccount?.organization_id) {
+      const fetchAccounts = async () => {
+        let allAccounts: any[] = []
+        let page = 0
+        let hasMore = true
+        while (hasMore) {
+          const { data } = await supabase
+            .from('chart_of_accounts')
+            .select('*')
+            .eq('organization_id', editModalAccount.organization_id)
+            .is('deleted_at', null)
+            .order('classification')
+            .range(page * 1000, (page + 1) * 1000 - 1)
+
+          if (data && data.length > 0) {
+            allAccounts = [...allAccounts, ...data]
+            page++
+            if (data.length < 1000) hasMore = false
+          } else {
+            hasMore = false
+          }
+        }
+        setModalChartAccounts(allAccounts)
+      }
+      fetchAccounts()
+    } else {
+      setModalChartAccounts([])
+    }
+  }, [editModalAccount?.organization_id])
+
+  const selectedChartAccountId = useMemo(() => {
+    if (!editModalAccount?.contaContabil) return undefined
+    const acc = modalChartAccounts.find((a) => a.account_code === editModalAccount.contaContabil)
+    return acc ? acc.id : undefined
+  }, [modalChartAccounts, editModalAccount?.contaContabil])
 
   const defaultColumns = useMemo(
     () => [
@@ -1254,11 +1293,21 @@ export function AccountList({ accounts, organizations, onDelete, onUpdateInline 
                 </div>
                 <div className="space-y-2">
                   <Label>Conta Contábil</Label>
-                  <Input
-                    value={editModalAccount.contaContabil || ''}
-                    onChange={(e) =>
-                      setEditModalAccount({ ...editModalAccount, contaContabil: e.target.value })
-                    }
+                  <AccountCombobox
+                    accounts={modalChartAccounts}
+                    value={selectedChartAccountId}
+                    onChange={(val) => {
+                      const acc = modalChartAccounts.find((a) => a.id === val)
+                      if (acc) {
+                        setEditModalAccount({
+                          ...editModalAccount,
+                          contaContabil: acc.account_code,
+                        })
+                      }
+                    }}
+                    onClear={() => setEditModalAccount({ ...editModalAccount, contaContabil: '' })}
+                    placeholder="Selecione a conta contábil..."
+                    disabled={!editModalAccount.organization_id}
                   />
                 </div>
                 <div className="space-y-2">
