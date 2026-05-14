@@ -54,10 +54,15 @@ export function BankAccountsTable({
   ]
 
   const [columns, setColumns] = useState(() => {
-    const saved = localStorage.getItem('bank_accounts_columns_v3')
+    const saved = localStorage.getItem('bank_accounts_columns_v4')
     if (saved) {
       try {
-        return JSON.parse(saved)
+        const parsed = JSON.parse(saved)
+        // Ensure "code" is present in loaded columns in case it was missing in an older cache
+        if (!parsed.find((c: any) => c.key === 'code')) {
+          return defaultColumns
+        }
+        return parsed
       } catch (e) {
         return defaultColumns
       }
@@ -66,7 +71,7 @@ export function BankAccountsTable({
   })
 
   useEffect(() => {
-    localStorage.setItem('bank_accounts_columns_v3', JSON.stringify(columns))
+    localStorage.setItem('bank_accounts_columns_v4', JSON.stringify(columns))
   }, [columns])
 
   const handleDragStart = (e: React.DragEvent, index: number) => {
@@ -195,11 +200,16 @@ export function BankAccountsTable({
                   onDrop={(e) => handleDrop(e, index)}
                   onDragOver={handleDragOver}
                   onClick={() => onSort(col.key)}
-                  className="cursor-pointer hover:bg-slate-100 whitespace-nowrap group"
+                  className="cursor-move hover:bg-slate-100 whitespace-nowrap group transition-colors"
+                  title="Clique e arraste para reordenar a coluna. Clique para ordenar."
                 >
                   <div className="flex items-center gap-2">
                     {col.label}
-                    <ArrowUpDown className="w-3 h-3 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    {sortConfig?.key === col.key ? (
+                      <ArrowUpDown className="w-3 h-3 text-indigo-600" />
+                    ) : (
+                      <ArrowUpDown className="w-3 h-3 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    )}
                   </div>
                 </TableHead>
               ))}
