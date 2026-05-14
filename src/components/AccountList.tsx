@@ -13,6 +13,7 @@ import {
   ListTree,
   Search,
   X,
+  AlertTriangle,
 } from 'lucide-react'
 import { useState, useRef, useEffect, useMemo, Fragment } from 'react'
 import { Link } from 'react-router-dom'
@@ -67,6 +68,8 @@ interface Props {
   onFilterTypeChange?: (val: string[]) => void
   filterClass?: string[]
   onFilterClassChange?: (val: string[]) => void
+  filterNoAccount?: boolean
+  onFilterNoAccountChange?: (val: boolean) => void
 }
 
 const getTheme = (name: string | null | undefined) => {
@@ -280,6 +283,8 @@ export function AccountList({
   onFilterTypeChange,
   filterClass = [],
   onFilterClassChange,
+  filterNoAccount = false,
+  onFilterNoAccountChange,
 }: Props) {
   const [editing, setEditing] = useState<{ id: string; field: string } | null>(null)
   const [selectedIds, setSelectedIds] = useState<string[]>([])
@@ -342,6 +347,54 @@ export function AccountList({
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
   const { toast } = useToast()
   const { logAction } = useAuditLog()
+
+  const [bulkDragPos, setBulkDragPos] = useState({ x: 0, y: 0 })
+  const [isBulkDragging, setIsBulkDragging] = useState(false)
+  const bulkDragStartPos = useRef({ x: 0, y: 0 })
+
+  const handleBulkPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    setIsBulkDragging(true)
+    bulkDragStartPos.current = { x: e.clientX - bulkDragPos.x, y: e.clientY - bulkDragPos.y }
+    e.currentTarget.setPointerCapture(e.pointerId)
+  }
+
+  const handleBulkPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (isBulkDragging) {
+      setBulkDragPos({
+        x: e.clientX - bulkDragStartPos.current.x,
+        y: e.clientY - bulkDragStartPos.current.y,
+      })
+    }
+  }
+
+  const handleBulkPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    setIsBulkDragging(false)
+    e.currentTarget.releasePointerCapture(e.pointerId)
+  }
+
+  const [editDragPos, setEditDragPos] = useState({ x: 0, y: 0 })
+  const [isEditDragging, setIsEditDragging] = useState(false)
+  const editDragStartPos = useRef({ x: 0, y: 0 })
+
+  const handleEditPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    setIsEditDragging(true)
+    editDragStartPos.current = { x: e.clientX - editDragPos.x, y: e.clientY - editDragPos.y }
+    e.currentTarget.setPointerCapture(e.pointerId)
+  }
+
+  const handleEditPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (isEditDragging) {
+      setEditDragPos({
+        x: e.clientX - editDragStartPos.current.x,
+        y: e.clientY - editDragStartPos.current.y,
+      })
+    }
+  }
+
+  const handleEditPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    setIsEditDragging(false)
+    e.currentTarget.releasePointerCapture(e.pointerId)
+  }
 
   const [tableFontSize, setTableFontSize] = useState<number>(() => {
     const saved = localStorage.getItem('bank_accounts_table_font_size')
@@ -749,10 +802,24 @@ export function AccountList({
       <div className="flex flex-col gap-3">
         {selectedIds.length > 0 && (
           <div className="bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-200 dark:border-indigo-800 rounded-md p-2 flex items-center justify-between animate-in fade-in shrink-0">
-            <span className="text-sm font-semibold text-indigo-900 dark:text-indigo-200">
-              {selectedIds.length} conta(s) selecionada(s)
-            </span>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-col">
+              <span className="text-sm font-semibold text-indigo-900 dark:text-indigo-200">
+                {selectedIds.length} conta(s) selecionada(s)
+              </span>
+              <span
+                className="text-[11px] text-indigo-600/80 dark:text-indigo-300/80 truncate max-w-[200px] sm:max-w-md md:max-w-lg mt-0.5"
+                title={accounts
+                  .filter((a) => selectedIds.includes(a.id))
+                  .map((a) => a.descricao || a.code)
+                  .join(', ')}
+              >
+                {accounts
+                  .filter((a) => selectedIds.includes(a.id))
+                  .map((a) => a.descricao || a.code)
+                  .join(', ')}
+              </span>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
               <Button
                 variant="secondary"
                 size="sm"
@@ -825,9 +892,28 @@ export function AccountList({
               />
             </div>
 
+            <div className="flex items-center gap-2 shrink-0 border-l border-slate-200 dark:border-slate-800 pl-2 ml-1">
+              <Button
+                variant={filterNoAccount ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => onFilterNoAccountChange?.(!filterNoAccount)}
+                className={cn(
+                  'h-8 px-2.5 text-xs font-medium transition-colors shadow-sm',
+                  filterNoAccount
+                    ? 'bg-amber-100 text-amber-900 hover:bg-amber-200 border-amber-300 dark:bg-amber-900/50 dark:text-amber-200 dark:border-amber-800 dark:hover:bg-amber-900/70'
+                    : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-800 hover:bg-amber-50 hover:text-amber-700 dark:hover:bg-amber-950/30 dark:hover:text-amber-300',
+                )}
+                title="Auditar contas sem Conta Contábil vinculada"
+              >
+                <AlertTriangle className="h-3.5 w-3.5 mr-1.5" />
+                Sem Conta Contábil
+              </Button>
+            </div>
+
             {(filterOrg.length > 0 ||
               filterType.length > 0 ||
               filterClass.length > 0 ||
+              filterNoAccount ||
               searchTerm) && (
               <div className="flex items-center pl-1 border-l border-slate-200 dark:border-slate-800 ml-1">
                 <Button
@@ -839,6 +925,7 @@ export function AccountList({
                     onFilterTypeChange?.([])
                     onFilterClassChange?.([])
                     onSearchChange?.('')
+                    onFilterNoAccountChange?.(false)
                   }}
                 >
                   Limpar Todos
@@ -1076,20 +1163,30 @@ export function AccountList({
 
                         {columns.map((col) => {
                           const isCodeCol = col.id === 'code' || col.id === 'descricao'
+                          const isEmptyAccount = col.id === 'contaContabil' && !acc[col.id]
 
                           return (
                             <TableCell
                               key={col.id}
                               className={cn(
-                                'py-0 px-2 border-0 h-7',
+                                'py-0 px-2 border-0 h-7 transition-colors',
                                 col.id === 'contaContabil' ? 'font-mono text-[0.95em]' : '',
                                 isCodeCol ? 'font-medium' : '',
                                 col.id === 'tipoConta'
                                   ? '!text-slate-800 dark:!text-slate-300'
                                   : '',
+                                isEmptyAccount && !isExpanded
+                                  ? 'bg-amber-50 dark:bg-amber-950/20'
+                                  : '',
                               )}
                             >
-                              <div className="flex items-center gap-1 w-full min-w-0">
+                              <div className="flex items-center gap-1.5 w-full min-w-0">
+                                {isEmptyAccount && (
+                                  <AlertTriangle
+                                    className="h-3.5 w-3.5 text-amber-500 shrink-0"
+                                    title="Conta Contábil ausente"
+                                  />
+                                )}
                                 <div className="flex-1 min-w-0">
                                   <EditableCell
                                     value={acc[col.id]}
@@ -1238,12 +1335,19 @@ export function AccountList({
                             col.id === 'descricao' && 'text-[1.1em]',
                             col.id === 'contaContabil' && 'font-mono text-muted-foreground',
                             col.id === 'tipoConta' ? '!text-slate-800 dark:!text-slate-300' : '',
+                            col.id === 'contaContabil' && !acc[col.id]
+                              ? 'bg-amber-50 dark:bg-amber-950/20 p-1 rounded -mx-1'
+                              : '',
                           )}
                         >
-                          <span className="text-muted-foreground text-[0.85em] font-medium uppercase w-24 shrink-0">
+                          <span className="text-muted-foreground text-[0.85em] font-medium uppercase w-24 shrink-0 flex items-center gap-1">
+                            {col.id === 'contaContabil' && !acc[col.id] && (
+                              <AlertTriangle className="h-3 w-3 text-amber-500" />
+                            )}
                             {col.label}:
                           </span>
                           <div className="flex-1 min-w-0 flex items-center">
+                            {' '}
                             <EditableCell
                               value={acc[col.id]}
                               field={col.id}
@@ -1347,11 +1451,24 @@ export function AccountList({
           if (!open) {
             setIsBulkEditOpen(false)
             setBulkEditData({})
+            setBulkDragPos({ x: 0, y: 0 })
           }
         }}
       >
-        <DialogContent className="sm:max-w-[500px]">
-          <DialogHeader>
+        <DialogContent
+          className="sm:max-w-[500px]"
+          style={
+            bulkDragPos.x !== 0 || bulkDragPos.y !== 0
+              ? { marginLeft: bulkDragPos.x, marginTop: bulkDragPos.y }
+              : undefined
+          }
+        >
+          <DialogHeader
+            className="cursor-move select-none p-3 -m-3 rounded hover:bg-slate-50 dark:hover:bg-slate-900/50 transition-colors"
+            onPointerDown={handleBulkPointerDown}
+            onPointerMove={handleBulkPointerMove}
+            onPointerUp={handleBulkPointerUp}
+          >
             <DialogTitle>Editar em Lote ({selectedIds.length} contas)</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleBulkEditSave} className="space-y-4 mt-4">
@@ -1435,9 +1552,29 @@ export function AccountList({
         </DialogContent>
       </Dialog>
 
-      <Dialog open={!!editModalAccount} onOpenChange={(open) => !open && setEditModalAccount(null)}>
-        <DialogContent className="sm:max-w-[500px]">
-          <DialogHeader>
+      <Dialog
+        open={!!editModalAccount}
+        onOpenChange={(open) => {
+          if (!open) {
+            setEditModalAccount(null)
+            setEditDragPos({ x: 0, y: 0 })
+          }
+        }}
+      >
+        <DialogContent
+          className="sm:max-w-[500px]"
+          style={
+            editDragPos.x !== 0 || editDragPos.y !== 0
+              ? { marginLeft: editDragPos.x, marginTop: editDragPos.y }
+              : undefined
+          }
+        >
+          <DialogHeader
+            className="cursor-move select-none p-3 -m-3 rounded hover:bg-slate-50 dark:hover:bg-slate-900/50 transition-colors"
+            onPointerDown={handleEditPointerDown}
+            onPointerMove={handleEditPointerMove}
+            onPointerUp={handleEditPointerUp}
+          >
             <DialogTitle>Editar Conta</DialogTitle>
           </DialogHeader>
           {editModalAccount && (

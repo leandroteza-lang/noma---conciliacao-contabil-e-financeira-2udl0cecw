@@ -27,6 +27,7 @@ export default function AccountsList() {
   const [filterOrg, setFilterOrg] = useState<string[]>([])
   const [filterType, setFilterType] = useState<string[]>([])
   const [filterClass, setFilterClass] = useState<string[]>([])
+  const [filterNoAccount, setFilterNoAccount] = useState(false)
   const [isNewModalOpen, setIsNewModalOpen] = useState(false)
   const [newAccount, setNewAccount] = useState<any>({})
   const [isSaving, setIsSaving] = useState(false)
@@ -198,6 +199,12 @@ export default function AccountsList() {
         )
       }
 
+      if (filterNoAccount) {
+        finalAccounts = finalAccounts.filter(
+          (a) => !a.contaContabil || String(a.contaContabil).trim() === '',
+        )
+      }
+
       setAccounts(finalAccounts)
     } catch (error: any) {
       toast({
@@ -219,12 +226,18 @@ export default function AccountsList() {
       fetchAccounts()
     }, 300)
     return () => clearTimeout(delayDebounceFn)
-  }, [searchTerm, filterOrg, filterType, filterClass])
+  }, [searchTerm, filterOrg, filterType, filterClass, filterNoAccount])
 
   const fetchAccountsRef = useRef(fetchAccounts)
   useEffect(() => {
     fetchAccountsRef.current = fetchAccounts
   })
+
+  useEffect(() => {
+    const handleRefresh = () => fetchAccountsRef.current()
+    window.addEventListener('refresh-bank-accounts', handleRefresh)
+    return () => window.removeEventListener('refresh-bank-accounts', handleRefresh)
+  }, [])
 
   useEffect(() => {
     let timeoutId: any
@@ -338,6 +351,8 @@ export default function AccountsList() {
           onFilterTypeChange={setFilterType}
           filterClass={filterClass}
           onFilterClassChange={setFilterClass}
+          filterNoAccount={filterNoAccount}
+          onFilterNoAccountChange={setFilterNoAccount}
           onRefresh={fetchAccounts}
           onUpdateInline={async (id, field, value) => {
             try {
