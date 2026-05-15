@@ -51,6 +51,10 @@ import {
   FileText,
   File as FileIcon,
   FileType,
+  MoreVertical,
+  AlignLeft,
+  AlignCenter,
+  AlignRight,
 } from 'lucide-react'
 import * as XLSX from 'xlsx'
 import { format } from 'date-fns'
@@ -288,6 +292,73 @@ export default function Users() {
     return sortDesc ? <ArrowDown className="ml-2 h-4 w-4" /> : <ArrowUp className="ml-2 h-4 w-4" />
   }
 
+  const getAlignClass = (key: string, defaultAlign = 'text-left') => {
+    const align = prefs.alignments?.[key]
+    if (align === 'center') return 'text-center'
+    if (align === 'right') return 'text-right'
+    if (align === 'left') return 'text-left'
+    return defaultAlign
+  }
+
+  const getJustifyClass = (key: string, defaultJustify = 'justify-start') => {
+    const align = prefs.alignments?.[key]
+    if (align === 'center') return 'justify-center'
+    if (align === 'right') return 'justify-end'
+    if (align === 'left') return 'justify-start'
+    return defaultJustify
+  }
+
+  const handleAlign = (key: string, align: 'left' | 'center' | 'right') => {
+    updatePrefs({ alignments: { ...prefs.alignments, [key]: align } })
+  }
+
+  const ColumnHeader = ({
+    columnKey,
+    title,
+    isBold = false,
+  }: {
+    columnKey: SortField
+    title: string
+    isBold?: boolean
+  }) => (
+    <TableHead className="group/head py-2 px-2 !bg-indigo-950 text-white border-0 select-none">
+      <div className={cn('flex items-center', getJustifyClass(columnKey))}>
+        <span
+          className={cn(
+            'cursor-pointer flex items-center',
+            isBold ? '!font-bold' : '!font-normal',
+            'text-[15px]',
+          )}
+          onClick={() => toggleSort(columnKey)}
+        >
+          {title} <SortIcon field={columnKey} />
+        </span>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-5 w-5 ml-1 opacity-0 group-hover/head:opacity-100 text-white hover:bg-white/20 data-[state=open]:opacity-100"
+            >
+              <MoreVertical className="h-3 w-3" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => handleAlign(columnKey, 'left')}>
+              <AlignLeft className="h-4 w-4 mr-2" /> Esquerda
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleAlign(columnKey, 'center')}>
+              <AlignCenter className="h-4 w-4 mr-2" /> Centro
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleAlign(columnKey, 'right')}>
+              <AlignRight className="h-4 w-4 mr-2" /> Direita
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+    </TableHead>
+  )
+
   return (
     <div className="container mx-auto py-8 space-y-6 animate-fade-in-up">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -408,54 +479,12 @@ export default function Users() {
                   className="border-white data-[state=checked]:bg-indigo-950 data-[state=checked]:border-indigo-950 data-[state=checked]:text-white"
                 />
               </TableHead>
-              <TableHead
-                className="cursor-pointer select-none py-2 px-2 !bg-indigo-950 text-white !font-bold text-[15px] border-0"
-                onClick={() => toggleSort('name')}
-              >
-                <div className="flex items-center">
-                  Nome <SortIcon field="name" />
-                </div>
-              </TableHead>
-              <TableHead
-                className="cursor-pointer select-none py-2 px-2 !bg-indigo-950 text-white !font-normal text-[15px] border-0"
-                onClick={() => toggleSort('email')}
-              >
-                <div className="flex items-center">
-                  E-mail <SortIcon field="email" />
-                </div>
-              </TableHead>
-              <TableHead
-                className="cursor-pointer select-none py-2 px-2 !bg-indigo-950 text-white !font-normal text-[15px] border-0"
-                onClick={() => toggleSort('cpf')}
-              >
-                <div className="flex items-center">
-                  CPF <SortIcon field="cpf" />
-                </div>
-              </TableHead>
-              <TableHead
-                className="cursor-pointer select-none py-2 px-2 !bg-indigo-950 text-white !font-normal text-[15px] border-0"
-                onClick={() => toggleSort('role')}
-              >
-                <div className="flex items-center">
-                  Perfil <SortIcon field="role" />
-                </div>
-              </TableHead>
-              <TableHead
-                className="cursor-pointer select-none py-2 px-2 !bg-indigo-950 text-white !font-normal text-[15px] border-0"
-                onClick={() => toggleSort('department')}
-              >
-                <div className="flex items-center">
-                  Departamento <SortIcon field="department" />
-                </div>
-              </TableHead>
-              <TableHead
-                className="cursor-pointer select-none py-2 px-2 !bg-indigo-950 text-white !font-normal text-[15px] border-0"
-                onClick={() => toggleSort('status')}
-              >
-                <div className="flex items-center">
-                  Status <SortIcon field="status" />
-                </div>
-              </TableHead>
+              <ColumnHeader columnKey="name" title="Nome" isBold />
+              <ColumnHeader columnKey="email" title="E-mail" />
+              <ColumnHeader columnKey="cpf" title="CPF" />
+              <ColumnHeader columnKey="role" title="Perfil" />
+              <ColumnHeader columnKey="department" title="Departamento" />
+              <ColumnHeader columnKey="status" title="Status" />
               <TableHead className="w-[100px] text-right py-2 px-2 !bg-indigo-950 text-white !font-normal text-[15px] border-0">
                 Ações
               </TableHead>
@@ -492,10 +521,16 @@ export default function Users() {
                       className="border-black/50 dark:border-white/50 data-[state=checked]:bg-indigo-950 data-[state=checked]:border-indigo-950 data-[state=checked]:text-white group-even/row:border-black/50 group-even/row:data-[state=checked]:bg-indigo-950 group-even/row:data-[state=checked]:border-indigo-950 group-even/row:data-[state=checked]:text-white"
                     />
                   </TableCell>
-                  <TableCell className="!font-bold py-0.5 px-2">{user.name}</TableCell>
-                  <TableCell className="!font-normal py-0.5 px-2">{user.email}</TableCell>
-                  <TableCell className="!font-normal py-0.5 px-2">{user.cpf || '-'}</TableCell>
-                  <TableCell className="!font-normal py-0.5 px-2">
+                  <TableCell className={cn('!font-bold py-0.5 px-2', getAlignClass('name'))}>
+                    {user.name}
+                  </TableCell>
+                  <TableCell className={cn('!font-normal py-0.5 px-2', getAlignClass('email'))}>
+                    {user.email}
+                  </TableCell>
+                  <TableCell className={cn('!font-normal py-0.5 px-2', getAlignClass('cpf'))}>
+                    {user.cpf || '-'}
+                  </TableCell>
+                  <TableCell className={cn('!font-normal py-0.5 px-2', getAlignClass('role'))}>
                     <Badge
                       variant="outline"
                       className="!font-normal text-black dark:text-white border-black dark:border-white h-auto py-0.5 text-[0.85em] group-even/row:text-black group-even/row:border-black group-even/row:bg-transparent"
@@ -509,10 +544,12 @@ export default function Users() {
                             : 'Colaborador'}
                     </Badge>
                   </TableCell>
-                  <TableCell className="!font-normal py-0.5 px-2">
+                  <TableCell
+                    className={cn('!font-normal py-0.5 px-2', getAlignClass('department'))}
+                  >
                     {user.departments?.name || '-'}
                   </TableCell>
-                  <TableCell className="!font-normal py-0.5 px-2">
+                  <TableCell className={cn('!font-normal py-0.5 px-2', getAlignClass('status'))}>
                     {user.approval_status === 'pending' ? (
                       <Badge
                         variant="secondary"

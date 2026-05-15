@@ -16,6 +16,10 @@ import {
   Loader2,
   ArrowUpDown,
   Upload,
+  MoreVertical,
+  AlignLeft,
+  AlignCenter,
+  AlignRight,
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { supabase } from '@/lib/supabase/client'
@@ -165,6 +169,61 @@ export default function Departments() {
 
   const paginated = sorted.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
   const totalPages = Math.max(1, Math.ceil(sorted.length / itemsPerPage))
+
+  const getAlignClass = (key: string, defaultAlign = 'text-left') => {
+    const align = prefs.alignments?.[key]
+    if (align === 'center') return 'text-center'
+    if (align === 'right') return 'text-right'
+    if (align === 'left') return 'text-left'
+    return defaultAlign
+  }
+
+  const getJustifyClass = (key: string, defaultJustify = 'justify-start') => {
+    const align = prefs.alignments?.[key]
+    if (align === 'center') return 'justify-center'
+    if (align === 'right') return 'justify-end'
+    if (align === 'left') return 'justify-start'
+    return defaultJustify
+  }
+
+  const handleAlign = (key: string, align: 'left' | 'center' | 'right') => {
+    updatePrefs({ alignments: { ...prefs.alignments, [key]: align } })
+  }
+
+  const ColumnHeader = ({ columnKey, title }: { columnKey: string; title: string }) => (
+    <TableHead className="group/head hover:bg-white/10 py-1 px-3 text-[15px] font-bold text-white select-none">
+      <div className={cn('flex items-center gap-2', getJustifyClass(columnKey))}>
+        <span
+          className="cursor-pointer flex items-center gap-2"
+          onClick={() => handleSort(columnKey)}
+        >
+          {title} <ArrowUpDown className="h-4 w-4 text-slate-300" />
+        </span>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-5 w-5 ml-1 opacity-0 group-hover/head:opacity-100 text-white hover:bg-white/20 data-[state=open]:opacity-100"
+            >
+              <MoreVertical className="h-3 w-3" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => handleAlign(columnKey, 'left')}>
+              <AlignLeft className="h-4 w-4 mr-2" /> Esquerda
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleAlign(columnKey, 'center')}>
+              <AlignCenter className="h-4 w-4 mr-2" /> Centro
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleAlign(columnKey, 'right')}>
+              <AlignRight className="h-4 w-4 mr-2" /> Direita
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+    </TableHead>
+  )
 
   const openModal = (item?: any) => {
     if (item) {
@@ -645,30 +704,9 @@ export default function Departments() {
                         />
                       </TableHead>
                     )}
-                    <TableHead
-                      className="cursor-pointer hover:bg-white/10 py-1 px-3 text-[15px] font-bold text-white"
-                      onClick={() => handleSort('code')}
-                    >
-                      <div className="flex items-center gap-2">
-                        Código <ArrowUpDown className="h-4 w-4 text-slate-300" />
-                      </div>
-                    </TableHead>
-                    <TableHead
-                      className="cursor-pointer hover:bg-white/10 py-1 px-3 text-[15px] font-bold text-white"
-                      onClick={() => handleSort('name')}
-                    >
-                      <div className="flex items-center gap-2">
-                        Nome <ArrowUpDown className="h-4 w-4 text-slate-300" />
-                      </div>
-                    </TableHead>
-                    <TableHead
-                      className="cursor-pointer hover:bg-white/10 py-1 px-3 text-[15px] font-bold text-white"
-                      onClick={() => handleSort('created_at')}
-                    >
-                      <div className="flex items-center gap-2">
-                        Criado em <ArrowUpDown className="h-4 w-4 text-slate-300" />
-                      </div>
-                    </TableHead>
+                    <ColumnHeader columnKey="code" title="Código" />
+                    <ColumnHeader columnKey="name" title="Nome" />
+                    <ColumnHeader columnKey="created_at" title="Criado em" />
                     {(canEdit || canDelete) && (
                       <TableHead className="text-right py-1 px-3 text-[15px] font-bold text-white">
                         Ações
@@ -703,9 +741,13 @@ export default function Departments() {
                             />
                           </TableCell>
                         )}
-                        <TableCell className="py-0.5 px-2">{item.code}</TableCell>
-                        <TableCell className="py-0.5 px-2 font-bold">{item.name}</TableCell>
-                        <TableCell className="py-0.5 px-2">
+                        <TableCell className={cn('py-0.5 px-2', getAlignClass('code'))}>
+                          {item.code}
+                        </TableCell>
+                        <TableCell className={cn('py-0.5 px-2 font-bold', getAlignClass('name'))}>
+                          {item.name}
+                        </TableCell>
+                        <TableCell className={cn('py-0.5 px-2', getAlignClass('created_at'))}>
                           {item.created_at ? format(new Date(item.created_at), 'dd/MM/yyyy') : '-'}
                         </TableCell>
                         {(canEdit || canDelete) && (

@@ -46,6 +46,10 @@ import {
   FileText,
   File as FileIcon,
   FileType,
+  MoreVertical,
+  AlignLeft,
+  AlignCenter,
+  AlignRight,
 } from 'lucide-react'
 import { format } from 'date-fns'
 import { useAuth } from '@/hooks/use-auth'
@@ -257,6 +261,73 @@ export default function TgaAccountTypes() {
     )
   }
 
+  const getAlignClass = (key: string, defaultAlign = 'text-left') => {
+    const align = prefs.alignments?.[key]
+    if (align === 'center') return 'text-center'
+    if (align === 'right') return 'text-right'
+    if (align === 'left') return 'text-left'
+    return defaultAlign
+  }
+
+  const getJustifyClass = (key: string, defaultJustify = 'justify-start') => {
+    const align = prefs.alignments?.[key]
+    if (align === 'center') return 'justify-center'
+    if (align === 'right') return 'justify-end'
+    if (align === 'left') return 'justify-start'
+    return defaultJustify
+  }
+
+  const handleAlign = (key: string, align: 'left' | 'center' | 'right') => {
+    updatePrefs({ alignments: { ...prefs.alignments, [key]: align } })
+  }
+
+  const ColumnHeader = ({
+    columnKey,
+    title,
+    isBold = false,
+  }: {
+    columnKey: SortField
+    title: string
+    isBold?: boolean
+  }) => (
+    <TableHead className="group/head py-2 px-2 text-white bg-indigo-950 border-0 hover:text-white select-none">
+      <div className={cn('flex items-center text-white', getJustifyClass(columnKey))}>
+        <span
+          className={cn(
+            'cursor-pointer flex items-center',
+            isBold ? 'font-bold' : 'font-normal',
+            'text-[15px]',
+          )}
+          onClick={() => toggleSort(columnKey)}
+        >
+          {title} <SortIcon field={columnKey} />
+        </span>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-5 w-5 ml-1 opacity-0 group-hover/head:opacity-100 text-white hover:bg-white/20 data-[state=open]:opacity-100"
+            >
+              <MoreVertical className="h-3 w-3" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => handleAlign(columnKey, 'left')}>
+              <AlignLeft className="h-4 w-4 mr-2" /> Esquerda
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleAlign(columnKey, 'center')}>
+              <AlignCenter className="h-4 w-4 mr-2" /> Centro
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleAlign(columnKey, 'right')}>
+              <AlignRight className="h-4 w-4 mr-2" /> Direita
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+    </TableHead>
+  )
+
   return (
     <div className="container mx-auto py-8 space-y-6 animate-fade-in-up">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -364,38 +435,10 @@ export default function TgaAccountTypes() {
                   className="border-white data-[state=checked]:bg-white data-[state=checked]:text-indigo-950"
                 />
               </TableHead>
-              <TableHead
-                className="cursor-pointer select-none py-2 px-2 text-white bg-indigo-950 font-normal text-[15px] border-0 hover:text-white"
-                onClick={() => toggleSort('codigo')}
-              >
-                <div className="flex items-center text-white">
-                  Código <SortIcon field="codigo" />
-                </div>
-              </TableHead>
-              <TableHead
-                className="cursor-pointer select-none py-2 px-2 text-white bg-indigo-950 font-bold text-[15px] border-0 hover:text-white"
-                onClick={() => toggleSort('nome')}
-              >
-                <div className="flex items-center text-white">
-                  Nome <SortIcon field="nome" />
-                </div>
-              </TableHead>
-              <TableHead
-                className="cursor-pointer select-none py-2 px-2 text-white bg-indigo-950 font-normal text-[15px] border-0 hover:text-white"
-                onClick={() => toggleSort('abreviacao')}
-              >
-                <div className="flex items-center text-white">
-                  Abreviação <SortIcon field="abreviacao" />
-                </div>
-              </TableHead>
-              <TableHead
-                className="cursor-pointer select-none py-2 px-2 text-white bg-indigo-950 font-normal text-[15px] border-0 hover:text-white"
-                onClick={() => toggleSort('empresa')}
-              >
-                <div className="flex items-center text-white">
-                  Empresa <SortIcon field="empresa" />
-                </div>
-              </TableHead>
+              <ColumnHeader columnKey="codigo" title="Código" />
+              <ColumnHeader columnKey="nome" title="Nome" isBold />
+              <ColumnHeader columnKey="abreviacao" title="Abreviação" />
+              <ColumnHeader columnKey="empresa" title="Empresa" />
               <TableHead className="w-[100px] text-right py-2 px-2 text-white bg-indigo-950 font-normal text-[15px] border-0 hover:text-white">
                 Ações
               </TableHead>
@@ -441,16 +484,36 @@ export default function TgaAccountTypes() {
                       )}
                     />
                   </TableCell>
-                  <TableCell className="text-[1em] py-0.5 px-2 text-black dark:text-white group-even/row:text-black group-[.selected]:text-white dark:group-even/row:text-black dark:group-[.selected]:text-white">
+                  <TableCell
+                    className={cn(
+                      'text-[1em] py-0.5 px-2 text-black dark:text-white group-even/row:text-black group-[.selected]:text-white dark:group-even/row:text-black dark:group-[.selected]:text-white',
+                      getAlignClass('codigo'),
+                    )}
+                  >
                     {item.codigo}
                   </TableCell>
-                  <TableCell className="text-[1em] py-0.5 px-2 text-black dark:text-white group-even/row:text-black group-[.selected]:text-white dark:group-even/row:text-black dark:group-[.selected]:text-white">
+                  <TableCell
+                    className={cn(
+                      'text-[1em] py-0.5 px-2 text-black dark:text-white group-even/row:text-black group-[.selected]:text-white dark:group-even/row:text-black dark:group-[.selected]:text-white font-bold',
+                      getAlignClass('nome'),
+                    )}
+                  >
                     {item.nome}
                   </TableCell>
-                  <TableCell className="text-[1em] py-0.5 px-2 text-black dark:text-white group-even/row:text-black group-[.selected]:text-white dark:group-even/row:text-black dark:group-[.selected]:text-white">
+                  <TableCell
+                    className={cn(
+                      'text-[1em] py-0.5 px-2 text-black dark:text-white group-even/row:text-black group-[.selected]:text-white dark:group-even/row:text-black dark:group-[.selected]:text-white',
+                      getAlignClass('abreviacao'),
+                    )}
+                  >
                     {item.abreviacao || '-'}
                   </TableCell>
-                  <TableCell className="text-[1em] py-0.5 px-2 text-black dark:text-white group-even/row:text-black group-[.selected]:text-white dark:group-even/row:text-black dark:group-[.selected]:text-white">
+                  <TableCell
+                    className={cn(
+                      'text-[1em] py-0.5 px-2 text-black dark:text-white group-even/row:text-black group-[.selected]:text-white dark:group-even/row:text-black dark:group-[.selected]:text-white',
+                      getAlignClass('empresa'),
+                    )}
+                  >
                     {item.organizations?.name || 'Geral'}
                   </TableCell>
                   <TableCell className="text-right py-0.5 px-2">
