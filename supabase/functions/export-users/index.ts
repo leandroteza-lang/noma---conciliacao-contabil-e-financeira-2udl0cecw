@@ -340,10 +340,10 @@ Deno.serve(async (req: Request) => {
               data.cell.styles.textColor = [15, 23, 42]
             }
             if (data.column.index === 0) {
-              data.cell.styles.fontStyle = 'bold'
+               data.cell.styles.fontStyle = 'bold'
             }
             if (data.column.index === 3 || data.column.index === 5) {
-              data.cell.styles.textColor = data.cell.styles.fillColor
+               data.cell.styles.textColor = data.cell.styles.fillColor
             }
           }
         },
