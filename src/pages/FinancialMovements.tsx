@@ -2276,9 +2276,7 @@ export default function FinancialMovements() {
         'valor_liquido',
         'historico',
         'conta_caixa',
-        'nome_caixa',
         'c_custo',
-        'descricao_c_custo',
       ]
 
       const newVisible = tableHeaders.reduce(
@@ -5621,7 +5619,7 @@ export default function FinancialMovements() {
                                     return (
                                       <TableCell
                                         key={key}
-                                        {...getCellProps(key, 'center', 'max-w-[150px] truncate')}
+                                        {...getCellProps(key, 'center', 'max-w-[200px] truncate')}
                                         title={row.conta_caixa || ''}
                                       >
                                         {editingId === row.id ? (
@@ -5636,7 +5634,29 @@ export default function FinancialMovements() {
                                             }
                                           />
                                         ) : (
-                                          row.conta_caixa || '-'
+                                          <div
+                                            className={cn(
+                                              'flex items-center gap-1.5 w-full',
+                                              (prefs.alignments?.['conta_caixa'] || 'center') ===
+                                                'center'
+                                                ? 'justify-center'
+                                                : (prefs.alignments?.['conta_caixa'] ||
+                                                      'center') === 'right'
+                                                  ? 'justify-end'
+                                                  : 'justify-start',
+                                            )}
+                                          >
+                                            <span className="font-medium text-slate-700">
+                                              {row.conta_caixa || '-'}
+                                            </span>
+                                            {isSimplifiedMode &&
+                                              row.conta_caixa &&
+                                              row.nome_caixa && (
+                                                <span className="text-slate-500 truncate">
+                                                  - {row.nome_caixa}
+                                                </span>
+                                              )}
+                                          </div>
                                         )}
                                       </TableCell>
                                     )
@@ -5778,7 +5798,28 @@ export default function FinancialMovements() {
                                             }
                                           />
                                         ) : (
-                                          <span>{row.c_custo || 'Sem C. Custo'}</span>
+                                          <div
+                                            className={cn(
+                                              'flex items-center gap-1.5',
+                                              (prefs.alignments?.['c_custo'] || 'left') === 'center'
+                                                ? 'justify-center'
+                                                : (prefs.alignments?.['c_custo'] || 'left') ===
+                                                    'right'
+                                                  ? 'justify-end'
+                                                  : 'justify-start',
+                                            )}
+                                          >
+                                            <span className="font-medium text-slate-700">
+                                              {row.c_custo || 'Sem C. Custo'}
+                                            </span>
+                                            {isSimplifiedMode &&
+                                              row.c_custo &&
+                                              row.descricao_c_custo && (
+                                                <span className="text-slate-500 truncate max-w-[200px]">
+                                                  - {row.descricao_c_custo}
+                                                </span>
+                                              )}
+                                          </div>
                                         )}
                                       </TableCell>
                                     )
