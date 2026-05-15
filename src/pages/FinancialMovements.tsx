@@ -989,6 +989,34 @@ export default function FinancialMovements() {
     }
   }
 
+  const { prefs: deparaPrefs, updatePrefs: updateDeparaPrefs } =
+    useTablePreferences('fin_mov_resumo_depara')
+
+  const getDeparaCellProps = (key: string, defaultAlign?: string, extraClass?: string) => {
+    const align = deparaPrefs.alignments?.[key] || defaultAlign || 'left'
+    const alignClass =
+      align === 'center' ? 'text-center' : align === 'right' ? 'text-right' : 'text-left'
+    const style = deparaPrefs.showGridlines
+      ? {
+          borderRight: `${deparaPrefs.gridlineWidth}px solid ${deparaPrefs.gridlineColor}`,
+          borderBottom: `${deparaPrefs.gridlineWidth}px solid ${deparaPrefs.gridlineColor}`,
+        }
+      : undefined
+
+    return {
+      className: cn('px-2 py-0.5 border-0', alignClass, extraClass),
+      style,
+    }
+  }
+
+  const getDeparaGridlineStyle = () => {
+    if (!deparaPrefs.showGridlines) return undefined
+    return {
+      borderRight: `${deparaPrefs.gridlineWidth}px solid ${deparaPrefs.gridlineColor}`,
+      borderBottom: `${deparaPrefs.gridlineWidth}px solid ${deparaPrefs.gridlineColor}`,
+    }
+  }
+
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [totals, setTotals] = useState({ valor: 0, valor_liquido: 0, entradas: 0, saidas: 0 })
   const [isExporting, setIsExporting] = useState(false)
@@ -6789,6 +6817,9 @@ export default function FinancialMovements() {
                 </p>
               </div>
               <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1 bg-white rounded-md p-0.5 border border-slate-200 shadow-sm mr-2">
+                  <TableSettingsControls prefs={deparaPrefs} updatePrefs={updateDeparaPrefs} />
+                </div>
                 <div className="flex items-center gap-2 mr-2 bg-white px-3 py-1.5 rounded-md border border-slate-200 shadow-sm">
                   <Switch
                     id="show-synthetic"
@@ -6876,11 +6907,14 @@ export default function FinancialMovements() {
                               "bg-[#221c5a] text-white font-['Inter'] text-[0.9em] font-semibold px-2 py-1 h-8 border-none cursor-grab active:cursor-grabbing",
                               draggedResumoCol === key ? 'opacity-50 bg-[#1a1545]' : '',
                             )}
+                            style={getDeparaGridlineStyle()}
                           >
                             <div
                               className={cn(
                                 'flex items-center justify-between gap-1 w-full',
-                                h.align === 'right' ? 'flex-row-reverse' : '',
+                                (deparaPrefs.alignments?.[key] || h.align || 'left') === 'right'
+                                  ? 'flex-row-reverse'
+                                  : '',
                               )}
                             >
                               {key === 'c_custo' || key === 'conta_contabil' ? (
@@ -6888,9 +6922,11 @@ export default function FinancialMovements() {
                                   <DropdownMenuTrigger
                                     className={cn(
                                       'flex items-center cursor-pointer hover:bg-white/10 rounded px-1 -ml-1 flex-1 outline-none',
-                                      h.align === 'right'
+                                      (deparaPrefs.alignments?.[key] || h.align || 'left') ===
+                                        'right'
                                         ? 'justify-end'
-                                        : h.align === 'center'
+                                        : (deparaPrefs.alignments?.[key] || h.align || 'left') ===
+                                            'center'
                                           ? 'justify-center'
                                           : 'justify-start',
                                     )}
@@ -6985,9 +7021,10 @@ export default function FinancialMovements() {
                                 <div
                                   className={cn(
                                     'flex items-center cursor-pointer hover:bg-white/10 rounded px-1 -ml-1 flex-1 outline-none',
-                                    h.align === 'right'
+                                    (deparaPrefs.alignments?.[key] || h.align || 'left') === 'right'
                                       ? 'justify-end'
-                                      : h.align === 'center'
+                                      : (deparaPrefs.alignments?.[key] || h.align || 'left') ===
+                                          'center'
                                         ? 'justify-center'
                                         : 'justify-start',
                                   )}
@@ -6998,8 +7035,8 @@ export default function FinancialMovements() {
                                 </div>
                               )}
 
-                              {isFilterable && (
-                                <div className="flex items-center flex-shrink-0 relative">
+                              <div className="flex items-center flex-shrink-0 relative">
+                                {isFilterable && (
                                   <Popover>
                                     <PopoverTrigger asChild>
                                       <Button
@@ -7115,8 +7152,93 @@ export default function FinancialMovements() {
                                       </Command>
                                     </PopoverContent>
                                   </Popover>
-                                </div>
-                              )}
+                                )}
+
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-5 w-5 rounded-sm text-indigo-200 hover:text-white hover:bg-white/20 relative ml-0.5"
+                                      title="Alinhamento"
+                                    >
+                                      <MoreVertical className="h-3 w-3" />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="start" className="w-48">
+                                    <DropdownMenuGroup>
+                                      <DropdownMenuLabel className="text-xs text-slate-500 uppercase tracking-wider">
+                                        Alinhamento
+                                      </DropdownMenuLabel>
+                                      <div className="flex items-center gap-1 px-2 py-1.5">
+                                        <Button
+                                          variant={
+                                            (deparaPrefs.alignments?.[key] || h.align || 'left') ===
+                                            'left'
+                                              ? 'secondary'
+                                              : 'ghost'
+                                          }
+                                          size="icon"
+                                          className="h-7 w-7"
+                                          onClick={() =>
+                                            updateDeparaPrefs({
+                                              alignments: {
+                                                ...(deparaPrefs.alignments || {}),
+                                                [key]: 'left',
+                                              },
+                                            })
+                                          }
+                                          title="Alinhar à Esquerda"
+                                        >
+                                          <AlignLeft className="h-3.5 w-3.5" />
+                                        </Button>
+                                        <Button
+                                          variant={
+                                            (deparaPrefs.alignments?.[key] || h.align || 'left') ===
+                                            'center'
+                                              ? 'secondary'
+                                              : 'ghost'
+                                          }
+                                          size="icon"
+                                          className="h-7 w-7"
+                                          onClick={() =>
+                                            updateDeparaPrefs({
+                                              alignments: {
+                                                ...(deparaPrefs.alignments || {}),
+                                                [key]: 'center',
+                                              },
+                                            })
+                                          }
+                                          title="Centralizar"
+                                        >
+                                          <AlignCenter className="h-3.5 w-3.5" />
+                                        </Button>
+                                        <Button
+                                          variant={
+                                            (deparaPrefs.alignments?.[key] || h.align || 'left') ===
+                                            'right'
+                                              ? 'secondary'
+                                              : 'ghost'
+                                          }
+                                          size="icon"
+                                          className="h-7 w-7"
+                                          onClick={() =>
+                                            updateDeparaPrefs({
+                                              alignments: {
+                                                ...(deparaPrefs.alignments || {}),
+                                                [key]: 'right',
+                                              },
+                                            })
+                                          }
+                                          title="Alinhar à Direita"
+                                        >
+                                          <AlignRight className="h-3.5 w-3.5" />
+                                        </Button>
+                                      </div>
+                                    </DropdownMenuGroup>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              </div>
                             </div>
                           </TableHead>
                         )
@@ -7137,8 +7259,9 @@ export default function FinancialMovements() {
                                   <TableCell
                                     key={key}
                                     className="p-0 border-0 border-y border-slate-200"
+                                    style={getDeparaGridlineStyle()}
                                   >
-                                    <div className="px-4 py-1.5 text-[0.85em] font-bold text-slate-500 uppercase tracking-wider">
+                                    <div className="px-4 py-1.5 text-[0.85em] font-bold text-slate-500 uppercase tracking-wider text-left">
                                       ↳ Raiz Hierárquica da Conta Vinculada
                                     </div>
                                   </TableCell>
@@ -7148,6 +7271,7 @@ export default function FinancialMovements() {
                                 <TableCell
                                   key={key}
                                   className="p-0 border-0 border-y border-slate-200"
+                                  style={getDeparaGridlineStyle()}
                                 ></TableCell>
                               )
                             })}
@@ -7211,10 +7335,11 @@ export default function FinancialMovements() {
                                   <TableCell
                                     key={key}
                                     className="p-0 border-0 border-b border-white/10"
+                                    style={getDeparaGridlineStyle()}
                                   >
                                     <div
                                       style={{ color, fontWeight: fw as any }}
-                                      className="px-6 py-1.5 flex items-center gap-3 text-[1em]"
+                                      className="px-6 py-1.5 flex items-center gap-3 text-[1em] justify-start"
                                     >
                                       <span
                                         style={{
@@ -7235,6 +7360,7 @@ export default function FinancialMovements() {
                                 <TableCell
                                   key={key}
                                   className="p-0 border-0 border-b border-white/10"
+                                  style={getDeparaGridlineStyle()}
                                 ></TableCell>
                               )
                             })}
@@ -7273,11 +7399,24 @@ export default function FinancialMovements() {
                         >
                           {resumoColOrder.map((key) => {
                             if (key === 'c_custo') {
+                              const align = deparaPrefs.alignments?.[key] || 'left'
+                              const justifyClass =
+                                align === 'center'
+                                  ? 'justify-center'
+                                  : align === 'right'
+                                    ? 'justify-end'
+                                    : ''
                               return (
-                                <TableCell key={key} className="px-2 py-0.5 align-middle border-0">
+                                <TableCell
+                                  key={key}
+                                  {...getDeparaCellProps(key, 'left', 'align-middle')}
+                                >
                                   <div
-                                    className="flex items-center gap-1.5"
-                                    style={{ paddingLeft: `${item.level * 16}px` }}
+                                    className={cn('flex items-center gap-1.5', justifyClass)}
+                                    style={{
+                                      paddingLeft:
+                                        align === 'left' ? `${item.level * 16}px` : undefined,
+                                    }}
                                   >
                                     {canExpand ? (
                                       <button
@@ -7344,10 +7483,20 @@ export default function FinancialMovements() {
                             }
 
                             if (key === 'conta_contabil') {
+                              const align = deparaPrefs.alignments?.[key] || 'left'
+                              const justifyClass =
+                                align === 'center'
+                                  ? 'justify-center'
+                                  : align === 'right'
+                                    ? 'justify-end'
+                                    : ''
                               return (
-                                <TableCell key={key} className="px-2 py-0.5 align-middle border-0">
+                                <TableCell
+                                  key={key}
+                                  {...getDeparaCellProps(key, 'left', 'align-middle')}
+                                >
                                   {!item.isSynthetic && item.mappedAccount ? (
-                                    <div className="flex items-center gap-1.5">
+                                    <div className={cn('flex items-center gap-1.5', justifyClass)}>
                                       <span className="bg-[#1e1b4b] text-white px-1.5 py-0.5 rounded text-[0.85em] font-bold font-mono min-w-[50px] text-center inline-block shadow-sm">
                                         {item.mappedAccount.account_code}
                                       </span>
@@ -7376,7 +7525,7 @@ export default function FinancialMovements() {
                               return (
                                 <TableCell
                                   key={key}
-                                  className="px-2 py-0.5 text-center align-middle border-0"
+                                  {...getDeparaCellProps(key, 'center', 'align-middle')}
                                 >
                                   {!item.isSynthetic && (
                                     <span
@@ -7398,7 +7547,7 @@ export default function FinancialMovements() {
                               return (
                                 <TableCell
                                   key={key}
-                                  className="px-2 py-0.5 text-center align-middle border-0"
+                                  {...getDeparaCellProps(key, 'center', 'align-middle')}
                                 >
                                   {item.count > 0 ? (
                                     <button
@@ -7440,9 +7589,13 @@ export default function FinancialMovements() {
                               return (
                                 <TableCell
                                   key={key}
-                                  className={cn(
-                                    'px-2 py-0.5 text-left align-middle border-0',
-                                    item.isSynthetic ? 'font-bold !text-white' : 'font-medium',
+                                  {...getDeparaCellProps(
+                                    key,
+                                    'left',
+                                    cn(
+                                      'align-middle',
+                                      item.isSynthetic ? 'font-bold !text-white' : 'font-medium',
+                                    ),
                                   )}
                                 >
                                   {new Intl.NumberFormat('pt-BR', {
@@ -7456,9 +7609,13 @@ export default function FinancialMovements() {
                               return (
                                 <TableCell
                                   key={key}
-                                  className={cn(
-                                    'px-2 py-0.5 text-left align-middle border-0',
-                                    item.isSynthetic ? 'font-bold !text-white' : 'font-medium',
+                                  {...getDeparaCellProps(
+                                    key,
+                                    'left',
+                                    cn(
+                                      'align-middle',
+                                      item.isSynthetic ? 'font-bold !text-white' : 'font-medium',
+                                    ),
                                   )}
                                 >
                                   {new Intl.NumberFormat('pt-BR', {
@@ -7472,7 +7629,7 @@ export default function FinancialMovements() {
                               return (
                                 <TableCell
                                   key={key}
-                                  className="px-2 py-0.5 text-center align-middle border-0"
+                                  {...getDeparaCellProps(key, 'center', 'align-middle')}
                                 >
                                   {!item.isSynthetic && (
                                     <Button
