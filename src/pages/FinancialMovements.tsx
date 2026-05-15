@@ -2939,6 +2939,108 @@ export default function FinancialMovements() {
     credito: [],
   })
 
+  const getMappedAccountForCC = (cCustoCode: string | null, orgId: string | null) => {
+    if (!cCustoCode || !orgId) return null
+    const cleanCode = cCustoCode.trim().toUpperCase()
+
+    const matchingCcs = costCenters.filter(
+      (c) => c.organization_id === orgId && (c.code || '').trim().toUpperCase() === cleanCode,
+    )
+
+    if (matchingCcs.length === 0) return null
+
+    for (const cc of matchingCcs) {
+      const mapping = mappings.find((m) => m.cost_center_id === cc.id)
+      if (mapping) {
+        return chartOfAccounts.find((coa) => coa.id === mapping.chart_account_id) || null
+      }
+    }
+
+    return null
+  }
+
+  const getMappedAccount = (row: any) => {
+    const fromMapeamento = getMappedAccountForCC(row.c_custo, row.organization_id)
+    if (fromMapeamento) return fromMapeamento
+
+    if (row.mapped_account_id) {
+      return chartOfAccounts.find((coa) => coa.id === row.mapped_account_id) || null
+    }
+    return null
+  }
+
+  const getCostCenterId = (code: string | null, orgId: string | null) => {
+    if (!code || !orgId) return null
+    const cleanCode = code.trim().toUpperCase()
+    const cc = costCenters.find(
+      (c) => c.organization_id === orgId && (c.code || '').trim().toUpperCase() === cleanCode,
+    )
+    return cc ? cc.id : null
+  }
+
+  const getAccountingEntriesSimulation = (
+    row: any,
+    valueField: 'valor' | 'valor_liquido' = 'valor_liquido',
+  ) => {
+    const mappedCCAccount = getMappedAccount(row)
+
+    const cleanContaCaixa = (row.conta_caixa || '').trim().toUpperCase()
+    const cleanNomeCaixa = (row.nome_caixa || '').trim().toUpperCase()
+    const bankAccount = bankAccounts.find((ba) => {
+      if (ba.organization_id !== row.organization_id) return false
+      const baCode = (ba.code || '').trim().toUpperCase()
+      const baDesc = (ba.description || '').trim().toUpperCase()
+      const baAccNum = (ba.account_number || '').trim().toUpperCase()
+
+      if (cleanContaCaixa && (baCode === cleanContaCaixa || baAccNum === cleanContaCaixa))
+        return true
+      if (cleanNomeCaixa && baDesc === cleanNomeCaixa) return true
+      return false
+    })
+
+    let bankChartAccount = null
+    if (bankAccount && bankAccount.account_code) {
+      bankChartAccount = chartOfAccounts.find(
+        (coa) =>
+          coa.id === bankAccount.account_code || coa.account_code === bankAccount.account_code,
+      )
+    }
+
+    const ccCode = row.c_custo || ''
+    const prefix = ccCode.trim().charAt(0)
+    const isPrefix1 = prefix === '1'
+    const isPrefix2or3 = prefix === '2' || prefix === '3'
+
+    const val = Number(
+      row[valueField] !== undefined && row[valueField] !== null
+        ? row[valueField]
+        : row.valor_liquido || row.valor || 0,
+    )
+
+    let debitAccount = null
+    let creditAccount = null
+
+    if (isPrefix2or3) {
+      if (val < 0) {
+        debitAccount = mappedCCAccount
+        creditAccount = bankChartAccount
+      } else {
+        debitAccount = bankChartAccount
+        creditAccount = mappedCCAccount
+      }
+    } else {
+      if (val > 0) {
+        debitAccount = bankChartAccount
+        creditAccount = mappedCCAccount
+      } else {
+        debitAccount = mappedCCAccount
+        creditAccount = bankChartAccount
+      }
+    }
+
+    return { debitAccount, creditAccount, isMapped: !!debitAccount && !!creditAccount }
+  }
+
   const dryRunOptions = useMemo(() => {
     const emSet = new Set<string>()
     const compSet = new Set<string>()
@@ -3062,78 +3164,6 @@ export default function FinancialMovements() {
   useEffect(() => {
     fetchAuxData()
   }, [user, refreshKey])
-
-  const getCostCenterId = (code: string | null, orgId: string | null) => {
-    if (!code || !orgId) return null
-    const cleanCode = code.trim().toUpperCase()
-    const cc = costCenters.find(
-      (c) => c.organization_id === orgId && (c.code || '').trim().toUpperCase() === cleanCode,
-    )
-    return cc ? cc.id : null
-  }
-
-  const getAccountingEntriesSimulation = (
-    row: any,
-    valueField: 'valor' | 'valor_liquido' = 'valor_liquido',
-  ) => {
-    const mappedCCAccount = getMappedAccount(row)
-
-    const cleanContaCaixa = (row.conta_caixa || '').trim().toUpperCase()
-    const cleanNomeCaixa = (row.nome_caixa || '').trim().toUpperCase()
-    const bankAccount = bankAccounts.find((ba) => {
-      if (ba.organization_id !== row.organization_id) return false
-      const baCode = (ba.code || '').trim().toUpperCase()
-      const baDesc = (ba.description || '').trim().toUpperCase()
-      const baAccNum = (ba.account_number || '').trim().toUpperCase()
-
-      if (cleanContaCaixa && (baCode === cleanContaCaixa || baAccNum === cleanContaCaixa))
-        return true
-      if (cleanNomeCaixa && baDesc === cleanNomeCaixa) return true
-      return false
-    })
-
-    let bankChartAccount = null
-    if (bankAccount && bankAccount.account_code) {
-      bankChartAccount = chartOfAccounts.find(
-        (coa) =>
-          coa.id === bankAccount.account_code || coa.account_code === bankAccount.account_code,
-      )
-    }
-
-    const ccCode = row.c_custo || ''
-    const prefix = ccCode.trim().charAt(0)
-    const isPrefix1 = prefix === '1'
-    const isPrefix2or3 = prefix === '2' || prefix === '3'
-
-    const val = Number(
-      row[valueField] !== undefined && row[valueField] !== null
-        ? row[valueField]
-        : row.valor_liquido || row.valor || 0,
-    )
-
-    let debitAccount = null
-    let creditAccount = null
-
-    if (isPrefix2or3) {
-      if (val < 0) {
-        debitAccount = mappedCCAccount
-        creditAccount = bankChartAccount
-      } else {
-        debitAccount = bankChartAccount
-        creditAccount = mappedCCAccount
-      }
-    } else {
-      if (val > 0) {
-        debitAccount = bankChartAccount
-        creditAccount = mappedCCAccount
-      } else {
-        debitAccount = mappedCCAccount
-        creditAccount = bankChartAccount
-      }
-    }
-
-    return { debitAccount, creditAccount, isMapped: !!debitAccount && !!creditAccount }
-  }
 
   const startGenerateEntries = async () => {
     if (!user) return
@@ -3271,36 +3301,6 @@ export default function FinancialMovements() {
     } finally {
       setIsGeneratingEntries(false)
     }
-  }
-
-  const getMappedAccountForCC = (cCustoCode: string | null, orgId: string | null) => {
-    if (!cCustoCode || !orgId) return null
-    const cleanCode = cCustoCode.trim().toUpperCase()
-
-    const matchingCcs = costCenters.filter(
-      (c) => c.organization_id === orgId && (c.code || '').trim().toUpperCase() === cleanCode,
-    )
-
-    if (matchingCcs.length === 0) return null
-
-    for (const cc of matchingCcs) {
-      const mapping = mappings.find((m) => m.cost_center_id === cc.id)
-      if (mapping) {
-        return chartOfAccounts.find((coa) => coa.id === mapping.chart_account_id) || null
-      }
-    }
-
-    return null
-  }
-
-  const getMappedAccount = (row: any) => {
-    const fromMapeamento = getMappedAccountForCC(row.c_custo, row.organization_id)
-    if (fromMapeamento) return fromMapeamento
-
-    if (row.mapped_account_id) {
-      return chartOfAccounts.find((coa) => coa.id === row.mapped_account_id) || null
-    }
-    return null
   }
 
   useEffect(() => {
