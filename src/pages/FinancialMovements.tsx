@@ -2924,6 +2924,97 @@ export default function FinancialMovements() {
     dateBase: 'data_emissao',
     valueBase: 'valor_liquido',
   })
+  const [generateScope, setGenerateScope] = useState<'global' | 'dry_run'>('global')
+
+  const [dryRunFiltersOpen, setDryRunFiltersOpen] = useState(false)
+  const [dryRunFilters, setDryRunFilters] = useState<{
+    data_emissao: string[]
+    dt_compens: string[]
+    debito: string[]
+    credito: string[]
+  }>({
+    data_emissao: [],
+    dt_compens: [],
+    debito: [],
+    credito: [],
+  })
+
+  const dryRunOptions = useMemo(() => {
+    const emSet = new Set<string>()
+    const compSet = new Set<string>()
+    const debitoSet = new Set<string>()
+    const creditoSet = new Set<string>()
+
+    summaryData.forEach((row) => {
+      if (row.data_emissao) emSet.add(row.data_emissao.substring(0, 7))
+      if (row.dt_compens) compSet.add(row.dt_compens.substring(0, 7))
+
+      const sim = getAccountingEntriesSimulation(
+        row,
+        generateOptions.valueBase as 'valor' | 'valor_liquido',
+      )
+      if (sim.debitAccount)
+        debitoSet.add(`${sim.debitAccount.account_code} - ${sim.debitAccount.account_name}`)
+      if (sim.creditAccount)
+        creditoSet.add(`${sim.creditAccount.account_code} - ${sim.creditAccount.account_name}`)
+    })
+
+    const sortByMonth = (a: string, b: string) => a.localeCompare(b)
+
+    return {
+      data_emissao: Array.from(emSet)
+        .sort(sortByMonth)
+        .map((m) => ({ label: m.split('-').reverse().join('/'), value: m })),
+      dt_compens: Array.from(compSet)
+        .sort(sortByMonth)
+        .map((m) => ({ label: m.split('-').reverse().join('/'), value: m })),
+      debito: Array.from(debitoSet).sort(),
+      credito: Array.from(creditoSet).sort(),
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [summaryData, generateOptions.valueBase])
+
+  const filteredDryRunData = useMemo(() => {
+    return summaryData.filter((row) => {
+      const sim = getAccountingEntriesSimulation(
+        row,
+        generateOptions.valueBase as 'valor' | 'valor_liquido',
+      )
+
+      const de = row.data_emissao ? row.data_emissao.substring(0, 7) : null
+      const dc = row.dt_compens ? row.dt_compens.substring(0, 7) : null
+      const deb = sim.debitAccount
+        ? `${sim.debitAccount.account_code} - ${sim.debitAccount.account_name}`
+        : null
+      const cred = sim.creditAccount
+        ? `${sim.creditAccount.account_code} - ${sim.creditAccount.account_name}`
+        : null
+
+      if (
+        dryRunFilters.data_emissao.length > 0 &&
+        (!de || !dryRunFilters.data_emissao.includes(de))
+      )
+        return false
+      if (dryRunFilters.dt_compens.length > 0 && (!dc || !dryRunFilters.dt_compens.includes(dc)))
+        return false
+      if (dryRunFilters.debito.length > 0 && (!deb || !dryRunFilters.debito.includes(deb)))
+        return false
+      if (dryRunFilters.credito.length > 0 && (!cred || !dryRunFilters.credito.includes(cred)))
+        return false
+
+      return true
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [summaryData, dryRunFilters, generateOptions.valueBase])
+
+  const [dryRunPage, setDryRunPage] = useState(0)
+  const dryRunPageSize = 50
+
+  const currentDryRunData = useMemo(() => {
+    return filteredDryRunData.slice(dryRunPage * dryRunPageSize, (dryRunPage + 1) * dryRunPageSize)
+  }, [filteredDryRunData, dryRunPage])
+
+  const dryRunTotalPages = Math.max(1, Math.ceil(filteredDryRunData.length / dryRunPageSize))
 
   const fetchAuxData = async () => {
     if (!user) return
@@ -3051,28 +3142,32 @@ export default function FinancialMovements() {
     try {
       let idsToProcess = selectedIds.length > 0 ? selectedIds : []
       if (idsToProcess.length === 0) {
-        let allData: any[] = []
-        let hasMore = true
-        let pageIdx = 0
-        const limit = 1000
-        while (hasMore) {
-          let q = supabase
-            .from('erp_financial_movements')
-            .select('id, status')
-            .is('deleted_at', null)
-            .neq('status', 'Concluído')
-          q = applyQueryFilters(q, search, filters)
-          const { data, error } = await q.range(pageIdx * limit, (pageIdx + 1) * limit - 1)
-          if (error) throw error
-          if (!data || data.length === 0) {
-            hasMore = false
-          } else {
-            allData = allData.concat(data)
-            pageIdx++
-            if (data.length < limit) hasMore = false
+        if (generateScope === 'dry_run') {
+          idsToProcess = filteredDryRunData.filter((d) => d.status !== 'Concluído').map((d) => d.id)
+        } else {
+          let allData: any[] = []
+          let hasMore = true
+          let pageIdx = 0
+          const limit = 1000
+          while (hasMore) {
+            let q = supabase
+              .from('erp_financial_movements')
+              .select('id, status')
+              .is('deleted_at', null)
+              .neq('status', 'Concluído')
+            q = applyQueryFilters(q, search, filters)
+            const { data, error } = await q.range(pageIdx * limit, (pageIdx + 1) * limit - 1)
+            if (error) throw error
+            if (!data || data.length === 0) {
+              hasMore = false
+            } else {
+              allData = allData.concat(data)
+              pageIdx++
+              if (data.length < limit) hasMore = false
+            }
           }
+          idsToProcess = allData.map((d) => d.id)
         }
-        idsToProcess = allData.map((d) => d.id)
       } else {
         const { data: selData } = await supabase
           .from('erp_financial_movements')
@@ -3168,6 +3263,7 @@ export default function FinancialMovements() {
       }
 
       setGenerateModalOpen(false)
+      setGenerateScope('global')
       setSelectedIds([])
       setRefreshKey((k) => k + 1)
     } catch (e: any) {
@@ -3601,7 +3697,7 @@ export default function FinancialMovements() {
   }, [user, refreshKey])
 
   const [deleteModalOpen, setDeleteModalOpen] = useState(false)
-  const [deleteMode, setDeleteMode] = useState<'selected' | 'all' | null>(null)
+  const [deleteMode, setDeleteMode] = useState<'selected' | 'all' | 'filtered_dry_run' | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
 
   const [deletionState, setDeletionState] = useState({
@@ -3811,17 +3907,23 @@ export default function FinancialMovements() {
       return
     }
 
+    let idsToDelete = selectedIds
+    if (deleteMode === 'filtered_dry_run') {
+      idsToDelete = filteredDryRunData.map((d) => d.id)
+    }
+
     setIsDeleting(true)
     try {
       const chunkSize = 150
-      for (let i = 0; i < selectedIds.length; i += chunkSize) {
-        const chunk = selectedIds.slice(i, i + chunkSize)
+      for (let i = 0; i < idsToDelete.length; i += chunkSize) {
+        const chunk = idsToDelete.slice(i, i + chunkSize)
         const { error } = await updateWithRetry(chunk)
         if (error) throw error
       }
-      toast.success(`${selectedIds.length} registros excluídos com sucesso!`)
+      toast.success(`${idsToDelete.length} registros excluídos com sucesso!`)
       setSelectedIds([])
       setPage(0)
+      setDryRunPage(0)
       setRefreshKey((k) => k + 1)
     } catch (error: any) {
       toast.error('Erro ao excluir: ' + error.message)
@@ -9985,7 +10087,7 @@ export default function FinancialMovements() {
         <TabsContent value="dry-run" className="m-0 animate-in fade-in-up duration-500">
           <Card className="border-slate-200 shadow-sm bg-white border">
             <CardHeader className="border-b border-slate-100 pb-4 bg-slate-50">
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+              <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4">
                 <div>
                   <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
                     Pré-Conferência Contábil (Dry Run)
@@ -9995,12 +10097,158 @@ export default function FinancialMovements() {
                     Histórico). Lançamentos com pendência de mapeamento estão destacados.
                   </p>
                 </div>
-                <Button
-                  onClick={() => setGenerateModalOpen(true)}
-                  className="bg-indigo-600 hover:bg-indigo-700 shadow-sm shrink-0"
-                >
-                  <CheckCircle2 className="mr-2 h-4 w-4" /> Efetivar Lançamentos Exibidos
-                </Button>
+                <div className="flex flex-wrap items-center gap-2 shrink-0">
+                  <Popover open={dryRunFiltersOpen} onOpenChange={setDryRunFiltersOpen}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-9 text-xs relative bg-white border-slate-300"
+                      >
+                        <Filter className="mr-2 h-4 w-4" /> Filtros do Dry Run
+                        {Object.values(dryRunFilters).some((arr) => arr.length > 0) && (
+                          <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-indigo-600 text-[9px] font-bold text-white shadow-sm">
+                            {Object.values(dryRunFilters).reduce(
+                              (acc, val) => acc + (val.length > 0 ? 1 : 0),
+                              0,
+                            )}
+                          </span>
+                        )}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent
+                      className="w-[320px] p-4 flex flex-col gap-4 shadow-xl border-slate-200"
+                      align="end"
+                    >
+                      <div className="flex items-center justify-between">
+                        <h4 className="font-semibold text-sm text-slate-800">
+                          Filtros (Apenas nesta visão)
+                        </h4>
+                        {Object.values(dryRunFilters).some((arr) => arr.length > 0) && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setDryRunFilters({
+                                data_emissao: [],
+                                dt_compens: [],
+                                debito: [],
+                                credito: [],
+                              })
+                              setDryRunPage(0)
+                            }}
+                            className="h-6 text-xs px-2 text-slate-500 hover:text-red-600 hover:bg-red-50"
+                          >
+                            Limpar
+                          </Button>
+                        )}
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <Label className="text-xs font-semibold text-slate-700">
+                          Data Emissão (Mês/Ano)
+                        </Label>
+                        <MultiSelect
+                          title="Todos os meses"
+                          options={dryRunOptions.data_emissao}
+                          selected={dryRunFilters.data_emissao}
+                          onChange={(v: string[]) => {
+                            setDryRunFilters((p) => ({ ...p, data_emissao: v }))
+                            setDryRunPage(0)
+                          }}
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs font-semibold text-slate-700">
+                          Competência (Mês/Ano)
+                        </Label>
+                        <MultiSelect
+                          title="Todos os meses"
+                          options={dryRunOptions.dt_compens}
+                          selected={dryRunFilters.dt_compens}
+                          onChange={(v: string[]) => {
+                            setDryRunFilters((p) => ({ ...p, dt_compens: v }))
+                            setDryRunPage(0)
+                          }}
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs font-semibold text-slate-700">
+                          Conta Débito (Prevista)
+                        </Label>
+                        <MultiSelect
+                          title="Todas as contas"
+                          options={dryRunOptions.debito.map((d) => ({ label: d, value: d }))}
+                          selected={dryRunFilters.debito}
+                          onChange={(v: string[]) => {
+                            setDryRunFilters((p) => ({ ...p, debito: v }))
+                            setDryRunPage(0)
+                          }}
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs font-semibold text-slate-700">
+                          Conta Crédito (Prevista)
+                        </Label>
+                        <MultiSelect
+                          title="Todas as contas"
+                          options={dryRunOptions.credito.map((d) => ({ label: d, value: d }))}
+                          selected={dryRunFilters.credito}
+                          onChange={(v: string[]) => {
+                            setDryRunFilters((p) => ({ ...p, credito: v }))
+                            setDryRunPage(0)
+                          }}
+                        />
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        className="h-9 shadow-sm"
+                        disabled={filteredDryRunData.length === 0 && selectedIds.length === 0}
+                      >
+                        <Trash2 className="mr-2 h-4 w-4" /> Excluir...
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem
+                        disabled={selectedIds.length === 0}
+                        onClick={() => {
+                          setDeleteMode('selected')
+                          setDeleteModalOpen(true)
+                        }}
+                        className="text-red-600 cursor-pointer"
+                      >
+                        Excluir Selecionados ({selectedIds.length})
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        disabled={filteredDryRunData.length === 0}
+                        onClick={() => {
+                          setDeleteMode('filtered_dry_run')
+                          setDeleteModalOpen(true)
+                        }}
+                        className="text-red-600 cursor-pointer"
+                      >
+                        Excluir Todos Filtrados ({filteredDryRunData.length})
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+
+                  <Button
+                    onClick={() => {
+                      setGenerateScope('dry_run')
+                      setGenerateModalOpen(true)
+                    }}
+                    className="bg-indigo-600 hover:bg-indigo-700 shadow-sm h-9 shrink-0"
+                    disabled={filteredDryRunData.length === 0}
+                  >
+                    <CheckCircle2 className="mr-2 h-4 w-4" /> Efetivar Filtrados/Selecionados
+                  </Button>
+                </div>
               </div>
             </CardHeader>
             <CardContent className="p-0">
@@ -10011,6 +10259,24 @@ export default function FinancialMovements() {
               >
                 <TableHeader className="bg-slate-100 sticky top-0 z-10 shadow-sm border-none">
                   <TableRow className="border-b-slate-200 hover:bg-slate-100 border-none">
+                    <TableHead className="w-[40px] px-2 py-1 text-center align-middle border-r border-slate-200">
+                      <Checkbox
+                        checked={
+                          currentDryRunData.length > 0 &&
+                          currentDryRunData.every((d) => selectedIds.includes(d.id))
+                        }
+                        onCheckedChange={() => {
+                          const pageIds = currentDryRunData.map((d) => d.id)
+                          const allSelected =
+                            pageIds.length > 0 && pageIds.every((id) => selectedIds.includes(id))
+                          if (allSelected) {
+                            setSelectedIds((prev) => prev.filter((id) => !pageIds.includes(id)))
+                          } else {
+                            setSelectedIds((prev) => Array.from(new Set([...prev, ...pageIds])))
+                          }
+                        }}
+                      />
+                    </TableHead>
                     <TableHead className="font-bold text-slate-700 border-r border-slate-200">
                       Data
                     </TableHead>
@@ -10030,7 +10296,7 @@ export default function FinancialMovements() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {data.map((row) => {
+                  {currentDryRunData.map((row) => {
                     const sim = getAccountingEntriesSimulation(
                       row,
                       generateOptions.valueBase as 'valor' | 'valor_liquido',
@@ -10060,6 +10326,12 @@ export default function FinancialMovements() {
                           isError ? 'bg-red-50 hover:bg-red-100' : 'hover:bg-slate-50',
                         )}
                       >
+                        <TableCell className="px-2 py-1 text-center align-middle border-r border-slate-200">
+                          <Checkbox
+                            checked={selectedIds.includes(row.id)}
+                            onCheckedChange={() => toggleRow(row.id)}
+                          />
+                        </TableCell>
                         <TableCell
                           className={cn(
                             'whitespace-nowrap border-r border-slate-200',
@@ -10156,15 +10428,45 @@ export default function FinancialMovements() {
                       </TableRow>
                     )
                   })}
-                  {data.length === 0 && (
+                  {currentDryRunData.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={6} className="h-48 text-center text-slate-500 border-0">
+                      <TableCell colSpan={7} className="h-48 text-center text-slate-500 border-0">
                         Nenhum registro para exibir.
                       </TableCell>
                     </TableRow>
                   )}
                 </TableBody>
               </Table>
+              <div className="flex flex-col sm:flex-row items-center justify-between p-3 border-t bg-slate-50/50 gap-4">
+                <div className="text-xs text-slate-500">
+                  Mostrando {Math.min(dryRunPage * dryRunPageSize + 1, filteredDryRunData.length)} a{' '}
+                  {Math.min((dryRunPage + 1) * dryRunPageSize, filteredDryRunData.length)} de{' '}
+                  {filteredDryRunData.length} registros
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 text-xs bg-white"
+                    onClick={() => setDryRunPage((p) => Math.max(0, p - 1))}
+                    disabled={dryRunPage === 0}
+                  >
+                    <ArrowLeft className="h-3 w-3 mr-1" /> Anterior
+                  </Button>
+                  <span className="text-xs font-medium text-slate-600 px-2 hidden sm:inline">
+                    Página {dryRunPage + 1} de {dryRunTotalPages}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 text-xs bg-white"
+                    onClick={() => setDryRunPage((p) => p + 1)}
+                    disabled={dryRunPage >= dryRunTotalPages - 1}
+                  >
+                    Próxima <ArrowRight className="h-3 w-3 ml-1" />
+                  </Button>
+                </div>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
@@ -11563,12 +11865,18 @@ export default function FinancialMovements() {
         onConfirm={handleDelete}
         isLoading={isDeleting}
         title={
-          deleteMode === 'all' ? 'Excluir Todos os Registros' : 'Excluir Registros Selecionados'
+          deleteMode === 'all'
+            ? 'Excluir Todos os Registros'
+            : deleteMode === 'filtered_dry_run'
+              ? 'Excluir Registros Exibidos no Dry Run'
+              : 'Excluir Registros Selecionados'
         }
         description={
           deleteMode === 'all'
             ? 'Tem certeza que deseja excluir TODOS os registros de movimento financeiro da base? Esta ação enviará todos os dados para a lixeira.'
-            : `Tem certeza que deseja excluir os ${selectedIds.length} registros selecionados?`
+            : deleteMode === 'filtered_dry_run'
+              ? `Tem certeza que deseja excluir os ${filteredDryRunData.length} registros atualmente filtrados e exibidos na aba Dry Run?`
+              : `Tem certeza que deseja excluir os ${selectedIds.length} registros selecionados?`
         }
       />
 
