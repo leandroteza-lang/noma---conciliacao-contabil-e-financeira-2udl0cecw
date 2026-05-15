@@ -48,7 +48,12 @@ import {
   RefreshCw,
   Link,
   Unlink,
+  AlignLeft,
+  AlignCenter,
+  AlignRight,
 } from 'lucide-react'
+import { TableSettingsControls } from '@/components/TableSettingsControls'
+import { useTablePreferences } from '@/hooks/use-table-preferences'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Switch } from '@/components/ui/switch'
 import { toast } from 'sonner'
@@ -956,6 +961,33 @@ export default function FinancialMovements() {
   useEffect(() => {
     localStorage.setItem('fin_mov_table_font_size', tableFontSize.toString())
   }, [tableFontSize])
+
+  const { prefs, updatePrefs } = useTablePreferences('fin_mov_grade')
+
+  const getCellProps = (key: string, defaultAlign?: string, extraClass?: string) => {
+    const align = prefs.alignments?.[key] || defaultAlign || 'left'
+    const alignClass =
+      align === 'center' ? 'text-center' : align === 'right' ? 'text-right' : 'text-left'
+    const style = prefs.showGridlines
+      ? {
+          borderRight: `${prefs.gridlineWidth}px solid ${prefs.gridlineColor}`,
+          borderBottom: `${prefs.gridlineWidth}px solid ${prefs.gridlineColor}`,
+        }
+      : undefined
+
+    return {
+      className: cn('px-2 py-0.5 border-0', alignClass, extraClass),
+      style,
+    }
+  }
+
+  const getGridlineStyle = () => {
+    if (!prefs.showGridlines) return undefined
+    return {
+      borderRight: `${prefs.gridlineWidth}px solid ${prefs.gridlineColor}`,
+      borderBottom: `${prefs.gridlineWidth}px solid ${prefs.gridlineColor}`,
+    }
+  }
 
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [totals, setTotals] = useState({ valor: 0, valor_liquido: 0, entradas: 0, saidas: 0 })
@@ -4255,6 +4287,8 @@ export default function FinancialMovements() {
                     )}
                   </Button>
 
+                  <TableSettingsControls prefs={prefs} updatePrefs={updatePrefs} />
+
                   <div
                     className="hidden sm:flex items-center gap-1 bg-slate-100 rounded-md p-0.5 border border-slate-200"
                     title="Tamanho da Fonte da Tabela"
@@ -4673,7 +4707,10 @@ export default function FinancialMovements() {
                     disableZebra
                     className="bg-indigo-950 text-white font-bold hover:bg-indigo-900 border-none [&>th]:border-none [&>th]:text-white"
                   >
-                    <TableHead className="w-[40px] px-2 py-1 text-center align-middle">
+                    <TableHead
+                      className="w-[40px] px-2 py-1 text-center align-middle"
+                      style={getGridlineStyle()}
+                    >
                       <div className="flex items-center justify-center">
                         <Checkbox
                           checked={data.length > 0 && data.every((d) => selectedIds.includes(d.id))}
@@ -4719,14 +4756,15 @@ export default function FinancialMovements() {
                               h.className,
                               draggedColumn === h.key ? 'opacity-50 bg-indigo-900' : '',
                             )}
+                            style={getGridlineStyle()}
                           >
                             <div className="flex items-center justify-between gap-1 w-full">
                               <div
                                 className={cn(
                                   'flex items-center cursor-pointer hover:bg-indigo-800/50 rounded px-1 -ml-1 flex-1',
-                                  h.align === 'right'
+                                  (prefs.alignments?.[h.key] || h.align || 'left') === 'right'
                                     ? 'justify-end'
-                                    : h.align === 'center'
+                                    : (prefs.alignments?.[h.key] || h.align || 'left') === 'center'
                                       ? 'justify-center'
                                       : 'justify-start',
                                 )}
@@ -4893,6 +4931,77 @@ export default function FinancialMovements() {
                                     </Button>
                                   </DropdownMenuTrigger>
                                   <DropdownMenuContent align="start" className="w-48">
+                                    <DropdownMenuGroup>
+                                      <DropdownMenuLabel className="text-xs text-slate-500 uppercase tracking-wider">
+                                        Alinhamento
+                                      </DropdownMenuLabel>
+                                      <div className="flex items-center gap-1 px-2 py-1.5">
+                                        <Button
+                                          variant={
+                                            (prefs.alignments?.[h.key] || h.align || 'left') ===
+                                            'left'
+                                              ? 'secondary'
+                                              : 'ghost'
+                                          }
+                                          size="icon"
+                                          className="h-7 w-7"
+                                          onClick={() =>
+                                            updatePrefs({
+                                              alignments: {
+                                                ...(prefs.alignments || {}),
+                                                [h.key]: 'left',
+                                              },
+                                            })
+                                          }
+                                          title="Alinhar à Esquerda"
+                                        >
+                                          <AlignLeft className="h-3.5 w-3.5" />
+                                        </Button>
+                                        <Button
+                                          variant={
+                                            (prefs.alignments?.[h.key] || h.align || 'left') ===
+                                            'center'
+                                              ? 'secondary'
+                                              : 'ghost'
+                                          }
+                                          size="icon"
+                                          className="h-7 w-7"
+                                          onClick={() =>
+                                            updatePrefs({
+                                              alignments: {
+                                                ...(prefs.alignments || {}),
+                                                [h.key]: 'center',
+                                              },
+                                            })
+                                          }
+                                          title="Centralizar"
+                                        >
+                                          <AlignCenter className="h-3.5 w-3.5" />
+                                        </Button>
+                                        <Button
+                                          variant={
+                                            (prefs.alignments?.[h.key] || h.align || 'left') ===
+                                            'right'
+                                              ? 'secondary'
+                                              : 'ghost'
+                                          }
+                                          size="icon"
+                                          className="h-7 w-7"
+                                          onClick={() =>
+                                            updatePrefs({
+                                              alignments: {
+                                                ...(prefs.alignments || {}),
+                                                [h.key]: 'right',
+                                              },
+                                            })
+                                          }
+                                          title="Alinhar à Direita"
+                                        >
+                                          <AlignRight className="h-3.5 w-3.5" />
+                                        </Button>
+                                      </div>
+                                    </DropdownMenuGroup>
+                                    <DropdownMenuSeparator />
                                     <DropdownMenuItem
                                       onClick={() => toggleColumn(h.key)}
                                       className="text-xs cursor-pointer"
@@ -4931,7 +5040,10 @@ export default function FinancialMovements() {
                           </TableHead>
                         )
                       })}
-                    <TableHead className="h-8 px-2 py-1 text-sm font-bold whitespace-nowrap text-center">
+                    <TableHead
+                      className="h-8 px-2 py-1 text-sm font-bold whitespace-nowrap text-center"
+                      style={getGridlineStyle()}
+                    >
                       Ações
                     </TableHead>
                   </TableRow>
@@ -4964,7 +5076,10 @@ export default function FinancialMovements() {
                             className="transition-colors border-0"
                             style={{ fontSize: `${tableFontSize}px` }}
                           >
-                            <TableCell className="px-2 py-0.5 text-center align-middle border-0">
+                            <TableCell
+                              className="px-2 py-0.5 text-center align-middle border-0"
+                              style={getGridlineStyle()}
+                            >
                               <div className="flex items-center justify-center">
                                 <Checkbox
                                   checked={selectedIds.includes(row.id)}
@@ -4998,10 +5113,7 @@ export default function FinancialMovements() {
                                     }
 
                                     return (
-                                      <TableCell
-                                        key={key}
-                                        className="px-2 py-0.5 text-center border-0"
-                                      >
+                                      <TableCell key={key} {...getCellProps(key, 'center')}>
                                         <Button
                                           variant="ghost"
                                           className={cn(
@@ -5019,7 +5131,11 @@ export default function FinancialMovements() {
                                     return (
                                       <TableCell
                                         key={key}
-                                        className="px-2 py-0.5 whitespace-nowrap max-w-[150px] truncate border-0"
+                                        {...getCellProps(
+                                          key,
+                                          'left',
+                                          'whitespace-nowrap max-w-[150px] truncate',
+                                        )}
                                         title={row.organizations?.name}
                                       >
                                         {row.organizations?.name || '-'}
@@ -5029,7 +5145,7 @@ export default function FinancialMovements() {
                                     return (
                                       <TableCell
                                         key={key}
-                                        className="px-2 py-0.5 whitespace-nowrap text-center border-0"
+                                        {...getCellProps(key, 'center', 'whitespace-nowrap')}
                                       >
                                         {row.compensado || '-'}
                                       </TableCell>
@@ -5038,7 +5154,7 @@ export default function FinancialMovements() {
                                     return (
                                       <TableCell
                                         key={key}
-                                        className="px-2 py-0.5 whitespace-nowrap text-center border-0"
+                                        {...getCellProps(key, 'center', 'whitespace-nowrap')}
                                       >
                                         {row.tipo_operacao || '-'}
                                       </TableCell>
@@ -5047,7 +5163,7 @@ export default function FinancialMovements() {
                                     return (
                                       <TableCell
                                         key={key}
-                                        className="px-2 py-0.5 whitespace-nowrap text-center border-0"
+                                        {...getCellProps(key, 'center', 'whitespace-nowrap')}
                                       >
                                         {editingId === row.id ? (
                                           <Input
@@ -5074,7 +5190,7 @@ export default function FinancialMovements() {
                                     return (
                                       <TableCell
                                         key={key}
-                                        className="px-2 py-0.5 whitespace-nowrap text-center border-0"
+                                        {...getCellProps(key, 'center', 'whitespace-nowrap')}
                                       >
                                         {formatDate(row.dt_compens)}
                                       </TableCell>
@@ -5083,7 +5199,7 @@ export default function FinancialMovements() {
                                     return (
                                       <TableCell
                                         key={key}
-                                        className="px-2 py-0.5 text-center max-w-[150px] truncate border-0"
+                                        {...getCellProps(key, 'center', 'max-w-[150px] truncate')}
                                         title={row.conta_caixa || ''}
                                       >
                                         {editingId === row.id ? (
@@ -5106,7 +5222,11 @@ export default function FinancialMovements() {
                                     return (
                                       <TableCell
                                         key={key}
-                                        className="px-2 py-0.5 whitespace-nowrap max-w-[150px] truncate border-0"
+                                        {...getCellProps(
+                                          key,
+                                          'left',
+                                          'whitespace-nowrap max-w-[150px] truncate',
+                                        )}
                                         title={row.nome_caixa}
                                       >
                                         {row.nome_caixa || '-'}
@@ -5116,7 +5236,7 @@ export default function FinancialMovements() {
                                     return (
                                       <TableCell
                                         key={key}
-                                        className="px-2 py-0.5 whitespace-nowrap text-center border-0"
+                                        {...getCellProps(key, 'center', 'whitespace-nowrap')}
                                       >
                                         {row.conta_caixa_destino || '-'}
                                       </TableCell>
@@ -5125,7 +5245,7 @@ export default function FinancialMovements() {
                                     return (
                                       <TableCell
                                         key={key}
-                                        className="px-2 py-0.5 whitespace-nowrap border-0"
+                                        {...getCellProps(key, 'left', 'whitespace-nowrap')}
                                       >
                                         {editingId === row.id ? (
                                           <Input
@@ -5147,7 +5267,7 @@ export default function FinancialMovements() {
                                     return (
                                       <TableCell
                                         key={key}
-                                        className="px-2 py-0.5 whitespace-nowrap border-0"
+                                        {...getCellProps(key, 'left', 'whitespace-nowrap')}
                                       >
                                         {editingId === row.id ? (
                                           <Input
@@ -5166,7 +5286,11 @@ export default function FinancialMovements() {
                                     return (
                                       <TableCell
                                         key={key}
-                                        className="px-2 py-0.5 whitespace-nowrap max-w-[150px] truncate border-0"
+                                        {...getCellProps(
+                                          key,
+                                          'left',
+                                          'whitespace-nowrap max-w-[150px] truncate',
+                                        )}
                                         title={row.descricao_c_custo}
                                       >
                                         {row.descricao_c_custo || '-'}
@@ -5176,7 +5300,11 @@ export default function FinancialMovements() {
                                     return (
                                       <TableCell
                                         key={key}
-                                        className="px-2 py-0.5 whitespace-nowrap text-left border-0 font-medium"
+                                        {...getCellProps(
+                                          key,
+                                          'left',
+                                          'whitespace-nowrap font-medium',
+                                        )}
                                       >
                                         {row.valor !== null ? (
                                           <span
@@ -5202,7 +5330,11 @@ export default function FinancialMovements() {
                                     return (
                                       <TableCell
                                         key={key}
-                                        className="px-2 py-0.5 whitespace-nowrap text-left border-0 font-medium"
+                                        {...getCellProps(
+                                          key,
+                                          'left',
+                                          'whitespace-nowrap font-medium',
+                                        )}
                                       >
                                         {editingId === row.id ? (
                                           <Input
@@ -5241,7 +5373,7 @@ export default function FinancialMovements() {
                                     return (
                                       <TableCell
                                         key={key}
-                                        className="px-2 py-0.5 whitespace-nowrap border-0"
+                                        {...getCellProps(key, 'left', 'whitespace-nowrap')}
                                       >
                                         {editingId === row.id ? (
                                           <Input
@@ -5263,7 +5395,7 @@ export default function FinancialMovements() {
                                     return (
                                       <TableCell
                                         key={key}
-                                        className="px-2 py-0.5 max-w-[200px] truncate border-0"
+                                        {...getCellProps(key, 'left', 'max-w-[200px] truncate')}
                                         title={row.nome_cli_fornec}
                                       >
                                         {editingId === row.id ? (
@@ -5286,7 +5418,7 @@ export default function FinancialMovements() {
                                     return (
                                       <TableCell
                                         key={key}
-                                        className="px-2 py-0.5 max-w-[250px] truncate border-0"
+                                        {...getCellProps(key, 'left', 'max-w-[250px] truncate')}
                                         title={row.historico}
                                       >
                                         {editingId === row.id ? (
@@ -5309,7 +5441,7 @@ export default function FinancialMovements() {
                                     return (
                                       <TableCell
                                         key={key}
-                                        className="px-2 py-0.5 whitespace-nowrap text-center border-0"
+                                        {...getCellProps(key, 'center', 'whitespace-nowrap')}
                                       >
                                         {row.fp || '-'}
                                       </TableCell>
@@ -5318,7 +5450,7 @@ export default function FinancialMovements() {
                                     return (
                                       <TableCell
                                         key={key}
-                                        className="px-2 py-0.5 whitespace-nowrap border-0"
+                                        {...getCellProps(key, 'left', 'whitespace-nowrap')}
                                       >
                                         {row.n_cheque || '-'}
                                       </TableCell>
@@ -5327,7 +5459,7 @@ export default function FinancialMovements() {
                                     return (
                                       <TableCell
                                         key={key}
-                                        className="px-2 py-0.5 whitespace-nowrap text-center border-0"
+                                        {...getCellProps(key, 'center', 'whitespace-nowrap')}
                                       >
                                         {editingId === row.id ? (
                                           <Input
@@ -5352,7 +5484,7 @@ export default function FinancialMovements() {
                                     return (
                                       <TableCell
                                         key={key}
-                                        className="px-2 py-0.5 whitespace-nowrap border-0"
+                                        {...getCellProps(key, 'left', 'whitespace-nowrap')}
                                       >
                                         {row.nominal_a || '-'}
                                       </TableCell>
@@ -5361,7 +5493,7 @@ export default function FinancialMovements() {
                                     return (
                                       <TableCell
                                         key={key}
-                                        className="px-2 py-0.5 max-w-[150px] truncate border-0"
+                                        {...getCellProps(key, 'left', 'max-w-[150px] truncate')}
                                         title={row.emitente_cheque}
                                       >
                                         {row.emitente_cheque || '-'}
@@ -5371,7 +5503,7 @@ export default function FinancialMovements() {
                                     return (
                                       <TableCell
                                         key={key}
-                                        className="px-2 py-0.5 whitespace-nowrap border-0"
+                                        {...getCellProps(key, 'left', 'whitespace-nowrap')}
                                       >
                                         {row.cnpj_cpf || '-'}
                                       </TableCell>
@@ -5380,7 +5512,7 @@ export default function FinancialMovements() {
                                     return (
                                       <TableCell
                                         key={key}
-                                        className="px-2 py-0.5 whitespace-nowrap text-center border-0"
+                                        {...getCellProps(key, 'center', 'whitespace-nowrap')}
                                       >
                                         {row.n_extrato || '-'}
                                       </TableCell>
@@ -5389,7 +5521,7 @@ export default function FinancialMovements() {
                                     return (
                                       <TableCell
                                         key={key}
-                                        className="px-2 py-0.5 whitespace-nowrap text-center border-0"
+                                        {...getCellProps(key, 'center', 'whitespace-nowrap')}
                                       >
                                         {row.filial || '-'}
                                       </TableCell>
@@ -5398,7 +5530,7 @@ export default function FinancialMovements() {
                                     return (
                                       <TableCell
                                         key={key}
-                                        className="px-2 py-0.5 whitespace-nowrap text-center border-0"
+                                        {...getCellProps(key, 'center', 'whitespace-nowrap')}
                                       >
                                         {formatDate(row.data_canc)}
                                       </TableCell>
@@ -5407,7 +5539,7 @@ export default function FinancialMovements() {
                                     return (
                                       <TableCell
                                         key={key}
-                                        className="px-2 py-0.5 whitespace-nowrap text-center border-0"
+                                        {...getCellProps(key, 'center', 'whitespace-nowrap')}
                                       >
                                         {formatDate(row.data_estorno)}
                                       </TableCell>
@@ -5416,7 +5548,7 @@ export default function FinancialMovements() {
                                     return (
                                       <TableCell
                                         key={key}
-                                        className="px-2 py-0.5 whitespace-nowrap text-center border-0"
+                                        {...getCellProps(key, 'center', 'whitespace-nowrap')}
                                       >
                                         {editingId === row.id ? (
                                           <Input
@@ -5435,7 +5567,7 @@ export default function FinancialMovements() {
                                     return (
                                       <TableCell
                                         key={key}
-                                        className="px-2 py-0.5 whitespace-nowrap border-0"
+                                        {...getCellProps(key, 'left', 'whitespace-nowrap')}
                                       >
                                         {row.c_corrente || '-'}
                                       </TableCell>
@@ -5444,7 +5576,7 @@ export default function FinancialMovements() {
                                     return (
                                       <TableCell
                                         key={key}
-                                        className="px-2 py-0.5 whitespace-nowrap border-0"
+                                        {...getCellProps(key, 'left', 'whitespace-nowrap')}
                                       >
                                         {row.cod_cli_for || '-'}
                                       </TableCell>
@@ -5453,17 +5585,14 @@ export default function FinancialMovements() {
                                     return (
                                       <TableCell
                                         key={key}
-                                        className="px-2 py-0.5 whitespace-nowrap text-center border-0"
+                                        {...getCellProps(key, 'center', 'whitespace-nowrap')}
                                       >
                                         {row.departamento || '-'}
                                       </TableCell>
                                     )
                                   case 'status':
                                     return (
-                                      <TableCell
-                                        key={key}
-                                        className="px-2 py-0.5 text-center border-0"
-                                      >
+                                      <TableCell key={key} {...getCellProps(key, 'center')}>
                                         {missingFields.length > 0 ? (
                                           <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[0.85em] font-semibold bg-red-100 text-red-800 border border-red-200">
                                             Dados Incompletos
@@ -5479,7 +5608,10 @@ export default function FinancialMovements() {
                                     return null
                                 }
                               })}
-                            <TableCell className="px-2 py-0.5 text-center border-0">
+                            <TableCell
+                              className="px-2 py-0.5 text-center border-0"
+                              style={getGridlineStyle()}
+                            >
                               {editingId === row.id ? (
                                 <div className="flex items-center justify-center gap-1">
                                   <Button
