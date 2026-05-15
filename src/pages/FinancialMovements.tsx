@@ -1017,6 +1017,44 @@ export default function FinancialMovements() {
     }
   }
 
+  const { prefs: analiseGruposPrefs, updatePrefs: updateAnaliseGruposPrefs } = useTablePreferences(
+    'fin_mov_analise_grupos_table',
+  )
+
+  const getAnaliseGruposCellProps = (key: string, defaultAlign?: string, extraClass?: string) => {
+    const align = analiseGruposPrefs.alignments?.[key] || defaultAlign || 'left'
+    const alignClass =
+      align === 'center' ? 'text-center' : align === 'right' ? 'text-right' : 'text-left'
+    const style = analiseGruposPrefs.showGridlines
+      ? {
+          borderRight: `${analiseGruposPrefs.gridlineWidth}px solid ${analiseGruposPrefs.gridlineColor}`,
+          borderBottom: `${analiseGruposPrefs.gridlineWidth}px solid ${analiseGruposPrefs.gridlineColor}`,
+        }
+      : undefined
+
+    return {
+      className: cn('px-4 py-2 border-0', alignClass, extraClass),
+      style,
+    }
+  }
+
+  const getAnaliseGruposGridlineStyle = () => {
+    if (!analiseGruposPrefs.showGridlines) return undefined
+    return {
+      borderRight: `${analiseGruposPrefs.gridlineWidth}px solid ${analiseGruposPrefs.gridlineColor}`,
+      borderBottom: `${analiseGruposPrefs.gridlineWidth}px solid ${analiseGruposPrefs.gridlineColor}`,
+    }
+  }
+
+  const analiseGruposHeaders = [
+    { key: 'codigo', label: 'Código', defaultAlign: 'left' },
+    { key: 'descricao', label: 'Descrição', defaultAlign: 'left' },
+    { key: 'receitas', label: 'Receitas', defaultAlign: 'right' },
+    { key: 'despesas', label: 'Despesas', defaultAlign: 'right' },
+    { key: 'resultado', label: 'Resultado', defaultAlign: 'right' },
+    { key: 'acoes', label: 'Ações', defaultAlign: 'center' },
+  ]
+
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [totals, setTotals] = useState({ valor: 0, valor_liquido: 0, entradas: 0, saidas: 0 })
   const [isExporting, setIsExporting] = useState(false)
@@ -8769,6 +8807,12 @@ export default function FinancialMovements() {
                       </div>
                     </h3>
                     <div className="flex flex-wrap items-center gap-2 w-full xl:w-auto">
+                      <div className="flex items-center gap-1 bg-white rounded-md p-0.5 border border-slate-200 shadow-sm mr-2">
+                        <TableSettingsControls
+                          prefs={analiseGruposPrefs}
+                          updatePrefs={updateAnaliseGruposPrefs}
+                        />
+                      </div>
                       <Button
                         variant="outline"
                         size="sm"
@@ -8899,13 +8943,114 @@ export default function FinancialMovements() {
                   <div className="overflow-x-auto border border-slate-200 rounded-lg">
                     <Table>
                       <TableHeader className="bg-slate-50">
-                        <TableRow>
-                          <TableHead>Código</TableHead>
-                          <TableHead>Descrição</TableHead>
-                          <TableHead className="text-right">Receitas</TableHead>
-                          <TableHead className="text-right">Despesas</TableHead>
-                          <TableHead className="text-right">Resultado</TableHead>
-                          <TableHead className="text-center">Ações</TableHead>
+                        <TableRow className="border-none">
+                          {analiseGruposHeaders.map((col) => (
+                            <TableHead
+                              key={col.key}
+                              style={getAnaliseGruposGridlineStyle()}
+                              className={cn(
+                                'border-none',
+                                getAnaliseGruposCellProps(col.key, col.defaultAlign, 'p-2')
+                                  .className,
+                              )}
+                            >
+                              <div
+                                className={cn(
+                                  'flex items-center gap-1 w-full',
+                                  (analiseGruposPrefs.alignments?.[col.key] || col.defaultAlign) ===
+                                    'right'
+                                    ? 'justify-end'
+                                    : (analiseGruposPrefs.alignments?.[col.key] ||
+                                          col.defaultAlign) === 'center'
+                                      ? 'justify-center'
+                                      : 'justify-start',
+                                )}
+                              >
+                                <span>{col.label}</span>
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-5 w-5 rounded-sm text-slate-400 hover:text-slate-700 hover:bg-slate-200 relative shrink-0"
+                                      title="Alinhamento"
+                                    >
+                                      <MoreVertical className="h-3 w-3" />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="start" className="w-48">
+                                    <DropdownMenuGroup>
+                                      <DropdownMenuLabel className="text-xs text-slate-500 uppercase tracking-wider">
+                                        Alinhamento
+                                      </DropdownMenuLabel>
+                                      <div className="flex items-center gap-1 px-2 py-1.5">
+                                        <Button
+                                          variant={
+                                            (analiseGruposPrefs.alignments?.[col.key] ||
+                                              col.defaultAlign) === 'left'
+                                              ? 'secondary'
+                                              : 'ghost'
+                                          }
+                                          size="icon"
+                                          className="h-7 w-7"
+                                          onClick={() =>
+                                            updateAnaliseGruposPrefs({
+                                              alignments: {
+                                                ...(analiseGruposPrefs.alignments || {}),
+                                                [col.key]: 'left',
+                                              },
+                                            })
+                                          }
+                                        >
+                                          <AlignLeft className="h-3.5 w-3.5" />
+                                        </Button>
+                                        <Button
+                                          variant={
+                                            (analiseGruposPrefs.alignments?.[col.key] ||
+                                              col.defaultAlign) === 'center'
+                                              ? 'secondary'
+                                              : 'ghost'
+                                          }
+                                          size="icon"
+                                          className="h-7 w-7"
+                                          onClick={() =>
+                                            updateAnaliseGruposPrefs({
+                                              alignments: {
+                                                ...(analiseGruposPrefs.alignments || {}),
+                                                [col.key]: 'center',
+                                              },
+                                            })
+                                          }
+                                        >
+                                          <AlignCenter className="h-3.5 w-3.5" />
+                                        </Button>
+                                        <Button
+                                          variant={
+                                            (analiseGruposPrefs.alignments?.[col.key] ||
+                                              col.defaultAlign) === 'right'
+                                              ? 'secondary'
+                                              : 'ghost'
+                                          }
+                                          size="icon"
+                                          className="h-7 w-7"
+                                          onClick={() =>
+                                            updateAnaliseGruposPrefs({
+                                              alignments: {
+                                                ...(analiseGruposPrefs.alignments || {}),
+                                                [col.key]: 'right',
+                                              },
+                                            })
+                                          }
+                                        >
+                                          <AlignRight className="h-3.5 w-3.5" />
+                                        </Button>
+                                      </div>
+                                    </DropdownMenuGroup>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              </div>
+                            </TableHead>
+                          ))}
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -8915,12 +9060,33 @@ export default function FinancialMovements() {
                           return (
                             <TableRow
                               key={child.id || idx}
-                              className={child.level > 0 ? 'bg-slate-50/50' : ''}
+                              className={cn(child.level > 0 ? 'bg-slate-50/50' : '', 'border-0')}
                             >
-                              <TableCell className="font-mono font-medium text-slate-700">
+                              <TableCell
+                                {...getAnaliseGruposCellProps(
+                                  'codigo',
+                                  'left',
+                                  'font-mono font-medium text-slate-700',
+                                )}
+                              >
                                 <div
-                                  className="flex items-center gap-1.5"
-                                  style={{ paddingLeft: `${(child.level || 0) * 16}px` }}
+                                  className={cn(
+                                    'flex items-center gap-1.5',
+                                    (analiseGruposPrefs.alignments?.['codigo'] || 'left') ===
+                                      'right'
+                                      ? 'justify-end'
+                                      : (analiseGruposPrefs.alignments?.['codigo'] || 'left') ===
+                                          'center'
+                                        ? 'justify-center'
+                                        : 'justify-start',
+                                  )}
+                                  style={{
+                                    paddingLeft:
+                                      (analiseGruposPrefs.alignments?.['codigo'] || 'left') ===
+                                      'left'
+                                        ? `${(child.level || 0) * 16}px`
+                                        : undefined,
+                                  }}
                                 >
                                   {hasChildren ? (
                                     <button
@@ -8939,33 +9105,57 @@ export default function FinancialMovements() {
                                       )}
                                     </button>
                                   ) : (
-                                    <span className="w-4 inline-block" />
+                                    <span className="w-4 inline-block shrink-0" />
                                   )}
-                                  {child.code || 'S/C'}
+                                  <span className="truncate">{child.code || 'S/C'}</span>
                                 </div>
                               </TableCell>
-                              <TableCell className="font-medium text-slate-900">
+                              <TableCell
+                                {...getAnaliseGruposCellProps(
+                                  'descricao',
+                                  'left',
+                                  'font-medium text-slate-900',
+                                )}
+                              >
                                 {child.description}
                               </TableCell>
-                              <TableCell className="text-right text-emerald-600 font-medium">
+                              <TableCell
+                                {...getAnaliseGruposCellProps(
+                                  'receitas',
+                                  'right',
+                                  'text-emerald-600 font-medium',
+                                )}
+                              >
                                 {new Intl.NumberFormat('pt-BR', {
                                   style: 'currency',
                                   currency: 'BRL',
                                 }).format(child.periodRevenue || 0)}
                               </TableCell>
-                              <TableCell className="text-right text-rose-600 font-medium">
+                              <TableCell
+                                {...getAnaliseGruposCellProps(
+                                  'despesas',
+                                  'right',
+                                  'text-rose-600 font-medium',
+                                )}
+                              >
                                 {new Intl.NumberFormat('pt-BR', {
                                   style: 'currency',
                                   currency: 'BRL',
                                 }).format(child.periodExpense || 0)}
                               </TableCell>
-                              <TableCell className="text-right font-bold text-slate-800">
+                              <TableCell
+                                {...getAnaliseGruposCellProps(
+                                  'resultado',
+                                  'right',
+                                  'font-bold text-slate-800',
+                                )}
+                              >
                                 {new Intl.NumberFormat('pt-BR', {
                                   style: 'currency',
                                   currency: 'BRL',
                                 }).format(child.periodTotal || 0)}
                               </TableCell>
-                              <TableCell className="text-center">
+                              <TableCell {...getAnaliseGruposCellProps('acoes', 'center')}>
                                 {hasChildren && (
                                   <Button
                                     variant="ghost"
@@ -8980,8 +9170,11 @@ export default function FinancialMovements() {
                           )
                         })}
                         {flattenedTableData.length === 0 && (
-                          <TableRow>
-                            <TableCell colSpan={6} className="text-center py-8 text-slate-500">
+                          <TableRow disableZebra>
+                            <TableCell
+                              colSpan={6}
+                              className="text-center py-8 text-slate-500 border-0"
+                            >
                               Nenhum subnível com movimento neste grupo para o período.
                             </TableCell>
                           </TableRow>
