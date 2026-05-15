@@ -2936,11 +2936,13 @@ export default function FinancialMovements() {
     dt_compens: string[]
     debito: string[]
     credito: string[]
+    status: string[]
   }>({
     data_emissao: [],
     dt_compens: [],
     debito: [],
     credito: [],
+    status: [],
   })
 
   const getMappedAccountForCC = (cCustoCode: string | null, orgId: string | null) => {
@@ -3050,10 +3052,14 @@ export default function FinancialMovements() {
     const compSet = new Set<string>()
     const debitoSet = new Set<string>()
     const creditoSet = new Set<string>()
+    const statusSet = new Set<string>()
 
     summaryData.forEach((row) => {
+      if (row.status === 'Ignorado') return
+
       if (row.data_emissao) emSet.add(row.data_emissao.substring(0, 7))
       if (row.dt_compens) compSet.add(row.dt_compens.substring(0, 7))
+      if (row.status) statusSet.add(row.status)
 
       const sim = getAccountingEntriesSimulation(
         row,
@@ -3076,13 +3082,14 @@ export default function FinancialMovements() {
         .map((m) => ({ label: m.split('-').reverse().join('/'), value: m })),
       debito: Array.from(debitoSet).sort(),
       credito: Array.from(creditoSet).sort(),
+      status: Array.from(statusSet).sort(),
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [summaryData, generateOptions.valueBase])
 
   const filteredDryRunData = useMemo(() => {
     return summaryData.filter((row) => {
-      if (row.status === 'Ignorado' || row.status === 'Concluído') return false
+      if (row.status === 'Ignorado') return false
 
       const sim = getAccountingEntriesSimulation(
         row,
@@ -3108,6 +3115,11 @@ export default function FinancialMovements() {
       if (dryRunFilters.debito.length > 0 && (!deb || !dryRunFilters.debito.includes(deb)))
         return false
       if (dryRunFilters.credito.length > 0 && (!cred || !dryRunFilters.credito.includes(cred)))
+        return false
+      if (
+        dryRunFilters.status.length > 0 &&
+        (!row.status || !dryRunFilters.status.includes(row.status))
+      )
         return false
 
       return true
@@ -5928,6 +5940,15 @@ export default function FinancialMovements() {
 
             {activeTab === 'dry-run' && (
               <>
+                {selectedIds.some((id) => {
+                  const r = filteredDryRunData.find((d) => d.id === id)
+                  return r && r.status === 'Concluído'
+                }) ? (
+                  <span className="text-sm font-medium text-slate-500 mr-2 flex items-center">
+                    <AlertCircle className="h-4 w-4 mr-1 text-amber-500" /> Seleção contém
+                    concluídos
+                  </span>
+                ) : null}
                 <Button
                   variant="default"
                   size="sm"
@@ -5951,7 +5972,7 @@ export default function FinancialMovements() {
                 >
                   <Trash2 className="h-4 w-4 mr-2" />
                   Excluir Selecionados (Dry Run)
-                </Button>
+                </Button>{' '}
               </>
             )}
           </div>
@@ -10368,6 +10389,18 @@ export default function FinancialMovements() {
                           }}
                         />
                       </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs font-semibold text-slate-700">Status</Label>
+                        <MultiSelect
+                          title="Todos os status"
+                          options={dryRunOptions.status.map((d) => ({ label: d, value: d }))}
+                          selected={dryRunFilters.status}
+                          onChange={(v: string[]) => {
+                            setDryRunFilters((p) => ({ ...p, status: v }))
+                            setDryRunPage(0)
+                          }}
+                        />
+                      </div>
                     </PopoverContent>
                   </Popover>
 
@@ -10444,6 +10477,9 @@ export default function FinancialMovements() {
                         }}
                       />
                     </TableHead>
+                    <TableHead className="font-bold text-slate-700 border-r border-slate-200 text-center">
+                      Status
+                    </TableHead>
                     <TableHead className="font-bold text-slate-700 border-r border-slate-200">
                       Data
                     </TableHead>
@@ -10465,14 +10501,14 @@ export default function FinancialMovements() {
                 <TableBody>
                   {loading ? (
                     <TableRow>
-                      <TableCell colSpan={7} className="h-48 text-center text-slate-500 border-0">
+                      <TableCell colSpan={8} className="h-48 text-center text-slate-500 border-0">
                         <Loader2 className="h-6 w-6 animate-spin mx-auto text-indigo-600 mb-2" />
                         Atualizando simulação...
                       </TableCell>
                     </TableRow>
                   ) : currentDryRunData.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={7} className="h-48 text-center text-slate-500 border-0">
+                      <TableCell colSpan={8} className="h-48 text-center text-slate-500 border-0">
                         Nenhum registro para exibir.
                       </TableCell>
                     </TableRow>
@@ -10513,6 +10549,21 @@ export default function FinancialMovements() {
                               checked={selectedIds.includes(row.id)}
                               onCheckedChange={() => toggleRow(row.id)}
                             />
+                          </TableCell>
+                          <TableCell className="whitespace-nowrap border-r border-slate-200 text-center">
+                            {row.status === 'Concluído' ? (
+                              <span className="text-emerald-700 font-semibold text-[0.85em] bg-emerald-100 px-2 py-0.5 rounded-full border border-emerald-200">
+                                Concluído
+                              </span>
+                            ) : row.status === 'Ignorado' ? (
+                              <span className="text-slate-600 font-semibold text-[0.85em] bg-slate-100 px-2 py-0.5 rounded-full border border-slate-200">
+                                Ignorado
+                              </span>
+                            ) : (
+                              <span className="text-amber-700 font-semibold text-[0.85em] bg-amber-100 px-2 py-0.5 rounded-full border border-amber-200">
+                                {row.status || 'Pendente'}
+                              </span>
+                            )}
                           </TableCell>
                           <TableCell
                             className={cn(
@@ -12068,9 +12119,9 @@ export default function FinancialMovements() {
                 : `Você está prestes a gerar os lançamentos contábeis para todos os registros pendentes atualmente filtrados.`}
               <br />
               <br />
-              Apenas registros que possuem ambas as contas (Débito e Crédito) e a Data selecionada
-              preenchida serão efetivados. O status dos registros processados será alterado para
-              "Concluído".
+              Apenas registros pendentes que possuem ambas as contas (Débito e Crédito) e a Data
+              selecionada preenchida serão efetivados. Registros já marcados como "Concluído" serão
+              ignorados. O status dos novos registros processados será alterado para "Concluído".
             </DialogDescription>
           </DialogHeader>
 
