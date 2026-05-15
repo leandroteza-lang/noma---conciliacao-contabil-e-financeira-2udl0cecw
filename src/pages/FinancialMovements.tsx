@@ -2027,6 +2027,8 @@ export default function FinancialMovements() {
     } else {
       setColumnOrder(defaultColumnOrder)
     }
+    setIsSimplifiedMode(false)
+    localStorage.setItem('fin_mov_simplified_mode', 'false')
     toast.success(`Preferência "${sc.name}" aplicada.`)
   }
 
@@ -2229,25 +2231,101 @@ export default function FinancialMovements() {
     status: 'Processing' as 'Processing' | 'Completed' | 'Error',
   })
 
-  const toggleColumn = (key: string) =>
+  const toggleColumn = (key: string) => {
     setVisibleColumns((prev) => ({ ...prev, [key]: !prev[key] }))
-  const selectAllColumns = () =>
+    setIsSimplifiedMode(false)
+    localStorage.setItem('fin_mov_simplified_mode', 'false')
+  }
+  const selectAllColumns = () => {
     setVisibleColumns(tableHeaders.reduce((acc, h) => ({ ...acc, [h.key]: true }), {}))
-  const selectNoColumns = () =>
+    setIsSimplifiedMode(false)
+    localStorage.setItem('fin_mov_simplified_mode', 'false')
+  }
+  const selectNoColumns = () => {
     setVisibleColumns(tableHeaders.reduce((acc, h) => ({ ...acc, [h.key]: false }), {}))
-  const invertColumns = () =>
+    setIsSimplifiedMode(false)
+    localStorage.setItem('fin_mov_simplified_mode', 'false')
+  }
+  const invertColumns = () => {
     setVisibleColumns((prev) =>
       tableHeaders.reduce(
         (acc, h) => ({ ...acc, [h.key]: prev[h.key] === false ? true : false }),
         {},
       ),
     )
+    setIsSimplifiedMode(false)
+    localStorage.setItem('fin_mov_simplified_mode', 'false')
+  }
 
   const [draggedColumn, setDraggedColumn] = useState<string | null>(null)
+
+  const [isSimplifiedMode, setIsSimplifiedMode] = useState(() => {
+    return localStorage.getItem('fin_mov_simplified_mode') === 'true'
+  })
+
+  const toggleSimplifiedMode = (checked: boolean) => {
+    if (checked) {
+      localStorage.setItem('fin_mov_pre_simplified_cols', JSON.stringify(visibleColumns))
+      localStorage.setItem('fin_mov_pre_simplified_order', JSON.stringify(columnOrder))
+
+      const simplifiedList = [
+        'prontidao',
+        'data_emissao',
+        'conta_debito',
+        'conta_credito',
+        'valor_liquido',
+        'historico',
+        'conta_caixa',
+        'c_custo',
+      ]
+
+      const newVisible = tableHeaders.reduce(
+        (acc, h) => ({ ...acc, [h.key]: simplifiedList.includes(h.key) }),
+        {},
+      )
+      setVisibleColumns(newVisible)
+
+      const newOrder = [
+        ...simplifiedList,
+        ...tableHeaders.map((h) => h.key).filter((k) => !simplifiedList.includes(k)),
+      ]
+      setColumnOrder(newOrder)
+
+      setIsSimplifiedMode(true)
+      localStorage.setItem('fin_mov_simplified_mode', 'true')
+      toast.success('Modo simplificado ativado.')
+    } else {
+      const savedCols = localStorage.getItem('fin_mov_pre_simplified_cols')
+      const savedOrder = localStorage.getItem('fin_mov_pre_simplified_order')
+      if (savedCols) {
+        try {
+          setVisibleColumns(JSON.parse(savedCols))
+        } catch {
+          /* intentionally ignored */
+        }
+      } else {
+        setVisibleColumns(defaultVisibleColumns)
+      }
+      if (savedOrder) {
+        try {
+          setColumnOrder(JSON.parse(savedOrder))
+        } catch {
+          /* intentionally ignored */
+        }
+      } else {
+        setColumnOrder(defaultColumnOrder)
+      }
+      setIsSimplifiedMode(false)
+      localStorage.setItem('fin_mov_simplified_mode', 'false')
+      toast.info('Modo completo restaurado.')
+    }
+  }
 
   const resetColumns = () => {
     setVisibleColumns(defaultVisibleColumns)
     setColumnOrder(defaultColumnOrder)
+    setIsSimplifiedMode(false)
+    localStorage.setItem('fin_mov_simplified_mode', 'false')
     toast.success('Visualização e ordem padrão restauradas.')
   }
 
@@ -4288,6 +4366,25 @@ export default function FinancialMovements() {
                   />
                 </div>
                 <div className="flex flex-wrap items-center gap-3 xl:ml-auto bg-white p-1.5 rounded-md border shadow-sm">
+                  <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 px-2 py-1 rounded-md shadow-sm h-7 mr-1 transition-all">
+                    <div className="scale-75 origin-left flex items-center">
+                      <Switch
+                        id="simplified-mode"
+                        checked={isSimplifiedMode}
+                        onCheckedChange={toggleSimplifiedMode}
+                      />
+                    </div>
+                    <Label
+                      htmlFor="simplified-mode"
+                      className={cn(
+                        'text-[10px] font-bold cursor-pointer whitespace-nowrap -ml-1 uppercase tracking-wider',
+                        isSimplifiedMode ? 'text-indigo-700' : 'text-slate-600',
+                      )}
+                    >
+                      Simplificado
+                    </Label>
+                  </div>
+
                   <Select
                     value={filters['natureza']?.length === 1 ? filters['natureza'][0] : 'todos'}
                     onValueChange={(v) => {
