@@ -2920,6 +2920,10 @@ export default function FinancialMovements() {
 
   const [generateModalOpen, setGenerateModalOpen] = useState(false)
   const [isGeneratingEntries, setIsGeneratingEntries] = useState(false)
+  const [generateOptions, setGenerateOptions] = useState({
+    dateBase: 'data_emissao',
+    valueBase: 'valor_liquido',
+  })
 
   const fetchAuxData = async () => {
     if (!user) return
@@ -2977,7 +2981,10 @@ export default function FinancialMovements() {
     return cc ? cc.id : null
   }
 
-  const getAccountingEntriesSimulation = (row: any) => {
+  const getAccountingEntriesSimulation = (
+    row: any,
+    valueField: 'valor' | 'valor_liquido' = 'valor_liquido',
+  ) => {
     const mappedCCAccount = getMappedAccount(row)
 
     const cleanContaCaixa = (row.conta_caixa || '').trim().toUpperCase()
@@ -3007,7 +3014,11 @@ export default function FinancialMovements() {
     const isPrefix1 = prefix === '1'
     const isPrefix2or3 = prefix === '2' || prefix === '3'
 
-    const val = Number(row.valor_liquido || row.valor || 0)
+    const val = Number(
+      row[valueField] !== undefined && row[valueField] !== null
+        ? row[valueField]
+        : row.valor_liquido || row.valor || 0,
+    )
 
     let debitAccount = null
     let creditAccount = null
@@ -3094,8 +3105,19 @@ export default function FinancialMovements() {
       let errorsCount = 0
 
       for (const row of rowsToProcess) {
-        const sim = getAccountingEntriesSimulation(row)
-        if (!sim.debitAccount || !sim.creditAccount || !row.data_emissao) {
+        const sim = getAccountingEntriesSimulation(
+          row,
+          generateOptions.valueBase as 'valor' | 'valor_liquido',
+        )
+        const selectedDate = row[generateOptions.dateBase as keyof typeof row]
+        const valToUse = Number(
+          row[generateOptions.valueBase as keyof typeof row] !== undefined &&
+            row[generateOptions.valueBase as keyof typeof row] !== null
+            ? row[generateOptions.valueBase as keyof typeof row]
+            : row.valor_liquido || row.valor || 0,
+        )
+
+        if (!sim.debitAccount || !sim.creditAccount || !selectedDate) {
           errorsCount++
           continue
         }
@@ -3104,8 +3126,8 @@ export default function FinancialMovements() {
         entriesToInsert.push({
           id: entryId,
           organization_id: row.organization_id,
-          entry_date: row.data_emissao,
-          amount: Math.abs(Number(row.valor_liquido || row.valor || 0)),
+          entry_date: selectedDate,
+          amount: Math.abs(valToUse),
           description: row.historico || 'Lançamento gerado via TGA',
           debit_account_id: sim.debitAccount.id,
           credit_account_id: sim.creditAccount.id,
@@ -3140,7 +3162,7 @@ export default function FinancialMovements() {
         )
       } else {
         toast.error(
-          `Nenhum lançamento foi gerado. Verifique se os mapeamentos (Débito/Crédito) e Datas estão corretos.`,
+          `Nenhum lançamento foi gerado. Verifique se os mapeamentos (Débito/Crédito) e as Datas selecionadas estão corretos.`,
           { id: toastId },
         )
       }
@@ -10009,18 +10031,26 @@ export default function FinancialMovements() {
                 </TableHeader>
                 <TableBody>
                   {data.map((row) => {
-                    const sim = getAccountingEntriesSimulation(row)
-                    const dt = row.data_emissao ? formatDate(row.data_emissao) : '-'
+                    const sim = getAccountingEntriesSimulation(
+                      row,
+                      generateOptions.valueBase as 'valor' | 'valor_liquido',
+                    )
+                    const dtValue = row[generateOptions.dateBase as keyof typeof row]
+                    const dt = dtValue ? formatDate(dtValue) : '-'
                     const cc = row.c_custo || 'Sem C.Custo'
                     const hist = row.historico || '-'
-                    const val = Number(row.valor_liquido || row.valor || 0)
+                    const val = Number(
+                      row[generateOptions.valueBase as keyof typeof row] !== undefined &&
+                        row[generateOptions.valueBase as keyof typeof row] !== null
+                        ? row[generateOptions.valueBase as keyof typeof row]
+                        : row.valor_liquido || row.valor || 0,
+                    )
                     const formatCurrency = (v: number) =>
                       new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(
                         v,
                       )
 
-                    const isError =
-                      !sim.debitAccount || !sim.creditAccount || !row.data_emissao || !val
+                    const isError = !sim.debitAccount || !sim.creditAccount || !dtValue || !val
 
                     return (
                       <TableRow
@@ -11552,11 +11582,45 @@ export default function FinancialMovements() {
                 : `Você está prestes a gerar os lançamentos contábeis para todos os registros pendentes atualmente filtrados.`}
               <br />
               <br />
-              Apenas registros que possuem ambas as contas (Débito e Crédito) e Data de Emissão
+              Apenas registros que possuem ambas as contas (Débito e Crédito) e a Data selecionada
               preenchida serão efetivados. O status dos registros processados será alterado para
               "Concluído".
             </DialogDescription>
           </DialogHeader>
+
+          <div className="grid gap-4 py-4">
+            <div className="space-y-2">
+              <Label>Data de Referência</Label>
+              <Select
+                value={generateOptions.dateBase}
+                onValueChange={(v) => setGenerateOptions((p) => ({ ...p, dateBase: v }))}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="data_emissao">Data de Emissão</SelectItem>
+                  <SelectItem value="dt_compens">Data de Compensação</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Valor Base</Label>
+              <Select
+                value={generateOptions.valueBase}
+                onValueChange={(v) => setGenerateOptions((p) => ({ ...p, valueBase: v }))}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="valor_liquido">Valor Líquido</SelectItem>
+                  <SelectItem value="valor">Valor Bruto</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
           <div className="flex justify-end gap-3 mt-4">
             <Button
               variant="outline"
