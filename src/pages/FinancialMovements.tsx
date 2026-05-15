@@ -133,6 +133,89 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog'
 
+const getGridlineStyle = (prefs: any) => {
+  if (!prefs?.showGridlines) return undefined
+  return {
+    borderRight: `${prefs.gridlineWidth}px solid ${prefs.gridlineColor}`,
+    borderBottom: `${prefs.gridlineWidth}px solid ${prefs.gridlineColor}`,
+  }
+}
+
+const getAlignClass = (prefs: any, col: string, defaultAlign: string = 'left') => {
+  const align = prefs?.alignments?.[col] || defaultAlign
+  return align === 'center' ? 'text-center' : align === 'right' ? 'text-right' : 'text-left'
+}
+
+const getJustifyClass = (prefs: any, col: string, defaultAlign: string = 'left') => {
+  const align = prefs?.alignments?.[col] || defaultAlign
+  return align === 'center' ? 'justify-center' : align === 'right' ? 'justify-end' : 'justify-start'
+}
+
+function HeaderAlignmentMenu({
+  col,
+  prefs,
+  updatePrefs,
+}: {
+  col: string
+  prefs: any
+  updatePrefs: any
+}) {
+  const align = prefs?.alignments?.[col] || 'left'
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-5 w-5 rounded-sm opacity-50 hover:opacity-100 hover:bg-white/20 relative shrink-0 ml-1 transition-all"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <MoreVertical className="h-3 w-3" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="w-48">
+        <DropdownMenuGroup>
+          <DropdownMenuLabel className="text-xs text-slate-500 uppercase tracking-wider">
+            Alinhamento
+          </DropdownMenuLabel>
+          <div className="flex items-center gap-1 px-2 py-1.5">
+            <Button
+              variant={align === 'left' ? 'secondary' : 'ghost'}
+              size="icon"
+              className="h-7 w-7"
+              onClick={() =>
+                updatePrefs({ alignments: { ...(prefs?.alignments || {}), [col]: 'left' } })
+              }
+            >
+              <AlignLeft className="h-3.5 w-3.5" />
+            </Button>
+            <Button
+              variant={align === 'center' ? 'secondary' : 'ghost'}
+              size="icon"
+              className="h-7 w-7"
+              onClick={() =>
+                updatePrefs({ alignments: { ...(prefs?.alignments || {}), [col]: 'center' } })
+              }
+            >
+              <AlignCenter className="h-3.5 w-3.5" />
+            </Button>
+            <Button
+              variant={align === 'right' ? 'secondary' : 'ghost'}
+              size="icon"
+              className="h-7 w-7"
+              onClick={() =>
+                updatePrefs({ alignments: { ...(prefs?.alignments || {}), [col]: 'right' } })
+              }
+            >
+              <AlignRight className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        </DropdownMenuGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
+}
+
 const formatMonthYear = (row: any, dateField: string = 'data_emissao') => {
   const dateStr = row?.[dateField]
   if (!dateStr || typeof dateStr !== 'string') return 'Sem Data'
@@ -597,13 +680,55 @@ function PeriodConsolidatedTable({
   type,
   tableFontSize,
   filterText = '',
+  prefs,
+  updatePrefs,
 }: {
   data: any[]
   type: 'account' | 'cost'
   tableFontSize?: number
   filterText?: string
+  prefs?: any
+  updatePrefs?: any
 }) {
   const [colFilter, setColFilter] = useState<string[]>([])
+  const [sortColumn, setSortColumn] = useState('name')
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc')
+
+  const defaultColOrder = ['name', 'pos', 'neg', 'diff']
+  const [colOrder, setColOrder] = useState<string[]>(() => {
+    const saved = localStorage.getItem(`fin_mov_period_${type}_cols`)
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved)
+        if (Array.isArray(parsed) && parsed.length === defaultColOrder.length) return parsed
+      } catch {
+        /* intentionally ignored */
+      }
+    }
+    return defaultColOrder
+  })
+  const [draggedCol, setDraggedCol] = useState<string | null>(null)
+
+  useEffect(() => {
+    localStorage.setItem(`fin_mov_period_${type}_cols`, JSON.stringify(colOrder))
+  }, [colOrder, type])
+
+  const handleSort = (col: string) => {
+    if (sortColumn === col) setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc')
+    else {
+      setSortColumn(col)
+      setSortDirection('asc')
+    }
+  }
+
+  const renderSortIcon = (col: string) => {
+    if (sortColumn !== col) return <ArrowUpDown className="h-3 w-3 ml-1 opacity-50 shrink-0" />
+    return sortDirection === 'asc' ? (
+      <ArrowUp className="h-3 w-3 ml-1 shrink-0" />
+    ) : (
+      <ArrowDown className="h-3 w-3 ml-1 shrink-0" />
+    )
+  }
 
   const getKey = (r: any) => {
     if (type === 'account') {
@@ -645,7 +770,7 @@ function PeriodConsolidatedTable({
   }, [baseMap])
 
   const aggregated = useMemo(() => {
-    let result = Array.from(baseMap.values()).sort((a, b) => a.name.localeCompare(b.name))
+    let result = Array.from(baseMap.values())
     if (filterText) {
       const q = filterText.toLowerCase()
       result = result.filter((item) => item.name.toLowerCase().includes(q))
@@ -653,8 +778,17 @@ function PeriodConsolidatedTable({
     if (colFilter.length > 0) {
       result = result.filter((item) => colFilter.includes(item.name))
     }
+    result.sort((a: any, b: any) => {
+      let valA = a[sortColumn]
+      let valB = b[sortColumn]
+      if (typeof valA === 'string') {
+        return sortDirection === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA)
+      } else {
+        return sortDirection === 'asc' ? valA - valB : valB - valA
+      }
+    })
     return result
-  }, [baseMap, filterText, colFilter])
+  }, [baseMap, filterText, colFilter, sortColumn, sortDirection])
 
   const formatVal = (v: number) =>
     new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v)
@@ -662,6 +796,83 @@ function PeriodConsolidatedTable({
   const totalPos = aggregated.reduce((acc, curr) => acc + curr.pos, 0)
   const totalNeg = aggregated.reduce((acc, curr) => acc + curr.neg, 0)
   const totalDiff = aggregated.reduce((acc, curr) => acc + curr.diff, 0)
+
+  const colsDef: Record<
+    string,
+    {
+      label: string
+      filter?: React.ReactNode
+      width?: string
+      isCurrency?: boolean
+      color?: string
+    }
+  > = {
+    name: {
+      label: type === 'account' ? 'Caixa/Banco' : 'Centro de Custo',
+      width: 'w-[40%]',
+      filter: (
+        <ColumnFilter
+          title={
+            <div
+              className="flex items-center gap-1 cursor-pointer hover:bg-white/10 rounded px-1 -ml-1 transition-colors"
+              onClick={() => handleSort('name')}
+            >
+              <span>{type === 'account' ? 'Caixa/Banco' : 'Centro de Custo'}</span>
+              {renderSortIcon('name')}
+            </div>
+          }
+          options={options}
+          selected={colFilter}
+          onChange={setColFilter}
+        />
+      ),
+    },
+    pos: {
+      label: 'Entradas (+)',
+      width: 'w-[20%]',
+      color: 'text-emerald-700',
+      isCurrency: true,
+      filter: (
+        <div
+          className="flex items-center gap-1 cursor-pointer hover:bg-white/10 rounded px-1 transition-colors"
+          onClick={() => handleSort('pos')}
+        >
+          <span>Entradas (+)</span>
+          {renderSortIcon('pos')}
+        </div>
+      ),
+    },
+    neg: {
+      label: 'Saídas (-)',
+      width: 'w-[20%]',
+      color: 'text-rose-700',
+      isCurrency: true,
+      filter: (
+        <div
+          className="flex items-center gap-1 cursor-pointer hover:bg-white/10 rounded px-1 transition-colors"
+          onClick={() => handleSort('neg')}
+        >
+          <span>Saídas (-)</span>
+          {renderSortIcon('neg')}
+        </div>
+      ),
+    },
+    diff: {
+      label: 'Diferença',
+      width: 'w-[20%]',
+      color: 'text-blue-700',
+      isCurrency: true,
+      filter: (
+        <div
+          className="flex items-center gap-1 cursor-pointer hover:bg-white/10 rounded px-1 transition-colors"
+          onClick={() => handleSort('diff')}
+        >
+          <span>Diferença</span>
+          {renderSortIcon('diff')}
+        </div>
+      ),
+    },
+  }
 
   return (
     <Table
@@ -671,23 +882,53 @@ function PeriodConsolidatedTable({
     >
       <TableHeader className="sticky top-0 z-10 shadow-sm border-b border-black">
         <TableRow disableZebra className="bg-blue-500 hover:bg-blue-400 border-none">
-          <TableHead className="font-medium text-white text-left border-r border-black px-2 py-1 h-8 w-[40%]">
-            <ColumnFilter
-              title={type === 'account' ? 'Caixa/Banco' : 'Centro de Custo'}
-              options={options}
-              selected={colFilter}
-              onChange={setColFilter}
-            />
-          </TableHead>
-          <TableHead className="w-[20%] text-left font-bold text-emerald-700 border-r border-black px-2 py-1 h-8">
-            Entradas (+)
-          </TableHead>
-          <TableHead className="w-[20%] text-left font-bold text-rose-700 border-r border-black px-2 py-1 h-8">
-            Saídas (-)
-          </TableHead>
-          <TableHead className="w-[20%] text-left font-bold text-blue-700 px-2 py-1 h-8">
-            Diferença
-          </TableHead>
+          {colOrder.map((col) => {
+            const def = colsDef[col]
+            if (!def) return null
+            return (
+              <TableHead
+                key={col}
+                draggable
+                onDragStart={(e) => {
+                  setDraggedCol(col)
+                  e.dataTransfer.effectAllowed = 'move'
+                }}
+                onDragOver={(e) => {
+                  e.preventDefault()
+                  e.dataTransfer.dropEffect = 'move'
+                }}
+                onDrop={(e) => {
+                  e.preventDefault()
+                  if (!draggedCol || draggedCol === col) return
+                  const newOrder = [...colOrder]
+                  const draggedIdx = newOrder.indexOf(draggedCol)
+                  const targetIdx = newOrder.indexOf(col)
+                  newOrder.splice(draggedIdx, 1)
+                  newOrder.splice(targetIdx, 0, draggedCol)
+                  setColOrder(newOrder)
+                  setDraggedCol(null)
+                }}
+                onDragEnd={() => setDraggedCol(null)}
+                className={cn(
+                  'font-medium text-white px-2 py-1 h-8 cursor-grab active:cursor-grabbing border-r border-black',
+                  def.width,
+                  def.color,
+                  draggedCol === col ? 'opacity-50' : '',
+                )}
+                style={getGridlineStyle(prefs)}
+              >
+                <div
+                  className={cn(
+                    'flex items-center justify-between gap-1 w-full',
+                    getJustifyClass(prefs, col, col === 'name' ? 'left' : 'right'),
+                  )}
+                >
+                  {def.filter}
+                  <HeaderAlignmentMenu col={col} prefs={prefs} updatePrefs={updatePrefs} />
+                </div>
+              </TableHead>
+            )
+          })}
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -696,18 +937,61 @@ function PeriodConsolidatedTable({
             key={item.name}
             className="border-b border-black last:border-b-0 transition-colors"
           >
-            <TableCell className="px-2 py-1 border-r border-black text-slate-700 font-medium">
-              {item.name}
-            </TableCell>
-            <TableCell className="px-2 py-1 text-left text-emerald-600/90 border-r border-black">
-              {formatVal(item.pos)}
-            </TableCell>
-            <TableCell className="px-2 py-1 text-left text-rose-600/90 border-r border-black">
-              {formatVal(item.neg)}
-            </TableCell>
-            <TableCell className="px-2 py-1 text-left font-semibold text-slate-700">
-              {formatVal(item.diff)}
-            </TableCell>
+            {colOrder.map((col) => {
+              if (col === 'name')
+                return (
+                  <TableCell
+                    key={col}
+                    className={cn(
+                      'px-2 py-1 border-r border-black text-slate-700 font-medium',
+                      getAlignClass(prefs, col, 'left'),
+                    )}
+                    style={getGridlineStyle(prefs)}
+                  >
+                    {item.name}
+                  </TableCell>
+                )
+              if (col === 'pos')
+                return (
+                  <TableCell
+                    key={col}
+                    className={cn(
+                      'px-2 py-1 text-emerald-600/90 border-r border-black',
+                      getAlignClass(prefs, col, 'right'),
+                    )}
+                    style={getGridlineStyle(prefs)}
+                  >
+                    {formatVal(item.pos)}
+                  </TableCell>
+                )
+              if (col === 'neg')
+                return (
+                  <TableCell
+                    key={col}
+                    className={cn(
+                      'px-2 py-1 text-rose-600/90 border-r border-black',
+                      getAlignClass(prefs, col, 'right'),
+                    )}
+                    style={getGridlineStyle(prefs)}
+                  >
+                    {formatVal(item.neg)}
+                  </TableCell>
+                )
+              if (col === 'diff')
+                return (
+                  <TableCell
+                    key={col}
+                    className={cn(
+                      'px-2 py-1 font-semibold text-slate-700',
+                      getAlignClass(prefs, col, 'right'),
+                    )}
+                    style={getGridlineStyle(prefs)}
+                  >
+                    {formatVal(item.diff)}
+                  </TableCell>
+                )
+              return null
+            })}
           </TableRow>
         ))}
         {aggregated.length === 0 ? (
@@ -724,18 +1008,66 @@ function PeriodConsolidatedTable({
             disableZebra
             className="bg-slate-200/80 font-bold border-t-2 border-black border-b border-b-black shadow-inner"
           >
-            <TableCell className="px-2 py-1 border-r border-black text-right text-slate-900 uppercase">
-              Total Geral do Período:
-            </TableCell>
-            <TableCell className="px-2 py-1 text-left text-emerald-700 border-r border-black">
-              {formatVal(totalPos)}
-            </TableCell>
-            <TableCell className="px-2 py-1 text-left text-rose-700 border-r border-black">
-              {formatVal(totalNeg)}
-            </TableCell>
-            <TableCell className="px-2 py-1 text-left text-blue-800">
-              {formatVal(totalDiff)}
-            </TableCell>
+            {colOrder.map((col, idx) => {
+              if (idx === 0)
+                return (
+                  <TableCell
+                    key={col}
+                    className={cn(
+                      'px-2 py-1 border-r border-black uppercase text-slate-900',
+                      getAlignClass(prefs, col, 'right'),
+                    )}
+                    style={getGridlineStyle(prefs)}
+                  >
+                    Total Geral do Período:
+                  </TableCell>
+                )
+              if (col === 'name')
+                return (
+                  <TableCell
+                    key={col}
+                    className="border-r border-black"
+                    style={getGridlineStyle(prefs)}
+                  ></TableCell>
+                )
+              if (col === 'pos')
+                return (
+                  <TableCell
+                    key={col}
+                    className={cn(
+                      'px-2 py-1 text-emerald-700 border-r border-black',
+                      getAlignClass(prefs, col, 'right'),
+                    )}
+                    style={getGridlineStyle(prefs)}
+                  >
+                    {formatVal(totalPos)}
+                  </TableCell>
+                )
+              if (col === 'neg')
+                return (
+                  <TableCell
+                    key={col}
+                    className={cn(
+                      'px-2 py-1 text-rose-700 border-r border-black',
+                      getAlignClass(prefs, col, 'right'),
+                    )}
+                    style={getGridlineStyle(prefs)}
+                  >
+                    {formatVal(totalNeg)}
+                  </TableCell>
+                )
+              if (col === 'diff')
+                return (
+                  <TableCell
+                    key={col}
+                    className={cn('px-2 py-1 text-blue-800', getAlignClass(prefs, col, 'right'))}
+                    style={getGridlineStyle(prefs)}
+                  >
+                    {formatVal(totalDiff)}
+                  </TableCell>
+                )
+              return null
+            })}
           </TableRow>
         )}
       </TableBody>
@@ -747,12 +1079,54 @@ function AccountingConsolidatedTable({
   data,
   tableFontSize,
   getAccountingEntriesSimulation,
+  prefs,
+  updatePrefs,
 }: {
   data: any[]
   tableFontSize?: number
   getAccountingEntriesSimulation: (row: any) => any
+  prefs?: any
+  updatePrefs?: any
 }) {
   const [colFilter, setColFilter] = useState<string[]>([])
+  const [sortColumn, setSortColumn] = useState('account')
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc')
+
+  const defaultColOrder = ['account', 'debit', 'credit', 'saldo']
+  const [colOrder, setColOrder] = useState<string[]>(() => {
+    const saved = localStorage.getItem(`fin_mov_acc_cons_cols`)
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved)
+        if (Array.isArray(parsed) && parsed.length === defaultColOrder.length) return parsed
+      } catch {
+        /* intentionally ignored */
+      }
+    }
+    return defaultColOrder
+  })
+  const [draggedCol, setDraggedCol] = useState<string | null>(null)
+
+  useEffect(() => {
+    localStorage.setItem(`fin_mov_acc_cons_cols`, JSON.stringify(colOrder))
+  }, [colOrder])
+
+  const handleSort = (col: string) => {
+    if (sortColumn === col) setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc')
+    else {
+      setSortColumn(col)
+      setSortDirection('asc')
+    }
+  }
+
+  const renderSortIcon = (col: string) => {
+    if (sortColumn !== col) return <ArrowUpDown className="h-3 w-3 ml-1 opacity-50 shrink-0" />
+    return sortDirection === 'asc' ? (
+      <ArrowUp className="h-3 w-3 ml-1 shrink-0" />
+    ) : (
+      <ArrowDown className="h-3 w-3 ml-1 shrink-0" />
+    )
+  }
 
   const {
     map: baseMap,
@@ -815,12 +1189,31 @@ function AccountingConsolidatedTable({
   }, [baseMap])
 
   const aggregated = useMemo(() => {
-    let result = Array.from(baseMap.values()).sort((a, b) => a.code.localeCompare(b.code))
+    let result = Array.from(baseMap.values())
     if (colFilter.length > 0) {
       result = result.filter((item) => colFilter.includes(formatKey(item)))
     }
+    result.sort((a: any, b: any) => {
+      let valA =
+        sortColumn === 'account'
+          ? formatKey(a)
+          : sortColumn === 'saldo'
+            ? a.debit - a.credit
+            : a[sortColumn]
+      let valB =
+        sortColumn === 'account'
+          ? formatKey(b)
+          : sortColumn === 'saldo'
+            ? b.debit - b.credit
+            : b[sortColumn]
+      if (typeof valA === 'string') {
+        return sortDirection === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA)
+      } else {
+        return sortDirection === 'asc' ? valA - valB : valB - valA
+      }
+    })
     return result
-  }, [baseMap, colFilter])
+  }, [baseMap, colFilter, sortColumn, sortDirection])
 
   const formatVal = (v: number) =>
     new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v)
