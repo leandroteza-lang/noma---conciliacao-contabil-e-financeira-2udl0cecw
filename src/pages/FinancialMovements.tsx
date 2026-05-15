@@ -2719,6 +2719,10 @@ export default function FinancialMovements() {
   const [drillDownData, setDrillDownData] = useState<any[]>([])
   const [drillDownTitle, setDrillDownTitle] = useState('')
 
+  useEffect(() => {
+    setSelectedIds([])
+  }, [activeTab])
+
   // Dashboard Gerencial State
   const [dashSelectedPeriodStart, setDashSelectedPeriodStart] = useState<string>('')
   const [dashSelectedPeriodEnd, setDashSelectedPeriodEnd] = useState<string>('')
@@ -5754,27 +5758,31 @@ export default function FinancialMovements() {
             )}
             Sincronizar Mapeamentos
           </Button>
-          <Button
-            variant="outline"
-            onClick={() => {
-              setDeleteMode('all')
-              setDeleteModalOpen(true)
-            }}
-            className="shadow-sm text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
-            disabled={totalCount === 0 || loading}
-          >
-            <Trash2 className="mr-2 h-4 w-4" />
-            Excluir Todos
-          </Button>
-          <Button
-            variant="default"
-            onClick={() => setGenerateModalOpen(true)}
-            className="shadow-sm bg-indigo-600 hover:bg-indigo-700 text-white"
-            disabled={totalCount === 0 || loading}
-          >
-            <CheckCircle2 className="mr-2 h-4 w-4" />
-            Gerar Lançamentos Contábeis
-          </Button>
+          {activeTab === 'grade' && (
+            <>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setDeleteMode('all')
+                  setDeleteModalOpen(true)
+                }}
+                className="shadow-sm text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
+                disabled={totalCount === 0 || loading}
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                Excluir Todos
+              </Button>
+              <Button
+                variant="default"
+                onClick={() => setGenerateModalOpen(true)}
+                className="shadow-sm bg-indigo-600 hover:bg-indigo-700 text-white"
+                disabled={totalCount === 0 || loading}
+              >
+                <CheckCircle2 className="mr-2 h-4 w-4" />
+                Gerar Lançamentos Contábeis
+              </Button>
+            </>
+          )}
           <Button onClick={() => setIsImportOpen(true)} className="shadow-sm">
             <UploadCloud className="mr-2 h-4 w-4" />
             Importar Planilha
@@ -5788,7 +5796,9 @@ export default function FinancialMovements() {
             <div className="bg-blue-600 text-white text-xs font-bold px-2 py-1 rounded-md">
               {selectedIds.length}
             </div>
-            <span className="text-sm font-medium text-blue-900">registros selecionados</span>
+            <span className="text-sm font-medium text-blue-900">
+              {selectedIds.length === 1 ? 'registro selecionado' : 'registros selecionados'}
+            </span>
           </div>
           <div className="flex items-center gap-2 w-full sm:w-auto">
             <Button
@@ -5799,48 +5809,82 @@ export default function FinancialMovements() {
             >
               Cancelar
             </Button>
-            <Button
-              variant="default"
-              size="sm"
-              onClick={async () => {
-                const { error } = await supabase
-                  .from('erp_financial_movements')
-                  .update({ status: 'Pendente' })
-                  .in('id', selectedIds)
-                if (!error) {
-                  toast.success(`${selectedIds.length} registros restaurados para "Pendente"!`)
-                  setSelectedIds([])
-                  setRefreshKey((k) => k + 1)
-                } else {
-                  toast.error('Erro ao restaurar: ' + error.message)
-                }
-              }}
-              className="flex-1 sm:flex-none shadow-sm bg-slate-600 hover:bg-slate-700 text-white"
-            >
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Restaurar Ignorados
-            </Button>
-            <Button
-              variant="default"
-              size="sm"
-              onClick={() => setGenerateModalOpen(true)}
-              className="flex-1 sm:flex-none shadow-sm bg-indigo-600 hover:bg-indigo-700 text-white"
-            >
-              <CheckCircle2 className="h-4 w-4 mr-2" />
-              Efetivar Lançamentos
-            </Button>
-            <Button
-              variant="destructive"
-              size="sm"
-              onClick={() => {
-                setDeleteMode('selected')
-                setDeleteModalOpen(true)
-              }}
-              className="flex-1 sm:flex-none shadow-sm"
-            >
-              <Trash2 className="h-4 w-4 mr-2" />
-              Excluir Selecionados
-            </Button>
+
+            {activeTab === 'grade' && (
+              <>
+                <Button
+                  variant="default"
+                  size="sm"
+                  onClick={async () => {
+                    const { error } = await supabase
+                      .from('erp_financial_movements')
+                      .update({ status: 'Pendente' })
+                      .in('id', selectedIds)
+                    if (!error) {
+                      toast.success(`${selectedIds.length} registros restaurados para "Pendente"!`)
+                      setSelectedIds([])
+                      setRefreshKey((k) => k + 1)
+                    } else {
+                      toast.error('Erro ao restaurar: ' + error.message)
+                    }
+                  }}
+                  className="flex-1 sm:flex-none shadow-sm bg-slate-600 hover:bg-slate-700 text-white"
+                >
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Restaurar Ignorados
+                </Button>
+                <Button
+                  variant="default"
+                  size="sm"
+                  onClick={() => setGenerateModalOpen(true)}
+                  className="flex-1 sm:flex-none shadow-sm bg-indigo-600 hover:bg-indigo-700 text-white"
+                >
+                  <CheckCircle2 className="h-4 w-4 mr-2" />
+                  Efetivar Lançamentos
+                </Button>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => {
+                    setDeleteMode('selected')
+                    setDeleteModalOpen(true)
+                  }}
+                  className="flex-1 sm:flex-none shadow-sm"
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Excluir Selecionados
+                </Button>
+              </>
+            )}
+
+            {activeTab === 'dry-run' && (
+              <>
+                <Button
+                  variant="default"
+                  size="sm"
+                  onClick={() => {
+                    setGenerateScope('dry_run')
+                    setGenerateModalOpen(true)
+                  }}
+                  className="flex-1 sm:flex-none shadow-sm bg-indigo-600 hover:bg-indigo-700 text-white"
+                >
+                  <CheckCircle2 className="h-4 w-4 mr-2" />
+                  Efetivar Lançamentos
+                </Button>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => {
+                    setDeleteMode('selected_dry_run')
+                    setDeleteModalOpen(true)
+                  }}
+                  className="flex-1 sm:flex-none shadow-sm"
+                >
+                  <EyeOff className="h-4 w-4 mr-2" />
+                  Ocultar Selecionados
+                </Button>
+              </>
+            )}
           </div>
         </div>
       )}
@@ -10258,50 +10302,28 @@ export default function FinancialMovements() {
                     </PopoverContent>
                   </Popover>
 
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        className="h-9 shadow-sm"
-                        disabled={filteredDryRunData.length === 0 && selectedIds.length === 0}
-                      >
-                        <EyeOff className="mr-2 h-4 w-4" /> Ocultar...
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem
-                        disabled={selectedIds.length === 0}
-                        onClick={() => {
-                          setDeleteMode('selected_dry_run')
-                          setDeleteModalOpen(true)
-                        }}
-                        className="text-red-600 cursor-pointer"
-                      >
-                        Ocultar Selecionados ({selectedIds.length})
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        disabled={filteredDryRunData.length === 0}
-                        onClick={() => {
-                          setDeleteMode('filtered_dry_run')
-                          setDeleteModalOpen(true)
-                        }}
-                        className="text-red-600 cursor-pointer"
-                      >
-                        Ocultar Todos Filtrados ({filteredDryRunData.length})
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-9 shadow-sm text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200 bg-white"
+                    disabled={filteredDryRunData.length === 0}
+                    onClick={() => {
+                      setDeleteMode('filtered_dry_run')
+                      setDeleteModalOpen(true)
+                    }}
+                  >
+                    <EyeOff className="mr-2 h-4 w-4" /> Ocultar Todos (Dry Run)
+                  </Button>
 
                   <Button
                     onClick={() => {
                       setGenerateScope('dry_run')
                       setGenerateModalOpen(true)
                     }}
-                    className="bg-indigo-600 hover:bg-indigo-700 shadow-sm h-9 shrink-0"
-                    disabled={filteredDryRunData.length === 0}
+                    className="bg-indigo-600 hover:bg-indigo-700 shadow-sm h-9 shrink-0 text-xs sm:text-sm px-3"
+                    disabled={filteredDryRunData.length === 0 && selectedIds.length === 0}
                   >
-                    <CheckCircle2 className="mr-2 h-4 w-4" /> Efetivar Filtrados/Selecionados
+                    <CheckCircle2 className="mr-2 h-4 w-4" /> Efetivar Lançamentos
                   </Button>
                 </div>
               </div>
