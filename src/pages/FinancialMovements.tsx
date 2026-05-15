@@ -778,6 +778,225 @@ function AccountingConsolidatedTable({
   )
 }
 
+function AccountingCrossReferenceTable({
+  data,
+  tableFontSize,
+  getAccountingEntriesSimulation,
+}: {
+  data: any[]
+  tableFontSize?: number
+  getAccountingEntriesSimulation: (row: any) => any
+}) {
+  const [debitFilter, setDebitFilter] = useState<string[]>([])
+  const [creditFilter, setCreditFilter] = useState<string[]>([])
+
+  const { map: crossMap, unmappedAmount } = useMemo(() => {
+    const map = new Map<
+      string,
+      {
+        debitAccount: any
+        creditAccount: any
+        count: number
+        amount: number
+      }
+    >()
+    let unmappedAmount = 0
+
+    for (const row of data) {
+      const sim = getAccountingEntriesSimulation(row)
+      const amt = Math.abs(Number(row.valor_liquido || row.valor || 0))
+
+      if (!sim.debitAccount || !sim.creditAccount) {
+        unmappedAmount += amt
+        continue
+      }
+
+      const key = `${sim.debitAccount.id}_${sim.creditAccount.id}`
+      if (!map.has(key)) {
+        map.set(key, {
+          debitAccount: sim.debitAccount,
+          creditAccount: sim.creditAccount,
+          count: 0,
+          amount: 0,
+        })
+      }
+      const group = map.get(key)!
+      group.count += 1
+      group.amount += amt
+    }
+    return { map, unmappedAmount }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data])
+
+  const formatKey = (item: any) =>
+    `${item.account_code} ${item.classification ? item.classification + ' ' : ''}- ${item.account_name}`
+
+  const { debitOptions, creditOptions } = useMemo(() => {
+    const deb = new Set<string>()
+    const cred = new Set<string>()
+    crossMap.forEach((val) => {
+      deb.add(formatKey(val.debitAccount))
+      cred.add(formatKey(val.creditAccount))
+    })
+    return {
+      debitOptions: Array.from(deb).sort((a, b) => a.localeCompare(b)),
+      creditOptions: Array.from(cred).sort((a, b) => a.localeCompare(b)),
+    }
+  }, [crossMap])
+
+  const aggregated = useMemo(() => {
+    let result = Array.from(crossMap.values())
+    if (debitFilter.length > 0) {
+      result = result.filter((item) => debitFilter.includes(formatKey(item.debitAccount)))
+    }
+    if (creditFilter.length > 0) {
+      result = result.filter((item) => creditFilter.includes(formatKey(item.creditAccount)))
+    }
+    result.sort((a, b) => {
+      const da = a.debitAccount.account_code || ''
+      const db = b.debitAccount.account_code || ''
+      if (da !== db) return da.localeCompare(db)
+      const ca = a.creditAccount.account_code || ''
+      const cb = b.creditAccount.account_code || ''
+      return ca.localeCompare(cb)
+    })
+    return result
+  }, [crossMap, debitFilter, creditFilter])
+
+  const formatVal = (v: number) =>
+    new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v)
+
+  const totalAmount = aggregated.reduce((acc, curr) => acc + curr.amount, 0)
+  const totalCount = aggregated.reduce((acc, curr) => acc + curr.count, 0)
+
+  return (
+    <Table
+      className="w-full"
+      style={{ fontSize: tableFontSize ? `${tableFontSize}px` : undefined }}
+      wrapperClassName="max-h-[500px] overflow-y-auto custom-scrollbar"
+    >
+      <TableHeader className="sticky top-0 z-10 shadow-sm border-b border-slate-600">
+        <TableRow disableZebra className="bg-indigo-950 hover:bg-indigo-900 border-none">
+          <TableHead className="font-medium text-white text-left border-r border-slate-600 px-2 py-1 h-8 w-[40%]">
+            <ColumnFilter
+              title="Conta Débito (D)"
+              options={debitOptions}
+              selected={debitFilter}
+              onChange={setDebitFilter}
+            />
+          </TableHead>
+          <TableHead className="font-medium text-white text-left border-r border-slate-600 px-2 py-1 h-8 w-[40%]">
+            <ColumnFilter
+              title="Conta Crédito (C)"
+              options={creditOptions}
+              selected={creditFilter}
+              onChange={setCreditFilter}
+            />
+          </TableHead>
+          <TableHead className="w-[10%] text-center font-bold text-white border-r border-slate-600 px-2 py-1 h-8">
+            Lançamentos
+          </TableHead>
+          <TableHead className="w-[10%] text-right font-bold text-white px-2 py-1 h-8">
+            Valor Total
+          </TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {aggregated.map((item, idx) => (
+          <TableRow
+            key={idx}
+            className="border-b border-slate-200 last:border-b-0 transition-colors"
+          >
+            <TableCell className="px-2 py-1 border-r border-slate-200 text-slate-700 font-medium">
+              <div className="flex items-center gap-1.5">
+                <span className="font-mono bg-blue-50 text-blue-800 px-1.5 py-0.5 rounded text-[0.85em] font-semibold border border-blue-200">
+                  {item.debitAccount.account_code}
+                </span>
+                {item.debitAccount.classification && (
+                  <span className="font-mono text-[0.85em] font-semibold text-slate-500">
+                    {item.debitAccount.classification}
+                  </span>
+                )}
+                <span className="truncate max-w-[250px]" title={item.debitAccount.account_name}>
+                  {item.debitAccount.account_name}
+                </span>
+              </div>
+            </TableCell>
+            <TableCell className="px-2 py-1 border-r border-slate-200 text-slate-700 font-medium">
+              <div className="flex items-center gap-1.5">
+                <span className="font-mono bg-rose-50 text-rose-800 px-1.5 py-0.5 rounded text-[0.85em] font-semibold border border-rose-200">
+                  {item.creditAccount.account_code}
+                </span>
+                {item.creditAccount.classification && (
+                  <span className="font-mono text-[0.85em] font-semibold text-slate-500">
+                    {item.creditAccount.classification}
+                  </span>
+                )}
+                <span className="truncate max-w-[250px]" title={item.creditAccount.account_name}>
+                  {item.creditAccount.account_name}
+                </span>
+              </div>
+            </TableCell>
+            <TableCell className="px-2 py-1 text-center text-slate-700 border-r border-slate-200 font-semibold">
+              {item.count}
+            </TableCell>
+            <TableCell className="px-2 py-1 text-right text-slate-700 font-bold">
+              {formatVal(item.amount)}
+            </TableCell>
+          </TableRow>
+        ))}
+        {aggregated.length === 0 ? (
+          <TableRow disableZebra>
+            <TableCell
+              colSpan={4}
+              className="text-center py-4 text-slate-500 border-t border-slate-200"
+            >
+              Nenhum dado para resumir.
+            </TableCell>
+          </TableRow>
+        ) : (
+          <>
+            {unmappedAmount > 0 && (
+              <TableRow disableZebra className="bg-rose-50/50 border-t border-slate-200">
+                <TableCell
+                  colSpan={2}
+                  className="px-2 py-2 border-r border-slate-200 text-slate-600 italic flex items-center gap-2"
+                >
+                  <AlertCircle className="h-4 w-4 text-rose-500" />
+                  Valores Pendentes de Mapeamento Contábil (Ignorados no Cruzamento)
+                </TableCell>
+                <TableCell className="px-2 py-2 text-center text-rose-600 font-medium border-r border-slate-200">
+                  -
+                </TableCell>
+                <TableCell className="px-2 py-2 text-right text-rose-600 font-bold">
+                  {formatVal(unmappedAmount)}
+                </TableCell>
+              </TableRow>
+            )}
+            <TableRow
+              disableZebra
+              className="bg-slate-100 font-bold border-t-2 border-slate-300 shadow-inner"
+            >
+              <TableCell
+                colSpan={2}
+                className="px-2 py-2 border-r border-slate-300 text-right text-slate-900 uppercase"
+              >
+                Total Geral:
+              </TableCell>
+              <TableCell className="px-2 py-2 text-center text-slate-900 border-r border-slate-300">
+                {totalCount}
+              </TableCell>
+              <TableCell className="px-2 py-2 text-right text-indigo-700">
+                {formatVal(totalAmount)}
+              </TableCell>
+            </TableRow>
+          </>
+        )}
+      </TableBody>
+    </Table>
+  )
+}
+
 function SummaryTable({
   data,
   type,
@@ -3307,13 +3526,18 @@ export default function FinancialMovements() {
     const saved = localStorage.getItem('fin_mov_visible_cards')
     if (saved) {
       try {
-        return JSON.parse(saved)
+        const parsed = JSON.parse(saved)
+        if (parsed.cruzamento_contabil === undefined) {
+          parsed.cruzamento_contabil = true
+        }
+        return parsed
       } catch (e) {
         return {}
       }
     }
     return {
       consolidado_contabil: true,
+      cruzamento_contabil: true,
       consolidado_conta: true,
       consolidado_custo: true,
       mes_conta: true,
@@ -6563,6 +6787,7 @@ export default function FinancialMovements() {
                         onClick={() => {
                           setVisibleCards({
                             consolidado_contabil: true,
+                            cruzamento_contabil: true,
                             consolidado_conta: true,
                             consolidado_custo: true,
                             mes_conta: true,
@@ -6581,6 +6806,7 @@ export default function FinancialMovements() {
                         onClick={() => {
                           setVisibleCards({
                             consolidado_contabil: false,
+                            cruzamento_contabil: false,
                             consolidado_conta: false,
                             consolidado_custo: false,
                             mes_conta: false,
@@ -6596,6 +6822,7 @@ export default function FinancialMovements() {
                     <div className="flex flex-col gap-1 max-h-[300px] overflow-y-auto custom-scrollbar pr-1">
                       {[
                         { id: 'consolidado_contabil', label: 'Consolidado por Conta Contábil' },
+                        { id: 'cruzamento_contabil', label: 'Matriz Débito x Crédito' },
                         { id: 'consolidado_conta', label: 'Consolidado por Conta/Caixa' },
                         { id: 'consolidado_custo', label: 'Consolidado por Centro de Custo' },
                         { id: 'mes_conta', label: 'Financeiro (Mês ➔ Conta/Caixa)' },
@@ -6808,6 +7035,24 @@ export default function FinancialMovements() {
                 </CardHeader>
                 <CardContent className="p-0">
                   <AccountingConsolidatedTable
+                    data={resumoData}
+                    tableFontSize={tableFontSize}
+                    getAccountingEntriesSimulation={getAccountingEntriesSimulation}
+                  />
+                </CardContent>
+              </Card>
+            )}
+
+            {visibleCards.cruzamento_contabil !== false && (
+              <Card className="shadow-sm border-4 border-indigo-950 overflow-hidden lg:col-span-2 xl:col-span-2">
+                <CardHeader className="bg-indigo-950 text-white hover:bg-indigo-900 border-none pb-3 pt-4 transition-colors relative">
+                  <h2 className="text-base font-bold text-center w-full uppercase tracking-wider flex items-center justify-center gap-2">
+                    <Columns className="h-5 w-5" />
+                    Matriz de Cruzamento: Débito x Crédito
+                  </h2>
+                </CardHeader>
+                <CardContent className="p-0">
+                  <AccountingCrossReferenceTable
                     data={resumoData}
                     tableFontSize={tableFontSize}
                     getAccountingEntriesSimulation={getAccountingEntriesSimulation}
