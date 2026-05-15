@@ -3128,12 +3128,170 @@ export default function FinancialMovements() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [summaryData, dryRunFilters, generateOptions.valueBase])
 
+  const dryRunHeaders = useMemo(
+    () => [
+      { key: 'status', label: 'Status', defaultAlign: 'center' },
+      { key: 'data_emissao', label: 'Data', defaultAlign: 'center' },
+      { key: 'conta_debito', label: 'Conta Débito', defaultAlign: 'left' },
+      { key: 'conta_credito', label: 'Conta Crédito', defaultAlign: 'left' },
+      { key: 'valor', label: 'Valor', defaultAlign: 'right' },
+      { key: 'c_custo', label: 'Centro de Custo', defaultAlign: 'center' },
+      { key: 'descricao_c_custo', label: 'Descrição C.Custo', defaultAlign: 'left' },
+      { key: 'conta_caixa', label: 'Conta Caixa/Banco', defaultAlign: 'left' },
+      { key: 'historico', label: 'Histórico', defaultAlign: 'left' },
+    ],
+    [],
+  )
+
+  const [dryRunColOrder, setDryRunColOrder] = useState<string[]>(() => {
+    const saved = localStorage.getItem('fin_mov_dry_run_cols')
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved)
+        if (Array.isArray(parsed) && parsed.length === 9) return parsed
+      } catch {
+        /* intentionally ignored */
+      }
+    }
+    return [
+      'status',
+      'data_emissao',
+      'conta_debito',
+      'conta_credito',
+      'valor',
+      'c_custo',
+      'descricao_c_custo',
+      'conta_caixa',
+      'historico',
+    ]
+  })
+
+  useEffect(() => {
+    localStorage.setItem('fin_mov_dry_run_cols', JSON.stringify(dryRunColOrder))
+  }, [dryRunColOrder])
+
+  const [draggedDryRunCol, setDraggedDryRunCol] = useState<string | null>(null)
+  const [dryRunSortColumn, setDryRunSortColumn] = useState<string>('data_emissao')
+  const [dryRunSortDirection, setDryRunSortDirection] = useState<'asc' | 'desc'>('desc')
+
+  const { prefs: dryRunPrefs, updatePrefs: updateDryRunPrefs } =
+    useTablePreferences('fin_mov_dry_run_table')
+
+  const getDryRunCellProps = (key: string, defaultAlign?: string, extraClass?: string) => {
+    const align = dryRunPrefs.alignments?.[key] || defaultAlign || 'left'
+    const alignClass =
+      align === 'center' ? 'text-center' : align === 'right' ? 'text-right' : 'text-left'
+    const style = dryRunPrefs.showGridlines
+      ? {
+          borderRight: `${dryRunPrefs.gridlineWidth}px solid ${dryRunPrefs.gridlineColor}`,
+          borderBottom: `${dryRunPrefs.gridlineWidth}px solid ${dryRunPrefs.gridlineColor}`,
+        }
+      : undefined
+
+    return {
+      className: cn('px-2 py-1.5 border-0', alignClass, extraClass),
+      style,
+    }
+  }
+
+  const getDryRunGridlineStyle = () => {
+    if (!dryRunPrefs.showGridlines) return undefined
+    return {
+      borderRight: `${dryRunPrefs.gridlineWidth}px solid ${dryRunPrefs.gridlineColor}`,
+      borderBottom: `${dryRunPrefs.gridlineWidth}px solid ${dryRunPrefs.gridlineColor}`,
+    }
+  }
+
   const [dryRunPage, setDryRunPage] = useState(0)
   const dryRunPageSize = 50
 
+  const sortedAndFilteredDryRunData = useMemo(() => {
+    let result = [...filteredDryRunData]
+    result.sort((a, b) => {
+      let valA, valB
+      const simA = getAccountingEntriesSimulation(
+        a,
+        generateOptions.valueBase as 'valor' | 'valor_liquido',
+      )
+      const simB = getAccountingEntriesSimulation(
+        b,
+        generateOptions.valueBase as 'valor' | 'valor_liquido',
+      )
+
+      switch (dryRunSortColumn) {
+        case 'status':
+          valA = a.status || ''
+          valB = b.status || ''
+          break
+        case 'data_emissao':
+          valA = a[generateOptions.dateBase as keyof typeof a] || ''
+          valB = b[generateOptions.dateBase as keyof typeof b] || ''
+          break
+        case 'conta_debito':
+          valA = simA.debitAccount?.account_name || ''
+          valB = simB.debitAccount?.account_name || ''
+          break
+        case 'conta_credito':
+          valA = simA.creditAccount?.account_name || ''
+          valB = simB.creditAccount?.account_name || ''
+          break
+        case 'valor':
+          valA = Math.abs(
+            Number(
+              a[generateOptions.valueBase as keyof typeof a] ?? a.valor_liquido ?? a.valor ?? 0,
+            ),
+          )
+          valB = Math.abs(
+            Number(
+              b[generateOptions.valueBase as keyof typeof b] ?? b.valor_liquido ?? b.valor ?? 0,
+            ),
+          )
+          break
+        case 'c_custo':
+          valA = a.c_custo || ''
+          valB = b.c_custo || ''
+          break
+        case 'descricao_c_custo':
+          valA = a.descricao_c_custo || ''
+          valB = b.descricao_c_custo || ''
+          break
+        case 'conta_caixa':
+          valA = a.conta_caixa ? `${a.conta_caixa} - ${a.nome_caixa || ''}` : ''
+          valB = b.conta_caixa ? `${b.conta_caixa} - ${b.nome_caixa || ''}` : ''
+          break
+        case 'historico':
+          valA = a.historico || ''
+          valB = b.historico || ''
+          break
+        default:
+          valA = a[dryRunSortColumn] || ''
+          valB = b[dryRunSortColumn] || ''
+      }
+
+      if (valA < valB) return dryRunSortDirection === 'asc' ? -1 : 1
+      if (valA > valB) return dryRunSortDirection === 'asc' ? 1 : -1
+      return 0
+    })
+    return result
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    filteredDryRunData,
+    dryRunSortColumn,
+    dryRunSortDirection,
+    generateOptions.valueBase,
+    generateOptions.dateBase,
+    bankAccounts,
+    chartOfAccounts,
+    costCenters,
+    mappings,
+  ])
+
   const currentDryRunData = useMemo(() => {
-    return filteredDryRunData.slice(dryRunPage * dryRunPageSize, (dryRunPage + 1) * dryRunPageSize)
-  }, [filteredDryRunData, dryRunPage])
+    return sortedAndFilteredDryRunData.slice(
+      dryRunPage * dryRunPageSize,
+      (dryRunPage + 1) * dryRunPageSize,
+    )
+  }, [sortedAndFilteredDryRunData, dryRunPage])
 
   const dryRunTotalPages = Math.max(1, Math.ceil(filteredDryRunData.length / dryRunPageSize))
 
@@ -10328,12 +10486,15 @@ export default function FinancialMovements() {
                   </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2 shrink-0">
+                  <div className="flex items-center gap-1 bg-white rounded-md p-0.5 border border-slate-200 shadow-sm mr-1">
+                    <TableSettingsControls prefs={dryRunPrefs} updatePrefs={updateDryRunPrefs} />
+                  </div>
                   <Popover open={dryRunFiltersOpen} onOpenChange={setDryRunFiltersOpen}>
                     <PopoverTrigger asChild>
                       <Button
                         variant="outline"
                         size="sm"
-                        className="h-9 text-xs relative bg-white border-slate-300"
+                        className="h-9 text-xs relative bg-white border-slate-300 shadow-sm"
                       >
                         <Filter className="mr-2 h-4 w-4" /> Filtros do Dry Run
                         {Object.values(dryRunFilters).some((arr) => arr.length > 0) && (
@@ -10493,218 +10654,515 @@ export default function FinancialMovements() {
               </div>
             </CardHeader>
             <CardContent className="p-0">
-              <Table
-                wrapperClassName="max-h-[600px] overflow-auto custom-scrollbar"
-                className="w-full"
-                style={{ fontSize: `${tableFontSize}px` }}
-              >
-                <TableHeader className="bg-slate-100 sticky top-0 z-10 shadow-sm border-none">
-                  <TableRow className="border-b-slate-200 hover:bg-slate-100 border-none">
-                    <TableHead className="w-[40px] px-2 py-1 text-center align-middle border-r border-slate-200">
-                      <Checkbox
-                        checked={
-                          currentDryRunData.length > 0 &&
-                          currentDryRunData.every((d) => selectedIds.includes(d.id))
-                        }
-                        onCheckedChange={() => {
-                          const pageIds = currentDryRunData.map((d) => d.id)
-                          const allSelected =
-                            pageIds.length > 0 && pageIds.every((id) => selectedIds.includes(id))
-                          if (allSelected) {
-                            setSelectedIds((prev) => prev.filter((id) => !pageIds.includes(id)))
-                          } else {
-                            setSelectedIds((prev) => Array.from(new Set([...prev, ...pageIds])))
+              <div className="border-4 border-indigo-950 rounded-lg overflow-hidden relative">
+                <Table
+                  wrapperClassName="max-h-[600px] overflow-auto custom-scrollbar"
+                  className="w-full"
+                  style={{ fontSize: `${tableFontSize}px` }}
+                >
+                  <TableHeader className="bg-indigo-950 sticky top-0 z-10 shadow-sm border-none">
+                    <TableRow
+                      disableZebra
+                      className="bg-indigo-950 hover:bg-indigo-900 border-none [&>th]:border-none [&>th]:text-white"
+                    >
+                      <TableHead
+                        className="w-[40px] px-2 py-1 text-center align-middle"
+                        style={getDryRunGridlineStyle()}
+                      >
+                        <Checkbox
+                          checked={
+                            currentDryRunData.length > 0 &&
+                            currentDryRunData.every((d) => selectedIds.includes(d.id))
                           }
-                        }}
-                      />
-                    </TableHead>
-                    <TableHead className="font-bold text-slate-700 border-r border-slate-200 text-center">
-                      Status
-                    </TableHead>
-                    <TableHead className="font-bold text-slate-700 border-r border-slate-200">
-                      Data
-                    </TableHead>
-                    <TableHead className="font-bold text-slate-700 border-r border-slate-200">
-                      Conta Débito
-                    </TableHead>
-                    <TableHead className="font-bold text-slate-700 border-r border-slate-200">
-                      Conta Crédito
-                    </TableHead>
-                    <TableHead className="font-bold text-slate-700 border-r border-slate-200">
-                      Valor
-                    </TableHead>
-                    <TableHead className="font-bold text-slate-700 border-r border-slate-200">
-                      Centro de Custo
-                    </TableHead>
-                    <TableHead className="font-bold text-slate-700">Histórico</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {loading ? (
-                    <TableRow>
-                      <TableCell colSpan={8} className="h-48 text-center text-slate-500 border-0">
-                        <Loader2 className="h-6 w-6 animate-spin mx-auto text-indigo-600 mb-2" />
-                        Atualizando simulação...
-                      </TableCell>
-                    </TableRow>
-                  ) : currentDryRunData.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={8} className="h-48 text-center text-slate-500 border-0">
-                        Nenhum registro para exibir.
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    currentDryRunData.map((row) => {
-                      const sim = getAccountingEntriesSimulation(
-                        row,
-                        generateOptions.valueBase as 'valor' | 'valor_liquido',
-                      )
-                      const dtValue = row[generateOptions.dateBase as keyof typeof row]
-                      const dt = dtValue ? formatDate(dtValue) : '-'
-                      const cc = row.c_custo || 'Sem C.Custo'
-                      const hist = row.historico || '-'
-                      const val = Number(
-                        row[generateOptions.valueBase as keyof typeof row] !== undefined &&
-                          row[generateOptions.valueBase as keyof typeof row] !== null
-                          ? row[generateOptions.valueBase as keyof typeof row]
-                          : row.valor_liquido || row.valor || 0,
-                      )
-                      const formatCurrency = (v: number) =>
-                        new Intl.NumberFormat('pt-BR', {
-                          style: 'currency',
-                          currency: 'BRL',
-                        }).format(v)
+                          onCheckedChange={() => {
+                            const pageIds = currentDryRunData.map((d) => d.id)
+                            const allSelected =
+                              pageIds.length > 0 && pageIds.every((id) => selectedIds.includes(id))
+                            if (allSelected) {
+                              setSelectedIds((prev) => prev.filter((id) => !pageIds.includes(id)))
+                            } else {
+                              setSelectedIds((prev) => Array.from(new Set([...prev, ...pageIds])))
+                            }
+                          }}
+                          className="border-white data-[state=checked]:bg-white data-[state=checked]:text-indigo-950"
+                        />
+                      </TableHead>
+                      {dryRunColOrder.map((key) => {
+                        const colDef = dryRunHeaders.find((c) => c.key === key)
+                        if (!colDef) return null
 
-                      const isError = !sim.debitAccount || !sim.creditAccount || !dtValue || !val
-
-                      return (
-                        <TableRow
-                          key={row.id}
-                          className={cn(
-                            'transition-colors border-0 border-b border-slate-100',
-                            isError ? 'bg-red-50 hover:bg-red-100' : 'hover:bg-slate-50',
-                          )}
+                        return (
+                          <TableHead
+                            key={colDef.key}
+                            draggable
+                            onDragStart={(e) => {
+                              setDraggedDryRunCol(colDef.key)
+                              e.dataTransfer.effectAllowed = 'move'
+                            }}
+                            onDragOver={(e) => {
+                              e.preventDefault()
+                              e.dataTransfer.dropEffect = 'move'
+                            }}
+                            onDrop={(e) => {
+                              e.preventDefault()
+                              if (!draggedDryRunCol || draggedDryRunCol === colDef.key) return
+                              const newOrder = [...dryRunColOrder]
+                              const draggedIdx = newOrder.indexOf(draggedDryRunCol)
+                              const targetIdx = newOrder.indexOf(colDef.key)
+                              newOrder.splice(draggedIdx, 1)
+                              newOrder.splice(targetIdx, 0, draggedDryRunCol)
+                              setDryRunColOrder(newOrder)
+                              setDraggedDryRunCol(null)
+                            }}
+                            onDragEnd={() => setDraggedDryRunCol(null)}
+                            className={cn(
+                              'text-white font-bold px-2 py-1 h-8 cursor-grab active:cursor-grabbing',
+                              draggedDryRunCol === colDef.key ? 'opacity-50 bg-indigo-900' : '',
+                            )}
+                            style={getDryRunGridlineStyle()}
+                          >
+                            <div className="flex items-center justify-between gap-1 w-full h-full">
+                              <div
+                                className="flex flex-1 items-center justify-center cursor-pointer hover:bg-white/10 rounded px-1 -ml-1 transition-colors"
+                                onClick={() => {
+                                  if (dryRunSortColumn === colDef.key) {
+                                    setDryRunSortDirection(
+                                      dryRunSortDirection === 'asc' ? 'desc' : 'asc',
+                                    )
+                                  } else {
+                                    setDryRunSortColumn(colDef.key)
+                                    setDryRunSortDirection('asc')
+                                  }
+                                  setDryRunPage(0)
+                                }}
+                              >
+                                {colDef.label}
+                                {dryRunSortColumn === colDef.key ? (
+                                  dryRunSortDirection === 'asc' ? (
+                                    <ArrowUp className="h-3 w-3 ml-1 text-white" />
+                                  ) : (
+                                    <ArrowDown className="h-3 w-3 ml-1 text-white" />
+                                  )
+                                ) : (
+                                  <ArrowUpDown className="h-3 w-3 ml-1 opacity-50 text-indigo-300" />
+                                )}
+                              </div>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-5 w-5 rounded-sm opacity-50 hover:opacity-100 hover:bg-white/20 relative shrink-0 ml-1 transition-all"
+                                  >
+                                    <MoreVertical className="h-3 w-3" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="start" className="w-48">
+                                  <DropdownMenuGroup>
+                                    <DropdownMenuLabel className="text-xs text-slate-500 uppercase tracking-wider">
+                                      Alinhamento
+                                    </DropdownMenuLabel>
+                                    <div className="flex items-center gap-1 px-2 py-1.5">
+                                      <Button
+                                        variant={
+                                          (dryRunPrefs.alignments?.[colDef.key] ||
+                                            colDef.defaultAlign) === 'left'
+                                            ? 'secondary'
+                                            : 'ghost'
+                                        }
+                                        size="icon"
+                                        className="h-7 w-7"
+                                        onClick={() =>
+                                          updateDryRunPrefs({
+                                            alignments: {
+                                              ...(dryRunPrefs.alignments || {}),
+                                              [colDef.key]: 'left',
+                                            },
+                                          })
+                                        }
+                                      >
+                                        <AlignLeft className="h-3.5 w-3.5" />
+                                      </Button>
+                                      <Button
+                                        variant={
+                                          (dryRunPrefs.alignments?.[colDef.key] ||
+                                            colDef.defaultAlign) === 'center'
+                                            ? 'secondary'
+                                            : 'ghost'
+                                        }
+                                        size="icon"
+                                        className="h-7 w-7"
+                                        onClick={() =>
+                                          updateDryRunPrefs({
+                                            alignments: {
+                                              ...(dryRunPrefs.alignments || {}),
+                                              [colDef.key]: 'center',
+                                            },
+                                          })
+                                        }
+                                      >
+                                        <AlignCenter className="h-3.5 w-3.5" />
+                                      </Button>
+                                      <Button
+                                        variant={
+                                          (dryRunPrefs.alignments?.[colDef.key] ||
+                                            colDef.defaultAlign) === 'right'
+                                            ? 'secondary'
+                                            : 'ghost'
+                                        }
+                                        size="icon"
+                                        className="h-7 w-7"
+                                        onClick={() =>
+                                          updateDryRunPrefs({
+                                            alignments: {
+                                              ...(dryRunPrefs.alignments || {}),
+                                              [colDef.key]: 'right',
+                                            },
+                                          })
+                                        }
+                                      >
+                                        <AlignRight className="h-3.5 w-3.5" />
+                                      </Button>
+                                    </div>
+                                  </DropdownMenuGroup>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </div>
+                          </TableHead>
+                        )
+                      })}
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {loading ? (
+                      <TableRow>
+                        <TableCell
+                          colSpan={dryRunColOrder.length + 1}
+                          className="h-48 text-center text-slate-500 border-0"
                         >
-                          <TableCell className="px-2 py-1 text-center align-middle border-r border-slate-200">
-                            <Checkbox
-                              checked={selectedIds.includes(row.id)}
-                              onCheckedChange={() => toggleRow(row.id)}
-                            />
-                          </TableCell>
-                          <TableCell className="whitespace-nowrap border-r border-slate-200 text-center">
-                            {row.status === 'Concluído' ? (
-                              <span className="text-emerald-700 font-semibold text-[0.85em] bg-emerald-100 px-2 py-0.5 rounded-full border border-emerald-200">
-                                Concluído
-                              </span>
-                            ) : row.status === 'Ignorado' ? (
-                              <span className="text-slate-600 font-semibold text-[0.85em] bg-slate-100 px-2 py-0.5 rounded-full border border-slate-200">
-                                Ignorado
-                              </span>
-                            ) : (
-                              <span className="text-amber-700 font-semibold text-[0.85em] bg-amber-100 px-2 py-0.5 rounded-full border border-amber-200">
-                                {row.status || 'Pendente'}
-                              </span>
-                            )}
-                          </TableCell>
-                          <TableCell
+                          <Loader2 className="h-6 w-6 animate-spin mx-auto text-indigo-600 mb-2" />
+                          Atualizando simulação...
+                        </TableCell>
+                      </TableRow>
+                    ) : currentDryRunData.length === 0 ? (
+                      <TableRow>
+                        <TableCell
+                          colSpan={dryRunColOrder.length + 1}
+                          className="h-48 text-center text-slate-500 border-0"
+                        >
+                          Nenhum registro para exibir.
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      currentDryRunData.map((row) => {
+                        const sim = getAccountingEntriesSimulation(
+                          row,
+                          generateOptions.valueBase as 'valor' | 'valor_liquido',
+                        )
+                        const dtValue = row[generateOptions.dateBase as keyof typeof row]
+                        const dt = dtValue ? formatDate(dtValue) : '-'
+                        const cc = row.c_custo || 'Sem C.Custo'
+                        const descCc = row.descricao_c_custo || '-'
+                        const hist = row.historico || '-'
+                        const contaCaixaDesc = row.conta_caixa
+                          ? `${row.conta_caixa} - ${row.nome_caixa || ''}`
+                          : '-'
+                        const val = Number(
+                          row[generateOptions.valueBase as keyof typeof row] !== undefined &&
+                            row[generateOptions.valueBase as keyof typeof row] !== null
+                            ? row[generateOptions.valueBase as keyof typeof row]
+                            : row.valor_liquido || row.valor || 0,
+                        )
+                        const formatCurrency = (v: number) =>
+                          new Intl.NumberFormat('pt-BR', {
+                            style: 'currency',
+                            currency: 'BRL',
+                          }).format(v)
+
+                        const isError = !sim.debitAccount || !sim.creditAccount || !dtValue || !val
+
+                        return (
+                          <TableRow
+                            key={row.id}
                             className={cn(
-                              'whitespace-nowrap border-r border-slate-200',
-                              isError ? 'text-red-700' : 'text-slate-600',
+                              'transition-colors border-0 border-b border-slate-100',
+                              isError ? 'bg-red-50 hover:bg-red-100' : 'hover:bg-slate-50',
                             )}
                           >
-                            {dt}
-                          </TableCell>
-                          <TableCell className="border-r border-slate-200">
-                            {sim.debitAccount ? (
-                              <div className="flex items-center gap-1.5">
-                                <span
-                                  className="font-mono bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded text-[0.85em] font-semibold border border-blue-200"
-                                  title="Código Reduzido"
-                                >
-                                  {sim.debitAccount.account_code}
-                                </span>
-                                {sim.debitAccount.classification && (
-                                  <span
-                                    className="font-mono text-[0.85em] font-semibold text-slate-600"
-                                    title="Classificação"
+                            <TableCell
+                              className="px-2 py-1 text-center align-middle"
+                              style={getDryRunGridlineStyle()}
+                            >
+                              <Checkbox
+                                checked={selectedIds.includes(row.id)}
+                                onCheckedChange={() => toggleRow(row.id)}
+                              />
+                            </TableCell>
+
+                            {dryRunColOrder.map((key) => {
+                              if (key === 'status') {
+                                return (
+                                  <TableCell key={key} {...getDryRunCellProps(key, 'center')}>
+                                    {row.status === 'Concluído' ? (
+                                      <span className="text-emerald-700 font-semibold text-[0.85em] bg-emerald-100 px-2 py-0.5 rounded-full border border-emerald-200">
+                                        Concluído
+                                      </span>
+                                    ) : row.status === 'Ignorado' ? (
+                                      <span className="text-slate-600 font-semibold text-[0.85em] bg-slate-100 px-2 py-0.5 rounded-full border border-slate-200">
+                                        Ignorado
+                                      </span>
+                                    ) : (
+                                      <span className="text-amber-700 font-semibold text-[0.85em] bg-amber-100 px-2 py-0.5 rounded-full border border-amber-200">
+                                        {row.status || 'Pendente'}
+                                      </span>
+                                    )}
+                                  </TableCell>
+                                )
+                              }
+
+                              if (key === 'data_emissao') {
+                                return (
+                                  <TableCell
+                                    key={key}
+                                    {...getDryRunCellProps(
+                                      key,
+                                      'center',
+                                      isError ? 'text-red-700' : 'text-slate-600 whitespace-nowrap',
+                                    )}
                                   >
-                                    {sim.debitAccount.classification}
-                                  </span>
-                                )}
-                                <span
-                                  className="truncate max-w-[200px] text-slate-700"
-                                  title={sim.debitAccount.account_name}
-                                >
-                                  {sim.debitAccount.account_name}
-                                </span>
-                              </div>
-                            ) : (
-                              <span className="text-red-500 italic text-[0.9em] font-semibold">
-                                Pendente
-                              </span>
-                            )}
-                          </TableCell>
-                          <TableCell className="border-r border-slate-200">
-                            {sim.creditAccount ? (
-                              <div className="flex items-center gap-1.5">
-                                <span
-                                  className="font-mono bg-rose-100 text-rose-800 px-1.5 py-0.5 rounded text-[0.85em] font-semibold border border-rose-200"
-                                  title="Código Reduzido"
-                                >
-                                  {sim.creditAccount.account_code}
-                                </span>
-                                {sim.creditAccount.classification && (
-                                  <span
-                                    className="font-mono text-[0.85em] font-semibold text-slate-600"
-                                    title="Classificação"
+                                    {dt}
+                                  </TableCell>
+                                )
+                              }
+
+                              if (key === 'conta_debito') {
+                                return (
+                                  <TableCell key={key} {...getDryRunCellProps(key, 'left')}>
+                                    {sim.debitAccount ? (
+                                      <div
+                                        className={cn(
+                                          'flex items-center gap-1.5',
+                                          getDryRunCellProps(key, 'left').className.includes(
+                                            'text-center',
+                                          )
+                                            ? 'justify-center'
+                                            : getDryRunCellProps(key, 'left').className.includes(
+                                                  'text-right',
+                                                )
+                                              ? 'justify-end'
+                                              : 'justify-start',
+                                        )}
+                                      >
+                                        <span
+                                          className="font-mono bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded text-[0.85em] font-semibold border border-blue-200 shrink-0"
+                                          title="Código Reduzido"
+                                        >
+                                          {sim.debitAccount.account_code}
+                                        </span>
+                                        {sim.debitAccount.classification && (
+                                          <span
+                                            className="font-mono text-[0.85em] font-semibold text-slate-600 shrink-0"
+                                            title="Classificação"
+                                          >
+                                            {sim.debitAccount.classification}
+                                          </span>
+                                        )}
+                                        <span
+                                          className="truncate max-w-[200px] text-slate-700"
+                                          title={sim.debitAccount.account_name}
+                                        >
+                                          {sim.debitAccount.account_name}
+                                        </span>
+                                      </div>
+                                    ) : (
+                                      <div
+                                        className={cn(
+                                          'flex w-full',
+                                          getDryRunCellProps(key, 'left').className.includes(
+                                            'text-center',
+                                          )
+                                            ? 'justify-center'
+                                            : getDryRunCellProps(key, 'left').className.includes(
+                                                  'text-right',
+                                                )
+                                              ? 'justify-end'
+                                              : 'justify-start',
+                                        )}
+                                      >
+                                        <span className="text-red-500 italic text-[0.9em] font-semibold">
+                                          Pendente
+                                        </span>
+                                      </div>
+                                    )}
+                                  </TableCell>
+                                )
+                              }
+
+                              if (key === 'conta_credito') {
+                                return (
+                                  <TableCell key={key} {...getDryRunCellProps(key, 'left')}>
+                                    {sim.creditAccount ? (
+                                      <div
+                                        className={cn(
+                                          'flex items-center gap-1.5',
+                                          getDryRunCellProps(key, 'left').className.includes(
+                                            'text-center',
+                                          )
+                                            ? 'justify-center'
+                                            : getDryRunCellProps(key, 'left').className.includes(
+                                                  'text-right',
+                                                )
+                                              ? 'justify-end'
+                                              : 'justify-start',
+                                        )}
+                                      >
+                                        <span
+                                          className="font-mono bg-rose-100 text-rose-800 px-1.5 py-0.5 rounded text-[0.85em] font-semibold border border-rose-200 shrink-0"
+                                          title="Código Reduzido"
+                                        >
+                                          {sim.creditAccount.account_code}
+                                        </span>
+                                        {sim.creditAccount.classification && (
+                                          <span
+                                            className="font-mono text-[0.85em] font-semibold text-slate-600 shrink-0"
+                                            title="Classificação"
+                                          >
+                                            {sim.creditAccount.classification}
+                                          </span>
+                                        )}
+                                        <span
+                                          className="truncate max-w-[200px] text-slate-700"
+                                          title={sim.creditAccount.account_name}
+                                        >
+                                          {sim.creditAccount.account_name}
+                                        </span>
+                                      </div>
+                                    ) : (
+                                      <div
+                                        className={cn(
+                                          'flex w-full',
+                                          getDryRunCellProps(key, 'left').className.includes(
+                                            'text-center',
+                                          )
+                                            ? 'justify-center'
+                                            : getDryRunCellProps(key, 'left').className.includes(
+                                                  'text-right',
+                                                )
+                                              ? 'justify-end'
+                                              : 'justify-start',
+                                        )}
+                                      >
+                                        <span className="text-red-500 italic text-[0.9em] font-semibold">
+                                          Pendente
+                                        </span>
+                                      </div>
+                                    )}
+                                  </TableCell>
+                                )
+                              }
+
+                              if (key === 'valor') {
+                                return (
+                                  <TableCell
+                                    key={key}
+                                    {...getDryRunCellProps(
+                                      key,
+                                      'right',
+                                      cn(
+                                        'whitespace-nowrap font-bold',
+                                        isError ? 'text-red-700' : 'text-slate-900',
+                                      ),
+                                    )}
                                   >
-                                    {sim.creditAccount.classification}
-                                  </span>
-                                )}
-                                <span
-                                  className="truncate max-w-[200px] text-slate-700"
-                                  title={sim.creditAccount.account_name}
-                                >
-                                  {sim.creditAccount.account_name}
-                                </span>
-                              </div>
-                            ) : (
-                              <span className="text-red-500 italic text-[0.9em] font-semibold">
-                                Pendente
-                              </span>
-                            )}
-                          </TableCell>
-                          <TableCell
-                            className={cn(
-                              'whitespace-nowrap font-bold border-r border-slate-200',
-                              isError ? 'text-red-700' : 'text-slate-900',
-                            )}
-                          >
-                            {formatCurrency(Math.abs(val))}
-                          </TableCell>
-                          <TableCell
-                            className={cn(
-                              'whitespace-nowrap border-r border-slate-200',
-                              isError ? 'text-red-700' : 'text-slate-600',
-                            )}
-                          >
-                            {cc}
-                          </TableCell>
-                          <TableCell
-                            className={cn(
-                              'max-w-[300px] truncate',
-                              isError ? 'text-red-700' : 'text-slate-600',
-                            )}
-                            title={hist}
-                          >
-                            {hist}
-                          </TableCell>
-                        </TableRow>
-                      )
-                    })
-                  )}
-                </TableBody>
-              </Table>
+                                    {formatCurrency(Math.abs(val))}
+                                  </TableCell>
+                                )
+                              }
+
+                              if (key === 'c_custo') {
+                                return (
+                                  <TableCell
+                                    key={key}
+                                    {...getDryRunCellProps(
+                                      key,
+                                      'center',
+                                      cn(
+                                        'whitespace-nowrap',
+                                        isError ? 'text-red-700' : 'text-slate-600',
+                                      ),
+                                    )}
+                                  >
+                                    {cc}
+                                  </TableCell>
+                                )
+                              }
+
+                              if (key === 'descricao_c_custo') {
+                                return (
+                                  <TableCell
+                                    key={key}
+                                    {...getDryRunCellProps(
+                                      key,
+                                      'left',
+                                      cn(
+                                        'max-w-[200px] truncate',
+                                        isError ? 'text-red-700' : 'text-slate-600',
+                                      ),
+                                    )}
+                                    title={descCc}
+                                  >
+                                    {descCc}
+                                  </TableCell>
+                                )
+                              }
+
+                              if (key === 'conta_caixa') {
+                                return (
+                                  <TableCell
+                                    key={key}
+                                    {...getDryRunCellProps(
+                                      key,
+                                      'left',
+                                      cn(
+                                        'max-w-[200px] truncate',
+                                        isError ? 'text-red-700' : 'text-slate-600',
+                                      ),
+                                    )}
+                                    title={contaCaixaDesc}
+                                  >
+                                    {contaCaixaDesc}
+                                  </TableCell>
+                                )
+                              }
+
+                              if (key === 'historico') {
+                                return (
+                                  <TableCell
+                                    key={key}
+                                    {...getDryRunCellProps(
+                                      key,
+                                      'left',
+                                      cn(
+                                        'max-w-[300px] truncate',
+                                        isError ? 'text-red-700' : 'text-slate-600',
+                                      ),
+                                    )}
+                                    title={hist}
+                                  >
+                                    {hist}
+                                  </TableCell>
+                                )
+                              }
+
+                              return null
+                            })}
+                          </TableRow>
+                        )
+                      })
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
               <div className="flex flex-col sm:flex-row items-center justify-between p-3 border-t bg-slate-50/50 gap-4">
                 <div className="text-xs text-slate-500">
                   Mostrando {Math.min(dryRunPage * dryRunPageSize + 1, filteredDryRunData.length)} a{' '}
