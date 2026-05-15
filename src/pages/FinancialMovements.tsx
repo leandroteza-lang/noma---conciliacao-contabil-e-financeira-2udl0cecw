@@ -1046,6 +1046,38 @@ export default function FinancialMovements() {
     }
   }
 
+  const { prefs: balancetePrefs, updatePrefs: updateBalancetePrefs } =
+    useTablePreferences('fin_mov_balancete_table')
+
+  const getBalanceteCellProps = (
+    key: string,
+    defaultAlign: 'left' | 'center' | 'right' = 'left',
+    extraClass?: string,
+  ) => {
+    const align = balancetePrefs.alignments?.[key] || defaultAlign
+    const alignClass =
+      align === 'center' ? 'text-center' : align === 'right' ? 'text-right' : 'text-left'
+    const style = balancetePrefs.showGridlines
+      ? {
+          borderRight: `${balancetePrefs.gridlineWidth}px solid ${balancetePrefs.gridlineColor}`,
+          borderBottom: `${balancetePrefs.gridlineWidth}px solid ${balancetePrefs.gridlineColor}`,
+        }
+      : undefined
+
+    return {
+      className: cn('border-0', alignClass, extraClass),
+      style,
+    }
+  }
+
+  const getBalanceteGridlineStyle = () => {
+    if (!balancetePrefs.showGridlines) return undefined
+    return {
+      borderRight: `${balancetePrefs.gridlineWidth}px solid ${balancetePrefs.gridlineColor}`,
+      borderBottom: `${balancetePrefs.gridlineWidth}px solid ${balancetePrefs.gridlineColor}`,
+    }
+  }
+
   const analiseGruposHeaders = [
     { key: 'codigo', label: 'Código', defaultAlign: 'left' },
     { key: 'descricao', label: 'Descrição', defaultAlign: 'left' },
@@ -6221,6 +6253,13 @@ export default function FinancialMovements() {
                   </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-3 xl:ml-auto">
+                  <div className="flex items-center gap-1 bg-white rounded-md p-0.5 border border-slate-200 shadow-sm">
+                    <TableSettingsControls
+                      prefs={balancetePrefs}
+                      updatePrefs={updateBalancetePrefs}
+                    />
+                  </div>
+
                   <div className="flex items-center gap-2 bg-white border border-slate-200 p-1.5 rounded-lg shadow-sm">
                     <span className="text-sm font-medium text-slate-600 px-2">Data Base:</span>
                     <Tabs
@@ -6341,24 +6380,299 @@ export default function FinancialMovements() {
                     disableZebra
                     className="bg-indigo-950 text-white font-bold hover:bg-indigo-900 border-none [&>th]:border-none [&>th]:text-white"
                   >
-                    <TableHead className="w-[150px] font-bold text-center sticky left-0 top-0 bg-indigo-950 hover:bg-indigo-900 z-40 uppercase text-[0.9em]">
-                      Conta
+                    <TableHead
+                      className="w-[150px] font-bold sticky left-0 top-0 bg-indigo-950 hover:bg-indigo-900 z-40 uppercase text-[0.9em] px-2 py-1"
+                      style={getBalanceteGridlineStyle()}
+                    >
+                      <div
+                        className={cn(
+                          'flex items-center gap-1 w-full',
+                          (balancetePrefs.alignments?.['conta'] || 'center') === 'right'
+                            ? 'justify-end'
+                            : (balancetePrefs.alignments?.['conta'] || 'center') === 'center'
+                              ? 'justify-center'
+                              : 'justify-start',
+                        )}
+                      >
+                        <span>Conta</span>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-5 w-5 rounded-sm opacity-50 hover:opacity-100 hover:bg-white/20 relative shrink-0 ml-1 transition-all"
+                              title="Alinhamento"
+                            >
+                              <MoreVertical className="h-3 w-3" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="start" className="w-48">
+                            <DropdownMenuGroup>
+                              <DropdownMenuLabel className="text-xs text-slate-500 uppercase tracking-wider">
+                                Alinhamento
+                              </DropdownMenuLabel>
+                              <div className="flex items-center gap-1 px-2 py-1.5">
+                                <Button
+                                  variant={
+                                    (balancetePrefs.alignments?.['conta'] || 'center') === 'left'
+                                      ? 'secondary'
+                                      : 'ghost'
+                                  }
+                                  size="icon"
+                                  className="h-7 w-7"
+                                  onClick={() =>
+                                    updateBalancetePrefs({
+                                      alignments: {
+                                        ...(balancetePrefs.alignments || {}),
+                                        conta: 'left',
+                                      },
+                                    })
+                                  }
+                                >
+                                  <AlignLeft className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button
+                                  variant={
+                                    (balancetePrefs.alignments?.['conta'] || 'center') === 'center'
+                                      ? 'secondary'
+                                      : 'ghost'
+                                  }
+                                  size="icon"
+                                  className="h-7 w-7"
+                                  onClick={() =>
+                                    updateBalancetePrefs({
+                                      alignments: {
+                                        ...(balancetePrefs.alignments || {}),
+                                        conta: 'center',
+                                      },
+                                    })
+                                  }
+                                >
+                                  <AlignCenter className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button
+                                  variant={
+                                    (balancetePrefs.alignments?.['conta'] || 'center') === 'right'
+                                      ? 'secondary'
+                                      : 'ghost'
+                                  }
+                                  size="icon"
+                                  className="h-7 w-7"
+                                  onClick={() =>
+                                    updateBalancetePrefs({
+                                      alignments: {
+                                        ...(balancetePrefs.alignments || {}),
+                                        conta: 'right',
+                                      },
+                                    })
+                                  }
+                                >
+                                  <AlignRight className="h-3.5 w-3.5" />
+                                </Button>
+                              </div>
+                            </DropdownMenuGroup>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
                     </TableHead>
-                    <TableHead className="min-w-[250px] font-bold text-center sticky left-[150px] top-0 bg-indigo-950 hover:bg-indigo-900 z-40 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] uppercase text-[0.9em]">
-                      Descrição
+                    <TableHead
+                      className="min-w-[250px] font-bold sticky left-[150px] top-0 bg-indigo-950 hover:bg-indigo-900 z-40 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] uppercase text-[0.9em] px-2 py-1"
+                      style={getBalanceteGridlineStyle()}
+                    >
+                      <div
+                        className={cn(
+                          'flex items-center gap-1 w-full',
+                          (balancetePrefs.alignments?.['descricao'] || 'center') === 'right'
+                            ? 'justify-end'
+                            : (balancetePrefs.alignments?.['descricao'] || 'center') === 'center'
+                              ? 'justify-center'
+                              : 'justify-start',
+                        )}
+                      >
+                        <span>Descrição</span>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-5 w-5 rounded-sm opacity-50 hover:opacity-100 hover:bg-white/20 relative shrink-0 ml-1 transition-all"
+                              title="Alinhamento"
+                            >
+                              <MoreVertical className="h-3 w-3" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="start" className="w-48">
+                            <DropdownMenuGroup>
+                              <DropdownMenuLabel className="text-xs text-slate-500 uppercase tracking-wider">
+                                Alinhamento
+                              </DropdownMenuLabel>
+                              <div className="flex items-center gap-1 px-2 py-1.5">
+                                <Button
+                                  variant={
+                                    (balancetePrefs.alignments?.['descricao'] || 'center') ===
+                                    'left'
+                                      ? 'secondary'
+                                      : 'ghost'
+                                  }
+                                  size="icon"
+                                  className="h-7 w-7"
+                                  onClick={() =>
+                                    updateBalancetePrefs({
+                                      alignments: {
+                                        ...(balancetePrefs.alignments || {}),
+                                        descricao: 'left',
+                                      },
+                                    })
+                                  }
+                                >
+                                  <AlignLeft className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button
+                                  variant={
+                                    (balancetePrefs.alignments?.['descricao'] || 'center') ===
+                                    'center'
+                                      ? 'secondary'
+                                      : 'ghost'
+                                  }
+                                  size="icon"
+                                  className="h-7 w-7"
+                                  onClick={() =>
+                                    updateBalancetePrefs({
+                                      alignments: {
+                                        ...(balancetePrefs.alignments || {}),
+                                        descricao: 'center',
+                                      },
+                                    })
+                                  }
+                                >
+                                  <AlignCenter className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button
+                                  variant={
+                                    (balancetePrefs.alignments?.['descricao'] || 'center') ===
+                                    'right'
+                                      ? 'secondary'
+                                      : 'ghost'
+                                  }
+                                  size="icon"
+                                  className="h-7 w-7"
+                                  onClick={() =>
+                                    updateBalancetePrefs({
+                                      alignments: {
+                                        ...(balancetePrefs.alignments || {}),
+                                        descricao: 'right',
+                                      },
+                                    })
+                                  }
+                                >
+                                  <AlignRight className="h-3.5 w-3.5" />
+                                </Button>
+                              </div>
+                            </DropdownMenuGroup>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
                     </TableHead>
                     {sortedActivePeriods.map((month) => {
                       const [y, m] = month.split('-')
+                      const align = balancetePrefs.alignments?.[month] || 'left'
                       return (
                         <TableHead
                           key={month}
-                          className="text-left font-bold min-w-[140px] px-4 bg-indigo-950 hover:bg-indigo-900 top-0 sticky z-30"
+                          className="font-bold min-w-[140px] px-4 bg-indigo-950 hover:bg-indigo-900 top-0 sticky z-30 border-none"
+                          style={getBalanceteGridlineStyle()}
                         >
-                          <div className="flex flex-col items-start justify-center">
-                            <span className="text-[1em] leading-tight">
-                              {m}/{y}
-                            </span>
-                            <span className="text-[0.85em]">Saldo</span>
+                          <div
+                            className={cn(
+                              'flex items-center gap-1 w-full',
+                              align === 'right'
+                                ? 'justify-end'
+                                : align === 'center'
+                                  ? 'justify-center'
+                                  : 'justify-start',
+                            )}
+                          >
+                            <div
+                              className={cn(
+                                'flex flex-col',
+                                align === 'right'
+                                  ? 'items-end'
+                                  : align === 'center'
+                                    ? 'items-center'
+                                    : 'items-start',
+                              )}
+                            >
+                              <span className="text-[1em] leading-tight">
+                                {m}/{y}
+                              </span>
+                              <span className="text-[0.85em]">Saldo</span>
+                            </div>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-5 w-5 rounded-sm opacity-50 hover:opacity-100 hover:bg-white/20 relative shrink-0 ml-1 transition-all"
+                                  title="Alinhamento"
+                                >
+                                  <MoreVertical className="h-3 w-3" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="start" className="w-48">
+                                <DropdownMenuGroup>
+                                  <DropdownMenuLabel className="text-xs text-slate-500 uppercase tracking-wider">
+                                    Alinhamento
+                                  </DropdownMenuLabel>
+                                  <div className="flex items-center gap-1 px-2 py-1.5">
+                                    <Button
+                                      variant={align === 'left' ? 'secondary' : 'ghost'}
+                                      size="icon"
+                                      className="h-7 w-7"
+                                      onClick={() =>
+                                        updateBalancetePrefs({
+                                          alignments: {
+                                            ...(balancetePrefs.alignments || {}),
+                                            [month]: 'left',
+                                          },
+                                        })
+                                      }
+                                    >
+                                      <AlignLeft className="h-3.5 w-3.5" />
+                                    </Button>
+                                    <Button
+                                      variant={align === 'center' ? 'secondary' : 'ghost'}
+                                      size="icon"
+                                      className="h-7 w-7"
+                                      onClick={() =>
+                                        updateBalancetePrefs({
+                                          alignments: {
+                                            ...(balancetePrefs.alignments || {}),
+                                            [month]: 'center',
+                                          },
+                                        })
+                                      }
+                                    >
+                                      <AlignCenter className="h-3.5 w-3.5" />
+                                    </Button>
+                                    <Button
+                                      variant={align === 'right' ? 'secondary' : 'ghost'}
+                                      size="icon"
+                                      className="h-7 w-7"
+                                      onClick={() =>
+                                        updateBalancetePrefs({
+                                          alignments: {
+                                            ...(balancetePrefs.alignments || {}),
+                                            [month]: 'right',
+                                          },
+                                        })
+                                      }
+                                    >
+                                      <AlignRight className="h-3.5 w-3.5" />
+                                    </Button>
+                                  </div>
+                                </DropdownMenuGroup>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                           </div>
                         </TableHead>
                       )
@@ -6382,11 +6696,21 @@ export default function FinancialMovements() {
                           key={idx}
                           className="transition-colors group border-0 [&>td.sticky]:bg-inherit"
                         >
-                          <TableCell className="border-0 sticky left-0 z-10 text-center px-2 py-0.5 bg-inherit">
+                          <TableCell
+                            {...getBalanceteCellProps(
+                              'conta',
+                              'center',
+                              'sticky left-0 z-10 px-2 py-0.5 bg-inherit',
+                            )}
+                          >
                             {row.code}
                           </TableCell>
                           <TableCell
-                            className="border-0 sticky left-[150px] z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)] truncate max-w-[300px] px-2 py-0.5 bg-inherit"
+                            {...getBalanceteCellProps(
+                              'descricao',
+                              'center',
+                              'sticky left-[150px] z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)] truncate max-w-[300px] px-2 py-0.5 bg-inherit',
+                            )}
                             title={row.name}
                           >
                             {row.name}
@@ -6406,13 +6730,28 @@ export default function FinancialMovements() {
                               ah = 100
                             }
 
+                            const align = balancetePrefs.alignments?.[month] || 'left'
+                            const justifyClass =
+                              align === 'right'
+                                ? 'justify-end'
+                                : align === 'center'
+                                  ? 'justify-center'
+                                  : 'justify-start'
+
                             return (
                               <TableCell
                                 key={month}
-                                className="text-left px-4 align-top py-1 border-0"
+                                {...getBalanceteCellProps(month, 'left', 'px-4 align-top py-1')}
                               >
-                                <div className="flex items-center justify-start gap-1.5 w-full">
-                                  <span className="flex-1 whitespace-nowrap">
+                                <div
+                                  className={cn('flex items-center gap-1.5 w-full', justifyClass)}
+                                >
+                                  <span
+                                    className={cn(
+                                      'whitespace-nowrap',
+                                      align === 'left' ? 'flex-1 text-left' : '',
+                                    )}
+                                  >
                                     {new Intl.NumberFormat('pt-BR', {
                                       style: 'currency',
                                       currency: 'BRL',
@@ -6423,7 +6762,12 @@ export default function FinancialMovements() {
                                   </span>
                                 </div>
                                 {(avEnabled || ahEnabled) && (
-                                  <div className="flex justify-start gap-2 mt-1.5 text-[0.85em] font-medium">
+                                  <div
+                                    className={cn(
+                                      'flex gap-2 mt-1.5 text-[0.85em] font-medium',
+                                      justifyClass,
+                                    )}
+                                  >
                                     {avEnabled && (
                                       <span
                                         className="px-1.5 py-0.5 rounded border border-slate-300 bg-black/5 dark:bg-white/10"
