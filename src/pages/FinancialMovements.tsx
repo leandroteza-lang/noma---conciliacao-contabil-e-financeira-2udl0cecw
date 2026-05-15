@@ -564,6 +564,220 @@ function PeriodConsolidatedTable({
   )
 }
 
+function AccountingConsolidatedTable({
+  data,
+  tableFontSize,
+  getAccountingEntriesSimulation,
+}: {
+  data: any[]
+  tableFontSize?: number
+  getAccountingEntriesSimulation: (row: any) => any
+}) {
+  const [colFilter, setColFilter] = useState<string[]>([])
+
+  const {
+    map: baseMap,
+    unmappedDebit,
+    unmappedCredit,
+  } = useMemo(() => {
+    const map = new Map<
+      string,
+      {
+        id: string
+        code: string
+        name: string
+        classification: string
+        debit: number
+        credit: number
+      }
+    >()
+    let unmappedDebit = 0
+    let unmappedCredit = 0
+
+    const getOrAdd = (acc: any) => {
+      if (!acc) return null
+      const key = acc.id
+      if (!map.has(key)) {
+        map.set(key, {
+          id: acc.id,
+          code: acc.account_code || '',
+          name: acc.account_name || '',
+          classification: acc.classification || '',
+          debit: 0,
+          credit: 0,
+        })
+      }
+      return map.get(key)!
+    }
+
+    for (const row of data) {
+      const sim = getAccountingEntriesSimulation(row)
+      const amt = Math.abs(Number(row.valor_liquido || row.valor || 0))
+
+      const dAcc = getOrAdd(sim.debitAccount)
+      if (dAcc) dAcc.debit += amt
+      else unmappedDebit += amt
+
+      const cAcc = getOrAdd(sim.creditAccount)
+      if (cAcc) cAcc.credit += amt
+      else unmappedCredit += amt
+    }
+    return { map, unmappedDebit, unmappedCredit }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data])
+
+  const formatKey = (item: any) =>
+    `${item.code} ${item.classification ? item.classification + ' ' : ''}- ${item.name}`
+
+  const options = useMemo(() => {
+    return Array.from(baseMap.values())
+      .map(formatKey)
+      .sort((a, b) => a.localeCompare(b))
+  }, [baseMap])
+
+  const aggregated = useMemo(() => {
+    let result = Array.from(baseMap.values()).sort((a, b) => a.code.localeCompare(b.code))
+    if (colFilter.length > 0) {
+      result = result.filter((item) => colFilter.includes(formatKey(item)))
+    }
+    return result
+  }, [baseMap, colFilter])
+
+  const formatVal = (v: number) =>
+    new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v)
+
+  const totalMappedDebit = aggregated.reduce((acc, curr) => acc + curr.debit, 0)
+  const totalMappedCredit = aggregated.reduce((acc, curr) => acc + curr.credit, 0)
+
+  const totalDebit = totalMappedDebit + unmappedDebit
+  const totalCredit = totalMappedCredit + unmappedCredit
+  const totalDiff = Math.abs(totalDebit - totalCredit)
+
+  return (
+    <Table
+      className="w-full"
+      style={{ fontSize: tableFontSize ? `${tableFontSize}px` : undefined }}
+      wrapperClassName="max-h-[500px] overflow-y-auto custom-scrollbar"
+    >
+      <TableHeader className="sticky top-0 z-10 shadow-sm border-b border-black">
+        <TableRow disableZebra className="bg-indigo-950 hover:bg-indigo-900 border-none">
+          <TableHead className="font-medium text-white text-left border-r border-slate-600 px-2 py-1 h-8 w-[40%]">
+            <ColumnFilter
+              title="Conta Contábil"
+              options={options}
+              selected={colFilter}
+              onChange={setColFilter}
+            />
+          </TableHead>
+          <TableHead className="w-[20%] text-right font-bold text-white border-r border-slate-600 px-2 py-1 h-8">
+            Débito (D)
+          </TableHead>
+          <TableHead className="w-[20%] text-right font-bold text-white border-r border-slate-600 px-2 py-1 h-8">
+            Crédito (C)
+          </TableHead>
+          <TableHead className="w-[20%] text-right font-bold text-white px-2 py-1 h-8">
+            Saldo
+          </TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {aggregated.map((item) => {
+          const saldo = item.debit - item.credit
+          return (
+            <TableRow
+              key={item.id}
+              className="border-b border-slate-200 last:border-b-0 transition-colors"
+            >
+              <TableCell className="px-2 py-1 border-r border-slate-200 text-slate-700 font-medium">
+                <div className="flex items-center gap-1.5">
+                  <span className="font-mono bg-slate-100 text-slate-800 px-1.5 py-0.5 rounded text-[0.85em] font-semibold border border-slate-200">
+                    {item.code}
+                  </span>
+                  {item.classification && (
+                    <span className="font-mono text-[0.85em] font-semibold text-slate-500">
+                      {item.classification}
+                    </span>
+                  )}
+                  <span className="truncate max-w-[300px]" title={item.name}>
+                    {item.name}
+                  </span>
+                </div>
+              </TableCell>
+              <TableCell className="px-2 py-1 text-right text-slate-700 border-r border-slate-200">
+                {formatVal(item.debit)}
+              </TableCell>
+              <TableCell className="px-2 py-1 text-right text-slate-700 border-r border-slate-200">
+                {formatVal(item.credit)}
+              </TableCell>
+              <TableCell
+                className={cn(
+                  'px-2 py-1 text-right font-bold',
+                  saldo > 0 ? 'text-blue-700' : saldo < 0 ? 'text-rose-700' : 'text-slate-700',
+                )}
+              >
+                {formatVal(Math.abs(saldo))} {saldo !== 0 ? (saldo > 0 ? 'D' : 'C') : ''}
+              </TableCell>
+            </TableRow>
+          )
+        })}
+        {aggregated.length === 0 ? (
+          <TableRow disableZebra>
+            <TableCell
+              colSpan={4}
+              className="text-center py-4 text-slate-500 border-t border-slate-200"
+            >
+              Nenhum dado para resumir.
+            </TableCell>
+          </TableRow>
+        ) : (
+          <>
+            {(unmappedDebit > 0 || unmappedCredit > 0) && (
+              <TableRow disableZebra className="bg-rose-50/50 border-t border-slate-200">
+                <TableCell className="px-2 py-2 border-r border-slate-200 text-slate-600 italic flex items-center gap-2">
+                  <AlertCircle className="h-4 w-4 text-rose-500" />
+                  Valores Pendentes de Mapeamento Contábil
+                </TableCell>
+                <TableCell className="px-2 py-2 text-right text-rose-600 font-medium border-r border-slate-200">
+                  {formatVal(unmappedDebit)}
+                </TableCell>
+                <TableCell className="px-2 py-2 text-right text-rose-600 font-medium border-r border-slate-200">
+                  {formatVal(unmappedCredit)}
+                </TableCell>
+                <TableCell className="px-2 py-2 text-right text-rose-600 font-bold">
+                  {formatVal(Math.abs(unmappedDebit - unmappedCredit))}{' '}
+                  {unmappedDebit - unmappedCredit !== 0
+                    ? unmappedDebit > unmappedCredit
+                      ? 'D'
+                      : 'C'
+                    : ''}
+                </TableCell>
+              </TableRow>
+            )}
+            <TableRow
+              disableZebra
+              className="bg-slate-100 font-bold border-t-2 border-slate-300 shadow-inner"
+            >
+              <TableCell className="px-2 py-2 border-r border-slate-300 text-right text-slate-900 uppercase">
+                Total Geral:
+              </TableCell>
+              <TableCell className="px-2 py-2 text-right text-slate-900 border-r border-slate-300">
+                {formatVal(totalDebit)}
+              </TableCell>
+              <TableCell className="px-2 py-2 text-right text-slate-900 border-r border-slate-300">
+                {formatVal(totalCredit)}
+              </TableCell>
+              <TableCell className="px-2 py-2 text-right text-indigo-700">
+                {formatVal(totalDiff)}{' '}
+                {totalDiff !== 0 ? (totalDebit > totalCredit ? 'D' : 'C') : ''}
+              </TableCell>
+            </TableRow>
+          </>
+        )}
+      </TableBody>
+    </Table>
+  )
+}
+
 function SummaryTable({
   data,
   type,
@@ -3099,6 +3313,7 @@ export default function FinancialMovements() {
       }
     }
     return {
+      consolidado_contabil: true,
       consolidado_conta: true,
       consolidado_custo: true,
       mes_conta: true,
@@ -6347,6 +6562,7 @@ export default function FinancialMovements() {
                         className="h-6 flex-1 text-[10px]"
                         onClick={() => {
                           setVisibleCards({
+                            consolidado_contabil: true,
                             consolidado_conta: true,
                             consolidado_custo: true,
                             mes_conta: true,
@@ -6364,6 +6580,7 @@ export default function FinancialMovements() {
                         className="h-6 flex-1 text-[10px]"
                         onClick={() => {
                           setVisibleCards({
+                            consolidado_contabil: false,
                             consolidado_conta: false,
                             consolidado_custo: false,
                             mes_conta: false,
@@ -6378,6 +6595,7 @@ export default function FinancialMovements() {
                     </div>
                     <div className="flex flex-col gap-1 max-h-[300px] overflow-y-auto custom-scrollbar pr-1">
                       {[
+                        { id: 'consolidado_contabil', label: 'Consolidado por Conta Contábil' },
                         { id: 'consolidado_conta', label: 'Consolidado por Conta/Caixa' },
                         { id: 'consolidado_custo', label: 'Consolidado por Centro de Custo' },
                         { id: 'mes_conta', label: 'Financeiro (Mês ➔ Conta/Caixa)' },
@@ -6580,6 +6798,24 @@ export default function FinancialMovements() {
           </div>
 
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 mb-6">
+            {visibleCards.consolidado_contabil !== false && (
+              <Card className="shadow-sm border-4 border-indigo-950 overflow-hidden lg:col-span-2 xl:col-span-2">
+                <CardHeader className="bg-indigo-950 text-white hover:bg-indigo-900 border-none pb-3 pt-4 transition-colors relative">
+                  <h2 className="text-base font-bold text-center w-full uppercase tracking-wider flex items-center justify-center gap-2">
+                    <CheckCircle2 className="h-5 w-5" />
+                    Totais Consolidados por Conta Contábil (Lançamentos Prontos e Pendentes)
+                  </h2>
+                </CardHeader>
+                <CardContent className="p-0">
+                  <AccountingConsolidatedTable
+                    data={resumoData}
+                    tableFontSize={tableFontSize}
+                    getAccountingEntriesSimulation={getAccountingEntriesSimulation}
+                  />
+                </CardContent>
+              </Card>
+            )}
+
             {visibleCards.consolidado_conta !== false && (
               <Card className="shadow-sm border-4 border-indigo-950 overflow-hidden">
                 <CardHeader className="bg-indigo-950 text-white hover:bg-indigo-900 border-none pb-3 pt-4 transition-colors relative">
