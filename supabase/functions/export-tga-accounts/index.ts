@@ -260,7 +260,7 @@ Deno.serve(async (req: Request) => {
               data.cell.styles.textColor = [15, 23, 42]
             }
             if (data.column.index === 0 || data.column.index === 1) {
-               data.cell.styles.fontStyle = 'bold'
+              data.cell.styles.fontStyle = 'bold'
             }
           }
         },

@@ -3078,6 +3078,8 @@ export default function FinancialMovements() {
 
   const filteredDryRunData = useMemo(() => {
     return summaryData.filter((row) => {
+      if (row.status === 'Ignorado' || row.status === 'Concluído') return false
+
       const sim = getAccountingEntriesSimulation(
         row,
         generateOptions.valueBase as 'valor' | 'valor_liquido',
@@ -3620,6 +3622,7 @@ export default function FinancialMovements() {
           { label: 'Pendente', value: 'Pendente' },
           { label: 'Concluído', value: 'Concluído' },
           { label: 'Erro', value: 'Erro' },
+          { label: 'Ignorado', value: 'Ignorado' },
         ]
         return
       }
@@ -3697,7 +3700,9 @@ export default function FinancialMovements() {
   }, [user, refreshKey])
 
   const [deleteModalOpen, setDeleteModalOpen] = useState(false)
-  const [deleteMode, setDeleteMode] = useState<'selected' | 'all' | 'filtered_dry_run' | null>(null)
+  const [deleteMode, setDeleteMode] = useState<
+    'selected' | 'all' | 'filtered_dry_run' | 'selected_dry_run' | null
+  >(null)
   const [isDeleting, setIsDeleting] = useState(false)
 
   const [deletionState, setDeletionState] = useState({
@@ -3910,23 +3915,43 @@ export default function FinancialMovements() {
     let idsToDelete = selectedIds
     if (deleteMode === 'filtered_dry_run') {
       idsToDelete = filteredDryRunData.map((d) => d.id)
+    } else if (deleteMode === 'selected_dry_run') {
+      idsToDelete = selectedIds
     }
 
     setIsDeleting(true)
     try {
+      const isDryRunDelete = deleteMode === 'filtered_dry_run' || deleteMode === 'selected_dry_run'
+
       const chunkSize = 150
       for (let i = 0; i < idsToDelete.length; i += chunkSize) {
         const chunk = idsToDelete.slice(i, i + chunkSize)
-        const { error } = await updateWithRetry(chunk)
-        if (error) throw error
+        if (isDryRunDelete) {
+          const { error } = await supabase
+            .from('erp_financial_movements')
+            .update({ status: 'Ignorado' })
+            .in('id', chunk)
+          if (error) throw error
+        } else {
+          const { error } = await updateWithRetry(chunk)
+          if (error) throw error
+        }
       }
-      toast.success(`${idsToDelete.length} registros excluídos com sucesso!`)
+
+      if (isDryRunDelete) {
+        toast.success(
+          `${idsToDelete.length} registros ocultados do Dry Run (marcados como Ignorado).`,
+        )
+      } else {
+        toast.success(`${idsToDelete.length} registros excluídos com sucesso!`)
+      }
+
       setSelectedIds([])
       setPage(0)
       setDryRunPage(0)
       setRefreshKey((k) => k + 1)
     } catch (error: any) {
-      toast.error('Erro ao excluir: ' + error.message)
+      toast.error('Erro ao processar: ' + error.message)
     } finally {
       setIsDeleting(false)
       setDeleteModalOpen(false)
@@ -4249,6 +4274,8 @@ export default function FinancialMovements() {
       })
     }
 
+    allData = allData.filter((r) => r.status !== 'Ignorado')
+
     setResumoData(allData)
     setResumoLoading(false)
   }
@@ -4373,6 +4400,7 @@ export default function FinancialMovements() {
     const linksMap = new Map()
 
     data.forEach((row) => {
+      if (row.status === 'Ignorado') return
       const ccName = row.c_custo || 'Sem C.Custo'
       const mapped = getMappedAccount(row)
       const coaName = mapped
@@ -4452,6 +4480,7 @@ export default function FinancialMovements() {
     }
 
     summaryData.forEach((row) => {
+      if (row.status === 'Ignorado') return
       const orgId = row.organization_id || 'UNKNOWN'
       const ccCode = row.c_custo?.trim().toUpperCase()
 
@@ -4838,6 +4867,7 @@ export default function FinancialMovements() {
     if (!endM && allMonths.length > 0) endM = allMonths[allMonths.length - 1]
 
     const filteredData = summaryData.filter((row) => {
+      if (row.status === 'Ignorado') return false
       const dateStr = row[summaryDateBase] as string
       if (!dateStr) return false
       const m = dateStr.substring(0, 7)
@@ -5768,6 +5798,27 @@ export default function FinancialMovements() {
               className="bg-white hover:bg-slate-100 flex-1 sm:flex-none"
             >
               Cancelar
+            </Button>
+            <Button
+              variant="default"
+              size="sm"
+              onClick={async () => {
+                const { error } = await supabase
+                  .from('erp_financial_movements')
+                  .update({ status: 'Pendente' })
+                  .in('id', selectedIds)
+                if (!error) {
+                  toast.success(`${selectedIds.length} registros restaurados para "Pendente"!`)
+                  setSelectedIds([])
+                  setRefreshKey((k) => k + 1)
+                } else {
+                  toast.error('Erro ao restaurar: ' + error.message)
+                }
+              }}
+              className="flex-1 sm:flex-none shadow-sm bg-slate-600 hover:bg-slate-700 text-white"
+            >
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Restaurar Ignorados
             </Button>
             <Button
               variant="default"
@@ -7630,6 +7681,10 @@ export default function FinancialMovements() {
                                         ) : row.status === 'Concluído' ? (
                                           <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[0.85em] font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200">
                                             Concluído
+                                          </span>
+                                        ) : row.status === 'Ignorado' ? (
+                                          <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[0.85em] font-semibold bg-slate-100 text-slate-800 border border-slate-200">
+                                            Ignorado
                                           </span>
                                         ) : (
                                           <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[0.85em] font-semibold bg-amber-100 text-amber-800 border border-amber-200">
@@ -10211,19 +10266,19 @@ export default function FinancialMovements() {
                         className="h-9 shadow-sm"
                         disabled={filteredDryRunData.length === 0 && selectedIds.length === 0}
                       >
-                        <Trash2 className="mr-2 h-4 w-4" /> Excluir...
+                        <EyeOff className="mr-2 h-4 w-4" /> Ocultar...
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                       <DropdownMenuItem
                         disabled={selectedIds.length === 0}
                         onClick={() => {
-                          setDeleteMode('selected')
+                          setDeleteMode('selected_dry_run')
                           setDeleteModalOpen(true)
                         }}
                         className="text-red-600 cursor-pointer"
                       >
-                        Excluir Selecionados ({selectedIds.length})
+                        Ocultar Selecionados ({selectedIds.length})
                       </DropdownMenuItem>
                       <DropdownMenuItem
                         disabled={filteredDryRunData.length === 0}
@@ -10233,7 +10288,7 @@ export default function FinancialMovements() {
                         }}
                         className="text-red-600 cursor-pointer"
                       >
-                        Excluir Todos Filtrados ({filteredDryRunData.length})
+                        Ocultar Todos Filtrados ({filteredDryRunData.length})
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
@@ -11867,16 +11922,18 @@ export default function FinancialMovements() {
         title={
           deleteMode === 'all'
             ? 'Excluir Todos os Registros'
-            : deleteMode === 'filtered_dry_run'
-              ? 'Excluir Registros Exibidos no Dry Run'
+            : deleteMode === 'filtered_dry_run' || deleteMode === 'selected_dry_run'
+              ? 'Ocultar Registros do Dry Run'
               : 'Excluir Registros Selecionados'
         }
         description={
           deleteMode === 'all'
             ? 'Tem certeza que deseja excluir TODOS os registros de movimento financeiro da base? Esta ação enviará todos os dados para a lixeira.'
             : deleteMode === 'filtered_dry_run'
-              ? `Tem certeza que deseja excluir os ${filteredDryRunData.length} registros atualmente filtrados e exibidos na aba Dry Run?`
-              : `Tem certeza que deseja excluir os ${selectedIds.length} registros selecionados?`
+              ? `Tem certeza que deseja ocultar os ${filteredDryRunData.length} registros atualmente filtrados do Dry Run? Eles receberão o status "Ignorado" e continuarão visíveis na Grade.`
+              : deleteMode === 'selected_dry_run'
+                ? `Tem certeza que deseja ocultar os ${selectedIds.length} registros selecionados do Dry Run? Eles receberão o status "Ignorado" e continuarão visíveis na Grade.`
+                : `Tem certeza que deseja excluir os ${selectedIds.length} registros selecionados? Esta ação os enviará para a lixeira.`
         }
       />
 
