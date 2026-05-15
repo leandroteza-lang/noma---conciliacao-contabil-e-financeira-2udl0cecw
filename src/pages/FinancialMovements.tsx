@@ -2088,11 +2088,11 @@ export default function FinancialMovements() {
       }
     } else if (isPrefix2or3) {
       if (val > 0) {
-        debitAccount = mappedCCAccount
-        creditAccount = bankChartAccount
-      } else {
         debitAccount = bankChartAccount
         creditAccount = mappedCCAccount
+      } else {
+        debitAccount = mappedCCAccount
+        creditAccount = bankChartAccount
       }
     } else {
       if (val > 0) {
