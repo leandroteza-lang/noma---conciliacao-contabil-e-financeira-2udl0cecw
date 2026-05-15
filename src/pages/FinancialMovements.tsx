@@ -2276,7 +2276,9 @@ export default function FinancialMovements() {
         'valor_liquido',
         'historico',
         'conta_caixa',
+        'nome_caixa',
         'c_custo',
+        'descricao_c_custo',
       ]
 
       const newVisible = tableHeaders.reduce(
@@ -5662,9 +5664,20 @@ export default function FinancialMovements() {
                                       >
                                         {acc ? (
                                           <div className="flex items-center gap-1.5">
-                                            <span className="font-mono bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded text-[0.85em] font-semibold border border-blue-200">
+                                            <span
+                                              className="font-mono bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded text-[0.85em] font-semibold border border-blue-200"
+                                              title="Código Reduzido"
+                                            >
                                               {acc.account_code}
                                             </span>
+                                            {acc.classification && (
+                                              <span
+                                                className="font-mono text-[0.85em] font-semibold text-slate-600"
+                                                title="Classificação"
+                                              >
+                                                {acc.classification}
+                                              </span>
+                                            )}
                                             <span
                                               className="truncate max-w-[200px]"
                                               title={acc.account_name}
@@ -5690,9 +5703,20 @@ export default function FinancialMovements() {
                                       >
                                         {acc ? (
                                           <div className="flex items-center gap-1.5">
-                                            <span className="font-mono bg-rose-100 text-rose-800 px-1.5 py-0.5 rounded text-[0.85em] font-semibold border border-rose-200">
+                                            <span
+                                              className="font-mono bg-rose-100 text-rose-800 px-1.5 py-0.5 rounded text-[0.85em] font-semibold border border-rose-200"
+                                              title="Código Reduzido"
+                                            >
                                               {acc.account_code}
                                             </span>
+                                            {acc.classification && (
+                                              <span
+                                                className="font-mono text-[0.85em] font-semibold text-slate-600"
+                                                title="Classificação"
+                                              >
+                                                {acc.classification}
+                                              </span>
+                                            )}
                                             <span
                                               className="truncate max-w-[200px]"
                                               title={acc.account_name}
@@ -8564,9 +8588,20 @@ export default function FinancialMovements() {
                         <TableCell className="border-r border-slate-200">
                           {sim.debitAccount ? (
                             <div className="flex items-center gap-1.5">
-                              <span className="font-mono bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded text-[0.85em] font-semibold border border-blue-200">
+                              <span
+                                className="font-mono bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded text-[0.85em] font-semibold border border-blue-200"
+                                title="Código Reduzido"
+                              >
                                 {sim.debitAccount.account_code}
                               </span>
+                              {sim.debitAccount.classification && (
+                                <span
+                                  className="font-mono text-[0.85em] font-semibold text-slate-600"
+                                  title="Classificação"
+                                >
+                                  {sim.debitAccount.classification}
+                                </span>
+                              )}
                               <span
                                 className="truncate max-w-[200px] text-slate-700"
                                 title={sim.debitAccount.account_name}
@@ -8583,9 +8618,20 @@ export default function FinancialMovements() {
                         <TableCell className="border-r border-slate-200">
                           {sim.creditAccount ? (
                             <div className="flex items-center gap-1.5">
-                              <span className="font-mono bg-rose-100 text-rose-800 px-1.5 py-0.5 rounded text-[0.85em] font-semibold border border-rose-200">
+                              <span
+                                className="font-mono bg-rose-100 text-rose-800 px-1.5 py-0.5 rounded text-[0.85em] font-semibold border border-rose-200"
+                                title="Código Reduzido"
+                              >
                                 {sim.creditAccount.account_code}
                               </span>
+                              {sim.creditAccount.classification && (
+                                <span
+                                  className="font-mono text-[0.85em] font-semibold text-slate-600"
+                                  title="Classificação"
+                                >
+                                  {sim.creditAccount.classification}
+                                </span>
+                              )}
                               <span
                                 className="truncate max-w-[200px] text-slate-700"
                                 title={sim.creditAccount.account_name}
