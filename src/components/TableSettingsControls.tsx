@@ -6,19 +6,22 @@ import { Slider } from '@/components/ui/slider'
 import { Settings2 } from 'lucide-react'
 import { TablePrefs } from '@/hooks/use-table-preferences'
 
+import { cn } from '@/lib/utils'
+
 interface Props {
   prefs: TablePrefs
   updatePrefs: (p: Partial<TablePrefs>) => void
+  className?: string
 }
 
-export function TableSettingsControls({ prefs, updatePrefs }: Props) {
+export function TableSettingsControls({ prefs, updatePrefs, className }: Props) {
   return (
     <Popover>
       <PopoverTrigger asChild>
         <Button
           variant="ghost"
           size="icon"
-          className="h-8 w-8 text-slate-600 hover:text-slate-900 bg-transparent"
+          className={cn('h-8 w-8 text-slate-600 hover:text-slate-900 bg-transparent', className)}
           title="Configurações da Tabela"
         >
           <Settings2 className="h-4 w-4" />
