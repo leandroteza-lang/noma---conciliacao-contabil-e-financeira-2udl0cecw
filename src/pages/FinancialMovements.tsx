@@ -3944,7 +3944,7 @@ export default function FinancialMovements() {
 
       if (isDryRunDelete) {
         toast.success(
-          `${idsToDelete.length} registros ocultados do Dry Run (marcados como Ignorado).`,
+          `${idsToDelete.length} registros removidos do Dry Run (marcados como Ignorado). Eles continuam na Grade de Movimentos.`,
         )
       } else {
         toast.success(`${idsToDelete.length} registros excluídos com sucesso!`)
@@ -5869,7 +5869,7 @@ export default function FinancialMovements() {
                   className="flex-1 sm:flex-none shadow-sm bg-indigo-600 hover:bg-indigo-700 text-white"
                 >
                   <CheckCircle2 className="h-4 w-4 mr-2" />
-                  Efetivar Lançamentos
+                  Efetivar Selecionados
                 </Button>
                 <Button
                   variant="destructive"
@@ -5880,8 +5880,8 @@ export default function FinancialMovements() {
                   }}
                   className="flex-1 sm:flex-none shadow-sm"
                 >
-                  <EyeOff className="h-4 w-4 mr-2" />
-                  Ocultar Selecionados
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Excluir Selecionados (Dry Run)
                 </Button>
               </>
             )}
@@ -10302,28 +10302,49 @@ export default function FinancialMovements() {
                     </PopoverContent>
                   </Popover>
 
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-9 shadow-sm text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200 bg-white"
-                    disabled={filteredDryRunData.length === 0}
-                    onClick={() => {
-                      setDeleteMode('filtered_dry_run')
-                      setDeleteModalOpen(true)
-                    }}
-                  >
-                    <EyeOff className="mr-2 h-4 w-4" /> Ocultar Todos (Dry Run)
-                  </Button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        size="sm"
+                        className="h-9 shadow-sm bg-red-600 hover:bg-red-700 text-white"
+                        disabled={filteredDryRunData.length === 0 && selectedIds.length === 0}
+                      >
+                        <Trash2 className="mr-2 h-4 w-4" /> Excluir...
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem
+                        disabled={selectedIds.length === 0}
+                        onClick={() => {
+                          setDeleteMode('selected_dry_run')
+                          setDeleteModalOpen(true)
+                        }}
+                        className="text-red-600 focus:text-red-700 focus:bg-red-50 cursor-pointer"
+                      >
+                        Excluir Selecionados ({selectedIds.length})
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        disabled={filteredDryRunData.length === 0}
+                        onClick={() => {
+                          setDeleteMode('filtered_dry_run')
+                          setDeleteModalOpen(true)
+                        }}
+                        className="text-red-600 focus:text-red-700 focus:bg-red-50 cursor-pointer"
+                      >
+                        Excluir Todos Filtrados ({filteredDryRunData.length})
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
 
                   <Button
                     onClick={() => {
                       setGenerateScope('dry_run')
                       setGenerateModalOpen(true)
                     }}
-                    className="bg-indigo-600 hover:bg-indigo-700 shadow-sm h-9 shrink-0 text-xs sm:text-sm px-3"
+                    className="bg-indigo-600 hover:bg-indigo-700 shadow-sm h-9 shrink-0 text-xs sm:text-sm px-3 text-white"
                     disabled={filteredDryRunData.length === 0 && selectedIds.length === 0}
                   >
-                    <CheckCircle2 className="mr-2 h-4 w-4" /> Efetivar Lançamentos
+                    <CheckCircle2 className="mr-2 h-4 w-4" /> Efetivar Filtrados/Selecionados
                   </Button>
                 </div>
               </div>
@@ -11945,16 +11966,16 @@ export default function FinancialMovements() {
           deleteMode === 'all'
             ? 'Excluir Todos os Registros'
             : deleteMode === 'filtered_dry_run' || deleteMode === 'selected_dry_run'
-              ? 'Ocultar Registros do Dry Run'
+              ? 'Excluir do Dry Run (Ignorar)'
               : 'Excluir Registros Selecionados'
         }
         description={
           deleteMode === 'all'
             ? 'Tem certeza que deseja excluir TODOS os registros de movimento financeiro da base? Esta ação enviará todos os dados para a lixeira.'
             : deleteMode === 'filtered_dry_run'
-              ? `Tem certeza que deseja ocultar os ${filteredDryRunData.length} registros atualmente filtrados do Dry Run? Eles receberão o status "Ignorado" e continuarão visíveis na Grade.`
+              ? `Tem certeza que deseja remover os ${filteredDryRunData.length} registros atualmente filtrados do Dry Run? Eles receberão o status "Ignorado" e CONTINUARÃO VISÍVEIS na Grade de Movimentos (NÃO serão deletados do sistema).`
               : deleteMode === 'selected_dry_run'
-                ? `Tem certeza que deseja ocultar os ${selectedIds.length} registros selecionados do Dry Run? Eles receberão o status "Ignorado" e continuarão visíveis na Grade.`
+                ? `Tem certeza que deseja remover os ${selectedIds.length} registros selecionados do Dry Run? Eles receberão o status "Ignorado" e CONTINUARÃO VISÍVEIS na Grade de Movimentos (NÃO serão deletados do sistema).`
                 : `Tem certeza que deseja excluir os ${selectedIds.length} registros selecionados? Esta ação os enviará para a lixeira.`
         }
       />
