@@ -297,7 +297,7 @@ function TreeColumnFilter({
   selected,
   onChange,
 }: {
-  title: string
+  title: React.ReactNode
   options: string[]
   selected: string[]
   onChange: (val: string[]) => void
@@ -330,7 +330,7 @@ function TreeColumnFilter({
 
   return (
     <div className="flex items-center justify-between gap-1 w-full relative">
-      <span>{title}</span>
+      {typeof title === 'string' ? <span>{title}</span> : title}
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <Button
@@ -340,6 +340,7 @@ function TreeColumnFilter({
               'h-6 w-6 text-white hover:bg-white/20 shrink-0',
               selected.length > 0 && 'bg-white/20',
             )}
+            onClick={(e) => e.stopPropagation()}
           >
             <Filter className="h-3 w-3" />
             {selected.length > 0 && (
@@ -474,7 +475,7 @@ function ColumnFilter({
   selected,
   onChange,
 }: {
-  title: string
+  title: React.ReactNode
   options: string[]
   selected: string[]
   onChange: (val: string[]) => void
@@ -483,7 +484,7 @@ function ColumnFilter({
 
   return (
     <div className="flex items-center justify-between gap-1 w-full relative">
-      <span>{title}</span>
+      {typeof title === 'string' ? <span>{title}</span> : title}
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <Button
@@ -493,6 +494,7 @@ function ColumnFilter({
               'h-6 w-6 text-white hover:bg-white/20 shrink-0',
               selected.length > 0 && 'bg-white/20',
             )}
+            onClick={(e) => e.stopPropagation()}
           >
             <Filter className="h-3 w-3" />
             {selected.length > 0 && (
@@ -971,6 +973,35 @@ function AccountingCrossReferenceTable({
   const [debitFilter, setDebitFilter] = useState<string[]>([])
   const [creditFilter, setCreditFilter] = useState<string[]>([])
 
+  const [sortColumn, setSortColumn] = useState<string>('cCusto')
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc')
+
+  const defaultColOrder = [
+    'cCusto',
+    'contaCaixa',
+    'debitAccount',
+    'creditAccount',
+    'count',
+    'amount',
+  ]
+  const [colOrder, setColOrder] = useState<string[]>(() => {
+    const saved = localStorage.getItem('fin_mov_cross_table_cols')
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved)
+        if (Array.isArray(parsed) && parsed.length === defaultColOrder.length) return parsed
+      } catch {
+        /* intentionally ignored */
+      }
+    }
+    return defaultColOrder
+  })
+  const [draggedCol, setDraggedCol] = useState<string | null>(null)
+
+  useEffect(() => {
+    localStorage.setItem('fin_mov_cross_table_cols', JSON.stringify(colOrder))
+  }, [colOrder])
+
   const { map: crossMap, unmappedAmount } = useMemo(() => {
     const map = new Map<
       string,
@@ -1064,30 +1095,188 @@ function AccountingCrossReferenceTable({
       result = result.filter((item) => creditFilter.includes(formatConta(item.creditAccount)))
     }
     result.sort((a, b) => {
-      const c1 = a.cCusto || ''
-      const c2 = b.cCusto || ''
+      let valA: any, valB: any
+      if (sortColumn === 'cCusto') {
+        valA = formatCc(a)
+        valB = formatCc(b)
+      } else if (sortColumn === 'contaCaixa') {
+        valA = formatCx(a)
+        valB = formatCx(b)
+      } else if (sortColumn === 'debitAccount') {
+        valA = formatConta(a.debitAccount)
+        valB = formatConta(b.debitAccount)
+      } else if (sortColumn === 'creditAccount') {
+        valA = formatConta(a.creditAccount)
+        valB = formatConta(b.creditAccount)
+      } else if (sortColumn === 'count') {
+        valA = a.count
+        valB = b.count
+      } else if (sortColumn === 'amount') {
+        valA = a.amount
+        valB = b.amount
+      }
+
+      let cmp = 0
+      if (typeof valA === 'string' && typeof valB === 'string') {
+        cmp = valA.localeCompare(valB)
+      } else {
+        if (valA < valB) cmp = -1
+        else if (valA > valB) cmp = 1
+      }
+
+      if (cmp !== 0) return sortDirection === 'asc' ? cmp : -cmp
+
+      const c1 = formatCc(a)
+      const c2 = formatCc(b)
       if (c1 !== c2) return c1.localeCompare(c2)
 
-      const cx1 = a.contaCaixa || ''
-      const cx2 = b.contaCaixa || ''
+      const cx1 = formatCx(a)
+      const cx2 = formatCx(b)
       if (cx1 !== cx2) return cx1.localeCompare(cx2)
 
-      const da = a.debitAccount.account_code || ''
-      const db = b.debitAccount.account_code || ''
+      const da = formatConta(a.debitAccount)
+      const db = formatConta(b.debitAccount)
       if (da !== db) return da.localeCompare(db)
 
-      const ca = a.creditAccount.account_code || ''
-      const cb = b.creditAccount.account_code || ''
+      const ca = formatConta(a.creditAccount)
+      const cb = formatConta(b.creditAccount)
       return ca.localeCompare(cb)
     })
     return result
-  }, [crossMap, ccFilter, cxFilter, debitFilter, creditFilter])
+  }, [crossMap, ccFilter, cxFilter, debitFilter, creditFilter, sortColumn, sortDirection])
 
   const formatVal = (v: number) =>
     new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v)
 
   const totalAmount = aggregated.reduce((acc, curr) => acc + curr.amount, 0)
   const totalCount = aggregated.reduce((acc, curr) => acc + curr.count, 0)
+
+  const handleSort = (col: string) => {
+    if (sortColumn === col) setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc')
+    else {
+      setSortColumn(col)
+      setSortDirection('asc')
+    }
+  }
+
+  const renderSortIcon = (col: string) => {
+    if (sortColumn !== col) return <ArrowUpDown className="h-3 w-3 ml-1 opacity-50 shrink-0" />
+    return sortDirection === 'asc' ? (
+      <ArrowUp className="h-3 w-3 ml-1 shrink-0" />
+    ) : (
+      <ArrowDown className="h-3 w-3 ml-1 shrink-0" />
+    )
+  }
+
+  const columnsDef: Record<string, { label: string; filter: React.ReactNode; className: string }> =
+    {
+      cCusto: {
+        label: 'Centro de Custo',
+        filter: (
+          <TreeColumnFilter
+            title={
+              <div
+                className="flex items-center gap-1 cursor-pointer hover:bg-white/10 rounded px-1 -ml-1 transition-colors"
+                onClick={() => handleSort('cCusto')}
+              >
+                <span>Centro de Custo</span>
+                {renderSortIcon('cCusto')}
+              </div>
+            }
+            options={ccOptions}
+            selected={ccFilter}
+            onChange={setCcFilter}
+          />
+        ),
+        className: 'min-w-[200px] text-left',
+      },
+      contaCaixa: {
+        label: 'Conta Caixa/Banco',
+        filter: (
+          <ColumnFilter
+            title={
+              <div
+                className="flex items-center gap-1 cursor-pointer hover:bg-white/10 rounded px-1 -ml-1 transition-colors"
+                onClick={() => handleSort('contaCaixa')}
+              >
+                <span>Conta Caixa/Banco</span>
+                {renderSortIcon('contaCaixa')}
+              </div>
+            }
+            options={cxOptions}
+            selected={cxFilter}
+            onChange={setCxFilter}
+          />
+        ),
+        className: 'min-w-[200px] text-left',
+      },
+      debitAccount: {
+        label: 'Conta Débito (D)',
+        filter: (
+          <TreeColumnFilter
+            title={
+              <div
+                className="flex items-center gap-1 cursor-pointer hover:bg-white/10 rounded px-1 -ml-1 transition-colors"
+                onClick={() => handleSort('debitAccount')}
+              >
+                <span>Conta Débito (D)</span>
+                {renderSortIcon('debitAccount')}
+              </div>
+            }
+            options={debitOptions}
+            selected={debitFilter}
+            onChange={setDebitFilter}
+          />
+        ),
+        className: 'min-w-[250px] text-left',
+      },
+      creditAccount: {
+        label: 'Conta Crédito (C)',
+        filter: (
+          <TreeColumnFilter
+            title={
+              <div
+                className="flex items-center gap-1 cursor-pointer hover:bg-white/10 rounded px-1 -ml-1 transition-colors"
+                onClick={() => handleSort('creditAccount')}
+              >
+                <span>Conta Crédito (C)</span>
+                {renderSortIcon('creditAccount')}
+              </div>
+            }
+            options={creditOptions}
+            selected={creditFilter}
+            onChange={setCreditFilter}
+          />
+        ),
+        className: 'min-w-[250px] text-left',
+      },
+      count: {
+        label: 'Lançamentos',
+        filter: (
+          <div
+            className="flex items-center gap-1 cursor-pointer justify-center hover:bg-white/10 rounded px-1 transition-colors"
+            onClick={() => handleSort('count')}
+          >
+            <span>Lançamentos</span>
+            {renderSortIcon('count')}
+          </div>
+        ),
+        className: 'w-[100px] text-center',
+      },
+      amount: {
+        label: 'Valor Total',
+        filter: (
+          <div
+            className="flex items-center gap-1 cursor-pointer justify-end hover:bg-white/10 rounded px-1 -mr-1 transition-colors"
+            onClick={() => handleSort('amount')}
+          >
+            <span>Valor Total</span>
+            {renderSortIcon('amount')}
+          </div>
+        ),
+        className: 'w-[120px] text-right',
+      },
+    }
 
   return (
     <Table
@@ -1097,44 +1286,43 @@ function AccountingCrossReferenceTable({
     >
       <TableHeader className="sticky top-0 z-10 shadow-sm border-b border-slate-600 bg-indigo-950">
         <TableRow disableZebra className="bg-indigo-950 hover:bg-indigo-900 border-none">
-          <TableHead className="font-medium text-white text-left border-r border-slate-600 px-2 py-1 h-8 min-w-[200px] whitespace-nowrap">
-            <TreeColumnFilter
-              title="Centro de Custo"
-              options={ccOptions}
-              selected={ccFilter}
-              onChange={setCcFilter}
-            />
-          </TableHead>
-          <TableHead className="font-medium text-white text-left border-r border-slate-600 px-2 py-1 h-8 min-w-[200px] whitespace-nowrap">
-            <ColumnFilter
-              title="Conta Caixa/Banco"
-              options={cxOptions}
-              selected={cxFilter}
-              onChange={setCxFilter}
-            />
-          </TableHead>
-          <TableHead className="font-medium text-white text-left border-r border-slate-600 px-2 py-1 h-8 min-w-[250px] whitespace-nowrap">
-            <TreeColumnFilter
-              title="Conta Débito (D)"
-              options={debitOptions}
-              selected={debitFilter}
-              onChange={setDebitFilter}
-            />
-          </TableHead>
-          <TableHead className="font-medium text-white text-left border-r border-slate-600 px-2 py-1 h-8 min-w-[250px] whitespace-nowrap">
-            <TreeColumnFilter
-              title="Conta Crédito (C)"
-              options={creditOptions}
-              selected={creditFilter}
-              onChange={setCreditFilter}
-            />
-          </TableHead>
-          <TableHead className="w-[100px] text-center font-bold text-white border-r border-slate-600 px-2 py-1 h-8 whitespace-nowrap">
-            Lançamentos
-          </TableHead>
-          <TableHead className="w-[120px] text-right font-bold text-white px-2 py-1 h-8 whitespace-nowrap">
-            Valor Total
-          </TableHead>
+          {colOrder.map((col) => {
+            const def = columnsDef[col]
+            if (!def) return null
+            return (
+              <TableHead
+                key={col}
+                draggable
+                onDragStart={(e) => {
+                  setDraggedCol(col)
+                  e.dataTransfer.effectAllowed = 'move'
+                }}
+                onDragOver={(e) => {
+                  e.preventDefault()
+                  e.dataTransfer.dropEffect = 'move'
+                }}
+                onDrop={(e) => {
+                  e.preventDefault()
+                  if (!draggedCol || draggedCol === col) return
+                  const newOrder = [...colOrder]
+                  const draggedIdx = newOrder.indexOf(draggedCol)
+                  const targetIdx = newOrder.indexOf(col)
+                  newOrder.splice(draggedIdx, 1)
+                  newOrder.splice(targetIdx, 0, draggedCol)
+                  setColOrder(newOrder)
+                  setDraggedCol(null)
+                }}
+                onDragEnd={() => setDraggedCol(null)}
+                className={cn(
+                  'font-medium text-white border-r border-slate-600 px-2 py-1 h-8 whitespace-nowrap cursor-grab active:cursor-grabbing',
+                  def.className,
+                  draggedCol === col ? 'opacity-50 bg-indigo-900' : '',
+                )}
+              >
+                {def.filter}
+              </TableHead>
+            )
+          })}
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -1143,66 +1331,111 @@ function AccountingCrossReferenceTable({
             key={idx}
             className="border-b border-slate-200 last:border-b-0 transition-colors"
           >
-            <TableCell className="px-2 py-1.5 border-r border-slate-200 text-slate-700 font-medium">
-              <span className="truncate max-w-[250px] inline-block" title={formatCc(item)}>
-                {formatCc(item)}
-              </span>
-            </TableCell>
-            <TableCell className="px-2 py-1.5 border-r border-slate-200 text-slate-700 font-medium">
-              <span className="truncate max-w-[250px] inline-block" title={formatCx(item)}>
-                {formatCx(item)}
-              </span>
-            </TableCell>
-            <TableCell className="px-2 py-1.5 border-r border-slate-200 text-slate-700 font-medium">
-              <div className="flex items-center gap-1.5">
-                <span className="font-mono bg-blue-50 text-blue-800 px-1.5 py-0.5 rounded text-[0.85em] font-semibold border border-blue-200 shrink-0">
-                  {item.debitAccount.account_code}
-                </span>
-                {item.debitAccount.classification && (
-                  <span className="font-mono text-[0.85em] font-semibold text-slate-500 shrink-0">
-                    {item.debitAccount.classification}
-                  </span>
-                )}
-                <span className="truncate max-w-[250px]" title={item.debitAccount.account_name}>
-                  {item.debitAccount.account_name}
-                </span>
-              </div>
-            </TableCell>
-            <TableCell className="px-2 py-1.5 border-r border-slate-200 text-slate-700 font-medium">
-              <div className="flex items-center gap-1.5">
-                <span className="font-mono bg-rose-50 text-rose-800 px-1.5 py-0.5 rounded text-[0.85em] font-semibold border border-rose-200 shrink-0">
-                  {item.creditAccount.account_code}
-                </span>
-                {item.creditAccount.classification && (
-                  <span className="font-mono text-[0.85em] font-semibold text-slate-500 shrink-0">
-                    {item.creditAccount.classification}
-                  </span>
-                )}
-                <span className="truncate max-w-[250px]" title={item.creditAccount.account_name}>
-                  {item.creditAccount.account_name}
-                </span>
-              </div>
-            </TableCell>
-            <TableCell className="px-2 py-1.5 text-center text-slate-700 border-r border-slate-200">
-              <Button
-                variant="link"
-                size="sm"
-                className="h-auto p-0 text-indigo-600 font-bold hover:text-indigo-800"
-                onClick={() => onDrillDown(`Lançamentos - ${formatCc(item)}`, item.rows)}
-                title="Ver Lançamentos"
-              >
-                {item.count}
-              </Button>
-            </TableCell>
-            <TableCell className="px-2 py-1.5 text-right text-slate-700 font-bold whitespace-nowrap">
-              {formatVal(item.amount)}
-            </TableCell>
+            {colOrder.map((col) => {
+              if (col === 'cCusto')
+                return (
+                  <TableCell
+                    key={col}
+                    className="px-2 py-1.5 border-r border-slate-200 text-slate-700 font-medium"
+                  >
+                    <span className="truncate max-w-[250px] inline-block" title={formatCc(item)}>
+                      {formatCc(item)}
+                    </span>
+                  </TableCell>
+                )
+              if (col === 'contaCaixa')
+                return (
+                  <TableCell
+                    key={col}
+                    className="px-2 py-1.5 border-r border-slate-200 text-slate-700 font-medium"
+                  >
+                    <span className="truncate max-w-[250px] inline-block" title={formatCx(item)}>
+                      {formatCx(item)}
+                    </span>
+                  </TableCell>
+                )
+              if (col === 'debitAccount')
+                return (
+                  <TableCell
+                    key={col}
+                    className="px-2 py-1.5 border-r border-slate-200 text-slate-700 font-medium"
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-mono bg-blue-50 text-blue-800 px-1.5 py-0.5 rounded text-[0.85em] font-semibold border border-blue-200 shrink-0">
+                        {item.debitAccount.account_code}
+                      </span>
+                      {item.debitAccount.classification && (
+                        <span className="font-mono text-[0.85em] font-semibold text-slate-500 shrink-0">
+                          {item.debitAccount.classification}
+                        </span>
+                      )}
+                      <span
+                        className="truncate max-w-[250px]"
+                        title={item.debitAccount.account_name}
+                      >
+                        {item.debitAccount.account_name}
+                      </span>
+                    </div>
+                  </TableCell>
+                )
+              if (col === 'creditAccount')
+                return (
+                  <TableCell
+                    key={col}
+                    className="px-2 py-1.5 border-r border-slate-200 text-slate-700 font-medium"
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-mono bg-rose-50 text-rose-800 px-1.5 py-0.5 rounded text-[0.85em] font-semibold border border-rose-200 shrink-0">
+                        {item.creditAccount.account_code}
+                      </span>
+                      {item.creditAccount.classification && (
+                        <span className="font-mono text-[0.85em] font-semibold text-slate-500 shrink-0">
+                          {item.creditAccount.classification}
+                        </span>
+                      )}
+                      <span
+                        className="truncate max-w-[250px]"
+                        title={item.creditAccount.account_name}
+                      >
+                        {item.creditAccount.account_name}
+                      </span>
+                    </div>
+                  </TableCell>
+                )
+              if (col === 'count')
+                return (
+                  <TableCell
+                    key={col}
+                    className="px-2 py-1.5 text-center text-slate-700 border-r border-slate-200"
+                  >
+                    <Button
+                      variant="link"
+                      size="sm"
+                      className="h-auto p-0 text-indigo-600 font-bold hover:text-indigo-800"
+                      onClick={() => onDrillDown(`Lançamentos - ${formatCc(item)}`, item.rows)}
+                      title="Ver Lançamentos"
+                    >
+                      {item.count}
+                    </Button>
+                  </TableCell>
+                )
+              if (col === 'amount')
+                return (
+                  <TableCell
+                    key={col}
+                    className="px-2 py-1.5 text-right text-slate-700 font-bold whitespace-nowrap"
+                  >
+                    {formatVal(item.amount)}
+                  </TableCell>
+                )
+              return null
+            })}
           </TableRow>
         ))}
         {aggregated.length === 0 ? (
           <TableRow disableZebra>
             <TableCell
-              colSpan={6}
+              colSpan={colOrder.length}
               className="text-center py-4 text-slate-500 border-t border-slate-200"
             >
               Nenhum dado para resumir.
@@ -1212,37 +1445,91 @@ function AccountingCrossReferenceTable({
           <>
             {unmappedAmount > 0 && (
               <TableRow disableZebra className="bg-rose-50/50 border-t border-slate-200">
-                <TableCell
-                  colSpan={4}
-                  className="px-2 py-2 border-r border-slate-200 text-slate-600 italic flex items-center gap-2"
-                >
-                  <AlertCircle className="h-4 w-4 text-rose-500" />
-                  Valores Pendentes de Mapeamento Contábil (Ignorados no Cruzamento)
-                </TableCell>
-                <TableCell className="px-2 py-2 text-center text-rose-600 font-medium border-r border-slate-200">
-                  -
-                </TableCell>
-                <TableCell className="px-2 py-2 text-right text-rose-600 font-bold whitespace-nowrap">
-                  {formatVal(unmappedAmount)}
-                </TableCell>
+                {colOrder.map((col, i) => {
+                  if (col === 'count')
+                    return (
+                      <TableCell
+                        key={col}
+                        className="px-2 py-2 text-center text-rose-600 font-medium border-r border-slate-200"
+                      >
+                        -
+                      </TableCell>
+                    )
+                  if (col === 'amount')
+                    return (
+                      <TableCell
+                        key={col}
+                        className="px-2 py-2 text-right text-rose-600 font-bold whitespace-nowrap"
+                      >
+                        {formatVal(unmappedAmount)}
+                      </TableCell>
+                    )
+
+                  if (i === 0)
+                    return (
+                      <TableCell
+                        key={col}
+                        className="px-2 py-2 border-r border-slate-200 text-slate-600 italic"
+                      >
+                        <div className="flex items-center gap-2">
+                          <AlertCircle className="h-4 w-4 text-rose-500 shrink-0" />
+                          <span className="truncate max-w-[300px]">
+                            Valores Pendentes de Mapeamento Contábil (Ignorados)
+                          </span>
+                        </div>
+                      </TableCell>
+                    )
+
+                  return (
+                    <TableCell
+                      key={col}
+                      className="px-2 py-2 border-r border-slate-200"
+                    ></TableCell>
+                  )
+                })}
               </TableRow>
             )}
             <TableRow
               disableZebra
               className="bg-slate-100 font-bold border-t-2 border-slate-300 shadow-inner"
             >
-              <TableCell
-                colSpan={4}
-                className="px-2 py-2 border-r border-slate-300 text-right text-slate-900 uppercase"
-              >
-                Total Geral:
-              </TableCell>
-              <TableCell className="px-2 py-2 text-center text-slate-900 border-r border-slate-300">
-                {totalCount}
-              </TableCell>
-              <TableCell className="px-2 py-2 text-right text-indigo-700 whitespace-nowrap">
-                {formatVal(totalAmount)}
-              </TableCell>
+              {colOrder.map((col, i) => {
+                if (col === 'count')
+                  return (
+                    <TableCell
+                      key={col}
+                      className="px-2 py-2 text-center text-slate-900 border-r border-slate-300"
+                    >
+                      {totalCount}
+                    </TableCell>
+                  )
+                if (col === 'amount')
+                  return (
+                    <TableCell
+                      key={col}
+                      className="px-2 py-2 text-right text-indigo-700 whitespace-nowrap"
+                    >
+                      {formatVal(totalAmount)}
+                    </TableCell>
+                  )
+
+                if (i === 0)
+                  return (
+                    <TableCell
+                      key={col}
+                      className="px-2 py-2 border-r border-slate-300 text-right text-slate-900 uppercase"
+                    >
+                      Total Geral:
+                    </TableCell>
+                  )
+
+                return (
+                  <TableCell
+                    key={col}
+                    className="px-2 py-2 border-r border-slate-300 text-right text-slate-900 uppercase"
+                  ></TableCell>
+                )
+              })}
             </TableRow>
           </>
         )}
