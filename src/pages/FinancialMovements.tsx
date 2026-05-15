@@ -291,6 +291,183 @@ function DraggablePopoverContent({
   )
 }
 
+function TreeColumnFilter({
+  title,
+  options,
+  selected,
+  onChange,
+}: {
+  title: string
+  options: string[]
+  selected: string[]
+  onChange: (val: string[]) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({})
+  const [search, setSearch] = useState('')
+
+  const tree = useMemo(() => {
+    const root = new Map<string, string[]>()
+    options.forEach((opt) => {
+      const match = opt.match(/^(\d+)/)
+      const group = match ? `Grupo ${match[1]}` : 'Outros'
+      if (!root.has(group)) root.set(group, [])
+      root.get(group)!.push(opt)
+    })
+    return Array.from(root.entries()).sort((a, b) => a[0].localeCompare(b[0]))
+  }, [options])
+
+  const filteredTree = useMemo(() => {
+    if (!search) return tree
+    const s = search.toLowerCase()
+    return tree
+      .map(([group, items]) => {
+        const filteredItems = items.filter((item) => item.toLowerCase().includes(s))
+        return [group, filteredItems] as [string, string[]]
+      })
+      .filter(([_, items]) => items.length > 0)
+  }, [tree, search])
+
+  return (
+    <div className="flex items-center justify-between gap-1 w-full relative">
+      <span>{title}</span>
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon"
+            className={cn(
+              'h-6 w-6 text-white hover:bg-white/20 shrink-0',
+              selected.length > 0 && 'bg-white/20',
+            )}
+          >
+            <Filter className="h-3 w-3" />
+            {selected.length > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 flex h-2 w-2 items-center justify-center rounded-full bg-red-500 text-[8px] text-white"></span>
+            )}
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-[300px] p-0" align="start">
+          <div className="p-2 border-b border-slate-100">
+            <Input
+              placeholder="Buscar..."
+              className="h-8 text-xs"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
+          <div className="max-h-[250px] overflow-y-auto custom-scrollbar p-1">
+            {filteredTree.length === 0 && (
+              <div className="py-2 text-xs text-center text-slate-500">Nenhum encontrado.</div>
+            )}
+            {filteredTree.map(([group, items]) => {
+              const allSelected = items.length > 0 && items.every((i) => selected.includes(i))
+              const someSelected = items.some((i) => selected.includes(i))
+              const isExpanded = expandedGroups[group] || search !== ''
+
+              return (
+                <div key={group} className="flex flex-col gap-0.5 mb-1">
+                  <div className="flex items-center gap-1 group">
+                    <button
+                      className="h-5 w-5 flex items-center justify-center rounded hover:bg-slate-200"
+                      onClick={() => setExpandedGroups((p) => ({ ...p, [group]: !isExpanded }))}
+                    >
+                      {isExpanded ? (
+                        <ChevronDown className="h-3 w-3 text-slate-500" />
+                      ) : (
+                        <ChevronRight className="h-3 w-3 text-slate-500" />
+                      )}
+                    </button>
+                    <div
+                      className="flex flex-1 items-center gap-2 cursor-pointer rounded px-1 py-1 hover:bg-slate-100"
+                      onClick={() => {
+                        if (allSelected) {
+                          onChange(selected.filter((s) => !items.includes(s)))
+                        } else {
+                          const newSelected = new Set([...selected, ...items])
+                          onChange(Array.from(newSelected))
+                        }
+                      }}
+                    >
+                      <div
+                        className={cn(
+                          'flex h-3 w-3 shrink-0 items-center justify-center border rounded-sm',
+                          allSelected
+                            ? 'bg-primary border-primary text-primary-foreground'
+                            : someSelected
+                              ? 'bg-primary/50 border-primary text-primary-foreground'
+                              : 'border-slate-300',
+                        )}
+                      >
+                        {(allSelected || someSelected) && <Check className="h-2 w-2" />}
+                      </div>
+                      <span className="text-xs font-semibold text-slate-700">{group}</span>
+                    </div>
+                  </div>
+                  {isExpanded && (
+                    <div className="flex flex-col pl-6 pr-1">
+                      {items.map((item) => {
+                        const isSelected = selected.includes(item)
+                        return (
+                          <div
+                            key={item}
+                            className="flex items-center gap-2 cursor-pointer rounded px-1 py-1 hover:bg-slate-100"
+                            onClick={() => {
+                              if (isSelected) {
+                                onChange(selected.filter((s) => s !== item))
+                              } else {
+                                onChange([...selected, item])
+                              }
+                            }}
+                          >
+                            <div
+                              className={cn(
+                                'flex h-3 w-3 shrink-0 items-center justify-center border rounded-sm',
+                                isSelected
+                                  ? 'bg-primary border-primary text-primary-foreground'
+                                  : 'border-slate-300',
+                              )}
+                            >
+                              {isSelected && <Check className="h-2 w-2" />}
+                            </div>
+                            <span className="text-xs text-slate-600 truncate" title={item}>
+                              {item}
+                            </span>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+          <div className="p-1 border-t border-slate-100 bg-slate-50 flex flex-col gap-1">
+            <div className="flex items-center gap-1 w-full">
+              <Button
+                variant="secondary"
+                size="sm"
+                className="h-6 flex-1 text-[10px]"
+                onClick={() => onChange(options)}
+              >
+                Todos
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                className="h-6 flex-1 text-[10px]"
+                onClick={() => onChange([])}
+              >
+                Nenhum
+              </Button>
+            </div>
+          </div>
+        </PopoverContent>
+      </Popover>
+    </div>
+  )
+}
+
 function ColumnFilter({
   title,
   options,
@@ -782,11 +959,15 @@ function AccountingCrossReferenceTable({
   data,
   tableFontSize,
   getAccountingEntriesSimulation,
+  onDrillDown,
 }: {
   data: any[]
   tableFontSize?: number
   getAccountingEntriesSimulation: (row: any) => any
+  onDrillDown: (title: string, rows: any[]) => void
 }) {
+  const [ccFilter, setCcFilter] = useState<string[]>([])
+  const [cxFilter, setCxFilter] = useState<string[]>([])
   const [debitFilter, setDebitFilter] = useState<string[]>([])
   const [creditFilter, setCreditFilter] = useState<string[]>([])
 
@@ -794,10 +975,15 @@ function AccountingCrossReferenceTable({
     const map = new Map<
       string,
       {
+        cCusto: string
+        descricaoCCusto: string
+        contaCaixa: string
+        nomeCaixa: string
         debitAccount: any
         creditAccount: any
         count: number
         amount: number
+        rows: any[]
       }
     >()
     let unmappedAmount = 0
@@ -811,34 +997,53 @@ function AccountingCrossReferenceTable({
         continue
       }
 
-      const key = `${sim.debitAccount.id}_${sim.creditAccount.id}`
+      const cc = row.c_custo || ''
+      const cx = row.conta_caixa || ''
+
+      const key = `${cc}_${cx}_${sim.debitAccount.id}_${sim.creditAccount.id}`
       if (!map.has(key)) {
         map.set(key, {
+          cCusto: cc,
+          descricaoCCusto: row.descricao_c_custo || '',
+          contaCaixa: cx,
+          nomeCaixa: row.nome_caixa || '',
           debitAccount: sim.debitAccount,
           creditAccount: sim.creditAccount,
           count: 0,
           amount: 0,
+          rows: [],
         })
       }
       const group = map.get(key)!
       group.count += 1
       group.amount += amt
+      group.rows.push(row)
     }
     return { map, unmappedAmount }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data])
 
-  const formatKey = (item: any) =>
+  const formatConta = (item: any) =>
     `${item.account_code} ${item.classification ? item.classification + ' ' : ''}- ${item.account_name}`
+  const formatCc = (item: any) =>
+    item.cCusto ? `${item.cCusto} - ${item.descricaoCCusto}` : 'Sem C. Custo'
+  const formatCx = (item: any) =>
+    item.contaCaixa ? `${item.contaCaixa} - ${item.nomeCaixa}` : 'Sem Conta Caixa'
 
-  const { debitOptions, creditOptions } = useMemo(() => {
+  const { ccOptions, cxOptions, debitOptions, creditOptions } = useMemo(() => {
+    const cc = new Set<string>()
+    const cx = new Set<string>()
     const deb = new Set<string>()
     const cred = new Set<string>()
     crossMap.forEach((val) => {
-      deb.add(formatKey(val.debitAccount))
-      cred.add(formatKey(val.creditAccount))
+      cc.add(formatCc(val))
+      cx.add(formatCx(val))
+      deb.add(formatConta(val.debitAccount))
+      cred.add(formatConta(val.creditAccount))
     })
     return {
+      ccOptions: Array.from(cc).sort((a, b) => a.localeCompare(b)),
+      cxOptions: Array.from(cx).sort((a, b) => a.localeCompare(b)),
       debitOptions: Array.from(deb).sort((a, b) => a.localeCompare(b)),
       creditOptions: Array.from(cred).sort((a, b) => a.localeCompare(b)),
     }
@@ -846,22 +1051,37 @@ function AccountingCrossReferenceTable({
 
   const aggregated = useMemo(() => {
     let result = Array.from(crossMap.values())
+    if (ccFilter.length > 0) {
+      result = result.filter((item) => ccFilter.includes(formatCc(item)))
+    }
+    if (cxFilter.length > 0) {
+      result = result.filter((item) => cxFilter.includes(formatCx(item)))
+    }
     if (debitFilter.length > 0) {
-      result = result.filter((item) => debitFilter.includes(formatKey(item.debitAccount)))
+      result = result.filter((item) => debitFilter.includes(formatConta(item.debitAccount)))
     }
     if (creditFilter.length > 0) {
-      result = result.filter((item) => creditFilter.includes(formatKey(item.creditAccount)))
+      result = result.filter((item) => creditFilter.includes(formatConta(item.creditAccount)))
     }
     result.sort((a, b) => {
+      const c1 = a.cCusto || ''
+      const c2 = b.cCusto || ''
+      if (c1 !== c2) return c1.localeCompare(c2)
+
+      const cx1 = a.contaCaixa || ''
+      const cx2 = b.contaCaixa || ''
+      if (cx1 !== cx2) return cx1.localeCompare(cx2)
+
       const da = a.debitAccount.account_code || ''
       const db = b.debitAccount.account_code || ''
       if (da !== db) return da.localeCompare(db)
+
       const ca = a.creditAccount.account_code || ''
       const cb = b.creditAccount.account_code || ''
       return ca.localeCompare(cb)
     })
     return result
-  }, [crossMap, debitFilter, creditFilter])
+  }, [crossMap, ccFilter, cxFilter, debitFilter, creditFilter])
 
   const formatVal = (v: number) =>
     new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v)
@@ -871,32 +1091,48 @@ function AccountingCrossReferenceTable({
 
   return (
     <Table
-      className="w-full"
+      className="w-full min-w-[1200px]"
       style={{ fontSize: tableFontSize ? `${tableFontSize}px` : undefined }}
-      wrapperClassName="max-h-[500px] overflow-y-auto custom-scrollbar"
+      wrapperClassName="max-h-[600px] overflow-x-auto overflow-y-auto custom-scrollbar"
     >
-      <TableHeader className="sticky top-0 z-10 shadow-sm border-b border-slate-600">
+      <TableHeader className="sticky top-0 z-10 shadow-sm border-b border-slate-600 bg-indigo-950">
         <TableRow disableZebra className="bg-indigo-950 hover:bg-indigo-900 border-none">
-          <TableHead className="font-medium text-white text-left border-r border-slate-600 px-2 py-1 h-8 w-[40%]">
+          <TableHead className="font-medium text-white text-left border-r border-slate-600 px-2 py-1 h-8 min-w-[200px] whitespace-nowrap">
+            <TreeColumnFilter
+              title="Centro de Custo"
+              options={ccOptions}
+              selected={ccFilter}
+              onChange={setCcFilter}
+            />
+          </TableHead>
+          <TableHead className="font-medium text-white text-left border-r border-slate-600 px-2 py-1 h-8 min-w-[200px] whitespace-nowrap">
             <ColumnFilter
+              title="Conta Caixa/Banco"
+              options={cxOptions}
+              selected={cxFilter}
+              onChange={setCxFilter}
+            />
+          </TableHead>
+          <TableHead className="font-medium text-white text-left border-r border-slate-600 px-2 py-1 h-8 min-w-[250px] whitespace-nowrap">
+            <TreeColumnFilter
               title="Conta Débito (D)"
               options={debitOptions}
               selected={debitFilter}
               onChange={setDebitFilter}
             />
           </TableHead>
-          <TableHead className="font-medium text-white text-left border-r border-slate-600 px-2 py-1 h-8 w-[40%]">
-            <ColumnFilter
+          <TableHead className="font-medium text-white text-left border-r border-slate-600 px-2 py-1 h-8 min-w-[250px] whitespace-nowrap">
+            <TreeColumnFilter
               title="Conta Crédito (C)"
               options={creditOptions}
               selected={creditFilter}
               onChange={setCreditFilter}
             />
           </TableHead>
-          <TableHead className="w-[10%] text-center font-bold text-white border-r border-slate-600 px-2 py-1 h-8">
+          <TableHead className="w-[100px] text-center font-bold text-white border-r border-slate-600 px-2 py-1 h-8 whitespace-nowrap">
             Lançamentos
           </TableHead>
-          <TableHead className="w-[10%] text-right font-bold text-white px-2 py-1 h-8">
+          <TableHead className="w-[120px] text-right font-bold text-white px-2 py-1 h-8 whitespace-nowrap">
             Valor Total
           </TableHead>
         </TableRow>
@@ -907,13 +1143,23 @@ function AccountingCrossReferenceTable({
             key={idx}
             className="border-b border-slate-200 last:border-b-0 transition-colors"
           >
-            <TableCell className="px-2 py-1 border-r border-slate-200 text-slate-700 font-medium">
+            <TableCell className="px-2 py-1.5 border-r border-slate-200 text-slate-700 font-medium">
+              <span className="truncate max-w-[250px] inline-block" title={formatCc(item)}>
+                {formatCc(item)}
+              </span>
+            </TableCell>
+            <TableCell className="px-2 py-1.5 border-r border-slate-200 text-slate-700 font-medium">
+              <span className="truncate max-w-[250px] inline-block" title={formatCx(item)}>
+                {formatCx(item)}
+              </span>
+            </TableCell>
+            <TableCell className="px-2 py-1.5 border-r border-slate-200 text-slate-700 font-medium">
               <div className="flex items-center gap-1.5">
-                <span className="font-mono bg-blue-50 text-blue-800 px-1.5 py-0.5 rounded text-[0.85em] font-semibold border border-blue-200">
+                <span className="font-mono bg-blue-50 text-blue-800 px-1.5 py-0.5 rounded text-[0.85em] font-semibold border border-blue-200 shrink-0">
                   {item.debitAccount.account_code}
                 </span>
                 {item.debitAccount.classification && (
-                  <span className="font-mono text-[0.85em] font-semibold text-slate-500">
+                  <span className="font-mono text-[0.85em] font-semibold text-slate-500 shrink-0">
                     {item.debitAccount.classification}
                   </span>
                 )}
@@ -922,13 +1168,13 @@ function AccountingCrossReferenceTable({
                 </span>
               </div>
             </TableCell>
-            <TableCell className="px-2 py-1 border-r border-slate-200 text-slate-700 font-medium">
+            <TableCell className="px-2 py-1.5 border-r border-slate-200 text-slate-700 font-medium">
               <div className="flex items-center gap-1.5">
-                <span className="font-mono bg-rose-50 text-rose-800 px-1.5 py-0.5 rounded text-[0.85em] font-semibold border border-rose-200">
+                <span className="font-mono bg-rose-50 text-rose-800 px-1.5 py-0.5 rounded text-[0.85em] font-semibold border border-rose-200 shrink-0">
                   {item.creditAccount.account_code}
                 </span>
                 {item.creditAccount.classification && (
-                  <span className="font-mono text-[0.85em] font-semibold text-slate-500">
+                  <span className="font-mono text-[0.85em] font-semibold text-slate-500 shrink-0">
                     {item.creditAccount.classification}
                   </span>
                 )}
@@ -937,10 +1183,18 @@ function AccountingCrossReferenceTable({
                 </span>
               </div>
             </TableCell>
-            <TableCell className="px-2 py-1 text-center text-slate-700 border-r border-slate-200 font-semibold">
-              {item.count}
+            <TableCell className="px-2 py-1.5 text-center text-slate-700 border-r border-slate-200">
+              <Button
+                variant="link"
+                size="sm"
+                className="h-auto p-0 text-indigo-600 font-bold hover:text-indigo-800"
+                onClick={() => onDrillDown(`Lançamentos - ${formatCc(item)}`, item.rows)}
+                title="Ver Lançamentos"
+              >
+                {item.count}
+              </Button>
             </TableCell>
-            <TableCell className="px-2 py-1 text-right text-slate-700 font-bold">
+            <TableCell className="px-2 py-1.5 text-right text-slate-700 font-bold whitespace-nowrap">
               {formatVal(item.amount)}
             </TableCell>
           </TableRow>
@@ -948,7 +1202,7 @@ function AccountingCrossReferenceTable({
         {aggregated.length === 0 ? (
           <TableRow disableZebra>
             <TableCell
-              colSpan={4}
+              colSpan={6}
               className="text-center py-4 text-slate-500 border-t border-slate-200"
             >
               Nenhum dado para resumir.
@@ -959,7 +1213,7 @@ function AccountingCrossReferenceTable({
             {unmappedAmount > 0 && (
               <TableRow disableZebra className="bg-rose-50/50 border-t border-slate-200">
                 <TableCell
-                  colSpan={2}
+                  colSpan={4}
                   className="px-2 py-2 border-r border-slate-200 text-slate-600 italic flex items-center gap-2"
                 >
                   <AlertCircle className="h-4 w-4 text-rose-500" />
@@ -968,7 +1222,7 @@ function AccountingCrossReferenceTable({
                 <TableCell className="px-2 py-2 text-center text-rose-600 font-medium border-r border-slate-200">
                   -
                 </TableCell>
-                <TableCell className="px-2 py-2 text-right text-rose-600 font-bold">
+                <TableCell className="px-2 py-2 text-right text-rose-600 font-bold whitespace-nowrap">
                   {formatVal(unmappedAmount)}
                 </TableCell>
               </TableRow>
@@ -978,7 +1232,7 @@ function AccountingCrossReferenceTable({
               className="bg-slate-100 font-bold border-t-2 border-slate-300 shadow-inner"
             >
               <TableCell
-                colSpan={2}
+                colSpan={4}
                 className="px-2 py-2 border-r border-slate-300 text-right text-slate-900 uppercase"
               >
                 Total Geral:
@@ -986,7 +1240,7 @@ function AccountingCrossReferenceTable({
               <TableCell className="px-2 py-2 text-center text-slate-900 border-r border-slate-300">
                 {totalCount}
               </TableCell>
-              <TableCell className="px-2 py-2 text-right text-indigo-700">
+              <TableCell className="px-2 py-2 text-right text-indigo-700 whitespace-nowrap">
                 {formatVal(totalAmount)}
               </TableCell>
             </TableRow>
@@ -2078,21 +2332,13 @@ export default function FinancialMovements() {
     let debitAccount = null
     let creditAccount = null
 
-    if (isPrefix1) {
-      if (val > 0) {
-        debitAccount = bankChartAccount
-        creditAccount = mappedCCAccount
-      } else {
+    if (isPrefix2or3) {
+      if (val < 0) {
         debitAccount = mappedCCAccount
         creditAccount = bankChartAccount
-      }
-    } else if (isPrefix2or3) {
-      if (val > 0) {
+      } else {
         debitAccount = bankChartAccount
         creditAccount = mappedCCAccount
-      } else {
-        debitAccount = mappedCCAccount
-        creditAccount = bankChartAccount
       }
     } else {
       if (val > 0) {
@@ -7056,6 +7302,11 @@ export default function FinancialMovements() {
                     data={resumoData}
                     tableFontSize={tableFontSize}
                     getAccountingEntriesSimulation={getAccountingEntriesSimulation}
+                    onDrillDown={(title, rows) => {
+                      setDrillDownTitle(title)
+                      setDrillDownData(rows)
+                      setDrillDownOpen(true)
+                    }}
                   />
                 </CardContent>
               </Card>
