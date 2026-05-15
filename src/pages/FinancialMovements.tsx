@@ -3298,9 +3298,24 @@ export default function FinancialMovements() {
         )
       }
 
+      // Atualização otimista
+      if (movementsToUpdate.length > 0) {
+        setSummaryData((prev) =>
+          prev.map((row) =>
+            movementsToUpdate.includes(row.id) ? { ...row, status: 'Concluído' } : row,
+          ),
+        )
+        setData((prev) =>
+          prev.map((row) =>
+            movementsToUpdate.includes(row.id) ? { ...row, status: 'Concluído' } : row,
+          ),
+        )
+      }
+
       setGenerateModalOpen(false)
       setGenerateScope('global')
       setSelectedIds([])
+      setDryRunPage(0)
       setRefreshKey((k) => k + 1)
     } catch (e: any) {
       toast.error('Erro ao gerar lançamentos: ' + e.message, { id: toastId })
@@ -3387,6 +3402,37 @@ export default function FinancialMovements() {
         .update({ mapped_account_id: selectedAccountId })
         .eq('id', mappingRow.id)
     }
+
+    setSummaryData((prev) =>
+      prev.map((row) => {
+        if (
+          cCustoCode &&
+          row.c_custo &&
+          row.c_custo.trim().toUpperCase() === cCustoCode.trim().toUpperCase()
+        ) {
+          return { ...row, mapped_account_id: selectedAccountId }
+        }
+        if (!cCustoCode && row.id === mappingRow.id) {
+          return { ...row, mapped_account_id: selectedAccountId }
+        }
+        return row
+      }),
+    )
+    setData((prev) =>
+      prev.map((row) => {
+        if (
+          cCustoCode &&
+          row.c_custo &&
+          row.c_custo.trim().toUpperCase() === cCustoCode.trim().toUpperCase()
+        ) {
+          return { ...row, mapped_account_id: selectedAccountId }
+        }
+        if (!cCustoCode && row.id === mappingRow.id) {
+          return { ...row, mapped_account_id: selectedAccountId }
+        }
+        return row
+      }),
+    )
 
     toast.success('Mapeamento salvo com sucesso!')
     setMappingRow(null)
@@ -3900,8 +3946,12 @@ export default function FinancialMovements() {
       }
       setDeletionState((prev) => ({ ...prev, status: 'Completed', progress: 100 }))
       toast.success('Todos os registros foram excluídos com sucesso!')
+      setSummaryData([])
+      setData([])
+      setTotalCount(0)
       setSelectedIds([])
       setPage(0)
+      setDryRunPage(0)
       setRefreshKey((k) => k + 1)
     } catch (error: any) {
       setDeletionState((prev) => ({ ...prev, status: 'Error' }))
@@ -3946,8 +3996,17 @@ export default function FinancialMovements() {
         toast.success(
           `${idsToDelete.length} registros removidos do Dry Run (marcados como Ignorado). Eles continuam na Grade de Movimentos.`,
         )
+        setSummaryData((prev) =>
+          prev.map((row) => (idsToDelete.includes(row.id) ? { ...row, status: 'Ignorado' } : row)),
+        )
+        setData((prev) =>
+          prev.map((row) => (idsToDelete.includes(row.id) ? { ...row, status: 'Ignorado' } : row)),
+        )
       } else {
         toast.success(`${idsToDelete.length} registros excluídos com sucesso!`)
+        setSummaryData((prev) => prev.filter((row) => !idsToDelete.includes(row.id)))
+        setData((prev) => prev.filter((row) => !idsToDelete.includes(row.id)))
+        setTotalCount((prev) => prev - idsToDelete.length)
       }
 
       setSelectedIds([])
@@ -5822,6 +5881,16 @@ export default function FinancialMovements() {
                       .in('id', selectedIds)
                     if (!error) {
                       toast.success(`${selectedIds.length} registros restaurados para "Pendente"!`)
+                      setSummaryData((prev) =>
+                        prev.map((row) =>
+                          selectedIds.includes(row.id) ? { ...row, status: 'Pendente' } : row,
+                        ),
+                      )
+                      setData((prev) =>
+                        prev.map((row) =>
+                          selectedIds.includes(row.id) ? { ...row, status: 'Pendente' } : row,
+                        ),
+                      )
                       setSelectedIds([])
                       setRefreshKey((k) => k + 1)
                     } else {
@@ -10394,144 +10463,153 @@ export default function FinancialMovements() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {currentDryRunData.map((row) => {
-                    const sim = getAccountingEntriesSimulation(
-                      row,
-                      generateOptions.valueBase as 'valor' | 'valor_liquido',
-                    )
-                    const dtValue = row[generateOptions.dateBase as keyof typeof row]
-                    const dt = dtValue ? formatDate(dtValue) : '-'
-                    const cc = row.c_custo || 'Sem C.Custo'
-                    const hist = row.historico || '-'
-                    const val = Number(
-                      row[generateOptions.valueBase as keyof typeof row] !== undefined &&
-                        row[generateOptions.valueBase as keyof typeof row] !== null
-                        ? row[generateOptions.valueBase as keyof typeof row]
-                        : row.valor_liquido || row.valor || 0,
-                    )
-                    const formatCurrency = (v: number) =>
-                      new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(
-                        v,
-                      )
-
-                    const isError = !sim.debitAccount || !sim.creditAccount || !dtValue || !val
-
-                    return (
-                      <TableRow
-                        key={row.id}
-                        className={cn(
-                          'transition-colors border-0 border-b border-slate-100',
-                          isError ? 'bg-red-50 hover:bg-red-100' : 'hover:bg-slate-50',
-                        )}
-                      >
-                        <TableCell className="px-2 py-1 text-center align-middle border-r border-slate-200">
-                          <Checkbox
-                            checked={selectedIds.includes(row.id)}
-                            onCheckedChange={() => toggleRow(row.id)}
-                          />
-                        </TableCell>
-                        <TableCell
-                          className={cn(
-                            'whitespace-nowrap border-r border-slate-200',
-                            isError ? 'text-red-700' : 'text-slate-600',
-                          )}
-                        >
-                          {dt}
-                        </TableCell>
-                        <TableCell className="border-r border-slate-200">
-                          {sim.debitAccount ? (
-                            <div className="flex items-center gap-1.5">
-                              <span
-                                className="font-mono bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded text-[0.85em] font-semibold border border-blue-200"
-                                title="Código Reduzido"
-                              >
-                                {sim.debitAccount.account_code}
-                              </span>
-                              {sim.debitAccount.classification && (
-                                <span
-                                  className="font-mono text-[0.85em] font-semibold text-slate-600"
-                                  title="Classificação"
-                                >
-                                  {sim.debitAccount.classification}
-                                </span>
-                              )}
-                              <span
-                                className="truncate max-w-[200px] text-slate-700"
-                                title={sim.debitAccount.account_name}
-                              >
-                                {sim.debitAccount.account_name}
-                              </span>
-                            </div>
-                          ) : (
-                            <span className="text-red-500 italic text-[0.9em] font-semibold">
-                              Pendente
-                            </span>
-                          )}
-                        </TableCell>
-                        <TableCell className="border-r border-slate-200">
-                          {sim.creditAccount ? (
-                            <div className="flex items-center gap-1.5">
-                              <span
-                                className="font-mono bg-rose-100 text-rose-800 px-1.5 py-0.5 rounded text-[0.85em] font-semibold border border-rose-200"
-                                title="Código Reduzido"
-                              >
-                                {sim.creditAccount.account_code}
-                              </span>
-                              {sim.creditAccount.classification && (
-                                <span
-                                  className="font-mono text-[0.85em] font-semibold text-slate-600"
-                                  title="Classificação"
-                                >
-                                  {sim.creditAccount.classification}
-                                </span>
-                              )}
-                              <span
-                                className="truncate max-w-[200px] text-slate-700"
-                                title={sim.creditAccount.account_name}
-                              >
-                                {sim.creditAccount.account_name}
-                              </span>
-                            </div>
-                          ) : (
-                            <span className="text-red-500 italic text-[0.9em] font-semibold">
-                              Pendente
-                            </span>
-                          )}
-                        </TableCell>
-                        <TableCell
-                          className={cn(
-                            'whitespace-nowrap font-bold border-r border-slate-200',
-                            isError ? 'text-red-700' : 'text-slate-900',
-                          )}
-                        >
-                          {formatCurrency(Math.abs(val))}
-                        </TableCell>
-                        <TableCell
-                          className={cn(
-                            'whitespace-nowrap border-r border-slate-200',
-                            isError ? 'text-red-700' : 'text-slate-600',
-                          )}
-                        >
-                          {cc}
-                        </TableCell>
-                        <TableCell
-                          className={cn(
-                            'max-w-[300px] truncate',
-                            isError ? 'text-red-700' : 'text-slate-600',
-                          )}
-                          title={hist}
-                        >
-                          {hist}
-                        </TableCell>
-                      </TableRow>
-                    )
-                  })}
-                  {currentDryRunData.length === 0 && (
+                  {loading ? (
+                    <TableRow>
+                      <TableCell colSpan={7} className="h-48 text-center text-slate-500 border-0">
+                        <Loader2 className="h-6 w-6 animate-spin mx-auto text-indigo-600 mb-2" />
+                        Atualizando simulação...
+                      </TableCell>
+                    </TableRow>
+                  ) : currentDryRunData.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={7} className="h-48 text-center text-slate-500 border-0">
                         Nenhum registro para exibir.
                       </TableCell>
                     </TableRow>
+                  ) : (
+                    currentDryRunData.map((row) => {
+                      const sim = getAccountingEntriesSimulation(
+                        row,
+                        generateOptions.valueBase as 'valor' | 'valor_liquido',
+                      )
+                      const dtValue = row[generateOptions.dateBase as keyof typeof row]
+                      const dt = dtValue ? formatDate(dtValue) : '-'
+                      const cc = row.c_custo || 'Sem C.Custo'
+                      const hist = row.historico || '-'
+                      const val = Number(
+                        row[generateOptions.valueBase as keyof typeof row] !== undefined &&
+                          row[generateOptions.valueBase as keyof typeof row] !== null
+                          ? row[generateOptions.valueBase as keyof typeof row]
+                          : row.valor_liquido || row.valor || 0,
+                      )
+                      const formatCurrency = (v: number) =>
+                        new Intl.NumberFormat('pt-BR', {
+                          style: 'currency',
+                          currency: 'BRL',
+                        }).format(v)
+
+                      const isError = !sim.debitAccount || !sim.creditAccount || !dtValue || !val
+
+                      return (
+                        <TableRow
+                          key={row.id}
+                          className={cn(
+                            'transition-colors border-0 border-b border-slate-100',
+                            isError ? 'bg-red-50 hover:bg-red-100' : 'hover:bg-slate-50',
+                          )}
+                        >
+                          <TableCell className="px-2 py-1 text-center align-middle border-r border-slate-200">
+                            <Checkbox
+                              checked={selectedIds.includes(row.id)}
+                              onCheckedChange={() => toggleRow(row.id)}
+                            />
+                          </TableCell>
+                          <TableCell
+                            className={cn(
+                              'whitespace-nowrap border-r border-slate-200',
+                              isError ? 'text-red-700' : 'text-slate-600',
+                            )}
+                          >
+                            {dt}
+                          </TableCell>
+                          <TableCell className="border-r border-slate-200">
+                            {sim.debitAccount ? (
+                              <div className="flex items-center gap-1.5">
+                                <span
+                                  className="font-mono bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded text-[0.85em] font-semibold border border-blue-200"
+                                  title="Código Reduzido"
+                                >
+                                  {sim.debitAccount.account_code}
+                                </span>
+                                {sim.debitAccount.classification && (
+                                  <span
+                                    className="font-mono text-[0.85em] font-semibold text-slate-600"
+                                    title="Classificação"
+                                  >
+                                    {sim.debitAccount.classification}
+                                  </span>
+                                )}
+                                <span
+                                  className="truncate max-w-[200px] text-slate-700"
+                                  title={sim.debitAccount.account_name}
+                                >
+                                  {sim.debitAccount.account_name}
+                                </span>
+                              </div>
+                            ) : (
+                              <span className="text-red-500 italic text-[0.9em] font-semibold">
+                                Pendente
+                              </span>
+                            )}
+                          </TableCell>
+                          <TableCell className="border-r border-slate-200">
+                            {sim.creditAccount ? (
+                              <div className="flex items-center gap-1.5">
+                                <span
+                                  className="font-mono bg-rose-100 text-rose-800 px-1.5 py-0.5 rounded text-[0.85em] font-semibold border border-rose-200"
+                                  title="Código Reduzido"
+                                >
+                                  {sim.creditAccount.account_code}
+                                </span>
+                                {sim.creditAccount.classification && (
+                                  <span
+                                    className="font-mono text-[0.85em] font-semibold text-slate-600"
+                                    title="Classificação"
+                                  >
+                                    {sim.creditAccount.classification}
+                                  </span>
+                                )}
+                                <span
+                                  className="truncate max-w-[200px] text-slate-700"
+                                  title={sim.creditAccount.account_name}
+                                >
+                                  {sim.creditAccount.account_name}
+                                </span>
+                              </div>
+                            ) : (
+                              <span className="text-red-500 italic text-[0.9em] font-semibold">
+                                Pendente
+                              </span>
+                            )}
+                          </TableCell>
+                          <TableCell
+                            className={cn(
+                              'whitespace-nowrap font-bold border-r border-slate-200',
+                              isError ? 'text-red-700' : 'text-slate-900',
+                            )}
+                          >
+                            {formatCurrency(Math.abs(val))}
+                          </TableCell>
+                          <TableCell
+                            className={cn(
+                              'whitespace-nowrap border-r border-slate-200',
+                              isError ? 'text-red-700' : 'text-slate-600',
+                            )}
+                          >
+                            {cc}
+                          </TableCell>
+                          <TableCell
+                            className={cn(
+                              'max-w-[300px] truncate',
+                              isError ? 'text-red-700' : 'text-slate-600',
+                            )}
+                            title={hist}
+                          >
+                            {hist}
+                          </TableCell>
+                        </TableRow>
+                      )
+                    })
                   )}
                 </TableBody>
               </Table>
