@@ -3815,29 +3815,30 @@ export default function FinancialMovements() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <div
-            className="hidden sm:flex items-center gap-1 bg-white rounded-md p-0.5 border border-slate-200 shadow-sm mr-2"
-            title="Tamanho da Fonte das Tabelas"
-          >
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 text-[12px] font-bold text-slate-600 hover:text-slate-900 bg-transparent"
-              onClick={() => setTableFontSize((p) => Math.max(8, p - 1))}
-            >
-              A-
-            </Button>
-            <span className="text-[12px] font-medium text-slate-500 w-5 text-center select-none">
-              {tableFontSize}
-            </span>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 text-[14px] font-bold text-slate-600 hover:text-slate-900 bg-transparent"
-              onClick={() => setTableFontSize((p) => Math.min(24, p + 1))}
-            >
-              A+
-            </Button>
+          <div className="hidden sm:flex items-center gap-1 bg-white rounded-md p-0.5 border border-slate-200 shadow-sm mr-2">
+            <div className="flex items-center gap-1" title="Tamanho da Fonte das Tabelas">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-[12px] font-bold text-slate-600 hover:text-slate-900 bg-transparent"
+                onClick={() => setTableFontSize((p) => Math.max(8, p - 1))}
+              >
+                A-
+              </Button>
+              <span className="text-[12px] font-medium text-slate-500 w-5 text-center select-none">
+                {tableFontSize}
+              </span>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-[14px] font-bold text-slate-600 hover:text-slate-900 bg-transparent"
+                onClick={() => setTableFontSize((p) => Math.min(24, p + 1))}
+              >
+                A+
+              </Button>
+            </div>
+            <div className="w-px h-4 bg-slate-200 mx-1"></div>
+            <TableSettingsControls prefs={prefs} updatePrefs={updatePrefs} />
           </div>
           <Button
             variant="outline"
