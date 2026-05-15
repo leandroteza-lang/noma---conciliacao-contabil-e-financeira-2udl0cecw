@@ -132,6 +132,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog'
+import { Skeleton } from '@/components/ui/skeleton'
 
 const getGridlineStyle = (prefs: any) => {
   if (!prefs?.showGridlines) return undefined
@@ -6633,34 +6634,42 @@ export default function FinancialMovements() {
                 <div className="flex flex-1 overflow-x-auto custom-scrollbar pb-2 xl:pb-0 items-center justify-start gap-4 w-full">
                   <div className="card-plano-contas bg-bruto">
                     <span className="titulo">Total (Bruto)</span>
-                    <span
-                      className="valor"
-                      title={new Intl.NumberFormat('pt-BR', {
-                        style: 'currency',
-                        currency: 'BRL',
-                      }).format(totals.valor)}
-                    >
-                      {new Intl.NumberFormat('pt-BR', {
-                        style: 'currency',
-                        currency: 'BRL',
-                      }).format(totals.valor)}
-                    </span>
+                    {loading ? (
+                      <Skeleton className="h-8 w-24 bg-white/20 mt-1 rounded-md" />
+                    ) : (
+                      <span
+                        className="valor"
+                        title={new Intl.NumberFormat('pt-BR', {
+                          style: 'currency',
+                          currency: 'BRL',
+                        }).format(totals.valor)}
+                      >
+                        {new Intl.NumberFormat('pt-BR', {
+                          style: 'currency',
+                          currency: 'BRL',
+                        }).format(totals.valor)}
+                      </span>
+                    )}
                     <CircleDollarSign className="icone" />
                   </div>
                   <div className="card-plano-contas bg-liquido">
                     <span className="titulo">Total (Líquido)</span>
-                    <span
-                      className="valor"
-                      title={new Intl.NumberFormat('pt-BR', {
-                        style: 'currency',
-                        currency: 'BRL',
-                      }).format(totals.valor_liquido)}
-                    >
-                      {new Intl.NumberFormat('pt-BR', {
-                        style: 'currency',
-                        currency: 'BRL',
-                      }).format(totals.valor_liquido)}
-                    </span>
+                    {loading ? (
+                      <Skeleton className="h-8 w-24 bg-white/20 mt-1 rounded-md" />
+                    ) : (
+                      <span
+                        className="valor"
+                        title={new Intl.NumberFormat('pt-BR', {
+                          style: 'currency',
+                          currency: 'BRL',
+                        }).format(totals.valor_liquido)}
+                      >
+                        {new Intl.NumberFormat('pt-BR', {
+                          style: 'currency',
+                          currency: 'BRL',
+                        }).format(totals.valor_liquido)}
+                      </span>
+                    )}
                     <Wallet className="icone" />
                   </div>
                   <div
@@ -6671,6 +6680,7 @@ export default function FinancialMovements() {
                         : '',
                     )}
                     onClick={() => {
+                      if (loading) return
                       const isPos =
                         filters['natureza']?.length === 1 && filters['natureza'][0] === 'positivo'
                       setFilters((p) => ({ ...p, natureza: isPos ? [] : ['positivo'] }))
@@ -6678,18 +6688,22 @@ export default function FinancialMovements() {
                     }}
                   >
                     <span className="titulo">Entradas / Positivos</span>
-                    <span
-                      className="valor"
-                      title={new Intl.NumberFormat('pt-BR', {
-                        style: 'currency',
-                        currency: 'BRL',
-                      }).format(totals.entradas)}
-                    >
-                      {new Intl.NumberFormat('pt-BR', {
-                        style: 'currency',
-                        currency: 'BRL',
-                      }).format(totals.entradas)}
-                    </span>
+                    {loading ? (
+                      <Skeleton className="h-8 w-24 bg-white/20 mt-1 rounded-md" />
+                    ) : (
+                      <span
+                        className="valor"
+                        title={new Intl.NumberFormat('pt-BR', {
+                          style: 'currency',
+                          currency: 'BRL',
+                        }).format(totals.entradas)}
+                      >
+                        {new Intl.NumberFormat('pt-BR', {
+                          style: 'currency',
+                          currency: 'BRL',
+                        }).format(totals.entradas)}
+                      </span>
+                    )}
                     <TrendingUp className="icone" />
                   </div>
                   <div
@@ -6700,6 +6714,7 @@ export default function FinancialMovements() {
                         : '',
                     )}
                     onClick={() => {
+                      if (loading) return
                       const isNeg =
                         filters['natureza']?.length === 1 && filters['natureza'][0] === 'negativo'
                       setFilters((p) => ({ ...p, natureza: isNeg ? [] : ['negativo'] }))
@@ -6707,18 +6722,22 @@ export default function FinancialMovements() {
                     }}
                   >
                     <span className="titulo">Saídas / Negativos</span>
-                    <span
-                      className="valor"
-                      title={new Intl.NumberFormat('pt-BR', {
-                        style: 'currency',
-                        currency: 'BRL',
-                      }).format(totals.saidas)}
-                    >
-                      {new Intl.NumberFormat('pt-BR', {
-                        style: 'currency',
-                        currency: 'BRL',
-                      }).format(totals.saidas)}
-                    </span>
+                    {loading ? (
+                      <Skeleton className="h-8 w-24 bg-white/20 mt-1 rounded-md" />
+                    ) : (
+                      <span
+                        className="valor"
+                        title={new Intl.NumberFormat('pt-BR', {
+                          style: 'currency',
+                          currency: 'BRL',
+                        }).format(totals.saidas)}
+                      >
+                        {new Intl.NumberFormat('pt-BR', {
+                          style: 'currency',
+                          currency: 'BRL',
+                        }).format(totals.saidas)}
+                      </span>
+                    )}
                     <TrendingDown className="icone" />
                   </div>
                 </div>
@@ -7144,11 +7163,33 @@ export default function FinancialMovements() {
                 </TableHeader>
                 <TableBody>
                   {loading ? (
-                    <TableRow disableZebra>
-                      <TableCell colSpan={visibleCount} className="text-center h-48">
-                        <Loader2 className="h-6 w-6 animate-spin mx-auto text-primary" />
-                      </TableCell>
-                    </TableRow>
+                    Array.from({ length: 15 }).map((_, idx) => (
+                      <TableRow key={idx} disableZebra className="border-0">
+                        <TableCell
+                          className="px-2 py-2 text-center align-middle border-0"
+                          style={getGridlineStyle()}
+                        >
+                          <Skeleton className="h-4 w-4 rounded mx-auto" />
+                        </TableCell>
+                        {columnOrder
+                          .filter((key) => visibleColumns[key] !== false)
+                          .map((key) => (
+                            <TableCell
+                              key={key}
+                              className="px-2 py-2 border-0"
+                              style={getGridlineStyle()}
+                            >
+                              <Skeleton className="h-4 w-full min-w-[60px] max-w-[200px] rounded" />
+                            </TableCell>
+                          ))}
+                        <TableCell
+                          className="px-2 py-2 text-center border-0"
+                          style={getGridlineStyle()}
+                        >
+                          <Skeleton className="h-6 w-12 rounded mx-auto" />
+                        </TableCell>
+                      </TableRow>
+                    ))
                   ) : data.length === 0 ? (
                     <TableRow disableZebra>
                       <TableCell colSpan={visibleCount} className="text-center h-48 text-slate-500">
