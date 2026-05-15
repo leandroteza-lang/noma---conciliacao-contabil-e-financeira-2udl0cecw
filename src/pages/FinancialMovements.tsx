@@ -853,6 +853,8 @@ const tableHeaders = [
   { label: 'Dt Compens.', key: 'dt_compens', align: 'center' },
   { label: 'Conta/Caixa', key: 'conta_caixa', align: 'center' },
   { label: 'Nome Caixa', key: 'nome_caixa' },
+  { label: 'Conta Débito (Prevista)', key: 'conta_debito', className: 'min-w-[250px]' },
+  { label: 'Conta Crédito (Prevista)', key: 'conta_credito', className: 'min-w-[250px]' },
   { label: 'Conta/Caixa Destino', key: 'conta_caixa_destino', align: 'center' },
   { label: 'Forma Pagto', key: 'forma_pagto' },
   { label: 'C.Custo', key: 'c_custo' },
@@ -876,7 +878,7 @@ const tableHeaders = [
   { label: 'C.Corrente', key: 'c_corrente' },
   { label: 'Cód.Cli/For', key: 'cod_cli_for' },
   { label: 'Departamento', key: 'departamento', align: 'center' },
-  { label: 'Status Importação', key: 'status', align: 'center' },
+  { label: 'Status Lançamento', key: 'status', align: 'center' },
 ]
 
 const defaultTabsOrderConfig = [
@@ -1544,9 +1546,13 @@ export default function FinancialMovements() {
   const [chartOfAccounts, setChartOfAccounts] = useState<any[]>([])
   const [costCenters, setCostCenters] = useState<any[]>([])
   const [mappings, setMappings] = useState<any[]>([])
+  const [bankAccounts, setBankAccounts] = useState<any[]>([])
   const [mappingRow, setMappingRow] = useState<any | null>(null)
   const [comboboxOpen, setComboboxOpen] = useState(false)
   const [selectedAccountId, setSelectedAccountId] = useState<string>('')
+  
+  const [generateModalOpen, setGenerateModalOpen] = useState(false)
+  const [isGeneratingEntries, setIsGeneratingEntries] = useState(false)
 
   const fetchAuxData = async () => {
     if (!user) return
@@ -1572,23 +1578,194 @@ export default function FinancialMovements() {
       return all
     }
 
-    const [coa, cc, map] = await Promise.all([
+    const [coa, cc, map, ba] = await Promise.all([
       fetchAll(
         'chart_of_accounts',
         'id, account_code, account_name, classification, account_level, organization_id',
       ),
       fetchAll('cost_centers', 'id, code, description, organization_id, parent_id, classification'),
       fetchAll('account_mapping', 'cost_center_id, chart_account_id, organization_id'),
+      fetchAll('bank_accounts', 'id, code, description, account_number, account_code, organization_id'),
     ])
 
     setChartOfAccounts(coa)
     setCostCenters(cc)
     setMappings(map)
+    setBankAccounts(ba)
   }
 
   useEffect(() => {
     fetchAuxData()
   }, [user, refreshKey])
+
+  const getCostCenterId = (code: string | null, orgId: string | null) => {
+    if (!code || !orgId) return null
+    const cleanCode = code.trim().toUpperCase()
+    const cc = costCenters.find(c => c.organization_id === orgId && (c.code || '').trim().toUpperCase() === cleanCode)
+    return cc ? cc.id : null
+  }
+
+  const getAccountingEntriesSimulation = (row: any) => {
+    const mappedCCAccount = getMappedAccount(row)
+    
+    const cleanContaCaixa = (row.conta_caixa || '').trim().toUpperCase()
+    const cleanNomeCaixa = (row.nome_caixa || '').trim().toUpperCase()
+    const bankAccount = bankAccounts.find(ba => {
+      if (ba.organization_id !== row.organization_id) return false;
+      const baCode = (ba.code || '').trim().toUpperCase()
+      const baDesc = (ba.description || '').trim().toUpperCase()
+      const baAccNum = (ba.account_number || '').trim().toUpperCase()
+      
+      if (cleanContaCaixa && (baCode === cleanContaCaixa || baAccNum === cleanContaCaixa)) return true;
+      if (cleanNomeCaixa && baDesc === cleanNomeCaixa) return true;
+      return false;
+    });
+
+    let bankChartAccount = null;
+    if (bankAccount && bankAccount.account_code) {
+       bankChartAccount = chartOfAccounts.find(coa => coa.id === bankAccount.account_code || coa.account_code === bankAccount.account_code);
+    }
+
+    const ccCode = row.c_custo || '';
+    const prefix = ccCode.trim().charAt(0);
+    const isPrefix1 = prefix === '1';
+    const isPrefix2or3 = prefix === '2' || prefix === '3';
+    
+    const val = Number(row.valor_liquido || row.valor || 0);
+    
+    let debitAccount = null;
+    let creditAccount = null;
+    
+    if (isPrefix1) {
+      if (val > 0) {
+        debitAccount = bankChartAccount;
+        creditAccount = mappedCCAccount;
+      } else {
+        debitAccount = mappedCCAccount;
+        creditAccount = bankChartAccount;
+      }
+    } else if (isPrefix2or3) {
+      if (val > 0) {
+        debitAccount = mappedCCAccount;
+        creditAccount = bankChartAccount;
+      } else {
+        debitAccount = bankChartAccount;
+        creditAccount = mappedCCAccount;
+      }
+    } else {
+       if (val > 0) {
+         debitAccount = bankChartAccount;
+         creditAccount = mappedCCAccount;
+       } else {
+         debitAccount = mappedCCAccount;
+         creditAccount = bankChartAccount;
+       }
+    }
+    
+    return { debitAccount, creditAccount, isMapped: !!debitAccount && !!creditAccount }
+  }
+
+  const startGenerateEntries = async () => {
+    if (!user) return
+    setIsGeneratingEntries(true)
+    const toastId = toast.loading('Gerando lançamentos contábeis...')
+    try {
+      let idsToProcess = selectedIds.length > 0 ? selectedIds : [];
+      if (idsToProcess.length === 0) {
+         let allData: any[] = []
+         let hasMore = true
+         let pageIdx = 0
+         const limit = 1000
+         while (hasMore) {
+           let q = supabase.from('erp_financial_movements').select('id, status').is('deleted_at', null).neq('status', 'Concluído')
+           q = applyQueryFilters(q, search, filters)
+           const { data, error } = await q.range(pageIdx * limit, (pageIdx + 1) * limit - 1)
+           if (error) throw error
+           if (!data || data.length === 0) {
+             hasMore = false
+           } else {
+             allData = allData.concat(data)
+             pageIdx++
+             if (data.length < limit) hasMore = false
+           }
+         }
+         idsToProcess = allData.map(d => d.id)
+      } else {
+         const { data: selData } = await supabase.from('erp_financial_movements').select('id, status').in('id', selectedIds).neq('status', 'Concluído')
+         idsToProcess = selData ? selData.map(d => d.id) : []
+      }
+
+      if (idsToProcess.length === 0) {
+         toast.info('Nenhum movimento pendente para gerar lançamento.', { id: toastId })
+         setGenerateModalOpen(false)
+         setIsGeneratingEntries(false)
+         return
+      }
+
+      const rowsToProcess = []
+      const chunkSize = 200
+      for (let i = 0; i < idsToProcess.length; i += chunkSize) {
+        const chunk = idsToProcess.slice(i, i + chunkSize)
+        const { data } = await supabase.from('erp_financial_movements').select('*, organizations(name)').in('id', chunk)
+        if (data) rowsToProcess.push(...data)
+      }
+
+      const entriesToInsert = []
+      const movementsToUpdate = []
+      let errorsCount = 0
+
+      for (const row of rowsToProcess) {
+         const sim = getAccountingEntriesSimulation(row)
+         if (!sim.debitAccount || !sim.creditAccount || !row.data_emissao) {
+            errorsCount++
+            continue
+         }
+
+         const entryId = crypto.randomUUID()
+         entriesToInsert.push({
+           id: entryId,
+           organization_id: row.organization_id,
+           entry_date: row.data_emissao,
+           amount: Math.abs(Number(row.valor_liquido || row.valor || 0)),
+           description: row.historico || 'Lançamento gerado via TGA',
+           debit_account_id: sim.debitAccount.id,
+           credit_account_id: sim.creditAccount.id,
+           status: 'Concluído',
+           cost_center_id: getCostCenterId(row.c_custo, row.organization_id)
+         })
+         
+         movementsToUpdate.push(row.id)
+      }
+
+      if (entriesToInsert.length > 0) {
+         for (let i = 0; i < entriesToInsert.length; i += 200) {
+            const chunk = entriesToInsert.slice(i, i + 200)
+            const { error } = await supabase.from('accounting_entries').insert(chunk)
+            if (error) throw error
+         }
+         
+         for (let i = 0; i < movementsToUpdate.length; i += 200) {
+            const chunk = movementsToUpdate.slice(i, i + 200)
+            const { error } = await supabase.from('erp_financial_movements').update({ status: 'Concluído' }).in('id', chunk)
+            if (error) throw error
+         }
+      }
+
+      if (entriesToInsert.length > 0) {
+        toast.success(`${entriesToInsert.length} lançamentos gerados com sucesso! ${errorsCount > 0 ? \`(\${errorsCount} ignorados por pendências)\` : ''}`, { id: toastId })
+      } else {
+        toast.error(`Nenhum lançamento foi gerado. Verifique se os mapeamentos (Débito/Crédito) e Datas estão corretos.`, { id: toastId })
+      }
+
+      setGenerateModalOpen(false)
+      setSelectedIds([])
+      setRefreshKey(k => k + 1)
+    } catch (e: any) {
+      toast.error('Erro ao gerar lançamentos: ' + e.message, { id: toastId })
+    } finally {
+      setIsGeneratingEntries(false)
+    }
+  }
 
   const getMappedAccountForCC = (cCustoCode: string | null, orgId: string | null) => {
     if (!cCustoCode || !orgId) return null
@@ -3963,6 +4140,15 @@ export default function FinancialMovements() {
             <Trash2 className="mr-2 h-4 w-4" />
             Excluir Todos
           </Button>
+          <Button
+            variant="default"
+            onClick={() => setGenerateModalOpen(true)}
+            className="shadow-sm bg-indigo-600 hover:bg-indigo-700 text-white"
+            disabled={totalCount === 0 || loading}
+          >
+            <CheckCircle2 className="mr-2 h-4 w-4" />
+            Gerar Lançamentos Contábeis
+          </Button>
           <Button onClick={() => setIsImportOpen(true)} className="shadow-sm">
             <UploadCloud className="mr-2 h-4 w-4" />
             Importar Planilha
@@ -3986,6 +4172,15 @@ export default function FinancialMovements() {
               className="bg-white hover:bg-slate-100 flex-1 sm:flex-none"
             >
               Cancelar
+            </Button>
+            <Button
+              variant="default"
+              size="sm"
+              onClick={() => setGenerateModalOpen(true)}
+              className="flex-1 sm:flex-none shadow-sm bg-indigo-600 hover:bg-indigo-700 text-white"
+            >
+              <CheckCircle2 className="h-4 w-4 mr-2" />
+              Efetivar Lançamentos
             </Button>
             <Button
               variant="destructive"
@@ -5331,6 +5526,42 @@ export default function FinancialMovements() {
                                         {row.nome_caixa || '-'}
                                       </TableCell>
                                     )
+                                  case 'conta_debito': {
+                                    const sim = getAccountingEntriesSimulation(row);
+                                    const acc = sim.debitAccount;
+                                    return (
+                                      <TableCell key={key} {...getCellProps(key, 'left', 'whitespace-nowrap')}>
+                                        {acc ? (
+                                          <div className="flex items-center gap-1.5">
+                                            <span className="font-mono bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded text-[0.85em] font-semibold border border-blue-200">
+                                              {acc.account_code}
+                                            </span>
+                                            <span className="truncate max-w-[200px]" title={acc.account_name}>{acc.account_name}</span>
+                                          </div>
+                                        ) : (
+                                          <span className="text-red-500 italic text-[0.85em] font-medium bg-red-50 px-1.5 py-0.5 rounded">Pendente</span>
+                                        )}
+                                      </TableCell>
+                                    )
+                                  }
+                                  case 'conta_credito': {
+                                    const sim = getAccountingEntriesSimulation(row);
+                                    const acc = sim.creditAccount;
+                                    return (
+                                      <TableCell key={key} {...getCellProps(key, 'left', 'whitespace-nowrap')}>
+                                        {acc ? (
+                                          <div className="flex items-center gap-1.5">
+                                            <span className="font-mono bg-rose-100 text-rose-800 px-1.5 py-0.5 rounded text-[0.85em] font-semibold border border-rose-200">
+                                              {acc.account_code}
+                                            </span>
+                                            <span className="truncate max-w-[200px]" title={acc.account_name}>{acc.account_name}</span>
+                                          </div>
+                                        ) : (
+                                          <span className="text-red-500 italic text-[0.85em] font-medium bg-red-50 px-1.5 py-0.5 rounded">Pendente</span>
+                                        )}
+                                      </TableCell>
+                                    )
+                                  }
                                   case 'conta_caixa_destino':
                                     return (
                                       <TableCell
@@ -5696,8 +5927,12 @@ export default function FinancialMovements() {
                                           <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[0.85em] font-semibold bg-red-100 text-red-800 border border-red-200">
                                             Dados Incompletos
                                           </span>
+                                        ) : row.status === 'Concluído' ? (
+                                          <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[0.85em] font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                            Concluído
+                                          </span>
                                         ) : (
-                                          <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[0.85em] font-semibold bg-slate-100 !text-black border border-slate-200">
+                                          <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[0.85em] font-semibold bg-amber-100 text-amber-800 border border-amber-200">
                                             {row.status || 'Pendente'}
                                           </span>
                                         )}
@@ -8103,53 +8338,85 @@ export default function FinancialMovements() {
         </TabsContent>
 
         <TabsContent value="dry-run" className="m-0 animate-in fade-in-up duration-500">
-          <Card className="border-slate-200 shadow-sm bg-[#0d1117] border-0 text-slate-300">
-            <CardHeader className="border-b border-slate-800 pb-4">
-              <h2 className="text-lg font-bold text-emerald-400 flex items-center gap-2">
-                Pré-Visualização do TXT (Dry Run)
-              </h2>
-              <p className="text-sm text-slate-400">
-                Simulação do formato de arquivo de exportação contábil. Linhas com dados
-                inconsistentes são destacadas.
-              </p>
+          <Card className="border-slate-200 shadow-sm bg-white border">
+            <CardHeader className="border-b border-slate-100 pb-4 bg-slate-50">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div>
+                  <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                    Pré-Conferência Contábil (Dry Run)
+                  </h2>
+                  <p className="text-sm text-slate-500">
+                    Visão consolidada dos lançamentos (Conta Débito, Conta Crédito, Valor e Histórico). Lançamentos com pendência de mapeamento estão destacados.
+                  </p>
+                </div>
+                <Button onClick={() => setGenerateModalOpen(true)} className="bg-indigo-600 hover:bg-indigo-700 shadow-sm shrink-0">
+                  <CheckCircle2 className="mr-2 h-4 w-4" /> Efetivar Lançamentos Exibidos
+                </Button>
+              </div>
             </CardHeader>
             <CardContent className="p-0">
-              <div
-                className="p-6 font-mono overflow-x-auto whitespace-pre space-y-1 max-h-[600px] overflow-y-auto custom-scrollbar"
-                style={{ fontSize: `${tableFontSize}px` }}
-              >
-                <div className="text-slate-500 border-b border-slate-800 pb-2 mb-4 sticky top-0 bg-[#0d1117] z-10">
-                  {
-                    'DATA       | CONTA DÉBITO   | CONTA CRÉDITO  | VALOR       | C.CUSTO   | HISTÓRICO'
-                  }
-                </div>
-                {data.map((row) => {
-                  const mapped = getMappedAccount(row)
-                  const dt = formatDate(row.data_emissao).padEnd(10, ' ')
-                  const cc = (row.c_custo || '').padEnd(9, ' ')
-                  const hist = (row.historico || '').substring(0, 40).padEnd(40, ' ')
-                  const val = Number(row.valor_liquido || row.valor || 0)
-                    .toFixed(2)
-                    .padStart(11, ' ')
+              <Table wrapperClassName="max-h-[600px] overflow-auto custom-scrollbar" className="w-full" style={{ fontSize: `${tableFontSize}px` }}>
+                <TableHeader className="bg-slate-100 sticky top-0 z-10 shadow-sm border-none">
+                  <TableRow className="border-b-slate-200 hover:bg-slate-100 border-none">
+                    <TableHead className="font-bold text-slate-700 border-r border-slate-200">Data</TableHead>
+                    <TableHead className="font-bold text-slate-700 border-r border-slate-200">Conta Débito</TableHead>
+                    <TableHead className="font-bold text-slate-700 border-r border-slate-200">Conta Crédito</TableHead>
+                    <TableHead className="font-bold text-slate-700 border-r border-slate-200">Valor</TableHead>
+                    <TableHead className="font-bold text-slate-700 border-r border-slate-200">Centro de Custo</TableHead>
+                    <TableHead className="font-bold text-slate-700">Histórico</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {data.map((row) => {
+                    const sim = getAccountingEntriesSimulation(row);
+                    const dt = row.data_emissao ? formatDate(row.data_emissao) : '-';
+                    const cc = row.c_custo || 'Sem C.Custo';
+                    const hist = row.historico || '-';
+                    const val = Number(row.valor_liquido || row.valor || 0);
+                    const formatCurrency = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
 
-                  const conta = mapped ? mapped.account_code.padEnd(14, ' ') : 'PENDENTE      '
-                  const isError = !mapped || !row.data_emissao || !row.valor_liquido
+                    const isError = !sim.debitAccount || !sim.creditAccount || !row.data_emissao || !val;
 
-                  return (
-                    <div
-                      key={row.id}
-                      className={cn(
-                        'py-1.5 px-3 rounded transition-colors',
-                        isError
-                          ? 'bg-red-950/30 text-red-300 border-l-2 border-red-500'
-                          : 'hover:bg-slate-800 text-emerald-300',
-                      )}
-                    >
-                      {`${dt} | ${conta} | ${'CAIXA/BANCO'.padEnd(14, ' ')} | ${val} | ${cc} | ${hist}`}
-                    </div>
-                  )
-                })}
-              </div>
+                    return (
+                      <TableRow key={row.id} className={cn("transition-colors border-0 border-b border-slate-100", isError ? "bg-red-50 hover:bg-red-100" : "hover:bg-slate-50")}>
+                        <TableCell className={cn("whitespace-nowrap border-r border-slate-200", isError ? "text-red-700" : "text-slate-600")}>{dt}</TableCell>
+                        <TableCell className="border-r border-slate-200">
+                          {sim.debitAccount ? (
+                            <div className="flex items-center gap-1.5">
+                              <span className="font-mono bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded text-[0.85em] font-semibold border border-blue-200">
+                                {sim.debitAccount.account_code}
+                              </span>
+                              <span className="truncate max-w-[200px] text-slate-700" title={sim.debitAccount.account_name}>{sim.debitAccount.account_name}</span>
+                            </div>
+                          ) : (
+                            <span className="text-red-500 italic text-[0.9em] font-semibold">Pendente</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="border-r border-slate-200">
+                          {sim.creditAccount ? (
+                            <div className="flex items-center gap-1.5">
+                              <span className="font-mono bg-rose-100 text-rose-800 px-1.5 py-0.5 rounded text-[0.85em] font-semibold border border-rose-200">
+                                {sim.creditAccount.account_code}
+                              </span>
+                              <span className="truncate max-w-[200px] text-slate-700" title={sim.creditAccount.account_name}>{sim.creditAccount.account_name}</span>
+                            </div>
+                          ) : (
+                            <span className="text-red-500 italic text-[0.9em] font-semibold">Pendente</span>
+                          )}
+                        </TableCell>
+                        <TableCell className={cn("whitespace-nowrap font-bold border-r border-slate-200", isError ? "text-red-700" : "text-slate-900")}>{formatCurrency(Math.abs(val))}</TableCell>
+                        <TableCell className={cn("whitespace-nowrap border-r border-slate-200", isError ? "text-red-700" : "text-slate-600")}>{cc}</TableCell>
+                        <TableCell className={cn("max-w-[300px] truncate", isError ? "text-red-700" : "text-slate-600")} title={hist}>{hist}</TableCell>
+                      </TableRow>
+                    )
+                  })}
+                  {data.length === 0 && (
+                     <TableRow>
+                        <TableCell colSpan={6} className="h-48 text-center text-slate-500 border-0">Nenhum registro para exibir.</TableCell>
+                     </TableRow>
+                  )}
+                </TableBody>
+              </Table>
             </CardContent>
           </Card>
         </TabsContent>
@@ -9556,6 +9823,30 @@ export default function FinancialMovements() {
             : `Tem certeza que deseja excluir os ${selectedIds.length} registros selecionados?`
         }
       />
+
+      <Dialog open={generateModalOpen} onOpenChange={setGenerateModalOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Efetivar Lançamentos Contábeis</DialogTitle>
+            <DialogDescription className="mt-2">
+              {selectedIds.length > 0 
+                ? `Você está prestes a gerar os lançamentos contábeis para os ${selectedIds.length} registros selecionados.`
+                : `Você está prestes a gerar os lançamentos contábeis para todos os registros pendentes atualmente filtrados.`}
+              <br/><br/>
+              Apenas registros que possuem ambas as contas (Débito e Crédito) e Data de Emissão preenchida serão efetivados. O status dos registros processados será alterado para "Concluído".
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end gap-3 mt-4">
+            <Button variant="outline" onClick={() => setGenerateModalOpen(false)} disabled={isGeneratingEntries}>
+              Cancelar
+            </Button>
+            <Button onClick={startGenerateEntries} disabled={isGeneratingEntries} className="bg-indigo-600 hover:bg-indigo-700 text-white">
+              {isGeneratingEntries ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-2 h-4 w-4" />}
+              Confirmar
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={drillDownOpen} onOpenChange={setDrillDownOpen}>
         <DialogContent className="max-w-5xl max-h-[85vh] flex flex-col p-0 overflow-hidden bg-slate-50 border-0 shadow-2xl rounded-xl">
