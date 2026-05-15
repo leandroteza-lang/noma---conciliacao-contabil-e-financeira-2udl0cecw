@@ -6,6 +6,7 @@ export interface TablePrefs {
   showGridlines: boolean
   gridlineWidth: number
   gridlineColor: string
+  alignments?: Record<string, 'left' | 'center' | 'right'>
 }
 
 export function useTablePreferences(menuKey: string) {
@@ -15,6 +16,7 @@ export function useTablePreferences(menuKey: string) {
     showGridlines: false,
     gridlineWidth: 1,
     gridlineColor: '#cbd5e1',
+    alignments: {},
   })
 
   const isFirstLoad = useRef(true)

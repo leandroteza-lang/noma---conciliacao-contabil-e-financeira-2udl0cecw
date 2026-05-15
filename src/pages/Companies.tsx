@@ -17,6 +17,9 @@ import {
   ArrowUpDown,
   Upload,
   Share2,
+  AlignLeft,
+  AlignCenter,
+  AlignRight,
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { supabase } from '@/lib/supabase/client'
@@ -52,6 +55,8 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu'
 import {
   Select,
@@ -209,6 +214,90 @@ export default function Companies() {
 
   const { user } = useAuth()
   const { toast } = useToast()
+
+  const getAlignmentClass = (colKey: string, defaultAlign: string = 'text-center') => {
+    const align = prefs.alignments?.[colKey]
+    if (align === 'left') return 'text-left'
+    if (align === 'right') return 'text-right'
+    if (align === 'center') return 'text-center'
+    return defaultAlign
+  }
+
+  const getJustifyClass = (colKey: string, defaultJustify: string = 'justify-center') => {
+    const align = prefs.alignments?.[colKey]
+    if (align === 'left') return 'justify-start'
+    if (align === 'right') return 'justify-end'
+    if (align === 'center') return 'justify-center'
+    return defaultJustify
+  }
+
+  const handleAlign = (colKey: string, align: 'left' | 'center' | 'right') => {
+    updatePrefs({
+      alignments: {
+        ...(prefs.alignments || {}),
+        [colKey]: align,
+      },
+    })
+  }
+
+  const ColumnHeader = ({
+    columnKey,
+    label,
+    defaultJustify = 'justify-center',
+  }: {
+    columnKey: string
+    label: string
+    defaultJustify?: string
+  }) => {
+    const currentAlign = prefs.alignments?.[columnKey]
+    const AlignIcon =
+      currentAlign === 'left' ? AlignLeft : currentAlign === 'right' ? AlignRight : AlignCenter
+
+    return (
+      <div
+        className={`flex items-center ${getJustifyClass(columnKey, defaultJustify)} gap-2 group`}
+      >
+        <div
+          className="cursor-pointer flex items-center gap-2 hover:text-indigo-200"
+          onClick={() => handleSort(columnKey)}
+        >
+          {label} <ArrowUpDown className="h-3 w-3 text-indigo-300" />
+        </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6 p-0 text-indigo-300 hover:text-white hover:bg-indigo-900 opacity-0 group-hover:opacity-100 transition-opacity focus:opacity-100 data-[state=open]:opacity-100"
+            >
+              <AlignIcon className="h-3 w-3" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuLabel className="text-xs">Alinhamento</DropdownMenuLabel>
+            <DropdownMenuItem
+              onClick={() => handleAlign(columnKey, 'left')}
+              className="cursor-pointer"
+            >
+              <AlignLeft className="h-4 w-4 mr-2" /> Esquerda
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => handleAlign(columnKey, 'center')}
+              className="cursor-pointer"
+            >
+              <AlignCenter className="h-4 w-4 mr-2" /> Centro
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => handleAlign(columnKey, 'right')}
+              className="cursor-pointer"
+            >
+              <AlignRight className="h-4 w-4 mr-2" /> Direita
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+    )
+  }
 
   const {
     register,
@@ -816,45 +905,20 @@ export default function Companies() {
                         className="border-white data-[state=checked]:bg-white data-[state=checked]:text-indigo-950"
                       />
                     </TableHead>
-                    <TableHead
-                      className="cursor-pointer !bg-indigo-950 hover:!bg-indigo-900 transition-colors py-2 px-2 text-white font-bold text-[14px] text-center border-0"
-                      onClick={() => handleSort('name')}
-                    >
-                      <div className="flex items-center justify-center gap-2">
-                        Empresa <ArrowUpDown className="h-3 w-3 text-indigo-300" />
-                      </div>
+                    <TableHead className="!bg-indigo-950 transition-colors py-2 px-2 text-white font-bold text-[14px] border-0">
+                      <ColumnHeader columnKey="name" label="Empresa" />
                     </TableHead>
-                    <TableHead
-                      className="cursor-pointer !bg-indigo-950 hover:!bg-indigo-900 transition-colors py-2 px-2 text-white font-bold text-[14px] text-center border-0"
-                      onClick={() => handleSort('cnpj')}
-                    >
-                      <div className="flex items-center justify-center gap-2">
-                        Documentos <ArrowUpDown className="h-3 w-3 text-indigo-300" />
-                      </div>
+                    <TableHead className="!bg-indigo-950 transition-colors py-2 px-2 text-white font-bold text-[14px] border-0">
+                      <ColumnHeader columnKey="cnpj" label="Documentos" />
                     </TableHead>
-                    <TableHead
-                      className="cursor-pointer !bg-indigo-950 hover:!bg-indigo-900 transition-colors py-2 px-2 text-white font-bold text-[14px] text-center border-0"
-                      onClick={() => handleSort('email')}
-                    >
-                      <div className="flex items-center justify-center gap-2">
-                        Contato <ArrowUpDown className="h-3 w-3 text-indigo-300" />
-                      </div>
+                    <TableHead className="!bg-indigo-950 transition-colors py-2 px-2 text-white font-bold text-[14px] border-0">
+                      <ColumnHeader columnKey="email" label="Contato" />
                     </TableHead>
-                    <TableHead
-                      className="cursor-pointer !bg-indigo-950 hover:!bg-indigo-900 transition-colors py-2 px-2 text-white font-bold text-[14px] text-center border-0"
-                      onClick={() => handleSort('status')}
-                    >
-                      <div className="flex items-center justify-center gap-2">
-                        Status <ArrowUpDown className="h-3 w-3 text-indigo-300" />
-                      </div>
+                    <TableHead className="!bg-indigo-950 transition-colors py-2 px-2 text-white font-bold text-[14px] border-0">
+                      <ColumnHeader columnKey="status" label="Status" />
                     </TableHead>
-                    <TableHead
-                      className="cursor-pointer !bg-indigo-950 hover:!bg-indigo-900 transition-colors py-2 px-2 text-white font-bold text-[14px] text-center border-0"
-                      onClick={() => handleSort('created_at')}
-                    >
-                      <div className="flex items-center justify-center gap-2">
-                        Criado em <ArrowUpDown className="h-3 w-3 text-indigo-300" />
-                      </div>
+                    <TableHead className="!bg-indigo-950 transition-colors py-2 px-2 text-white font-bold text-[14px] border-0">
+                      <ColumnHeader columnKey="created_at" label="Criado em" />
                     </TableHead>
                     <TableHead className="text-center py-2 px-2 !bg-indigo-950 text-white font-bold text-[14px] border-0">
                       Ações
@@ -888,9 +952,13 @@ export default function Companies() {
                             }
                           />
                         </TableCell>
-                        <TableCell className="py-0.5 px-2 text-[1em] text-center font-normal">
-                          <div className="flex items-center justify-center gap-2">
-                            <div>
+                        <TableCell
+                          className={`py-0.5 px-2 text-[1em] font-normal ${getAlignmentClass('name', 'text-center')}`}
+                        >
+                          <div
+                            className={`flex items-center ${getJustifyClass('name', 'justify-center')} gap-2`}
+                          >
+                            <div className={getAlignmentClass('name', 'text-center')}>
                               <p className="text-[1em] font-bold text-slate-900">{org.name}</p>
                               {org.address && (
                                 <p className="text-[0.9em] truncate max-w-[200px] text-slate-500 font-normal">
@@ -900,8 +968,10 @@ export default function Companies() {
                             </div>
                           </div>
                         </TableCell>
-                        <TableCell className="py-0.5 px-2 text-[1em] text-center font-normal">
-                          <div>
+                        <TableCell
+                          className={`py-0.5 px-2 text-[1em] font-normal ${getAlignmentClass('cnpj', 'text-center')}`}
+                        >
+                          <div className={getAlignmentClass('cnpj', 'text-center')}>
                             {org.cnpj && (
                               <p className="text-slate-900 font-normal">
                                 <span className="font-normal mr-1">CNPJ:</span>
@@ -916,8 +986,12 @@ export default function Companies() {
                             )}
                           </div>
                         </TableCell>
-                        <TableCell className="py-0.5 px-2 text-[1em] text-center font-normal">
-                          <div className="text-slate-900 font-normal">
+                        <TableCell
+                          className={`py-0.5 px-2 text-[1em] font-normal ${getAlignmentClass('email', 'text-center')}`}
+                        >
+                          <div
+                            className={`text-slate-900 font-normal ${getAlignmentClass('email', 'text-center')}`}
+                          >
                             {org.email && <p>{org.email}</p>}
                             {org.phone && <p>{org.phone}</p>}
                             {!org.email && !org.phone && (
@@ -925,7 +999,9 @@ export default function Companies() {
                             )}
                           </div>
                         </TableCell>
-                        <TableCell className="py-0.5 px-2 text-center font-normal">
+                        <TableCell
+                          className={`py-0.5 px-2 font-normal ${getAlignmentClass('status', 'text-center')}`}
+                        >
                           <Badge
                             variant={org.status ? 'default' : 'secondary'}
                             className={
@@ -937,7 +1013,9 @@ export default function Companies() {
                             {org.status ? 'Ativo' : 'Inativo'}
                           </Badge>
                         </TableCell>
-                        <TableCell className="py-0.5 px-2 text-[1em] text-center text-slate-900 font-normal">
+                        <TableCell
+                          className={`py-0.5 px-2 text-[1em] text-slate-900 font-normal ${getAlignmentClass('created_at', 'text-center')}`}
+                        >
                           {org.created_at
                             ? format(new Date(org.created_at), 'dd/MM/yyyy', { locale: ptBR })
                             : '-'}
