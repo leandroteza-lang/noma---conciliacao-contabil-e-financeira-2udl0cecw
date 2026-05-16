@@ -248,7 +248,7 @@ function TopScrollTableWrapper({ children }: { children: React.ReactNode }) {
     })
     const table = wrapperRef.current.querySelector('table')
     if (table) ro.observe(table)
-    
+
     ro.observe(wrapperRef.current)
 
     return () => ro.disconnect()
@@ -256,25 +256,31 @@ function TopScrollTableWrapper({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex flex-col w-full relative">
-      <div 
-        ref={topScrollRef} 
+      <div
+        ref={topScrollRef}
         onScroll={(e) => {
           if (wrapperRef.current) {
-            const tableContainer = wrapperRef.current.querySelector('.overflow-auto') || wrapperRef.current.querySelector('.overflow-x-auto')
+            const tableContainer =
+              wrapperRef.current.querySelector('.overflow-auto') ||
+              wrapperRef.current.querySelector('.overflow-x-auto')
             if (tableContainer) tableContainer.scrollLeft = e.currentTarget.scrollLeft
           }
-        }} 
+        }}
         className="overflow-x-auto w-full finance-table-scrollbar sticky top-0 z-20 border-x border-t border-slate-300 rounded-t-lg bg-slate-50"
         style={{ height: '14px' }}
       >
         <div style={{ width: tableWidth, height: '1px' }}></div>
       </div>
-      <div 
-        ref={wrapperRef} 
+      <div
+        ref={wrapperRef}
         className="w-full"
         onScrollCapture={(e) => {
           const target = e.target as HTMLElement
-          if (target.classList && (target.classList.contains('overflow-auto') || target.classList.contains('overflow-x-auto'))) {
+          if (
+            target.classList &&
+            (target.classList.contains('overflow-auto') ||
+              target.classList.contains('overflow-x-auto'))
+          ) {
             if (topScrollRef.current && topScrollRef.current !== target) {
               topScrollRef.current.scrollLeft = target.scrollLeft
             }
@@ -1143,7 +1149,12 @@ function PeriodConsolidatedTable({
     if (saved) {
       try {
         const parsed = JSON.parse(saved)
-        if (Array.isArray(parsed) && parsed.length === defaultColOrder.length) return parsed
+        if (Array.isArray(parsed)) {
+          const validKeys = new Set(defaultColOrder)
+          const validParsed = parsed.filter((key: string) => validKeys.has(key))
+          const missingKeys = defaultColOrder.filter((key) => !validParsed.includes(key))
+          return [...validParsed, ...missingKeys]
+        }
       } catch {
         /* intentionally ignored */
       }
@@ -1318,201 +1329,202 @@ function PeriodConsolidatedTable({
   }
 
   return (
-    <Table
-      className="w-full min-w-max"
-      style={{ fontSize: tableFontSize ? `${tableFontSize}px` : undefined }}
-      wrapperClassName="max-h-[500px] overflow-auto finance-table-scrollbar"
-    >
-      <TableHeader className="sticky top-0 z-10 shadow-sm border-b border-black">
-        <TableRow disableZebra className="bg-blue-500 hover:bg-blue-400 border-none">
-          {colOrder.map((col) => {
-            const def = colsDef[col]
-            if (!def) return null
-            return (
-              <TableHead
-                key={col}
-                draggable
-                onDragStart={(e) => {
-                  setDraggedCol(col)
-                  e.dataTransfer.effectAllowed = 'move'
-                }}
-                onDragOver={(e) => {
-                  e.preventDefault()
-                  e.dataTransfer.dropEffect = 'move'
-                }}
-                onDrop={(e) => {
-                  e.preventDefault()
-                  if (!draggedCol || draggedCol === col) return
-                  const newOrder = [...colOrder]
-                  const draggedIdx = newOrder.indexOf(draggedCol)
-                  const targetIdx = newOrder.indexOf(col)
-                  newOrder.splice(draggedIdx, 1)
-                  newOrder.splice(targetIdx, 0, draggedCol)
-                  setColOrder(newOrder)
-                  setDraggedCol(null)
-                }}
-                onDragEnd={() => setDraggedCol(null)}
-                className={cn(
-                  'font-medium text-white px-2 py-1 h-8 cursor-grab active:cursor-grabbing border-r border-black',
-                  def.width,
-                  def.color,
-                  draggedCol === col ? 'opacity-50' : '',
-                )}
-                style={getGridlineStyle(prefs)}
-              >
-                <div
-                  className={cn(
-                    'flex items-center justify-between gap-1 w-full',
-                    getJustifyClass(prefs, col, col === 'name' ? 'left' : 'right'),
-                  )}
-                >
-                  {def.filter}
-                  <HeaderAlignmentMenu col={col} prefs={prefs} updatePrefs={updatePrefs} />
-                </div>
-              </TableHead>
-            )
-          })}
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {aggregated.map((item) => (
-          <TableRow
-            key={item.name}
-            className="border-b border-black last:border-b-0 transition-colors"
-          >
+    <TopScrollTableWrapper>
+      <Table
+        className="w-full min-w-max"
+        style={{ fontSize: tableFontSize ? `${tableFontSize}px` : undefined }}
+        wrapperClassName="max-h-[500px] overflow-auto finance-table-scrollbar"
+      >
+        <TableHeader className="sticky top-0 z-10 shadow-sm border-b border-black">
+          <TableRow disableZebra className="bg-blue-500 hover:bg-blue-400 border-none">
             {colOrder.map((col) => {
-              if (col === 'name')
-                return (
-                  <TableCell
-                    key={col}
+              const def = colsDef[col]
+              if (!def) return null
+              return (
+                <TableHead
+                  key={col}
+                  draggable
+                  onDragStart={(e) => {
+                    setDraggedCol(col)
+                    e.dataTransfer.effectAllowed = 'move'
+                  }}
+                  onDragOver={(e) => {
+                    e.preventDefault()
+                    e.dataTransfer.dropEffect = 'move'
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault()
+                    if (!draggedCol || draggedCol === col) return
+                    const newOrder = [...colOrder]
+                    const draggedIdx = newOrder.indexOf(draggedCol)
+                    const targetIdx = newOrder.indexOf(col)
+                    newOrder.splice(draggedIdx, 1)
+                    newOrder.splice(targetIdx, 0, draggedCol)
+                    setColOrder(newOrder)
+                    setDraggedCol(null)
+                  }}
+                  onDragEnd={() => setDraggedCol(null)}
+                  className={cn(
+                    'font-medium text-white px-2 py-1 h-8 cursor-grab active:cursor-grabbing border-r border-black',
+                    def.width,
+                    def.color,
+                    draggedCol === col ? 'opacity-50' : '',
+                  )}
+                  style={getGridlineStyle(prefs)}
+                >
+                  <div
                     className={cn(
-                      'px-2 py-1 border-r border-black text-slate-700 font-medium',
-                      getAlignClass(prefs, col, 'left'),
+                      'flex items-center justify-between gap-1 w-full',
+                      getJustifyClass(prefs, col, col === 'name' ? 'left' : 'right'),
                     )}
-                    style={getGridlineStyle(prefs)}
                   >
-                    {item.name}
-                  </TableCell>
-                )
-              if (col === 'pos')
-                return (
-                  <TableCell
-                    key={col}
-                    className={cn(
-                      'px-2 py-1 text-emerald-600/90 border-r border-black',
-                      getAlignClass(prefs, col, 'right'),
-                    )}
-                    style={getGridlineStyle(prefs)}
-                  >
-                    {formatVal(item.pos)}
-                  </TableCell>
-                )
-              if (col === 'neg')
-                return (
-                  <TableCell
-                    key={col}
-                    className={cn(
-                      'px-2 py-1 text-rose-600/90 border-r border-black',
-                      getAlignClass(prefs, col, 'right'),
-                    )}
-                    style={getGridlineStyle(prefs)}
-                  >
-                    {formatVal(item.neg)}
-                  </TableCell>
-                )
-              if (col === 'diff')
-                return (
-                  <TableCell
-                    key={col}
-                    className={cn(
-                      'px-2 py-1 font-semibold text-slate-700',
-                      getAlignClass(prefs, col, 'right'),
-                    )}
-                    style={getGridlineStyle(prefs)}
-                  >
-                    {formatVal(item.diff)}
-                  </TableCell>
-                )
-              return null
+                    {def.filter}
+                    <HeaderAlignmentMenu col={col} prefs={prefs} updatePrefs={updatePrefs} />
+                  </div>
+                </TableHead>
+              )
             })}
           </TableRow>
-        ))}
-        {aggregated.length === 0 ? (
-          <TableRow disableZebra>
-            <TableCell
-              colSpan={4}
-              className="text-center py-4 text-slate-500 border-t border-black"
+        </TableHeader>
+        <TableBody>
+          {aggregated.map((item) => (
+            <TableRow
+              key={item.name}
+              className="border-b border-black last:border-b-0 transition-colors"
             >
-              Nenhum dado para resumir.
-            </TableCell>
-          </TableRow>
-        ) : (
-          <TableRow
-            disableZebra
-            className="bg-slate-200/80 font-bold border-t-2 border-black border-b border-b-black shadow-inner"
-          >
-            {colOrder.map((col, idx) => {
-              if (idx === 0)
-                return (
-                  <TableCell
-                    key={col}
-                    className={cn(
-                      'px-2 py-1 border-r border-black uppercase text-slate-900',
-                      getAlignClass(prefs, col, 'right'),
-                    )}
-                    style={getGridlineStyle(prefs)}
-                  >
-                    Total Geral do Período:
-                  </TableCell>
-                )
-              if (col === 'name')
-                return (
-                  <TableCell
-                    key={col}
-                    className="border-r border-black"
-                    style={getGridlineStyle(prefs)}
-                  ></TableCell>
-                )
-              if (col === 'pos')
-                return (
-                  <TableCell
-                    key={col}
-                    className={cn(
-                      'px-2 py-1 text-emerald-700 border-r border-black',
-                      getAlignClass(prefs, col, 'right'),
-                    )}
-                    style={getGridlineStyle(prefs)}
-                  >
-                    {formatVal(totalPos)}
-                  </TableCell>
-                )
-              if (col === 'neg')
-                return (
-                  <TableCell
-                    key={col}
-                    className={cn(
-                      'px-2 py-1 text-rose-700 border-r border-black',
-                      getAlignClass(prefs, col, 'right'),
-                    )}
-                    style={getGridlineStyle(prefs)}
-                  >
-                    {formatVal(totalNeg)}
-                  </TableCell>
-                )
-              if (col === 'diff')
-                return (
-                  <TableCell
-                    key={col}
-                    className={cn('px-2 py-1 text-blue-800', getAlignClass(prefs, col, 'right'))}
-                    style={getGridlineStyle(prefs)}
-                  >
-                    {formatVal(totalDiff)}
-                  </TableCell>
-                )
-              return null
-            })}
-          </TableRow>
-        )}
+              {colOrder.map((col) => {
+                if (col === 'name')
+                  return (
+                    <TableCell
+                      key={col}
+                      className={cn(
+                        'px-2 py-1 border-r border-black text-slate-700 font-medium',
+                        getAlignClass(prefs, col, 'left'),
+                      )}
+                      style={getGridlineStyle(prefs)}
+                    >
+                      {item.name}
+                    </TableCell>
+                  )
+                if (col === 'pos')
+                  return (
+                    <TableCell
+                      key={col}
+                      className={cn(
+                        'px-2 py-1 text-emerald-600/90 border-r border-black',
+                        getAlignClass(prefs, col, 'right'),
+                      )}
+                      style={getGridlineStyle(prefs)}
+                    >
+                      {formatVal(item.pos)}
+                    </TableCell>
+                  )
+                if (col === 'neg')
+                  return (
+                    <TableCell
+                      key={col}
+                      className={cn(
+                        'px-2 py-1 text-rose-600/90 border-r border-black',
+                        getAlignClass(prefs, col, 'right'),
+                      )}
+                      style={getGridlineStyle(prefs)}
+                    >
+                      {formatVal(item.neg)}
+                    </TableCell>
+                  )
+                if (col === 'diff')
+                  return (
+                    <TableCell
+                      key={col}
+                      className={cn(
+                        'px-2 py-1 font-semibold text-slate-700',
+                        getAlignClass(prefs, col, 'right'),
+                      )}
+                      style={getGridlineStyle(prefs)}
+                    >
+                      {formatVal(item.diff)}
+                    </TableCell>
+                  )
+                return null
+              })}
+            </TableRow>
+          ))}
+          {aggregated.length === 0 ? (
+            <TableRow disableZebra>
+              <TableCell
+                colSpan={4}
+                className="text-center py-4 text-slate-500 border-t border-black"
+              >
+                Nenhum dado para resumir.
+              </TableCell>
+            </TableRow>
+          ) : (
+            <TableRow
+              disableZebra
+              className="bg-slate-200/80 font-bold border-t-2 border-black border-b border-b-black shadow-inner"
+            >
+              {colOrder.map((col, idx) => {
+                if (idx === 0)
+                  return (
+                    <TableCell
+                      key={col}
+                      className={cn(
+                        'px-2 py-1 border-r border-black uppercase text-slate-900',
+                        getAlignClass(prefs, col, 'right'),
+                      )}
+                      style={getGridlineStyle(prefs)}
+                    >
+                      Total Geral do Período:
+                    </TableCell>
+                  )
+                if (col === 'name')
+                  return (
+                    <TableCell
+                      key={col}
+                      className="border-r border-black"
+                      style={getGridlineStyle(prefs)}
+                    ></TableCell>
+                  )
+                if (col === 'pos')
+                  return (
+                    <TableCell
+                      key={col}
+                      className={cn(
+                        'px-2 py-1 text-emerald-700 border-r border-black',
+                        getAlignClass(prefs, col, 'right'),
+                      )}
+                      style={getGridlineStyle(prefs)}
+                    >
+                      {formatVal(totalPos)}
+                    </TableCell>
+                  )
+                if (col === 'neg')
+                  return (
+                    <TableCell
+                      key={col}
+                      className={cn(
+                        'px-2 py-1 text-rose-700 border-r border-black',
+                        getAlignClass(prefs, col, 'right'),
+                      )}
+                      style={getGridlineStyle(prefs)}
+                    >
+                      {formatVal(totalNeg)}
+                    </TableCell>
+                  )
+                if (col === 'diff')
+                  return (
+                    <TableCell
+                      key={col}
+                      className={cn('px-2 py-1 text-blue-800', getAlignClass(prefs, col, 'right'))}
+                      style={getGridlineStyle(prefs)}
+                    >
+                      {formatVal(totalDiff)}
+                    </TableCell>
+                  )
+                return null
+              })}
+            </TableRow>
+          )}
         </TableBody>
       </Table>
     </TopScrollTableWrapper>
@@ -1542,7 +1554,12 @@ function AccountingConsolidatedTable({
     if (saved) {
       try {
         const parsed = JSON.parse(saved)
-        if (Array.isArray(parsed) && parsed.length === defaultColOrder.length) return parsed
+        if (Array.isArray(parsed)) {
+          const validKeys = new Set(defaultColOrder)
+          const validParsed = parsed.filter((key: string) => validKeys.has(key))
+          const missingKeys = defaultColOrder.filter((key) => !validParsed.includes(key))
+          return [...validParsed, ...missingKeys]
+        }
       } catch {
         /* intentionally ignored */
       }
@@ -1880,7 +1897,12 @@ function AccountingCrossReferenceTable({
     if (saved) {
       try {
         const parsed = JSON.parse(saved)
-        if (Array.isArray(parsed) && parsed.length === defaultColOrder.length) return parsed
+        if (Array.isArray(parsed)) {
+          const validKeys = new Set(defaultColOrder)
+          const validParsed = parsed.filter((key: string) => validKeys.has(key))
+          const missingKeys = defaultColOrder.filter((key) => !validParsed.includes(key))
+          return [...validParsed, ...missingKeys]
+        }
       } catch {
         /* intentionally ignored */
       }
@@ -2280,241 +2302,313 @@ function AccountingCrossReferenceTable({
         wrapperClassName="max-h-[600px] overflow-auto finance-table-scrollbar pb-3"
       >
         <TableHeader className="sticky top-0 z-10 shadow-sm border-b border-slate-600 bg-indigo-950">
-        <TableRow disableZebra className="bg-indigo-950 hover:bg-indigo-900 border-none">
-          {colOrder.map((col) => {
-            const def = columnsDef[col]
-            if (!def) return null
-            return (
-              <TableHead
-                key={col}
-                draggable
-                onDragStart={(e) => {
-                  setDraggedCol(col)
-                  e.dataTransfer.effectAllowed = 'move'
-                }}
-                onDragOver={(e) => {
-                  e.preventDefault()
-                  e.dataTransfer.dropEffect = 'move'
-                }}
-                onDrop={(e) => {
-                  e.preventDefault()
-                  if (!draggedCol || draggedCol === col) return
-                  const newOrder = [...colOrder]
-                  const draggedIdx = newOrder.indexOf(draggedCol)
-                  const targetIdx = newOrder.indexOf(col)
-                  newOrder.splice(draggedIdx, 1)
-                  newOrder.splice(targetIdx, 0, draggedCol)
-                  setColOrder(newOrder)
-                  setDraggedCol(null)
-                }}
-                onDragEnd={() => setDraggedCol(null)}
-                className={cn(
-                  'font-medium text-white border-r border-slate-600 px-2 py-1 h-8 whitespace-nowrap cursor-grab active:cursor-grabbing',
-                  def.className,
-                  draggedCol === col ? 'opacity-50 bg-indigo-900' : '',
-                )}
-                style={getGridlineStyle(prefs)}
-              >
-                {def.filter}
-              </TableHead>
-            )
-          })}
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {aggregated.map((item, idx) => (
-          <TableRow
-            key={idx}
-            className="border-b border-slate-200 last:border-b-0 transition-colors"
-          >
+          <TableRow disableZebra className="bg-indigo-950 hover:bg-indigo-900 border-none">
             {colOrder.map((col) => {
-              if (col === 'cCusto')
-                return (
-                  <TableCell
-                    key={col}
-                    className={cn(
-                      'px-2 py-1.5 border-r border-slate-200 text-slate-700 font-medium',
-                      getAlignClass(prefs, col, 'left'),
-                    )}
-                    style={getGridlineStyle(prefs)}
-                  >
-                    <div
-                      className={cn(
-                        'flex w-full items-center',
-                        getJustifyClass(prefs, col, 'left'),
-                      )}
-                    >
-                      <span className="truncate max-w-[250px] inline-block" title={formatCc(item)}>
-                        {formatCc(item)}
-                      </span>
-                    </div>
-                  </TableCell>
-                )
-              if (col === 'contaCaixa')
-                return (
-                  <TableCell
-                    key={col}
-                    className={cn(
-                      'px-2 py-1.5 border-r border-slate-200 text-slate-700 font-medium',
-                      getAlignClass(prefs, col, 'left'),
-                    )}
-                    style={getGridlineStyle(prefs)}
-                  >
-                    <div
-                      className={cn(
-                        'flex w-full items-center',
-                        getJustifyClass(prefs, col, 'left'),
-                      )}
-                    >
-                      <span className="truncate max-w-[250px] inline-block" title={formatCx(item)}>
-                        {formatCx(item)}
-                      </span>
-                    </div>
-                  </TableCell>
-                )
-              if (col === 'debitAccount')
-                return (
-                  <TableCell
-                    key={col}
-                    className={cn(
-                      'px-2 py-1.5 border-r border-slate-200 text-slate-700 font-medium',
-                      getAlignClass(prefs, col, 'left'),
-                    )}
-                    style={getGridlineStyle(prefs)}
-                  >
-                    <div
-                      className={cn(
-                        'flex items-center gap-1.5 w-full',
-                        getJustifyClass(prefs, col, 'left'),
-                      )}
-                    >
-                      <span className="font-mono bg-blue-50 text-blue-800 px-1.5 py-0.5 rounded text-[0.85em] font-semibold border border-blue-200 shrink-0">
-                        {item.debitAccount.account_code}
-                      </span>
-                      {item.debitAccount.classification && (
-                        <span className="font-mono text-[0.85em] font-semibold text-slate-500 shrink-0">
-                          {item.debitAccount.classification}
-                        </span>
-                      )}
-                      <span
-                        className="truncate max-w-[250px]"
-                        title={item.debitAccount.account_name}
-                      >
-                        {item.debitAccount.account_name}
-                      </span>
-                    </div>
-                  </TableCell>
-                )
-              if (col === 'creditAccount')
-                return (
-                  <TableCell
-                    key={col}
-                    className={cn(
-                      'px-2 py-1.5 border-r border-slate-200 text-slate-700 font-medium',
-                      getAlignClass(prefs, col, 'left'),
-                    )}
-                    style={getGridlineStyle(prefs)}
-                  >
-                    <div
-                      className={cn(
-                        'flex items-center gap-1.5 w-full',
-                        getJustifyClass(prefs, col, 'left'),
-                      )}
-                    >
-                      <span className="font-mono bg-rose-50 text-rose-800 px-1.5 py-0.5 rounded text-[0.85em] font-semibold border border-rose-200 shrink-0">
-                        {item.creditAccount.account_code}
-                      </span>
-                      {item.creditAccount.classification && (
-                        <span className="font-mono text-[0.85em] font-semibold text-slate-500 shrink-0">
-                          {item.creditAccount.classification}
-                        </span>
-                      )}
-                      <span
-                        className="truncate max-w-[250px]"
-                        title={item.creditAccount.account_name}
-                      >
-                        {item.creditAccount.account_name}
-                      </span>
-                    </div>
-                  </TableCell>
-                )
-              if (col === 'count')
-                return (
-                  <TableCell
-                    key={col}
-                    className={cn(
-                      'px-2 py-1.5 text-slate-700 border-r border-slate-200',
-                      getAlignClass(prefs, col, 'center'),
-                    )}
-                    style={getGridlineStyle(prefs)}
-                  >
-                    <div
-                      className={cn(
-                        'flex w-full items-center',
-                        getJustifyClass(prefs, col, 'center'),
-                      )}
-                    >
-                      <Button
-                        variant="link"
-                        size="sm"
-                        className="h-auto p-0 text-indigo-600 font-bold hover:text-indigo-800"
-                        onClick={() => onDrillDown(`Lançamentos - ${formatCc(item)}`, item.rows)}
-                        title="Ver Lançamentos"
-                      >
-                        {item.count}
-                      </Button>
-                    </div>
-                  </TableCell>
-                )
-              if (col === 'amount')
-                return (
-                  <TableCell
-                    key={col}
-                    className={cn(
-                      'px-2 py-1.5 text-slate-700 font-bold whitespace-nowrap',
-                      getAlignClass(prefs, col, 'right'),
-                    )}
-                    style={getGridlineStyle(prefs)}
-                  >
-                    <div
-                      className={cn(
-                        'flex w-full items-center',
-                        getJustifyClass(prefs, col, 'right'),
-                      )}
-                    >
-                      {formatVal(item.amount)}
-                    </div>
-                  </TableCell>
-                )
-              return null
+              const def = columnsDef[col]
+              if (!def) return null
+              return (
+                <TableHead
+                  key={col}
+                  draggable
+                  onDragStart={(e) => {
+                    setDraggedCol(col)
+                    e.dataTransfer.effectAllowed = 'move'
+                  }}
+                  onDragOver={(e) => {
+                    e.preventDefault()
+                    e.dataTransfer.dropEffect = 'move'
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault()
+                    if (!draggedCol || draggedCol === col) return
+                    const newOrder = [...colOrder]
+                    const draggedIdx = newOrder.indexOf(draggedCol)
+                    const targetIdx = newOrder.indexOf(col)
+                    newOrder.splice(draggedIdx, 1)
+                    newOrder.splice(targetIdx, 0, draggedCol)
+                    setColOrder(newOrder)
+                    setDraggedCol(null)
+                  }}
+                  onDragEnd={() => setDraggedCol(null)}
+                  className={cn(
+                    'font-medium text-white border-r border-slate-600 px-2 py-1 h-8 whitespace-nowrap cursor-grab active:cursor-grabbing',
+                    def.className,
+                    draggedCol === col ? 'opacity-50 bg-indigo-900' : '',
+                  )}
+                  style={getGridlineStyle(prefs)}
+                >
+                  {def.filter}
+                </TableHead>
+              )
             })}
           </TableRow>
-        ))}
-        {aggregated.length === 0 ? (
-          <TableRow disableZebra>
-            <TableCell
-              colSpan={colOrder.length}
-              className="text-center py-4 text-slate-500 border-t border-slate-200"
+        </TableHeader>
+        <TableBody>
+          {aggregated.map((item, idx) => (
+            <TableRow
+              key={idx}
+              className="border-b border-slate-200 last:border-b-0 transition-colors"
             >
-              Nenhum dado para resumir.
-            </TableCell>
-          </TableRow>
-        ) : (
-          <>
-            {unmappedAmount > 0 && (
-              <TableRow disableZebra className="bg-rose-50/50 border-t border-slate-200">
+              {colOrder.map((col) => {
+                if (col === 'cCusto')
+                  return (
+                    <TableCell
+                      key={col}
+                      className={cn(
+                        'px-2 py-1.5 border-r border-slate-200 text-slate-700 font-medium',
+                        getAlignClass(prefs, col, 'left'),
+                      )}
+                      style={getGridlineStyle(prefs)}
+                    >
+                      <div
+                        className={cn(
+                          'flex w-full items-center',
+                          getJustifyClass(prefs, col, 'left'),
+                        )}
+                      >
+                        <span
+                          className="truncate max-w-[250px] inline-block"
+                          title={formatCc(item)}
+                        >
+                          {formatCc(item)}
+                        </span>
+                      </div>
+                    </TableCell>
+                  )
+                if (col === 'contaCaixa')
+                  return (
+                    <TableCell
+                      key={col}
+                      className={cn(
+                        'px-2 py-1.5 border-r border-slate-200 text-slate-700 font-medium',
+                        getAlignClass(prefs, col, 'left'),
+                      )}
+                      style={getGridlineStyle(prefs)}
+                    >
+                      <div
+                        className={cn(
+                          'flex w-full items-center',
+                          getJustifyClass(prefs, col, 'left'),
+                        )}
+                      >
+                        <span
+                          className="truncate max-w-[250px] inline-block"
+                          title={formatCx(item)}
+                        >
+                          {formatCx(item)}
+                        </span>
+                      </div>
+                    </TableCell>
+                  )
+                if (col === 'debitAccount')
+                  return (
+                    <TableCell
+                      key={col}
+                      className={cn(
+                        'px-2 py-1.5 border-r border-slate-200 text-slate-700 font-medium',
+                        getAlignClass(prefs, col, 'left'),
+                      )}
+                      style={getGridlineStyle(prefs)}
+                    >
+                      <div
+                        className={cn(
+                          'flex items-center gap-1.5 w-full',
+                          getJustifyClass(prefs, col, 'left'),
+                        )}
+                      >
+                        <span className="font-mono bg-blue-50 text-blue-800 px-1.5 py-0.5 rounded text-[0.85em] font-semibold border border-blue-200 shrink-0">
+                          {item.debitAccount.account_code}
+                        </span>
+                        {item.debitAccount.classification && (
+                          <span className="font-mono text-[0.85em] font-semibold text-slate-500 shrink-0">
+                            {item.debitAccount.classification}
+                          </span>
+                        )}
+                        <span
+                          className="truncate max-w-[250px]"
+                          title={item.debitAccount.account_name}
+                        >
+                          {item.debitAccount.account_name}
+                        </span>
+                      </div>
+                    </TableCell>
+                  )
+                if (col === 'creditAccount')
+                  return (
+                    <TableCell
+                      key={col}
+                      className={cn(
+                        'px-2 py-1.5 border-r border-slate-200 text-slate-700 font-medium',
+                        getAlignClass(prefs, col, 'left'),
+                      )}
+                      style={getGridlineStyle(prefs)}
+                    >
+                      <div
+                        className={cn(
+                          'flex items-center gap-1.5 w-full',
+                          getJustifyClass(prefs, col, 'left'),
+                        )}
+                      >
+                        <span className="font-mono bg-rose-50 text-rose-800 px-1.5 py-0.5 rounded text-[0.85em] font-semibold border border-rose-200 shrink-0">
+                          {item.creditAccount.account_code}
+                        </span>
+                        {item.creditAccount.classification && (
+                          <span className="font-mono text-[0.85em] font-semibold text-slate-500 shrink-0">
+                            {item.creditAccount.classification}
+                          </span>
+                        )}
+                        <span
+                          className="truncate max-w-[250px]"
+                          title={item.creditAccount.account_name}
+                        >
+                          {item.creditAccount.account_name}
+                        </span>
+                      </div>
+                    </TableCell>
+                  )
+                if (col === 'count')
+                  return (
+                    <TableCell
+                      key={col}
+                      className={cn(
+                        'px-2 py-1.5 text-slate-700 border-r border-slate-200',
+                        getAlignClass(prefs, col, 'center'),
+                      )}
+                      style={getGridlineStyle(prefs)}
+                    >
+                      <div
+                        className={cn(
+                          'flex w-full items-center',
+                          getJustifyClass(prefs, col, 'center'),
+                        )}
+                      >
+                        <Button
+                          variant="link"
+                          size="sm"
+                          className="h-auto p-0 text-indigo-600 font-bold hover:text-indigo-800"
+                          onClick={() => onDrillDown(`Lançamentos - ${formatCc(item)}`, item.rows)}
+                          title="Ver Lançamentos"
+                        >
+                          {item.count}
+                        </Button>
+                      </div>
+                    </TableCell>
+                  )
+                if (col === 'amount')
+                  return (
+                    <TableCell
+                      key={col}
+                      className={cn(
+                        'px-2 py-1.5 text-slate-700 font-bold whitespace-nowrap',
+                        getAlignClass(prefs, col, 'right'),
+                      )}
+                      style={getGridlineStyle(prefs)}
+                    >
+                      <div
+                        className={cn(
+                          'flex w-full items-center',
+                          getJustifyClass(prefs, col, 'right'),
+                        )}
+                      >
+                        {formatVal(item.amount)}
+                      </div>
+                    </TableCell>
+                  )
+                return null
+              })}
+            </TableRow>
+          ))}
+          {aggregated.length === 0 ? (
+            <TableRow disableZebra>
+              <TableCell
+                colSpan={colOrder.length}
+                className="text-center py-4 text-slate-500 border-t border-slate-200"
+              >
+                Nenhum dado para resumir.
+              </TableCell>
+            </TableRow>
+          ) : (
+            <>
+              {unmappedAmount > 0 && (
+                <TableRow disableZebra className="bg-rose-50/50 border-t border-slate-200">
+                  {colOrder.map((col, i) => {
+                    if (col === 'count')
+                      return (
+                        <TableCell
+                          key={col}
+                          className={cn(
+                            'px-2 py-2 text-rose-600 font-medium border-r border-slate-200',
+                            getAlignClass(prefs, col, 'center'),
+                          )}
+                          style={getGridlineStyle(prefs)}
+                        >
+                          -
+                        </TableCell>
+                      )
+                    if (col === 'amount')
+                      return (
+                        <TableCell
+                          key={col}
+                          className={cn(
+                            'px-2 py-2 text-rose-600 font-bold whitespace-nowrap',
+                            getAlignClass(prefs, col, 'right'),
+                          )}
+                          style={getGridlineStyle(prefs)}
+                        >
+                          {formatVal(unmappedAmount)}
+                        </TableCell>
+                      )
+
+                    if (i === 0)
+                      return (
+                        <TableCell
+                          key={col}
+                          className={cn(
+                            'px-2 py-2 border-r border-slate-200 text-slate-600 italic',
+                            getAlignClass(prefs, col, 'left'),
+                          )}
+                          style={getGridlineStyle(prefs)}
+                        >
+                          <div
+                            className={cn(
+                              'flex items-center gap-2',
+                              getJustifyClass(prefs, col, 'left'),
+                            )}
+                          >
+                            <AlertCircle className="h-4 w-4 text-rose-500 shrink-0" />
+                            <span className="truncate max-w-[300px]">
+                              Valores Pendentes de Mapeamento Contábil (Ignorados)
+                            </span>
+                          </div>
+                        </TableCell>
+                      )
+
+                    return (
+                      <TableCell
+                        key={col}
+                        className="px-2 py-2 border-r border-slate-200"
+                        style={getGridlineStyle(prefs)}
+                      ></TableCell>
+                    )
+                  })}
+                </TableRow>
+              )}
+              <TableRow
+                disableZebra
+                className="bg-slate-100 font-bold border-t-2 border-slate-300 shadow-inner"
+              >
                 {colOrder.map((col, i) => {
                   if (col === 'count')
                     return (
                       <TableCell
                         key={col}
                         className={cn(
-                          'px-2 py-2 text-rose-600 font-medium border-r border-slate-200',
+                          'px-2 py-2 text-slate-900 border-r border-slate-300',
                           getAlignClass(prefs, col, 'center'),
                         )}
                         style={getGridlineStyle(prefs)}
                       >
-                        -
+                        {totalCount}
                       </TableCell>
                     )
                   if (col === 'amount')
@@ -2522,12 +2616,12 @@ function AccountingCrossReferenceTable({
                       <TableCell
                         key={col}
                         className={cn(
-                          'px-2 py-2 text-rose-600 font-bold whitespace-nowrap',
+                          'px-2 py-2 text-indigo-700 whitespace-nowrap',
                           getAlignClass(prefs, col, 'right'),
                         )}
                         style={getGridlineStyle(prefs)}
                       >
-                        {formatVal(unmappedAmount)}
+                        {formatVal(totalAmount)}
                       </TableCell>
                     )
 
@@ -2536,94 +2630,28 @@ function AccountingCrossReferenceTable({
                       <TableCell
                         key={col}
                         className={cn(
-                          'px-2 py-2 border-r border-slate-200 text-slate-600 italic',
-                          getAlignClass(prefs, col, 'left'),
+                          'px-2 py-2 border-r border-slate-300 text-slate-900 uppercase',
+                          getAlignClass(prefs, col, 'right'),
                         )}
                         style={getGridlineStyle(prefs)}
                       >
-                        <div
-                          className={cn(
-                            'flex items-center gap-2',
-                            getJustifyClass(prefs, col, 'left'),
-                          )}
-                        >
-                          <AlertCircle className="h-4 w-4 text-rose-500 shrink-0" />
-                          <span className="truncate max-w-[300px]">
-                            Valores Pendentes de Mapeamento Contábil (Ignorados)
-                          </span>
-                        </div>
+                        Total Geral:
                       </TableCell>
                     )
 
                   return (
                     <TableCell
                       key={col}
-                      className="px-2 py-2 border-r border-slate-200"
+                      className="px-2 py-2 border-r border-slate-300 text-right text-slate-900 uppercase"
                       style={getGridlineStyle(prefs)}
                     ></TableCell>
                   )
                 })}
               </TableRow>
-            )}
-            <TableRow
-              disableZebra
-              className="bg-slate-100 font-bold border-t-2 border-slate-300 shadow-inner"
-            >
-              {colOrder.map((col, i) => {
-                if (col === 'count')
-                  return (
-                    <TableCell
-                      key={col}
-                      className={cn(
-                        'px-2 py-2 text-slate-900 border-r border-slate-300',
-                        getAlignClass(prefs, col, 'center'),
-                      )}
-                      style={getGridlineStyle(prefs)}
-                    >
-                      {totalCount}
-                    </TableCell>
-                  )
-                if (col === 'amount')
-                  return (
-                    <TableCell
-                      key={col}
-                      className={cn(
-                        'px-2 py-2 text-indigo-700 whitespace-nowrap',
-                        getAlignClass(prefs, col, 'right'),
-                      )}
-                      style={getGridlineStyle(prefs)}
-                    >
-                      {formatVal(totalAmount)}
-                    </TableCell>
-                  )
-
-                if (i === 0)
-                  return (
-                    <TableCell
-                      key={col}
-                      className={cn(
-                        'px-2 py-2 border-r border-slate-300 text-slate-900 uppercase',
-                        getAlignClass(prefs, col, 'right'),
-                      )}
-                      style={getGridlineStyle(prefs)}
-                    >
-                      Total Geral:
-                    </TableCell>
-                  )
-
-                return (
-                  <TableCell
-                    key={col}
-                    className="px-2 py-2 border-r border-slate-300 text-right text-slate-900 uppercase"
-                    style={getGridlineStyle(prefs)}
-                  ></TableCell>
-                )
-              })}
-            </TableRow>
-          </>
-        )}
-      </TableBody>
-    </Table>
+            </>
+          )}
+        </TableBody>
+      </Table>
     </TopScrollTableWrapper>
   )
 }
@@ -8153,1163 +8181,1176 @@ export default function FinancialMovements() {
                   className="w-full min-w-max"
                 >
                   <TableHeader>
-                  <TableRow
-                    disableZebra
-                    className="bg-indigo-950 text-white font-bold hover:bg-indigo-900 border-none [&>th]:border-none [&>th]:text-white"
-                  >
-                    <TableHead
-                      className="w-[40px] px-2 py-1 text-center align-middle"
-                      style={getGridlineStyle()}
+                    <TableRow
+                      disableZebra
+                      className="bg-indigo-950 text-white font-bold hover:bg-indigo-900 border-none [&>th]:border-none [&>th]:text-white"
                     >
-                      <div className="flex items-center justify-center">
-                        <Checkbox
-                          checked={data.length > 0 && data.every((d) => selectedIds.includes(d.id))}
-                          onCheckedChange={toggleAllPage}
-                          aria-label="Selecionar todos da página"
-                          className="border-white data-[state=checked]:bg-white data-[state=checked]:text-indigo-950"
-                        />
-                      </div>
-                    </TableHead>
-                    {columnOrder
-                      .filter((key) => visibleColumns[key] !== false)
-                      .map((key) => {
-                        const h = tableHeaders.find((th) => th.key === key)!
-                        const activeFilterCount = filters[h.key]?.length || 0
-                        const options = filterOptions[h.key] || []
+                      <TableHead
+                        className="w-[40px] px-2 py-1 text-center align-middle"
+                        style={getGridlineStyle()}
+                      >
+                        <div className="flex items-center justify-center">
+                          <Checkbox
+                            checked={
+                              data.length > 0 && data.every((d) => selectedIds.includes(d.id))
+                            }
+                            onCheckedChange={toggleAllPage}
+                            aria-label="Selecionar todos da página"
+                            className="border-white data-[state=checked]:bg-white data-[state=checked]:text-indigo-950"
+                          />
+                        </div>
+                      </TableHead>
+                      {columnOrder
+                        .filter((key) => visibleColumns[key] !== false)
+                        .map((key) => {
+                          const h = tableHeaders.find((th) => th.key === key)!
+                          const activeFilterCount = filters[h.key]?.length || 0
+                          const options = filterOptions[h.key] || []
 
-                        return (
-                          <TableHead
-                            key={h.key}
-                            draggable
-                            onDragStart={(e) => {
-                              setDraggedColumn(h.key)
-                              e.dataTransfer.effectAllowed = 'move'
-                            }}
-                            onDragOver={(e) => {
-                              e.preventDefault()
-                              e.dataTransfer.dropEffect = 'move'
-                            }}
-                            onDrop={(e) => {
-                              e.preventDefault()
-                              if (!draggedColumn || draggedColumn === h.key) return
-                              const newOrder = [...columnOrder]
-                              const draggedIdx = newOrder.indexOf(draggedColumn)
-                              const targetIdx = newOrder.indexOf(h.key)
-                              newOrder.splice(draggedIdx, 1)
-                              newOrder.splice(targetIdx, 0, draggedColumn)
-                              setColumnOrder(newOrder)
-                              setDraggedColumn(null)
-                            }}
-                            onDragEnd={() => setDraggedColumn(null)}
-                            className={cn(
-                              'h-8 px-2 py-1 text-sm font-bold whitespace-nowrap select-none transition-colors cursor-grab active:cursor-grabbing',
-                              h.className,
-                              draggedColumn === h.key ? 'opacity-50 bg-indigo-900' : '',
-                            )}
-                            style={getGridlineStyle()}
-                          >
-                            <div className="flex items-center justify-between gap-1 w-full">
-                              <div
-                                className={cn(
-                                  'flex items-center cursor-pointer hover:bg-indigo-800/50 rounded px-1 -ml-1 flex-1',
-                                  (prefs.alignments?.[h.key] || h.align || 'left') === 'right'
-                                    ? 'justify-end'
-                                    : (prefs.alignments?.[h.key] || h.align || 'left') === 'center'
-                                      ? 'justify-center'
-                                      : 'justify-start',
-                                )}
-                                onClick={() => handleSort(h.key)}
-                              >
-                                {h.label}
-                                {renderSortIcon(h.key)}
-                              </div>
-                              <div className="flex items-center flex-shrink-0">
-                                <Popover>
-                                  <PopoverTrigger asChild>
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
+                          return (
+                            <TableHead
+                              key={h.key}
+                              draggable
+                              onDragStart={(e) => {
+                                setDraggedColumn(h.key)
+                                e.dataTransfer.effectAllowed = 'move'
+                              }}
+                              onDragOver={(e) => {
+                                e.preventDefault()
+                                e.dataTransfer.dropEffect = 'move'
+                              }}
+                              onDrop={(e) => {
+                                e.preventDefault()
+                                if (!draggedColumn || draggedColumn === h.key) return
+                                const newOrder = [...columnOrder]
+                                const draggedIdx = newOrder.indexOf(draggedColumn)
+                                const targetIdx = newOrder.indexOf(h.key)
+                                newOrder.splice(draggedIdx, 1)
+                                newOrder.splice(targetIdx, 0, draggedColumn)
+                                setColumnOrder(newOrder)
+                                setDraggedColumn(null)
+                              }}
+                              onDragEnd={() => setDraggedColumn(null)}
+                              className={cn(
+                                'h-8 px-2 py-1 text-sm font-bold whitespace-nowrap select-none transition-colors cursor-grab active:cursor-grabbing',
+                                h.className,
+                                draggedColumn === h.key ? 'opacity-50 bg-indigo-900' : '',
+                              )}
+                              style={getGridlineStyle()}
+                            >
+                              <div className="flex items-center justify-between gap-1 w-full">
+                                <div
+                                  className={cn(
+                                    'flex items-center cursor-pointer hover:bg-indigo-800/50 rounded px-1 -ml-1 flex-1',
+                                    (prefs.alignments?.[h.key] || h.align || 'left') === 'right'
+                                      ? 'justify-end'
+                                      : (prefs.alignments?.[h.key] || h.align || 'left') ===
+                                          'center'
+                                        ? 'justify-center'
+                                        : 'justify-start',
+                                  )}
+                                  onClick={() => handleSort(h.key)}
+                                >
+                                  {h.label}
+                                  {renderSortIcon(h.key)}
+                                </div>
+                                <div className="flex items-center flex-shrink-0">
+                                  <Popover>
+                                    <PopoverTrigger asChild>
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className={cn(
+                                          'h-5 w-5 rounded-sm relative',
+                                          activeFilterCount > 0
+                                            ? 'text-white bg-primary/40'
+                                            : 'text-indigo-200 hover:text-white hover:bg-indigo-800/50',
+                                        )}
+                                        title="Filtrar coluna"
+                                      >
+                                        <Filter className="h-3 w-3" />
+                                        {activeFilterCount > 0 && (
+                                          <span className="absolute -top-0.5 -right-0.5 flex h-2 w-2 items-center justify-center rounded-full bg-primary text-[8px] text-primary-foreground"></span>
+                                        )}
+                                      </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent
                                       className={cn(
-                                        'h-5 w-5 rounded-sm relative',
-                                        activeFilterCount > 0
-                                          ? 'text-white bg-primary/40'
-                                          : 'text-indigo-200 hover:text-white hover:bg-indigo-800/50',
+                                        'p-0 z-[110]',
+                                        h.key === 'c_custo' ||
+                                          h.key === 'conta_debito' ||
+                                          h.key === 'conta_credito' ||
+                                          h.key === 'conta_caixa'
+                                          ? 'w-[300px]'
+                                          : 'w-[200px]',
                                       )}
-                                      title="Filtrar coluna"
+                                      align="start"
                                     >
-                                      <Filter className="h-3 w-3" />
-                                      {activeFilterCount > 0 && (
-                                        <span className="absolute -top-0.5 -right-0.5 flex h-2 w-2 items-center justify-center rounded-full bg-primary text-[8px] text-primary-foreground"></span>
-                                      )}
-                                    </Button>
-                                  </PopoverTrigger>
-                                  <PopoverContent
-                                    className={cn(
-                                      'p-0 z-[110]',
-                                      h.key === 'c_custo' ||
-                                        h.key === 'conta_debito' ||
-                                        h.key === 'conta_credito' ||
-                                        h.key === 'conta_caixa'
-                                        ? 'w-[300px]'
-                                        : 'w-[200px]',
-                                    )}
-                                    align="start"
-                                  >
-                                    {h.key === 'c_custo' ? (
-                                      <CostCenterTreeFilterContent
-                                        options={options}
-                                        selected={filters[h.key] || []}
-                                        onChange={(v) => {
-                                          setFilters((prev) => ({ ...prev, [h.key]: v }))
-                                          setPage(0)
-                                        }}
-                                        costCenters={costCenters}
-                                      />
-                                    ) : h.key === 'conta_debito' || h.key === 'conta_credito' ? (
-                                      <ChartAccountTreeFilterContent
-                                        selected={filters[h.key] || []}
-                                        onChange={(v) => {
-                                          setFilters((prev) => ({ ...prev, [h.key]: v }))
-                                          setPage(0)
-                                        }}
-                                        chartOfAccounts={chartOfAccounts}
-                                      />
-                                    ) : (
-                                      <Command>
-                                        <CommandInput
-                                          placeholder="Buscar..."
-                                          className="h-8 text-xs"
+                                      {h.key === 'c_custo' ? (
+                                        <CostCenterTreeFilterContent
+                                          options={options}
+                                          selected={filters[h.key] || []}
+                                          onChange={(v) => {
+                                            setFilters((prev) => ({ ...prev, [h.key]: v }))
+                                            setPage(0)
+                                          }}
+                                          costCenters={costCenters}
                                         />
-                                        <div className="flex items-center gap-1 p-1 border-b border-slate-100 bg-slate-50">
-                                          <Button
-                                            variant="secondary"
-                                            size="sm"
-                                            className="h-6 flex-1 text-[10px]"
-                                            onMouseDown={(e) => {
-                                              e.preventDefault()
-                                              e.stopPropagation()
-                                            }}
-                                            onClick={(e) => {
-                                              e.stopPropagation()
-                                              setFilters((prev) => ({
-                                                ...prev,
-                                                [h.key]: options.map((o) => o.value),
-                                              }))
-                                              setPage(0)
-                                            }}
-                                          >
-                                            Todos
-                                          </Button>
-                                          <Button
-                                            variant="secondary"
-                                            size="sm"
-                                            className="h-6 flex-1 text-[10px]"
-                                            onMouseDown={(e) => {
-                                              e.preventDefault()
-                                              e.stopPropagation()
-                                            }}
-                                            onClick={(e) => {
-                                              e.stopPropagation()
-                                              setFilters((prev) => ({
-                                                ...prev,
-                                                [h.key]: [],
-                                              }))
-                                              setPage(0)
-                                            }}
-                                          >
-                                            Nenhum
-                                          </Button>
-                                        </div>
-                                        <CommandList className="max-h-[200px] overflow-y-auto">
-                                          <CommandEmpty className="py-2 text-xs text-center text-slate-500">
-                                            Nenhum encontrado.
-                                          </CommandEmpty>
-                                          <CommandGroup>
-                                            {options.map((opt) => {
-                                              if (
-                                                opt.parent &&
-                                                !expandedDateGroups[`${h.key}-${opt.parent}`]
-                                              ) {
-                                                return null
-                                              }
+                                      ) : h.key === 'conta_debito' || h.key === 'conta_credito' ? (
+                                        <ChartAccountTreeFilterContent
+                                          selected={filters[h.key] || []}
+                                          onChange={(v) => {
+                                            setFilters((prev) => ({ ...prev, [h.key]: v }))
+                                            setPage(0)
+                                          }}
+                                          chartOfAccounts={chartOfAccounts}
+                                        />
+                                      ) : (
+                                        <Command>
+                                          <CommandInput
+                                            placeholder="Buscar..."
+                                            className="h-8 text-xs"
+                                          />
+                                          <div className="flex items-center gap-1 p-1 border-b border-slate-100 bg-slate-50">
+                                            <Button
+                                              variant="secondary"
+                                              size="sm"
+                                              className="h-6 flex-1 text-[10px]"
+                                              onMouseDown={(e) => {
+                                                e.preventDefault()
+                                                e.stopPropagation()
+                                              }}
+                                              onClick={(e) => {
+                                                e.stopPropagation()
+                                                setFilters((prev) => ({
+                                                  ...prev,
+                                                  [h.key]: options.map((o) => o.value),
+                                                }))
+                                                setPage(0)
+                                              }}
+                                            >
+                                              Todos
+                                            </Button>
+                                            <Button
+                                              variant="secondary"
+                                              size="sm"
+                                              className="h-6 flex-1 text-[10px]"
+                                              onMouseDown={(e) => {
+                                                e.preventDefault()
+                                                e.stopPropagation()
+                                              }}
+                                              onClick={(e) => {
+                                                e.stopPropagation()
+                                                setFilters((prev) => ({
+                                                  ...prev,
+                                                  [h.key]: [],
+                                                }))
+                                                setPage(0)
+                                              }}
+                                            >
+                                              Nenhum
+                                            </Button>
+                                          </div>
+                                          <CommandList className="max-h-[200px] overflow-y-auto">
+                                            <CommandEmpty className="py-2 text-xs text-center text-slate-500">
+                                              Nenhum encontrado.
+                                            </CommandEmpty>
+                                            <CommandGroup>
+                                              {options.map((opt) => {
+                                                if (
+                                                  opt.parent &&
+                                                  !expandedDateGroups[`${h.key}-${opt.parent}`]
+                                                ) {
+                                                  return null
+                                                }
 
-                                              const isSelected = filters[h.key]?.includes(opt.value)
-                                              return (
-                                                <CommandItem
-                                                  key={opt.value}
-                                                  value={`${opt.label} ${opt.value}`}
-                                                  onMouseDown={(e) => {
-                                                    e.preventDefault()
-                                                    e.stopPropagation()
-                                                  }}
-                                                  onSelect={() => {
-                                                    const current = filters[h.key] || []
-                                                    const updated = isSelected
-                                                      ? current.filter((v) => v !== opt.value)
-                                                      : [...current, opt.value]
-                                                    setFilters((prev) => ({
-                                                      ...prev,
-                                                      [h.key]: updated,
-                                                    }))
-                                                    setPage(0)
-                                                  }}
-                                                  className={cn(
-                                                    'text-xs cursor-pointer',
-                                                    opt.parent ? 'pl-6' : '',
-                                                  )}
-                                                >
-                                                  {' '}
-                                                  {opt.isParent && (
-                                                    <div
-                                                      className="mr-1 flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-sm hover:bg-slate-200"
-                                                      onPointerDown={(e) => e.stopPropagation()}
-                                                      onClick={(e) => {
-                                                        e.stopPropagation()
-                                                        e.preventDefault()
-                                                        setExpandedDateGroups((prev) => ({
-                                                          ...prev,
-                                                          [`${h.key}-${opt.value}`]:
-                                                            !prev[`${h.key}-${opt.value}`],
-                                                        }))
-                                                      }}
-                                                    >
-                                                      {expandedDateGroups[
-                                                        `${h.key}-${opt.value}`
-                                                      ] ? (
-                                                        <ChevronDown className="h-3 w-3" />
-                                                      ) : (
-                                                        <ChevronRight className="h-3 w-3" />
-                                                      )}
-                                                    </div>
-                                                  )}
-                                                  {!opt.isParent && opt.parent && (
-                                                    <div className="w-4 mr-1 flex-shrink-0"></div>
-                                                  )}
-                                                  <div
+                                                const isSelected = filters[h.key]?.includes(
+                                                  opt.value,
+                                                )
+                                                return (
+                                                  <CommandItem
+                                                    key={opt.value}
+                                                    value={`${opt.label} ${opt.value}`}
+                                                    onMouseDown={(e) => {
+                                                      e.preventDefault()
+                                                      e.stopPropagation()
+                                                    }}
+                                                    onSelect={() => {
+                                                      const current = filters[h.key] || []
+                                                      const updated = isSelected
+                                                        ? current.filter((v) => v !== opt.value)
+                                                        : [...current, opt.value]
+                                                      setFilters((prev) => ({
+                                                        ...prev,
+                                                        [h.key]: updated,
+                                                      }))
+                                                      setPage(0)
+                                                    }}
                                                     className={cn(
-                                                      'mr-2 flex h-3 w-3 flex-shrink-0 items-center justify-center rounded-sm border border-primary',
-                                                      isSelected
-                                                        ? 'bg-primary text-primary-foreground'
-                                                        : 'opacity-50 [&_svg]:invisible',
+                                                      'text-xs cursor-pointer',
+                                                      opt.parent ? 'pl-6' : '',
                                                     )}
                                                   >
-                                                    <Check className="h-2 w-2" />
-                                                  </div>
-                                                  <span>{opt.label}</span>
-                                                </CommandItem>
-                                              )
-                                            })}
-                                          </CommandGroup>
-                                        </CommandList>
-                                      </Command>
-                                    )}
-                                  </PopoverContent>
-                                </Popover>
-                                <DropdownMenu>
-                                  <DropdownMenuTrigger asChild>
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      className="h-6 w-6 rounded-sm text-indigo-200 hover:text-white hover:bg-indigo-800/50 relative ml-0.5"
-                                      title="Opções de visualização"
-                                    >
-                                      <MoreVertical className="h-4 w-4" />
-                                    </Button>
-                                  </DropdownMenuTrigger>{' '}
-                                  <DropdownMenuContent align="start" className="w-48">
-                                    <DropdownMenuGroup>
-                                      <DropdownMenuLabel className="text-xs text-slate-500 uppercase tracking-wider">
-                                        Alinhamento
-                                      </DropdownMenuLabel>
-                                      <div className="flex items-center gap-1 px-2 py-1.5">
-                                        <Button
-                                          variant={
-                                            (prefs.alignments?.[h.key] || h.align || 'left') ===
-                                            'left'
-                                              ? 'secondary'
-                                              : 'ghost'
-                                          }
-                                          size="icon"
-                                          className="h-7 w-7"
-                                          onClick={() =>
-                                            updatePrefs({
-                                              alignments: {
-                                                ...(prefs.alignments || {}),
-                                                [h.key]: 'left',
-                                              },
-                                            })
-                                          }
-                                          title="Alinhar à Esquerda"
-                                        >
-                                          <AlignLeft className="h-3.5 w-3.5" />
-                                        </Button>
-                                        <Button
-                                          variant={
-                                            (prefs.alignments?.[h.key] || h.align || 'left') ===
-                                            'center'
-                                              ? 'secondary'
-                                              : 'ghost'
-                                          }
-                                          size="icon"
-                                          className="h-7 w-7"
-                                          onClick={() =>
-                                            updatePrefs({
-                                              alignments: {
-                                                ...(prefs.alignments || {}),
-                                                [h.key]: 'center',
-                                              },
-                                            })
-                                          }
-                                          title="Centralizar"
-                                        >
-                                          <AlignCenter className="h-3.5 w-3.5" />
-                                        </Button>
-                                        <Button
-                                          variant={
-                                            (prefs.alignments?.[h.key] || h.align || 'left') ===
-                                            'right'
-                                              ? 'secondary'
-                                              : 'ghost'
-                                          }
-                                          size="icon"
-                                          className="h-7 w-7"
-                                          onClick={() =>
-                                            updatePrefs({
-                                              alignments: {
-                                                ...(prefs.alignments || {}),
-                                                [h.key]: 'right',
-                                              },
-                                            })
-                                          }
-                                          title="Alinhar à Direita"
-                                        >
-                                          <AlignRight className="h-3.5 w-3.5" />
-                                        </Button>
-                                      </div>
-                                    </DropdownMenuGroup>
-                                    <DropdownMenuSeparator />
-                                    <DropdownMenuItem
-                                      onClick={() => toggleColumn(h.key)}
-                                      className="text-xs cursor-pointer"
-                                    >
-                                      <EyeOff className="mr-2 h-3.5 w-3.5 text-slate-500" />
-                                      <span>Ocultar coluna</span>
-                                    </DropdownMenuItem>
-                                    <DropdownMenuSeparator />
-                                    <DropdownMenuSub>
-                                      <DropdownMenuSubTrigger className="text-xs cursor-pointer">
-                                        <Columns className="mr-2 h-3.5 w-3.5 text-slate-500" />
-                                        <span>Reexibir colunas</span>
-                                      </DropdownMenuSubTrigger>
-                                      <DropdownMenuSubContent className="w-56 max-h-[300px] overflow-y-auto">
-                                        {tableHeaders.map((col) => (
-                                          <DropdownMenuCheckboxItem
-                                            key={col.key}
-                                            className="text-xs cursor-pointer"
-                                            checked={visibleColumns[col.key] !== false}
-                                            onCheckedChange={(checked) => {
-                                              setVisibleColumns((prev) => ({
-                                                ...prev,
-                                                [col.key]: checked,
-                                              }))
-                                            }}
+                                                    {' '}
+                                                    {opt.isParent && (
+                                                      <div
+                                                        className="mr-1 flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-sm hover:bg-slate-200"
+                                                        onPointerDown={(e) => e.stopPropagation()}
+                                                        onClick={(e) => {
+                                                          e.stopPropagation()
+                                                          e.preventDefault()
+                                                          setExpandedDateGroups((prev) => ({
+                                                            ...prev,
+                                                            [`${h.key}-${opt.value}`]:
+                                                              !prev[`${h.key}-${opt.value}`],
+                                                          }))
+                                                        }}
+                                                      >
+                                                        {expandedDateGroups[
+                                                          `${h.key}-${opt.value}`
+                                                        ] ? (
+                                                          <ChevronDown className="h-3 w-3" />
+                                                        ) : (
+                                                          <ChevronRight className="h-3 w-3" />
+                                                        )}
+                                                      </div>
+                                                    )}
+                                                    {!opt.isParent && opt.parent && (
+                                                      <div className="w-4 mr-1 flex-shrink-0"></div>
+                                                    )}
+                                                    <div
+                                                      className={cn(
+                                                        'mr-2 flex h-3 w-3 flex-shrink-0 items-center justify-center rounded-sm border border-primary',
+                                                        isSelected
+                                                          ? 'bg-primary text-primary-foreground'
+                                                          : 'opacity-50 [&_svg]:invisible',
+                                                      )}
+                                                    >
+                                                      <Check className="h-2 w-2" />
+                                                    </div>
+                                                    <span>{opt.label}</span>
+                                                  </CommandItem>
+                                                )
+                                              })}
+                                            </CommandGroup>
+                                          </CommandList>
+                                        </Command>
+                                      )}
+                                    </PopoverContent>
+                                  </Popover>
+                                  <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-6 w-6 rounded-sm text-indigo-200 hover:text-white hover:bg-indigo-800/50 relative ml-0.5"
+                                        title="Opções de visualização"
+                                      >
+                                        <MoreVertical className="h-4 w-4" />
+                                      </Button>
+                                    </DropdownMenuTrigger>{' '}
+                                    <DropdownMenuContent align="start" className="w-48">
+                                      <DropdownMenuGroup>
+                                        <DropdownMenuLabel className="text-xs text-slate-500 uppercase tracking-wider">
+                                          Alinhamento
+                                        </DropdownMenuLabel>
+                                        <div className="flex items-center gap-1 px-2 py-1.5">
+                                          <Button
+                                            variant={
+                                              (prefs.alignments?.[h.key] || h.align || 'left') ===
+                                              'left'
+                                                ? 'secondary'
+                                                : 'ghost'
+                                            }
+                                            size="icon"
+                                            className="h-7 w-7"
+                                            onClick={() =>
+                                              updatePrefs({
+                                                alignments: {
+                                                  ...(prefs.alignments || {}),
+                                                  [h.key]: 'left',
+                                                },
+                                              })
+                                            }
+                                            title="Alinhar à Esquerda"
                                           >
-                                            {col.label}
-                                          </DropdownMenuCheckboxItem>
-                                        ))}
-                                      </DropdownMenuSubContent>
-                                    </DropdownMenuSub>
-                                  </DropdownMenuContent>
-                                </DropdownMenu>
+                                            <AlignLeft className="h-3.5 w-3.5" />
+                                          </Button>
+                                          <Button
+                                            variant={
+                                              (prefs.alignments?.[h.key] || h.align || 'left') ===
+                                              'center'
+                                                ? 'secondary'
+                                                : 'ghost'
+                                            }
+                                            size="icon"
+                                            className="h-7 w-7"
+                                            onClick={() =>
+                                              updatePrefs({
+                                                alignments: {
+                                                  ...(prefs.alignments || {}),
+                                                  [h.key]: 'center',
+                                                },
+                                              })
+                                            }
+                                            title="Centralizar"
+                                          >
+                                            <AlignCenter className="h-3.5 w-3.5" />
+                                          </Button>
+                                          <Button
+                                            variant={
+                                              (prefs.alignments?.[h.key] || h.align || 'left') ===
+                                              'right'
+                                                ? 'secondary'
+                                                : 'ghost'
+                                            }
+                                            size="icon"
+                                            className="h-7 w-7"
+                                            onClick={() =>
+                                              updatePrefs({
+                                                alignments: {
+                                                  ...(prefs.alignments || {}),
+                                                  [h.key]: 'right',
+                                                },
+                                              })
+                                            }
+                                            title="Alinhar à Direita"
+                                          >
+                                            <AlignRight className="h-3.5 w-3.5" />
+                                          </Button>
+                                        </div>
+                                      </DropdownMenuGroup>
+                                      <DropdownMenuSeparator />
+                                      <DropdownMenuItem
+                                        onClick={() => toggleColumn(h.key)}
+                                        className="text-xs cursor-pointer"
+                                      >
+                                        <EyeOff className="mr-2 h-3.5 w-3.5 text-slate-500" />
+                                        <span>Ocultar coluna</span>
+                                      </DropdownMenuItem>
+                                      <DropdownMenuSeparator />
+                                      <DropdownMenuSub>
+                                        <DropdownMenuSubTrigger className="text-xs cursor-pointer">
+                                          <Columns className="mr-2 h-3.5 w-3.5 text-slate-500" />
+                                          <span>Reexibir colunas</span>
+                                        </DropdownMenuSubTrigger>
+                                        <DropdownMenuSubContent className="w-56 max-h-[300px] overflow-y-auto">
+                                          {tableHeaders.map((col) => (
+                                            <DropdownMenuCheckboxItem
+                                              key={col.key}
+                                              className="text-xs cursor-pointer"
+                                              checked={visibleColumns[col.key] !== false}
+                                              onCheckedChange={(checked) => {
+                                                setVisibleColumns((prev) => ({
+                                                  ...prev,
+                                                  [col.key]: checked,
+                                                }))
+                                              }}
+                                            >
+                                              {col.label}
+                                            </DropdownMenuCheckboxItem>
+                                          ))}
+                                        </DropdownMenuSubContent>
+                                      </DropdownMenuSub>
+                                    </DropdownMenuContent>
+                                  </DropdownMenu>
+                                </div>
                               </div>
-                            </div>
-                          </TableHead>
-                        )
-                      })}
-                    <TableHead
-                      className="h-8 px-2 py-1 text-sm font-bold whitespace-nowrap text-center"
-                      style={getGridlineStyle()}
-                    >
-                      Ações
-                    </TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {loading ? (
-                    Array.from({ length: 15 }).map((_, idx) => (
-                      <TableRow key={idx} disableZebra className="border-0">
+                            </TableHead>
+                          )
+                        })}
+                      <TableHead
+                        className="h-8 px-2 py-1 text-sm font-bold whitespace-nowrap text-center"
+                        style={getGridlineStyle()}
+                      >
+                        Ações
+                      </TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {loading ? (
+                      Array.from({ length: 15 }).map((_, idx) => (
+                        <TableRow key={idx} disableZebra className="border-0">
+                          <TableCell
+                            className="px-2 py-2 text-center align-middle border-0"
+                            style={getGridlineStyle()}
+                          >
+                            <Skeleton className="h-4 w-4 rounded mx-auto" />
+                          </TableCell>
+                          {columnOrder
+                            .filter((key) => visibleColumns[key] !== false)
+                            .map((key) => (
+                              <TableCell
+                                key={key}
+                                className="px-2 py-2 border-0"
+                                style={getGridlineStyle()}
+                              >
+                                <Skeleton className="h-4 w-full min-w-[60px] max-w-[200px] rounded" />
+                              </TableCell>
+                            ))}
+                          <TableCell
+                            className="px-2 py-2 text-center border-0"
+                            style={getGridlineStyle()}
+                          >
+                            <Skeleton className="h-6 w-12 rounded mx-auto" />
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    ) : data.length === 0 ? (
+                      <TableRow disableZebra>
                         <TableCell
-                          className="px-2 py-2 text-center align-middle border-0"
-                          style={getGridlineStyle()}
+                          colSpan={visibleCount}
+                          className="text-center h-48 text-slate-500"
                         >
-                          <Skeleton className="h-4 w-4 rounded mx-auto" />
-                        </TableCell>
-                        {columnOrder
-                          .filter((key) => visibleColumns[key] !== false)
-                          .map((key) => (
-                            <TableCell
-                              key={key}
-                              className="px-2 py-2 border-0"
-                              style={getGridlineStyle()}
-                            >
-                              <Skeleton className="h-4 w-full min-w-[60px] max-w-[200px] rounded" />
-                            </TableCell>
-                          ))}
-                        <TableCell
-                          className="px-2 py-2 text-center border-0"
-                          style={getGridlineStyle()}
-                        >
-                          <Skeleton className="h-6 w-12 rounded mx-auto" />
+                          Nenhum movimento financeiro encontrado.
                         </TableCell>
                       </TableRow>
-                    ))
-                  ) : data.length === 0 ? (
-                    <TableRow disableZebra>
-                      <TableCell colSpan={visibleCount} className="text-center h-48 text-slate-500">
-                        Nenhum movimento financeiro encontrado.
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    <>
-                      {data.map((row) => {
-                        const missingFields = []
-                        if (!row.data_emissao) missingFields.push('Data de Emissão')
-                        if (!row.c_custo) missingFields.push('Centro de Custo')
-                        if (row.valor_liquido === null || row.valor_liquido === undefined)
-                          missingFields.push('Valor Líquido')
+                    ) : (
+                      <>
+                        {data.map((row) => {
+                          const missingFields = []
+                          if (!row.data_emissao) missingFields.push('Data de Emissão')
+                          if (!row.c_custo) missingFields.push('Centro de Custo')
+                          if (row.valor_liquido === null || row.valor_liquido === undefined)
+                            missingFields.push('Valor Líquido')
 
-                        return (
-                          <TableRow
-                            key={row.id}
-                            className="transition-colors border-0"
-                            style={{ fontSize: `${tableFontSize}px` }}
-                          >
-                            <TableCell
-                              className="px-2 py-0.5 text-center align-middle border-0"
-                              style={getGridlineStyle()}
+                          return (
+                            <TableRow
+                              key={row.id}
+                              className="transition-colors border-0"
+                              style={{ fontSize: `${tableFontSize}px` }}
                             >
-                              <div className="flex items-center justify-center">
-                                <Checkbox
-                                  checked={selectedIds.includes(row.id)}
-                                  onCheckedChange={() => toggleRow(row.id)}
-                                  aria-label="Selecionar registro"
-                                  className="data-[state=checked]:bg-indigo-950 data-[state=checked]:text-white border-slate-400"
-                                />
-                              </div>
-                            </TableCell>
-                            {columnOrder
-                              .filter((key) => visibleColumns[key] !== false)
-                              .map((key) => {
-                                switch (key) {
-                                  case 'prontidao': {
-                                    const sim = getAccountingEntriesSimulation(row)
-                                    const isMissingData = missingFields.length > 0
-                                    let statusColor = 'bg-amber-100 text-amber-800 border-amber-200'
-                                    let statusText = 'Parcial'
+                              <TableCell
+                                className="px-2 py-0.5 text-center align-middle border-0"
+                                style={getGridlineStyle()}
+                              >
+                                <div className="flex items-center justify-center">
+                                  <Checkbox
+                                    checked={selectedIds.includes(row.id)}
+                                    onCheckedChange={() => toggleRow(row.id)}
+                                    aria-label="Selecionar registro"
+                                    className="data-[state=checked]:bg-indigo-950 data-[state=checked]:text-white border-slate-400"
+                                  />
+                                </div>
+                              </TableCell>
+                              {columnOrder
+                                .filter((key) => visibleColumns[key] !== false)
+                                .map((key) => {
+                                  switch (key) {
+                                    case 'prontidao': {
+                                      const sim = getAccountingEntriesSimulation(row)
+                                      const isMissingData = missingFields.length > 0
+                                      let statusColor =
+                                        'bg-amber-100 text-amber-800 border-amber-200'
+                                      let statusText = 'Parcial'
 
-                                    if (isMissingData) {
-                                      statusColor = 'bg-red-100 text-red-800 border-red-200'
-                                      statusText = 'Incompleto'
-                                    } else if (sim.debitAccount && sim.creditAccount) {
-                                      statusColor =
-                                        'bg-emerald-100 text-emerald-800 border-emerald-200'
-                                      statusText = 'Mapeado'
-                                    } else {
-                                      statusColor =
-                                        'bg-rose-100 text-rose-800 border-rose-200 hover:bg-rose-200 hover:text-rose-900 shadow-sm'
-                                      statusText = 'Pendente'
+                                      if (isMissingData) {
+                                        statusColor = 'bg-red-100 text-red-800 border-red-200'
+                                        statusText = 'Incompleto'
+                                      } else if (sim.debitAccount && sim.creditAccount) {
+                                        statusColor =
+                                          'bg-emerald-100 text-emerald-800 border-emerald-200'
+                                        statusText = 'Mapeado'
+                                      } else {
+                                        statusColor =
+                                          'bg-rose-100 text-rose-800 border-rose-200 hover:bg-rose-200 hover:text-rose-900 shadow-sm'
+                                        statusText = 'Pendente'
+                                      }
+
+                                      return (
+                                        <TableCell key={key} {...getCellProps(key, 'center')}>
+                                          <Button
+                                            variant="ghost"
+                                            className={cn(
+                                              'h-6 px-2.5 py-0 text-[0.85em] font-bold rounded-full border cursor-pointer transition-all',
+                                              statusColor,
+                                            )}
+                                            onClick={() => setMappingRow(row)}
+                                          >
+                                            {statusText}
+                                          </Button>
+                                        </TableCell>
+                                      )
                                     }
-
-                                    return (
-                                      <TableCell key={key} {...getCellProps(key, 'center')}>
-                                        <Button
-                                          variant="ghost"
-                                          className={cn(
-                                            'h-6 px-2.5 py-0 text-[0.85em] font-bold rounded-full border cursor-pointer transition-all',
-                                            statusColor,
+                                    case 'empresa':
+                                      return (
+                                        <TableCell
+                                          key={key}
+                                          {...getCellProps(
+                                            key,
+                                            'left',
+                                            'whitespace-nowrap max-w-[150px] truncate',
                                           )}
-                                          onClick={() => setMappingRow(row)}
+                                          title={row.organizations?.name}
                                         >
-                                          {statusText}
-                                        </Button>
-                                      </TableCell>
-                                    )
-                                  }
-                                  case 'empresa':
-                                    return (
-                                      <TableCell
-                                        key={key}
-                                        {...getCellProps(
-                                          key,
-                                          'left',
-                                          'whitespace-nowrap max-w-[150px] truncate',
-                                        )}
-                                        title={row.organizations?.name}
-                                      >
-                                        {row.organizations?.name || '-'}
-                                      </TableCell>
-                                    )
-                                  case 'compensado':
-                                    return (
-                                      <TableCell
-                                        key={key}
-                                        {...getCellProps(key, 'center', 'whitespace-nowrap')}
-                                      >
-                                        {row.compensado || '-'}
-                                      </TableCell>
-                                    )
-                                  case 'tipo_operacao':
-                                    return (
-                                      <TableCell
-                                        key={key}
-                                        {...getCellProps(key, 'center', 'whitespace-nowrap')}
-                                      >
-                                        {row.tipo_operacao || '-'}
-                                      </TableCell>
-                                    )
-                                  case 'data_emissao':
-                                    return (
-                                      <TableCell
-                                        key={key}
-                                        {...getCellProps(key, 'center', 'whitespace-nowrap')}
-                                      >
-                                        {editingId === row.id ? (
-                                          <Input
-                                            type="date"
-                                            className="h-auto py-1 text-[inherit] px-1.5 w-32 !text-slate-900 min-h-6"
-                                            value={editForm.data_emissao || ''}
-                                            onChange={(e) =>
-                                              setEditForm({
-                                                ...editForm,
-                                                data_emissao: e.target.value,
-                                              })
-                                            }
-                                          />
-                                        ) : (
-                                          <span>
-                                            {row.data_emissao
-                                              ? formatDate(row.data_emissao)
-                                              : 'Indisponível'}
-                                          </span>
-                                        )}
-                                      </TableCell>
-                                    )
-                                  case 'dt_compens':
-                                    return (
-                                      <TableCell
-                                        key={key}
-                                        {...getCellProps(key, 'center', 'whitespace-nowrap')}
-                                      >
-                                        {formatDate(row.dt_compens)}
-                                      </TableCell>
-                                    )
-                                  case 'conta_caixa':
-                                    return (
-                                      <TableCell
-                                        key={key}
-                                        {...getCellProps(key, 'center', 'max-w-[200px] truncate')}
-                                        title={row.conta_caixa || ''}
-                                      >
-                                        {editingId === row.id ? (
-                                          <Input
-                                            className="h-auto py-1 text-[inherit] px-1.5 w-28 !text-slate-900 min-h-6"
-                                            value={editForm.conta_caixa || ''}
-                                            onChange={(e) =>
-                                              setEditForm({
-                                                ...editForm,
-                                                conta_caixa: e.target.value,
-                                              })
-                                            }
-                                          />
-                                        ) : (
-                                          <div
-                                            className={cn(
-                                              'flex items-center gap-1.5 w-full',
-                                              (prefs.alignments?.['conta_caixa'] || 'center') ===
-                                                'center'
-                                                ? 'justify-center'
-                                                : (prefs.alignments?.['conta_caixa'] ||
-                                                      'center') === 'right'
-                                                  ? 'justify-end'
-                                                  : 'justify-start',
-                                            )}
-                                          >
-                                            <span className="font-medium text-slate-900">
-                                              {row.conta_caixa || '-'}
+                                          {row.organizations?.name || '-'}
+                                        </TableCell>
+                                      )
+                                    case 'compensado':
+                                      return (
+                                        <TableCell
+                                          key={key}
+                                          {...getCellProps(key, 'center', 'whitespace-nowrap')}
+                                        >
+                                          {row.compensado || '-'}
+                                        </TableCell>
+                                      )
+                                    case 'tipo_operacao':
+                                      return (
+                                        <TableCell
+                                          key={key}
+                                          {...getCellProps(key, 'center', 'whitespace-nowrap')}
+                                        >
+                                          {row.tipo_operacao || '-'}
+                                        </TableCell>
+                                      )
+                                    case 'data_emissao':
+                                      return (
+                                        <TableCell
+                                          key={key}
+                                          {...getCellProps(key, 'center', 'whitespace-nowrap')}
+                                        >
+                                          {editingId === row.id ? (
+                                            <Input
+                                              type="date"
+                                              className="h-auto py-1 text-[inherit] px-1.5 w-32 !text-slate-900 min-h-6"
+                                              value={editForm.data_emissao || ''}
+                                              onChange={(e) =>
+                                                setEditForm({
+                                                  ...editForm,
+                                                  data_emissao: e.target.value,
+                                                })
+                                              }
+                                            />
+                                          ) : (
+                                            <span>
+                                              {row.data_emissao
+                                                ? formatDate(row.data_emissao)
+                                                : 'Indisponível'}
                                             </span>
-                                            {isSimplifiedMode &&
-                                              row.conta_caixa &&
-                                              row.nome_caixa && (
-                                                <span className="text-slate-900 font-medium truncate">
-                                                  - {row.nome_caixa}
+                                          )}
+                                        </TableCell>
+                                      )
+                                    case 'dt_compens':
+                                      return (
+                                        <TableCell
+                                          key={key}
+                                          {...getCellProps(key, 'center', 'whitespace-nowrap')}
+                                        >
+                                          {formatDate(row.dt_compens)}
+                                        </TableCell>
+                                      )
+                                    case 'conta_caixa':
+                                      return (
+                                        <TableCell
+                                          key={key}
+                                          {...getCellProps(key, 'center', 'max-w-[200px] truncate')}
+                                          title={row.conta_caixa || ''}
+                                        >
+                                          {editingId === row.id ? (
+                                            <Input
+                                              className="h-auto py-1 text-[inherit] px-1.5 w-28 !text-slate-900 min-h-6"
+                                              value={editForm.conta_caixa || ''}
+                                              onChange={(e) =>
+                                                setEditForm({
+                                                  ...editForm,
+                                                  conta_caixa: e.target.value,
+                                                })
+                                              }
+                                            />
+                                          ) : (
+                                            <div
+                                              className={cn(
+                                                'flex items-center gap-1.5 w-full',
+                                                (prefs.alignments?.['conta_caixa'] || 'center') ===
+                                                  'center'
+                                                  ? 'justify-center'
+                                                  : (prefs.alignments?.['conta_caixa'] ||
+                                                        'center') === 'right'
+                                                    ? 'justify-end'
+                                                    : 'justify-start',
+                                              )}
+                                            >
+                                              <span className="font-medium text-slate-900">
+                                                {row.conta_caixa || '-'}
+                                              </span>
+                                              {isSimplifiedMode &&
+                                                row.conta_caixa &&
+                                                row.nome_caixa && (
+                                                  <span className="text-slate-900 font-medium truncate">
+                                                    - {row.nome_caixa}
+                                                  </span>
+                                                )}
+                                            </div>
+                                          )}
+                                        </TableCell>
+                                      )
+                                    case 'nome_caixa':
+                                      return (
+                                        <TableCell
+                                          key={key}
+                                          {...getCellProps(
+                                            key,
+                                            'left',
+                                            'whitespace-nowrap max-w-[150px] truncate',
+                                          )}
+                                          title={row.nome_caixa}
+                                        >
+                                          {row.nome_caixa || '-'}
+                                        </TableCell>
+                                      )
+                                    case 'conta_debito': {
+                                      const sim = getAccountingEntriesSimulation(row)
+                                      const acc = sim.debitAccount
+                                      return (
+                                        <TableCell
+                                          key={key}
+                                          {...getCellProps(key, 'left', 'whitespace-nowrap')}
+                                        >
+                                          {acc ? (
+                                            <div className="flex items-center gap-1.5">
+                                              <span
+                                                className="font-mono bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded text-[0.85em] font-semibold border border-blue-200"
+                                                title="Código Reduzido"
+                                              >
+                                                {acc.account_code}
+                                              </span>
+                                              {acc.classification && (
+                                                <span
+                                                  className="font-mono text-[0.85em] font-semibold text-slate-600"
+                                                  title="Classificação"
+                                                >
+                                                  {acc.classification}
                                                 </span>
                                               )}
-                                          </div>
-                                        )}
-                                      </TableCell>
-                                    )
-                                  case 'nome_caixa':
-                                    return (
-                                      <TableCell
-                                        key={key}
-                                        {...getCellProps(
-                                          key,
-                                          'left',
-                                          'whitespace-nowrap max-w-[150px] truncate',
-                                        )}
-                                        title={row.nome_caixa}
-                                      >
-                                        {row.nome_caixa || '-'}
-                                      </TableCell>
-                                    )
-                                  case 'conta_debito': {
-                                    const sim = getAccountingEntriesSimulation(row)
-                                    const acc = sim.debitAccount
-                                    return (
-                                      <TableCell
-                                        key={key}
-                                        {...getCellProps(key, 'left', 'whitespace-nowrap')}
-                                      >
-                                        {acc ? (
-                                          <div className="flex items-center gap-1.5">
-                                            <span
-                                              className="font-mono bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded text-[0.85em] font-semibold border border-blue-200"
-                                              title="Código Reduzido"
-                                            >
-                                              {acc.account_code}
-                                            </span>
-                                            {acc.classification && (
                                               <span
-                                                className="font-mono text-[0.85em] font-semibold text-slate-600"
-                                                title="Classificação"
+                                                className="truncate max-w-[200px]"
+                                                title={acc.account_name}
                                               >
-                                                {acc.classification}
+                                                {acc.account_name}
                                               </span>
-                                            )}
-                                            <span
-                                              className="truncate max-w-[200px]"
-                                              title={acc.account_name}
-                                            >
-                                              {acc.account_name}
+                                            </div>
+                                          ) : (
+                                            <span className="text-red-500 italic text-[0.85em] font-medium bg-red-50 px-1.5 py-0.5 rounded">
+                                              Pendente
                                             </span>
-                                          </div>
-                                        ) : (
-                                          <span className="text-red-500 italic text-[0.85em] font-medium bg-red-50 px-1.5 py-0.5 rounded">
-                                            Pendente
-                                          </span>
-                                        )}
-                                      </TableCell>
-                                    )
-                                  }
-                                  case 'conta_credito': {
-                                    const sim = getAccountingEntriesSimulation(row)
-                                    const acc = sim.creditAccount
-                                    return (
-                                      <TableCell
-                                        key={key}
-                                        {...getCellProps(key, 'left', 'whitespace-nowrap')}
-                                      >
-                                        {acc ? (
-                                          <div className="flex items-center gap-1.5">
-                                            <span
-                                              className="font-mono bg-rose-100 text-rose-800 px-1.5 py-0.5 rounded text-[0.85em] font-semibold border border-rose-200"
-                                              title="Código Reduzido"
-                                            >
-                                              {acc.account_code}
-                                            </span>
-                                            {acc.classification && (
+                                          )}
+                                        </TableCell>
+                                      )
+                                    }
+                                    case 'conta_credito': {
+                                      const sim = getAccountingEntriesSimulation(row)
+                                      const acc = sim.creditAccount
+                                      return (
+                                        <TableCell
+                                          key={key}
+                                          {...getCellProps(key, 'left', 'whitespace-nowrap')}
+                                        >
+                                          {acc ? (
+                                            <div className="flex items-center gap-1.5">
                                               <span
-                                                className="font-mono text-[0.85em] font-semibold text-slate-600"
-                                                title="Classificação"
+                                                className="font-mono bg-rose-100 text-rose-800 px-1.5 py-0.5 rounded text-[0.85em] font-semibold border border-rose-200"
+                                                title="Código Reduzido"
                                               >
-                                                {acc.classification}
+                                                {acc.account_code}
                                               </span>
-                                            )}
-                                            <span
-                                              className="truncate max-w-[200px]"
-                                              title={acc.account_name}
-                                            >
-                                              {acc.account_name}
-                                            </span>
-                                          </div>
-                                        ) : (
-                                          <span className="text-red-500 italic text-[0.85em] font-medium bg-red-50 px-1.5 py-0.5 rounded">
-                                            Pendente
-                                          </span>
-                                        )}
-                                      </TableCell>
-                                    )
-                                  }
-                                  case 'conta_caixa_destino':
-                                    return (
-                                      <TableCell
-                                        key={key}
-                                        {...getCellProps(key, 'center', 'whitespace-nowrap')}
-                                      >
-                                        {row.conta_caixa_destino || '-'}
-                                      </TableCell>
-                                    )
-                                  case 'forma_pagto':
-                                    return (
-                                      <TableCell
-                                        key={key}
-                                        {...getCellProps(key, 'left', 'whitespace-nowrap')}
-                                      >
-                                        {editingId === row.id ? (
-                                          <Input
-                                            className="h-auto py-1 text-[inherit] px-1.5 w-24 !text-slate-900 min-h-6"
-                                            value={editForm.forma_pagto || ''}
-                                            onChange={(e) =>
-                                              setEditForm({
-                                                ...editForm,
-                                                forma_pagto: e.target.value,
-                                              })
-                                            }
-                                          />
-                                        ) : (
-                                          row.forma_pagto || '-'
-                                        )}
-                                      </TableCell>
-                                    )
-                                  case 'c_custo':
-                                    return (
-                                      <TableCell
-                                        key={key}
-                                        {...getCellProps(key, 'left', 'whitespace-nowrap')}
-                                      >
-                                        {editingId === row.id ? (
-                                          <Input
-                                            className="h-auto py-1 text-[inherit] px-1.5 w-24 !text-slate-900 min-h-6"
-                                            value={editForm.c_custo || ''}
-                                            onChange={(e) =>
-                                              setEditForm({ ...editForm, c_custo: e.target.value })
-                                            }
-                                          />
-                                        ) : (
-                                          <div
-                                            className={cn(
-                                              'flex items-center gap-1.5',
-                                              (prefs.alignments?.['c_custo'] || 'left') === 'center'
-                                                ? 'justify-center'
-                                                : (prefs.alignments?.['c_custo'] || 'left') ===
-                                                    'right'
-                                                  ? 'justify-end'
-                                                  : 'justify-start',
-                                            )}
-                                          >
-                                            <span className="font-medium text-slate-900">
-                                              {row.c_custo || 'Sem C. Custo'}
-                                            </span>
-                                            {isSimplifiedMode &&
-                                              row.c_custo &&
-                                              row.descricao_c_custo && (
-                                                <span className="text-slate-900 font-medium truncate max-w-[200px]">
-                                                  - {row.descricao_c_custo}
+                                              {acc.classification && (
+                                                <span
+                                                  className="font-mono text-[0.85em] font-semibold text-slate-600"
+                                                  title="Classificação"
+                                                >
+                                                  {acc.classification}
                                                 </span>
                                               )}
-                                          </div>
-                                        )}
-                                      </TableCell>
-                                    )
-                                  case 'descricao_c_custo':
-                                    return (
-                                      <TableCell
-                                        key={key}
-                                        {...getCellProps(
-                                          key,
-                                          'left',
-                                          'whitespace-nowrap max-w-[150px] truncate',
-                                        )}
-                                        title={row.descricao_c_custo}
-                                      >
-                                        {row.descricao_c_custo || '-'}
-                                      </TableCell>
-                                    )
-                                  case 'valor':
-                                    return (
-                                      <TableCell
-                                        key={key}
-                                        {...getCellProps(
-                                          key,
-                                          'left',
-                                          'whitespace-nowrap font-medium',
-                                        )}
-                                      >
-                                        {row.valor !== null ? (
-                                          <span
-                                            className={cn(
-                                              row.valor > 0
-                                                ? 'text-blue-700 dark:text-blue-400'
-                                                : row.valor < 0
-                                                  ? 'text-rose-700 dark:text-rose-400'
-                                                  : '',
-                                            )}
-                                          >
-                                            {new Intl.NumberFormat('pt-BR', {
-                                              style: 'currency',
-                                              currency: 'BRL',
-                                            }).format(row.valor)}
-                                          </span>
-                                        ) : (
-                                          <span>-</span>
-                                        )}
-                                      </TableCell>
-                                    )
-                                  case 'valor_liquido':
-                                    return (
-                                      <TableCell
-                                        key={key}
-                                        {...getCellProps(
-                                          key,
-                                          'left',
-                                          'whitespace-nowrap font-medium',
-                                        )}
-                                      >
-                                        {editingId === row.id ? (
-                                          <Input
-                                            type="number"
-                                            step="0.01"
-                                            className="h-auto py-1 text-[inherit] px-1.5 w-28 text-left !text-slate-900 min-h-6"
-                                            value={editForm.valor_liquido || ''}
-                                            onChange={(e) =>
-                                              setEditForm({
-                                                ...editForm,
-                                                valor_liquido: parseFloat(e.target.value),
-                                              })
-                                            }
-                                          />
-                                        ) : (
-                                          <span
-                                            className={cn(
-                                              row.valor_liquido > 0
-                                                ? 'text-blue-700 dark:text-blue-400'
-                                                : row.valor_liquido < 0
-                                                  ? 'text-rose-700 dark:text-rose-400'
-                                                  : '',
-                                            )}
-                                          >
-                                            {row.valor_liquido !== null
-                                              ? new Intl.NumberFormat('pt-BR', {
-                                                  style: 'currency',
-                                                  currency: 'BRL',
-                                                }).format(row.valor_liquido)
-                                              : 'R$ 0,00'}
-                                          </span>
-                                        )}
-                                      </TableCell>
-                                    )
-                                  case 'n_documento':
-                                    return (
-                                      <TableCell
-                                        key={key}
-                                        {...getCellProps(key, 'left', 'whitespace-nowrap')}
-                                      >
-                                        {editingId === row.id ? (
-                                          <Input
-                                            className="h-auto py-1 text-[inherit] px-1.5 w-28 !text-slate-900 min-h-6"
-                                            value={editForm.n_documento || ''}
-                                            onChange={(e) =>
-                                              setEditForm({
-                                                ...editForm,
-                                                n_documento: e.target.value,
-                                              })
-                                            }
-                                          />
-                                        ) : (
-                                          row.n_documento || '-'
-                                        )}
-                                      </TableCell>
-                                    )
-                                  case 'nome_cli_fornec':
-                                    return (
-                                      <TableCell
-                                        key={key}
-                                        {...getCellProps(key, 'left', 'max-w-[200px] truncate')}
-                                        title={row.nome_cli_fornec}
-                                      >
-                                        {editingId === row.id ? (
-                                          <Input
-                                            className="h-auto py-1 text-[inherit] px-1.5 !text-slate-900 min-h-6"
-                                            value={editForm.nome_cli_fornec || ''}
-                                            onChange={(e) =>
-                                              setEditForm({
-                                                ...editForm,
-                                                nome_cli_fornec: e.target.value,
-                                              })
-                                            }
-                                          />
-                                        ) : (
-                                          row.nome_cli_fornec || '-'
-                                        )}
-                                      </TableCell>
-                                    )
-                                  case 'historico':
-                                    return (
-                                      <TableCell
-                                        key={key}
-                                        {...getCellProps(key, 'left', 'max-w-[250px] truncate')}
-                                        title={row.historico}
-                                      >
-                                        {editingId === row.id ? (
-                                          <Input
-                                            className="h-auto py-1 text-[inherit] px-1.5 !text-slate-900 min-h-6"
-                                            value={editForm.historico || ''}
-                                            onChange={(e) =>
-                                              setEditForm({
-                                                ...editForm,
-                                                historico: e.target.value,
-                                              })
-                                            }
-                                          />
-                                        ) : (
-                                          row.historico || '-'
-                                        )}
-                                      </TableCell>
-                                    )
-                                  case 'fp':
-                                    return (
-                                      <TableCell
-                                        key={key}
-                                        {...getCellProps(key, 'center', 'whitespace-nowrap')}
-                                      >
-                                        {row.fp || '-'}
-                                      </TableCell>
-                                    )
-                                  case 'n_cheque':
-                                    return (
-                                      <TableCell
-                                        key={key}
-                                        {...getCellProps(key, 'left', 'whitespace-nowrap')}
-                                      >
-                                        {row.n_cheque || '-'}
-                                      </TableCell>
-                                    )
-                                  case 'data_vencto':
-                                    return (
-                                      <TableCell
-                                        key={key}
-                                        {...getCellProps(key, 'center', 'whitespace-nowrap')}
-                                      >
-                                        {editingId === row.id ? (
-                                          <Input
-                                            type="date"
-                                            className="h-auto py-1 text-[inherit] px-1.5 w-32 !text-slate-900 min-h-6"
-                                            value={editForm.data_vencto || ''}
-                                            onChange={(e) =>
-                                              setEditForm({
-                                                ...editForm,
-                                                data_vencto: e.target.value,
-                                              })
-                                            }
-                                          />
-                                        ) : (
-                                          <span>
-                                            {row.data_vencto ? formatDate(row.data_vencto) : '-'}
-                                          </span>
-                                        )}
-                                      </TableCell>
-                                    )
-                                  case 'nominal_a':
-                                    return (
-                                      <TableCell
-                                        key={key}
-                                        {...getCellProps(key, 'left', 'whitespace-nowrap')}
-                                      >
-                                        {row.nominal_a || '-'}
-                                      </TableCell>
-                                    )
-                                  case 'emitente_cheque':
-                                    return (
-                                      <TableCell
-                                        key={key}
-                                        {...getCellProps(key, 'left', 'max-w-[150px] truncate')}
-                                        title={row.emitente_cheque}
-                                      >
-                                        {row.emitente_cheque || '-'}
-                                      </TableCell>
-                                    )
-                                  case 'cnpj_cpf':
-                                    return (
-                                      <TableCell
-                                        key={key}
-                                        {...getCellProps(key, 'left', 'whitespace-nowrap')}
-                                      >
-                                        {row.cnpj_cpf || '-'}
-                                      </TableCell>
-                                    )
-                                  case 'n_extrato':
-                                    return (
-                                      <TableCell
-                                        key={key}
-                                        {...getCellProps(key, 'center', 'whitespace-nowrap')}
-                                      >
-                                        {row.n_extrato || '-'}
-                                      </TableCell>
-                                    )
-                                  case 'filial':
-                                    return (
-                                      <TableCell
-                                        key={key}
-                                        {...getCellProps(key, 'center', 'whitespace-nowrap')}
-                                      >
-                                        {row.filial || '-'}
-                                      </TableCell>
-                                    )
-                                  case 'data_canc':
-                                    return (
-                                      <TableCell
-                                        key={key}
-                                        {...getCellProps(key, 'center', 'whitespace-nowrap')}
-                                      >
-                                        {formatDate(row.data_canc)}
-                                      </TableCell>
-                                    )
-                                  case 'data_estorno':
-                                    return (
-                                      <TableCell
-                                        key={key}
-                                        {...getCellProps(key, 'center', 'whitespace-nowrap')}
-                                      >
-                                        {formatDate(row.data_estorno)}
-                                      </TableCell>
-                                    )
-                                  case 'banco':
-                                    return (
-                                      <TableCell
-                                        key={key}
-                                        {...getCellProps(key, 'center', 'whitespace-nowrap')}
-                                      >
-                                        {editingId === row.id ? (
-                                          <Input
-                                            className="h-auto py-1 text-[inherit] px-1.5 w-24 !text-slate-900 min-h-6"
-                                            value={editForm.banco || ''}
-                                            onChange={(e) =>
-                                              setEditForm({ ...editForm, banco: e.target.value })
-                                            }
-                                          />
-                                        ) : (
-                                          row.banco || '-'
-                                        )}
-                                      </TableCell>
-                                    )
-                                  case 'c_corrente':
-                                    return (
-                                      <TableCell
-                                        key={key}
-                                        {...getCellProps(key, 'left', 'whitespace-nowrap')}
-                                      >
-                                        {row.c_corrente || '-'}
-                                      </TableCell>
-                                    )
-                                  case 'cod_cli_for':
-                                    return (
-                                      <TableCell
-                                        key={key}
-                                        {...getCellProps(key, 'left', 'whitespace-nowrap')}
-                                      >
-                                        {row.cod_cli_for || '-'}
-                                      </TableCell>
-                                    )
-                                  case 'departamento':
-                                    return (
-                                      <TableCell
-                                        key={key}
-                                        {...getCellProps(key, 'center', 'whitespace-nowrap')}
-                                      >
-                                        {row.departamento || '-'}
-                                      </TableCell>
-                                    )
-                                  case 'status':
-                                    return (
-                                      <TableCell key={key} {...getCellProps(key, 'center')}>
-                                        {missingFields.length > 0 ? (
-                                          <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[0.85em] font-semibold bg-red-100 text-red-800 border border-red-200">
-                                            Dados Incompletos
-                                          </span>
-                                        ) : row.status === 'Concluído' ? (
-                                          <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[0.85em] font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200">
-                                            Concluído
-                                          </span>
-                                        ) : row.status === 'Ignorado' ? (
-                                          <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[0.85em] font-semibold bg-slate-100 text-slate-800 border border-slate-200">
-                                            Ignorado
-                                          </span>
-                                        ) : (
-                                          <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[0.85em] font-semibold bg-amber-100 text-amber-800 border border-amber-200">
-                                            {row.status || 'Pendente'}
-                                          </span>
-                                        )}
-                                      </TableCell>
-                                    )
-                                  default:
-                                    return null
-                                }
-                              })}
-                            <TableCell
-                              className="px-2 py-0.5 text-center border-0"
-                              style={getGridlineStyle()}
-                            >
-                              {editingId === row.id ? (
-                                <div className="flex items-center justify-center gap-1">
+                                              <span
+                                                className="truncate max-w-[200px]"
+                                                title={acc.account_name}
+                                              >
+                                                {acc.account_name}
+                                              </span>
+                                            </div>
+                                          ) : (
+                                            <span className="text-red-500 italic text-[0.85em] font-medium bg-red-50 px-1.5 py-0.5 rounded">
+                                              Pendente
+                                            </span>
+                                          )}
+                                        </TableCell>
+                                      )
+                                    }
+                                    case 'conta_caixa_destino':
+                                      return (
+                                        <TableCell
+                                          key={key}
+                                          {...getCellProps(key, 'center', 'whitespace-nowrap')}
+                                        >
+                                          {row.conta_caixa_destino || '-'}
+                                        </TableCell>
+                                      )
+                                    case 'forma_pagto':
+                                      return (
+                                        <TableCell
+                                          key={key}
+                                          {...getCellProps(key, 'left', 'whitespace-nowrap')}
+                                        >
+                                          {editingId === row.id ? (
+                                            <Input
+                                              className="h-auto py-1 text-[inherit] px-1.5 w-24 !text-slate-900 min-h-6"
+                                              value={editForm.forma_pagto || ''}
+                                              onChange={(e) =>
+                                                setEditForm({
+                                                  ...editForm,
+                                                  forma_pagto: e.target.value,
+                                                })
+                                              }
+                                            />
+                                          ) : (
+                                            row.forma_pagto || '-'
+                                          )}
+                                        </TableCell>
+                                      )
+                                    case 'c_custo':
+                                      return (
+                                        <TableCell
+                                          key={key}
+                                          {...getCellProps(key, 'left', 'whitespace-nowrap')}
+                                        >
+                                          {editingId === row.id ? (
+                                            <Input
+                                              className="h-auto py-1 text-[inherit] px-1.5 w-24 !text-slate-900 min-h-6"
+                                              value={editForm.c_custo || ''}
+                                              onChange={(e) =>
+                                                setEditForm({
+                                                  ...editForm,
+                                                  c_custo: e.target.value,
+                                                })
+                                              }
+                                            />
+                                          ) : (
+                                            <div
+                                              className={cn(
+                                                'flex items-center gap-1.5',
+                                                (prefs.alignments?.['c_custo'] || 'left') ===
+                                                  'center'
+                                                  ? 'justify-center'
+                                                  : (prefs.alignments?.['c_custo'] || 'left') ===
+                                                      'right'
+                                                    ? 'justify-end'
+                                                    : 'justify-start',
+                                              )}
+                                            >
+                                              <span className="font-medium text-slate-900">
+                                                {row.c_custo || 'Sem C. Custo'}
+                                              </span>
+                                              {isSimplifiedMode &&
+                                                row.c_custo &&
+                                                row.descricao_c_custo && (
+                                                  <span className="text-slate-900 font-medium truncate max-w-[200px]">
+                                                    - {row.descricao_c_custo}
+                                                  </span>
+                                                )}
+                                            </div>
+                                          )}
+                                        </TableCell>
+                                      )
+                                    case 'descricao_c_custo':
+                                      return (
+                                        <TableCell
+                                          key={key}
+                                          {...getCellProps(
+                                            key,
+                                            'left',
+                                            'whitespace-nowrap max-w-[150px] truncate',
+                                          )}
+                                          title={row.descricao_c_custo}
+                                        >
+                                          {row.descricao_c_custo || '-'}
+                                        </TableCell>
+                                      )
+                                    case 'valor':
+                                      return (
+                                        <TableCell
+                                          key={key}
+                                          {...getCellProps(
+                                            key,
+                                            'left',
+                                            'whitespace-nowrap font-medium',
+                                          )}
+                                        >
+                                          {row.valor !== null ? (
+                                            <span
+                                              className={cn(
+                                                row.valor > 0
+                                                  ? 'text-blue-700 dark:text-blue-400'
+                                                  : row.valor < 0
+                                                    ? 'text-rose-700 dark:text-rose-400'
+                                                    : '',
+                                              )}
+                                            >
+                                              {new Intl.NumberFormat('pt-BR', {
+                                                style: 'currency',
+                                                currency: 'BRL',
+                                              }).format(row.valor)}
+                                            </span>
+                                          ) : (
+                                            <span>-</span>
+                                          )}
+                                        </TableCell>
+                                      )
+                                    case 'valor_liquido':
+                                      return (
+                                        <TableCell
+                                          key={key}
+                                          {...getCellProps(
+                                            key,
+                                            'left',
+                                            'whitespace-nowrap font-medium',
+                                          )}
+                                        >
+                                          {editingId === row.id ? (
+                                            <Input
+                                              type="number"
+                                              step="0.01"
+                                              className="h-auto py-1 text-[inherit] px-1.5 w-28 text-left !text-slate-900 min-h-6"
+                                              value={editForm.valor_liquido || ''}
+                                              onChange={(e) =>
+                                                setEditForm({
+                                                  ...editForm,
+                                                  valor_liquido: parseFloat(e.target.value),
+                                                })
+                                              }
+                                            />
+                                          ) : (
+                                            <span
+                                              className={cn(
+                                                row.valor_liquido > 0
+                                                  ? 'text-blue-700 dark:text-blue-400'
+                                                  : row.valor_liquido < 0
+                                                    ? 'text-rose-700 dark:text-rose-400'
+                                                    : '',
+                                              )}
+                                            >
+                                              {row.valor_liquido !== null
+                                                ? new Intl.NumberFormat('pt-BR', {
+                                                    style: 'currency',
+                                                    currency: 'BRL',
+                                                  }).format(row.valor_liquido)
+                                                : 'R$ 0,00'}
+                                            </span>
+                                          )}
+                                        </TableCell>
+                                      )
+                                    case 'n_documento':
+                                      return (
+                                        <TableCell
+                                          key={key}
+                                          {...getCellProps(key, 'left', 'whitespace-nowrap')}
+                                        >
+                                          {editingId === row.id ? (
+                                            <Input
+                                              className="h-auto py-1 text-[inherit] px-1.5 w-28 !text-slate-900 min-h-6"
+                                              value={editForm.n_documento || ''}
+                                              onChange={(e) =>
+                                                setEditForm({
+                                                  ...editForm,
+                                                  n_documento: e.target.value,
+                                                })
+                                              }
+                                            />
+                                          ) : (
+                                            row.n_documento || '-'
+                                          )}
+                                        </TableCell>
+                                      )
+                                    case 'nome_cli_fornec':
+                                      return (
+                                        <TableCell
+                                          key={key}
+                                          {...getCellProps(key, 'left', 'max-w-[200px] truncate')}
+                                          title={row.nome_cli_fornec}
+                                        >
+                                          {editingId === row.id ? (
+                                            <Input
+                                              className="h-auto py-1 text-[inherit] px-1.5 !text-slate-900 min-h-6"
+                                              value={editForm.nome_cli_fornec || ''}
+                                              onChange={(e) =>
+                                                setEditForm({
+                                                  ...editForm,
+                                                  nome_cli_fornec: e.target.value,
+                                                })
+                                              }
+                                            />
+                                          ) : (
+                                            row.nome_cli_fornec || '-'
+                                          )}
+                                        </TableCell>
+                                      )
+                                    case 'historico':
+                                      return (
+                                        <TableCell
+                                          key={key}
+                                          {...getCellProps(key, 'left', 'max-w-[250px] truncate')}
+                                          title={row.historico}
+                                        >
+                                          {editingId === row.id ? (
+                                            <Input
+                                              className="h-auto py-1 text-[inherit] px-1.5 !text-slate-900 min-h-6"
+                                              value={editForm.historico || ''}
+                                              onChange={(e) =>
+                                                setEditForm({
+                                                  ...editForm,
+                                                  historico: e.target.value,
+                                                })
+                                              }
+                                            />
+                                          ) : (
+                                            row.historico || '-'
+                                          )}
+                                        </TableCell>
+                                      )
+                                    case 'fp':
+                                      return (
+                                        <TableCell
+                                          key={key}
+                                          {...getCellProps(key, 'center', 'whitespace-nowrap')}
+                                        >
+                                          {row.fp || '-'}
+                                        </TableCell>
+                                      )
+                                    case 'n_cheque':
+                                      return (
+                                        <TableCell
+                                          key={key}
+                                          {...getCellProps(key, 'left', 'whitespace-nowrap')}
+                                        >
+                                          {row.n_cheque || '-'}
+                                        </TableCell>
+                                      )
+                                    case 'data_vencto':
+                                      return (
+                                        <TableCell
+                                          key={key}
+                                          {...getCellProps(key, 'center', 'whitespace-nowrap')}
+                                        >
+                                          {editingId === row.id ? (
+                                            <Input
+                                              type="date"
+                                              className="h-auto py-1 text-[inherit] px-1.5 w-32 !text-slate-900 min-h-6"
+                                              value={editForm.data_vencto || ''}
+                                              onChange={(e) =>
+                                                setEditForm({
+                                                  ...editForm,
+                                                  data_vencto: e.target.value,
+                                                })
+                                              }
+                                            />
+                                          ) : (
+                                            <span>
+                                              {row.data_vencto ? formatDate(row.data_vencto) : '-'}
+                                            </span>
+                                          )}
+                                        </TableCell>
+                                      )
+                                    case 'nominal_a':
+                                      return (
+                                        <TableCell
+                                          key={key}
+                                          {...getCellProps(key, 'left', 'whitespace-nowrap')}
+                                        >
+                                          {row.nominal_a || '-'}
+                                        </TableCell>
+                                      )
+                                    case 'emitente_cheque':
+                                      return (
+                                        <TableCell
+                                          key={key}
+                                          {...getCellProps(key, 'left', 'max-w-[150px] truncate')}
+                                          title={row.emitente_cheque}
+                                        >
+                                          {row.emitente_cheque || '-'}
+                                        </TableCell>
+                                      )
+                                    case 'cnpj_cpf':
+                                      return (
+                                        <TableCell
+                                          key={key}
+                                          {...getCellProps(key, 'left', 'whitespace-nowrap')}
+                                        >
+                                          {row.cnpj_cpf || '-'}
+                                        </TableCell>
+                                      )
+                                    case 'n_extrato':
+                                      return (
+                                        <TableCell
+                                          key={key}
+                                          {...getCellProps(key, 'center', 'whitespace-nowrap')}
+                                        >
+                                          {row.n_extrato || '-'}
+                                        </TableCell>
+                                      )
+                                    case 'filial':
+                                      return (
+                                        <TableCell
+                                          key={key}
+                                          {...getCellProps(key, 'center', 'whitespace-nowrap')}
+                                        >
+                                          {row.filial || '-'}
+                                        </TableCell>
+                                      )
+                                    case 'data_canc':
+                                      return (
+                                        <TableCell
+                                          key={key}
+                                          {...getCellProps(key, 'center', 'whitespace-nowrap')}
+                                        >
+                                          {formatDate(row.data_canc)}
+                                        </TableCell>
+                                      )
+                                    case 'data_estorno':
+                                      return (
+                                        <TableCell
+                                          key={key}
+                                          {...getCellProps(key, 'center', 'whitespace-nowrap')}
+                                        >
+                                          {formatDate(row.data_estorno)}
+                                        </TableCell>
+                                      )
+                                    case 'banco':
+                                      return (
+                                        <TableCell
+                                          key={key}
+                                          {...getCellProps(key, 'center', 'whitespace-nowrap')}
+                                        >
+                                          {editingId === row.id ? (
+                                            <Input
+                                              className="h-auto py-1 text-[inherit] px-1.5 w-24 !text-slate-900 min-h-6"
+                                              value={editForm.banco || ''}
+                                              onChange={(e) =>
+                                                setEditForm({ ...editForm, banco: e.target.value })
+                                              }
+                                            />
+                                          ) : (
+                                            row.banco || '-'
+                                          )}
+                                        </TableCell>
+                                      )
+                                    case 'c_corrente':
+                                      return (
+                                        <TableCell
+                                          key={key}
+                                          {...getCellProps(key, 'left', 'whitespace-nowrap')}
+                                        >
+                                          {row.c_corrente || '-'}
+                                        </TableCell>
+                                      )
+                                    case 'cod_cli_for':
+                                      return (
+                                        <TableCell
+                                          key={key}
+                                          {...getCellProps(key, 'left', 'whitespace-nowrap')}
+                                        >
+                                          {row.cod_cli_for || '-'}
+                                        </TableCell>
+                                      )
+                                    case 'departamento':
+                                      return (
+                                        <TableCell
+                                          key={key}
+                                          {...getCellProps(key, 'center', 'whitespace-nowrap')}
+                                        >
+                                          {row.departamento || '-'}
+                                        </TableCell>
+                                      )
+                                    case 'status':
+                                      return (
+                                        <TableCell key={key} {...getCellProps(key, 'center')}>
+                                          {missingFields.length > 0 ? (
+                                            <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[0.85em] font-semibold bg-red-100 text-red-800 border border-red-200">
+                                              Dados Incompletos
+                                            </span>
+                                          ) : row.status === 'Concluído' ? (
+                                            <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[0.85em] font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                              Concluído
+                                            </span>
+                                          ) : row.status === 'Ignorado' ? (
+                                            <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[0.85em] font-semibold bg-slate-100 text-slate-800 border border-slate-200">
+                                              Ignorado
+                                            </span>
+                                          ) : (
+                                            <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[0.85em] font-semibold bg-amber-100 text-amber-800 border border-amber-200">
+                                              {row.status || 'Pendente'}
+                                            </span>
+                                          )}
+                                        </TableCell>
+                                      )
+                                    default:
+                                      return null
+                                  }
+                                })}
+                              <TableCell
+                                className="px-2 py-0.5 text-center border-0"
+                                style={getGridlineStyle()}
+                              >
+                                {editingId === row.id ? (
+                                  <div className="flex items-center justify-center gap-1">
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      className="h-6 px-2 text-[0.85em] text-green-600 font-semibold hover:text-green-700 bg-white/90 hover:bg-white"
+                                      onClick={async () => {
+                                        const newMappedAccount = getMappedAccountForCC(
+                                          editForm.c_custo,
+                                          row.organization_id,
+                                        )
+                                        const payload = {
+                                          ...editForm,
+                                          mapped_account_id: newMappedAccount
+                                            ? newMappedAccount.id
+                                            : null,
+                                        }
+                                        const { error } = await supabase
+                                          .from('erp_financial_movements')
+                                          .update(payload)
+                                          .eq('id', row.id)
+                                        if (!error) {
+                                          setEditingId(null)
+                                          setRefreshKey((k) => k + 1)
+                                        } else {
+                                          toast.error('Erro ao salvar: ' + error.message)
+                                        }
+                                      }}
+                                    >
+                                      Salvar
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      className="h-6 px-2 text-[0.85em] text-red-600 hover:text-red-700 bg-white/90 hover:bg-white"
+                                      onClick={() => setEditingId(null)}
+                                    >
+                                      Cancelar
+                                    </Button>
+                                  </div>
+                                ) : (
                                   <Button
                                     size="sm"
-                                    variant="ghost"
-                                    className="h-6 px-2 text-[0.85em] text-green-600 font-semibold hover:text-green-700 bg-white/90 hover:bg-white"
-                                    onClick={async () => {
-                                      const newMappedAccount = getMappedAccountForCC(
-                                        editForm.c_custo,
-                                        row.organization_id,
-                                      )
-                                      const payload = {
-                                        ...editForm,
-                                        mapped_account_id: newMappedAccount
-                                          ? newMappedAccount.id
-                                          : null,
-                                      }
-                                      const { error } = await supabase
-                                        .from('erp_financial_movements')
-                                        .update(payload)
-                                        .eq('id', row.id)
-                                      if (!error) {
-                                        setEditingId(null)
-                                        setRefreshKey((k) => k + 1)
-                                      } else {
-                                        toast.error('Erro ao salvar: ' + error.message)
-                                      }
+                                    variant="outline"
+                                    className="h-6 px-2 text-[0.85em]"
+                                    onClick={() => {
+                                      setEditingId(row.id)
+                                      setEditForm(row)
                                     }}
                                   >
-                                    Salvar
+                                    Editar
                                   </Button>
-                                  <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    className="h-6 px-2 text-[0.85em] text-red-600 hover:text-red-700 bg-white/90 hover:bg-white"
-                                    onClick={() => setEditingId(null)}
-                                  >
-                                    Cancelar
-                                  </Button>
-                                </div>
-                              ) : (
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="h-6 px-2 text-[0.85em]"
-                                  onClick={() => {
-                                    setEditingId(row.id)
-                                    setEditForm(row)
-                                  }}
-                                >
-                                  Editar
-                                </Button>
-                              )}
-                            </TableCell>
-                          </TableRow>
-                        )
-                      })}
-                    </>
-                  )}
-                </TableBody>
-              </Table>
+                                )}
+                              </TableCell>
+                            </TableRow>
+                          )
+                        })}
+                      </>
+                    )}
+                  </TableBody>
+                </Table>
               </TopScrollTableWrapper>
               <div className="flex flex-col sm:flex-row items-center justify-between p-3 border-t bg-slate-50/50 gap-4 mt-2">
                 <div className="text-xs text-slate-500">
@@ -11906,695 +11947,696 @@ export default function FinancialMovements() {
                   style={{ fontSize: `${tableFontSize}px` }}
                 >
                   <TableHeader className="bg-indigo-950 sticky top-0 z-10 shadow-sm border-none">
-                  <TableRow
-                    disableZebra
-                    className="bg-indigo-950 hover:bg-indigo-900 border-none [&>th]:border-none [&>th]:text-white"
-                  >
-                    <TableHead
-                      className="w-[40px] px-2 py-1 text-center align-middle"
-                      style={getDryRunGridlineStyle()}
+                    <TableRow
+                      disableZebra
+                      className="bg-indigo-950 hover:bg-indigo-900 border-none [&>th]:border-none [&>th]:text-white"
                     >
-                      <Checkbox
-                        checked={
-                          currentDryRunData.length > 0 &&
-                          currentDryRunData.every((d) => selectedIds.includes(d.id))
-                        }
-                        onCheckedChange={() => {
-                          const pageIds = currentDryRunData.map((d) => d.id)
-                          const allSelected =
-                            pageIds.length > 0 && pageIds.every((id) => selectedIds.includes(id))
-                          if (allSelected) {
-                            setSelectedIds((prev) => prev.filter((id) => !pageIds.includes(id)))
-                          } else {
-                            setSelectedIds((prev) => Array.from(new Set([...prev, ...pageIds])))
+                      <TableHead
+                        className="w-[40px] px-2 py-1 text-center align-middle"
+                        style={getDryRunGridlineStyle()}
+                      >
+                        <Checkbox
+                          checked={
+                            currentDryRunData.length > 0 &&
+                            currentDryRunData.every((d) => selectedIds.includes(d.id))
                           }
-                        }}
-                        className="border-white data-[state=checked]:bg-white data-[state=checked]:text-indigo-950"
-                      />
-                    </TableHead>
-                    {dryRunColOrder.map((key) => {
-                      const colDef = dryRunHeaders.find((c) => c.key === key)
-                      if (!colDef) return null
+                          onCheckedChange={() => {
+                            const pageIds = currentDryRunData.map((d) => d.id)
+                            const allSelected =
+                              pageIds.length > 0 && pageIds.every((id) => selectedIds.includes(id))
+                            if (allSelected) {
+                              setSelectedIds((prev) => prev.filter((id) => !pageIds.includes(id)))
+                            } else {
+                              setSelectedIds((prev) => Array.from(new Set([...prev, ...pageIds])))
+                            }
+                          }}
+                          className="border-white data-[state=checked]:bg-white data-[state=checked]:text-indigo-950"
+                        />
+                      </TableHead>
+                      {dryRunColOrder.map((key) => {
+                        const colDef = dryRunHeaders.find((c) => c.key === key)
+                        if (!colDef) return null
 
-                      return (
-                        <TableHead
-                          key={colDef.key}
-                          draggable
-                          onDragStart={(e) => {
-                            setDraggedDryRunCol(colDef.key)
-                            e.dataTransfer.effectAllowed = 'move'
-                          }}
-                          onDragOver={(e) => {
-                            e.preventDefault()
-                            e.dataTransfer.dropEffect = 'move'
-                          }}
-                          onDrop={(e) => {
-                            e.preventDefault()
-                            if (!draggedDryRunCol || draggedDryRunCol === colDef.key) return
-                            const newOrder = [...dryRunColOrder]
-                            const draggedIdx = newOrder.indexOf(draggedDryRunCol)
-                            const targetIdx = newOrder.indexOf(colDef.key)
-                            newOrder.splice(draggedIdx, 1)
-                            newOrder.splice(targetIdx, 0, draggedDryRunCol)
-                            setDryRunColOrder(newOrder)
-                            setDraggedDryRunCol(null)
-                          }}
-                          onDragEnd={() => setDraggedDryRunCol(null)}
-                          className={cn(
-                            'text-white font-bold px-2 py-1 h-8 cursor-grab active:cursor-grabbing whitespace-nowrap',
-                            draggedDryRunCol === colDef.key ? 'opacity-50 bg-indigo-900' : '',
-                          )}
-                          style={getDryRunGridlineStyle()}
-                        >
-                          <div className="flex items-center justify-between gap-1 w-full h-full">
-                            <div
-                              className={cn(
-                                'flex flex-1 items-center cursor-pointer hover:bg-white/10 rounded px-1 -ml-1 transition-colors',
-                                (dryRunPrefs.alignments?.[colDef.key] || colDef.defaultAlign) ===
-                                  'right'
-                                  ? 'justify-end'
-                                  : (dryRunPrefs.alignments?.[colDef.key] ||
-                                        colDef.defaultAlign) === 'center'
-                                    ? 'justify-center'
-                                    : 'justify-start',
-                              )}
-                              onClick={() => {
-                                if (dryRunSortColumn === colDef.key) {
-                                  setDryRunSortDirection(
-                                    dryRunSortDirection === 'asc' ? 'desc' : 'asc',
+                        return (
+                          <TableHead
+                            key={colDef.key}
+                            draggable
+                            onDragStart={(e) => {
+                              setDraggedDryRunCol(colDef.key)
+                              e.dataTransfer.effectAllowed = 'move'
+                            }}
+                            onDragOver={(e) => {
+                              e.preventDefault()
+                              e.dataTransfer.dropEffect = 'move'
+                            }}
+                            onDrop={(e) => {
+                              e.preventDefault()
+                              if (!draggedDryRunCol || draggedDryRunCol === colDef.key) return
+                              const newOrder = [...dryRunColOrder]
+                              const draggedIdx = newOrder.indexOf(draggedDryRunCol)
+                              const targetIdx = newOrder.indexOf(colDef.key)
+                              newOrder.splice(draggedIdx, 1)
+                              newOrder.splice(targetIdx, 0, draggedDryRunCol)
+                              setDryRunColOrder(newOrder)
+                              setDraggedDryRunCol(null)
+                            }}
+                            onDragEnd={() => setDraggedDryRunCol(null)}
+                            className={cn(
+                              'text-white font-bold px-2 py-1 h-8 cursor-grab active:cursor-grabbing whitespace-nowrap',
+                              draggedDryRunCol === colDef.key ? 'opacity-50 bg-indigo-900' : '',
+                            )}
+                            style={getDryRunGridlineStyle()}
+                          >
+                            <div className="flex items-center justify-between gap-1 w-full h-full">
+                              <div
+                                className={cn(
+                                  'flex flex-1 items-center cursor-pointer hover:bg-white/10 rounded px-1 -ml-1 transition-colors',
+                                  (dryRunPrefs.alignments?.[colDef.key] || colDef.defaultAlign) ===
+                                    'right'
+                                    ? 'justify-end'
+                                    : (dryRunPrefs.alignments?.[colDef.key] ||
+                                          colDef.defaultAlign) === 'center'
+                                      ? 'justify-center'
+                                      : 'justify-start',
+                                )}
+                                onClick={() => {
+                                  if (dryRunSortColumn === colDef.key) {
+                                    setDryRunSortDirection(
+                                      dryRunSortDirection === 'asc' ? 'desc' : 'asc',
+                                    )
+                                  } else {
+                                    setDryRunSortColumn(colDef.key)
+                                    setDryRunSortDirection('asc')
+                                  }
+                                  setDryRunPage(0)
+                                }}
+                              >
+                                {colDef.label}
+                                {dryRunSortColumn === colDef.key ? (
+                                  dryRunSortDirection === 'asc' ? (
+                                    <ArrowUp className="h-3 w-3 ml-1 text-white" />
+                                  ) : (
+                                    <ArrowDown className="h-3 w-3 ml-1 text-white" />
                                   )
-                                } else {
-                                  setDryRunSortColumn(colDef.key)
-                                  setDryRunSortDirection('asc')
-                                }
-                                setDryRunPage(0)
-                              }}
-                            >
-                              {colDef.label}
-                              {dryRunSortColumn === colDef.key ? (
-                                dryRunSortDirection === 'asc' ? (
-                                  <ArrowUp className="h-3 w-3 ml-1 text-white" />
                                 ) : (
-                                  <ArrowDown className="h-3 w-3 ml-1 text-white" />
-                                )
-                              ) : (
-                                <ArrowUpDown className="h-3 w-3 ml-1 opacity-50 text-indigo-300" />
-                              )}
-                            </div>
-                            <div className="flex items-center flex-shrink-0 relative">
-                              {colDef.key !== 'valor' && (
-                                <Popover>
-                                  <PopoverTrigger asChild>
+                                  <ArrowUpDown className="h-3 w-3 ml-1 opacity-50 text-indigo-300" />
+                                )}
+                              </div>
+                              <div className="flex items-center flex-shrink-0 relative">
+                                {colDef.key !== 'valor' && (
+                                  <Popover>
+                                    <PopoverTrigger asChild>
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className={cn(
+                                          'h-5 w-5 rounded-sm relative',
+                                          dryRunFilters[colDef.key] &&
+                                            dryRunFilters[colDef.key].length > 0
+                                            ? 'text-white bg-primary/40'
+                                            : 'text-indigo-200 hover:text-white hover:bg-indigo-800/50',
+                                        )}
+                                        title="Filtrar coluna"
+                                      >
+                                        <Filter className="h-3 w-3" />
+                                        {dryRunFilters[colDef.key] &&
+                                          dryRunFilters[colDef.key].length > 0 && (
+                                            <span className="absolute -top-0.5 -right-0.5 flex h-2 w-2 items-center justify-center rounded-full bg-primary text-[8px] text-primary-foreground"></span>
+                                          )}
+                                      </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent
+                                      className={cn(
+                                        'p-0 z-[110]',
+                                        colDef.key === 'c_custo' ||
+                                          colDef.key === 'conta_debito' ||
+                                          colDef.key === 'conta_credito'
+                                          ? 'w-[300px]'
+                                          : 'w-[200px]',
+                                      )}
+                                      align="start"
+                                    >
+                                      {colDef.key === 'c_custo' ? (
+                                        <CostCenterTreeFilterContent
+                                          options={dryRunOptions[colDef.key] || []}
+                                          selected={dryRunFilters[colDef.key] || []}
+                                          onChange={(v) => {
+                                            setDryRunFilters((p) => ({ ...p, [colDef.key]: v }))
+                                            setDryRunPage(0)
+                                          }}
+                                          costCenters={costCenters}
+                                        />
+                                      ) : colDef.key === 'conta_debito' ||
+                                        colDef.key === 'conta_credito' ? (
+                                        <ChartAccountTreeFilterContent
+                                          selected={dryRunFilters[colDef.key] || []}
+                                          onChange={(v) => {
+                                            setDryRunFilters((p) => ({ ...p, [colDef.key]: v }))
+                                            setDryRunPage(0)
+                                          }}
+                                          chartOfAccounts={chartOfAccounts}
+                                        />
+                                      ) : (
+                                        <Command>
+                                          <CommandInput
+                                            placeholder="Buscar..."
+                                            className="h-8 text-xs"
+                                          />
+                                          <div className="flex items-center gap-1 p-1 border-b border-slate-100 bg-slate-50">
+                                            <Button
+                                              variant="secondary"
+                                              size="sm"
+                                              className="h-6 flex-1 text-[10px]"
+                                              onMouseDown={(e) => {
+                                                e.preventDefault()
+                                                e.stopPropagation()
+                                              }}
+                                              onClick={(e) => {
+                                                e.stopPropagation()
+                                                const allVals = (
+                                                  dryRunOptions[colDef.key] || []
+                                                ).map((o) => o.value)
+                                                setDryRunFilters((prev) => ({
+                                                  ...prev,
+                                                  [colDef.key]: allVals,
+                                                }))
+                                                setDryRunPage(0)
+                                              }}
+                                            >
+                                              Todos
+                                            </Button>
+                                            <Button
+                                              variant="secondary"
+                                              size="sm"
+                                              className="h-6 flex-1 text-[10px]"
+                                              onMouseDown={(e) => {
+                                                e.preventDefault()
+                                                e.stopPropagation()
+                                              }}
+                                              onClick={(e) => {
+                                                e.stopPropagation()
+                                                setDryRunFilters((prev) => ({
+                                                  ...prev,
+                                                  [colDef.key]: [],
+                                                }))
+                                                setDryRunPage(0)
+                                              }}
+                                            >
+                                              Nenhum
+                                            </Button>
+                                          </div>
+                                          <CommandList className="max-h-[200px] overflow-y-auto">
+                                            <CommandEmpty className="py-2 text-xs text-center text-slate-500">
+                                              Nenhum encontrado.
+                                            </CommandEmpty>
+                                            <CommandGroup>
+                                              {(dryRunOptions[colDef.key] || []).map((opt) => {
+                                                const isSelected = dryRunFilters[
+                                                  colDef.key
+                                                ]?.includes(opt.value)
+                                                return (
+                                                  <CommandItem
+                                                    key={opt.value}
+                                                    value={`${opt.label} ${opt.value}`}
+                                                    onMouseDown={(e) => {
+                                                      e.preventDefault()
+                                                      e.stopPropagation()
+                                                    }}
+                                                    onSelect={() => {
+                                                      const current =
+                                                        dryRunFilters[colDef.key] || []
+                                                      const updated = isSelected
+                                                        ? current.filter((v) => v !== opt.value)
+                                                        : [...current, opt.value]
+                                                      setDryRunFilters((prev) => ({
+                                                        ...prev,
+                                                        [colDef.key]: updated,
+                                                      }))
+                                                      setDryRunPage(0)
+                                                    }}
+                                                    className="text-xs cursor-pointer"
+                                                  >
+                                                    {' '}
+                                                    <div
+                                                      className={cn(
+                                                        'mr-2 flex h-3 w-3 flex-shrink-0 items-center justify-center rounded-sm border border-primary',
+                                                        isSelected
+                                                          ? 'bg-primary text-primary-foreground'
+                                                          : 'opacity-50 [&_svg]:invisible',
+                                                      )}
+                                                    >
+                                                      <Check className="h-2 w-2" />
+                                                    </div>
+                                                    <span
+                                                      className="truncate max-w-[140px]"
+                                                      title={opt.label}
+                                                    >
+                                                      {opt.label}
+                                                    </span>
+                                                  </CommandItem>
+                                                )
+                                              })}
+                                            </CommandGroup>
+                                          </CommandList>
+                                        </Command>
+                                      )}
+                                    </PopoverContent>
+                                  </Popover>
+                                )}
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
                                     <Button
                                       variant="ghost"
                                       size="icon"
-                                      className={cn(
-                                        'h-5 w-5 rounded-sm relative',
-                                        dryRunFilters[colDef.key] &&
-                                          dryRunFilters[colDef.key].length > 0
-                                          ? 'text-white bg-primary/40'
-                                          : 'text-indigo-200 hover:text-white hover:bg-indigo-800/50',
-                                      )}
-                                      title="Filtrar coluna"
+                                      className="h-6 w-6 rounded-sm text-white opacity-70 hover:opacity-100 hover:bg-white/20 relative ml-0.5"
+                                      title="Opções de visualização"
                                     >
-                                      <Filter className="h-3 w-3" />
-                                      {dryRunFilters[colDef.key] &&
-                                        dryRunFilters[colDef.key].length > 0 && (
-                                          <span className="absolute -top-0.5 -right-0.5 flex h-2 w-2 items-center justify-center rounded-full bg-primary text-[8px] text-primary-foreground"></span>
-                                        )}
+                                      <MoreVertical className="h-4 w-4" />
                                     </Button>
-                                  </PopoverTrigger>
-                                  <PopoverContent
-                                    className={cn(
-                                      'p-0 z-[110]',
-                                      colDef.key === 'c_custo' ||
-                                        colDef.key === 'conta_debito' ||
-                                        colDef.key === 'conta_credito'
-                                        ? 'w-[300px]'
-                                        : 'w-[200px]',
-                                    )}
-                                    align="start"
-                                  >
-                                    {colDef.key === 'c_custo' ? (
-                                      <CostCenterTreeFilterContent
-                                        options={dryRunOptions[colDef.key] || []}
-                                        selected={dryRunFilters[colDef.key] || []}
-                                        onChange={(v) => {
-                                          setDryRunFilters((p) => ({ ...p, [colDef.key]: v }))
-                                          setDryRunPage(0)
-                                        }}
-                                        costCenters={costCenters}
-                                      />
-                                    ) : colDef.key === 'conta_debito' ||
-                                      colDef.key === 'conta_credito' ? (
-                                      <ChartAccountTreeFilterContent
-                                        selected={dryRunFilters[colDef.key] || []}
-                                        onChange={(v) => {
-                                          setDryRunFilters((p) => ({ ...p, [colDef.key]: v }))
-                                          setDryRunPage(0)
-                                        }}
-                                        chartOfAccounts={chartOfAccounts}
-                                      />
-                                    ) : (
-                                      <Command>
-                                        <CommandInput
-                                          placeholder="Buscar..."
-                                          className="h-8 text-xs"
-                                        />
-                                        <div className="flex items-center gap-1 p-1 border-b border-slate-100 bg-slate-50">
-                                          <Button
-                                            variant="secondary"
-                                            size="sm"
-                                            className="h-6 flex-1 text-[10px]"
-                                            onMouseDown={(e) => {
-                                              e.preventDefault()
-                                              e.stopPropagation()
-                                            }}
-                                            onClick={(e) => {
-                                              e.stopPropagation()
-                                              const allVals = (dryRunOptions[colDef.key] || []).map(
-                                                (o) => o.value,
-                                              )
-                                              setDryRunFilters((prev) => ({
-                                                ...prev,
-                                                [colDef.key]: allVals,
-                                              }))
-                                              setDryRunPage(0)
-                                            }}
-                                          >
-                                            Todos
-                                          </Button>
-                                          <Button
-                                            variant="secondary"
-                                            size="sm"
-                                            className="h-6 flex-1 text-[10px]"
-                                            onMouseDown={(e) => {
-                                              e.preventDefault()
-                                              e.stopPropagation()
-                                            }}
-                                            onClick={(e) => {
-                                              e.stopPropagation()
-                                              setDryRunFilters((prev) => ({
-                                                ...prev,
-                                                [colDef.key]: [],
-                                              }))
-                                              setDryRunPage(0)
-                                            }}
-                                          >
-                                            Nenhum
-                                          </Button>
-                                        </div>
-                                        <CommandList className="max-h-[200px] overflow-y-auto">
-                                          <CommandEmpty className="py-2 text-xs text-center text-slate-500">
-                                            Nenhum encontrado.
-                                          </CommandEmpty>
-                                          <CommandGroup>
-                                            {(dryRunOptions[colDef.key] || []).map((opt) => {
-                                              const isSelected = dryRunFilters[
-                                                colDef.key
-                                              ]?.includes(opt.value)
-                                              return (
-                                                <CommandItem
-                                                  key={opt.value}
-                                                  value={`${opt.label} ${opt.value}`}
-                                                  onMouseDown={(e) => {
-                                                    e.preventDefault()
-                                                    e.stopPropagation()
-                                                  }}
-                                                  onSelect={() => {
-                                                    const current = dryRunFilters[colDef.key] || []
-                                                    const updated = isSelected
-                                                      ? current.filter((v) => v !== opt.value)
-                                                      : [...current, opt.value]
-                                                    setDryRunFilters((prev) => ({
-                                                      ...prev,
-                                                      [colDef.key]: updated,
-                                                    }))
-                                                    setDryRunPage(0)
-                                                  }}
-                                                  className="text-xs cursor-pointer"
-                                                >
-                                                  {' '}
-                                                  <div
-                                                    className={cn(
-                                                      'mr-2 flex h-3 w-3 flex-shrink-0 items-center justify-center rounded-sm border border-primary',
-                                                      isSelected
-                                                        ? 'bg-primary text-primary-foreground'
-                                                        : 'opacity-50 [&_svg]:invisible',
-                                                    )}
-                                                  >
-                                                    <Check className="h-2 w-2" />
-                                                  </div>
-                                                  <span
-                                                    className="truncate max-w-[140px]"
-                                                    title={opt.label}
-                                                  >
-                                                    {opt.label}
-                                                  </span>
-                                                </CommandItem>
-                                              )
-                                            })}
-                                          </CommandGroup>
-                                        </CommandList>
-                                      </Command>
-                                    )}
-                                  </PopoverContent>
-                                </Popover>
-                              )}
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-6 w-6 rounded-sm text-white opacity-70 hover:opacity-100 hover:bg-white/20 relative ml-0.5"
-                                    title="Opções de visualização"
-                                  >
-                                    <MoreVertical className="h-4 w-4" />
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="start" className="w-48">
-                                  <DropdownMenuGroup>
-                                    <DropdownMenuLabel className="text-xs text-slate-500 uppercase tracking-wider">
-                                      Alinhamento
-                                    </DropdownMenuLabel>
-                                    <div className="flex items-center gap-1 px-2 py-1.5">
-                                      <Button
-                                        variant={
-                                          (dryRunPrefs.alignments?.[colDef.key] ||
-                                            colDef.defaultAlign) === 'left'
-                                            ? 'secondary'
-                                            : 'ghost'
-                                        }
-                                        size="icon"
-                                        className="h-7 w-7"
-                                        onClick={() =>
-                                          updateDryRunPrefs({
-                                            alignments: {
-                                              ...(dryRunPrefs.alignments || {}),
-                                              [colDef.key]: 'left',
-                                            },
-                                          })
-                                        }
-                                      >
-                                        <AlignLeft className="h-3.5 w-3.5" />
-                                      </Button>
-                                      <Button
-                                        variant={
-                                          (dryRunPrefs.alignments?.[colDef.key] ||
-                                            colDef.defaultAlign) === 'center'
-                                            ? 'secondary'
-                                            : 'ghost'
-                                        }
-                                        size="icon"
-                                        className="h-7 w-7"
-                                        onClick={() =>
-                                          updateDryRunPrefs({
-                                            alignments: {
-                                              ...(dryRunPrefs.alignments || {}),
-                                              [colDef.key]: 'center',
-                                            },
-                                          })
-                                        }
-                                      >
-                                        <AlignCenter className="h-3.5 w-3.5" />
-                                      </Button>
-                                      <Button
-                                        variant={
-                                          (dryRunPrefs.alignments?.[colDef.key] ||
-                                            colDef.defaultAlign) === 'right'
-                                            ? 'secondary'
-                                            : 'ghost'
-                                        }
-                                        size="icon"
-                                        className="h-7 w-7"
-                                        onClick={() =>
-                                          updateDryRunPrefs({
-                                            alignments: {
-                                              ...(dryRunPrefs.alignments || {}),
-                                              [colDef.key]: 'right',
-                                            },
-                                          })
-                                        }
-                                      >
-                                        <AlignRight className="h-3.5 w-3.5" />
-                                      </Button>
-                                    </div>
-                                  </DropdownMenuGroup>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            </div>
-                          </div>{' '}
-                        </TableHead>
-                      )
-                    })}
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {loading ? (
-                    <TableRow>
-                      <TableCell
-                        colSpan={dryRunColOrder.length + 1}
-                        className="h-48 text-center text-slate-500 border-0"
-                      >
-                        <Loader2 className="h-6 w-6 animate-spin mx-auto text-indigo-600 mb-2" />
-                        Atualizando simulação...
-                      </TableCell>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="start" className="w-48">
+                                    <DropdownMenuGroup>
+                                      <DropdownMenuLabel className="text-xs text-slate-500 uppercase tracking-wider">
+                                        Alinhamento
+                                      </DropdownMenuLabel>
+                                      <div className="flex items-center gap-1 px-2 py-1.5">
+                                        <Button
+                                          variant={
+                                            (dryRunPrefs.alignments?.[colDef.key] ||
+                                              colDef.defaultAlign) === 'left'
+                                              ? 'secondary'
+                                              : 'ghost'
+                                          }
+                                          size="icon"
+                                          className="h-7 w-7"
+                                          onClick={() =>
+                                            updateDryRunPrefs({
+                                              alignments: {
+                                                ...(dryRunPrefs.alignments || {}),
+                                                [colDef.key]: 'left',
+                                              },
+                                            })
+                                          }
+                                        >
+                                          <AlignLeft className="h-3.5 w-3.5" />
+                                        </Button>
+                                        <Button
+                                          variant={
+                                            (dryRunPrefs.alignments?.[colDef.key] ||
+                                              colDef.defaultAlign) === 'center'
+                                              ? 'secondary'
+                                              : 'ghost'
+                                          }
+                                          size="icon"
+                                          className="h-7 w-7"
+                                          onClick={() =>
+                                            updateDryRunPrefs({
+                                              alignments: {
+                                                ...(dryRunPrefs.alignments || {}),
+                                                [colDef.key]: 'center',
+                                              },
+                                            })
+                                          }
+                                        >
+                                          <AlignCenter className="h-3.5 w-3.5" />
+                                        </Button>
+                                        <Button
+                                          variant={
+                                            (dryRunPrefs.alignments?.[colDef.key] ||
+                                              colDef.defaultAlign) === 'right'
+                                              ? 'secondary'
+                                              : 'ghost'
+                                          }
+                                          size="icon"
+                                          className="h-7 w-7"
+                                          onClick={() =>
+                                            updateDryRunPrefs({
+                                              alignments: {
+                                                ...(dryRunPrefs.alignments || {}),
+                                                [colDef.key]: 'right',
+                                              },
+                                            })
+                                          }
+                                        >
+                                          <AlignRight className="h-3.5 w-3.5" />
+                                        </Button>
+                                      </div>
+                                    </DropdownMenuGroup>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              </div>
+                            </div>{' '}
+                          </TableHead>
+                        )
+                      })}
                     </TableRow>
-                  ) : currentDryRunData.length === 0 ? (
-                    <TableRow>
-                      <TableCell
-                        colSpan={dryRunColOrder.length + 1}
-                        className="h-48 text-center text-slate-500 border-0"
-                      >
-                        Nenhum registro para exibir.
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    currentDryRunData.map((row) => {
-                      const sim = getAccountingEntriesSimulation(
-                        row,
-                        generateOptions.valueBase as 'valor' | 'valor_liquido',
-                      )
-                      const dtValue = row[generateOptions.dateBase as keyof typeof row]
-                      const dt = dtValue ? formatDate(dtValue) : '-'
-                      const cc = row.c_custo || 'Sem C.Custo'
-                      const descCc = row.descricao_c_custo || '-'
-                      const hist = row.historico || '-'
-                      const contaCaixaDesc = row.conta_caixa
-                        ? `${row.conta_caixa} - ${row.nome_caixa || ''}`
-                        : '-'
-                      const val = Number(
-                        row[generateOptions.valueBase as keyof typeof row] !== undefined &&
-                          row[generateOptions.valueBase as keyof typeof row] !== null
-                          ? row[generateOptions.valueBase as keyof typeof row]
-                          : row.valor_liquido || row.valor || 0,
-                      )
-                      const formatCurrency = (v: number) =>
-                        new Intl.NumberFormat('pt-BR', {
-                          style: 'currency',
-                          currency: 'BRL',
-                        }).format(v)
-
-                      const isError = !sim.debitAccount || !sim.creditAccount || !dtValue || !val
-
-                      return (
-                        <TableRow
-                          key={row.id}
-                          className={cn(
-                            'transition-colors border-0 border-b border-slate-100',
-                            isError ? 'bg-red-50 hover:bg-red-100' : 'hover:bg-slate-50',
-                          )}
+                  </TableHeader>
+                  <TableBody>
+                    {loading ? (
+                      <TableRow>
+                        <TableCell
+                          colSpan={dryRunColOrder.length + 1}
+                          className="h-48 text-center text-slate-500 border-0"
                         >
-                          <TableCell
-                            className="px-2 py-1 text-center align-middle"
-                            style={getDryRunGridlineStyle()}
+                          <Loader2 className="h-6 w-6 animate-spin mx-auto text-indigo-600 mb-2" />
+                          Atualizando simulação...
+                        </TableCell>
+                      </TableRow>
+                    ) : currentDryRunData.length === 0 ? (
+                      <TableRow>
+                        <TableCell
+                          colSpan={dryRunColOrder.length + 1}
+                          className="h-48 text-center text-slate-500 border-0"
+                        >
+                          Nenhum registro para exibir.
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      currentDryRunData.map((row) => {
+                        const sim = getAccountingEntriesSimulation(
+                          row,
+                          generateOptions.valueBase as 'valor' | 'valor_liquido',
+                        )
+                        const dtValue = row[generateOptions.dateBase as keyof typeof row]
+                        const dt = dtValue ? formatDate(dtValue) : '-'
+                        const cc = row.c_custo || 'Sem C.Custo'
+                        const descCc = row.descricao_c_custo || '-'
+                        const hist = row.historico || '-'
+                        const contaCaixaDesc = row.conta_caixa
+                          ? `${row.conta_caixa} - ${row.nome_caixa || ''}`
+                          : '-'
+                        const val = Number(
+                          row[generateOptions.valueBase as keyof typeof row] !== undefined &&
+                            row[generateOptions.valueBase as keyof typeof row] !== null
+                            ? row[generateOptions.valueBase as keyof typeof row]
+                            : row.valor_liquido || row.valor || 0,
+                        )
+                        const formatCurrency = (v: number) =>
+                          new Intl.NumberFormat('pt-BR', {
+                            style: 'currency',
+                            currency: 'BRL',
+                          }).format(v)
+
+                        const isError = !sim.debitAccount || !sim.creditAccount || !dtValue || !val
+
+                        return (
+                          <TableRow
+                            key={row.id}
+                            className={cn(
+                              'transition-colors border-0 border-b border-slate-100',
+                              isError ? 'bg-red-50 hover:bg-red-100' : 'hover:bg-slate-50',
+                            )}
                           >
-                            <Checkbox
-                              checked={selectedIds.includes(row.id)}
-                              onCheckedChange={() => toggleRow(row.id)}
-                            />
-                          </TableCell>
+                            <TableCell
+                              className="px-2 py-1 text-center align-middle"
+                              style={getDryRunGridlineStyle()}
+                            >
+                              <Checkbox
+                                checked={selectedIds.includes(row.id)}
+                                onCheckedChange={() => toggleRow(row.id)}
+                              />
+                            </TableCell>
 
-                          {dryRunColOrder.map((key) => {
-                            if (key === 'status') {
-                              return (
-                                <TableCell key={key} {...getDryRunCellProps(key, 'center')}>
-                                  {row.status === 'Concluído' ? (
-                                    <span className="text-emerald-700 font-semibold text-[0.85em] bg-emerald-100 px-2 py-0.5 rounded-full border border-emerald-200">
-                                      Concluído
-                                    </span>
-                                  ) : row.status === 'Ignorado' ? (
-                                    <span className="text-slate-600 font-semibold text-[0.85em] bg-slate-100 px-2 py-0.5 rounded-full border border-slate-200">
-                                      Ignorado
-                                    </span>
-                                  ) : (
-                                    <span className="text-amber-700 font-semibold text-[0.85em] bg-amber-100 px-2 py-0.5 rounded-full border border-amber-200">
-                                      {row.status || 'Pendente'}
-                                    </span>
-                                  )}
-                                </TableCell>
-                              )
-                            }
-
-                            if (key === 'data_emissao') {
-                              const valStr = row.data_emissao ? formatDate(row.data_emissao) : '-'
-                              return (
-                                <TableCell
-                                  key={key}
-                                  {...getDryRunCellProps(
-                                    key,
-                                    'center',
-                                    isError ? 'text-red-700' : 'text-slate-600 whitespace-nowrap',
-                                  )}
-                                >
-                                  {valStr}
-                                </TableCell>
-                              )
-                            }
-
-                            if (key === 'dt_compens') {
-                              const valStr = row.dt_compens ? formatDate(row.dt_compens) : '-'
-                              return (
-                                <TableCell
-                                  key={key}
-                                  {...getDryRunCellProps(
-                                    key,
-                                    'center',
-                                    isError ? 'text-red-700' : 'text-slate-600 whitespace-nowrap',
-                                  )}
-                                >
-                                  {valStr}
-                                </TableCell>
-                              )
-                            }
-
-                            if (key === 'conta_debito') {
-                              return (
-                                <TableCell key={key} {...getDryRunCellProps(key, 'left')}>
-                                  {sim.debitAccount ? (
-                                    <div
-                                      className={cn(
-                                        'flex items-center gap-1.5',
-                                        getDryRunCellProps(key, 'left').className.includes(
-                                          'text-center',
-                                        )
-                                          ? 'justify-center'
-                                          : getDryRunCellProps(key, 'left').className.includes(
-                                                'text-right',
-                                              )
-                                            ? 'justify-end'
-                                            : 'justify-start',
-                                      )}
-                                    >
-                                      <span
-                                        className="font-mono bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded text-[0.85em] font-semibold border border-blue-200 shrink-0"
-                                        title="Código Reduzido"
-                                      >
-                                        {sim.debitAccount.account_code}
+                            {dryRunColOrder.map((key) => {
+                              if (key === 'status') {
+                                return (
+                                  <TableCell key={key} {...getDryRunCellProps(key, 'center')}>
+                                    {row.status === 'Concluído' ? (
+                                      <span className="text-emerald-700 font-semibold text-[0.85em] bg-emerald-100 px-2 py-0.5 rounded-full border border-emerald-200">
+                                        Concluído
                                       </span>
-                                      {sim.debitAccount.classification && (
+                                    ) : row.status === 'Ignorado' ? (
+                                      <span className="text-slate-600 font-semibold text-[0.85em] bg-slate-100 px-2 py-0.5 rounded-full border border-slate-200">
+                                        Ignorado
+                                      </span>
+                                    ) : (
+                                      <span className="text-amber-700 font-semibold text-[0.85em] bg-amber-100 px-2 py-0.5 rounded-full border border-amber-200">
+                                        {row.status || 'Pendente'}
+                                      </span>
+                                    )}
+                                  </TableCell>
+                                )
+                              }
+
+                              if (key === 'data_emissao') {
+                                const valStr = row.data_emissao ? formatDate(row.data_emissao) : '-'
+                                return (
+                                  <TableCell
+                                    key={key}
+                                    {...getDryRunCellProps(
+                                      key,
+                                      'center',
+                                      isError ? 'text-red-700' : 'text-slate-600 whitespace-nowrap',
+                                    )}
+                                  >
+                                    {valStr}
+                                  </TableCell>
+                                )
+                              }
+
+                              if (key === 'dt_compens') {
+                                const valStr = row.dt_compens ? formatDate(row.dt_compens) : '-'
+                                return (
+                                  <TableCell
+                                    key={key}
+                                    {...getDryRunCellProps(
+                                      key,
+                                      'center',
+                                      isError ? 'text-red-700' : 'text-slate-600 whitespace-nowrap',
+                                    )}
+                                  >
+                                    {valStr}
+                                  </TableCell>
+                                )
+                              }
+
+                              if (key === 'conta_debito') {
+                                return (
+                                  <TableCell key={key} {...getDryRunCellProps(key, 'left')}>
+                                    {sim.debitAccount ? (
+                                      <div
+                                        className={cn(
+                                          'flex items-center gap-1.5',
+                                          getDryRunCellProps(key, 'left').className.includes(
+                                            'text-center',
+                                          )
+                                            ? 'justify-center'
+                                            : getDryRunCellProps(key, 'left').className.includes(
+                                                  'text-right',
+                                                )
+                                              ? 'justify-end'
+                                              : 'justify-start',
+                                        )}
+                                      >
                                         <span
-                                          className="font-mono text-[0.85em] font-semibold text-slate-600 shrink-0"
-                                          title="Classificação"
+                                          className="font-mono bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded text-[0.85em] font-semibold border border-blue-200 shrink-0"
+                                          title="Código Reduzido"
                                         >
-                                          {sim.debitAccount.classification}
+                                          {sim.debitAccount.account_code}
                                         </span>
-                                      )}
-                                      <span
-                                        className="truncate max-w-[200px] text-slate-700"
-                                        title={sim.debitAccount.account_name}
-                                      >
-                                        {sim.debitAccount.account_name}
-                                      </span>
-                                    </div>
-                                  ) : (
-                                    <div
-                                      className={cn(
-                                        'flex w-full',
-                                        getDryRunCellProps(key, 'left').className.includes(
-                                          'text-center',
-                                        )
-                                          ? 'justify-center'
-                                          : getDryRunCellProps(key, 'left').className.includes(
-                                                'text-right',
-                                              )
-                                            ? 'justify-end'
-                                            : 'justify-start',
-                                      )}
-                                    >
-                                      <span className="text-red-500 italic text-[0.9em] font-semibold">
-                                        Pendente
-                                      </span>
-                                    </div>
-                                  )}
-                                </TableCell>
-                              )
-                            }
-
-                            if (key === 'conta_credito') {
-                              return (
-                                <TableCell key={key} {...getDryRunCellProps(key, 'left')}>
-                                  {sim.creditAccount ? (
-                                    <div
-                                      className={cn(
-                                        'flex items-center gap-1.5',
-                                        getDryRunCellProps(key, 'left').className.includes(
-                                          'text-center',
-                                        )
-                                          ? 'justify-center'
-                                          : getDryRunCellProps(key, 'left').className.includes(
-                                                'text-right',
-                                              )
-                                            ? 'justify-end'
-                                            : 'justify-start',
-                                      )}
-                                    >
-                                      <span
-                                        className="font-mono bg-rose-100 text-rose-800 px-1.5 py-0.5 rounded text-[0.85em] font-semibold border border-rose-200 shrink-0"
-                                        title="Código Reduzido"
-                                      >
-                                        {sim.creditAccount.account_code}
-                                      </span>
-                                      {sim.creditAccount.classification && (
+                                        {sim.debitAccount.classification && (
+                                          <span
+                                            className="font-mono text-[0.85em] font-semibold text-slate-600 shrink-0"
+                                            title="Classificação"
+                                          >
+                                            {sim.debitAccount.classification}
+                                          </span>
+                                        )}
                                         <span
-                                          className="font-mono text-[0.85em] font-semibold text-slate-600 shrink-0"
-                                          title="Classificação"
+                                          className="truncate max-w-[200px] text-slate-700"
+                                          title={sim.debitAccount.account_name}
                                         >
-                                          {sim.creditAccount.classification}
+                                          {sim.debitAccount.account_name}
                                         </span>
-                                      )}
-                                      <span
-                                        className="truncate max-w-[200px] text-slate-700"
-                                        title={sim.creditAccount.account_name}
+                                      </div>
+                                    ) : (
+                                      <div
+                                        className={cn(
+                                          'flex w-full',
+                                          getDryRunCellProps(key, 'left').className.includes(
+                                            'text-center',
+                                          )
+                                            ? 'justify-center'
+                                            : getDryRunCellProps(key, 'left').className.includes(
+                                                  'text-right',
+                                                )
+                                              ? 'justify-end'
+                                              : 'justify-start',
+                                        )}
                                       >
-                                        {sim.creditAccount.account_name}
-                                      </span>
-                                    </div>
-                                  ) : (
-                                    <div
-                                      className={cn(
-                                        'flex w-full',
-                                        getDryRunCellProps(key, 'left').className.includes(
-                                          'text-center',
-                                        )
-                                          ? 'justify-center'
-                                          : getDryRunCellProps(key, 'left').className.includes(
-                                                'text-right',
-                                              )
-                                            ? 'justify-end'
-                                            : 'justify-start',
-                                      )}
-                                    >
-                                      <span className="text-red-500 italic text-[0.9em] font-semibold">
-                                        Pendente
-                                      </span>
-                                    </div>
-                                  )}
-                                </TableCell>
-                              )
-                            }
+                                        <span className="text-red-500 italic text-[0.9em] font-semibold">
+                                          Pendente
+                                        </span>
+                                      </div>
+                                    )}
+                                  </TableCell>
+                                )
+                              }
 
-                            if (key === 'valor') {
-                              return (
-                                <TableCell
-                                  key={key}
-                                  {...getDryRunCellProps(
-                                    key,
-                                    'right',
-                                    cn(
-                                      'whitespace-nowrap font-bold',
-                                      isError ? 'text-red-700' : 'text-slate-900',
-                                    ),
-                                  )}
-                                >
-                                  {formatCurrency(Math.abs(val))}
-                                </TableCell>
-                              )
-                            }
+                              if (key === 'conta_credito') {
+                                return (
+                                  <TableCell key={key} {...getDryRunCellProps(key, 'left')}>
+                                    {sim.creditAccount ? (
+                                      <div
+                                        className={cn(
+                                          'flex items-center gap-1.5',
+                                          getDryRunCellProps(key, 'left').className.includes(
+                                            'text-center',
+                                          )
+                                            ? 'justify-center'
+                                            : getDryRunCellProps(key, 'left').className.includes(
+                                                  'text-right',
+                                                )
+                                              ? 'justify-end'
+                                              : 'justify-start',
+                                        )}
+                                      >
+                                        <span
+                                          className="font-mono bg-rose-100 text-rose-800 px-1.5 py-0.5 rounded text-[0.85em] font-semibold border border-rose-200 shrink-0"
+                                          title="Código Reduzido"
+                                        >
+                                          {sim.creditAccount.account_code}
+                                        </span>
+                                        {sim.creditAccount.classification && (
+                                          <span
+                                            className="font-mono text-[0.85em] font-semibold text-slate-600 shrink-0"
+                                            title="Classificação"
+                                          >
+                                            {sim.creditAccount.classification}
+                                          </span>
+                                        )}
+                                        <span
+                                          className="truncate max-w-[200px] text-slate-700"
+                                          title={sim.creditAccount.account_name}
+                                        >
+                                          {sim.creditAccount.account_name}
+                                        </span>
+                                      </div>
+                                    ) : (
+                                      <div
+                                        className={cn(
+                                          'flex w-full',
+                                          getDryRunCellProps(key, 'left').className.includes(
+                                            'text-center',
+                                          )
+                                            ? 'justify-center'
+                                            : getDryRunCellProps(key, 'left').className.includes(
+                                                  'text-right',
+                                                )
+                                              ? 'justify-end'
+                                              : 'justify-start',
+                                        )}
+                                      >
+                                        <span className="text-red-500 italic text-[0.9em] font-semibold">
+                                          Pendente
+                                        </span>
+                                      </div>
+                                    )}
+                                  </TableCell>
+                                )
+                              }
 
-                            if (key === 'c_custo') {
-                              return (
-                                <TableCell
-                                  key={key}
-                                  {...getDryRunCellProps(
-                                    key,
-                                    'center',
-                                    cn(
-                                      'whitespace-nowrap',
-                                      isError ? 'text-red-700' : 'text-slate-600',
-                                    ),
-                                  )}
-                                >
-                                  {cc}
-                                </TableCell>
-                              )
-                            }
+                              if (key === 'valor') {
+                                return (
+                                  <TableCell
+                                    key={key}
+                                    {...getDryRunCellProps(
+                                      key,
+                                      'right',
+                                      cn(
+                                        'whitespace-nowrap font-bold',
+                                        isError ? 'text-red-700' : 'text-slate-900',
+                                      ),
+                                    )}
+                                  >
+                                    {formatCurrency(Math.abs(val))}
+                                  </TableCell>
+                                )
+                              }
 
-                            if (key === 'descricao_c_custo') {
-                              return (
-                                <TableCell
-                                  key={key}
-                                  {...getDryRunCellProps(
-                                    key,
-                                    'left',
-                                    cn(
-                                      'max-w-[200px] truncate',
-                                      isError ? 'text-red-700' : 'text-slate-600',
-                                    ),
-                                  )}
-                                  title={descCc}
-                                >
-                                  {descCc}
-                                </TableCell>
-                              )
-                            }
+                              if (key === 'c_custo') {
+                                return (
+                                  <TableCell
+                                    key={key}
+                                    {...getDryRunCellProps(
+                                      key,
+                                      'center',
+                                      cn(
+                                        'whitespace-nowrap',
+                                        isError ? 'text-red-700' : 'text-slate-600',
+                                      ),
+                                    )}
+                                  >
+                                    {cc}
+                                  </TableCell>
+                                )
+                              }
 
-                            if (key === 'conta_caixa') {
-                              return (
-                                <TableCell
-                                  key={key}
-                                  {...getDryRunCellProps(
-                                    key,
-                                    'left',
-                                    cn(
-                                      'max-w-[200px] truncate',
-                                      isError ? 'text-red-700' : 'text-slate-600',
-                                    ),
-                                  )}
-                                  title={contaCaixaDesc}
-                                >
-                                  {contaCaixaDesc}
-                                </TableCell>
-                              )
-                            }
+                              if (key === 'descricao_c_custo') {
+                                return (
+                                  <TableCell
+                                    key={key}
+                                    {...getDryRunCellProps(
+                                      key,
+                                      'left',
+                                      cn(
+                                        'max-w-[200px] truncate',
+                                        isError ? 'text-red-700' : 'text-slate-600',
+                                      ),
+                                    )}
+                                    title={descCc}
+                                  >
+                                    {descCc}
+                                  </TableCell>
+                                )
+                              }
 
-                            if (key === 'historico') {
-                              return (
-                                <TableCell
-                                  key={key}
-                                  {...getDryRunCellProps(
-                                    key,
-                                    'left',
-                                    cn(
-                                      'max-w-[300px] truncate',
-                                      isError ? 'text-red-700' : 'text-slate-600',
-                                    ),
-                                  )}
-                                  title={hist}
-                                >
-                                  {hist}
-                                </TableCell>
-                              )
-                            }
+                              if (key === 'conta_caixa') {
+                                return (
+                                  <TableCell
+                                    key={key}
+                                    {...getDryRunCellProps(
+                                      key,
+                                      'left',
+                                      cn(
+                                        'max-w-[200px] truncate',
+                                        isError ? 'text-red-700' : 'text-slate-600',
+                                      ),
+                                    )}
+                                    title={contaCaixaDesc}
+                                  >
+                                    {contaCaixaDesc}
+                                  </TableCell>
+                                )
+                              }
 
-                            return null
-                          })}
-                        </TableRow>
-                      )
-                    })
-                  )}
-                </TableBody>
-              </Table>
+                              if (key === 'historico') {
+                                return (
+                                  <TableCell
+                                    key={key}
+                                    {...getDryRunCellProps(
+                                      key,
+                                      'left',
+                                      cn(
+                                        'max-w-[300px] truncate',
+                                        isError ? 'text-red-700' : 'text-slate-600',
+                                      ),
+                                    )}
+                                    title={hist}
+                                  >
+                                    {hist}
+                                  </TableCell>
+                                )
+                              }
+
+                              return null
+                            })}
+                          </TableRow>
+                        )
+                      })
+                    )}
+                  </TableBody>
+                </Table>
               </TopScrollTableWrapper>
               <div className="flex flex-col sm:flex-row items-center justify-between p-3 border-t bg-slate-50/50 gap-4 mt-2">
                 <div className="text-xs text-slate-500">
