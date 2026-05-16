@@ -6877,6 +6877,37 @@ export default function FinancialMovements() {
                   />
                 </div>
                 <div className="flex flex-wrap items-center gap-3 xl:ml-auto bg-white p-1.5 rounded-md border shadow-sm">
+                  <Button
+                    variant={
+                      filters['prontidao']?.length === 1 && filters['prontidao'][0] === 'Pendente'
+                        ? 'default'
+                        : 'outline'
+                    }
+                    size="sm"
+                    className={cn(
+                      'h-7 text-xs font-semibold whitespace-nowrap transition-colors',
+                      filters['prontidao']?.length === 1 && filters['prontidao'][0] === 'Pendente'
+                        ? 'bg-amber-100 text-amber-800 border-amber-200 hover:bg-amber-200 hover:text-amber-900 shadow-sm'
+                        : 'bg-white text-slate-600 hover:bg-slate-50',
+                    )}
+                    onClick={() => {
+                      const isPendenteOnly =
+                        filters['prontidao']?.length === 1 && filters['prontidao'][0] === 'Pendente'
+                      setFilters((p) => ({ ...p, prontidao: isPendenteOnly ? [] : ['Pendente'] }))
+                      setPage(0)
+                    }}
+                  >
+                    <AlertCircle
+                      className={cn(
+                        'h-3.5 w-3.5 mr-1.5',
+                        filters['prontidao']?.length === 1 && filters['prontidao'][0] === 'Pendente'
+                          ? 'text-amber-600'
+                          : 'text-slate-400',
+                      )}
+                    />
+                    Apenas Pendentes
+                  </Button>
+
                   <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 px-2 py-1 rounded-md shadow-sm h-7 mr-1 transition-all">
                     <div className="scale-75 origin-left flex items-center">
                       <Switch
@@ -8871,6 +8902,40 @@ export default function FinancialMovements() {
               </div>
 
               <div className="h-4 w-px bg-slate-200 mx-1"></div>
+
+              <Button
+                variant={
+                  resumoFilters['prontidao']?.length === 1 &&
+                  resumoFilters['prontidao'][0] === 'Pendente'
+                    ? 'default'
+                    : 'outline'
+                }
+                size="sm"
+                className={cn(
+                  'h-8 text-xs font-semibold whitespace-nowrap transition-colors',
+                  resumoFilters['prontidao']?.length === 1 &&
+                    resumoFilters['prontidao'][0] === 'Pendente'
+                    ? 'bg-amber-100 text-amber-800 border-amber-200 hover:bg-amber-200 hover:text-amber-900 shadow-sm'
+                    : 'bg-white text-slate-600 hover:bg-slate-50',
+                )}
+                onClick={() => {
+                  const isPendenteOnly =
+                    resumoFilters['prontidao']?.length === 1 &&
+                    resumoFilters['prontidao'][0] === 'Pendente'
+                  setResumoFilters((p) => ({ ...p, prontidao: isPendenteOnly ? [] : ['Pendente'] }))
+                }}
+              >
+                <AlertCircle
+                  className={cn(
+                    'h-3.5 w-3.5 mr-1.5',
+                    resumoFilters['prontidao']?.length === 1 &&
+                      resumoFilters['prontidao'][0] === 'Pendente'
+                      ? 'text-amber-600'
+                      : 'text-slate-400',
+                  )}
+                />
+                Apenas Pendentes
+              </Button>
 
               <Button
                 variant="outline"
