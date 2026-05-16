@@ -10605,8 +10605,8 @@ export default function FinancialMovements() {
             </CardHeader>
             <CardContent className="p-0">
               <Table
-                wrapperClassName="max-h-[600px] overflow-auto finance-table-scrollbar border-4 border-indigo-950 rounded-lg"
-                className="w-full min-w-max"
+                wrapperClassName="transform scale-y-[-1] overflow-x-auto overflow-y-hidden finance-table-scrollbar pb-3 border-4 border-indigo-950 rounded-lg"
+                className="transform scale-y-[-1] w-full min-w-max"
                 style={{ fontSize: `${tableFontSize}px` }}
               >
                 <TableHeader className="bg-indigo-950 sticky top-0 z-10 shadow-sm border-none">
