@@ -570,11 +570,9 @@ function ChartAccountTreeFilterContent({
     const isExpanded = expanded[node.key] || hasSearch
 
     const isAllSelected =
-      selected.length === 0 ||
-      (node.allValues.length > 0 && node.allValues.every((v) => selected.includes(v)))
+      node.allValues.length > 0 && node.allValues.every((v) => selected.includes(v))
     const isSomeSelected =
-      selected.length === 0 ||
-      (node.allValues.length > 0 && node.allValues.some((v) => selected.includes(v)))
+      node.allValues.length > 0 && node.allValues.some((v) => selected.includes(v))
 
     return (
       <div key={node.key} className="flex flex-col">
@@ -753,9 +751,8 @@ function CostCenterTreeFilterContent({
     const isExpanded = expanded[node.key] || hasSearch
 
     const isAllSelected =
-      selected.length === 0 ||
-      (node.allValues.length > 0 && node.allValues.every((v) => selected.includes(v)))
-    const isSomeSelected = selected.length === 0 || node.allValues.some((v) => selected.includes(v))
+      node.allValues.length > 0 && node.allValues.every((v) => selected.includes(v))
+    const isSomeSelected = node.allValues.some((v) => selected.includes(v))
 
     return (
       <div key={node.key} className="flex flex-col">
@@ -856,8 +853,7 @@ function ColumnFilter({
   alignmentMenu?: React.ReactNode
 }) {
   const [open, setOpen] = useState(false)
-  const isAllSelected =
-    selected.length === 0 || (options.length > 0 && options.every((o) => selected.includes(o)))
+  const isAllSelected = options.length > 0 && options.every((o) => selected.includes(o))
   const hasActiveFilter = selected.length > 0 && !isAllSelected
 
   return (
@@ -913,9 +909,9 @@ function ColumnFilter({
                       <div
                         className={cn(
                           'mr-2 flex h-3 w-3 shrink-0 items-center justify-center border rounded-sm',
-                          selected.length === 0 || selected.includes(opt)
+                          selected.includes(opt)
                             ? 'bg-primary border-primary text-white'
-                            : 'opacity-50 border-slate-400',
+                            : 'opacity-50 border-slate-400 [&_svg]:invisible',
                         )}
                       >
                         <Check className="h-2 w-2" />
@@ -1082,7 +1078,7 @@ function FilterDropdown({
                   if (opt.parent && !expandedDateGroups[`${filterKey}-${opt.parent}`]) {
                     return null
                   }
-                  const isSelected = selected.length === 0 || selected.includes(opt.value)
+                  const isSelected = selected.includes(opt.value)
                   return (
                     <CommandItem
                       key={opt.value}
@@ -1135,7 +1131,7 @@ function FilterDropdown({
                           'mr-2 flex h-3 w-3 shrink-0 items-center justify-center border rounded-sm',
                           isSelected
                             ? 'bg-primary border-primary text-primary-foreground'
-                            : 'opacity-50',
+                            : 'opacity-50 [&_svg]:invisible',
                         )}
                       >
                         <Check className="h-2 w-2" />
@@ -9158,8 +9154,7 @@ export default function FinancialMovements() {
                                                     <div
                                                       className={cn(
                                                         'mr-2 flex h-3 w-3 flex-shrink-0 items-center justify-center rounded-sm border border-primary',
-                                                        (filters[h.key]?.length || 0) === 0 ||
-                                                          isSelected
+                                                        isSelected
                                                           ? 'bg-primary text-primary-foreground'
                                                           : 'opacity-50 [&_svg]:invisible',
                                                       )}
@@ -12129,8 +12124,7 @@ export default function FinancialMovements() {
                                                 <div
                                                   className={cn(
                                                     'mr-2 flex h-3 w-3 flex-shrink-0 items-center justify-center rounded-sm border border-primary',
-                                                    (resumoFilters[key]?.length || 0) === 0 ||
-                                                      isSelected
+                                                    isSelected
                                                       ? 'bg-primary text-primary-foreground'
                                                       : 'opacity-50 [&_svg]:invisible',
                                                   )}
@@ -13129,8 +13123,7 @@ export default function FinancialMovements() {
                                                     <div
                                                       className={cn(
                                                         'mr-2 flex h-3 w-3 flex-shrink-0 items-center justify-center rounded-sm border border-primary',
-                                                        (dryRunFilters[colDef.key]?.length || 0) ===
-                                                          0 || isSelected
+                                                        isSelected
                                                           ? 'bg-primary text-primary-foreground'
                                                           : 'opacity-50 [&_svg]:invisible',
                                                       )}
