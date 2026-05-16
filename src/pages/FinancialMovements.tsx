@@ -375,184 +375,6 @@ function DraggablePopoverContent({
   )
 }
 
-function TreeColumnFilter({
-  title,
-  options,
-  selected,
-  onChange,
-}: {
-  title: React.ReactNode
-  options: string[]
-  selected: string[]
-  onChange: (val: string[]) => void
-}) {
-  const [open, setOpen] = useState(false)
-  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({})
-  const [search, setSearch] = useState('')
-
-  const tree = useMemo(() => {
-    const root = new Map<string, string[]>()
-    options.forEach((opt) => {
-      const match = opt.match(/^(\d+)/)
-      const group = match ? `Grupo ${match[1]}` : 'Outros'
-      if (!root.has(group)) root.set(group, [])
-      root.get(group)!.push(opt)
-    })
-    return Array.from(root.entries()).sort((a, b) => a[0].localeCompare(b[0]))
-  }, [options])
-
-  const filteredTree = useMemo(() => {
-    if (!search) return tree
-    const s = search.toLowerCase()
-    return tree
-      .map(([group, items]) => {
-        const filteredItems = items.filter((item) => item.toLowerCase().includes(s))
-        return [group, filteredItems] as [string, string[]]
-      })
-      .filter(([_, items]) => items.length > 0)
-  }, [tree, search])
-
-  return (
-    <div className="flex items-center justify-between gap-1 w-full relative">
-      {typeof title === 'string' ? <span>{title}</span> : title}
-      <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>
-          <Button
-            variant="ghost"
-            size="icon"
-            className={cn(
-              'h-6 w-6 text-white hover:bg-white/20 shrink-0',
-              selected.length > 0 && 'bg-white/20',
-            )}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <Filter className="h-3 w-3" />
-            {selected.length > 0 && (
-              <span className="absolute -top-0.5 -right-0.5 flex h-2 w-2 items-center justify-center rounded-full bg-red-500 text-[8px] text-white"></span>
-            )}
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-[300px] p-0 z-[110]" align="start">
-          <div className="p-2 border-b border-slate-100">
-            <Input
-              placeholder="Buscar..."
-              className="h-8 text-xs"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-          </div>
-          <div className="max-h-[250px] overflow-y-auto custom-scrollbar p-1">
-            {filteredTree.length === 0 && (
-              <div className="py-2 text-xs text-center text-slate-500">Nenhum encontrado.</div>
-            )}
-            {filteredTree.map(([group, items]) => {
-              const allSelected = items.length > 0 && items.every((i) => selected.includes(i))
-              const someSelected = items.some((i) => selected.includes(i))
-              const isExpanded = expandedGroups[group] || search !== ''
-
-              return (
-                <div key={group} className="flex flex-col gap-0.5 mb-1">
-                  <div className="flex items-center gap-1 group">
-                    <button
-                      className="h-5 w-5 flex items-center justify-center rounded hover:bg-slate-200"
-                      onClick={() => setExpandedGroups((p) => ({ ...p, [group]: !isExpanded }))}
-                    >
-                      {isExpanded ? (
-                        <ChevronDown className="h-3 w-3 text-slate-500" />
-                      ) : (
-                        <ChevronRight className="h-3 w-3 text-slate-500" />
-                      )}
-                    </button>
-                    <div
-                      className="flex flex-1 items-center gap-2 cursor-pointer rounded px-1 py-1 hover:bg-slate-100"
-                      onClick={() => {
-                        if (allSelected) {
-                          onChange(selected.filter((s) => !items.includes(s)))
-                        } else {
-                          const newSelected = new Set([...selected, ...items])
-                          onChange(Array.from(newSelected))
-                        }
-                      }}
-                    >
-                      <div
-                        className={cn(
-                          'flex h-3 w-3 shrink-0 items-center justify-center border rounded-sm',
-                          allSelected
-                            ? 'bg-primary border-primary text-primary-foreground'
-                            : someSelected
-                              ? 'bg-primary/50 border-primary text-primary-foreground'
-                              : 'border-slate-300',
-                        )}
-                      >
-                        {(allSelected || someSelected) && <Check className="h-2 w-2" />}
-                      </div>
-                      <span className="text-xs font-semibold text-slate-700">{group}</span>
-                    </div>
-                  </div>
-                  {isExpanded && (
-                    <div className="flex flex-col pl-6 pr-1">
-                      {items.map((item) => {
-                        const isSelected = selected.includes(item)
-                        return (
-                          <div
-                            key={item}
-                            className="flex items-center gap-2 cursor-pointer rounded px-1 py-1 hover:bg-slate-100"
-                            onClick={() => {
-                              if (isSelected) {
-                                onChange(selected.filter((s) => s !== item))
-                              } else {
-                                onChange([...selected, item])
-                              }
-                            }}
-                          >
-                            <div
-                              className={cn(
-                                'flex h-3 w-3 shrink-0 items-center justify-center border rounded-sm',
-                                isSelected
-                                  ? 'bg-primary border-primary text-primary-foreground'
-                                  : 'border-slate-300',
-                              )}
-                            >
-                              {isSelected && <Check className="h-2 w-2" />}
-                            </div>
-                            <span className="text-xs text-slate-600 truncate" title={item}>
-                              {item}
-                            </span>
-                          </div>
-                        )
-                      })}
-                    </div>
-                  )}
-                </div>
-              )
-            })}
-          </div>
-          <div className="p-1 border-t border-slate-100 bg-slate-50 flex flex-col gap-1">
-            <div className="flex items-center gap-1 w-full">
-              <Button
-                variant="secondary"
-                size="sm"
-                className="h-6 flex-1 text-[10px]"
-                onClick={() => onChange(options)}
-              >
-                Todos
-              </Button>
-              <Button
-                variant="secondary"
-                size="sm"
-                className="h-6 flex-1 text-[10px]"
-                onClick={() => onChange([])}
-              >
-                Nenhum
-              </Button>
-            </div>
-          </div>
-        </PopoverContent>
-      </Popover>
-    </div>
-  )
-}
-
 function ChartAccountTreeFilterContent({
   selected,
   onChange,
@@ -1904,16 +1726,61 @@ function AccountingConsolidatedTable({
   )
 }
 
+function ColumnTreeFilterHeader({
+  title,
+  selected,
+  onChange,
+  content,
+}: {
+  title: React.ReactNode
+  selected: string[]
+  onChange: (val: string[]) => void
+  content: React.ReactNode
+}) {
+  const [open, setOpen] = useState(false)
+
+  return (
+    <div className="flex items-center justify-between gap-1 w-full relative">
+      {typeof title === 'string' ? <span>{title}</span> : title}
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon"
+            className={cn(
+              'h-6 w-6 text-white hover:bg-white/20 shrink-0',
+              selected.length > 0 && 'bg-white/20',
+            )}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <Filter className="h-3 w-3" />
+            {selected.length > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 flex h-2 w-2 items-center justify-center rounded-full bg-red-500 text-[8px] text-white"></span>
+            )}
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-[300px] p-0 z-[110]" align="start">
+          {content}
+        </PopoverContent>
+      </Popover>
+    </div>
+  )
+}
+
 function AccountingCrossReferenceTable({
   data,
   tableFontSize,
   getAccountingEntriesSimulation,
   onDrillDown,
+  chartOfAccounts,
+  costCenters,
 }: {
   data: any[]
   tableFontSize?: number
   getAccountingEntriesSimulation: (row: any) => any
   onDrillDown: (title: string, rows: any[]) => void
+  chartOfAccounts: any[]
+  costCenters: any[]
 }) {
   const [ccFilter, setCcFilter] = useState<string[]>([])
   const [cxFilter, setCxFilter] = useState<string[]>([])
@@ -2008,38 +1875,38 @@ function AccountingCrossReferenceTable({
   const formatCx = (item: any) =>
     item.contaCaixa ? `${item.contaCaixa} - ${item.nomeCaixa}` : 'Sem Conta Caixa'
 
-  const { ccOptions, cxOptions, debitOptions, creditOptions } = useMemo(() => {
-    const cc = new Set<string>()
+  const { ccOptions, cxOptions } = useMemo(() => {
+    const cc = new Map<string, string>()
     const cx = new Set<string>()
-    const deb = new Set<string>()
-    const cred = new Set<string>()
     crossMap.forEach((val) => {
-      cc.add(formatCc(val))
+      cc.set(val.cCusto || 'Sem C. Custo', formatCc(val))
       cx.add(formatCx(val))
-      deb.add(formatConta(val.debitAccount))
-      cred.add(formatConta(val.creditAccount))
     })
     return {
-      ccOptions: Array.from(cc).sort((a, b) => a.localeCompare(b)),
+      ccOptions: Array.from(cc.entries())
+        .map(([value, label]) => ({ value, label }))
+        .sort((a, b) => a.value.localeCompare(b.value)),
       cxOptions: Array.from(cx).sort((a, b) => a.localeCompare(b)),
-      debitOptions: Array.from(deb).sort((a, b) => a.localeCompare(b)),
-      creditOptions: Array.from(cred).sort((a, b) => a.localeCompare(b)),
     }
   }, [crossMap])
 
   const aggregated = useMemo(() => {
     let result = Array.from(crossMap.values())
     if (ccFilter.length > 0) {
-      result = result.filter((item) => ccFilter.includes(formatCc(item)))
+      result = result.filter((item) => ccFilter.includes(item.cCusto || 'Sem C. Custo'))
     }
     if (cxFilter.length > 0) {
       result = result.filter((item) => cxFilter.includes(formatCx(item)))
     }
     if (debitFilter.length > 0) {
-      result = result.filter((item) => debitFilter.includes(formatConta(item.debitAccount)))
+      result = result.filter((item) =>
+        debitFilter.includes(item.debitAccount ? item.debitAccount.id : 'PENDENTE'),
+      )
     }
     if (creditFilter.length > 0) {
-      result = result.filter((item) => creditFilter.includes(formatConta(item.creditAccount)))
+      result = result.filter((item) =>
+        creditFilter.includes(item.creditAccount ? item.creditAccount.id : 'PENDENTE'),
+      )
     }
     result.sort((a, b) => {
       let valA: any, valB: any
@@ -2120,7 +1987,7 @@ function AccountingCrossReferenceTable({
       cCusto: {
         label: 'Centro de Custo',
         filter: (
-          <TreeColumnFilter
+          <ColumnTreeFilterHeader
             title={
               <div
                 className="flex items-center gap-1 cursor-pointer hover:bg-white/10 rounded px-1 -ml-1 transition-colors"
@@ -2130,9 +1997,16 @@ function AccountingCrossReferenceTable({
                 {renderSortIcon('cCusto')}
               </div>
             }
-            options={ccOptions}
             selected={ccFilter}
             onChange={setCcFilter}
+            content={
+              <CostCenterTreeFilterContent
+                options={ccOptions}
+                selected={ccFilter}
+                onChange={setCcFilter}
+                costCenters={costCenters}
+              />
+            }
           />
         ),
         className: 'min-w-[200px] text-left',
@@ -2160,7 +2034,7 @@ function AccountingCrossReferenceTable({
       debitAccount: {
         label: 'Conta Débito (D)',
         filter: (
-          <TreeColumnFilter
+          <ColumnTreeFilterHeader
             title={
               <div
                 className="flex items-center gap-1 cursor-pointer hover:bg-white/10 rounded px-1 -ml-1 transition-colors"
@@ -2170,9 +2044,15 @@ function AccountingCrossReferenceTable({
                 {renderSortIcon('debitAccount')}
               </div>
             }
-            options={debitOptions}
             selected={debitFilter}
             onChange={setDebitFilter}
+            content={
+              <ChartAccountTreeFilterContent
+                selected={debitFilter}
+                onChange={setDebitFilter}
+                chartOfAccounts={chartOfAccounts}
+              />
+            }
           />
         ),
         className: 'min-w-[250px] text-left',
@@ -2180,7 +2060,7 @@ function AccountingCrossReferenceTable({
       creditAccount: {
         label: 'Conta Crédito (C)',
         filter: (
-          <TreeColumnFilter
+          <ColumnTreeFilterHeader
             title={
               <div
                 className="flex items-center gap-1 cursor-pointer hover:bg-white/10 rounded px-1 -ml-1 transition-colors"
@@ -2190,9 +2070,15 @@ function AccountingCrossReferenceTable({
                 {renderSortIcon('creditAccount')}
               </div>
             }
-            options={creditOptions}
             selected={creditFilter}
             onChange={setCreditFilter}
+            content={
+              <ChartAccountTreeFilterContent
+                selected={creditFilter}
+                onChange={setCreditFilter}
+                chartOfAccounts={chartOfAccounts}
+              />
+            }
           />
         ),
         className: 'min-w-[250px] text-left',
@@ -9635,6 +9521,8 @@ export default function FinancialMovements() {
                       setDrillDownData(rows)
                       setDrillDownOpen(true)
                     }}
+                    chartOfAccounts={chartOfAccounts}
+                    costCenters={costCenters}
                   />
                 </CardContent>
               </Card>
