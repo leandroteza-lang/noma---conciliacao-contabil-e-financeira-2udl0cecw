@@ -3539,6 +3539,28 @@ export default function FinancialMovements() {
   const [isImportOpen, setIsImportOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
 
+  const [chartOfAccounts, setChartOfAccounts] = useState<any[]>([])
+  const [costCenters, setCostCenters] = useState<any[]>([])
+  const [mappings, setMappings] = useState<any[]>([])
+  const [bankAccounts, setBankAccounts] = useState<any[]>([])
+  const [mappingRow, setMappingRow] = useState<any | null>(null)
+  const [comboboxOpen, setComboboxOpen] = useState(false)
+  const [selectedAccountId, setSelectedAccountId] = useState<string>('')
+
+  const [bankComboboxOpen, setBankComboboxOpen] = useState(false)
+  const [selectedBankChartAccountId, setSelectedBankChartAccountId] = useState<string>('')
+
+  const [generateModalOpen, setGenerateModalOpen] = useState(false)
+  const [isGeneratingEntries, setIsGeneratingEntries] = useState(false)
+  const [generateOptions, setGenerateOptions] = useState({
+    dateBase: 'data_emissao',
+    valueBase: 'valor_liquido',
+  })
+  const [generateScope, setGenerateScope] = useState<'global' | 'dry_run'>('global')
+
+  const [dryRunFiltersOpen, setDryRunFiltersOpen] = useState(false)
+  const [dryRunFilters, setDryRunFilters] = useState<Record<string, string[]>>({})
+
   const handleUpdateCrossReferenceStatus = async (rowIds: string[], newStatus: string) => {
     if (!user) return
     const toastId = toast.loading('Atualizando status...')
@@ -4450,28 +4472,6 @@ export default function FinancialMovements() {
   }, [filterOrder])
 
   const [draggedFilter, setDraggedFilter] = useState<string | null>(null)
-
-  const [chartOfAccounts, setChartOfAccounts] = useState<any[]>([])
-  const [costCenters, setCostCenters] = useState<any[]>([])
-  const [mappings, setMappings] = useState<any[]>([])
-  const [bankAccounts, setBankAccounts] = useState<any[]>([])
-  const [mappingRow, setMappingRow] = useState<any | null>(null)
-  const [comboboxOpen, setComboboxOpen] = useState(false)
-  const [selectedAccountId, setSelectedAccountId] = useState<string>('')
-
-  const [bankComboboxOpen, setBankComboboxOpen] = useState(false)
-  const [selectedBankChartAccountId, setSelectedBankChartAccountId] = useState<string>('')
-
-  const [generateModalOpen, setGenerateModalOpen] = useState(false)
-  const [isGeneratingEntries, setIsGeneratingEntries] = useState(false)
-  const [generateOptions, setGenerateOptions] = useState({
-    dateBase: 'data_emissao',
-    valueBase: 'valor_liquido',
-  })
-  const [generateScope, setGenerateScope] = useState<'global' | 'dry_run'>('global')
-
-  const [dryRunFiltersOpen, setDryRunFiltersOpen] = useState(false)
-  const [dryRunFilters, setDryRunFilters] = useState<Record<string, string[]>>({})
 
   const getMappedAccountForCC = (cCustoCode: string | null, orgId: string | null) => {
     if (!cCustoCode || !orgId) return null
