@@ -4071,6 +4071,10 @@ export default function FinancialMovements() {
   const [balanceteSearch, setBalanceteSearch] = useState('')
   const [selectedPeriods, setSelectedPeriods] = useState<string[]>([])
 
+  const [balanceteFilterItems, setBalanceteFilterItems] = useState<string[]>([])
+  const [balanceteFilterAnaliticos, setBalanceteFilterAnaliticos] = useState(false)
+  const [balanceteExpanded, setBalanceteExpanded] = useState<Record<string, boolean>>({})
+
   const availableMonths = useMemo(() => {
     return Array.from(new Set(summaryData.map((d) => d[summaryDateBase]?.substring(0, 7))))
       .filter(Boolean)
@@ -4081,38 +4085,235 @@ export default function FinancialMovements() {
   const sortedActivePeriods = [...activePeriods].sort()
 
   const matrixData = useMemo(() => {
-    const map = new Map<string, { code: string; name: string; values: Record<string, number> }>()
     const monthTotalsAbs: Record<string, number> = {}
 
-    summaryData.forEach((row) => {
-      const month = row[summaryDateBase]?.substring(0, 7)
-      if (!month || !sortedActivePeriods.includes(month)) return
+    let processedRoots: any[] = []
+    let unmapped: any = null
 
-      const code = balanceteView === 'c_custo' ? row.c_custo || 'S/C' : row.conta_caixa || 'S/C'
-      const name =
-        balanceteView === 'c_custo'
-          ? row.descricao_c_custo || 'Sem Centro de Custo'
-          : row.nome_caixa || 'Sem Conta'
-      const key = `${code}::${name}`
-      const val = Number(row.valor_liquido || 0)
+    if (balanceteView === 'c_custo') {
+      const nodesMap = new Map<string, any>()
+      costCenters.forEach((cc) => {
+        nodesMap.set(cc.id, {
+          id: cc.id,
+          code: cc.code,
+          name: cc.description,
+          isSynthetic: false,
+          parentId: cc.parent_id,
+          values: {},
+          children: [],
+          level: 0,
+          isAnalytical: true,
+        })
+      })
 
-      if (!map.has(key)) map.set(key, { code, name, values: {} })
-      const group = map.get(key)!
-      group.values[month] = (group.values[month] || 0) + val
-      monthTotalsAbs[month] = (monthTotalsAbs[month] || 0) + Math.abs(val)
-    })
+      const roots: any[] = []
+      costCenters.forEach((cc) => {
+        const node = nodesMap.get(cc.id)
+        if (cc.parent_id && nodesMap.has(cc.parent_id)) {
+          const parent = nodesMap.get(cc.parent_id)
+          if (parent) {
+            parent.children.push(node)
+            parent.isSynthetic = true
+            parent.isAnalytical = false
+          } else {
+            roots.push(node)
+          }
+        } else {
+          roots.push(node)
+        }
+      })
 
-    let rows = Array.from(map.values())
-    if (balanceteSearch) {
-      const q = balanceteSearch.toLowerCase()
-      rows = rows.filter(
-        (r) => r.code.toLowerCase().includes(q) || r.name.toLowerCase().includes(q),
-      )
+      unmapped = {
+        id: 'unmapped',
+        code: 'S/C',
+        name: 'Sem Centro de Custo',
+        isSynthetic: false,
+        isAnalytical: true,
+        values: {},
+        children: [],
+        level: 0,
+      }
+
+      const addValueToNodeAndAncestors = (nodeId: string, month: string, value: number) => {
+        let curr = nodesMap.get(nodeId)
+        while (curr) {
+          curr.values[month] = (curr.values[month] || 0) + value
+          curr = curr.parentId ? nodesMap.get(curr.parentId) : null
+        }
+      }
+
+      summaryData.forEach((row) => {
+        const month = row[summaryDateBase]?.substring(0, 7)
+        if (!month || !sortedActivePeriods.includes(month)) return
+
+        const val = Number(row.valor_liquido || 0)
+        monthTotalsAbs[month] = (monthTotalsAbs[month] || 0) + Math.abs(val)
+
+        const orgId = row.organization_id
+        const ccCode = row.c_custo?.trim().toUpperCase()
+
+        let matchedCcId = null
+        if (ccCode && orgId) {
+          const match = costCenters.find(
+            (c) => c.organization_id === orgId && c.code?.trim().toUpperCase() === ccCode,
+          )
+          if (match) matchedCcId = match.id
+        }
+
+        if (matchedCcId) {
+          addValueToNodeAndAncestors(matchedCcId, month, val)
+        } else {
+          unmapped.values[month] = (unmapped.values[month] || 0) + val
+        }
+      })
+
+      const sortTree = (nodes: any[], level: number) => {
+        nodes.sort((a, b) => (a.code || '').localeCompare(b.code || ''))
+        nodes.forEach((n) => {
+          n.level = level
+          sortTree(n.children, level + 1)
+        })
+      }
+      sortTree(roots, 0)
+      processedRoots = roots
+    } else {
+      const map = new Map<string, any>()
+      summaryData.forEach((row) => {
+        const month = row[summaryDateBase]?.substring(0, 7)
+        if (!month || !sortedActivePeriods.includes(month)) return
+
+        const code = row.conta_caixa || 'S/C'
+        const name = row.nome_caixa || 'Sem Conta'
+        const key = `${code}::${name}`
+        const val = Number(row.valor_liquido || 0)
+
+        if (!map.has(key)) {
+          map.set(key, {
+            id: key,
+            code,
+            name,
+            isSynthetic: false,
+            isAnalytical: true,
+            values: {},
+            children: [],
+            level: 0,
+          })
+        }
+        const group = map.get(key)!
+        group.values[month] = (group.values[month] || 0) + val
+        monthTotalsAbs[month] = (monthTotalsAbs[month] || 0) + Math.abs(val)
+      })
+
+      processedRoots = Array.from(map.values())
+      processedRoots.sort((a, b) => a.code.localeCompare(b.code))
     }
-    rows.sort((a, b) => a.code.localeCompare(b.code))
 
-    return { rows, monthTotalsAbs }
-  }, [summaryData, summaryDateBase, balanceteView, sortedActivePeriods, balanceteSearch])
+    let finalRoots = processedRoots
+    if (unmapped && Object.values(unmapped.values).some((v: any) => Math.abs(v) > 0.001)) {
+      finalRoots.push(unmapped)
+    }
+
+    const hasValues = (node: any) =>
+      sortedActivePeriods.some((m) => Math.abs(node.values[m] || 0) > 0.001)
+
+    const filterNode = (node: any): any => {
+      const filteredChildren = node.children.map(filterNode).filter(Boolean)
+      const nodeHasValues = hasValues(node)
+      const childrenHaveValues = filteredChildren.length > 0
+
+      if (!nodeHasValues && !childrenHaveValues) return null
+
+      let matchText = true
+      if (balanceteSearch) {
+        const q = balanceteSearch.toLowerCase()
+        matchText =
+          (node.code || '').toLowerCase().includes(q) || (node.name || '').toLowerCase().includes(q)
+      }
+
+      let matchSelection = true
+      if (balanceteFilterItems.length > 0) {
+        matchSelection = balanceteFilterItems.includes(node.code) || childrenHaveValues
+      }
+
+      if ((matchText || childrenHaveValues) && matchSelection) {
+        return { ...node, children: filteredChildren }
+      }
+      return null
+    }
+
+    finalRoots = finalRoots.map(filterNode).filter(Boolean)
+
+    return { roots: finalRoots, monthTotalsAbs }
+  }, [
+    summaryData,
+    summaryDateBase,
+    balanceteView,
+    sortedActivePeriods,
+    balanceteSearch,
+    balanceteFilterItems,
+    costCenters,
+  ])
+
+  const balanceteFilterOptions = useMemo(() => {
+    if (balanceteView === 'c_custo') {
+      const uniqueOpts = new Map()
+      costCenters.forEach((cc) => {
+        if (cc.code) {
+          uniqueOpts.set(cc.code, { label: cc.description || 'Sem Descrição', value: cc.code })
+        }
+      })
+      return Array.from(uniqueOpts.values()).sort((a, b) => a.value.localeCompare(b.value))
+    } else {
+      const set = new Set<string>()
+      summaryData.forEach((row) => {
+        if (row.conta_caixa) set.add(row.conta_caixa)
+      })
+      return Array.from(set)
+        .sort()
+        .map((c) => ({ label: c, value: c }))
+    }
+  }, [balanceteView, costCenters, summaryData])
+
+  const flatBalanceteRows = useMemo(() => {
+    const result: any[] = []
+
+    const traverse = (nodes: any[]) => {
+      nodes.forEach((node) => {
+        if (balanceteFilterAnaliticos && node.isSynthetic) {
+          if (node.children && node.children.length > 0) {
+            traverse(node.children)
+          }
+          return
+        }
+
+        result.push(node)
+        if (balanceteExpanded[node.id] && node.children && node.children.length > 0) {
+          traverse(node.children)
+        }
+      })
+    }
+
+    traverse(matrixData.roots)
+    return result
+  }, [matrixData.roots, balanceteExpanded, balanceteFilterAnaliticos])
+
+  const handleExpandAllBalancete = () => {
+    const all: Record<string, boolean> = {}
+    const traverse = (nodes: any[]) => {
+      nodes.forEach((n) => {
+        if (n.children && n.children.length > 0) {
+          all[n.id] = true
+          traverse(n.children)
+        }
+      })
+    }
+    traverse(matrixData.roots)
+    setBalanceteExpanded(all)
+  }
+
+  const handleCollapseAllBalancete = () => {
+    setBalanceteExpanded({})
+  }
 
   const handleExportBalancete = () => {
     const separator = ';'
@@ -4126,7 +4327,7 @@ export default function FinancialMovements() {
     })
     csv += '\n'
 
-    matrixData.rows.forEach((row) => {
+    flatBalanceteRows.forEach((row) => {
       csv += `"${row.code}"${separator}"${row.name}"`
       sortedActivePeriods.forEach((month, mIdx) => {
         const val = row.values[month] || 0
@@ -10495,7 +10696,7 @@ export default function FinancialMovements() {
 
         <TabsContent value="balancete" className="m-0 animate-in fade-in-up duration-500">
           <Card className="border-slate-200 shadow-sm overflow-hidden flex flex-col h-[800px]">
-            <CardHeader className="bg-slate-50/50 border-b pb-4 shrink-0">
+            <CardHeader className="bg-slate-50/50 border-b pb-4 shrink-0 flex flex-col gap-4">
               <div className="flex flex-col xl:flex-row xl:items-start justify-between gap-4">
                 <div>
                   <h2 className="text-xl font-bold text-slate-800">Balancete Comparativo</h2>
@@ -10545,7 +10746,11 @@ export default function FinancialMovements() {
                           ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200'
                           : '',
                       )}
-                      onClick={() => setBalanceteView('c_custo')}
+                      onClick={() => {
+                        setBalanceteView('c_custo')
+                        setBalanceteFilterItems([])
+                        setBalanceteExpanded({})
+                      }}
                     >
                       Por Centro de Custo
                     </Button>
@@ -10558,7 +10763,11 @@ export default function FinancialMovements() {
                           ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200'
                           : '',
                       )}
-                      onClick={() => setBalanceteView('conta_caixa')}
+                      onClick={() => {
+                        setBalanceteView('conta_caixa')
+                        setBalanceteFilterItems([])
+                        setBalanceteExpanded({})
+                      }}
                     >
                       Por Conta/Caixa
                     </Button>
@@ -10600,16 +10809,6 @@ export default function FinancialMovements() {
                     </div>
                   </div>
 
-                  <div className="relative w-full sm:w-[250px]">
-                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                    <Input
-                      placeholder="Pesquisar conta/código..."
-                      className="pl-8 h-9 text-sm bg-white"
-                      value={balanceteSearch}
-                      onChange={(e) => setBalanceteSearch(e.target.value)}
-                    />
-                  </div>
-
                   <Button
                     onClick={handleExportBalancete}
                     className="bg-[#0f172a] hover:bg-[#1e293b] text-white h-9 shadow-sm"
@@ -10617,6 +10816,68 @@ export default function FinancialMovements() {
                     <Download className="mr-2 h-4 w-4" />
                     Exportar CSV
                   </Button>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="flex items-center gap-2 bg-white border border-slate-200 p-1.5 rounded-lg shadow-sm">
+                  <div className="w-[250px]">
+                    <FilterDropdown
+                      title="Nível e Subnível (Filtro)"
+                      options={balanceteFilterOptions}
+                      selected={balanceteFilterItems}
+                      onChange={setBalanceteFilterItems}
+                      type={balanceteView === 'c_custo' ? 'cost_center' : 'flat'}
+                      costCenters={costCenters}
+                    />
+                  </div>
+
+                  <div className="h-4 w-px bg-slate-200 mx-1"></div>
+
+                  <div className="flex items-center space-x-2 px-2 py-1">
+                    <Checkbox
+                      id="only-analytical"
+                      checked={balanceteFilterAnaliticos}
+                      onCheckedChange={(c) => setBalanceteFilterAnaliticos(!!c)}
+                    />
+                    <Label
+                      htmlFor="only-analytical"
+                      className="text-xs font-semibold cursor-pointer whitespace-nowrap"
+                    >
+                      Somente Analíticos
+                    </Label>
+                  </div>
+
+                  <div className="h-4 w-px bg-slate-200 mx-1"></div>
+
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7 text-xs px-2 shadow-sm"
+                    onClick={handleExpandAllBalancete}
+                    disabled={balanceteFilterAnaliticos}
+                  >
+                    <ChevronsUpDown className="h-3 w-3 mr-1" /> Expandir Todos
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7 text-xs px-2 text-rose-600 border-rose-200 hover:bg-rose-50 shadow-sm"
+                    onClick={handleCollapseAllBalancete}
+                    disabled={balanceteFilterAnaliticos}
+                  >
+                    <ChevronRight className="h-3 w-3 mr-1" /> Recolher Todos
+                  </Button>
+                </div>
+
+                <div className="relative w-full sm:w-[250px] ml-auto">
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                  <Input
+                    placeholder="Pesquisar conta/código..."
+                    className="pl-8 h-9 text-sm bg-white shadow-sm"
+                    value={balanceteSearch}
+                    onChange={(e) => setBalanceteSearch(e.target.value)}
+                  />
                 </div>
               </div>
             </CardHeader>
@@ -10931,7 +11192,7 @@ export default function FinancialMovements() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {matrixData.rows.length === 0 ? (
+                  {flatBalanceteRows.length === 0 ? (
                     <TableRow disableZebra>
                       <TableCell
                         colSpan={sortedActivePeriods.length + 2}
@@ -10941,30 +11202,122 @@ export default function FinancialMovements() {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    matrixData.rows.map((row, idx) => {
+                    flatBalanceteRows.map((row, idx) => {
+                      let rowClass = idx % 2 === 1 ? 'bg-slate-50/50' : 'bg-white'
+                      if (row.isSynthetic) {
+                        if (row.level <= 1)
+                          rowClass = '!bg-[#1e1b4b] !text-white hover:!bg-[#312e81] font-bold'
+                        else
+                          rowClass = '!bg-[#e0e7ff] !text-[#1e1b4b] hover:!bg-[#c7d2fe] font-bold'
+                      }
+
+                      const hasChildren = row.children && row.children.length > 0
+                      const isExpanded = balanceteExpanded[row.id]
+
                       return (
                         <TableRow
-                          key={idx}
-                          className="transition-colors group border-0 [&>td.sticky]:bg-inherit"
+                          key={row.id || idx}
+                          className={cn(
+                            'transition-colors group border-0 [&>td.sticky]:bg-inherit',
+                            rowClass,
+                          )}
                         >
                           <TableCell
                             {...getBalanceteCellProps(
                               'conta',
-                              'center',
+                              'left',
                               'sticky left-0 z-10 px-2 py-0.5 bg-inherit',
                             )}
                           >
-                            {row.code}
+                            <div
+                              className={cn(
+                                'flex items-center gap-1.5',
+                                getBalanceteCellProps('conta', 'left').className.includes(
+                                  'text-right',
+                                )
+                                  ? 'justify-end'
+                                  : getBalanceteCellProps('conta', 'left').className.includes(
+                                        'text-center',
+                                      )
+                                    ? 'justify-center'
+                                    : 'justify-start',
+                              )}
+                              style={{
+                                paddingLeft: balanceteFilterAnaliticos ? 0 : `${row.level * 16}px`,
+                              }}
+                            >
+                              {!balanceteFilterAnaliticos &&
+                                (hasChildren ? (
+                                  <button
+                                    onClick={() =>
+                                      setBalanceteExpanded((p) => ({ ...p, [row.id]: !p[row.id] }))
+                                    }
+                                    className={cn(
+                                      'p-0.5 rounded transition-colors',
+                                      row.isSynthetic && row.level <= 1
+                                        ? 'hover:bg-white/20 text-white'
+                                        : 'hover:bg-black/10',
+                                    )}
+                                  >
+                                    {isExpanded ? (
+                                      <ChevronDown className="w-3.5 h-3.5" />
+                                    ) : (
+                                      <ChevronRight className="w-3.5 h-3.5" />
+                                    )}
+                                  </button>
+                                ) : (
+                                  <span className="w-3.5 inline-block shrink-0" />
+                                ))}
+                              {row.isSynthetic ? (
+                                <span
+                                  className={cn(
+                                    'px-1 py-0.5 text-[0.7em] font-bold rounded',
+                                    row.level <= 1
+                                      ? 'bg-white/20 text-white'
+                                      : 'bg-indigo-200 text-indigo-900',
+                                  )}
+                                >
+                                  S
+                                </span>
+                              ) : (
+                                <span
+                                  className={cn(
+                                    'px-1 py-0.5 text-[0.7em] font-bold rounded border',
+                                    row.level <= 1 && row.isSynthetic
+                                      ? 'bg-white/20 text-white border-transparent'
+                                      : 'bg-blue-50 text-blue-700 border-blue-200',
+                                  )}
+                                >
+                                  A
+                                </span>
+                              )}
+                              <span className="font-mono font-medium">{row.code}</span>
+                            </div>
                           </TableCell>
                           <TableCell
                             {...getBalanceteCellProps(
                               'descricao',
-                              'center',
+                              'left',
                               'sticky left-[150px] z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)] truncate max-w-[300px] px-2 py-0.5 bg-inherit',
                             )}
                             title={row.name}
                           >
-                            {row.name}
+                            <div
+                              className={cn(
+                                'flex w-full',
+                                getBalanceteCellProps('descricao', 'left').className.includes(
+                                  'text-right',
+                                )
+                                  ? 'justify-end'
+                                  : getBalanceteCellProps('descricao', 'left').className.includes(
+                                        'text-center',
+                                      )
+                                    ? 'justify-center'
+                                    : 'justify-start',
+                              )}
+                            >
+                              <span className="truncate">{row.name}</span>
+                            </div>
                           </TableCell>
                           {sortedActivePeriods.map((month, mIdx) => {
                             const val = row.values[month] || 0
@@ -11008,20 +11361,25 @@ export default function FinancialMovements() {
                                       currency: 'BRL',
                                     }).format(Math.abs(val))}
                                   </span>
-                                  <span className="text-[0.85em]">
+                                  <span className="text-[0.85em] opacity-80 font-medium">
                                     {val > 0 ? 'D' : val < 0 ? 'C' : ''}
                                   </span>
                                 </div>
                                 {(avEnabled || ahEnabled) && (
                                   <div
                                     className={cn(
-                                      'flex gap-2 mt-1.5 text-[0.85em] font-medium',
+                                      'flex gap-2 mt-1.5 text-[0.85em] font-medium opacity-90',
                                       justifyClass,
                                     )}
                                   >
                                     {avEnabled && (
                                       <span
-                                        className="px-1.5 py-0.5 rounded border border-slate-300 bg-black/5 dark:bg-white/10"
+                                        className={cn(
+                                          'px-1.5 py-0.5 rounded border',
+                                          row.isSynthetic && row.level <= 1
+                                            ? 'border-white/20 bg-white/10'
+                                            : 'border-slate-300 bg-black/5 dark:bg-white/10',
+                                        )}
                                         title="Análise Vertical"
                                       >
                                         {val === 0 ? '-' : `${av.toFixed(1)}%`}
@@ -11029,7 +11387,12 @@ export default function FinancialMovements() {
                                     )}
                                     {ahEnabled && mIdx > 0 && (
                                       <span
-                                        className="px-1.5 py-0.5 rounded border border-slate-300 bg-black/5 dark:bg-white/10"
+                                        className={cn(
+                                          'px-1.5 py-0.5 rounded border',
+                                          row.isSynthetic && row.level <= 1
+                                            ? 'border-white/20 bg-white/10'
+                                            : 'border-slate-300 bg-black/5 dark:bg-white/10',
+                                        )}
                                         title="Análise Horizontal"
                                       >
                                         {prevVal === 0 && val !== 0
