@@ -232,6 +232,61 @@ const formatMonthYear = (row: any, dateField: string = 'data_emissao') => {
   return 'Sem Data'
 }
 
+function TopScrollTableWrapper({ children }: { children: React.ReactNode }) {
+  const topScrollRef = useRef<HTMLDivElement>(null)
+  const wrapperRef = useRef<HTMLDivElement>(null)
+  const [tableWidth, setTableWidth] = useState(1200)
+
+  useEffect(() => {
+    if (!wrapperRef.current) return
+    const ro = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        if (entry.target.tagName.toLowerCase() === 'table') {
+          setTableWidth(entry.target.scrollWidth)
+        }
+      }
+    })
+    const table = wrapperRef.current.querySelector('table')
+    if (table) ro.observe(table)
+    
+    ro.observe(wrapperRef.current)
+
+    return () => ro.disconnect()
+  }, [])
+
+  return (
+    <div className="flex flex-col w-full relative">
+      <div 
+        ref={topScrollRef} 
+        onScroll={(e) => {
+          if (wrapperRef.current) {
+            const tableContainer = wrapperRef.current.querySelector('.overflow-auto') || wrapperRef.current.querySelector('.overflow-x-auto')
+            if (tableContainer) tableContainer.scrollLeft = e.currentTarget.scrollLeft
+          }
+        }} 
+        className="overflow-x-auto w-full finance-table-scrollbar sticky top-0 z-20 border-x border-t border-slate-300 rounded-t-lg bg-slate-50"
+        style={{ height: '14px' }}
+      >
+        <div style={{ width: tableWidth, height: '1px' }}></div>
+      </div>
+      <div 
+        ref={wrapperRef} 
+        className="w-full"
+        onScrollCapture={(e) => {
+          const target = e.target as HTMLElement
+          if (target.classList && (target.classList.contains('overflow-auto') || target.classList.contains('overflow-x-auto'))) {
+            if (topScrollRef.current && topScrollRef.current !== target) {
+              topScrollRef.current.scrollLeft = target.scrollLeft
+            }
+          }
+        }}
+      >
+        {children}
+      </div>
+    </div>
+  )
+}
+
 function FloatingPanel({
   open,
   onClose,
@@ -1458,8 +1513,9 @@ function PeriodConsolidatedTable({
             })}
           </TableRow>
         )}
-      </TableBody>
-    </Table>
+        </TableBody>
+      </Table>
+    </TopScrollTableWrapper>
   )
 }
 
@@ -2217,12 +2273,13 @@ function AccountingCrossReferenceTable({
   }
 
   return (
-    <Table
-      className="transform scale-y-[-1] w-full min-w-[1200px]"
-      style={{ fontSize: tableFontSize ? `${tableFontSize}px` : undefined }}
-      wrapperClassName="transform scale-y-[-1] max-h-[600px] overflow-auto finance-table-scrollbar pb-3"
-    >
-      <TableHeader className="sticky top-0 z-10 shadow-sm border-b border-slate-600 bg-indigo-950">
+    <TopScrollTableWrapper>
+      <Table
+        className="w-full min-w-[1200px]"
+        style={{ fontSize: tableFontSize ? `${tableFontSize}px` : undefined }}
+        wrapperClassName="max-h-[600px] overflow-auto finance-table-scrollbar pb-3"
+      >
+        <TableHeader className="sticky top-0 z-10 shadow-sm border-b border-slate-600 bg-indigo-950">
         <TableRow disableZebra className="bg-indigo-950 hover:bg-indigo-900 border-none">
           {colOrder.map((col) => {
             const def = columnsDef[col]
@@ -8089,11 +8146,12 @@ export default function FinancialMovements() {
                   </DropdownMenu>
                 </div>
               </div>
-              <Table
-                wrapperClassName="transform scale-y-[-1] overflow-x-auto overflow-y-hidden finance-table-scrollbar pb-3 border-4 border-indigo-950 rounded-lg"
-                className="transform scale-y-[-1] w-full min-w-max"
-              >
-                <TableHeader>
+              <TopScrollTableWrapper>
+                <Table
+                  wrapperClassName="overflow-x-auto overflow-y-hidden finance-table-scrollbar pb-3 border-4 border-indigo-950 rounded-b-lg rounded-t-none border-t-0"
+                  className="w-full min-w-max"
+                >
+                  <TableHeader>
                   <TableRow
                     disableZebra
                     className="bg-indigo-950 text-white font-bold hover:bg-indigo-900 border-none [&>th]:border-none [&>th]:text-white"
@@ -9251,7 +9309,8 @@ export default function FinancialMovements() {
                   )}
                 </TableBody>
               </Table>
-              <div className="flex flex-col sm:flex-row items-center justify-between p-3 border-t bg-slate-50/50 gap-4">
+              </TopScrollTableWrapper>
+              <div className="flex flex-col sm:flex-row items-center justify-between p-3 border-t bg-slate-50/50 gap-4 mt-2">
                 <div className="text-xs text-slate-500">
                   Mostrando {Math.min(page * pageSize + 1, totalCount)} a{' '}
                   {Math.min((page + 1) * pageSize, totalCount)} de {totalCount} registros
@@ -11839,12 +11898,13 @@ export default function FinancialMovements() {
               </div>
             </CardHeader>
             <CardContent className="p-0">
-              <Table
-                wrapperClassName="transform scale-y-[-1] overflow-x-auto overflow-y-hidden finance-table-scrollbar pb-3 border-4 border-indigo-950 rounded-lg"
-                className="transform scale-y-[-1] w-full min-w-max"
-                style={{ fontSize: `${tableFontSize}px` }}
-              >
-                <TableHeader className="bg-indigo-950 sticky top-0 z-10 shadow-sm border-none">
+              <TopScrollTableWrapper>
+                <Table
+                  wrapperClassName="overflow-x-auto overflow-y-hidden finance-table-scrollbar pb-3 border-4 border-indigo-950 rounded-b-lg rounded-t-none border-t-0"
+                  className="w-full min-w-max"
+                  style={{ fontSize: `${tableFontSize}px` }}
+                >
+                  <TableHeader className="bg-indigo-950 sticky top-0 z-10 shadow-sm border-none">
                   <TableRow
                     disableZebra
                     className="bg-indigo-950 hover:bg-indigo-900 border-none [&>th]:border-none [&>th]:text-white"
@@ -12534,7 +12594,8 @@ export default function FinancialMovements() {
                   )}
                 </TableBody>
               </Table>
-              <div className="flex flex-col sm:flex-row items-center justify-between p-3 border-t bg-slate-50/50 gap-4">
+              </TopScrollTableWrapper>
+              <div className="flex flex-col sm:flex-row items-center justify-between p-3 border-t bg-slate-50/50 gap-4 mt-2">
                 <div className="text-xs text-slate-500">
                   Mostrando {Math.min(dryRunPage * dryRunPageSize + 1, filteredDryRunData.length)} a{' '}
                   {Math.min((dryRunPage + 1) * dryRunPageSize, filteredDryRunData.length)} de{' '}
