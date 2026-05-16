@@ -3136,6 +3136,12 @@ export default function FinancialMovements() {
             return !sim.debitAccount || !sim.creditAccount
           })
         }
+        if (filters['apenas_mapeados'] && filters['apenas_mapeados'].length > 0) {
+          allData = allData.filter((row) => {
+            const sim = getAccountingEntriesSimulation(row)
+            return !!sim.debitAccount && !!sim.creditAccount
+          })
+        }
         if (filters['prontidao'] && filters['prontidao'].length > 0) {
           allData = allData.filter((row) => {
             const missing =
@@ -4979,7 +4985,13 @@ export default function FinancialMovements() {
         } else if (key === 'empresa') {
           q = q.in('organization_id', values)
         } else if (
-          ['prontidao', 'conta_debito', 'conta_credito', 'apenas_pendentes'].includes(key)
+          [
+            'prontidao',
+            'conta_debito',
+            'conta_credito',
+            'apenas_pendentes',
+            'apenas_mapeados',
+          ].includes(key)
         ) {
           // Filtragem client-side é aplicada após a busca dos resultados da query
           // em fetchData, fetchDataSilent, e handleExport para garantir precisão
@@ -5058,6 +5070,20 @@ export default function FinancialMovements() {
       finalData = finalData.filter((row) => {
         const sim = getAccountingEntriesSimulation(row)
         return !sim.debitAccount || !sim.creditAccount
+      })
+    }
+
+    if (filters['apenas_mapeados'] && filters['apenas_mapeados'].length > 0) {
+      finalData = finalData.filter((row) => {
+        const sim = getAccountingEntriesSimulation(row)
+        return !!sim.debitAccount && !!sim.creditAccount
+      })
+    }
+
+    if (filters['apenas_mapeados'] && filters['apenas_mapeados'].length > 0) {
+      finalData = finalData.filter((row) => {
+        const sim = getAccountingEntriesSimulation(row)
+        return !!sim.debitAccount && !!sim.creditAccount
       })
     }
 
@@ -5234,6 +5260,13 @@ export default function FinancialMovements() {
       allData = allData.filter((row) => {
         const sim = getAccountingEntriesSimulation(row)
         return !sim.debitAccount || !sim.creditAccount
+      })
+    }
+
+    if (resumoFilters['apenas_mapeados'] && resumoFilters['apenas_mapeados'].length > 0) {
+      allData = allData.filter((row) => {
+        const sim = getAccountingEntriesSimulation(row)
+        return !!sim.debitAccount && !!sim.creditAccount
       })
     }
 
@@ -6998,7 +7031,11 @@ export default function FinancialMovements() {
                     )}
                     onClick={() => {
                       const isActive = filters['apenas_pendentes']?.length > 0
-                      setFilters((p) => ({ ...p, apenas_pendentes: isActive ? [] : ['true'] }))
+                      setFilters((p) => ({
+                        ...p,
+                        apenas_pendentes: isActive ? [] : ['true'],
+                        apenas_mapeados: [],
+                      }))
                       setPage(0)
                     }}
                   >
@@ -7011,6 +7048,36 @@ export default function FinancialMovements() {
                       )}
                     />
                     Apenas Pendentes
+                  </Button>
+
+                  <Button
+                    variant={filters['apenas_mapeados']?.length > 0 ? 'default' : 'outline'}
+                    size="sm"
+                    className={cn(
+                      'h-7 text-xs font-semibold whitespace-nowrap transition-colors',
+                      filters['apenas_mapeados']?.length > 0
+                        ? 'bg-emerald-100 text-emerald-800 border-emerald-200 hover:bg-emerald-200 hover:text-emerald-900 shadow-sm'
+                        : 'bg-white text-slate-600 hover:bg-slate-50',
+                    )}
+                    onClick={() => {
+                      const isActive = filters['apenas_mapeados']?.length > 0
+                      setFilters((p) => ({
+                        ...p,
+                        apenas_mapeados: isActive ? [] : ['true'],
+                        apenas_pendentes: [],
+                      }))
+                      setPage(0)
+                    }}
+                  >
+                    <CheckCircle2
+                      className={cn(
+                        'h-3.5 w-3.5 mr-1.5',
+                        filters['apenas_mapeados']?.length > 0
+                          ? 'text-emerald-600'
+                          : 'text-slate-400',
+                      )}
+                    />
+                    Mapeados 100%
                   </Button>
 
                   <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 px-2 py-1 rounded-md shadow-sm h-7 mr-1 transition-all">
@@ -9019,7 +9086,11 @@ export default function FinancialMovements() {
                 )}
                 onClick={() => {
                   const isActive = resumoFilters['apenas_pendentes']?.length > 0
-                  setResumoFilters((p) => ({ ...p, apenas_pendentes: isActive ? [] : ['true'] }))
+                  setResumoFilters((p) => ({
+                    ...p,
+                    apenas_pendentes: isActive ? [] : ['true'],
+                    apenas_mapeados: [],
+                  }))
                 }}
               >
                 <AlertCircle
@@ -9031,6 +9102,35 @@ export default function FinancialMovements() {
                   )}
                 />
                 Apenas Pendentes
+              </Button>
+
+              <Button
+                variant={resumoFilters['apenas_mapeados']?.length > 0 ? 'default' : 'outline'}
+                size="sm"
+                className={cn(
+                  'h-8 text-xs font-semibold whitespace-nowrap transition-colors',
+                  resumoFilters['apenas_mapeados']?.length > 0
+                    ? 'bg-emerald-100 text-emerald-800 border-emerald-200 hover:bg-emerald-200 hover:text-emerald-900 shadow-sm'
+                    : 'bg-white text-slate-600 hover:bg-slate-50',
+                )}
+                onClick={() => {
+                  const isActive = resumoFilters['apenas_mapeados']?.length > 0
+                  setResumoFilters((p) => ({
+                    ...p,
+                    apenas_mapeados: isActive ? [] : ['true'],
+                    apenas_pendentes: [],
+                  }))
+                }}
+              >
+                <CheckCircle2
+                  className={cn(
+                    'h-3.5 w-3.5 mr-1.5',
+                    resumoFilters['apenas_mapeados']?.length > 0
+                      ? 'text-emerald-600'
+                      : 'text-slate-400',
+                  )}
+                />
+                Mapeados 100%
               </Button>
 
               <Button
