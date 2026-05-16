@@ -3092,15 +3092,17 @@ export default function FinancialMovements() {
         if (val) uniqueVals.add(val)
       })
 
-      options[key] = Array.from(uniqueVals).sort((a, b) => a.localeCompare(b)).map(v => {
-        let label = v
-        if (key === 'data_emissao' || key === 'dt_compens') {
-          if (v.length === 7) {
-            label = v.split('-').reverse().join('/')
+      options[key] = Array.from(uniqueVals)
+        .sort((a, b) => a.localeCompare(b))
+        .map((v) => {
+          let label = v
+          if (key === 'data_emissao' || key === 'dt_compens') {
+            if (v.length === 7) {
+              label = v.split('-').reverse().join('/')
+            }
           }
-        }
-        return { label, value: v }
-      })
+          return { label, value: v }
+        })
     })
 
     return options
@@ -3151,15 +3153,15 @@ export default function FinancialMovements() {
   }, [summaryData, dryRunFilters, generateOptions.valueBase])
 
   const [dryRunColOrder, setDryRunColOrder] = useState<string[]>(() => {
-    const defaultOrder = dryRunHeaders.map(h => h.key)
+    const defaultOrder = dryRunHeaders.map((h) => h.key)
     const saved = localStorage.getItem('fin_mov_dry_run_cols')
     if (saved) {
       try {
         const parsed = JSON.parse(saved)
         if (Array.isArray(parsed)) {
           const validKeys = new Set(defaultOrder)
-          const validParsed = parsed.filter(key => validKeys.has(key))
-          const missingKeys = defaultOrder.filter(key => !validParsed.includes(key))
+          const validParsed = parsed.filter((key) => validKeys.has(key))
+          const missingKeys = defaultOrder.filter((key) => !validParsed.includes(key))
           return [...validParsed, ...missingKeys]
         }
       } catch {
@@ -10545,9 +10547,11 @@ export default function FinancialMovements() {
 
                           return (
                             <div key={col.key} className="space-y-1.5">
-                              <Label className="text-xs font-semibold text-slate-700">{col.label}</Label>
+                              <Label className="text-xs font-semibold text-slate-700">
+                                {col.label}
+                              </Label>
                               <MultiSelect
-                                title={\`Todos os \${col.label}\`}
+                                title={`Todos os ${col.label}`}
                                 options={options}
                                 selected={dryRunFilters[col.key] || []}
                                 onChange={(v: string[]) => {
@@ -10681,11 +10685,13 @@ export default function FinancialMovements() {
                               <div
                                 className={cn(
                                   'flex flex-1 items-center cursor-pointer hover:bg-white/10 rounded px-1 -ml-1 transition-colors',
-                                  (dryRunPrefs.alignments?.[colDef.key] || colDef.defaultAlign) === 'right'
+                                  (dryRunPrefs.alignments?.[colDef.key] || colDef.defaultAlign) ===
+                                    'right'
                                     ? 'justify-end'
-                                    : (dryRunPrefs.alignments?.[colDef.key] || colDef.defaultAlign) === 'center'
+                                    : (dryRunPrefs.alignments?.[colDef.key] ||
+                                          colDef.defaultAlign) === 'center'
                                       ? 'justify-center'
-                                      : 'justify-start'
+                                      : 'justify-start',
                                 )}
                                 onClick={() => {
                                   if (dryRunSortColumn === colDef.key) {
@@ -10719,21 +10725,26 @@ export default function FinancialMovements() {
                                         size="icon"
                                         className={cn(
                                           'h-5 w-5 rounded-sm relative',
-                                          (dryRunFilters[colDef.key] && dryRunFilters[colDef.key].length > 0)
+                                          dryRunFilters[colDef.key] &&
+                                            dryRunFilters[colDef.key].length > 0
                                             ? 'text-white bg-primary/40'
                                             : 'text-indigo-200 hover:text-white hover:bg-indigo-800/50',
                                         )}
                                         title="Filtrar coluna"
                                       >
                                         <Filter className="h-3 w-3" />
-                                        {dryRunFilters[colDef.key] && dryRunFilters[colDef.key].length > 0 && (
-                                          <span className="absolute -top-0.5 -right-0.5 flex h-2 w-2 items-center justify-center rounded-full bg-primary text-[8px] text-primary-foreground"></span>
-                                        )}
+                                        {dryRunFilters[colDef.key] &&
+                                          dryRunFilters[colDef.key].length > 0 && (
+                                            <span className="absolute -top-0.5 -right-0.5 flex h-2 w-2 items-center justify-center rounded-full bg-primary text-[8px] text-primary-foreground"></span>
+                                          )}
                                       </Button>
                                     </PopoverTrigger>
                                     <PopoverContent className="w-[200px] p-0" align="start">
                                       <Command>
-                                        <CommandInput placeholder="Buscar..." className="h-8 text-xs" />
+                                        <CommandInput
+                                          placeholder="Buscar..."
+                                          className="h-8 text-xs"
+                                        />
                                         <div className="flex items-center gap-1 p-1 border-b border-slate-100 bg-slate-50">
                                           <Button
                                             variant="secondary"
@@ -10745,7 +10756,9 @@ export default function FinancialMovements() {
                                             }}
                                             onClick={(e) => {
                                               e.stopPropagation()
-                                              const allVals = (dryRunOptions[colDef.key] || []).map(o => o.value)
+                                              const allVals = (dryRunOptions[colDef.key] || []).map(
+                                                (o) => o.value,
+                                              )
                                               setDryRunFilters((prev) => ({
                                                 ...prev,
                                                 [colDef.key]: allVals,
@@ -10781,7 +10794,9 @@ export default function FinancialMovements() {
                                           </CommandEmpty>
                                           <CommandGroup>
                                             {(dryRunOptions[colDef.key] || []).map((opt) => {
-                                              const isSelected = dryRunFilters[colDef.key]?.includes(opt.value)
+                                              const isSelected = dryRunFilters[
+                                                colDef.key
+                                              ]?.includes(opt.value)
                                               return (
                                                 <CommandItem
                                                   key={opt.value}
@@ -10812,7 +10827,10 @@ export default function FinancialMovements() {
                                                   >
                                                     <Check className="h-2 w-2" />
                                                   </div>
-                                                  <span className="truncate max-w-[140px]" title={opt.label}>
+                                                  <span
+                                                    className="truncate max-w-[140px]"
+                                                    title={opt.label}
+                                                  >
                                                     {opt.label}
                                                   </span>
                                                 </CommandItem>
@@ -10834,7 +10852,7 @@ export default function FinancialMovements() {
                                     >
                                       <MoreVertical className="h-4 w-4" />
                                     </Button>
-                                  </DropdownMenuTrigger> 
+                                  </DropdownMenuTrigger>
                                   <DropdownMenuContent align="start" className="w-48">
                                     <DropdownMenuGroup>
                                       <DropdownMenuLabel className="text-xs text-slate-500 uppercase tracking-wider">
@@ -10906,7 +10924,8 @@ export default function FinancialMovements() {
                                   </DropdownMenuContent>
                                 </DropdownMenu>
                               </div>
-                            </div>                          </TableHead>
+                            </div>{' '}
+                          </TableHead>
                         )
                       })}
                     </TableRow>
