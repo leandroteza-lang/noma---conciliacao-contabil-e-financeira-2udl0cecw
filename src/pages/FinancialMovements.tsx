@@ -7095,9 +7095,8 @@ export default function FinancialMovements() {
                           : 'text-slate-400',
                       )}
                     />
-                    Apenas Pendentes
+                    Mapeamentos Pendentes
                   </Button>
-
                   <Button
                     variant={filters['apenas_mapeados']?.length > 0 ? 'default' : 'outline'}
                     size="sm"
@@ -9149,7 +9148,7 @@ export default function FinancialMovements() {
                       : 'text-slate-400',
                   )}
                 />
-                Apenas Pendentes
+                Mapeamentos Pendentes
               </Button>
 
               <Button
