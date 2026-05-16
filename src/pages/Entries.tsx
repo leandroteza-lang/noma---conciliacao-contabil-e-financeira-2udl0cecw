@@ -46,7 +46,7 @@ export default function Entries() {
             .select('id, account_code, account_name, account_type, classification, account_level')
             .eq('organization_id', currentOrgId)
             .is('deleted_at', null)
-            .order('account_code')
+            .order('classification', { ascending: true })
             .limit(5000),
           supabase
             .from('cost_centers')

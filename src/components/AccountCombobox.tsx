@@ -75,7 +75,8 @@ export function AccountCombobox({
 
     const normalizeClassification = (cls: string) => {
       if (!cls) return ''
-      const parts = cls.trim().split('.')
+      const clean = cls.trim().replace(/\.+$/, '')
+      const parts = clean.split('.')
       while (parts.length > 0 && /^0+$/.test(parts[parts.length - 1])) {
         parts.pop()
       }
