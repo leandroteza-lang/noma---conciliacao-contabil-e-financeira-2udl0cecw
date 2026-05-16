@@ -3129,6 +3129,12 @@ export default function FinancialMovements() {
       }
 
       if (scope === 'filtered') {
+        if (filters['apenas_pendentes'] && filters['apenas_pendentes'].length > 0) {
+          allData = allData.filter((row) => {
+            const sim = getAccountingEntriesSimulation(row)
+            return !sim.debitAccount || !sim.creditAccount
+          })
+        }
         if (filters['prontidao'] && filters['prontidao'].length > 0) {
           allData = allData.filter((row) => {
             const missing =
@@ -4896,7 +4902,9 @@ export default function FinancialMovements() {
           }
         } else if (key === 'empresa') {
           q = q.in('organization_id', values)
-        } else if (['prontidao', 'conta_debito', 'conta_credito'].includes(key)) {
+        } else if (
+          ['prontidao', 'conta_debito', 'conta_credito', 'apenas_pendentes'].includes(key)
+        ) {
           // Filtragem client-side é aplicada após a busca dos resultados da query
           // em fetchData, fetchDataSilent, e handleExport para garantir precisão
         } else if (dateCols.includes(key)) {
@@ -4969,6 +4977,13 @@ export default function FinancialMovements() {
     const allData = await fetchAllData()
 
     let finalData = allData
+
+    if (filters['apenas_pendentes'] && filters['apenas_pendentes'].length > 0) {
+      finalData = finalData.filter((row) => {
+        const sim = getAccountingEntriesSimulation(row)
+        return !sim.debitAccount || !sim.creditAccount
+      })
+    }
 
     if (filters['prontidao'] && filters['prontidao'].length > 0) {
       finalData = finalData.filter((row) => {
@@ -5137,6 +5152,13 @@ export default function FinancialMovements() {
       }
     }
 
+    if (resumoFilters['apenas_pendentes'] && resumoFilters['apenas_pendentes'].length > 0) {
+      allData = allData.filter((row) => {
+        const sim = getAccountingEntriesSimulation(row)
+        return !sim.debitAccount || !sim.creditAccount
+      })
+    }
+
     if (resumoFilters['prontidao'] && resumoFilters['prontidao'].length > 0) {
       allData = allData.filter((row) => {
         const missing =
@@ -5221,6 +5243,13 @@ export default function FinancialMovements() {
     const allData = await fetchAllData()
 
     let finalData = allData
+
+    if (filters['apenas_pendentes'] && filters['apenas_pendentes'].length > 0) {
+      finalData = finalData.filter((row) => {
+        const sim = getAccountingEntriesSimulation(row)
+        return !sim.debitAccount || !sim.creditAccount
+      })
+    }
 
     if (filters['prontidao'] && filters['prontidao'].length > 0) {
       finalData = finalData.filter((row) => {
@@ -6878,29 +6907,24 @@ export default function FinancialMovements() {
                 </div>
                 <div className="flex flex-wrap items-center gap-3 xl:ml-auto bg-white p-1.5 rounded-md border shadow-sm">
                   <Button
-                    variant={
-                      filters['prontidao']?.length === 1 && filters['prontidao'][0] === 'Pendente'
-                        ? 'default'
-                        : 'outline'
-                    }
+                    variant={filters['apenas_pendentes']?.length > 0 ? 'default' : 'outline'}
                     size="sm"
                     className={cn(
                       'h-7 text-xs font-semibold whitespace-nowrap transition-colors',
-                      filters['prontidao']?.length === 1 && filters['prontidao'][0] === 'Pendente'
+                      filters['apenas_pendentes']?.length > 0
                         ? 'bg-amber-100 text-amber-800 border-amber-200 hover:bg-amber-200 hover:text-amber-900 shadow-sm'
                         : 'bg-white text-slate-600 hover:bg-slate-50',
                     )}
                     onClick={() => {
-                      const isPendenteOnly =
-                        filters['prontidao']?.length === 1 && filters['prontidao'][0] === 'Pendente'
-                      setFilters((p) => ({ ...p, prontidao: isPendenteOnly ? [] : ['Pendente'] }))
+                      const isActive = filters['apenas_pendentes']?.length > 0
+                      setFilters((p) => ({ ...p, apenas_pendentes: isActive ? [] : ['true'] }))
                       setPage(0)
                     }}
                   >
                     <AlertCircle
                       className={cn(
                         'h-3.5 w-3.5 mr-1.5',
-                        filters['prontidao']?.length === 1 && filters['prontidao'][0] === 'Pendente'
+                        filters['apenas_pendentes']?.length > 0
                           ? 'text-amber-600'
                           : 'text-slate-400',
                       )}
@@ -8904,32 +8928,23 @@ export default function FinancialMovements() {
               <div className="h-4 w-px bg-slate-200 mx-1"></div>
 
               <Button
-                variant={
-                  resumoFilters['prontidao']?.length === 1 &&
-                  resumoFilters['prontidao'][0] === 'Pendente'
-                    ? 'default'
-                    : 'outline'
-                }
+                variant={resumoFilters['apenas_pendentes']?.length > 0 ? 'default' : 'outline'}
                 size="sm"
                 className={cn(
                   'h-8 text-xs font-semibold whitespace-nowrap transition-colors',
-                  resumoFilters['prontidao']?.length === 1 &&
-                    resumoFilters['prontidao'][0] === 'Pendente'
+                  resumoFilters['apenas_pendentes']?.length > 0
                     ? 'bg-amber-100 text-amber-800 border-amber-200 hover:bg-amber-200 hover:text-amber-900 shadow-sm'
                     : 'bg-white text-slate-600 hover:bg-slate-50',
                 )}
                 onClick={() => {
-                  const isPendenteOnly =
-                    resumoFilters['prontidao']?.length === 1 &&
-                    resumoFilters['prontidao'][0] === 'Pendente'
-                  setResumoFilters((p) => ({ ...p, prontidao: isPendenteOnly ? [] : ['Pendente'] }))
+                  const isActive = resumoFilters['apenas_pendentes']?.length > 0
+                  setResumoFilters((p) => ({ ...p, apenas_pendentes: isActive ? [] : ['true'] }))
                 }}
               >
                 <AlertCircle
                   className={cn(
                     'h-3.5 w-3.5 mr-1.5',
-                    resumoFilters['prontidao']?.length === 1 &&
-                      resumoFilters['prontidao'][0] === 'Pendente'
+                    resumoFilters['apenas_pendentes']?.length > 0
                       ? 'text-amber-600'
                       : 'text-slate-400',
                   )}
