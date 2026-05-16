@@ -814,7 +814,7 @@ function CostCenterTreeFilterContent({
         }
       }
       current.value = opt.value
-      current.label = opt.label
+      current.label = opt.label || 'Vazio'
     }
     return root
   }, [options, costCenters])
@@ -981,11 +981,8 @@ function ColumnFilter({
                 {options.map((opt) => (
                   <CommandItem
                     key={opt}
+                    value={opt}
                     className="text-xs cursor-pointer"
-                    onMouseDown={(e) => {
-                      e.preventDefault()
-                      e.stopPropagation()
-                    }}
                     onSelect={() => {
                       onChange(
                         selected.includes(opt)
@@ -1163,10 +1160,7 @@ function FilterDropdown({
                   return (
                     <CommandItem
                       key={opt.value}
-                      onMouseDown={(e) => {
-                        e.preventDefault()
-                        e.stopPropagation()
-                      }}
+                      value={opt.label}
                       onSelect={() => {
                         const updated = isSelected
                           ? selected.filter((v) => v !== opt.value)
@@ -3110,9 +3104,8 @@ export default function FinancialMovements() {
         .order('id', { ascending: true })
 
       if (scope === 'filtered') {
-        q = applyQueryFilters(q, search, filters)
+        q = applyQueryFilters(q, search, filters, filterOptions)
       }
-
       while (hasMore) {
         const { data, error } = await q.range(pageIdx * limit, (pageIdx + 1) * limit - 1)
         if (error) throw error
@@ -3632,11 +3625,15 @@ export default function FinancialMovements() {
 
         let val = ''
         let label = ''
-        if (key === 'status') val = row.status || ''
-        else if (key === 'data_emissao') {
+        if (key === 'status') {
+          val = row.status || ''
+          label = val || 'Pendente'
+        } else if (key === 'data_emissao') {
           val = row.data_emissao ? row.data_emissao.substring(0, 7) : ''
+          label = val ? val.split('-').reverse().join('/') : 'Sem Data'
         } else if (key === 'dt_compens') {
           val = row.dt_compens ? row.dt_compens.substring(0, 7) : ''
+          label = val ? val.split('-').reverse().join('/') : 'Sem Data'
         } else if (key === 'conta_debito' || key === 'conta_credito') {
           const sim = getAccountingEntriesSimulation(
             row,
@@ -3647,26 +3644,22 @@ export default function FinancialMovements() {
           label = acc ? `${acc.account_code} - ${acc.account_name}` : '⚠️ Pendente / Não Mapeado'
         } else if (key === 'c_custo') {
           val = row.c_custo || ''
-          label = val ? `${val} - ${row.descricao_c_custo || ''}` : 'Sem C.Custo'
+          label = val ? `${val} - ${row.descricao_c_custo || ''}` : 'Sem C. Custo'
         } else if (key === 'descricao_c_custo') {
           val = row.descricao_c_custo || ''
+          label = val || 'Sem Descrição'
         } else if (key === 'conta_caixa') {
-          val = row.conta_caixa ? `${row.conta_caixa} - ${row.nome_caixa || ''}` : 'Sem Conta Caixa'
+          val = row.conta_caixa || ''
+          label = val ? `${val} - ${row.nome_caixa || ''}` : 'Sem Conta Caixa'
         } else if (key === 'historico') {
           val = row.historico || ''
+          label = val || 'Sem histórico'
         } else {
           val = row[key as keyof typeof row] || ''
+          label = val || 'Vazio'
         }
 
-        if (val || key === 'c_custo') {
-          if (!label) label = val || (key === 'c_custo' ? 'Sem C.Custo' : '')
-          if (key === 'data_emissao' || key === 'dt_compens') {
-            if (val.length === 7) {
-              label = val.split('-').reverse().join('/')
-            }
-          }
-          uniqueVals.set(val, label)
-        }
+        uniqueVals.set(val, label)
       })
 
       options[key] = Array.from(uniqueVals.entries())
@@ -3688,7 +3681,13 @@ export default function FinancialMovements() {
       )
 
       for (const key of Object.keys(dryRunFilters)) {
-        if (!dryRunFilters[key] || dryRunFilters[key].length === 0) continue
+        const values = dryRunFilters[key]
+        if (!values || values.length === 0) continue
+
+        const optionsForKey = dryRunOptions[key] || []
+        if (optionsForKey.length > 0 && values.length === optionsForKey.length) {
+          continue // Todos selecionados -> pula filtro
+        }
 
         let val = ''
         if (key === 'status') val = row.status || ''
@@ -3704,14 +3703,14 @@ export default function FinancialMovements() {
         } else if (key === 'descricao_c_custo') {
           val = row.descricao_c_custo || ''
         } else if (key === 'conta_caixa') {
-          val = row.conta_caixa ? `${row.conta_caixa} - ${row.nome_caixa || ''}` : 'Sem Conta Caixa'
+          val = row.conta_caixa || ''
         } else if (key === 'historico') {
           val = row.historico || ''
         } else {
           val = row[key as keyof typeof row] || ''
         }
 
-        if (!dryRunFilters[key].includes(val)) {
+        if (!values.includes(val)) {
           return false
         }
       }
@@ -3940,7 +3939,7 @@ export default function FinancialMovements() {
               .select('id, status')
               .is('deleted_at', null)
               .neq('status', 'Concluído')
-            q = applyQueryFilters(q, search, filters)
+            q = applyQueryFilters(q, search, filters, filterOptions)
             const { data, error } = await q.range(pageIdx * limit, (pageIdx + 1) * limit - 1)
             if (error) throw error
             if (!data || data.length === 0) {
@@ -4483,36 +4482,34 @@ export default function FinancialMovements() {
         } else if (h.key === 'c_custo') {
           const map = new Map<string, string>()
           movs.forEach((m) => {
-            if (m.c_custo) {
-              map.set(m.c_custo, m.descricao_c_custo || '')
+            const val = m.c_custo || ''
+            if (!map.has(val)) {
+              map.set(val, m.descricao_c_custo || '')
             }
           })
           const uniqueVals = Array.from(map.keys()).sort()
           options[h.key] = uniqueVals.map((v) => ({
-            label: `${v}${map.get(v) ? ` - ${map.get(v)}` : ''}`,
+            label: v ? `${v}${map.get(v) ? ` - ${map.get(v)}` : ''}` : 'Sem C. Custo',
             value: v,
           }))
         } else if (h.key === 'conta_caixa') {
           const map = new Map<string, string>()
           movs.forEach((m) => {
-            if (m.conta_caixa) {
-              map.set(m.conta_caixa, m.nome_caixa || '')
+            const val = m.conta_caixa || ''
+            if (!map.has(val)) {
+              map.set(val, m.nome_caixa || '')
             }
           })
           const uniqueVals = Array.from(map.keys()).sort()
           options[h.key] = uniqueVals.map((v) => ({
-            label: `${v}${map.get(v) ? ` - ${map.get(v)}` : ''}`,
+            label: v ? `${v}${map.get(v) ? ` - ${map.get(v)}` : ''}` : 'Sem Conta Caixa',
             value: v,
           }))
         } else {
-          const uniqueVals = Array.from(
-            new Set(
-              movs.map((m) => m[h.key]).filter((v) => v !== null && v !== undefined && v !== ''),
-            ),
-          ).sort()
+          const uniqueVals = Array.from(new Set(movs.map((m) => m[h.key] || ''))).sort()
           options[h.key] = uniqueVals.map((v) => {
-            let label = String(v)
-            if (['valor', 'valor_liquido'].includes(h.key)) {
+            let label = String(v) || 'Vazio'
+            if (['valor', 'valor_liquido'].includes(h.key) && v) {
               label = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(
                 Number(v),
               )
@@ -4861,6 +4858,7 @@ export default function FinancialMovements() {
     query: any,
     searchStr: string,
     filterObj: Record<string, string[]>,
+    optionsDict: Record<string, any[]> = {},
   ) => {
     let q = query
     if (searchStr) {
@@ -4894,20 +4892,30 @@ export default function FinancialMovements() {
           // Filtragem client-side é aplicada após a busca dos resultados da query
           // em fetchData, fetchDataSilent, e handleExport para garantir precisão
         } else if (dateCols.includes(key)) {
-          const orParts = values.map((val) => {
-            if (val.length === 7) {
-              const [y, m] = val.split('-')
-              const startDate = `${val}-01`
-              const lastDay = new Date(Date.UTC(parseInt(y), parseInt(m), 0)).getUTCDate()
-              const endDate = `${val}-${String(lastDay).padStart(2, '0')}`
-              return `and(${key}.gte.${startDate},${key}.lte.${endDate})`
-            } else {
-              return `${key}.eq.${val}`
-            }
-          })
-          q = q.or(orParts.join(','))
+          const optionsForKey = optionsDict[key] || []
+          if (optionsForKey.length > 0 && values.length === optionsForKey.length) {
+            // skip
+          } else {
+            const orParts = values.map((val) => {
+              if (val.length === 7) {
+                const [y, m] = val.split('-')
+                const startDate = `${val}-01`
+                const lastDay = new Date(Date.UTC(parseInt(y), parseInt(m), 0)).getUTCDate()
+                const endDate = `${val}-${String(lastDay).padStart(2, '0')}`
+                return `and(${key}.gte.${startDate},${key}.lte.${endDate})`
+              } else {
+                return `${key}.eq.${val}`
+              }
+            })
+            q = q.or(orParts.join(','))
+          }
         } else {
-          q = q.in(key, values)
+          const optionsForKey = optionsDict[key] || []
+          if (optionsForKey.length > 0 && values.length === optionsForKey.length) {
+            // skip
+          } else {
+            q = q.in(key, values)
+          }
         }
       }
     })
@@ -4933,8 +4941,7 @@ export default function FinancialMovements() {
           .order(orderCol, { ascending: sortDirection === 'asc' })
           .order('id', { ascending: true })
 
-        q = applyQueryFilters(q, search, filters)
-
+        q = applyQueryFilters(q, search, filters, filterOptions)
         const { data, error } = await q.range(pageIdx * limit, (pageIdx + 1) * limit - 1)
         if (error) {
           hasMore = false
@@ -5104,7 +5111,7 @@ export default function FinancialMovements() {
       .order('data_emissao', { ascending: false })
       .order('id', { ascending: true })
 
-    q = applyQueryFilters(q, resumoSearch, resumoFilters)
+    q = applyQueryFilters(q, resumoSearch, resumoFilters, resumoFilterOptions)
 
     while (hasMore) {
       const { data, error } = await q.range(pageIdx * limit, (pageIdx + 1) * limit - 1)
@@ -5566,6 +5573,9 @@ export default function FinancialMovements() {
 
       Object.entries(resumoFilters).forEach(([key, values]) => {
         if (!values || values.length === 0) return
+        const optsForKey = resumoFilterOptions[key] || []
+        if (optsForKey.length > 0 && values.length === optsForKey.length) return
+
         if (key === 'c_custo') {
           const val = node.c_custo
             ? `${node.c_custo} - ${node.descricao_c_custo || ''}`
@@ -11537,10 +11547,7 @@ export default function FinancialMovements() {
                                               return (
                                                 <CommandItem
                                                   key={opt.value}
-                                                  onMouseDown={(e) => {
-                                                    e.preventDefault()
-                                                    e.stopPropagation()
-                                                  }}
+                                                  value={opt.label}
                                                   onSelect={() => {
                                                     const current = dryRunFilters[colDef.key] || []
                                                     const updated = isSelected
