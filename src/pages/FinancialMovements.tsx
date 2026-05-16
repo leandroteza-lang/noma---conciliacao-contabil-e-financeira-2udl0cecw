@@ -4541,7 +4541,7 @@ export default function FinancialMovements() {
       : undefined
 
     return {
-      className: cn('px-2 py-1.5 border-0', alignClass, extraClass),
+      className: cn('px-2 py-0.5 border-0', alignClass, extraClass),
       style,
     }
   }
@@ -12367,6 +12367,27 @@ export default function FinancialMovements() {
                   <div className="flex items-center gap-1 bg-white rounded-md p-0.5 border border-slate-200 shadow-sm mr-1">
                     <TableSettingsControls prefs={dryRunPrefs} updatePrefs={updateDryRunPrefs} />
                   </div>
+                  <div className="flex items-center gap-1 bg-white rounded-md p-0.5 border border-slate-200 shadow-sm mr-1">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-[12px] font-bold text-slate-600 hover:text-slate-900 bg-transparent"
+                      onClick={() => setTableFontSize((p) => Math.max(8, p - 1))}
+                    >
+                      A-
+                    </Button>
+                    <span className="text-[12px] font-medium text-slate-500 w-5 text-center select-none">
+                      {tableFontSize}
+                    </span>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-[14px] font-bold text-slate-600 hover:text-slate-900 bg-transparent"
+                      onClick={() => setTableFontSize((p) => Math.min(24, p + 1))}
+                    >
+                      A+
+                    </Button>
+                  </div>
                   <Popover open={dryRunFiltersOpen} onOpenChange={setDryRunFiltersOpen}>
                     <PopoverTrigger asChild>
                       <Button
@@ -12501,32 +12522,35 @@ export default function FinancialMovements() {
                   className="w-full min-w-max"
                   style={{ fontSize: `${tableFontSize}px` }}
                 >
-                  <TableHeader className="bg-indigo-950 sticky top-0 z-10 shadow-sm border-none">
+                  <TableHeader>
                     <TableRow
                       disableZebra
-                      className="bg-indigo-950 hover:bg-indigo-900 border-none [&>th]:border-none [&>th]:text-white"
+                      className="bg-indigo-950 text-white font-bold hover:bg-indigo-900 border-none [&>th]:border-none [&>th]:text-white"
                     >
                       <TableHead
                         className="w-[40px] px-2 py-1 text-center align-middle"
                         style={getDryRunGridlineStyle()}
                       >
-                        <Checkbox
-                          checked={
-                            currentDryRunData.length > 0 &&
-                            currentDryRunData.every((d) => selectedIds.includes(d.id))
-                          }
-                          onCheckedChange={() => {
-                            const pageIds = currentDryRunData.map((d) => d.id)
-                            const allSelected =
-                              pageIds.length > 0 && pageIds.every((id) => selectedIds.includes(id))
-                            if (allSelected) {
-                              setSelectedIds((prev) => prev.filter((id) => !pageIds.includes(id)))
-                            } else {
-                              setSelectedIds((prev) => Array.from(new Set([...prev, ...pageIds])))
+                        <div className="flex items-center justify-center">
+                          <Checkbox
+                            checked={
+                              currentDryRunData.length > 0 &&
+                              currentDryRunData.every((d) => selectedIds.includes(d.id))
                             }
-                          }}
-                          className="border-white data-[state=checked]:bg-white data-[state=checked]:text-indigo-950"
-                        />
+                            onCheckedChange={() => {
+                              const pageIds = currentDryRunData.map((d) => d.id)
+                              const allSelected =
+                                pageIds.length > 0 &&
+                                pageIds.every((id) => selectedIds.includes(id))
+                              if (allSelected) {
+                                setSelectedIds((prev) => prev.filter((id) => !pageIds.includes(id)))
+                              } else {
+                                setSelectedIds((prev) => Array.from(new Set([...prev, ...pageIds])))
+                              }
+                            }}
+                            className="border-white data-[state=checked]:bg-white data-[state=checked]:text-indigo-950"
+                          />
+                        </div>
                       </TableHead>
                       {dryRunColOrder.map((key) => {
                         const colDef = dryRunHeaders.find((c) => c.key === key)
@@ -12557,15 +12581,16 @@ export default function FinancialMovements() {
                             }}
                             onDragEnd={() => setDraggedDryRunCol(null)}
                             className={cn(
-                              'text-white font-bold px-2 py-1 h-8 cursor-grab active:cursor-grabbing whitespace-nowrap',
+                              'h-8 px-2 py-1 text-sm font-bold whitespace-nowrap select-none transition-colors cursor-grab active:cursor-grabbing',
+                              colDef.className,
                               draggedDryRunCol === colDef.key ? 'opacity-50 bg-indigo-900' : '',
                             )}
                             style={getDryRunGridlineStyle()}
                           >
-                            <div className="flex items-center justify-between gap-1 w-full h-full">
+                            <div className="flex items-center justify-between gap-1 w-full">
                               <div
                                 className={cn(
-                                  'flex flex-1 items-center cursor-pointer hover:bg-white/10 rounded px-1 -ml-1 transition-colors',
+                                  'flex items-center cursor-pointer hover:bg-indigo-800/50 rounded px-1 -ml-1 flex-1',
                                   (dryRunPrefs.alignments?.[colDef.key] || colDef.defaultAlign) ===
                                     'right'
                                     ? 'justify-end'
@@ -12597,7 +12622,7 @@ export default function FinancialMovements() {
                                   <ArrowUpDown className="h-3 w-3 ml-1 opacity-50 text-indigo-300" />
                                 )}
                               </div>
-                              <div className="flex items-center flex-shrink-0 relative">
+                              <div className="flex items-center flex-shrink-0">
                                 {colDef.key !== 'valor' && (
                                   <Popover>
                                     <PopoverTrigger asChild>
@@ -12766,7 +12791,7 @@ export default function FinancialMovements() {
                                     <Button
                                       variant="ghost"
                                       size="icon"
-                                      className="h-6 w-6 rounded-sm text-white opacity-70 hover:opacity-100 hover:bg-white/20 relative ml-0.5"
+                                      className="h-6 w-6 rounded-sm text-indigo-200 hover:text-white hover:bg-indigo-800/50 relative ml-0.5"
                                       title="Opções de visualização"
                                     >
                                       <MoreVertical className="h-4 w-4" />
@@ -12901,42 +12926,51 @@ export default function FinancialMovements() {
                           <TableRow
                             key={row.id}
                             className={cn(
-                              'transition-colors border-0 border-b border-slate-100',
-                              isError ? 'bg-red-50 hover:bg-red-100' : 'hover:bg-slate-50',
+                              'transition-colors border-0',
+                              isError ? 'bg-red-50 hover:bg-red-100' : '',
                             )}
                           >
                             <TableCell
-                              className="px-2 py-1 text-center align-middle"
+                              className={cn(
+                                'px-2 py-0.5 text-center align-middle border-0',
+                                isError ? 'bg-red-50/50' : '',
+                              )}
                               style={getDryRunGridlineStyle()}
                             >
-                              <Checkbox
-                                checked={selectedIds.includes(row.id)}
-                                onCheckedChange={() => toggleRow(row.id)}
-                              />
+                              <div className="flex items-center justify-center">
+                                <Checkbox
+                                  checked={selectedIds.includes(row.id)}
+                                  onCheckedChange={() => toggleRow(row.id)}
+                                />
+                              </div>
                             </TableCell>
 
                             {dryRunColOrder.map((key) => {
                               if (key === 'status') {
                                 return (
                                   <TableCell key={key} {...getDryRunCellProps(key, 'center')}>
-                                    {row.status === 'Concluído' ? (
-                                      <span className="text-blue-700 font-semibold text-[0.85em] bg-blue-100 px-2 py-0.5 rounded-full border border-blue-200">
+                                    {isError ? (
+                                      <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[0.85em] font-semibold bg-red-100 text-red-800 border border-red-200">
+                                        Dados Incompletos
+                                      </span>
+                                    ) : row.status === 'Concluído' ? (
+                                      <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[0.85em] font-semibold bg-blue-100 text-blue-800 border border-blue-200">
                                         Concluído
                                       </span>
                                     ) : row.status === 'Aprovado' ? (
-                                      <span className="text-emerald-700 font-semibold text-[0.85em] bg-emerald-100 px-2 py-0.5 rounded-full border border-emerald-200">
+                                      <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[0.85em] font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200">
                                         Aprovado
                                       </span>
                                     ) : row.status === 'Revisar' ? (
-                                      <span className="text-amber-700 font-semibold text-[0.85em] bg-amber-100 px-2 py-0.5 rounded-full border border-amber-200">
+                                      <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[0.85em] font-semibold bg-amber-100 text-amber-800 border border-amber-200">
                                         Revisar
                                       </span>
                                     ) : row.status === 'Ignorado' ? (
-                                      <span className="text-slate-600 font-semibold text-[0.85em] bg-slate-100 px-2 py-0.5 rounded-full border border-slate-200">
+                                      <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[0.85em] font-semibold bg-slate-100 text-slate-800 border border-slate-200">
                                         Ignorado
                                       </span>
                                     ) : (
-                                      <span className="text-rose-700 font-semibold text-[0.85em] bg-rose-100 px-2 py-0.5 rounded-full border border-rose-200">
+                                      <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[0.85em] font-semibold bg-rose-100 text-rose-800 border border-rose-200">
                                         {row.status || 'Pendente'}
                                       </span>
                                     )}
@@ -12952,7 +12986,7 @@ export default function FinancialMovements() {
                                     {...getDryRunCellProps(
                                       key,
                                       'center',
-                                      isError ? 'text-red-700' : 'text-slate-600 whitespace-nowrap',
+                                      isError ? 'text-red-700' : 'whitespace-nowrap',
                                     )}
                                   >
                                     {valStr}
@@ -12968,7 +13002,7 @@ export default function FinancialMovements() {
                                     {...getDryRunCellProps(
                                       key,
                                       'center',
-                                      isError ? 'text-red-700' : 'text-slate-600 whitespace-nowrap',
+                                      isError ? 'text-red-700' : 'whitespace-nowrap',
                                     )}
                                   >
                                     {valStr}
@@ -12978,7 +13012,10 @@ export default function FinancialMovements() {
 
                               if (key === 'conta_debito') {
                                 return (
-                                  <TableCell key={key} {...getDryRunCellProps(key, 'left')}>
+                                  <TableCell
+                                    key={key}
+                                    {...getDryRunCellProps(key, 'left', 'whitespace-nowrap')}
+                                  >
                                     {sim.debitAccount ? (
                                       <div
                                         className={cn(
@@ -12995,21 +13032,21 @@ export default function FinancialMovements() {
                                         )}
                                       >
                                         <span
-                                          className="font-mono bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded text-[0.85em] font-semibold border border-blue-200 shrink-0"
+                                          className="font-mono bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded text-[0.85em] font-semibold border border-blue-200"
                                           title="Código Reduzido"
                                         >
                                           {sim.debitAccount.account_code}
                                         </span>
                                         {sim.debitAccount.classification && (
                                           <span
-                                            className="font-mono text-[0.85em] font-semibold text-slate-600 shrink-0"
+                                            className="font-mono text-[0.85em] font-semibold text-slate-600"
                                             title="Classificação"
                                           >
                                             {sim.debitAccount.classification}
                                           </span>
                                         )}
                                         <span
-                                          className="truncate max-w-[200px] text-slate-700"
+                                          className="truncate max-w-[200px]"
                                           title={sim.debitAccount.account_name}
                                         >
                                           {sim.debitAccount.account_name}
@@ -13030,7 +13067,7 @@ export default function FinancialMovements() {
                                               : 'justify-start',
                                         )}
                                       >
-                                        <span className="text-red-500 italic text-[0.9em] font-semibold">
+                                        <span className="text-red-500 italic text-[0.85em] font-medium bg-red-50 px-1.5 py-0.5 rounded">
                                           Pendente
                                         </span>
                                       </div>
@@ -13041,7 +13078,10 @@ export default function FinancialMovements() {
 
                               if (key === 'conta_credito') {
                                 return (
-                                  <TableCell key={key} {...getDryRunCellProps(key, 'left')}>
+                                  <TableCell
+                                    key={key}
+                                    {...getDryRunCellProps(key, 'left', 'whitespace-nowrap')}
+                                  >
                                     {sim.creditAccount ? (
                                       <div
                                         className={cn(
@@ -13058,21 +13098,21 @@ export default function FinancialMovements() {
                                         )}
                                       >
                                         <span
-                                          className="font-mono bg-rose-100 text-rose-800 px-1.5 py-0.5 rounded text-[0.85em] font-semibold border border-rose-200 shrink-0"
+                                          className="font-mono bg-rose-100 text-rose-800 px-1.5 py-0.5 rounded text-[0.85em] font-semibold border border-rose-200"
                                           title="Código Reduzido"
                                         >
                                           {sim.creditAccount.account_code}
                                         </span>
                                         {sim.creditAccount.classification && (
                                           <span
-                                            className="font-mono text-[0.85em] font-semibold text-slate-600 shrink-0"
+                                            className="font-mono text-[0.85em] font-semibold text-slate-600"
                                             title="Classificação"
                                           >
                                             {sim.creditAccount.classification}
                                           </span>
                                         )}
                                         <span
-                                          className="truncate max-w-[200px] text-slate-700"
+                                          className="truncate max-w-[200px]"
                                           title={sim.creditAccount.account_name}
                                         >
                                           {sim.creditAccount.account_name}
@@ -13093,7 +13133,7 @@ export default function FinancialMovements() {
                                               : 'justify-start',
                                         )}
                                       >
-                                        <span className="text-red-500 italic text-[0.9em] font-semibold">
+                                        <span className="text-red-500 italic text-[0.85em] font-medium bg-red-50 px-1.5 py-0.5 rounded">
                                           Pendente
                                         </span>
                                       </div>
@@ -13110,12 +13150,18 @@ export default function FinancialMovements() {
                                       key,
                                       'right',
                                       cn(
-                                        'whitespace-nowrap font-bold',
-                                        isError ? 'text-red-700' : 'text-slate-900',
+                                        'whitespace-nowrap font-medium',
+                                        isError
+                                          ? 'text-red-700 dark:text-red-400'
+                                          : val > 0
+                                            ? 'text-blue-700 dark:text-blue-400'
+                                            : val < 0
+                                              ? 'text-rose-700 dark:text-rose-400'
+                                              : '',
                                       ),
                                     )}
                                   >
-                                    {formatCurrency(Math.abs(val))}
+                                    {val !== null ? formatCurrency(Math.abs(val)) : <span>-</span>}
                                   </TableCell>
                                 )
                               }
@@ -13129,7 +13175,9 @@ export default function FinancialMovements() {
                                       'center',
                                       cn(
                                         'whitespace-nowrap',
-                                        isError ? 'text-red-700' : 'text-slate-600',
+                                        isError
+                                          ? 'text-red-700 font-medium'
+                                          : 'text-slate-900 font-medium',
                                       ),
                                     )}
                                   >
@@ -13145,10 +13193,7 @@ export default function FinancialMovements() {
                                     {...getDryRunCellProps(
                                       key,
                                       'left',
-                                      cn(
-                                        'max-w-[200px] truncate',
-                                        isError ? 'text-red-700' : 'text-slate-600',
-                                      ),
+                                      cn('max-w-[150px] truncate', isError ? 'text-red-700' : ''),
                                     )}
                                     title={descCc}
                                   >
@@ -13166,7 +13211,9 @@ export default function FinancialMovements() {
                                       'left',
                                       cn(
                                         'max-w-[200px] truncate',
-                                        isError ? 'text-red-700' : 'text-slate-600',
+                                        isError
+                                          ? 'text-red-700 font-medium'
+                                          : 'font-medium text-slate-900',
                                       ),
                                     )}
                                     title={contaCaixaDesc}
@@ -13183,10 +13230,7 @@ export default function FinancialMovements() {
                                     {...getDryRunCellProps(
                                       key,
                                       'left',
-                                      cn(
-                                        'max-w-[300px] truncate',
-                                        isError ? 'text-red-700' : 'text-slate-600',
-                                      ),
+                                      cn('max-w-[250px] truncate', isError ? 'text-red-700' : ''),
                                     )}
                                     title={hist}
                                   >
