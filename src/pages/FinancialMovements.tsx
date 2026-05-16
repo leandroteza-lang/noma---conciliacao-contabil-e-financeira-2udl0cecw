@@ -576,6 +576,23 @@ function ChartAccountTreeFilterContent({
   const tree = useMemo(() => {
     const root: Node = { key: 'root', label: 'root', value: null, children: {}, allValues: [] }
 
+    root.children['PENDENTE'] = {
+      key: 'PENDENTE',
+      label: '⚠️ Pendente / Não Mapeado',
+      value: 'PENDENTE',
+      children: {},
+      allValues: ['PENDENTE'],
+    }
+
+    const irregularNode: Node = {
+      key: 'IRREGULAR',
+      label: '⚠️ Outros / Fora do Padrão',
+      value: null,
+      children: {},
+      allValues: [],
+    }
+    let hasIrregular = false
+
     const sorted = [...chartOfAccounts].sort((a, b) => {
       const classA = a.classification || a.account_code || ''
       const classB = b.classification || b.account_code || ''
@@ -584,7 +601,18 @@ function ChartAccountTreeFilterContent({
 
     for (const acc of sorted) {
       const classification = acc.classification || acc.account_code || ''
-      if (!classification) continue
+      if (!classification) {
+        hasIrregular = true
+        irregularNode.allValues.push(acc.id)
+        irregularNode.children[acc.id] = {
+          key: acc.id,
+          label: acc.account_name || 'Conta sem nome',
+          value: acc.id,
+          children: {},
+          allValues: [acc.id],
+        }
+        continue
+      }
 
       const parts = classification.split('.')
       let current = root
@@ -610,6 +638,11 @@ function ChartAccountTreeFilterContent({
         }
       }
     }
+
+    if (hasIrregular) {
+      root.children['IRREGULAR'] = irregularNode
+    }
+
     return root
   }, [chartOfAccounts])
 
@@ -708,7 +741,7 @@ function ChartAccountTreeFilterContent({
           variant="secondary"
           size="sm"
           className="h-6 flex-1 text-[10px]"
-          onClick={() => onChange(chartOfAccounts.map((o) => o.id))}
+          onClick={() => onChange(['PENDENTE', ...chartOfAccounts.map((o) => o.id)])}
         >
           Todos
         </Button>
@@ -2946,13 +2979,15 @@ export default function FinancialMovements() {
         if (filters['conta_debito'] && filters['conta_debito'].length > 0) {
           allData = allData.filter((row) => {
             const sim = getAccountingEntriesSimulation(row)
-            return sim.debitAccount && filters['conta_debito'].includes(sim.debitAccount.id)
+            if (!sim.debitAccount) return filters['conta_debito'].includes('PENDENTE')
+            return filters['conta_debito'].includes(sim.debitAccount.id)
           })
         }
         if (filters['conta_credito'] && filters['conta_credito'].length > 0) {
           allData = allData.filter((row) => {
             const sim = getAccountingEntriesSimulation(row)
-            return sim.creditAccount && filters['conta_credito'].includes(sim.creditAccount.id)
+            if (!sim.creditAccount) return filters['conta_credito'].includes('PENDENTE')
+            return filters['conta_credito'].includes(sim.creditAccount.id)
           })
         }
       }
@@ -4214,7 +4249,13 @@ export default function FinancialMovements() {
         return
       }
       if (h.key === 'conta_debito' || h.key === 'conta_credito') {
-        options[h.key] = []
+        options[h.key] = [
+          { label: '⚠️ Pendente / Não Mapeado', value: 'PENDENTE' },
+          ...(chartOfAccounts || []).map((acc) => ({
+            label: `${acc.account_code || ''} ${acc.account_name || ''}`.trim(),
+            value: acc.id,
+          })),
+        ]
         return
       }
       if (h.key === 'status') {
@@ -4309,7 +4350,7 @@ export default function FinancialMovements() {
 
   useEffect(() => {
     loadFilterOptions()
-  }, [user, refreshKey])
+  }, [user, refreshKey, chartOfAccounts])
 
   const [deleteModalOpen, setDeleteModalOpen] = useState(false)
   const [deleteMode, setDeleteMode] = useState<
@@ -4751,14 +4792,16 @@ export default function FinancialMovements() {
     if (filters['conta_debito'] && filters['conta_debito'].length > 0) {
       finalData = finalData.filter((row) => {
         const sim = getAccountingEntriesSimulation(row)
-        return sim.debitAccount && filters['conta_debito'].includes(sim.debitAccount.id)
+        if (!sim.debitAccount) return filters['conta_debito'].includes('PENDENTE')
+        return filters['conta_debito'].includes(sim.debitAccount.id)
       })
     }
 
     if (filters['conta_credito'] && filters['conta_credito'].length > 0) {
       finalData = finalData.filter((row) => {
         const sim = getAccountingEntriesSimulation(row)
-        return sim.creditAccount && filters['conta_credito'].includes(sim.creditAccount.id)
+        if (!sim.creditAccount) return filters['conta_credito'].includes('PENDENTE')
+        return filters['conta_credito'].includes(sim.creditAccount.id)
       })
     }
 
@@ -4916,14 +4959,16 @@ export default function FinancialMovements() {
     if (resumoFilters['conta_debito'] && resumoFilters['conta_debito'].length > 0) {
       allData = allData.filter((row) => {
         const sim = getAccountingEntriesSimulation(row)
-        return sim.debitAccount && resumoFilters['conta_debito'].includes(sim.debitAccount.id)
+        if (!sim.debitAccount) return resumoFilters['conta_debito'].includes('PENDENTE')
+        return resumoFilters['conta_debito'].includes(sim.debitAccount.id)
       })
     }
 
     if (resumoFilters['conta_credito'] && resumoFilters['conta_credito'].length > 0) {
       allData = allData.filter((row) => {
         const sim = getAccountingEntriesSimulation(row)
-        return sim.creditAccount && resumoFilters['conta_credito'].includes(sim.creditAccount.id)
+        if (!sim.creditAccount) return resumoFilters['conta_credito'].includes('PENDENTE')
+        return resumoFilters['conta_credito'].includes(sim.creditAccount.id)
       })
     }
 
@@ -4999,14 +5044,16 @@ export default function FinancialMovements() {
     if (filters['conta_debito'] && filters['conta_debito'].length > 0) {
       finalData = finalData.filter((row) => {
         const sim = getAccountingEntriesSimulation(row)
-        return sim.debitAccount && filters['conta_debito'].includes(sim.debitAccount.id)
+        if (!sim.debitAccount) return filters['conta_debito'].includes('PENDENTE')
+        return filters['conta_debito'].includes(sim.debitAccount.id)
       })
     }
 
     if (filters['conta_credito'] && filters['conta_credito'].length > 0) {
       finalData = finalData.filter((row) => {
         const sim = getAccountingEntriesSimulation(row)
-        return sim.creditAccount && filters['conta_credito'].includes(sim.creditAccount.id)
+        if (!sim.creditAccount) return filters['conta_credito'].includes('PENDENTE')
+        return filters['conta_credito'].includes(sim.creditAccount.id)
       })
     }
 
