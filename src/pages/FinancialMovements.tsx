@@ -3105,7 +3105,9 @@ export default function FinancialMovements() {
         .order(
           sortColumn === 'empresa'
             ? 'organization_id'
-            : sortColumn === 'prontidao'
+            : sortColumn === 'prontidao' ||
+                sortColumn === 'conta_debito' ||
+                sortColumn === 'conta_credito'
               ? 'data_emissao'
               : sortColumn,
           { ascending: sortDirection === 'asc' },
@@ -3182,6 +3184,47 @@ export default function FinancialMovements() {
             return filters['conta_credito'].includes(sim.creditAccount.id)
           })
         }
+      }
+
+      if (sortColumn === 'prontidao') {
+        allData.sort((a, b) => {
+          const getStatus = (row: any) => {
+            const missing =
+              !row.data_emissao ||
+              !row.c_custo ||
+              row.valor_liquido === null ||
+              row.valor_liquido === undefined
+            if (missing) return 2
+            const sim = getAccountingEntriesSimulation(row)
+            if (sim.debitAccount && sim.creditAccount) return 0
+            return 1
+          }
+          const statA = getStatus(a)
+          const statB = getStatus(b)
+          if (statA < statB) return sortDirection === 'asc' ? -1 : 1
+          if (statA > statB) return sortDirection === 'asc' ? 1 : -1
+          return 0
+        })
+      } else if (sortColumn === 'conta_debito') {
+        allData.sort((a, b) => {
+          const simA = getAccountingEntriesSimulation(a)
+          const simB = getAccountingEntriesSimulation(b)
+          const valA = simA.debitAccount ? simA.debitAccount.account_code || '' : 'ZZZZZ'
+          const valB = simB.debitAccount ? simB.debitAccount.account_code || '' : 'ZZZZZ'
+          if (valA < valB) return sortDirection === 'asc' ? -1 : 1
+          if (valA > valB) return sortDirection === 'asc' ? 1 : -1
+          return 0
+        })
+      } else if (sortColumn === 'conta_credito') {
+        allData.sort((a, b) => {
+          const simA = getAccountingEntriesSimulation(a)
+          const simB = getAccountingEntriesSimulation(b)
+          const valA = simA.creditAccount ? simA.creditAccount.account_code || '' : 'ZZZZZ'
+          const valB = simB.creditAccount ? simB.creditAccount.account_code || '' : 'ZZZZZ'
+          if (valA < valB) return sortDirection === 'asc' ? -1 : 1
+          if (valA > valB) return sortDirection === 'asc' ? 1 : -1
+          return 0
+        })
       }
 
       const exportTotals = {
@@ -5043,7 +5086,12 @@ export default function FinancialMovements() {
     if (!user) return
     let orderCol = sortColumn
     if (sortColumn === 'empresa') orderCol = 'organization_id'
-    if (sortColumn === 'prontidao') orderCol = 'data_emissao'
+    if (
+      sortColumn === 'prontidao' ||
+      sortColumn === 'conta_debito' ||
+      sortColumn === 'conta_credito'
+    )
+      orderCol = 'data_emissao'
 
     const fetchAllData = async () => {
       let allData: any[] = []
@@ -5153,6 +5201,26 @@ export default function FinancialMovements() {
         const statB = getStatus(b)
         if (statA < statB) return sortDirection === 'asc' ? -1 : 1
         if (statA > statB) return sortDirection === 'asc' ? 1 : -1
+        return 0
+      })
+    } else if (sortColumn === 'conta_debito') {
+      finalData.sort((a, b) => {
+        const simA = getAccountingEntriesSimulation(a)
+        const simB = getAccountingEntriesSimulation(b)
+        const valA = simA.debitAccount ? simA.debitAccount.account_code || '' : 'ZZZZZ'
+        const valB = simB.debitAccount ? simB.debitAccount.account_code || '' : 'ZZZZZ'
+        if (valA < valB) return sortDirection === 'asc' ? -1 : 1
+        if (valA > valB) return sortDirection === 'asc' ? 1 : -1
+        return 0
+      })
+    } else if (sortColumn === 'conta_credito') {
+      finalData.sort((a, b) => {
+        const simA = getAccountingEntriesSimulation(a)
+        const simB = getAccountingEntriesSimulation(b)
+        const valA = simA.creditAccount ? simA.creditAccount.account_code || '' : 'ZZZZZ'
+        const valB = simB.creditAccount ? simB.creditAccount.account_code || '' : 'ZZZZZ'
+        if (valA < valB) return sortDirection === 'asc' ? -1 : 1
+        if (valA > valB) return sortDirection === 'asc' ? 1 : -1
         return 0
       })
     }
@@ -5348,7 +5416,12 @@ export default function FinancialMovements() {
     setLoading(true)
     let orderCol = sortColumn
     if (sortColumn === 'empresa') orderCol = 'organization_id'
-    if (sortColumn === 'prontidao') orderCol = 'data_emissao'
+    if (
+      sortColumn === 'prontidao' ||
+      sortColumn === 'conta_debito' ||
+      sortColumn === 'conta_credito'
+    )
+      orderCol = 'data_emissao'
 
     const fetchAllData = async () => {
       let allData: any[] = []
@@ -5460,6 +5533,26 @@ export default function FinancialMovements() {
         const statB = getStatus(b)
         if (statA < statB) return sortDirection === 'asc' ? -1 : 1
         if (statA > statB) return sortDirection === 'asc' ? 1 : -1
+        return 0
+      })
+    } else if (sortColumn === 'conta_debito') {
+      finalData.sort((a, b) => {
+        const simA = getAccountingEntriesSimulation(a)
+        const simB = getAccountingEntriesSimulation(b)
+        const valA = simA.debitAccount ? simA.debitAccount.account_code || '' : 'ZZZZZ'
+        const valB = simB.debitAccount ? simB.debitAccount.account_code || '' : 'ZZZZZ'
+        if (valA < valB) return sortDirection === 'asc' ? -1 : 1
+        if (valA > valB) return sortDirection === 'asc' ? 1 : -1
+        return 0
+      })
+    } else if (sortColumn === 'conta_credito') {
+      finalData.sort((a, b) => {
+        const simA = getAccountingEntriesSimulation(a)
+        const simB = getAccountingEntriesSimulation(b)
+        const valA = simA.creditAccount ? simA.creditAccount.account_code || '' : 'ZZZZZ'
+        const valB = simB.creditAccount ? simB.creditAccount.account_code || '' : 'ZZZZZ'
+        if (valA < valB) return sortDirection === 'asc' ? -1 : 1
+        if (valA > valB) return sortDirection === 'asc' ? 1 : -1
         return 0
       })
     }
