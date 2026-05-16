@@ -1528,7 +1528,6 @@ function PeriodConsolidatedTable({
         </TableBody>
       </Table>
     </TopScrollTableWrapper>
-    </div>
   )
 }
 
