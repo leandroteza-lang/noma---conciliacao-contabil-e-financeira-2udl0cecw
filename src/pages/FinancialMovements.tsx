@@ -877,9 +877,9 @@ function PeriodConsolidatedTable({
 
   return (
     <Table
-      className="w-full"
+      className="w-full min-w-max"
       style={{ fontSize: tableFontSize ? `${tableFontSize}px` : undefined }}
-      wrapperClassName="max-h-[500px] overflow-y-auto custom-scrollbar"
+      wrapperClassName="max-h-[500px] overflow-auto finance-table-scrollbar"
     >
       <TableHeader className="sticky top-0 z-10 shadow-sm border-b border-black">
         <TableRow disableZebra className="bg-blue-500 hover:bg-blue-400 border-none">
@@ -1228,9 +1228,9 @@ function AccountingConsolidatedTable({
 
   return (
     <Table
-      className="w-full"
+      className="w-full min-w-max"
       style={{ fontSize: tableFontSize ? `${tableFontSize}px` : undefined }}
-      wrapperClassName="max-h-[500px] overflow-y-auto custom-scrollbar"
+      wrapperClassName="max-h-[500px] overflow-auto finance-table-scrollbar"
     >
       <TableHeader className="sticky top-0 z-10 shadow-sm border-b border-black">
         <TableRow disableZebra className="bg-indigo-950 hover:bg-indigo-900 border-none">
@@ -1676,7 +1676,7 @@ function AccountingCrossReferenceTable({
     <Table
       className="w-full min-w-[1200px]"
       style={{ fontSize: tableFontSize ? `${tableFontSize}px` : undefined }}
-      wrapperClassName="max-h-[600px] overflow-x-auto overflow-y-auto custom-scrollbar"
+      wrapperClassName="max-h-[600px] overflow-auto finance-table-scrollbar"
     >
       <TableHeader className="sticky top-0 z-10 shadow-sm border-b border-slate-600 bg-indigo-950">
         <TableRow disableZebra className="bg-indigo-950 hover:bg-indigo-900 border-none">
@@ -2112,9 +2112,9 @@ function SummaryTable({
 
   return (
     <Table
-      className="w-full"
+      className="w-full min-w-max"
       style={{ fontSize: tableFontSize ? `${tableFontSize}px` : undefined }}
-      wrapperClassName="max-h-[500px] overflow-y-auto custom-scrollbar"
+      wrapperClassName="max-h-[500px] overflow-auto finance-table-scrollbar"
     >
       <TableHeader className="sticky top-0 z-10 shadow-sm border-b border-black">
         <TableRow disableZebra className="bg-blue-500 hover:bg-blue-400 border-none">
@@ -9621,165 +9621,62 @@ export default function FinancialMovements() {
               </div>
             </CardHeader>
             <CardContent className="p-4 bg-white">
-              <div className="border-4 border-[#221c5a] rounded-lg overflow-hidden relative">
-                <Table
-                  wrapperClassName="max-h-[650px] overflow-y-auto custom-scrollbar"
-                  className="w-full relative"
-                  style={{ fontSize: `${tableFontSize}px` }}
-                >
-                  <TableHeader className="bg-[#221c5a] sticky top-0 z-20 shadow-md border-none">
-                    <TableRow className="hover:bg-[#221c5a] border-none">
-                      {resumoColOrder.map((key) => {
-                        const h = resumoHeaders.find((x) => x.key === key)!
-                        const isFilterable = [
-                          'c_custo',
-                          'conta_contabil',
-                          'status',
-                          'acao',
-                        ].includes(key)
-                        const activeFilterCount = resumoFilters[key]?.length || 0
-                        const options = resumoFilterOptions[key] || []
+              <Table
+                wrapperClassName="max-h-[650px] overflow-auto finance-table-scrollbar border-4 border-[#221c5a] rounded-lg"
+                className="w-full min-w-max relative"
+                style={{ fontSize: `${tableFontSize}px` }}
+              >
+                <TableHeader className="bg-[#221c5a] sticky top-0 z-20 shadow-md border-none">
+                  <TableRow className="hover:bg-[#221c5a] border-none">
+                    {resumoColOrder.map((key) => {
+                      const h = resumoHeaders.find((x) => x.key === key)!
+                      const isFilterable = ['c_custo', 'conta_contabil', 'status', 'acao'].includes(
+                        key,
+                      )
+                      const activeFilterCount = resumoFilters[key]?.length || 0
+                      const options = resumoFilterOptions[key] || []
 
-                        return (
-                          <TableHead
-                            key={key}
-                            draggable
-                            onDragStart={(e) => {
-                              setDraggedResumoCol(key)
-                              e.dataTransfer.effectAllowed = 'move'
-                            }}
-                            onDragOver={(e) => {
-                              e.preventDefault()
-                              e.dataTransfer.dropEffect = 'move'
-                            }}
-                            onDrop={(e) => {
-                              e.preventDefault()
-                              if (!draggedResumoCol || draggedResumoCol === key) return
-                              const newOrder = [...resumoColOrder]
-                              const draggedIdx = newOrder.indexOf(draggedResumoCol)
-                              const targetIdx = newOrder.indexOf(key)
-                              newOrder.splice(draggedIdx, 1)
-                              newOrder.splice(targetIdx, 0, draggedResumoCol)
-                              setResumoColOrder(newOrder)
-                              setDraggedResumoCol(null)
-                            }}
-                            onDragEnd={() => setDraggedResumoCol(null)}
+                      return (
+                        <TableHead
+                          key={key}
+                          draggable
+                          onDragStart={(e) => {
+                            setDraggedResumoCol(key)
+                            e.dataTransfer.effectAllowed = 'move'
+                          }}
+                          onDragOver={(e) => {
+                            e.preventDefault()
+                            e.dataTransfer.dropEffect = 'move'
+                          }}
+                          onDrop={(e) => {
+                            e.preventDefault()
+                            if (!draggedResumoCol || draggedResumoCol === key) return
+                            const newOrder = [...resumoColOrder]
+                            const draggedIdx = newOrder.indexOf(draggedResumoCol)
+                            const targetIdx = newOrder.indexOf(key)
+                            newOrder.splice(draggedIdx, 1)
+                            newOrder.splice(targetIdx, 0, draggedResumoCol)
+                            setResumoColOrder(newOrder)
+                            setDraggedResumoCol(null)
+                          }}
+                          onDragEnd={() => setDraggedResumoCol(null)}
+                          className={cn(
+                            "bg-[#221c5a] text-white font-['Inter'] text-[0.9em] font-semibold px-2 py-1 h-8 border-none cursor-grab active:cursor-grabbing",
+                            draggedResumoCol === key ? 'opacity-50 bg-[#1a1545]' : '',
+                          )}
+                          style={getDeparaGridlineStyle()}
+                        >
+                          <div
                             className={cn(
-                              "bg-[#221c5a] text-white font-['Inter'] text-[0.9em] font-semibold px-2 py-1 h-8 border-none cursor-grab active:cursor-grabbing",
-                              draggedResumoCol === key ? 'opacity-50 bg-[#1a1545]' : '',
+                              'flex items-center justify-between gap-1 w-full',
+                              (deparaPrefs.alignments?.[key] || h.align || 'left') === 'right'
+                                ? 'flex-row-reverse'
+                                : '',
                             )}
-                            style={getDeparaGridlineStyle()}
                           >
-                            <div
-                              className={cn(
-                                'flex items-center justify-between gap-1 w-full',
-                                (deparaPrefs.alignments?.[key] || h.align || 'left') === 'right'
-                                  ? 'flex-row-reverse'
-                                  : '',
-                              )}
-                            >
-                              {key === 'c_custo' || key === 'conta_contabil' ? (
-                                <DropdownMenu>
-                                  <DropdownMenuTrigger
-                                    className={cn(
-                                      'flex items-center cursor-pointer hover:bg-white/10 rounded px-1 -ml-1 flex-1 outline-none',
-                                      (deparaPrefs.alignments?.[key] || h.align || 'left') ===
-                                        'right'
-                                        ? 'justify-end'
-                                        : (deparaPrefs.alignments?.[key] || h.align || 'left') ===
-                                            'center'
-                                          ? 'justify-center'
-                                          : 'justify-start',
-                                    )}
-                                  >
-                                    {h.label}
-                                    {renderResumoSortIcon(key)}
-                                  </DropdownMenuTrigger>
-                                  <DropdownMenuContent align="start">
-                                    {key === 'c_custo' && (
-                                      <>
-                                        <DropdownMenuLabel className="text-xs text-slate-500 uppercase tracking-wider">
-                                          Ordenar por
-                                        </DropdownMenuLabel>
-                                        <DropdownMenuSeparator />
-                                        <DropdownMenuItem
-                                          onClick={() => handleSortResumo('c_custo_codigo')}
-                                          className="text-xs cursor-pointer flex items-center justify-between"
-                                        >
-                                          Código{' '}
-                                          {resumoSortColumn === 'c_custo_codigo' &&
-                                            (resumoSortDirection === 'asc' ? (
-                                              <ArrowUp className="ml-2 h-3 w-3" />
-                                            ) : (
-                                              <ArrowDown className="ml-2 h-3 w-3" />
-                                            ))}
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem
-                                          onClick={() => handleSortResumo('c_custo_nome')}
-                                          className="text-xs cursor-pointer flex items-center justify-between"
-                                        >
-                                          Nome{' '}
-                                          {resumoSortColumn === 'c_custo_nome' &&
-                                            (resumoSortDirection === 'asc' ? (
-                                              <ArrowUp className="ml-2 h-3 w-3" />
-                                            ) : (
-                                              <ArrowDown className="ml-2 h-3 w-3" />
-                                            ))}
-                                        </DropdownMenuItem>
-                                      </>
-                                    )}
-                                    {key === 'conta_contabil' && (
-                                      <>
-                                        <DropdownMenuLabel className="text-xs text-slate-500 uppercase tracking-wider">
-                                          Ordenar por
-                                        </DropdownMenuLabel>
-                                        <DropdownMenuSeparator />
-                                        <DropdownMenuItem
-                                          onClick={() =>
-                                            handleSortResumo('conta_contabil_classificacao')
-                                          }
-                                          className="text-xs cursor-pointer flex items-center justify-between"
-                                        >
-                                          Classificação{' '}
-                                          {resumoSortColumn === 'conta_contabil_classificacao' &&
-                                            (resumoSortDirection === 'asc' ? (
-                                              <ArrowUp className="ml-2 h-3 w-3" />
-                                            ) : (
-                                              <ArrowDown className="ml-2 h-3 w-3" />
-                                            ))}
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem
-                                          onClick={() =>
-                                            handleSortResumo('conta_contabil_reduzido')
-                                          }
-                                          className="text-xs cursor-pointer flex items-center justify-between"
-                                        >
-                                          Cód. Reduzido{' '}
-                                          {resumoSortColumn === 'conta_contabil_reduzido' &&
-                                            (resumoSortDirection === 'asc' ? (
-                                              <ArrowUp className="ml-2 h-3 w-3" />
-                                            ) : (
-                                              <ArrowDown className="ml-2 h-3 w-3" />
-                                            ))}
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem
-                                          onClick={() => handleSortResumo('conta_contabil_nome')}
-                                          className="text-xs cursor-pointer flex items-center justify-between"
-                                        >
-                                          Nome{' '}
-                                          {resumoSortColumn === 'conta_contabil_nome' &&
-                                            (resumoSortDirection === 'asc' ? (
-                                              <ArrowUp className="ml-2 h-3 w-3" />
-                                            ) : (
-                                              <ArrowDown className="ml-2 h-3 w-3" />
-                                            ))}
-                                        </DropdownMenuItem>
-                                      </>
-                                    )}
-                                  </DropdownMenuContent>
-                                </DropdownMenu>
-                              ) : (
-                                <div
+                            {key === 'c_custo' || key === 'conta_contabil' ? (
+                              <DropdownMenu>
+                                <DropdownMenuTrigger
                                   className={cn(
                                     'flex items-center cursor-pointer hover:bg-white/10 rounded px-1 -ml-1 flex-1 outline-none',
                                     (deparaPrefs.alignments?.[key] || h.align || 'left') === 'right'
@@ -9789,641 +9686,734 @@ export default function FinancialMovements() {
                                         ? 'justify-center'
                                         : 'justify-start',
                                   )}
-                                  onClick={() => handleSortResumo(key)}
                                 >
                                   {h.label}
                                   {renderResumoSortIcon(key)}
-                                </div>
-                              )}
-
-                              <div className="flex items-center flex-shrink-0 relative">
-                                {isFilterable && (
-                                  <Popover>
-                                    <PopoverTrigger asChild>
-                                      <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        className={cn(
-                                          'h-5 w-5 rounded-sm relative',
-                                          activeFilterCount > 0
-                                            ? 'text-white bg-primary/40'
-                                            : 'text-indigo-200 hover:text-white hover:bg-white/20',
-                                        )}
-                                        title="Filtrar coluna"
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="start">
+                                  {key === 'c_custo' && (
+                                    <>
+                                      <DropdownMenuLabel className="text-xs text-slate-500 uppercase tracking-wider">
+                                        Ordenar por
+                                      </DropdownMenuLabel>
+                                      <DropdownMenuSeparator />
+                                      <DropdownMenuItem
+                                        onClick={() => handleSortResumo('c_custo_codigo')}
+                                        className="text-xs cursor-pointer flex items-center justify-between"
                                       >
-                                        <Filter className="h-3 w-3" />
-                                        {activeFilterCount > 0 && (
-                                          <span className="absolute -top-0.5 -right-0.5 flex h-2 w-2 items-center justify-center rounded-full bg-primary text-[8px] text-primary-foreground"></span>
-                                        )}
-                                      </Button>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-[200px] p-0" align="start">
-                                      <Command>
-                                        <CommandInput
-                                          placeholder="Buscar..."
-                                          className="h-8 text-xs"
-                                        />
-                                        <div className="flex items-center gap-1 p-1 border-b border-slate-100 bg-slate-50">
-                                          <Button
-                                            variant="secondary"
-                                            size="sm"
-                                            className="h-6 flex-1 text-[10px]"
-                                            onMouseDown={(e) => {
-                                              e.preventDefault()
-                                              e.stopPropagation()
-                                            }}
-                                            onClick={(e) => {
-                                              e.stopPropagation()
-                                              setResumoFilters((prev) => ({
-                                                ...prev,
-                                                [key]: options.map((o) => o.value),
-                                              }))
-                                            }}
-                                          >
-                                            Todos
-                                          </Button>
-                                          <Button
-                                            variant="secondary"
-                                            size="sm"
-                                            className="h-6 flex-1 text-[10px]"
-                                            onMouseDown={(e) => {
-                                              e.preventDefault()
-                                              e.stopPropagation()
-                                            }}
-                                            onClick={(e) => {
-                                              e.stopPropagation()
-                                              setResumoFilters((prev) => ({
-                                                ...prev,
-                                                [key]: [],
-                                              }))
-                                            }}
-                                          >
-                                            Nenhum
-                                          </Button>
-                                        </div>
-                                        <CommandList className="max-h-[200px] overflow-y-auto">
-                                          <CommandEmpty className="py-2 text-xs text-center text-slate-500">
-                                            Nenhum encontrado.
-                                          </CommandEmpty>
-                                          <CommandGroup>
-                                            {options.map((opt) => {
-                                              const isSelected = resumoFilters[key]?.includes(
-                                                opt.value,
-                                              )
-                                              return (
-                                                <CommandItem
-                                                  key={opt.value}
-                                                  onMouseDown={(e) => {
-                                                    e.preventDefault()
-                                                    e.stopPropagation()
-                                                  }}
-                                                  onSelect={() => {
-                                                    const current = resumoFilters[key] || []
-                                                    const updated = isSelected
-                                                      ? current.filter((v) => v !== opt.value)
-                                                      : [...current, opt.value]
-                                                    setResumoFilters((prev) => ({
-                                                      ...prev,
-                                                      [key]: updated,
-                                                    }))
-                                                  }}
-                                                  className="text-xs cursor-pointer"
-                                                >
-                                                  <div
-                                                    className={cn(
-                                                      'mr-2 flex h-3 w-3 flex-shrink-0 items-center justify-center rounded-sm border border-primary',
-                                                      isSelected
-                                                        ? 'bg-primary text-primary-foreground'
-                                                        : 'opacity-50 [&_svg]:invisible',
-                                                    )}
-                                                  >
-                                                    <Check className="h-2 w-2" />
-                                                  </div>
-                                                  <span
-                                                    className="truncate max-w-[140px]"
-                                                    title={opt.label}
-                                                  >
-                                                    {opt.label}
-                                                  </span>
-                                                </CommandItem>
-                                              )
-                                            })}
-                                          </CommandGroup>
-                                        </CommandList>
-                                      </Command>
-                                    </PopoverContent>
-                                  </Popover>
+                                        Código{' '}
+                                        {resumoSortColumn === 'c_custo_codigo' &&
+                                          (resumoSortDirection === 'asc' ? (
+                                            <ArrowUp className="ml-2 h-3 w-3" />
+                                          ) : (
+                                            <ArrowDown className="ml-2 h-3 w-3" />
+                                          ))}
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem
+                                        onClick={() => handleSortResumo('c_custo_nome')}
+                                        className="text-xs cursor-pointer flex items-center justify-between"
+                                      >
+                                        Nome{' '}
+                                        {resumoSortColumn === 'c_custo_nome' &&
+                                          (resumoSortDirection === 'asc' ? (
+                                            <ArrowUp className="ml-2 h-3 w-3" />
+                                          ) : (
+                                            <ArrowDown className="ml-2 h-3 w-3" />
+                                          ))}
+                                      </DropdownMenuItem>
+                                    </>
+                                  )}
+                                  {key === 'conta_contabil' && (
+                                    <>
+                                      <DropdownMenuLabel className="text-xs text-slate-500 uppercase tracking-wider">
+                                        Ordenar por
+                                      </DropdownMenuLabel>
+                                      <DropdownMenuSeparator />
+                                      <DropdownMenuItem
+                                        onClick={() =>
+                                          handleSortResumo('conta_contabil_classificacao')
+                                        }
+                                        className="text-xs cursor-pointer flex items-center justify-between"
+                                      >
+                                        Classificação{' '}
+                                        {resumoSortColumn === 'conta_contabil_classificacao' &&
+                                          (resumoSortDirection === 'asc' ? (
+                                            <ArrowUp className="ml-2 h-3 w-3" />
+                                          ) : (
+                                            <ArrowDown className="ml-2 h-3 w-3" />
+                                          ))}
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem
+                                        onClick={() => handleSortResumo('conta_contabil_reduzido')}
+                                        className="text-xs cursor-pointer flex items-center justify-between"
+                                      >
+                                        Cód. Reduzido{' '}
+                                        {resumoSortColumn === 'conta_contabil_reduzido' &&
+                                          (resumoSortDirection === 'asc' ? (
+                                            <ArrowUp className="ml-2 h-3 w-3" />
+                                          ) : (
+                                            <ArrowDown className="ml-2 h-3 w-3" />
+                                          ))}
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem
+                                        onClick={() => handleSortResumo('conta_contabil_nome')}
+                                        className="text-xs cursor-pointer flex items-center justify-between"
+                                      >
+                                        Nome{' '}
+                                        {resumoSortColumn === 'conta_contabil_nome' &&
+                                          (resumoSortDirection === 'asc' ? (
+                                            <ArrowUp className="ml-2 h-3 w-3" />
+                                          ) : (
+                                            <ArrowDown className="ml-2 h-3 w-3" />
+                                          ))}
+                                      </DropdownMenuItem>
+                                    </>
+                                  )}
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            ) : (
+                              <div
+                                className={cn(
+                                  'flex items-center cursor-pointer hover:bg-white/10 rounded px-1 -ml-1 flex-1 outline-none',
+                                  (deparaPrefs.alignments?.[key] || h.align || 'left') === 'right'
+                                    ? 'justify-end'
+                                    : (deparaPrefs.alignments?.[key] || h.align || 'left') ===
+                                        'center'
+                                      ? 'justify-center'
+                                      : 'justify-start',
                                 )}
+                                onClick={() => handleSortResumo(key)}
+                              >
+                                {h.label}
+                                {renderResumoSortIcon(key)}
+                              </div>
+                            )}
 
-                                <DropdownMenu>
-                                  <DropdownMenuTrigger asChild>
+                            <div className="flex items-center flex-shrink-0 relative">
+                              {isFilterable && (
+                                <Popover>
+                                  <PopoverTrigger asChild>
                                     <Button
                                       variant="ghost"
                                       size="icon"
-                                      className="h-6 w-6 rounded-sm text-indigo-200 hover:text-white hover:bg-white/20 relative ml-0.5"
-                                      title="Alinhamento"
+                                      className={cn(
+                                        'h-5 w-5 rounded-sm relative',
+                                        activeFilterCount > 0
+                                          ? 'text-white bg-primary/40'
+                                          : 'text-indigo-200 hover:text-white hover:bg-white/20',
+                                      )}
+                                      title="Filtrar coluna"
                                     >
-                                      <MoreVertical className="h-4 w-4" />
+                                      <Filter className="h-3 w-3" />
+                                      {activeFilterCount > 0 && (
+                                        <span className="absolute -top-0.5 -right-0.5 flex h-2 w-2 items-center justify-center rounded-full bg-primary text-[8px] text-primary-foreground"></span>
+                                      )}
                                     </Button>
-                                  </DropdownMenuTrigger>{' '}
-                                  <DropdownMenuContent align="start" className="w-48">
-                                    <DropdownMenuGroup>
-                                      <DropdownMenuLabel className="text-xs text-slate-500 uppercase tracking-wider">
-                                        Alinhamento
-                                      </DropdownMenuLabel>
-                                      <div className="flex items-center gap-1 px-2 py-1.5">
+                                  </PopoverTrigger>
+                                  <PopoverContent className="w-[200px] p-0" align="start">
+                                    <Command>
+                                      <CommandInput
+                                        placeholder="Buscar..."
+                                        className="h-8 text-xs"
+                                      />
+                                      <div className="flex items-center gap-1 p-1 border-b border-slate-100 bg-slate-50">
                                         <Button
-                                          variant={
-                                            (deparaPrefs.alignments?.[key] || h.align || 'left') ===
-                                            'left'
-                                              ? 'secondary'
-                                              : 'ghost'
-                                          }
-                                          size="icon"
-                                          className="h-7 w-7"
-                                          onClick={() =>
-                                            updateDeparaPrefs({
-                                              alignments: {
-                                                ...(deparaPrefs.alignments || {}),
-                                                [key]: 'left',
-                                              },
-                                            })
-                                          }
-                                          title="Alinhar à Esquerda"
+                                          variant="secondary"
+                                          size="sm"
+                                          className="h-6 flex-1 text-[10px]"
+                                          onMouseDown={(e) => {
+                                            e.preventDefault()
+                                            e.stopPropagation()
+                                          }}
+                                          onClick={(e) => {
+                                            e.stopPropagation()
+                                            setResumoFilters((prev) => ({
+                                              ...prev,
+                                              [key]: options.map((o) => o.value),
+                                            }))
+                                          }}
                                         >
-                                          <AlignLeft className="h-3.5 w-3.5" />
+                                          Todos
                                         </Button>
                                         <Button
-                                          variant={
-                                            (deparaPrefs.alignments?.[key] || h.align || 'left') ===
-                                            'center'
-                                              ? 'secondary'
-                                              : 'ghost'
-                                          }
-                                          size="icon"
-                                          className="h-7 w-7"
-                                          onClick={() =>
-                                            updateDeparaPrefs({
-                                              alignments: {
-                                                ...(deparaPrefs.alignments || {}),
-                                                [key]: 'center',
-                                              },
-                                            })
-                                          }
-                                          title="Centralizar"
+                                          variant="secondary"
+                                          size="sm"
+                                          className="h-6 flex-1 text-[10px]"
+                                          onMouseDown={(e) => {
+                                            e.preventDefault()
+                                            e.stopPropagation()
+                                          }}
+                                          onClick={(e) => {
+                                            e.stopPropagation()
+                                            setResumoFilters((prev) => ({
+                                              ...prev,
+                                              [key]: [],
+                                            }))
+                                          }}
                                         >
-                                          <AlignCenter className="h-3.5 w-3.5" />
-                                        </Button>
-                                        <Button
-                                          variant={
-                                            (deparaPrefs.alignments?.[key] || h.align || 'left') ===
-                                            'right'
-                                              ? 'secondary'
-                                              : 'ghost'
-                                          }
-                                          size="icon"
-                                          className="h-7 w-7"
-                                          onClick={() =>
-                                            updateDeparaPrefs({
-                                              alignments: {
-                                                ...(deparaPrefs.alignments || {}),
-                                                [key]: 'right',
-                                              },
-                                            })
-                                          }
-                                          title="Alinhar à Direita"
-                                        >
-                                          <AlignRight className="h-3.5 w-3.5" />
+                                          Nenhum
                                         </Button>
                                       </div>
-                                    </DropdownMenuGroup>
-                                  </DropdownMenuContent>
-                                </DropdownMenu>
-                              </div>
-                            </div>
-                          </TableHead>
-                        )
-                      })}
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {flattenedTreeRows.map((rowItem, index) => {
-                      if (rowItem.type === 'inline-header') {
-                        return (
-                          <TableRow
-                            key={`${rowItem.data.id}-inline-hdr`}
-                            className="bg-slate-100/80 hover:bg-slate-100/80 border-0"
-                          >
-                            {resumoColOrder.map((key) => {
-                              if (key === 'conta_contabil') {
-                                return (
-                                  <TableCell
-                                    key={key}
-                                    className="p-0 border-0 border-y border-slate-200"
-                                    style={getDeparaGridlineStyle()}
+                                      <CommandList className="max-h-[200px] overflow-y-auto">
+                                        <CommandEmpty className="py-2 text-xs text-center text-slate-500">
+                                          Nenhum encontrado.
+                                        </CommandEmpty>
+                                        <CommandGroup>
+                                          {options.map((opt) => {
+                                            const isSelected = resumoFilters[key]?.includes(
+                                              opt.value,
+                                            )
+                                            return (
+                                              <CommandItem
+                                                key={opt.value}
+                                                onMouseDown={(e) => {
+                                                  e.preventDefault()
+                                                  e.stopPropagation()
+                                                }}
+                                                onSelect={() => {
+                                                  const current = resumoFilters[key] || []
+                                                  const updated = isSelected
+                                                    ? current.filter((v) => v !== opt.value)
+                                                    : [...current, opt.value]
+                                                  setResumoFilters((prev) => ({
+                                                    ...prev,
+                                                    [key]: updated,
+                                                  }))
+                                                }}
+                                                className="text-xs cursor-pointer"
+                                              >
+                                                <div
+                                                  className={cn(
+                                                    'mr-2 flex h-3 w-3 flex-shrink-0 items-center justify-center rounded-sm border border-primary',
+                                                    isSelected
+                                                      ? 'bg-primary text-primary-foreground'
+                                                      : 'opacity-50 [&_svg]:invisible',
+                                                  )}
+                                                >
+                                                  <Check className="h-2 w-2" />
+                                                </div>
+                                                <span
+                                                  className="truncate max-w-[140px]"
+                                                  title={opt.label}
+                                                >
+                                                  {opt.label}
+                                                </span>
+                                              </CommandItem>
+                                            )
+                                          })}
+                                        </CommandGroup>
+                                      </CommandList>
+                                    </Command>
+                                  </PopoverContent>
+                                </Popover>
+                              )}
+
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-6 w-6 rounded-sm text-indigo-200 hover:text-white hover:bg-white/20 relative ml-0.5"
+                                    title="Alinhamento"
                                   >
-                                    <div className="px-4 py-1.5 text-[0.85em] font-bold text-slate-500 uppercase tracking-wider text-left">
-                                      ↳ Raiz Hierárquica da Conta Vinculada
+                                    <MoreVertical className="h-4 w-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>{' '}
+                                <DropdownMenuContent align="start" className="w-48">
+                                  <DropdownMenuGroup>
+                                    <DropdownMenuLabel className="text-xs text-slate-500 uppercase tracking-wider">
+                                      Alinhamento
+                                    </DropdownMenuLabel>
+                                    <div className="flex items-center gap-1 px-2 py-1.5">
+                                      <Button
+                                        variant={
+                                          (deparaPrefs.alignments?.[key] || h.align || 'left') ===
+                                          'left'
+                                            ? 'secondary'
+                                            : 'ghost'
+                                        }
+                                        size="icon"
+                                        className="h-7 w-7"
+                                        onClick={() =>
+                                          updateDeparaPrefs({
+                                            alignments: {
+                                              ...(deparaPrefs.alignments || {}),
+                                              [key]: 'left',
+                                            },
+                                          })
+                                        }
+                                        title="Alinhar à Esquerda"
+                                      >
+                                        <AlignLeft className="h-3.5 w-3.5" />
+                                      </Button>
+                                      <Button
+                                        variant={
+                                          (deparaPrefs.alignments?.[key] || h.align || 'left') ===
+                                          'center'
+                                            ? 'secondary'
+                                            : 'ghost'
+                                        }
+                                        size="icon"
+                                        className="h-7 w-7"
+                                        onClick={() =>
+                                          updateDeparaPrefs({
+                                            alignments: {
+                                              ...(deparaPrefs.alignments || {}),
+                                              [key]: 'center',
+                                            },
+                                          })
+                                        }
+                                        title="Centralizar"
+                                      >
+                                        <AlignCenter className="h-3.5 w-3.5" />
+                                      </Button>
+                                      <Button
+                                        variant={
+                                          (deparaPrefs.alignments?.[key] || h.align || 'left') ===
+                                          'right'
+                                            ? 'secondary'
+                                            : 'ghost'
+                                        }
+                                        size="icon"
+                                        className="h-7 w-7"
+                                        onClick={() =>
+                                          updateDeparaPrefs({
+                                            alignments: {
+                                              ...(deparaPrefs.alignments || {}),
+                                              [key]: 'right',
+                                            },
+                                          })
+                                        }
+                                        title="Alinhar à Direita"
+                                      >
+                                        <AlignRight className="h-3.5 w-3.5" />
+                                      </Button>
                                     </div>
-                                  </TableCell>
-                                )
-                              }
+                                  </DropdownMenuGroup>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </div>
+                          </div>
+                        </TableHead>
+                      )
+                    })}
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {flattenedTreeRows.map((rowItem, index) => {
+                    if (rowItem.type === 'inline-header') {
+                      return (
+                        <TableRow
+                          key={`${rowItem.data.id}-inline-hdr`}
+                          className="bg-slate-100/80 hover:bg-slate-100/80 border-0"
+                        >
+                          {resumoColOrder.map((key) => {
+                            if (key === 'conta_contabil') {
                               return (
                                 <TableCell
                                   key={key}
                                   className="p-0 border-0 border-y border-slate-200"
                                   style={getDeparaGridlineStyle()}
-                                ></TableCell>
+                                >
+                                  <div className="px-4 py-1.5 text-[0.85em] font-bold text-slate-500 uppercase tracking-wider text-left">
+                                    ↳ Raiz Hierárquica da Conta Vinculada
+                                  </div>
+                                </TableCell>
                               )
-                            })}
-                          </TableRow>
-                        )
+                            }
+                            return (
+                              <TableCell
+                                key={key}
+                                className="p-0 border-0 border-y border-slate-200"
+                                style={getDeparaGridlineStyle()}
+                              ></TableCell>
+                            )
+                          })}
+                        </TableRow>
+                      )
+                    }
+
+                    if (rowItem.type === 'inline-node') {
+                      const { data: node, hNode } = rowItem
+                      const code = hNode.classification || hNode.account_code || ''
+                      const nodeLevel = (code.match(/\./g) || []).length + 1
+                      const isSyn = hNode.account_level === 'Sintética'
+
+                      let bg = '#ffffff',
+                        color = '#334155',
+                        fw = '500',
+                        badgeBg = '#f1f5f9',
+                        badgeColor = '#475569',
+                        badgeBorder = '#e2e8f0'
+                      if (isSyn) {
+                        if (nodeLevel === 1) {
+                          bg = '#1e1b4b'
+                          color = '#ffffff'
+                          fw = '700'
+                          badgeBg = '#312e81'
+                          badgeColor = '#ffffff'
+                          badgeBorder = '#3730a3'
+                        } else if (nodeLevel === 2) {
+                          bg = '#312e81'
+                          color = '#ffffff'
+                          fw = '600'
+                          badgeBg = '#3730a3'
+                          badgeColor = '#ffffff'
+                          badgeBorder = '#4338ca'
+                        } else if (nodeLevel === 3) {
+                          bg = '#3730a3'
+                          color = '#ffffff'
+                          fw = '500'
+                          badgeBg = '#4338ca'
+                          badgeColor = '#ffffff'
+                          badgeBorder = '#4f46e5'
+                        } else if (nodeLevel === 4) {
+                          bg = '#e0e7ff'
+                          color = '#1e1b4b'
+                          fw = '500'
+                          badgeBg = '#c7d2fe'
+                          badgeColor = '#1e1b4b'
+                          badgeBorder = '#a5b4fc'
+                        }
                       }
 
-                      if (rowItem.type === 'inline-node') {
-                        const { data: node, hNode } = rowItem
-                        const code = hNode.classification || hNode.account_code || ''
-                        const nodeLevel = (code.match(/\./g) || []).length + 1
-                        const isSyn = hNode.account_level === 'Sintética'
-
-                        let bg = '#ffffff',
-                          color = '#334155',
-                          fw = '500',
-                          badgeBg = '#f1f5f9',
-                          badgeColor = '#475569',
-                          badgeBorder = '#e2e8f0'
-                        if (isSyn) {
-                          if (nodeLevel === 1) {
-                            bg = '#1e1b4b'
-                            color = '#ffffff'
-                            fw = '700'
-                            badgeBg = '#312e81'
-                            badgeColor = '#ffffff'
-                            badgeBorder = '#3730a3'
-                          } else if (nodeLevel === 2) {
-                            bg = '#312e81'
-                            color = '#ffffff'
-                            fw = '600'
-                            badgeBg = '#3730a3'
-                            badgeColor = '#ffffff'
-                            badgeBorder = '#4338ca'
-                          } else if (nodeLevel === 3) {
-                            bg = '#3730a3'
-                            color = '#ffffff'
-                            fw = '500'
-                            badgeBg = '#4338ca'
-                            badgeColor = '#ffffff'
-                            badgeBorder = '#4f46e5'
-                          } else if (nodeLevel === 4) {
-                            bg = '#e0e7ff'
-                            color = '#1e1b4b'
-                            fw = '500'
-                            badgeBg = '#c7d2fe'
-                            badgeColor = '#1e1b4b'
-                            badgeBorder = '#a5b4fc'
-                          }
-                        }
-
-                        return (
-                          <TableRow
-                            key={`${node.id}-inline-${hNode.id}`}
-                            className="border-0 hover:opacity-90 transition-opacity"
-                            style={{ backgroundColor: bg }}
-                          >
-                            {resumoColOrder.map((key) => {
-                              if (key === 'conta_contabil') {
-                                return (
-                                  <TableCell
-                                    key={key}
-                                    className="p-0 border-0 border-b border-white/10"
-                                    style={getDeparaGridlineStyle()}
-                                  >
-                                    <div
-                                      style={{ color, fontWeight: fw as any }}
-                                      className="px-6 py-1.5 flex items-center gap-3 text-[1em] justify-start"
-                                    >
-                                      <span
-                                        style={{
-                                          backgroundColor: badgeBg,
-                                          color: badgeColor,
-                                          borderColor: badgeBorder,
-                                        }}
-                                        className="font-mono text-[0.85em] px-1.5 py-0.5 rounded border shadow-sm"
-                                      >
-                                        {code}
-                                      </span>
-                                      <span>{hNode.account_name}</span>
-                                    </div>
-                                  </TableCell>
-                                )
-                              }
+                      return (
+                        <TableRow
+                          key={`${node.id}-inline-${hNode.id}`}
+                          className="border-0 hover:opacity-90 transition-opacity"
+                          style={{ backgroundColor: bg }}
+                        >
+                          {resumoColOrder.map((key) => {
+                            if (key === 'conta_contabil') {
                               return (
                                 <TableCell
                                   key={key}
                                   className="p-0 border-0 border-b border-white/10"
                                   style={getDeparaGridlineStyle()}
-                                ></TableCell>
-                              )
-                            })}
-                          </TableRow>
-                        )
-                      }
-
-                      const item = rowItem.data
-                      const isExpanded = expandedNodes[item.id]
-                      const hasChildren = item.children && item.children.length > 0
-                      const canExpand =
-                        hasChildren || (item.hierarchyArray && item.hierarchyArray.length > 0)
-
-                      let rowClass =
-                        index % 2 === 1
-                          ? 'bg-[#bfdbfe] text-black hover:bg-[#93c5fd]'
-                          : 'bg-transparent text-black dark:text-white hover:bg-slate-50 dark:hover:bg-slate-800/50'
-
-                      if (item.isSynthetic) {
-                        if (item.level <= 2) {
-                          rowClass = '!bg-[#1e1b4b] !text-white hover:!bg-[#312e81] font-bold'
-                        } else {
-                          rowClass = '!bg-[#e0e7ff] !text-[#1e1b4b] hover:!bg-[#c7d2fe] font-bold'
-                        }
-                      } else if (!item.mappedAccount) {
-                        rowClass =
-                          index % 2 === 0
-                            ? 'bg-amber-50/40 text-slate-700 hover:bg-amber-50/70'
-                            : 'bg-amber-50/70 text-slate-700 hover:bg-amber-100/50'
-                      }
-
-                      return (
-                        <TableRow
-                          key={item.id}
-                          className={cn('transition-colors border-0', rowClass)}
-                        >
-                          {resumoColOrder.map((key) => {
-                            if (key === 'c_custo') {
-                              const align = deparaPrefs.alignments?.[key] || 'left'
-                              const justifyClass =
-                                align === 'center'
-                                  ? 'justify-center'
-                                  : align === 'right'
-                                    ? 'justify-end'
-                                    : ''
-                              return (
-                                <TableCell
-                                  key={key}
-                                  {...getDeparaCellProps(key, 'left', 'align-middle')}
                                 >
                                   <div
-                                    className={cn('flex items-center gap-1.5', justifyClass)}
-                                    style={{
-                                      paddingLeft:
-                                        align === 'left' ? `${item.level * 16}px` : undefined,
-                                    }}
+                                    style={{ color, fontWeight: fw as any }}
+                                    className="px-6 py-1.5 flex items-center gap-3 text-[1em] justify-start"
                                   >
-                                    {canExpand ? (
-                                      <button
-                                        onClick={() =>
-                                          setExpandedNodes((p) => ({
-                                            ...p,
-                                            [item.id]: !p[item.id],
-                                          }))
-                                        }
-                                        className={cn(
-                                          'p-0.5 rounded transition-colors',
-                                          item.isSynthetic && item.level <= 2
-                                            ? 'hover:bg-white/10'
-                                            : 'hover:bg-black/10',
-                                        )}
-                                      >
-                                        {isExpanded ? (
-                                          <ChevronDown className="h-3 w-3" />
-                                        ) : (
-                                          <ChevronRight className="h-3 w-3" />
-                                        )}
-                                      </button>
-                                    ) : (
-                                      <span className="w-4" />
-                                    )}
-
                                     <span
-                                      className={cn(
-                                        'px-1.5 py-0.5 rounded text-[0.8em] font-bold shadow-sm',
-                                        item.isSynthetic
-                                          ? item.level <= 2
-                                            ? 'bg-white/20 text-white'
-                                            : 'bg-black/10 text-black'
-                                          : 'bg-blue-50 text-blue-600 border border-blue-200',
-                                      )}
+                                      style={{
+                                        backgroundColor: badgeBg,
+                                        color: badgeColor,
+                                        borderColor: badgeBorder,
+                                      }}
+                                      className="font-mono text-[0.85em] px-1.5 py-0.5 rounded border shadow-sm"
                                     >
-                                      {item.isSynthetic ? 'S' : 'A'}
+                                      {code}
                                     </span>
-
-                                    <div className="flex items-center gap-1.5">
-                                      <span
-                                        className={cn(
-                                          'font-mono min-w-[50px] text-center px-1.5 py-0.5 rounded text-[0.85em] shadow-sm inline-block',
-                                          item.isSynthetic
-                                            ? 'font-bold !text-white'
-                                            : 'font-semibold bg-transparent',
-                                        )}
-                                      >
-                                        {item.c_custo || 'SEM_CC'}
-                                      </span>
-                                      <span
-                                        className={cn(
-                                          'truncate max-w-[250px]',
-                                          item.isSynthetic ? 'font-bold !text-white' : '',
-                                        )}
-                                        title={item.descricao_c_custo}
-                                      >
-                                        {item.descricao_c_custo}
-                                      </span>
-                                    </div>
+                                    <span>{hNode.account_name}</span>
                                   </div>
                                 </TableCell>
                               )
                             }
-
-                            if (key === 'conta_contabil') {
-                              const align = deparaPrefs.alignments?.[key] || 'left'
-                              const justifyClass =
-                                align === 'center'
-                                  ? 'justify-center'
-                                  : align === 'right'
-                                    ? 'justify-end'
-                                    : ''
-                              return (
-                                <TableCell
-                                  key={key}
-                                  {...getDeparaCellProps(key, 'left', 'align-middle')}
-                                >
-                                  {!item.isSynthetic && item.mappedAccount ? (
-                                    <div className={cn('flex items-center gap-1.5', justifyClass)}>
-                                      <span className="bg-[#1e1b4b] text-white px-1.5 py-0.5 rounded text-[0.85em] font-bold font-mono min-w-[50px] text-center inline-block shadow-sm">
-                                        {item.mappedAccount.account_code}
-                                      </span>
-                                      {item.mappedAccount.classification && (
-                                        <span className="font-mono text-[0.85em] font-semibold whitespace-nowrap text-black">
-                                          {item.mappedAccount.classification}
-                                        </span>
-                                      )}
-                                      <span
-                                        className="truncate font-semibold max-w-[250px] text-slate-800"
-                                        title={item.mappedAccount.account_name}
-                                      >
-                                        {item.mappedAccount.account_name}
-                                      </span>
-                                    </div>
-                                  ) : !item.isSynthetic && !item.mappedAccount ? (
-                                    <span className="text-slate-400 italic font-medium">
-                                      Não vinculado
-                                    </span>
-                                  ) : null}
-                                </TableCell>
-                              )
-                            }
-
-                            if (key === 'status') {
-                              return (
-                                <TableCell
-                                  key={key}
-                                  {...getDeparaCellProps(key, 'center', 'align-middle')}
-                                >
-                                  {!item.isSynthetic && (
-                                    <span
-                                      className={cn(
-                                        'inline-flex items-center px-1.5 py-0.5 rounded-full text-[0.85em] font-bold border uppercase tracking-wider shadow-sm',
-                                        item.mappedAccount
-                                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                                          : 'bg-rose-50 text-rose-700 border-rose-200',
-                                      )}
-                                    >
-                                      {item.status}
-                                    </span>
-                                  )}
-                                </TableCell>
-                              )
-                            }
-
-                            if (key === 'count') {
-                              return (
-                                <TableCell
-                                  key={key}
-                                  {...getDeparaCellProps(key, 'center', 'align-middle')}
-                                >
-                                  {item.count > 0 ? (
-                                    <button
-                                      onClick={() =>
-                                        !item.isSynthetic && handleDrillDownResumo(item)
-                                      }
-                                      className={cn(
-                                        'font-bold hover:underline cursor-pointer',
-                                        item.isSynthetic
-                                          ? item.level <= 2
-                                            ? '!text-white cursor-default hover:no-underline'
-                                            : '!text-[#1e1b4b] cursor-default hover:no-underline'
-                                          : 'text-blue-600 hover:text-blue-800',
-                                      )}
-                                      title={
-                                        item.isSynthetic
-                                          ? 'Lançamentos agrupados'
-                                          : 'Visualizar Lançamentos'
-                                      }
-                                    >
-                                      {item.count}
-                                    </button>
-                                  ) : (
-                                    <span
-                                      className={cn(
-                                        item.isSynthetic && item.level <= 2
-                                          ? 'text-white/50'
-                                          : 'text-slate-400',
-                                      )}
-                                    >
-                                      0
-                                    </span>
-                                  )}
-                                </TableCell>
-                              )
-                            }
-
-                            if (key === 'total_bruto') {
-                              return (
-                                <TableCell
-                                  key={key}
-                                  {...getDeparaCellProps(
-                                    key,
-                                    'left',
-                                    cn(
-                                      'align-middle',
-                                      item.isSynthetic ? 'font-bold !text-white' : 'font-medium',
-                                    ),
-                                  )}
-                                >
-                                  {new Intl.NumberFormat('pt-BR', {
-                                    style: 'currency',
-                                    currency: 'BRL',
-                                  }).format(item.total_bruto)}
-                                </TableCell>
-                              )
-                            }
-                            if (key === 'total_liquido') {
-                              return (
-                                <TableCell
-                                  key={key}
-                                  {...getDeparaCellProps(
-                                    key,
-                                    'left',
-                                    cn(
-                                      'align-middle',
-                                      item.isSynthetic ? 'font-bold !text-white' : 'font-medium',
-                                    ),
-                                  )}
-                                >
-                                  {new Intl.NumberFormat('pt-BR', {
-                                    style: 'currency',
-                                    currency: 'BRL',
-                                  }).format(item.total)}
-                                </TableCell>
-                              )
-                            }
-                            if (key === 'acao') {
-                              return (
-                                <TableCell
-                                  key={key}
-                                  {...getDeparaCellProps(key, 'center', 'align-middle')}
-                                >
-                                  {!item.isSynthetic && (
-                                    <Button
-                                      size="sm"
-                                      variant={item.mappedAccount ? 'outline' : 'default'}
-                                      className={cn(
-                                        'h-6 text-[10px] px-2',
-                                        !item.mappedAccount &&
-                                          'bg-[#800000] hover:bg-[#800000]/90 text-white shadow-sm',
-                                      )}
-                                      onClick={() => setMappingRow(item.rows[0] || item)}
-                                    >
-                                      {item.mappedAccount ? 'Editar' : 'Mapear'}
-                                    </Button>
-                                  )}
-                                </TableCell>
-                              )
-                            }
-                            return null
+                            return (
+                              <TableCell
+                                key={key}
+                                className="p-0 border-0 border-b border-white/10"
+                                style={getDeparaGridlineStyle()}
+                              ></TableCell>
+                            )
                           })}
                         </TableRow>
                       )
-                    })}
-                    {flattenedTreeRows.length === 0 && (
-                      <TableRow disableZebra>
-                        <TableCell colSpan={7} className="h-32 text-center text-slate-500 border-0">
-                          Nenhum registro para exibir com os filtros atuais.
-                        </TableCell>
+                    }
+
+                    const item = rowItem.data
+                    const isExpanded = expandedNodes[item.id]
+                    const hasChildren = item.children && item.children.length > 0
+                    const canExpand =
+                      hasChildren || (item.hierarchyArray && item.hierarchyArray.length > 0)
+
+                    let rowClass =
+                      index % 2 === 1
+                        ? 'bg-[#bfdbfe] text-black hover:bg-[#93c5fd]'
+                        : 'bg-transparent text-black dark:text-white hover:bg-slate-50 dark:hover:bg-slate-800/50'
+
+                    if (item.isSynthetic) {
+                      if (item.level <= 2) {
+                        rowClass = '!bg-[#1e1b4b] !text-white hover:!bg-[#312e81] font-bold'
+                      } else {
+                        rowClass = '!bg-[#e0e7ff] !text-[#1e1b4b] hover:!bg-[#c7d2fe] font-bold'
+                      }
+                    } else if (!item.mappedAccount) {
+                      rowClass =
+                        index % 2 === 0
+                          ? 'bg-amber-50/40 text-slate-700 hover:bg-amber-50/70'
+                          : 'bg-amber-50/70 text-slate-700 hover:bg-amber-100/50'
+                    }
+
+                    return (
+                      <TableRow
+                        key={item.id}
+                        className={cn('transition-colors border-0', rowClass)}
+                      >
+                        {resumoColOrder.map((key) => {
+                          if (key === 'c_custo') {
+                            const align = deparaPrefs.alignments?.[key] || 'left'
+                            const justifyClass =
+                              align === 'center'
+                                ? 'justify-center'
+                                : align === 'right'
+                                  ? 'justify-end'
+                                  : ''
+                            return (
+                              <TableCell
+                                key={key}
+                                {...getDeparaCellProps(key, 'left', 'align-middle')}
+                              >
+                                <div
+                                  className={cn('flex items-center gap-1.5', justifyClass)}
+                                  style={{
+                                    paddingLeft:
+                                      align === 'left' ? `${item.level * 16}px` : undefined,
+                                  }}
+                                >
+                                  {canExpand ? (
+                                    <button
+                                      onClick={() =>
+                                        setExpandedNodes((p) => ({
+                                          ...p,
+                                          [item.id]: !p[item.id],
+                                        }))
+                                      }
+                                      className={cn(
+                                        'p-0.5 rounded transition-colors',
+                                        item.isSynthetic && item.level <= 2
+                                          ? 'hover:bg-white/10'
+                                          : 'hover:bg-black/10',
+                                      )}
+                                    >
+                                      {isExpanded ? (
+                                        <ChevronDown className="h-3 w-3" />
+                                      ) : (
+                                        <ChevronRight className="h-3 w-3" />
+                                      )}
+                                    </button>
+                                  ) : (
+                                    <span className="w-4" />
+                                  )}
+
+                                  <span
+                                    className={cn(
+                                      'px-1.5 py-0.5 rounded text-[0.8em] font-bold shadow-sm',
+                                      item.isSynthetic
+                                        ? item.level <= 2
+                                          ? 'bg-white/20 text-white'
+                                          : 'bg-black/10 text-black'
+                                        : 'bg-blue-50 text-blue-600 border border-blue-200',
+                                    )}
+                                  >
+                                    {item.isSynthetic ? 'S' : 'A'}
+                                  </span>
+
+                                  <div className="flex items-center gap-1.5">
+                                    <span
+                                      className={cn(
+                                        'font-mono min-w-[50px] text-center px-1.5 py-0.5 rounded text-[0.85em] shadow-sm inline-block',
+                                        item.isSynthetic
+                                          ? 'font-bold !text-white'
+                                          : 'font-semibold bg-transparent',
+                                      )}
+                                    >
+                                      {item.c_custo || 'SEM_CC'}
+                                    </span>
+                                    <span
+                                      className={cn(
+                                        'truncate max-w-[250px]',
+                                        item.isSynthetic ? 'font-bold !text-white' : '',
+                                      )}
+                                      title={item.descricao_c_custo}
+                                    >
+                                      {item.descricao_c_custo}
+                                    </span>
+                                  </div>
+                                </div>
+                              </TableCell>
+                            )
+                          }
+
+                          if (key === 'conta_contabil') {
+                            const align = deparaPrefs.alignments?.[key] || 'left'
+                            const justifyClass =
+                              align === 'center'
+                                ? 'justify-center'
+                                : align === 'right'
+                                  ? 'justify-end'
+                                  : ''
+                            return (
+                              <TableCell
+                                key={key}
+                                {...getDeparaCellProps(key, 'left', 'align-middle')}
+                              >
+                                {!item.isSynthetic && item.mappedAccount ? (
+                                  <div className={cn('flex items-center gap-1.5', justifyClass)}>
+                                    <span className="bg-[#1e1b4b] text-white px-1.5 py-0.5 rounded text-[0.85em] font-bold font-mono min-w-[50px] text-center inline-block shadow-sm">
+                                      {item.mappedAccount.account_code}
+                                    </span>
+                                    {item.mappedAccount.classification && (
+                                      <span className="font-mono text-[0.85em] font-semibold whitespace-nowrap text-black">
+                                        {item.mappedAccount.classification}
+                                      </span>
+                                    )}
+                                    <span
+                                      className="truncate font-semibold max-w-[250px] text-slate-800"
+                                      title={item.mappedAccount.account_name}
+                                    >
+                                      {item.mappedAccount.account_name}
+                                    </span>
+                                  </div>
+                                ) : !item.isSynthetic && !item.mappedAccount ? (
+                                  <span className="text-slate-400 italic font-medium">
+                                    Não vinculado
+                                  </span>
+                                ) : null}
+                              </TableCell>
+                            )
+                          }
+
+                          if (key === 'status') {
+                            return (
+                              <TableCell
+                                key={key}
+                                {...getDeparaCellProps(key, 'center', 'align-middle')}
+                              >
+                                {!item.isSynthetic && (
+                                  <span
+                                    className={cn(
+                                      'inline-flex items-center px-1.5 py-0.5 rounded-full text-[0.85em] font-bold border uppercase tracking-wider shadow-sm',
+                                      item.mappedAccount
+                                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                        : 'bg-rose-50 text-rose-700 border-rose-200',
+                                    )}
+                                  >
+                                    {item.status}
+                                  </span>
+                                )}
+                              </TableCell>
+                            )
+                          }
+
+                          if (key === 'count') {
+                            return (
+                              <TableCell
+                                key={key}
+                                {...getDeparaCellProps(key, 'center', 'align-middle')}
+                              >
+                                {item.count > 0 ? (
+                                  <button
+                                    onClick={() => !item.isSynthetic && handleDrillDownResumo(item)}
+                                    className={cn(
+                                      'font-bold hover:underline cursor-pointer',
+                                      item.isSynthetic
+                                        ? item.level <= 2
+                                          ? '!text-white cursor-default hover:no-underline'
+                                          : '!text-[#1e1b4b] cursor-default hover:no-underline'
+                                        : 'text-blue-600 hover:text-blue-800',
+                                    )}
+                                    title={
+                                      item.isSynthetic
+                                        ? 'Lançamentos agrupados'
+                                        : 'Visualizar Lançamentos'
+                                    }
+                                  >
+                                    {item.count}
+                                  </button>
+                                ) : (
+                                  <span
+                                    className={cn(
+                                      item.isSynthetic && item.level <= 2
+                                        ? 'text-white/50'
+                                        : 'text-slate-400',
+                                    )}
+                                  >
+                                    0
+                                  </span>
+                                )}
+                              </TableCell>
+                            )
+                          }
+
+                          if (key === 'total_bruto') {
+                            return (
+                              <TableCell
+                                key={key}
+                                {...getDeparaCellProps(
+                                  key,
+                                  'left',
+                                  cn(
+                                    'align-middle',
+                                    item.isSynthetic ? 'font-bold !text-white' : 'font-medium',
+                                  ),
+                                )}
+                              >
+                                {new Intl.NumberFormat('pt-BR', {
+                                  style: 'currency',
+                                  currency: 'BRL',
+                                }).format(item.total_bruto)}
+                              </TableCell>
+                            )
+                          }
+                          if (key === 'total_liquido') {
+                            return (
+                              <TableCell
+                                key={key}
+                                {...getDeparaCellProps(
+                                  key,
+                                  'left',
+                                  cn(
+                                    'align-middle',
+                                    item.isSynthetic ? 'font-bold !text-white' : 'font-medium',
+                                  ),
+                                )}
+                              >
+                                {new Intl.NumberFormat('pt-BR', {
+                                  style: 'currency',
+                                  currency: 'BRL',
+                                }).format(item.total)}
+                              </TableCell>
+                            )
+                          }
+                          if (key === 'acao') {
+                            return (
+                              <TableCell
+                                key={key}
+                                {...getDeparaCellProps(key, 'center', 'align-middle')}
+                              >
+                                {!item.isSynthetic && (
+                                  <Button
+                                    size="sm"
+                                    variant={item.mappedAccount ? 'outline' : 'default'}
+                                    className={cn(
+                                      'h-6 text-[10px] px-2',
+                                      !item.mappedAccount &&
+                                        'bg-[#800000] hover:bg-[#800000]/90 text-white shadow-sm',
+                                    )}
+                                    onClick={() => setMappingRow(item.rows[0] || item)}
+                                  >
+                                    {item.mappedAccount ? 'Editar' : 'Mapear'}
+                                  </Button>
+                                )}
+                              </TableCell>
+                            )
+                          }
+                          return null
+                        })}
                       </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
+                    )
+                  })}
+                  {flattenedTreeRows.length === 0 && (
+                    <TableRow disableZebra>
+                      <TableCell colSpan={7} className="h-32 text-center text-slate-500 border-0">
+                        Nenhum registro para exibir com os filtros atuais.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
             </CardContent>
           </Card>
         </TabsContent>
@@ -10614,669 +10604,667 @@ export default function FinancialMovements() {
               </div>
             </CardHeader>
             <CardContent className="p-0">
-              <div className="border-4 border-indigo-950 rounded-lg overflow-hidden relative">
-                <Table
-                  wrapperClassName="max-h-[600px] overflow-x-auto overflow-y-auto custom-scrollbar"
-                  className="w-full min-w-max"
-                  style={{ fontSize: `${tableFontSize}px` }}
-                >
-                  <TableHeader className="bg-indigo-950 sticky top-0 z-10 shadow-sm border-none">
-                    <TableRow
-                      disableZebra
-                      className="bg-indigo-950 hover:bg-indigo-900 border-none [&>th]:border-none [&>th]:text-white"
+              <Table
+                wrapperClassName="max-h-[600px] overflow-auto finance-table-scrollbar border-4 border-indigo-950 rounded-lg"
+                className="w-full min-w-max"
+                style={{ fontSize: `${tableFontSize}px` }}
+              >
+                <TableHeader className="bg-indigo-950 sticky top-0 z-10 shadow-sm border-none">
+                  <TableRow
+                    disableZebra
+                    className="bg-indigo-950 hover:bg-indigo-900 border-none [&>th]:border-none [&>th]:text-white"
+                  >
+                    <TableHead
+                      className="w-[40px] px-2 py-1 text-center align-middle"
+                      style={getDryRunGridlineStyle()}
                     >
-                      <TableHead
-                        className="w-[40px] px-2 py-1 text-center align-middle"
-                        style={getDryRunGridlineStyle()}
-                      >
-                        <Checkbox
-                          checked={
-                            currentDryRunData.length > 0 &&
-                            currentDryRunData.every((d) => selectedIds.includes(d.id))
+                      <Checkbox
+                        checked={
+                          currentDryRunData.length > 0 &&
+                          currentDryRunData.every((d) => selectedIds.includes(d.id))
+                        }
+                        onCheckedChange={() => {
+                          const pageIds = currentDryRunData.map((d) => d.id)
+                          const allSelected =
+                            pageIds.length > 0 && pageIds.every((id) => selectedIds.includes(id))
+                          if (allSelected) {
+                            setSelectedIds((prev) => prev.filter((id) => !pageIds.includes(id)))
+                          } else {
+                            setSelectedIds((prev) => Array.from(new Set([...prev, ...pageIds])))
                           }
-                          onCheckedChange={() => {
-                            const pageIds = currentDryRunData.map((d) => d.id)
-                            const allSelected =
-                              pageIds.length > 0 && pageIds.every((id) => selectedIds.includes(id))
-                            if (allSelected) {
-                              setSelectedIds((prev) => prev.filter((id) => !pageIds.includes(id)))
-                            } else {
-                              setSelectedIds((prev) => Array.from(new Set([...prev, ...pageIds])))
-                            }
-                          }}
-                          className="border-white data-[state=checked]:bg-white data-[state=checked]:text-indigo-950"
-                        />
-                      </TableHead>
-                      {dryRunColOrder.map((key) => {
-                        const colDef = dryRunHeaders.find((c) => c.key === key)
-                        if (!colDef) return null
+                        }}
+                        className="border-white data-[state=checked]:bg-white data-[state=checked]:text-indigo-950"
+                      />
+                    </TableHead>
+                    {dryRunColOrder.map((key) => {
+                      const colDef = dryRunHeaders.find((c) => c.key === key)
+                      if (!colDef) return null
 
-                        return (
-                          <TableHead
-                            key={colDef.key}
-                            draggable
-                            onDragStart={(e) => {
-                              setDraggedDryRunCol(colDef.key)
-                              e.dataTransfer.effectAllowed = 'move'
-                            }}
-                            onDragOver={(e) => {
-                              e.preventDefault()
-                              e.dataTransfer.dropEffect = 'move'
-                            }}
-                            onDrop={(e) => {
-                              e.preventDefault()
-                              if (!draggedDryRunCol || draggedDryRunCol === colDef.key) return
-                              const newOrder = [...dryRunColOrder]
-                              const draggedIdx = newOrder.indexOf(draggedDryRunCol)
-                              const targetIdx = newOrder.indexOf(colDef.key)
-                              newOrder.splice(draggedIdx, 1)
-                              newOrder.splice(targetIdx, 0, draggedDryRunCol)
-                              setDryRunColOrder(newOrder)
-                              setDraggedDryRunCol(null)
-                            }}
-                            onDragEnd={() => setDraggedDryRunCol(null)}
-                            className={cn(
-                              'text-white font-bold px-2 py-1 h-8 cursor-grab active:cursor-grabbing whitespace-nowrap',
-                              draggedDryRunCol === colDef.key ? 'opacity-50 bg-indigo-900' : '',
-                            )}
-                            style={getDryRunGridlineStyle()}
-                          >
-                            <div className="flex items-center justify-between gap-1 w-full h-full">
-                              <div
-                                className={cn(
-                                  'flex flex-1 items-center cursor-pointer hover:bg-white/10 rounded px-1 -ml-1 transition-colors',
-                                  (dryRunPrefs.alignments?.[colDef.key] || colDef.defaultAlign) ===
-                                    'right'
-                                    ? 'justify-end'
-                                    : (dryRunPrefs.alignments?.[colDef.key] ||
-                                          colDef.defaultAlign) === 'center'
-                                      ? 'justify-center'
-                                      : 'justify-start',
-                                )}
-                                onClick={() => {
-                                  if (dryRunSortColumn === colDef.key) {
-                                    setDryRunSortDirection(
-                                      dryRunSortDirection === 'asc' ? 'desc' : 'asc',
-                                    )
-                                  } else {
-                                    setDryRunSortColumn(colDef.key)
-                                    setDryRunSortDirection('asc')
-                                  }
-                                  setDryRunPage(0)
-                                }}
-                              >
-                                {colDef.label}
-                                {dryRunSortColumn === colDef.key ? (
-                                  dryRunSortDirection === 'asc' ? (
-                                    <ArrowUp className="h-3 w-3 ml-1 text-white" />
-                                  ) : (
-                                    <ArrowDown className="h-3 w-3 ml-1 text-white" />
+                      return (
+                        <TableHead
+                          key={colDef.key}
+                          draggable
+                          onDragStart={(e) => {
+                            setDraggedDryRunCol(colDef.key)
+                            e.dataTransfer.effectAllowed = 'move'
+                          }}
+                          onDragOver={(e) => {
+                            e.preventDefault()
+                            e.dataTransfer.dropEffect = 'move'
+                          }}
+                          onDrop={(e) => {
+                            e.preventDefault()
+                            if (!draggedDryRunCol || draggedDryRunCol === colDef.key) return
+                            const newOrder = [...dryRunColOrder]
+                            const draggedIdx = newOrder.indexOf(draggedDryRunCol)
+                            const targetIdx = newOrder.indexOf(colDef.key)
+                            newOrder.splice(draggedIdx, 1)
+                            newOrder.splice(targetIdx, 0, draggedDryRunCol)
+                            setDryRunColOrder(newOrder)
+                            setDraggedDryRunCol(null)
+                          }}
+                          onDragEnd={() => setDraggedDryRunCol(null)}
+                          className={cn(
+                            'text-white font-bold px-2 py-1 h-8 cursor-grab active:cursor-grabbing whitespace-nowrap',
+                            draggedDryRunCol === colDef.key ? 'opacity-50 bg-indigo-900' : '',
+                          )}
+                          style={getDryRunGridlineStyle()}
+                        >
+                          <div className="flex items-center justify-between gap-1 w-full h-full">
+                            <div
+                              className={cn(
+                                'flex flex-1 items-center cursor-pointer hover:bg-white/10 rounded px-1 -ml-1 transition-colors',
+                                (dryRunPrefs.alignments?.[colDef.key] || colDef.defaultAlign) ===
+                                  'right'
+                                  ? 'justify-end'
+                                  : (dryRunPrefs.alignments?.[colDef.key] ||
+                                        colDef.defaultAlign) === 'center'
+                                    ? 'justify-center'
+                                    : 'justify-start',
+                              )}
+                              onClick={() => {
+                                if (dryRunSortColumn === colDef.key) {
+                                  setDryRunSortDirection(
+                                    dryRunSortDirection === 'asc' ? 'desc' : 'asc',
                                   )
+                                } else {
+                                  setDryRunSortColumn(colDef.key)
+                                  setDryRunSortDirection('asc')
+                                }
+                                setDryRunPage(0)
+                              }}
+                            >
+                              {colDef.label}
+                              {dryRunSortColumn === colDef.key ? (
+                                dryRunSortDirection === 'asc' ? (
+                                  <ArrowUp className="h-3 w-3 ml-1 text-white" />
                                 ) : (
-                                  <ArrowUpDown className="h-3 w-3 ml-1 opacity-50 text-indigo-300" />
-                                )}
-                              </div>
-                              <div className="flex items-center flex-shrink-0 relative">
-                                {colDef.key !== 'valor' && (
-                                  <Popover>
-                                    <PopoverTrigger asChild>
-                                      <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        className={cn(
-                                          'h-5 w-5 rounded-sm relative',
-                                          dryRunFilters[colDef.key] &&
-                                            dryRunFilters[colDef.key].length > 0
-                                            ? 'text-white bg-primary/40'
-                                            : 'text-indigo-200 hover:text-white hover:bg-indigo-800/50',
-                                        )}
-                                        title="Filtrar coluna"
-                                      >
-                                        <Filter className="h-3 w-3" />
-                                        {dryRunFilters[colDef.key] &&
-                                          dryRunFilters[colDef.key].length > 0 && (
-                                            <span className="absolute -top-0.5 -right-0.5 flex h-2 w-2 items-center justify-center rounded-full bg-primary text-[8px] text-primary-foreground"></span>
-                                          )}
-                                      </Button>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-[200px] p-0" align="start">
-                                      <Command>
-                                        <CommandInput
-                                          placeholder="Buscar..."
-                                          className="h-8 text-xs"
-                                        />
-                                        <div className="flex items-center gap-1 p-1 border-b border-slate-100 bg-slate-50">
-                                          <Button
-                                            variant="secondary"
-                                            size="sm"
-                                            className="h-6 flex-1 text-[10px]"
-                                            onMouseDown={(e) => {
-                                              e.preventDefault()
-                                              e.stopPropagation()
-                                            }}
-                                            onClick={(e) => {
-                                              e.stopPropagation()
-                                              const allVals = (dryRunOptions[colDef.key] || []).map(
-                                                (o) => o.value,
-                                              )
-                                              setDryRunFilters((prev) => ({
-                                                ...prev,
-                                                [colDef.key]: allVals,
-                                              }))
-                                              setDryRunPage(0)
-                                            }}
-                                          >
-                                            Todos
-                                          </Button>
-                                          <Button
-                                            variant="secondary"
-                                            size="sm"
-                                            className="h-6 flex-1 text-[10px]"
-                                            onMouseDown={(e) => {
-                                              e.preventDefault()
-                                              e.stopPropagation()
-                                            }}
-                                            onClick={(e) => {
-                                              e.stopPropagation()
-                                              setDryRunFilters((prev) => ({
-                                                ...prev,
-                                                [colDef.key]: [],
-                                              }))
-                                              setDryRunPage(0)
-                                            }}
-                                          >
-                                            Nenhum
-                                          </Button>
-                                        </div>
-                                        <CommandList className="max-h-[200px] overflow-y-auto">
-                                          <CommandEmpty className="py-2 text-xs text-center text-slate-500">
-                                            Nenhum encontrado.
-                                          </CommandEmpty>
-                                          <CommandGroup>
-                                            {(dryRunOptions[colDef.key] || []).map((opt) => {
-                                              const isSelected = dryRunFilters[
-                                                colDef.key
-                                              ]?.includes(opt.value)
-                                              return (
-                                                <CommandItem
-                                                  key={opt.value}
-                                                  onMouseDown={(e) => {
-                                                    e.preventDefault()
-                                                    e.stopPropagation()
-                                                  }}
-                                                  onSelect={() => {
-                                                    const current = dryRunFilters[colDef.key] || []
-                                                    const updated = isSelected
-                                                      ? current.filter((v) => v !== opt.value)
-                                                      : [...current, opt.value]
-                                                    setDryRunFilters((prev) => ({
-                                                      ...prev,
-                                                      [colDef.key]: updated,
-                                                    }))
-                                                    setDryRunPage(0)
-                                                  }}
-                                                  className="text-xs cursor-pointer"
-                                                >
-                                                  <div
-                                                    className={cn(
-                                                      'mr-2 flex h-3 w-3 flex-shrink-0 items-center justify-center rounded-sm border border-primary',
-                                                      isSelected
-                                                        ? 'bg-primary text-primary-foreground'
-                                                        : 'opacity-50 [&_svg]:invisible',
-                                                    )}
-                                                  >
-                                                    <Check className="h-2 w-2" />
-                                                  </div>
-                                                  <span
-                                                    className="truncate max-w-[140px]"
-                                                    title={opt.label}
-                                                  >
-                                                    {opt.label}
-                                                  </span>
-                                                </CommandItem>
-                                              )
-                                            })}
-                                          </CommandGroup>
-                                        </CommandList>
-                                      </Command>
-                                    </PopoverContent>
-                                  </Popover>
-                                )}
-                                <DropdownMenu>
-                                  <DropdownMenuTrigger asChild>
+                                  <ArrowDown className="h-3 w-3 ml-1 text-white" />
+                                )
+                              ) : (
+                                <ArrowUpDown className="h-3 w-3 ml-1 opacity-50 text-indigo-300" />
+                              )}
+                            </div>
+                            <div className="flex items-center flex-shrink-0 relative">
+                              {colDef.key !== 'valor' && (
+                                <Popover>
+                                  <PopoverTrigger asChild>
                                     <Button
                                       variant="ghost"
                                       size="icon"
-                                      className="h-6 w-6 rounded-sm text-white opacity-70 hover:opacity-100 hover:bg-white/20 relative ml-0.5"
-                                      title="Opções de visualização"
+                                      className={cn(
+                                        'h-5 w-5 rounded-sm relative',
+                                        dryRunFilters[colDef.key] &&
+                                          dryRunFilters[colDef.key].length > 0
+                                          ? 'text-white bg-primary/40'
+                                          : 'text-indigo-200 hover:text-white hover:bg-indigo-800/50',
+                                      )}
+                                      title="Filtrar coluna"
                                     >
-                                      <MoreVertical className="h-4 w-4" />
+                                      <Filter className="h-3 w-3" />
+                                      {dryRunFilters[colDef.key] &&
+                                        dryRunFilters[colDef.key].length > 0 && (
+                                          <span className="absolute -top-0.5 -right-0.5 flex h-2 w-2 items-center justify-center rounded-full bg-primary text-[8px] text-primary-foreground"></span>
+                                        )}
                                     </Button>
-                                  </DropdownMenuTrigger>
-                                  <DropdownMenuContent align="start" className="w-48">
-                                    <DropdownMenuGroup>
-                                      <DropdownMenuLabel className="text-xs text-slate-500 uppercase tracking-wider">
-                                        Alinhamento
-                                      </DropdownMenuLabel>
-                                      <div className="flex items-center gap-1 px-2 py-1.5">
+                                  </PopoverTrigger>
+                                  <PopoverContent className="w-[200px] p-0" align="start">
+                                    <Command>
+                                      <CommandInput
+                                        placeholder="Buscar..."
+                                        className="h-8 text-xs"
+                                      />
+                                      <div className="flex items-center gap-1 p-1 border-b border-slate-100 bg-slate-50">
                                         <Button
-                                          variant={
-                                            (dryRunPrefs.alignments?.[colDef.key] ||
-                                              colDef.defaultAlign) === 'left'
-                                              ? 'secondary'
-                                              : 'ghost'
-                                          }
-                                          size="icon"
-                                          className="h-7 w-7"
-                                          onClick={() =>
-                                            updateDryRunPrefs({
-                                              alignments: {
-                                                ...(dryRunPrefs.alignments || {}),
-                                                [colDef.key]: 'left',
-                                              },
-                                            })
-                                          }
+                                          variant="secondary"
+                                          size="sm"
+                                          className="h-6 flex-1 text-[10px]"
+                                          onMouseDown={(e) => {
+                                            e.preventDefault()
+                                            e.stopPropagation()
+                                          }}
+                                          onClick={(e) => {
+                                            e.stopPropagation()
+                                            const allVals = (dryRunOptions[colDef.key] || []).map(
+                                              (o) => o.value,
+                                            )
+                                            setDryRunFilters((prev) => ({
+                                              ...prev,
+                                              [colDef.key]: allVals,
+                                            }))
+                                            setDryRunPage(0)
+                                          }}
                                         >
-                                          <AlignLeft className="h-3.5 w-3.5" />
+                                          Todos
                                         </Button>
                                         <Button
-                                          variant={
-                                            (dryRunPrefs.alignments?.[colDef.key] ||
-                                              colDef.defaultAlign) === 'center'
-                                              ? 'secondary'
-                                              : 'ghost'
-                                          }
-                                          size="icon"
-                                          className="h-7 w-7"
-                                          onClick={() =>
-                                            updateDryRunPrefs({
-                                              alignments: {
-                                                ...(dryRunPrefs.alignments || {}),
-                                                [colDef.key]: 'center',
-                                              },
-                                            })
-                                          }
+                                          variant="secondary"
+                                          size="sm"
+                                          className="h-6 flex-1 text-[10px]"
+                                          onMouseDown={(e) => {
+                                            e.preventDefault()
+                                            e.stopPropagation()
+                                          }}
+                                          onClick={(e) => {
+                                            e.stopPropagation()
+                                            setDryRunFilters((prev) => ({
+                                              ...prev,
+                                              [colDef.key]: [],
+                                            }))
+                                            setDryRunPage(0)
+                                          }}
                                         >
-                                          <AlignCenter className="h-3.5 w-3.5" />
-                                        </Button>
-                                        <Button
-                                          variant={
-                                            (dryRunPrefs.alignments?.[colDef.key] ||
-                                              colDef.defaultAlign) === 'right'
-                                              ? 'secondary'
-                                              : 'ghost'
-                                          }
-                                          size="icon"
-                                          className="h-7 w-7"
-                                          onClick={() =>
-                                            updateDryRunPrefs({
-                                              alignments: {
-                                                ...(dryRunPrefs.alignments || {}),
-                                                [colDef.key]: 'right',
-                                              },
-                                            })
-                                          }
-                                        >
-                                          <AlignRight className="h-3.5 w-3.5" />
+                                          Nenhum
                                         </Button>
                                       </div>
-                                    </DropdownMenuGroup>
-                                  </DropdownMenuContent>
-                                </DropdownMenu>
-                              </div>
-                            </div>{' '}
-                          </TableHead>
-                        )
-                      })}
+                                      <CommandList className="max-h-[200px] overflow-y-auto">
+                                        <CommandEmpty className="py-2 text-xs text-center text-slate-500">
+                                          Nenhum encontrado.
+                                        </CommandEmpty>
+                                        <CommandGroup>
+                                          {(dryRunOptions[colDef.key] || []).map((opt) => {
+                                            const isSelected = dryRunFilters[colDef.key]?.includes(
+                                              opt.value,
+                                            )
+                                            return (
+                                              <CommandItem
+                                                key={opt.value}
+                                                onMouseDown={(e) => {
+                                                  e.preventDefault()
+                                                  e.stopPropagation()
+                                                }}
+                                                onSelect={() => {
+                                                  const current = dryRunFilters[colDef.key] || []
+                                                  const updated = isSelected
+                                                    ? current.filter((v) => v !== opt.value)
+                                                    : [...current, opt.value]
+                                                  setDryRunFilters((prev) => ({
+                                                    ...prev,
+                                                    [colDef.key]: updated,
+                                                  }))
+                                                  setDryRunPage(0)
+                                                }}
+                                                className="text-xs cursor-pointer"
+                                              >
+                                                <div
+                                                  className={cn(
+                                                    'mr-2 flex h-3 w-3 flex-shrink-0 items-center justify-center rounded-sm border border-primary',
+                                                    isSelected
+                                                      ? 'bg-primary text-primary-foreground'
+                                                      : 'opacity-50 [&_svg]:invisible',
+                                                  )}
+                                                >
+                                                  <Check className="h-2 w-2" />
+                                                </div>
+                                                <span
+                                                  className="truncate max-w-[140px]"
+                                                  title={opt.label}
+                                                >
+                                                  {opt.label}
+                                                </span>
+                                              </CommandItem>
+                                            )
+                                          })}
+                                        </CommandGroup>
+                                      </CommandList>
+                                    </Command>
+                                  </PopoverContent>
+                                </Popover>
+                              )}
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-6 w-6 rounded-sm text-white opacity-70 hover:opacity-100 hover:bg-white/20 relative ml-0.5"
+                                    title="Opções de visualização"
+                                  >
+                                    <MoreVertical className="h-4 w-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="start" className="w-48">
+                                  <DropdownMenuGroup>
+                                    <DropdownMenuLabel className="text-xs text-slate-500 uppercase tracking-wider">
+                                      Alinhamento
+                                    </DropdownMenuLabel>
+                                    <div className="flex items-center gap-1 px-2 py-1.5">
+                                      <Button
+                                        variant={
+                                          (dryRunPrefs.alignments?.[colDef.key] ||
+                                            colDef.defaultAlign) === 'left'
+                                            ? 'secondary'
+                                            : 'ghost'
+                                        }
+                                        size="icon"
+                                        className="h-7 w-7"
+                                        onClick={() =>
+                                          updateDryRunPrefs({
+                                            alignments: {
+                                              ...(dryRunPrefs.alignments || {}),
+                                              [colDef.key]: 'left',
+                                            },
+                                          })
+                                        }
+                                      >
+                                        <AlignLeft className="h-3.5 w-3.5" />
+                                      </Button>
+                                      <Button
+                                        variant={
+                                          (dryRunPrefs.alignments?.[colDef.key] ||
+                                            colDef.defaultAlign) === 'center'
+                                            ? 'secondary'
+                                            : 'ghost'
+                                        }
+                                        size="icon"
+                                        className="h-7 w-7"
+                                        onClick={() =>
+                                          updateDryRunPrefs({
+                                            alignments: {
+                                              ...(dryRunPrefs.alignments || {}),
+                                              [colDef.key]: 'center',
+                                            },
+                                          })
+                                        }
+                                      >
+                                        <AlignCenter className="h-3.5 w-3.5" />
+                                      </Button>
+                                      <Button
+                                        variant={
+                                          (dryRunPrefs.alignments?.[colDef.key] ||
+                                            colDef.defaultAlign) === 'right'
+                                            ? 'secondary'
+                                            : 'ghost'
+                                        }
+                                        size="icon"
+                                        className="h-7 w-7"
+                                        onClick={() =>
+                                          updateDryRunPrefs({
+                                            alignments: {
+                                              ...(dryRunPrefs.alignments || {}),
+                                              [colDef.key]: 'right',
+                                            },
+                                          })
+                                        }
+                                      >
+                                        <AlignRight className="h-3.5 w-3.5" />
+                                      </Button>
+                                    </div>
+                                  </DropdownMenuGroup>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </div>
+                          </div>{' '}
+                        </TableHead>
+                      )
+                    })}
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {loading ? (
+                    <TableRow>
+                      <TableCell
+                        colSpan={dryRunColOrder.length + 1}
+                        className="h-48 text-center text-slate-500 border-0"
+                      >
+                        <Loader2 className="h-6 w-6 animate-spin mx-auto text-indigo-600 mb-2" />
+                        Atualizando simulação...
+                      </TableCell>
                     </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {loading ? (
-                      <TableRow>
-                        <TableCell
-                          colSpan={dryRunColOrder.length + 1}
-                          className="h-48 text-center text-slate-500 border-0"
-                        >
-                          <Loader2 className="h-6 w-6 animate-spin mx-auto text-indigo-600 mb-2" />
-                          Atualizando simulação...
-                        </TableCell>
-                      </TableRow>
-                    ) : currentDryRunData.length === 0 ? (
-                      <TableRow>
-                        <TableCell
-                          colSpan={dryRunColOrder.length + 1}
-                          className="h-48 text-center text-slate-500 border-0"
-                        >
-                          Nenhum registro para exibir.
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      currentDryRunData.map((row) => {
-                        const sim = getAccountingEntriesSimulation(
-                          row,
-                          generateOptions.valueBase as 'valor' | 'valor_liquido',
-                        )
-                        const dtValue = row[generateOptions.dateBase as keyof typeof row]
-                        const dt = dtValue ? formatDate(dtValue) : '-'
-                        const cc = row.c_custo || 'Sem C.Custo'
-                        const descCc = row.descricao_c_custo || '-'
-                        const hist = row.historico || '-'
-                        const contaCaixaDesc = row.conta_caixa
-                          ? `${row.conta_caixa} - ${row.nome_caixa || ''}`
-                          : '-'
-                        const val = Number(
-                          row[generateOptions.valueBase as keyof typeof row] !== undefined &&
-                            row[generateOptions.valueBase as keyof typeof row] !== null
-                            ? row[generateOptions.valueBase as keyof typeof row]
-                            : row.valor_liquido || row.valor || 0,
-                        )
-                        const formatCurrency = (v: number) =>
-                          new Intl.NumberFormat('pt-BR', {
-                            style: 'currency',
-                            currency: 'BRL',
-                          }).format(v)
+                  ) : currentDryRunData.length === 0 ? (
+                    <TableRow>
+                      <TableCell
+                        colSpan={dryRunColOrder.length + 1}
+                        className="h-48 text-center text-slate-500 border-0"
+                      >
+                        Nenhum registro para exibir.
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    currentDryRunData.map((row) => {
+                      const sim = getAccountingEntriesSimulation(
+                        row,
+                        generateOptions.valueBase as 'valor' | 'valor_liquido',
+                      )
+                      const dtValue = row[generateOptions.dateBase as keyof typeof row]
+                      const dt = dtValue ? formatDate(dtValue) : '-'
+                      const cc = row.c_custo || 'Sem C.Custo'
+                      const descCc = row.descricao_c_custo || '-'
+                      const hist = row.historico || '-'
+                      const contaCaixaDesc = row.conta_caixa
+                        ? `${row.conta_caixa} - ${row.nome_caixa || ''}`
+                        : '-'
+                      const val = Number(
+                        row[generateOptions.valueBase as keyof typeof row] !== undefined &&
+                          row[generateOptions.valueBase as keyof typeof row] !== null
+                          ? row[generateOptions.valueBase as keyof typeof row]
+                          : row.valor_liquido || row.valor || 0,
+                      )
+                      const formatCurrency = (v: number) =>
+                        new Intl.NumberFormat('pt-BR', {
+                          style: 'currency',
+                          currency: 'BRL',
+                        }).format(v)
 
-                        const isError = !sim.debitAccount || !sim.creditAccount || !dtValue || !val
+                      const isError = !sim.debitAccount || !sim.creditAccount || !dtValue || !val
 
-                        return (
-                          <TableRow
-                            key={row.id}
-                            className={cn(
-                              'transition-colors border-0 border-b border-slate-100',
-                              isError ? 'bg-red-50 hover:bg-red-100' : 'hover:bg-slate-50',
-                            )}
+                      return (
+                        <TableRow
+                          key={row.id}
+                          className={cn(
+                            'transition-colors border-0 border-b border-slate-100',
+                            isError ? 'bg-red-50 hover:bg-red-100' : 'hover:bg-slate-50',
+                          )}
+                        >
+                          <TableCell
+                            className="px-2 py-1 text-center align-middle"
+                            style={getDryRunGridlineStyle()}
                           >
-                            <TableCell
-                              className="px-2 py-1 text-center align-middle"
-                              style={getDryRunGridlineStyle()}
-                            >
-                              <Checkbox
-                                checked={selectedIds.includes(row.id)}
-                                onCheckedChange={() => toggleRow(row.id)}
-                              />
-                            </TableCell>
+                            <Checkbox
+                              checked={selectedIds.includes(row.id)}
+                              onCheckedChange={() => toggleRow(row.id)}
+                            />
+                          </TableCell>
 
-                            {dryRunColOrder.map((key) => {
-                              if (key === 'status') {
-                                return (
-                                  <TableCell key={key} {...getDryRunCellProps(key, 'center')}>
-                                    {row.status === 'Concluído' ? (
-                                      <span className="text-emerald-700 font-semibold text-[0.85em] bg-emerald-100 px-2 py-0.5 rounded-full border border-emerald-200">
-                                        Concluído
+                          {dryRunColOrder.map((key) => {
+                            if (key === 'status') {
+                              return (
+                                <TableCell key={key} {...getDryRunCellProps(key, 'center')}>
+                                  {row.status === 'Concluído' ? (
+                                    <span className="text-emerald-700 font-semibold text-[0.85em] bg-emerald-100 px-2 py-0.5 rounded-full border border-emerald-200">
+                                      Concluído
+                                    </span>
+                                  ) : row.status === 'Ignorado' ? (
+                                    <span className="text-slate-600 font-semibold text-[0.85em] bg-slate-100 px-2 py-0.5 rounded-full border border-slate-200">
+                                      Ignorado
+                                    </span>
+                                  ) : (
+                                    <span className="text-amber-700 font-semibold text-[0.85em] bg-amber-100 px-2 py-0.5 rounded-full border border-amber-200">
+                                      {row.status || 'Pendente'}
+                                    </span>
+                                  )}
+                                </TableCell>
+                              )
+                            }
+
+                            if (key === 'data_emissao') {
+                              const valStr = row.data_emissao ? formatDate(row.data_emissao) : '-'
+                              return (
+                                <TableCell
+                                  key={key}
+                                  {...getDryRunCellProps(
+                                    key,
+                                    'center',
+                                    isError ? 'text-red-700' : 'text-slate-600 whitespace-nowrap',
+                                  )}
+                                >
+                                  {valStr}
+                                </TableCell>
+                              )
+                            }
+
+                            if (key === 'dt_compens') {
+                              const valStr = row.dt_compens ? formatDate(row.dt_compens) : '-'
+                              return (
+                                <TableCell
+                                  key={key}
+                                  {...getDryRunCellProps(
+                                    key,
+                                    'center',
+                                    isError ? 'text-red-700' : 'text-slate-600 whitespace-nowrap',
+                                  )}
+                                >
+                                  {valStr}
+                                </TableCell>
+                              )
+                            }
+
+                            if (key === 'conta_debito') {
+                              return (
+                                <TableCell key={key} {...getDryRunCellProps(key, 'left')}>
+                                  {sim.debitAccount ? (
+                                    <div
+                                      className={cn(
+                                        'flex items-center gap-1.5',
+                                        getDryRunCellProps(key, 'left').className.includes(
+                                          'text-center',
+                                        )
+                                          ? 'justify-center'
+                                          : getDryRunCellProps(key, 'left').className.includes(
+                                                'text-right',
+                                              )
+                                            ? 'justify-end'
+                                            : 'justify-start',
+                                      )}
+                                    >
+                                      <span
+                                        className="font-mono bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded text-[0.85em] font-semibold border border-blue-200 shrink-0"
+                                        title="Código Reduzido"
+                                      >
+                                        {sim.debitAccount.account_code}
                                       </span>
-                                    ) : row.status === 'Ignorado' ? (
-                                      <span className="text-slate-600 font-semibold text-[0.85em] bg-slate-100 px-2 py-0.5 rounded-full border border-slate-200">
-                                        Ignorado
+                                      {sim.debitAccount.classification && (
+                                        <span
+                                          className="font-mono text-[0.85em] font-semibold text-slate-600 shrink-0"
+                                          title="Classificação"
+                                        >
+                                          {sim.debitAccount.classification}
+                                        </span>
+                                      )}
+                                      <span
+                                        className="truncate max-w-[200px] text-slate-700"
+                                        title={sim.debitAccount.account_name}
+                                      >
+                                        {sim.debitAccount.account_name}
                                       </span>
-                                    ) : (
-                                      <span className="text-amber-700 font-semibold text-[0.85em] bg-amber-100 px-2 py-0.5 rounded-full border border-amber-200">
-                                        {row.status || 'Pendente'}
+                                    </div>
+                                  ) : (
+                                    <div
+                                      className={cn(
+                                        'flex w-full',
+                                        getDryRunCellProps(key, 'left').className.includes(
+                                          'text-center',
+                                        )
+                                          ? 'justify-center'
+                                          : getDryRunCellProps(key, 'left').className.includes(
+                                                'text-right',
+                                              )
+                                            ? 'justify-end'
+                                            : 'justify-start',
+                                      )}
+                                    >
+                                      <span className="text-red-500 italic text-[0.9em] font-semibold">
+                                        Pendente
                                       </span>
-                                    )}
-                                  </TableCell>
-                                )
-                              }
+                                    </div>
+                                  )}
+                                </TableCell>
+                              )
+                            }
 
-                              if (key === 'data_emissao') {
-                                const valStr = row.data_emissao ? formatDate(row.data_emissao) : '-'
-                                return (
-                                  <TableCell
-                                    key={key}
-                                    {...getDryRunCellProps(
-                                      key,
-                                      'center',
-                                      isError ? 'text-red-700' : 'text-slate-600 whitespace-nowrap',
-                                    )}
-                                  >
-                                    {valStr}
-                                  </TableCell>
-                                )
-                              }
-
-                              if (key === 'dt_compens') {
-                                const valStr = row.dt_compens ? formatDate(row.dt_compens) : '-'
-                                return (
-                                  <TableCell
-                                    key={key}
-                                    {...getDryRunCellProps(
-                                      key,
-                                      'center',
-                                      isError ? 'text-red-700' : 'text-slate-600 whitespace-nowrap',
-                                    )}
-                                  >
-                                    {valStr}
-                                  </TableCell>
-                                )
-                              }
-
-                              if (key === 'conta_debito') {
-                                return (
-                                  <TableCell key={key} {...getDryRunCellProps(key, 'left')}>
-                                    {sim.debitAccount ? (
-                                      <div
-                                        className={cn(
-                                          'flex items-center gap-1.5',
-                                          getDryRunCellProps(key, 'left').className.includes(
-                                            'text-center',
-                                          )
-                                            ? 'justify-center'
-                                            : getDryRunCellProps(key, 'left').className.includes(
-                                                  'text-right',
-                                                )
-                                              ? 'justify-end'
-                                              : 'justify-start',
-                                        )}
+                            if (key === 'conta_credito') {
+                              return (
+                                <TableCell key={key} {...getDryRunCellProps(key, 'left')}>
+                                  {sim.creditAccount ? (
+                                    <div
+                                      className={cn(
+                                        'flex items-center gap-1.5',
+                                        getDryRunCellProps(key, 'left').className.includes(
+                                          'text-center',
+                                        )
+                                          ? 'justify-center'
+                                          : getDryRunCellProps(key, 'left').className.includes(
+                                                'text-right',
+                                              )
+                                            ? 'justify-end'
+                                            : 'justify-start',
+                                      )}
+                                    >
+                                      <span
+                                        className="font-mono bg-rose-100 text-rose-800 px-1.5 py-0.5 rounded text-[0.85em] font-semibold border border-rose-200 shrink-0"
+                                        title="Código Reduzido"
                                       >
+                                        {sim.creditAccount.account_code}
+                                      </span>
+                                      {sim.creditAccount.classification && (
                                         <span
-                                          className="font-mono bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded text-[0.85em] font-semibold border border-blue-200 shrink-0"
-                                          title="Código Reduzido"
+                                          className="font-mono text-[0.85em] font-semibold text-slate-600 shrink-0"
+                                          title="Classificação"
                                         >
-                                          {sim.debitAccount.account_code}
+                                          {sim.creditAccount.classification}
                                         </span>
-                                        {sim.debitAccount.classification && (
-                                          <span
-                                            className="font-mono text-[0.85em] font-semibold text-slate-600 shrink-0"
-                                            title="Classificação"
-                                          >
-                                            {sim.debitAccount.classification}
-                                          </span>
-                                        )}
-                                        <span
-                                          className="truncate max-w-[200px] text-slate-700"
-                                          title={sim.debitAccount.account_name}
-                                        >
-                                          {sim.debitAccount.account_name}
-                                        </span>
-                                      </div>
-                                    ) : (
-                                      <div
-                                        className={cn(
-                                          'flex w-full',
-                                          getDryRunCellProps(key, 'left').className.includes(
-                                            'text-center',
-                                          )
-                                            ? 'justify-center'
-                                            : getDryRunCellProps(key, 'left').className.includes(
-                                                  'text-right',
-                                                )
-                                              ? 'justify-end'
-                                              : 'justify-start',
-                                        )}
+                                      )}
+                                      <span
+                                        className="truncate max-w-[200px] text-slate-700"
+                                        title={sim.creditAccount.account_name}
                                       >
-                                        <span className="text-red-500 italic text-[0.9em] font-semibold">
-                                          Pendente
-                                        </span>
-                                      </div>
-                                    )}
-                                  </TableCell>
-                                )
-                              }
+                                        {sim.creditAccount.account_name}
+                                      </span>
+                                    </div>
+                                  ) : (
+                                    <div
+                                      className={cn(
+                                        'flex w-full',
+                                        getDryRunCellProps(key, 'left').className.includes(
+                                          'text-center',
+                                        )
+                                          ? 'justify-center'
+                                          : getDryRunCellProps(key, 'left').className.includes(
+                                                'text-right',
+                                              )
+                                            ? 'justify-end'
+                                            : 'justify-start',
+                                      )}
+                                    >
+                                      <span className="text-red-500 italic text-[0.9em] font-semibold">
+                                        Pendente
+                                      </span>
+                                    </div>
+                                  )}
+                                </TableCell>
+                              )
+                            }
 
-                              if (key === 'conta_credito') {
-                                return (
-                                  <TableCell key={key} {...getDryRunCellProps(key, 'left')}>
-                                    {sim.creditAccount ? (
-                                      <div
-                                        className={cn(
-                                          'flex items-center gap-1.5',
-                                          getDryRunCellProps(key, 'left').className.includes(
-                                            'text-center',
-                                          )
-                                            ? 'justify-center'
-                                            : getDryRunCellProps(key, 'left').className.includes(
-                                                  'text-right',
-                                                )
-                                              ? 'justify-end'
-                                              : 'justify-start',
-                                        )}
-                                      >
-                                        <span
-                                          className="font-mono bg-rose-100 text-rose-800 px-1.5 py-0.5 rounded text-[0.85em] font-semibold border border-rose-200 shrink-0"
-                                          title="Código Reduzido"
-                                        >
-                                          {sim.creditAccount.account_code}
-                                        </span>
-                                        {sim.creditAccount.classification && (
-                                          <span
-                                            className="font-mono text-[0.85em] font-semibold text-slate-600 shrink-0"
-                                            title="Classificação"
-                                          >
-                                            {sim.creditAccount.classification}
-                                          </span>
-                                        )}
-                                        <span
-                                          className="truncate max-w-[200px] text-slate-700"
-                                          title={sim.creditAccount.account_name}
-                                        >
-                                          {sim.creditAccount.account_name}
-                                        </span>
-                                      </div>
-                                    ) : (
-                                      <div
-                                        className={cn(
-                                          'flex w-full',
-                                          getDryRunCellProps(key, 'left').className.includes(
-                                            'text-center',
-                                          )
-                                            ? 'justify-center'
-                                            : getDryRunCellProps(key, 'left').className.includes(
-                                                  'text-right',
-                                                )
-                                              ? 'justify-end'
-                                              : 'justify-start',
-                                        )}
-                                      >
-                                        <span className="text-red-500 italic text-[0.9em] font-semibold">
-                                          Pendente
-                                        </span>
-                                      </div>
-                                    )}
-                                  </TableCell>
-                                )
-                              }
+                            if (key === 'valor') {
+                              return (
+                                <TableCell
+                                  key={key}
+                                  {...getDryRunCellProps(
+                                    key,
+                                    'right',
+                                    cn(
+                                      'whitespace-nowrap font-bold',
+                                      isError ? 'text-red-700' : 'text-slate-900',
+                                    ),
+                                  )}
+                                >
+                                  {formatCurrency(Math.abs(val))}
+                                </TableCell>
+                              )
+                            }
 
-                              if (key === 'valor') {
-                                return (
-                                  <TableCell
-                                    key={key}
-                                    {...getDryRunCellProps(
-                                      key,
-                                      'right',
-                                      cn(
-                                        'whitespace-nowrap font-bold',
-                                        isError ? 'text-red-700' : 'text-slate-900',
-                                      ),
-                                    )}
-                                  >
-                                    {formatCurrency(Math.abs(val))}
-                                  </TableCell>
-                                )
-                              }
+                            if (key === 'c_custo') {
+                              return (
+                                <TableCell
+                                  key={key}
+                                  {...getDryRunCellProps(
+                                    key,
+                                    'center',
+                                    cn(
+                                      'whitespace-nowrap',
+                                      isError ? 'text-red-700' : 'text-slate-600',
+                                    ),
+                                  )}
+                                >
+                                  {cc}
+                                </TableCell>
+                              )
+                            }
 
-                              if (key === 'c_custo') {
-                                return (
-                                  <TableCell
-                                    key={key}
-                                    {...getDryRunCellProps(
-                                      key,
-                                      'center',
-                                      cn(
-                                        'whitespace-nowrap',
-                                        isError ? 'text-red-700' : 'text-slate-600',
-                                      ),
-                                    )}
-                                  >
-                                    {cc}
-                                  </TableCell>
-                                )
-                              }
+                            if (key === 'descricao_c_custo') {
+                              return (
+                                <TableCell
+                                  key={key}
+                                  {...getDryRunCellProps(
+                                    key,
+                                    'left',
+                                    cn(
+                                      'max-w-[200px] truncate',
+                                      isError ? 'text-red-700' : 'text-slate-600',
+                                    ),
+                                  )}
+                                  title={descCc}
+                                >
+                                  {descCc}
+                                </TableCell>
+                              )
+                            }
 
-                              if (key === 'descricao_c_custo') {
-                                return (
-                                  <TableCell
-                                    key={key}
-                                    {...getDryRunCellProps(
-                                      key,
-                                      'left',
-                                      cn(
-                                        'max-w-[200px] truncate',
-                                        isError ? 'text-red-700' : 'text-slate-600',
-                                      ),
-                                    )}
-                                    title={descCc}
-                                  >
-                                    {descCc}
-                                  </TableCell>
-                                )
-                              }
+                            if (key === 'conta_caixa') {
+                              return (
+                                <TableCell
+                                  key={key}
+                                  {...getDryRunCellProps(
+                                    key,
+                                    'left',
+                                    cn(
+                                      'max-w-[200px] truncate',
+                                      isError ? 'text-red-700' : 'text-slate-600',
+                                    ),
+                                  )}
+                                  title={contaCaixaDesc}
+                                >
+                                  {contaCaixaDesc}
+                                </TableCell>
+                              )
+                            }
 
-                              if (key === 'conta_caixa') {
-                                return (
-                                  <TableCell
-                                    key={key}
-                                    {...getDryRunCellProps(
-                                      key,
-                                      'left',
-                                      cn(
-                                        'max-w-[200px] truncate',
-                                        isError ? 'text-red-700' : 'text-slate-600',
-                                      ),
-                                    )}
-                                    title={contaCaixaDesc}
-                                  >
-                                    {contaCaixaDesc}
-                                  </TableCell>
-                                )
-                              }
+                            if (key === 'historico') {
+                              return (
+                                <TableCell
+                                  key={key}
+                                  {...getDryRunCellProps(
+                                    key,
+                                    'left',
+                                    cn(
+                                      'max-w-[300px] truncate',
+                                      isError ? 'text-red-700' : 'text-slate-600',
+                                    ),
+                                  )}
+                                  title={hist}
+                                >
+                                  {hist}
+                                </TableCell>
+                              )
+                            }
 
-                              if (key === 'historico') {
-                                return (
-                                  <TableCell
-                                    key={key}
-                                    {...getDryRunCellProps(
-                                      key,
-                                      'left',
-                                      cn(
-                                        'max-w-[300px] truncate',
-                                        isError ? 'text-red-700' : 'text-slate-600',
-                                      ),
-                                    )}
-                                    title={hist}
-                                  >
-                                    {hist}
-                                  </TableCell>
-                                )
-                              }
-
-                              return null
-                            })}
-                          </TableRow>
-                        )
-                      })
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
+                            return null
+                          })}
+                        </TableRow>
+                      )
+                    })
+                  )}
+                </TableBody>
+              </Table>
               <div className="flex flex-col sm:flex-row items-center justify-between p-3 border-t bg-slate-50/50 gap-4">
                 <div className="text-xs text-slate-500">
                   Mostrando {Math.min(dryRunPage * dryRunPageSize + 1, filteredDryRunData.length)} a{' '}
@@ -12441,8 +12429,8 @@ export default function FinancialMovements() {
                       )}
                     </div>
                   </div>
-                  <div className="overflow-x-auto border border-slate-200 rounded-lg">
-                    <Table>
+                  <div className="overflow-auto finance-table-scrollbar border border-slate-200 rounded-lg">
+                    <Table className="w-full min-w-max">
                       <TableHeader className="bg-slate-50">
                         <TableRow className="border-none">
                           {analiseGruposHeaders.map((col) => (
