@@ -168,10 +168,10 @@ function HeaderAlignmentMenu({
         <Button
           variant="ghost"
           size="icon"
-          className="h-5 w-5 rounded-sm opacity-50 hover:opacity-100 hover:bg-white/20 relative shrink-0 ml-1 transition-all"
+          className="h-6 w-6 rounded-sm text-white/70 hover:text-white hover:bg-white/20 relative shrink-0 ml-1 transition-all"
           onClick={(e) => e.stopPropagation()}
         >
-          <MoreVertical className="h-3 w-3" />
+          <MoreVertical className="h-4 w-4" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-48">
@@ -7195,12 +7195,12 @@ export default function FinancialMovements() {
                                     <Button
                                       variant="ghost"
                                       size="icon"
-                                      className="h-5 w-5 rounded-sm text-indigo-200 hover:text-white hover:bg-indigo-800/50 relative ml-0.5"
+                                      className="h-6 w-6 rounded-sm text-indigo-200 hover:text-white hover:bg-indigo-800/50 relative ml-0.5"
                                       title="Opções de visualização"
                                     >
-                                      <MoreVertical className="h-3 w-3" />
+                                      <MoreVertical className="h-4 w-4" />
                                     </Button>
-                                  </DropdownMenuTrigger>
+                                  </DropdownMenuTrigger>{' '}
                                   <DropdownMenuContent align="start" className="w-48">
                                     <DropdownMenuGroup>
                                       <DropdownMenuLabel className="text-xs text-slate-500 uppercase tracking-wider">
@@ -8770,10 +8770,10 @@ export default function FinancialMovements() {
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="h-5 w-5 rounded-sm opacity-50 hover:opacity-100 hover:bg-white/20 relative shrink-0 ml-1 transition-all"
+                              className="h-6 w-6 rounded-sm text-indigo-200 hover:text-white hover:bg-white/20 relative shrink-0 ml-1 transition-all"
                               title="Alinhamento"
                             >
-                              <MoreVertical className="h-3 w-3" />
+                              <MoreVertical className="h-4 w-4" />
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="start" className="w-48">
@@ -8982,10 +8982,10 @@ export default function FinancialMovements() {
                                 <Button
                                   variant="ghost"
                                   size="icon"
-                                  className="h-5 w-5 rounded-sm opacity-50 hover:opacity-100 hover:bg-white/20 relative shrink-0 ml-1 transition-all"
+                                  className="h-6 w-6 rounded-sm text-indigo-200 hover:text-white hover:bg-white/20 relative shrink-0 ml-1 transition-all"
                                   title="Alinhamento"
                                 >
-                                  <MoreVertical className="h-3 w-3" />
+                                  <MoreVertical className="h-4 w-4" />
                                 </Button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="start" className="w-48">
@@ -9911,12 +9911,12 @@ export default function FinancialMovements() {
                                     <Button
                                       variant="ghost"
                                       size="icon"
-                                      className="h-5 w-5 rounded-sm text-indigo-200 hover:text-white hover:bg-white/20 relative ml-0.5"
+                                      className="h-6 w-6 rounded-sm text-indigo-200 hover:text-white hover:bg-white/20 relative ml-0.5"
                                       title="Alinhamento"
                                     >
-                                      <MoreVertical className="h-3 w-3" />
+                                      <MoreVertical className="h-4 w-4" />
                                     </Button>
-                                  </DropdownMenuTrigger>
+                                  </DropdownMenuTrigger>{' '}
                                   <DropdownMenuContent align="start" className="w-48">
                                     <DropdownMenuGroup>
                                       <DropdownMenuLabel className="text-xs text-slate-500 uppercase tracking-wider">
@@ -10752,11 +10752,11 @@ export default function FinancialMovements() {
                                   <Button
                                     variant="ghost"
                                     size="icon"
-                                    className="h-5 w-5 rounded-sm opacity-50 hover:opacity-100 hover:bg-white/20 relative shrink-0 ml-1 transition-all"
+                                    className="h-6 w-6 rounded-sm text-indigo-200 hover:text-white hover:bg-white/20 relative shrink-0 ml-1 transition-all"
                                   >
-                                    <MoreVertical className="h-3 w-3" />
+                                    <MoreVertical className="h-4 w-4" />
                                   </Button>
-                                </DropdownMenuTrigger>
+                                </DropdownMenuTrigger>{' '}
                                 <DropdownMenuContent align="start" className="w-48">
                                   <DropdownMenuGroup>
                                     <DropdownMenuLabel className="text-xs text-slate-500 uppercase tracking-wider">
@@ -12359,10 +12359,10 @@ export default function FinancialMovements() {
                                     <Button
                                       variant="ghost"
                                       size="icon"
-                                      className="h-5 w-5 rounded-sm text-slate-400 hover:text-slate-700 hover:bg-slate-200 relative shrink-0"
+                                      className="h-6 w-6 rounded-sm text-slate-400 hover:text-slate-700 hover:bg-slate-200 relative shrink-0"
                                       title="Alinhamento"
                                     >
-                                      <MoreVertical className="h-3 w-3" />
+                                      <MoreVertical className="h-4 w-4" />
                                     </Button>
                                   </DropdownMenuTrigger>
                                   <DropdownMenuContent align="start" className="w-48">
