@@ -184,6 +184,35 @@ export function AccountCombobox({
       node.account?.account_level === 'Sintética' || (hasChildren && !node.account?.account_level)
     const isSelectable = node.value && !isSynthetic
 
+    const level = (node.key.match(/\./g) || []).length + 1
+
+    const getRowClassName = () => {
+      if (isSynthetic) {
+        if (level === 1)
+          return 'bg-indigo-950 text-white data-[selected=true]:bg-indigo-900 data-[selected=true]:text-white'
+        if (level === 2)
+          return 'bg-blue-800 text-white data-[selected=true]:bg-blue-700 data-[selected=true]:text-white'
+        if (level === 3)
+          return 'bg-blue-500 text-white data-[selected=true]:bg-blue-400 data-[selected=true]:text-white'
+        if (level === 4)
+          return 'bg-blue-200 text-blue-950 data-[selected=true]:bg-blue-300 data-[selected=true]:text-blue-950'
+        return 'bg-blue-50 text-blue-900 data-[selected=true]:bg-blue-100 data-[selected=true]:text-blue-900'
+      }
+      return 'bg-white text-slate-700 data-[selected=true]:bg-slate-50 border-b border-slate-100'
+    }
+
+    const getTextClassName = () => {
+      if (isSynthetic) {
+        if (level === 1) return 'font-bold'
+        if (level === 2) return 'font-semibold'
+        if (level === 3) return 'font-medium'
+        return 'font-medium uppercase'
+      }
+      return 'font-normal'
+    }
+
+    const isDarkBg = isSynthetic && level <= 3
+
     const item = (
       <CommandItem
         key={node.key}
@@ -201,9 +230,10 @@ export function AccountCombobox({
           }
         }}
         className={cn(
-          'flex items-center justify-between py-1.5 px-2 w-full',
-          isSelectable ? 'cursor-pointer' : 'opacity-80 cursor-default',
-          !isSelectable && hasChildren && 'cursor-pointer',
+          'flex items-center justify-between py-1.5 px-2 w-full rounded-none',
+          isSelectable ? 'cursor-pointer' : 'cursor-default opacity-90',
+          !isSelectable && hasChildren && 'cursor-pointer opacity-100',
+          getRowClassName(),
         )}
       >
         <div
@@ -212,8 +242,9 @@ export function AccountCombobox({
         >
           <div
             className={cn(
-              'w-6 h-6 flex items-center justify-center shrink-0 mr-1 rounded hover:bg-slate-200 transition-colors',
+              'w-6 h-6 flex items-center justify-center shrink-0 mr-1 rounded transition-colors',
               hasChildren ? 'cursor-pointer' : 'opacity-40 cursor-default',
+              isDarkBg ? 'hover:bg-white/20' : 'hover:bg-slate-200',
             )}
             onPointerDown={(e) => {
               if (hasChildren) {
@@ -231,24 +262,27 @@ export function AccountCombobox({
           >
             {hasChildren ? (
               isExpanded ? (
-                <ChevronDown className="h-4 w-4 text-slate-600" />
+                <ChevronDown
+                  className={cn('h-4 w-4', isDarkBg ? 'text-white' : 'text-slate-600')}
+                />
               ) : (
-                <ChevronRight className="h-4 w-4 text-slate-600" />
+                <ChevronRight
+                  className={cn('h-4 w-4', isDarkBg ? 'text-white' : 'text-slate-600')}
+                />
               )
             ) : (
-              <div className="w-1.5 h-1.5 rounded-full bg-slate-300" />
+              <div
+                className={cn(
+                  'w-1.5 h-1.5 rounded-full',
+                  isDarkBg ? 'bg-white/50' : 'bg-slate-300',
+                )}
+              />
             )}
           </div>
 
           <div className="flex flex-col min-w-0 flex-1">
             <span className="text-[13px] flex items-center gap-1.5 min-w-0">
-              <span
-                className={cn(
-                  'truncate',
-                  isSynthetic ? 'font-bold text-slate-800' : 'font-medium text-slate-700',
-                )}
-                title={node.label}
-              >
+              <span className={cn('truncate', getTextClassName())} title={node.label}>
                 {node.label}
               </span>
             </span>
@@ -259,7 +293,14 @@ export function AccountCombobox({
           {node.account?.account_code && (
             <Badge
               variant="secondary"
-              className="bg-indigo-950/10 text-indigo-950 font-bold hover:bg-indigo-950/20 border-0 px-1.5 py-0.5 rounded text-[10px]"
+              className={cn(
+                'font-bold border-0 px-1.5 py-0.5 rounded text-[10px]',
+                isDarkBg
+                  ? 'bg-white/20 text-white hover:bg-white/30'
+                  : isSynthetic && level === 4
+                    ? 'bg-blue-900/10 text-blue-900 hover:bg-blue-900/20'
+                    : 'bg-indigo-950/10 text-indigo-950 hover:bg-indigo-950/20',
+              )}
             >
               {node.account.account_code}
             </Badge>
@@ -267,7 +308,8 @@ export function AccountCombobox({
           <Check
             className={cn(
               'h-4 w-4 shrink-0 transition-opacity',
-              value === node.value ? 'opacity-100 text-indigo-600' : 'opacity-0',
+              value === node.value ? 'opacity-100' : 'opacity-0',
+              value === node.value && isDarkBg ? 'text-white' : 'text-indigo-600',
             )}
           />
         </div>
@@ -278,75 +320,6 @@ export function AccountCombobox({
       return [item, ...childrenList.flatMap((c) => renderNode(c, depth + 1))]
     }
     return [item]
-  }
-
-  const renderFlat = () => {
-    const searchLower = search.toLowerCase()
-    const matches = accounts.filter((account) => {
-      const isSynthetic = account.account_level === 'Sintética'
-      if (isSynthetic) return false
-
-      const searchString =
-        `${account.account_code || ''} ${account.classification || ''} ${account.account_name || ''}`.toLowerCase()
-      return searchString.includes(searchLower)
-    })
-
-    return matches.slice(0, 100).map((account) => {
-      const searchString =
-        `${account.account_code || ''} ${account.classification || ''} ${account.account_name || ''}`.toLowerCase()
-      return (
-        <CommandItem
-          key={account.id}
-          value={searchString}
-          onMouseDown={(e) => {
-            e.preventDefault()
-            e.stopPropagation()
-          }}
-          onSelect={() => {
-            onChange(account.id)
-            setOpen(false)
-          }}
-          className="flex items-center gap-2 py-2 px-3 cursor-pointer"
-        >
-          <Check
-            className={cn(
-              'mr-1 h-4 w-4 shrink-0',
-              value === account.id ? 'opacity-100 text-indigo-600' : 'opacity-0',
-            )}
-          />
-          <div className="flex items-center gap-2 truncate flex-1">
-            {account.account_code && (
-              <Badge
-                variant="secondary"
-                className="bg-indigo-950 text-white font-bold hover:bg-indigo-900 border-0 shrink-0 px-1.5 py-0.5 rounded text-[11px]"
-              >
-                {account.account_code}
-              </Badge>
-            )}
-            <div className="flex flex-col truncate">
-              <span className="text-[13px] flex items-center gap-1.5 min-w-0">
-                {account.classification && (
-                  <span className="font-mono text-slate-500 shrink-0">
-                    {account.classification}
-                  </span>
-                )}
-                <span
-                  className="font-medium text-slate-700 truncate"
-                  title={account.account_name || 'Sem nome'}
-                >
-                  {account.account_name || <span className="italic opacity-50">Sem nome</span>}
-                </span>
-              </span>
-              {account.hierarchyPath && account.hierarchyPath !== account.account_name && (
-                <span className="text-[10px] text-slate-400 truncate mt-0.5">
-                  {account.hierarchyPath}
-                </span>
-              )}
-            </div>
-          </div>
-        </CommandItem>
-      )
-    })
   }
 
   return (
@@ -458,10 +431,8 @@ export function AccountCombobox({
             <CommandEmpty className="py-6 text-center text-sm text-slate-500">
               Nenhuma conta encontrada.
             </CommandEmpty>
-            <CommandGroup>
-              {search
-                ? renderFlat()
-                : Object.values(tree.children).flatMap((c) => renderNode(c, 0))}
+            <CommandGroup className="p-0 [&_[cmdk-group-heading]]:hidden">
+              {Object.values(tree.children).flatMap((c) => renderNode(c, 0))}
             </CommandGroup>
           </CommandList>
         </Command>
