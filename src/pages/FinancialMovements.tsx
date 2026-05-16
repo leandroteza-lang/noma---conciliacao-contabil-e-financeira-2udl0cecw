@@ -641,7 +641,7 @@ function ChartAccountTreeFilterContent({
           className="h-6 flex-1 text-[10px]"
           onClick={() => onChange([])}
         >
-          Nenhum
+          Limpar
         </Button>
       </div>
       <div className="max-h-[300px] overflow-y-auto custom-scrollbar p-1">
@@ -814,7 +814,7 @@ function CostCenterTreeFilterContent({
           className="h-6 flex-1 text-[10px]"
           onClick={() => onChange([])}
         >
-          Nenhum
+          Limpar
         </Button>
       </div>
       <div className="max-h-[300px] overflow-y-auto custom-scrollbar p-1">
@@ -842,6 +842,8 @@ function ColumnFilter({
   alignmentMenu?: React.ReactNode
 }) {
   const [open, setOpen] = useState(false)
+  const isAllSelected = options.length > 0 && options.every((o) => selected.includes(o))
+  const hasActiveFilter = selected.length > 0 && !isAllSelected
 
   return (
     <div className="flex items-center justify-between gap-1 w-full relative">
@@ -854,12 +856,12 @@ function ColumnFilter({
               size="icon"
               className={cn(
                 'h-6 w-6 text-white hover:bg-white/20 shrink-0',
-                selected.length > 0 && 'bg-white/20',
+                hasActiveFilter && 'bg-white/20',
               )}
               onClick={(e) => e.stopPropagation()}
             >
               <Filter className="h-3 w-3" />
-              {selected.length > 0 && (
+              {hasActiveFilter && (
                 <span className="absolute -top-0.5 -right-0.5 flex h-2 w-2 items-center justify-center rounded-full bg-red-500 text-[8px] text-white"></span>
               )}
             </Button>
@@ -936,7 +938,7 @@ function ColumnFilter({
                       onChange([])
                     }}
                   >
-                    Nenhum
+                    Limpar
                   </Button>
                 </div>
                 <Button
@@ -981,6 +983,7 @@ function FilterDropdown({
   filterKey?: string
 }) {
   const [open, setOpen] = useState(false)
+  const isAllSelected = options.length > 0 && options.every((o) => selected.includes(o.value))
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -990,7 +993,11 @@ function FilterDropdown({
           className="w-full justify-between h-8 text-xs px-2 font-normal bg-white text-slate-700"
         >
           <span className="truncate">
-            {selected.length > 0 ? `${selected.length} selecionados` : title}
+            {selected.length === 0
+              ? title
+              : isAllSelected
+                ? `Todos (${options.length})`
+                : `${selected.length} selecionados`}
           </span>
           <ChevronsUpDown className="h-3 w-3 opacity-50 shrink-0 ml-1" />
         </Button>
@@ -1044,7 +1051,7 @@ function FilterDropdown({
                   onChange([])
                 }}
               >
-                Nenhum
+                Limpar
               </Button>
             </div>
             <CommandList className="max-h-[200px] overflow-y-auto custom-scrollbar">
@@ -1229,7 +1236,8 @@ function PeriodConsolidatedTable({
       const q = filterText.toLowerCase()
       result = result.filter((item) => item.name.toLowerCase().includes(q))
     }
-    if (colFilter.length > 0) {
+    const isAllSelected = options.length > 0 && options.every((o) => colFilter.includes(o))
+    if (colFilter.length > 0 && !isAllSelected) {
       result = result.filter((item) => colFilter.includes(item.name))
     }
     result.sort((a: any, b: any) => {
@@ -1651,7 +1659,8 @@ function AccountingConsolidatedTable({
 
   const aggregated = useMemo(() => {
     let result = Array.from(baseMap.values())
-    if (colFilter.length > 0) {
+    const isAllSelected = options.length > 0 && options.every((o) => colFilter.includes(o))
+    if (colFilter.length > 0 && !isAllSelected) {
       result = result.filter((item) => colFilter.includes(formatKey(item)))
     }
     result.sort((a: any, b: any) => {
@@ -1817,14 +1826,17 @@ function ColumnTreeFilterHeader({
   onChange,
   content,
   alignmentMenu,
+  isAllSelected = false,
 }: {
   title: React.ReactNode
   selected: string[]
   onChange: (val: string[]) => void
   content: React.ReactNode
   alignmentMenu?: React.ReactNode
+  isAllSelected?: boolean
 }) {
   const [open, setOpen] = useState(false)
+  const hasActiveFilter = selected.length > 0 && !isAllSelected
 
   return (
     <div className="flex items-center justify-between gap-1 w-full relative">
@@ -1837,12 +1849,12 @@ function ColumnTreeFilterHeader({
               size="icon"
               className={cn(
                 'h-6 w-6 text-white hover:bg-white/20 shrink-0',
-                selected.length > 0 && 'bg-white/20',
+                hasActiveFilter && 'bg-white/20',
               )}
               onClick={(e) => e.stopPropagation()}
             >
               <Filter className="h-3 w-3" />
-              {selected.length > 0 && (
+              {hasActiveFilter && (
                 <span className="absolute -top-0.5 -right-0.5 flex h-2 w-2 items-center justify-center rounded-full bg-red-500 text-[8px] text-white"></span>
               )}
             </Button>
@@ -2053,21 +2065,35 @@ function AccountingCrossReferenceTable({
 
   const aggregated = useMemo(() => {
     let result = Array.from(crossMap.values())
-    if (statusFilter.length > 0) {
+
+    const isAllStatusSelected =
+      statusOptions.length > 0 && statusOptions.every((o) => statusFilter.includes(o.value))
+    if (statusFilter.length > 0 && !isAllStatusSelected) {
       result = result.filter((item) => statusFilter.includes(item.groupStatus))
     }
-    if (ccFilter.length > 0) {
+
+    const isAllCcSelected =
+      ccOptions.length > 0 && ccOptions.every((o) => ccFilter.includes(o.value))
+    if (ccFilter.length > 0 && !isAllCcSelected) {
       result = result.filter((item) => ccFilter.includes(item.cCusto || 'Sem C. Custo'))
     }
-    if (cxFilter.length > 0) {
+
+    const isAllCxSelected = cxOptions.length > 0 && cxOptions.every((o) => cxFilter.includes(o))
+    if (cxFilter.length > 0 && !isAllCxSelected) {
       result = result.filter((item) => cxFilter.includes(formatCx(item)))
     }
-    if (debitFilter.length > 0) {
+
+    const isAllDebitSelected =
+      debitFilter.includes('PENDENTE') && chartOfAccounts.every((o) => debitFilter.includes(o.id))
+    if (debitFilter.length > 0 && !isAllDebitSelected) {
       result = result.filter((item) =>
         debitFilter.includes(item.debitAccount ? item.debitAccount.id : 'PENDENTE'),
       )
     }
-    if (creditFilter.length > 0) {
+
+    const isAllCreditSelected =
+      creditFilter.includes('PENDENTE') && chartOfAccounts.every((o) => creditFilter.includes(o.id))
+    if (creditFilter.length > 0 && !isAllCreditSelected) {
       result = result.filter((item) =>
         creditFilter.includes(item.creditAccount ? item.creditAccount.id : 'PENDENTE'),
       )
@@ -2191,6 +2217,7 @@ function AccountingCrossReferenceTable({
       defaultAlign: 'left',
       filter: (
         <ColumnTreeFilterHeader
+          isAllSelected={ccOptions.length > 0 && ccOptions.every((o) => ccFilter.includes(o.value))}
           title={
             <div
               className={cn(
@@ -2264,6 +2291,10 @@ function AccountingCrossReferenceTable({
       defaultAlign: 'left',
       filter: (
         <ColumnTreeFilterHeader
+          isAllSelected={
+            debitFilter.includes('PENDENTE') &&
+            chartOfAccounts.every((o) => debitFilter.includes(o.id))
+          }
           title={
             <div
               className={cn(
@@ -2303,6 +2334,10 @@ function AccountingCrossReferenceTable({
       defaultAlign: 'left',
       filter: (
         <ColumnTreeFilterHeader
+          isAllSelected={
+            creditFilter.includes('PENDENTE') &&
+            chartOfAccounts.every((o) => creditFilter.includes(o.id))
+          }
           title={
             <div
               className={cn(
@@ -3219,7 +3254,8 @@ function SummaryTable({
 
     let result = Array.from(baseMap.values())
 
-    if (col1Filter.length > 0) {
+    const isAllCol1 = col1Options.length > 0 && col1Options.every((o) => col1Filter.includes(o))
+    if (col1Filter.length > 0 && !isAllCol1) {
       result = result.filter((p) => col1Filter.includes(p.name))
     }
 
@@ -3227,7 +3263,8 @@ function SummaryTable({
       .map((p) => {
         let filteredItems = Array.from(p.items.values())
 
-        if (col2Filter.length > 0) {
+        const isAllCol2 = col2Options.length > 0 && col2Options.every((o) => col2Filter.includes(o))
+        if (col2Filter.length > 0 && !isAllCol2) {
           filteredItems = filteredItems.filter((i) => col2Filter.includes(i.name))
         }
 
@@ -8805,7 +8842,7 @@ export default function FinancialMovements() {
                                                 setPage(0)
                                               }}
                                             >
-                                              Nenhum
+                                              Limpar
                                             </Button>
                                           </div>
                                           <CommandList className="max-h-[200px] overflow-y-auto">
@@ -11646,7 +11683,7 @@ export default function FinancialMovements() {
                                             }))
                                           }}
                                         >
-                                          Nenhum
+                                          Limpar
                                         </Button>
                                       </div>
                                       <CommandList className="max-h-[200px] overflow-y-auto">
@@ -12614,7 +12651,7 @@ export default function FinancialMovements() {
                                                 setDryRunPage(0)
                                               }}
                                             >
-                                              Nenhum
+                                              Limpar
                                             </Button>
                                           </div>
                                           <CommandList className="max-h-[200px] overflow-y-auto">
