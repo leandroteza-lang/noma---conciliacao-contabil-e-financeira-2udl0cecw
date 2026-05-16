@@ -1528,6 +1528,7 @@ function PeriodConsolidatedTable({
         </TableBody>
       </Table>
     </TopScrollTableWrapper>
+    </div>
   )
 }
 
@@ -1876,6 +1877,30 @@ function AccountingCrossReferenceTable({
   prefs?: any
   updatePrefs?: any
 }) {
+  const [expandedNodes, setExpandedNodes] = useState<Record<string, { debit: boolean, credit: boolean }>>({})
+  
+  const toggleExpand = (key: string, side: 'debit' | 'credit') => {
+      setExpandedNodes(prev => ({
+          ...prev,
+          [key]: {
+              ...(prev[key] || { debit: false, credit: false }),
+              [side]: !prev[key]?.[side]
+          }
+      }))
+  }
+
+  const expandAll = () => {
+      const all: Record<string, { debit: boolean, credit: boolean }> = {}
+      crossMap.forEach((val, key) => {
+          all[key] = { debit: true, credit: true }
+      })
+      setExpandedNodes(all)
+  }
+
+  const collapseAll = () => {
+      setExpandedNodes({})
+  }
+
   const [ccFilter, setCcFilter] = useState<string[]>([])
   const [cxFilter, setCxFilter] = useState<string[]>([])
   const [debitFilter, setDebitFilter] = useState<string[]>([])
@@ -1919,6 +1944,7 @@ function AccountingCrossReferenceTable({
     const map = new Map<
       string,
       {
+        id: string
         cCusto: string
         descricaoCCusto: string
         contaCaixa: string
@@ -1931,6 +1957,24 @@ function AccountingCrossReferenceTable({
       }
     >()
     let unmappedAmount = 0
+
+    const getHierarchy = (acc: any) => {
+      let hierarchyArray: any[] = []
+      if (acc && acc.classification) {
+        const parts = acc.classification.split('.')
+        let currentClass = ''
+        for (let i = 0; i < parts.length; i++) {
+          currentClass += (i === 0 ? '' : '.') + parts[i]
+          const parentAcc = chartOfAccounts.find(
+            (c) =>
+              (c.classification === currentClass || c.account_code === currentClass) &&
+              c.organization_id === acc.organization_id,
+          )
+          if (parentAcc) hierarchyArray.push(parentAcc)
+        }
+      }
+      return hierarchyArray
+    }
 
     for (const row of data) {
       const sim = getAccountingEntriesSimulation(row)
@@ -1947,12 +1991,13 @@ function AccountingCrossReferenceTable({
       const key = `${cc}_${cx}_${sim.debitAccount.id}_${sim.creditAccount.id}`
       if (!map.has(key)) {
         map.set(key, {
+          id: key,
           cCusto: cc,
           descricaoCCusto: row.descricao_c_custo || '',
           contaCaixa: cx,
           nomeCaixa: row.nome_caixa || '',
-          debitAccount: sim.debitAccount,
-          creditAccount: sim.creditAccount,
+          debitAccount: { ...sim.debitAccount, hierarchyArray: getHierarchy(sim.debitAccount) },
+          creditAccount: { ...sim.creditAccount, hierarchyArray: getHierarchy(sim.creditAccount) },
           count: 0,
           amount: 0,
           rows: [],
@@ -1965,7 +2010,7 @@ function AccountingCrossReferenceTable({
     }
     return { map, unmappedAmount }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data])
+  }, [data, chartOfAccounts])
 
   const formatConta = (item: any) =>
     `${item.account_code} ${item.classification ? item.classification + ' ' : ''}- ${item.account_name}`
@@ -2295,7 +2340,19 @@ function AccountingCrossReferenceTable({
   }
 
   return (
-    <TopScrollTableWrapper>
+    <div className="flex flex-col w-full">
+      <div className="bg-slate-50 border-b border-slate-200 px-4 py-2 flex justify-between items-center shrink-0">
+        <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Hierarquia de Contas</span>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" className="h-7 text-xs bg-white shadow-sm" onClick={expandAll}>
+            <ChevronsUpDown className="h-3 w-3 mr-1 text-slate-400" /> Expandir Todos
+          </Button>
+          <Button variant="outline" size="sm" className="h-7 text-xs bg-white text-rose-600 hover:bg-rose-50 hover:text-rose-700 border-rose-200 shadow-sm" onClick={collapseAll}>
+            <ChevronRight className="h-3 w-3 mr-1" /> Recolher Todos
+          </Button>
+        </div>
+      </div>
+      <TopScrollTableWrapper>
       <Table
         className="w-full min-w-[1200px]"
         style={{ fontSize: tableFontSize ? `${tableFontSize}px` : undefined }}
@@ -2355,7 +2412,7 @@ function AccountingCrossReferenceTable({
                     <TableCell
                       key={col}
                       className={cn(
-                        'px-2 py-1.5 border-r border-slate-200 text-slate-700 font-medium',
+                        'px-2 py-1.5 border-r border-slate-200 text-slate-700 font-medium align-top pt-2',
                         getAlignClass(prefs, col, 'left'),
                       )}
                       style={getGridlineStyle(prefs)}
@@ -2380,7 +2437,7 @@ function AccountingCrossReferenceTable({
                     <TableCell
                       key={col}
                       className={cn(
-                        'px-2 py-1.5 border-r border-slate-200 text-slate-700 font-medium',
+                        'px-2 py-1.5 border-r border-slate-200 text-slate-700 font-medium align-top pt-2',
                         getAlignClass(prefs, col, 'left'),
                       )}
                       style={getGridlineStyle(prefs)}
@@ -2400,78 +2457,194 @@ function AccountingCrossReferenceTable({
                       </div>
                     </TableCell>
                   )
-                if (col === 'debitAccount')
+                if (col === 'debitAccount') {
+                  const isExpanded = expandedNodes[item.id]?.debit
+                  const hasHierarchy = item.debitAccount.hierarchyArray && item.debitAccount.hierarchyArray.length > 0
                   return (
                     <TableCell
                       key={col}
                       className={cn(
-                        'px-2 py-1.5 border-r border-slate-200 text-slate-700 font-medium',
+                        'px-2 py-1.5 border-r border-slate-200 text-slate-700 font-medium align-top',
                         getAlignClass(prefs, col, 'left'),
                       )}
                       style={getGridlineStyle(prefs)}
                     >
-                      <div
-                        className={cn(
-                          'flex items-center gap-1.5 w-full',
-                          getJustifyClass(prefs, col, 'left'),
-                        )}
-                      >
-                        <span className="font-mono bg-blue-50 text-blue-800 px-1.5 py-0.5 rounded text-[0.85em] font-semibold border border-blue-200 shrink-0">
-                          {item.debitAccount.account_code}
-                        </span>
-                        {item.debitAccount.classification && (
-                          <span className="font-mono text-[0.85em] font-semibold text-slate-500 shrink-0">
-                            {item.debitAccount.classification}
-                          </span>
-                        )}
-                        <span
-                          className="truncate max-w-[250px]"
-                          title={item.debitAccount.account_name}
+                      <div className="flex flex-col gap-1.5 w-full">
+                        <div
+                          className={cn(
+                            'flex items-center gap-1.5 w-full',
+                            getJustifyClass(prefs, col, 'left'),
+                          )}
                         >
-                          {item.debitAccount.account_name}
-                        </span>
+                          {hasHierarchy ? (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 w-6 p-0 shrink-0 hover:bg-slate-200"
+                              onClick={() => toggleExpand(item.id, 'debit')}
+                            >
+                              {isExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+                            </Button>
+                          ) : (
+                            <span className="w-6 shrink-0 inline-block" />
+                          )}
+                          <span className="font-mono bg-blue-50 text-blue-800 px-1.5 py-0.5 rounded text-[0.85em] font-semibold border border-blue-200 shrink-0">
+                            {item.debitAccount.account_code}
+                          </span>
+                          {item.debitAccount.classification && (
+                            <span className="font-mono text-[0.85em] font-semibold text-slate-500 shrink-0">
+                              {item.debitAccount.classification}
+                            </span>
+                          )}
+                          <span
+                            className="truncate max-w-[250px]"
+                            title={item.debitAccount.account_name}
+                          >
+                            {item.debitAccount.account_name}
+                          </span>
+                        </div>
+                        
+                        {isExpanded && hasHierarchy && (
+                          <div className="mt-1 rounded-md overflow-hidden border border-slate-200 shadow-sm animate-in fade-in slide-in-from-top-1 w-full max-w-sm self-start">
+                             <div className="bg-slate-50 px-2 py-1 border-b border-slate-200">
+                                <span className="text-[0.7em] font-bold uppercase text-slate-500 tracking-wider">Raiz Hierárquica</span>
+                             </div>
+                             <div className="flex flex-col">
+                                {item.debitAccount.hierarchyArray.map((node: any) => {
+                                  const code = node.classification || node.account_code || ''
+                                  const nodeLevel = (code.match(/\./g) || []).length + 1
+                                  const isSyn = node.account_level === 'Sintética'
+
+                                  let bg = '#ffffff', color = '#334155', fw = '500', badgeBg = '#f1f5f9', badgeColor = '#475569', badgeBorder = '#e2e8f0'
+                                  if (isSyn) {
+                                      if (nodeLevel === 1) {
+                                          bg = '#1e1b4b'; color = '#ffffff'; fw = '700'; badgeBg = '#312e81'; badgeColor = '#ffffff'; badgeBorder = '#3730a3'
+                                      } else if (nodeLevel === 2) {
+                                          bg = '#312e81'; color = '#ffffff'; fw = '600'; badgeBg = '#3730a3'; badgeColor = '#ffffff'; badgeBorder = '#4338ca'
+                                      } else if (nodeLevel === 3) {
+                                          bg = '#3730a3'; color = '#ffffff'; fw = '500'; badgeBg = '#4338ca'; badgeColor = '#ffffff'; badgeBorder = '#4f46e5'
+                                      } else if (nodeLevel === 4) {
+                                          bg = '#e0e7ff'; color = '#1e1b4b'; fw = '500'; badgeBg = '#c7d2fe'; badgeColor = '#1e1b4b'; badgeBorder = '#a5b4fc'
+                                      } else {
+                                          bg = '#e0e7ff'; color = '#1e1b4b'; fw = '500'; badgeBg = '#c7d2fe'; badgeColor = '#1e1b4b'; badgeBorder = '#a5b4fc'
+                                      }
+                                  }
+
+                                  return (
+                                      <div key={node.id} className="flex items-center justify-start gap-2 px-2 py-1 transition-colors border-b border-slate-100/50 last:border-0" style={{ backgroundColor: bg }}>
+                                          <span style={{ backgroundColor: badgeBg, color: badgeColor, borderColor: badgeBorder }} className="font-mono text-[0.8em] px-1.5 py-0.5 rounded border shadow-sm shrink-0">
+                                              {code}
+                                          </span>
+                                          <span style={{ color, fontWeight: fw as any }} className="text-[0.85em] truncate">
+                                              {node.account_name}
+                                          </span>
+                                      </div>
+                                  )
+                                })}
+                             </div>
+                          </div>
+                        )}
                       </div>
                     </TableCell>
                   )
-                if (col === 'creditAccount')
+                }
+                if (col === 'creditAccount') {
+                  const isExpanded = expandedNodes[item.id]?.credit
+                  const hasHierarchy = item.creditAccount.hierarchyArray && item.creditAccount.hierarchyArray.length > 0
                   return (
                     <TableCell
                       key={col}
                       className={cn(
-                        'px-2 py-1.5 border-r border-slate-200 text-slate-700 font-medium',
+                        'px-2 py-1.5 border-r border-slate-200 text-slate-700 font-medium align-top',
                         getAlignClass(prefs, col, 'left'),
                       )}
                       style={getGridlineStyle(prefs)}
                     >
-                      <div
-                        className={cn(
-                          'flex items-center gap-1.5 w-full',
-                          getJustifyClass(prefs, col, 'left'),
-                        )}
-                      >
-                        <span className="font-mono bg-rose-50 text-rose-800 px-1.5 py-0.5 rounded text-[0.85em] font-semibold border border-rose-200 shrink-0">
-                          {item.creditAccount.account_code}
-                        </span>
-                        {item.creditAccount.classification && (
-                          <span className="font-mono text-[0.85em] font-semibold text-slate-500 shrink-0">
-                            {item.creditAccount.classification}
-                          </span>
-                        )}
-                        <span
-                          className="truncate max-w-[250px]"
-                          title={item.creditAccount.account_name}
+                      <div className="flex flex-col gap-1.5 w-full">
+                        <div
+                          className={cn(
+                            'flex items-center gap-1.5 w-full',
+                            getJustifyClass(prefs, col, 'left'),
+                          )}
                         >
-                          {item.creditAccount.account_name}
-                        </span>
+                          {hasHierarchy ? (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 w-6 p-0 shrink-0 hover:bg-slate-200"
+                              onClick={() => toggleExpand(item.id, 'credit')}
+                            >
+                              {isExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+                            </Button>
+                          ) : (
+                            <span className="w-6 shrink-0 inline-block" />
+                          )}
+                          <span className="font-mono bg-rose-50 text-rose-800 px-1.5 py-0.5 rounded text-[0.85em] font-semibold border border-rose-200 shrink-0">
+                            {item.creditAccount.account_code}
+                          </span>
+                          {item.creditAccount.classification && (
+                            <span className="font-mono text-[0.85em] font-semibold text-slate-500 shrink-0">
+                              {item.creditAccount.classification}
+                            </span>
+                          )}
+                          <span
+                            className="truncate max-w-[250px]"
+                            title={item.creditAccount.account_name}
+                          >
+                            {item.creditAccount.account_name}
+                          </span>
+                        </div>
+                        
+                        {isExpanded && hasHierarchy && (
+                          <div className="mt-1 rounded-md overflow-hidden border border-slate-200 shadow-sm animate-in fade-in slide-in-from-top-1 w-full max-w-sm self-start">
+                             <div className="bg-slate-50 px-2 py-1 border-b border-slate-200">
+                                <span className="text-[0.7em] font-bold uppercase text-slate-500 tracking-wider">Raiz Hierárquica</span>
+                             </div>
+                             <div className="flex flex-col">
+                                {item.creditAccount.hierarchyArray.map((node: any) => {
+                                  const code = node.classification || node.account_code || ''
+                                  const nodeLevel = (code.match(/\./g) || []).length + 1
+                                  const isSyn = node.account_level === 'Sintética'
+
+                                  let bg = '#ffffff', color = '#334155', fw = '500', badgeBg = '#f1f5f9', badgeColor = '#475569', badgeBorder = '#e2e8f0'
+                                  if (isSyn) {
+                                      if (nodeLevel === 1) {
+                                          bg = '#1e1b4b'; color = '#ffffff'; fw = '700'; badgeBg = '#312e81'; badgeColor = '#ffffff'; badgeBorder = '#3730a3'
+                                      } else if (nodeLevel === 2) {
+                                          bg = '#312e81'; color = '#ffffff'; fw = '600'; badgeBg = '#3730a3'; badgeColor = '#ffffff'; badgeBorder = '#4338ca'
+                                      } else if (nodeLevel === 3) {
+                                          bg = '#3730a3'; color = '#ffffff'; fw = '500'; badgeBg = '#4338ca'; badgeColor = '#ffffff'; badgeBorder = '#4f46e5'
+                                      } else if (nodeLevel === 4) {
+                                          bg = '#e0e7ff'; color = '#1e1b4b'; fw = '500'; badgeBg = '#c7d2fe'; badgeColor = '#1e1b4b'; badgeBorder = '#a5b4fc'
+                                      } else {
+                                          bg = '#e0e7ff'; color = '#1e1b4b'; fw = '500'; badgeBg = '#c7d2fe'; badgeColor = '#1e1b4b'; badgeBorder = '#a5b4fc'
+                                      }
+                                  }
+
+                                  return (
+                                      <div key={node.id} className="flex items-center justify-start gap-2 px-2 py-1 transition-colors border-b border-slate-100/50 last:border-0" style={{ backgroundColor: bg }}>
+                                          <span style={{ backgroundColor: badgeBg, color: badgeColor, borderColor: badgeBorder }} className="font-mono text-[0.8em] px-1.5 py-0.5 rounded border shadow-sm shrink-0">
+                                              {code}
+                                          </span>
+                                          <span style={{ color, fontWeight: fw as any }} className="text-[0.85em] truncate">
+                                              {node.account_name}
+                                          </span>
+                                      </div>
+                                  )
+                                })}
+                             </div>
+                          </div>
+                        )}
                       </div>
                     </TableCell>
                   )
+                }
                 if (col === 'count')
                   return (
                     <TableCell
                       key={col}
                       className={cn(
-                        'px-2 py-1.5 text-slate-700 border-r border-slate-200',
+                        'px-2 py-1.5 text-slate-700 border-r border-slate-200 align-top pt-2',
                         getAlignClass(prefs, col, 'center'),
                       )}
                       style={getGridlineStyle(prefs)}
@@ -2499,7 +2672,7 @@ function AccountingCrossReferenceTable({
                     <TableCell
                       key={col}
                       className={cn(
-                        'px-2 py-1.5 text-slate-700 font-bold whitespace-nowrap',
+                        'px-2 py-1.5 text-slate-700 font-bold whitespace-nowrap align-top pt-2',
                         getAlignClass(prefs, col, 'right'),
                       )}
                       style={getGridlineStyle(prefs)}
