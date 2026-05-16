@@ -2624,6 +2624,7 @@ function AccountingCrossReferenceTable({
         )}
       </TableBody>
     </Table>
+    </TopScrollTableWrapper>
   )
 }
 
