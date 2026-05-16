@@ -1,5 +1,14 @@
 import { useState, useMemo, useEffect } from 'react'
-import { Check, ChevronsUpDown, X, ChevronRight, ChevronDown } from 'lucide-react'
+import {
+  Check,
+  ChevronsUpDown,
+  X,
+  ChevronRight,
+  ChevronDown,
+  Folder,
+  FolderOpen,
+  FileText,
+} from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -64,9 +73,28 @@ export function AccountCombobox({
       allValues: [],
     }
 
+    const normalizeClassification = (cls: string) => {
+      if (!cls) return ''
+      const parts = cls.trim().split('.')
+      while (parts.length > 0 && /^0+$/.test(parts[parts.length - 1])) {
+        parts.pop()
+      }
+      return parts.join('.')
+    }
+
+    const accountsByNormClass = new Map<string, Account>()
+    accounts.forEach((acc) => {
+      if (acc.classification) {
+        const norm = normalizeClassification(acc.classification)
+        if (!accountsByNormClass.has(norm) || acc.account_level === 'Sintética') {
+          accountsByNormClass.set(norm, acc)
+        }
+      }
+    })
+
     const sorted = [...accounts].sort((a, b) => {
-      const classA = a.classification || ''
-      const classB = b.classification || ''
+      const classA = normalizeClassification(a.classification || '')
+      const classB = normalizeClassification(b.classification || '')
 
       const partsA = classA.split('.')
       const partsB = classB.split('.')
@@ -105,17 +133,21 @@ export function AccountCombobox({
         continue
       }
 
-      const parts = classification.split('.')
+      const normClass = normalizeClassification(classification)
+      if (!normClass) continue
+
+      const parts = normClass.split('.')
       let current = root
       let currentKey = ''
       for (let i = 0; i < parts.length; i++) {
         currentKey = currentKey ? `${currentKey}.${parts[i]}` : parts[i]
         if (!current.children[currentKey]) {
-          const parentAcc = accounts.find((c) => c.classification === currentKey)
+          const parentAcc = accountsByNormClass.get(currentKey)
           const desc = parentAcc ? parentAcc.account_name : ''
+          const displayClass = parentAcc?.classification || currentKey
           current.children[currentKey] = {
             key: currentKey,
-            label: desc ? `${currentKey} - ${desc}` : currentKey,
+            label: desc ? `${displayClass} - ${desc}` : displayClass,
             value: parentAcc ? parentAcc.id : null,
             account: parentAcc || null,
             children: {},
@@ -129,7 +161,8 @@ export function AccountCombobox({
       }
       current.value = acc.id
       current.account = acc
-      current.label = acc.account_name ? `${classification} - ${acc.account_name}` : classification
+      const displayClass = acc.classification || normClass
+      current.label = acc.account_name ? `${displayClass} - ${acc.account_name}` : displayClass
     }
 
     return root
@@ -282,6 +315,25 @@ export function AccountCombobox({
 
           <div className="flex flex-col min-w-0 flex-1">
             <span className="text-[13px] flex items-center gap-1.5 min-w-0">
+              {isSynthetic ? (
+                isExpanded && hasChildren ? (
+                  <FolderOpen
+                    className={cn(
+                      'w-3.5 h-3.5 shrink-0',
+                      isDarkBg ? 'opacity-70' : 'text-blue-500',
+                    )}
+                  />
+                ) : (
+                  <Folder
+                    className={cn(
+                      'w-3.5 h-3.5 shrink-0',
+                      isDarkBg ? 'opacity-70' : 'text-blue-500',
+                    )}
+                  />
+                )
+              ) : (
+                <FileText className="w-3.5 h-3.5 shrink-0 text-slate-400" />
+              )}
               <span className={cn('truncate', getTextClassName())} title={node.label}>
                 {node.label}
               </span>
