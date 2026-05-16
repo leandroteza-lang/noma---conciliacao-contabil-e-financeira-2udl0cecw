@@ -94,7 +94,7 @@ export function MultiSelect({
           <ChevronsUpDown className="h-3 w-3 shrink-0 opacity-50 ml-2 flex-none" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[250px] p-0" align="start">
+      <PopoverContent className="w-[250px] p-0 z-[110]" align="start">
         <Command>
           <CommandInput placeholder="Buscar..." className="h-8 text-xs" />
           <div className="flex items-center gap-1 p-1 border-b border-slate-100 bg-slate-50">
@@ -139,6 +139,7 @@ export function MultiSelect({
                 return (
                   <CommandItem
                     key={option.value}
+                    value={`${option.label} ${option.value}`}
                     onMouseDown={(e) => {
                       e.preventDefault()
                       e.stopPropagation()

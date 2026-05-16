@@ -137,6 +137,10 @@ export function AccountCombobox({
         <CommandItem
           key={node.id}
           value={searchString}
+          onMouseDown={(e) => {
+            e.preventDefault()
+            e.stopPropagation()
+          }}
           onSelect={() => {
             onChange(node.id)
             setOpen(false)
@@ -236,6 +240,10 @@ export function AccountCombobox({
         <CommandItem
           key={account.id}
           value={searchString}
+          onMouseDown={(e) => {
+            e.preventDefault()
+            e.stopPropagation()
+          }}
           onSelect={() => {
             onChange(account.id)
             setOpen(false)
@@ -344,7 +352,7 @@ export function AccountCombobox({
         </Button>
       </PopoverTrigger>
       <PopoverContent
-        className="w-[var(--radix-popover-trigger-width)] min-w-[350px] max-w-[90vw] p-0"
+        className="w-[var(--radix-popover-trigger-width)] min-w-[350px] max-w-[90vw] p-0 z-[110]"
         align="start"
       >
         <Command shouldFilter={false}>

@@ -431,7 +431,7 @@ function TreeColumnFilter({
             )}
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-[300px] p-0" align="start">
+        <PopoverContent className="w-[300px] p-0 z-[110]" align="start">
           <div className="p-2 border-b border-slate-100">
             <Input
               placeholder="Buscar..."
@@ -970,7 +970,7 @@ function ColumnFilter({
             )}
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-[200px] p-0" align="start">
+        <PopoverContent className="w-[200px] p-0 z-[110]" align="start">
           <Command>
             <CommandInput placeholder="Buscar..." className="h-8 text-xs" />
             <CommandList className="max-h-[200px] overflow-y-auto custom-scrollbar">
@@ -983,6 +983,10 @@ function ColumnFilter({
                     key={opt}
                     value={opt}
                     className="text-xs cursor-pointer"
+                    onMouseDown={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                    }}
                     onSelect={() => {
                       onChange(
                         selected.includes(opt)
@@ -1096,7 +1100,7 @@ function FilterDropdown({
         </Button>
       </PopoverTrigger>
       <PopoverContent
-        className={cn('p-0', type === 'flat' ? 'w-[200px]' : 'w-[300px]')}
+        className={cn('p-0 z-[110]', type === 'flat' ? 'w-[200px]' : 'w-[300px]')}
         align="start"
       >
         {type === 'cost_center' ? (
@@ -1160,7 +1164,11 @@ function FilterDropdown({
                   return (
                     <CommandItem
                       key={opt.value}
-                      value={opt.label}
+                      value={`${opt.label} ${opt.value}`}
+                      onMouseDown={(e) => {
+                        e.preventDefault()
+                        e.stopPropagation()
+                      }}
                       onSelect={() => {
                         const updated = isSelected
                           ? selected.filter((v) => v !== opt.value)
@@ -7746,7 +7754,7 @@ export default function FinancialMovements() {
                                   </PopoverTrigger>
                                   <PopoverContent
                                     className={cn(
-                                      'p-0',
+                                      'p-0 z-[110]',
                                       h.key === 'c_custo' ||
                                         h.key === 'conta_debito' ||
                                         h.key === 'conta_credito' ||
@@ -7838,6 +7846,7 @@ export default function FinancialMovements() {
                                               return (
                                                 <CommandItem
                                                   key={opt.value}
+                                                  value={`${opt.label} ${opt.value}`}
                                                   onMouseDown={(e) => {
                                                     e.preventDefault()
                                                     e.stopPropagation()
@@ -7858,6 +7867,7 @@ export default function FinancialMovements() {
                                                     opt.parent ? 'pl-6' : '',
                                                   )}
                                                 >
+                                                  {' '}
                                                   {opt.isParent && (
                                                     <div
                                                       className="mr-1 flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-sm hover:bg-slate-200"
@@ -8924,7 +8934,7 @@ export default function FinancialMovements() {
                     <span>Exibir Cards</span>
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent align="end" className="w-72 p-2">
+                <PopoverContent align="end" className="w-72 p-2 z-[110]">
                   <div className="flex flex-col gap-2">
                     <div className="flex items-center justify-between px-1">
                       <span className="text-xs font-semibold text-slate-700">
@@ -10525,7 +10535,7 @@ export default function FinancialMovements() {
                                       )}
                                     </Button>
                                   </PopoverTrigger>
-                                  <PopoverContent className="w-[200px] p-0" align="start">
+                                  <PopoverContent className="w-[200px] p-0 z-[110]" align="start">
                                     <Command>
                                       <CommandInput
                                         placeholder="Buscar..."
@@ -10581,6 +10591,7 @@ export default function FinancialMovements() {
                                             return (
                                               <CommandItem
                                                 key={opt.value}
+                                                value={`${opt.label} ${opt.value}`}
                                                 onMouseDown={(e) => {
                                                   e.preventDefault()
                                                   e.stopPropagation()
@@ -11222,7 +11233,7 @@ export default function FinancialMovements() {
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent
-                      className="w-[320px] p-4 flex flex-col gap-4 shadow-xl border-slate-200"
+                      className="w-[320px] p-4 flex flex-col gap-4 shadow-xl border-slate-200 z-[110]"
                       align="end"
                     >
                       <div className="flex items-center justify-between mb-2">
@@ -11457,7 +11468,7 @@ export default function FinancialMovements() {
                                   </PopoverTrigger>
                                   <PopoverContent
                                     className={cn(
-                                      'p-0',
+                                      'p-0 z-[110]',
                                       colDef.key === 'c_custo' ||
                                         colDef.key === 'conta_debito' ||
                                         colDef.key === 'conta_credito'
@@ -11547,7 +11558,11 @@ export default function FinancialMovements() {
                                               return (
                                                 <CommandItem
                                                   key={opt.value}
-                                                  value={opt.label}
+                                                  value={`${opt.label} ${opt.value}`}
+                                                  onMouseDown={(e) => {
+                                                    e.preventDefault()
+                                                    e.stopPropagation()
+                                                  }}
                                                   onSelect={() => {
                                                     const current = dryRunFilters[colDef.key] || []
                                                     const updated = isSelected
@@ -11561,6 +11576,7 @@ export default function FinancialMovements() {
                                                   }}
                                                   className="text-xs cursor-pointer"
                                                 >
+                                                  {' '}
                                                   <div
                                                     className={cn(
                                                       'mr-2 flex h-3 w-3 flex-shrink-0 items-center justify-center rounded-sm border border-primary',
@@ -13699,7 +13715,7 @@ export default function FinancialMovements() {
                       <ChevronsUpDown className="ml-2 h-5 w-5 shrink-0 opacity-50" />
                     </Button>
                   </PopoverTrigger>
-                  <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0 shadow-lg border-slate-200">
+                  <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0 shadow-lg border-slate-200 z-[110]">
                     <Command className="bg-white">
                       <CommandInput placeholder="Buscar por código ou nome..." className="h-11" />
                       <CommandList className="max-h-[300px]">
@@ -13711,6 +13727,10 @@ export default function FinancialMovements() {
                             <CommandItem
                               key={account.id}
                               value={`${account.account_code} ${account.classification || ''} ${account.account_name}`}
+                              onMouseDown={(e) => {
+                                e.preventDefault()
+                                e.stopPropagation()
+                              }}
                               onSelect={() => {
                                 setSelectedAccountId(account.id)
                                 setComboboxOpen(false)
