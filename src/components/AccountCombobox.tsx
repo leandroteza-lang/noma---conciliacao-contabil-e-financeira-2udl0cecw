@@ -65,13 +65,34 @@ export function AccountCombobox({
     }
 
     const sorted = [...accounts].sort((a, b) => {
-      const classA = a.classification || a.account_code || ''
-      const classB = b.classification || b.account_code || ''
-      return classA.localeCompare(classB, undefined, { numeric: true })
+      const classA = a.classification || ''
+      const classB = b.classification || ''
+
+      const partsA = classA.split('.')
+      const partsB = classB.split('.')
+
+      for (let i = 0; i < Math.max(partsA.length, partsB.length); i++) {
+        const partA = partsA[i]
+        const partB = partsB[i]
+
+        if (partA === undefined) return -1
+        if (partB === undefined) return 1
+
+        const numA = parseInt(partA, 10)
+        const numB = parseInt(partB, 10)
+
+        if (!isNaN(numA) && !isNaN(numB)) {
+          if (numA !== numB) return numA - numB
+        } else {
+          const cmp = partA.localeCompare(partB)
+          if (cmp !== 0) return cmp
+        }
+      }
+      return 0
     })
 
     for (const acc of sorted) {
-      const classification = acc.classification || acc.account_code || ''
+      const classification = acc.classification
       if (!classification) {
         root.children[acc.id] = {
           key: acc.id,
@@ -90,9 +111,7 @@ export function AccountCombobox({
       for (let i = 0; i < parts.length; i++) {
         currentKey = currentKey ? `${currentKey}.${parts[i]}` : parts[i]
         if (!current.children[currentKey]) {
-          const parentAcc = accounts.find(
-            (c) => c.classification === currentKey || c.account_code === currentKey,
-          )
+          const parentAcc = accounts.find((c) => c.classification === currentKey)
           const desc = parentAcc ? parentAcc.account_name : ''
           current.children[currentKey] = {
             key: currentKey,
@@ -161,6 +180,10 @@ export function AccountCombobox({
     const hasChildren = childrenList.length > 0
     const isExpanded = expanded.has(node.key) || hasSearch
 
+    const isSynthetic =
+      node.account?.account_level === 'Sintética' || (hasChildren && !node.account?.account_level)
+    const isSelectable = node.value && !isSynthetic
+
     const item = (
       <CommandItem
         key={node.key}
@@ -170,14 +193,17 @@ export function AccountCombobox({
           e.stopPropagation()
         }}
         onSelect={() => {
-          if (node.value) {
-            onChange(node.value)
+          if (isSelectable) {
+            onChange(node.value!)
             setOpen(false)
+          } else if (hasChildren) {
+            toggleExpand(node.key)
           }
         }}
         className={cn(
           'flex items-center justify-between py-1.5 px-2 w-full',
-          node.value ? 'cursor-pointer' : 'opacity-70 cursor-default',
+          isSelectable ? 'cursor-pointer' : 'opacity-80 cursor-default',
+          !isSelectable && hasChildren && 'cursor-pointer',
         )}
       >
         <div
@@ -219,7 +245,7 @@ export function AccountCombobox({
               <span
                 className={cn(
                   'truncate',
-                  hasChildren ? 'font-bold text-slate-800' : 'font-medium text-slate-700',
+                  isSynthetic ? 'font-bold text-slate-800' : 'font-medium text-slate-700',
                 )}
                 title={node.label}
               >
@@ -257,6 +283,9 @@ export function AccountCombobox({
   const renderFlat = () => {
     const searchLower = search.toLowerCase()
     const matches = accounts.filter((account) => {
+      const isSynthetic = account.account_level === 'Sintética'
+      if (isSynthetic) return false
+
       const searchString =
         `${account.account_code || ''} ${account.classification || ''} ${account.account_name || ''}`.toLowerCase()
       return searchString.includes(searchLower)
