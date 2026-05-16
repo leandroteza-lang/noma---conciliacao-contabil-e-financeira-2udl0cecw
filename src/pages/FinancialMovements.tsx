@@ -82,6 +82,7 @@ import { ImportErpFinancialModal } from '@/components/ImportErpFinancialModal'
 import { Progress } from '@/components/ui/progress'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Link as RouterLink } from 'react-router-dom'
 import { Label } from '@/components/ui/label'
 import { Filter, Check } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -3143,8 +3144,9 @@ export default function FinancialMovements() {
               row.valor_liquido === null ||
               row.valor_liquido === undefined
             let statusText = 'Pendente'
+            const sim = getAccountingEntriesSimulation(row)
             if (missing) statusText = 'Incompleto'
-            else if (getMappedAccount(row)) statusText = 'Mapeado'
+            else if (sim.debitAccount && sim.creditAccount) statusText = 'Mapeado'
             return filters['prontidao'].includes(statusText)
           })
         }
@@ -3203,8 +3205,9 @@ export default function FinancialMovements() {
                 !row.c_custo ||
                 row.valor_liquido === null ||
                 row.valor_liquido === undefined
+              const sim = getAccountingEntriesSimulation(row)
               if (missing) val = 'Incompleto'
-              else if (getMappedAccount(row)) val = 'Mapeado'
+              else if (sim.debitAccount && sim.creditAccount) val = 'Mapeado'
               else val = 'Pendente'
             }
             mappedRow[h.label] = val
@@ -3495,6 +3498,9 @@ export default function FinancialMovements() {
   const [mappingRow, setMappingRow] = useState<any | null>(null)
   const [comboboxOpen, setComboboxOpen] = useState(false)
   const [selectedAccountId, setSelectedAccountId] = useState<string>('')
+
+  const [bankComboboxOpen, setBankComboboxOpen] = useState(false)
+  const [selectedBankChartAccountId, setSelectedBankChartAccountId] = useState<string>('')
 
   const [generateModalOpen, setGenerateModalOpen] = useState(false)
   const [isGeneratingEntries, setIsGeneratingEntries] = useState(false)
@@ -4090,115 +4096,185 @@ export default function FinancialMovements() {
     if (mappingRow) {
       const mapped = getMappedAccount(mappingRow)
       setSelectedAccountId(mapped?.id || '')
+
+      const cleanContaCaixa = (mappingRow.conta_caixa || '').trim().toUpperCase()
+      const cleanNomeCaixa = (mappingRow.nome_caixa || '').trim().toUpperCase()
+      const bankAcc = bankAccounts.find((ba) => {
+        if (ba.organization_id !== mappingRow.organization_id) return false
+        const baCode = (ba.code || '').trim().toUpperCase()
+        const baDesc = (ba.description || '').trim().toUpperCase()
+        const baAccNum = (ba.account_number || '').trim().toUpperCase()
+
+        if (cleanContaCaixa && (baCode === cleanContaCaixa || baAccNum === cleanContaCaixa))
+          return true
+        if (cleanNomeCaixa && baDesc === cleanNomeCaixa) return true
+        return false
+      })
+
+      if (bankAcc && bankAcc.account_code) {
+        const bca = chartOfAccounts.find(
+          (c) => c.id === bankAcc.account_code || c.account_code === bankAcc.account_code,
+        )
+        setSelectedBankChartAccountId(bca?.id || '')
+      } else {
+        setSelectedBankChartAccountId('')
+      }
     }
-  }, [mappingRow])
+  }, [mappingRow, bankAccounts, chartOfAccounts])
 
   const handleSaveMapping = async () => {
-    if (!mappingRow || !selectedAccountId) return
+    if (!mappingRow) return
+    if (!selectedAccountId && !selectedBankChartAccountId) {
+      toast.error('Nenhuma conta selecionada para mapear.')
+      return
+    }
+
     const orgId = mappingRow.organization_id
     const cCustoCode = mappingRow.c_custo
 
-    const cleanCode = cCustoCode ? cCustoCode.trim().toUpperCase() : null
+    let ccSaved = false
+    let bankSaved = false
 
-    const matchingCcs = costCenters.filter(
-      (c) => c.organization_id === orgId && (c.code || '').trim().toUpperCase() === cleanCode,
-    )
+    if (selectedAccountId) {
+      const cleanCode = cCustoCode ? cCustoCode.trim().toUpperCase() : null
 
-    let ccId = null
-    let existingMap = null
+      const matchingCcs = costCenters.filter(
+        (c) => c.organization_id === orgId && (c.code || '').trim().toUpperCase() === cleanCode,
+      )
 
-    for (const cc of matchingCcs) {
-      const map = mappings.find((m) => m.cost_center_id === cc.id)
-      if (map) {
-        ccId = cc.id
-        existingMap = map
-        break
+      let ccId = null
+      let existingMap = null
+
+      for (const cc of matchingCcs) {
+        const map = mappings.find((m) => m.cost_center_id === cc.id)
+        if (map) {
+          ccId = cc.id
+          existingMap = map
+          break
+        }
       }
-    }
 
-    if (!ccId && matchingCcs.length > 0) {
-      ccId = matchingCcs[0].id
-    }
+      if (!ccId && matchingCcs.length > 0) {
+        ccId = matchingCcs[0].id
+      }
 
-    if (!ccId && cCustoCode) {
-      const newCcId = crypto.randomUUID()
-      await supabase.from('cost_centers').insert({
-        id: newCcId,
-        organization_id: orgId,
-        code: cCustoCode.trim(),
-        description: cCustoCode.trim(),
-      })
-      ccId = newCcId
-    }
-
-    if (ccId) {
-      if (existingMap) {
-        await supabase
-          .from('account_mapping')
-          .update({
-            chart_account_id: selectedAccountId,
-            deleted_at: null,
-            pending_deletion: false,
-          })
-          .eq('cost_center_id', ccId)
-          .eq('organization_id', orgId)
-      } else {
-        await supabase.from('account_mapping').insert({
+      if (!ccId && cCustoCode) {
+        const newCcId = crypto.randomUUID()
+        await supabase.from('cost_centers').insert({
+          id: newCcId,
           organization_id: orgId,
-          cost_center_id: ccId,
-          chart_account_id: selectedAccountId,
-          mapping_type: 'DE/PARA',
+          code: cCustoCode.trim(),
+          description: cCustoCode.trim(),
+        })
+        ccId = newCcId
+      }
+
+      if (ccId) {
+        if (existingMap) {
+          await supabase
+            .from('account_mapping')
+            .update({
+              chart_account_id: selectedAccountId,
+              deleted_at: null,
+              pending_deletion: false,
+            })
+            .eq('cost_center_id', ccId)
+            .eq('organization_id', orgId)
+        } else {
+          await supabase.from('account_mapping').insert({
+            organization_id: orgId,
+            cost_center_id: ccId,
+            chart_account_id: selectedAccountId,
+            mapping_type: 'DE/PARA',
+          })
+        }
+      }
+
+      if (cCustoCode) {
+        await supabase
+          .from('erp_financial_movements')
+          .update({ mapped_account_id: selectedAccountId })
+          .eq('organization_id', orgId)
+          .ilike('c_custo', cCustoCode.trim())
+      } else {
+        await supabase
+          .from('erp_financial_movements')
+          .update({ mapped_account_id: selectedAccountId })
+          .eq('id', mappingRow.id)
+      }
+
+      setSummaryData((prev) =>
+        prev.map((row) => {
+          if (
+            cCustoCode &&
+            row.c_custo &&
+            row.c_custo.trim().toUpperCase() === cCustoCode.trim().toUpperCase()
+          ) {
+            return { ...row, mapped_account_id: selectedAccountId }
+          }
+          if (!cCustoCode && row.id === mappingRow.id) {
+            return { ...row, mapped_account_id: selectedAccountId }
+          }
+          return row
+        }),
+      )
+      setData((prev) =>
+        prev.map((row) => {
+          if (
+            cCustoCode &&
+            row.c_custo &&
+            row.c_custo.trim().toUpperCase() === cCustoCode.trim().toUpperCase()
+          ) {
+            return { ...row, mapped_account_id: selectedAccountId }
+          }
+          if (!cCustoCode && row.id === mappingRow.id) {
+            return { ...row, mapped_account_id: selectedAccountId }
+          }
+          return row
+        }),
+      )
+      ccSaved = true
+    }
+
+    if (selectedBankChartAccountId) {
+      const cleanContaCaixa = (mappingRow.conta_caixa || '').trim().toUpperCase()
+      const cleanNomeCaixa = (mappingRow.nome_caixa || '').trim().toUpperCase()
+      let bankAcc = bankAccounts.find((ba) => {
+        if (ba.organization_id !== orgId) return false
+        const baCode = (ba.code || '').trim().toUpperCase()
+        const baDesc = (ba.description || '').trim().toUpperCase()
+        const baAccNum = (ba.account_number || '').trim().toUpperCase()
+
+        if (cleanContaCaixa && (baCode === cleanContaCaixa || baAccNum === cleanContaCaixa))
+          return true
+        if (cleanNomeCaixa && baDesc === cleanNomeCaixa) return true
+        return false
+      })
+
+      if (bankAcc) {
+        await supabase
+          .from('bank_accounts')
+          .update({ account_code: selectedBankChartAccountId })
+          .eq('id', bankAcc.id)
+      } else {
+        const newBankId = crypto.randomUUID()
+        await supabase.from('bank_accounts').insert({
+          id: newBankId,
+          organization_id: orgId,
+          description: mappingRow.nome_caixa || mappingRow.conta_caixa,
+          account_number: mappingRow.conta_caixa,
+          account_code: selectedBankChartAccountId,
+          code: mappingRow.conta_caixa,
         })
       }
+      bankSaved = true
     }
 
-    if (cCustoCode) {
-      await supabase
-        .from('erp_financial_movements')
-        .update({ mapped_account_id: selectedAccountId })
-        .eq('organization_id', orgId)
-        .ilike('c_custo', cCustoCode.trim())
-    } else {
-      await supabase
-        .from('erp_financial_movements')
-        .update({ mapped_account_id: selectedAccountId })
-        .eq('id', mappingRow.id)
+    if (ccSaved || bankSaved) {
+      toast.success('Mapeamento(s) salvo(s) com sucesso!')
+      setMappingRow(null)
+      setRefreshKey((k) => k + 1)
     }
-
-    setSummaryData((prev) =>
-      prev.map((row) => {
-        if (
-          cCustoCode &&
-          row.c_custo &&
-          row.c_custo.trim().toUpperCase() === cCustoCode.trim().toUpperCase()
-        ) {
-          return { ...row, mapped_account_id: selectedAccountId }
-        }
-        if (!cCustoCode && row.id === mappingRow.id) {
-          return { ...row, mapped_account_id: selectedAccountId }
-        }
-        return row
-      }),
-    )
-    setData((prev) =>
-      prev.map((row) => {
-        if (
-          cCustoCode &&
-          row.c_custo &&
-          row.c_custo.trim().toUpperCase() === cCustoCode.trim().toUpperCase()
-        ) {
-          return { ...row, mapped_account_id: selectedAccountId }
-        }
-        if (!cCustoCode && row.id === mappingRow.id) {
-          return { ...row, mapped_account_id: selectedAccountId }
-        }
-        return row
-      }),
-    )
-
-    toast.success('Mapeamento salvo com sucesso!')
-    setMappingRow(null)
-    setRefreshKey((k) => k + 1)
   }
 
   const [savedFilters, setSavedFilters] = useState<any[]>(() => {
@@ -4993,8 +5069,9 @@ export default function FinancialMovements() {
           row.valor_liquido === null ||
           row.valor_liquido === undefined
         let statusText = 'Pendente'
+        const sim = getAccountingEntriesSimulation(row)
         if (missing) statusText = 'Incompleto'
-        else if (getMappedAccount(row)) statusText = 'Mapeado'
+        else if (sim.debitAccount && sim.creditAccount) statusText = 'Mapeado'
         return filters['prontidao'].includes(statusText)
       })
     }
@@ -5024,7 +5101,8 @@ export default function FinancialMovements() {
             row.valor_liquido === null ||
             row.valor_liquido === undefined
           if (missing) return 2
-          if (getMappedAccount(row)) return 0
+          const sim = getAccountingEntriesSimulation(row)
+          if (sim.debitAccount && sim.creditAccount) return 0
           return 1
         }
         const statA = getStatus(a)
@@ -5167,8 +5245,9 @@ export default function FinancialMovements() {
           row.valor_liquido === null ||
           row.valor_liquido === undefined
         let statusText = 'Pendente'
+        const sim = getAccountingEntriesSimulation(row)
         if (missing) statusText = 'Incompleto'
-        else if (getMappedAccount(row)) statusText = 'Mapeado'
+        else if (sim.debitAccount && sim.creditAccount) statusText = 'Mapeado'
         return resumoFilters['prontidao'].includes(statusText)
       })
     }
@@ -5259,8 +5338,9 @@ export default function FinancialMovements() {
           row.valor_liquido === null ||
           row.valor_liquido === undefined
         let statusText = 'Pendente'
+        const sim = getAccountingEntriesSimulation(row)
         if (missing) statusText = 'Incompleto'
-        else if (getMappedAccount(row)) statusText = 'Mapeado'
+        else if (sim.debitAccount && sim.creditAccount) statusText = 'Mapeado'
         return filters['prontidao'].includes(statusText)
       })
     }
@@ -5290,7 +5370,8 @@ export default function FinancialMovements() {
             row.valor_liquido === null ||
             row.valor_liquido === undefined
           if (missing) return 2
-          if (getMappedAccount(row)) return 0
+          const sim = getAccountingEntriesSimulation(row)
+          if (sim.debitAccount && sim.creditAccount) return 0
           return 1
         }
         const statA = getStatus(a)
@@ -8166,7 +8247,7 @@ export default function FinancialMovements() {
                               .map((key) => {
                                 switch (key) {
                                   case 'prontidao': {
-                                    const mapped = getMappedAccount(row)
+                                    const sim = getAccountingEntriesSimulation(row)
                                     const isMissingData = missingFields.length > 0
                                     let statusColor = 'bg-amber-100 text-amber-800 border-amber-200'
                                     let statusText = 'Parcial'
@@ -8174,7 +8255,7 @@ export default function FinancialMovements() {
                                     if (isMissingData) {
                                       statusColor = 'bg-red-100 text-red-800 border-red-200'
                                       statusText = 'Incompleto'
-                                    } else if (mapped) {
+                                    } else if (sim.debitAccount && sim.creditAccount) {
                                       statusColor =
                                         'bg-emerald-100 text-emerald-800 border-emerald-200'
                                       statusText = 'Mapeado'
@@ -13777,89 +13858,246 @@ export default function FinancialMovements() {
                 </div>
               </div>
 
-              <div className="space-y-3">
-                <Label className="text-base font-semibold text-slate-800">
-                  Conta Contábil Correspondente
-                </Label>
-                <Popover open={comboboxOpen} onOpenChange={setComboboxOpen}>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      role="combobox"
-                      aria-expanded={comboboxOpen}
-                      className="w-full justify-between h-12 px-4 border-slate-300 shadow-sm font-medium text-slate-700"
-                    >
-                      {selectedAccountId
-                        ? chartOfAccounts.find((c) => c.id === selectedAccountId)?.account_name
-                        : 'Selecione uma conta contábil...'}
-                      <ChevronsUpDown className="ml-2 h-5 w-5 shrink-0 opacity-50" />
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0 shadow-lg border-slate-200 z-[110]">
-                    <Command className="bg-white">
-                      <CommandInput placeholder="Buscar por código ou nome..." className="h-11" />
-                      <CommandList className="max-h-[300px]">
-                        <CommandEmpty className="py-4 text-center text-slate-500">
-                          Nenhuma conta encontrada.
-                        </CommandEmpty>
-                        <CommandGroup>
-                          {chartOfAccounts.map((account) => (
-                            <CommandItem
-                              key={account.id}
-                              value={`${account.account_code} ${account.classification || ''} ${account.account_name}`}
-                              onMouseDown={(e) => {
-                                e.preventDefault()
-                                e.stopPropagation()
-                              }}
-                              onSelect={() => {
-                                setSelectedAccountId(account.id)
-                                setComboboxOpen(false)
-                              }}
-                              className="py-3 cursor-pointer"
-                            >
-                              <Check
-                                className={cn(
-                                  'mr-3 h-5 w-5 text-primary',
-                                  selectedAccountId === account.id ? 'opacity-100' : 'opacity-0',
-                                )}
-                              />
-                              <div className="flex flex-col gap-0.5">
-                                <span className="font-bold text-slate-800">
-                                  {account.account_name}
-                                </span>
-                                <div className="flex items-center gap-1.5">
-                                  <span className="bg-[#1e1b4b] text-white px-1.5 py-0.5 rounded text-[10px] font-bold font-mono min-w-[50px] text-center inline-block">
-                                    {account.account_code}
-                                  </span>
-                                  {account.classification && (
-                                    <span className="font-mono text-[10px] text-black font-semibold">
-                                      {account.classification}
-                                    </span>
+              <Tabs
+                defaultValue={(() => {
+                  const ccMapped = getMappedAccount(mappingRow)
+                  const cleanContaCaixa = (mappingRow.conta_caixa || '').trim().toUpperCase()
+                  const cleanNomeCaixa = (mappingRow.nome_caixa || '').trim().toUpperCase()
+                  const bankAcc = bankAccounts.find((ba) => {
+                    if (ba.organization_id !== mappingRow.organization_id) return false
+                    const baCode = (ba.code || '').trim().toUpperCase()
+                    const baDesc = (ba.description || '').trim().toUpperCase()
+                    const baAccNum = (ba.account_number || '').trim().toUpperCase()
+                    if (
+                      cleanContaCaixa &&
+                      (baCode === cleanContaCaixa || baAccNum === cleanContaCaixa)
+                    )
+                      return true
+                    if (cleanNomeCaixa && baDesc === cleanNomeCaixa) return true
+                    return false
+                  })
+                  const hasBankAcc = bankAcc && bankAcc.account_code
+                  if (!hasBankAcc && ccMapped) return 'bank'
+                  return 'cc'
+                })()}
+                className="w-full"
+              >
+                <TabsList className="grid w-full grid-cols-2 mb-4">
+                  <TabsTrigger value="cc" className="relative">
+                    Centro de Custo
+                    {!getMappedAccount(mappingRow) && (
+                      <span className="absolute top-1 right-1 flex h-2 w-2">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
+                      </span>
+                    )}
+                  </TabsTrigger>
+                  <TabsTrigger value="bank" className="relative">
+                    Caixa / Bancos
+                    {(() => {
+                      const cleanContaCaixa = (mappingRow.conta_caixa || '').trim().toUpperCase()
+                      const cleanNomeCaixa = (mappingRow.nome_caixa || '').trim().toUpperCase()
+                      const bankAcc = bankAccounts.find((ba) => {
+                        if (ba.organization_id !== mappingRow.organization_id) return false
+                        const baCode = (ba.code || '').trim().toUpperCase()
+                        const baDesc = (ba.description || '').trim().toUpperCase()
+                        const baAccNum = (ba.account_number || '').trim().toUpperCase()
+                        if (
+                          cleanContaCaixa &&
+                          (baCode === cleanContaCaixa || baAccNum === cleanContaCaixa)
+                        )
+                          return true
+                        if (cleanNomeCaixa && baDesc === cleanNomeCaixa) return true
+                        return false
+                      })
+                      const hasBankAcc = bankAcc && bankAcc.account_code
+                      return (
+                        !hasBankAcc && (
+                          <span className="absolute top-1 right-1 flex h-2 w-2">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
+                          </span>
+                        )
+                      )
+                    })()}
+                  </TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="cc" className="space-y-3 mt-0">
+                  <Label className="text-base font-semibold text-slate-800">
+                    Conta Contábil para Centro de Custo
+                  </Label>
+                  <Popover open={comboboxOpen} onOpenChange={setComboboxOpen}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        role="combobox"
+                        aria-expanded={comboboxOpen}
+                        className="w-full justify-between h-12 px-4 border-slate-300 shadow-sm font-medium text-slate-700"
+                      >
+                        {selectedAccountId
+                          ? chartOfAccounts.find((c) => c.id === selectedAccountId)?.account_name
+                          : 'Selecione uma conta contábil...'}
+                        <ChevronsUpDown className="ml-2 h-5 w-5 shrink-0 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0 shadow-lg border-slate-200 z-[110]">
+                      <Command className="bg-white">
+                        <CommandInput placeholder="Buscar por código ou nome..." className="h-11" />
+                        <CommandList className="max-h-[300px]">
+                          <CommandEmpty className="py-4 text-center text-slate-500">
+                            Nenhuma conta encontrada.
+                          </CommandEmpty>
+                          <CommandGroup>
+                            {chartOfAccounts.map((account) => (
+                              <CommandItem
+                                key={account.id}
+                                value={`${account.account_code} ${account.classification || ''} ${account.account_name}`}
+                                onMouseDown={(e) => {
+                                  e.preventDefault()
+                                  e.stopPropagation()
+                                }}
+                                onSelect={() => {
+                                  setSelectedAccountId(account.id)
+                                  setComboboxOpen(false)
+                                }}
+                                className="py-3 cursor-pointer"
+                              >
+                                <Check
+                                  className={cn(
+                                    'mr-3 h-5 w-5 text-primary',
+                                    selectedAccountId === account.id ? 'opacity-100' : 'opacity-0',
                                   )}
+                                />
+                                <div className="flex flex-col gap-0.5">
+                                  <span className="font-bold text-slate-800">
+                                    {account.account_name}
+                                  </span>
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="bg-[#1e1b4b] text-white px-1.5 py-0.5 rounded text-[10px] font-bold font-mono min-w-[50px] text-center inline-block">
+                                      {account.account_code}
+                                    </span>
+                                    {account.classification && (
+                                      <span className="font-mono text-[10px] text-black font-semibold">
+                                        {account.classification}
+                                      </span>
+                                    )}
+                                  </div>
                                 </div>
-                              </div>
-                            </CommandItem>
-                          ))}
-                        </CommandGroup>
-                      </CommandList>
-                    </Command>
-                  </PopoverContent>
-                </Popover>
-                <div className="text-xs text-slate-700 mt-3 p-3 bg-blue-50/50 border border-blue-100 rounded-md leading-relaxed shadow-sm">
-                  <strong className="text-blue-900 block mb-1">O que acontece ao salvar?</strong>
-                  Uma regra fixa de <strong>DE/PARA</strong> será criada no sistema, vinculando o
-                  Centro de Custo ERP atual (
-                  <span className="font-mono bg-white px-1 rounded border border-slate-200">
-                    {mappingRow.c_custo || 'Sem C.Custo'}
-                  </span>
-                  ) à Conta Contábil selecionada acima.
-                  <br />
-                  <br />
-                  Além de mapear este lançamento específico,{' '}
-                  <strong>todos os outros lançamentos</strong> (atuais e futuros) com este mesmo
-                  centro de custo serão atualizados e mapeados automaticamente.
-                </div>
-              </div>
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
+                  <div className="text-xs text-slate-700 mt-3 p-3 bg-blue-50/50 border border-blue-100 rounded-md leading-relaxed shadow-sm">
+                    <strong className="text-blue-900 block mb-1">O que acontece ao salvar?</strong>
+                    Uma regra fixa de <strong>DE/PARA</strong> será criada no sistema, vinculando o
+                    Centro de Custo ERP atual (
+                    <span className="font-mono bg-white px-1 rounded border border-slate-200">
+                      {mappingRow.c_custo || 'Sem C.Custo'}
+                    </span>
+                    ) à Conta Contábil selecionada acima.
+                  </div>
+                  <div className="flex justify-end">
+                    <Button variant="link" asChild size="sm" className="text-indigo-600 px-0">
+                      <RouterLink to="/centros-de-custo">
+                        Acessar Cadastro de Centros de Custo <ArrowRight className="h-3 w-3 ml-1" />
+                      </RouterLink>
+                    </Button>
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="bank" className="space-y-3 mt-0">
+                  <Label className="text-base font-semibold text-slate-800">
+                    Conta Contábil para Caixa/Banco
+                  </Label>
+                  <Popover open={bankComboboxOpen} onOpenChange={setBankComboboxOpen}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        role="combobox"
+                        aria-expanded={bankComboboxOpen}
+                        className="w-full justify-between h-12 px-4 border-slate-300 shadow-sm font-medium text-slate-700"
+                      >
+                        {selectedBankChartAccountId
+                          ? chartOfAccounts.find((c) => c.id === selectedBankChartAccountId)
+                              ?.account_name
+                          : 'Selecione uma conta contábil...'}
+                        <ChevronsUpDown className="ml-2 h-5 w-5 shrink-0 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0 shadow-lg border-slate-200 z-[110]">
+                      <Command className="bg-white">
+                        <CommandInput placeholder="Buscar por código ou nome..." className="h-11" />
+                        <CommandList className="max-h-[300px]">
+                          <CommandEmpty className="py-4 text-center text-slate-500">
+                            Nenhuma conta encontrada.
+                          </CommandEmpty>
+                          <CommandGroup>
+                            {chartOfAccounts.map((account) => (
+                              <CommandItem
+                                key={account.id}
+                                value={`${account.account_code} ${account.classification || ''} ${account.account_name}`}
+                                onMouseDown={(e) => {
+                                  e.preventDefault()
+                                  e.stopPropagation()
+                                }}
+                                onSelect={() => {
+                                  setSelectedBankChartAccountId(account.id)
+                                  setBankComboboxOpen(false)
+                                }}
+                                className="py-3 cursor-pointer"
+                              >
+                                <Check
+                                  className={cn(
+                                    'mr-3 h-5 w-5 text-primary',
+                                    selectedBankChartAccountId === account.id
+                                      ? 'opacity-100'
+                                      : 'opacity-0',
+                                  )}
+                                />
+                                <div className="flex flex-col gap-0.5">
+                                  <span className="font-bold text-slate-800">
+                                    {account.account_name}
+                                  </span>
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="bg-[#1e1b4b] text-white px-1.5 py-0.5 rounded text-[10px] font-bold font-mono min-w-[50px] text-center inline-block">
+                                      {account.account_code}
+                                    </span>
+                                    {account.classification && (
+                                      <span className="font-mono text-[10px] text-black font-semibold">
+                                        {account.classification}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
+                  <div className="text-xs text-slate-700 mt-3 p-3 bg-blue-50/50 border border-blue-100 rounded-md leading-relaxed shadow-sm">
+                    <strong className="text-blue-900 block mb-1">O que acontece ao salvar?</strong>
+                    Uma Conta Bancária será criada ou atualizada no sistema, vinculando o
+                    Caixa/Banco atual (
+                    <span className="font-mono bg-white px-1 rounded border border-slate-200">
+                      {mappingRow.conta_caixa || mappingRow.nome_caixa || 'Não informado'}
+                    </span>
+                    ) à Conta Contábil selecionada acima.
+                  </div>
+                  <div className="flex justify-end">
+                    <Button variant="link" asChild size="sm" className="text-indigo-600 px-0">
+                      <RouterLink to="/contas">
+                        Acessar Cadastro de Caixas/Bancos <ArrowRight className="h-3 w-3 ml-1" />
+                      </RouterLink>
+                    </Button>
+                  </div>
+                </TabsContent>
+              </Tabs>
 
               <div className="pt-6 border-t border-slate-200 flex flex-col-reverse sm:flex-row justify-end gap-3">
                 <Button
@@ -13872,10 +14110,10 @@ export default function FinancialMovements() {
                 <Button
                   className="h-11 shadow-sm sm:flex-1"
                   onClick={handleSaveMapping}
-                  disabled={!selectedAccountId}
+                  disabled={!selectedAccountId && !selectedBankChartAccountId}
                 >
                   <Save className="h-5 w-5 mr-2" />
-                  Salvar Mapeamento
+                  Salvar Mapeamento(s)
                 </Button>
               </div>
             </div>
