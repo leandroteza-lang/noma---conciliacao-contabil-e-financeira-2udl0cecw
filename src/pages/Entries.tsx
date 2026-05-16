@@ -43,7 +43,7 @@ export default function Entries() {
         const [accsRes, ccsRes, mapsRes] = await Promise.all([
           supabase
             .from('chart_of_accounts')
-            .select('id, account_code, account_name, account_type')
+            .select('id, account_code, account_name, account_type, classification')
             .eq('organization_id', currentOrgId)
             .is('deleted_at', null)
             .order('account_code')

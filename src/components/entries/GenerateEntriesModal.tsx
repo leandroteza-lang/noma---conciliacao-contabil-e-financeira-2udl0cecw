@@ -21,6 +21,7 @@ import {
 } from '@/components/ui/select'
 import { toast } from 'sonner'
 import { Wand2 } from 'lucide-react'
+import { AccountCombobox } from '@/components/AccountCombobox'
 
 export default function GenerateEntriesModal({
   costCenters,
@@ -153,28 +154,13 @@ export default function GenerateEntriesModal({
 
             <div className="space-y-2">
               <Label>Conta Contrapartida</Label>
-              <Select
+              <AccountCombobox
+                accounts={accounts}
                 value={form.counterpartAccountId}
-                onValueChange={(v) => setForm({ ...form, counterpartAccountId: v })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione a conta para fechar o saldo..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {accounts.length > 0 ? (
-                    accounts.map((a) => (
-                      <SelectItem key={a.id} value={a.id}>
-                        {a.account_code ? `${a.account_code} - ` : ''}
-                        {a.account_name || 'Conta sem nome'}
-                      </SelectItem>
-                    ))
-                  ) : (
-                    <div className="px-2 py-4 text-sm text-center text-slate-500">
-                      Nenhuma conta contábil cadastrada
-                    </div>
-                  )}
-                </SelectContent>
-              </Select>
+                onChange={(v) => setForm({ ...form, counterpartAccountId: v })}
+                onClear={() => setForm({ ...form, counterpartAccountId: '' })}
+                placeholder="Selecione a conta para fechar o saldo..."
+              />
             </div>
 
             <div className="grid grid-cols-2 gap-4">

@@ -14,6 +14,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
 import { Plus } from 'lucide-react'
+import { AccountCombobox } from '@/components/AccountCombobox'
 
 type Props = {
   orgId: string
@@ -208,25 +209,13 @@ export default function EntryForm({ orgId, accounts, costCenters, mappings, onSu
                 </span>
               )}
             </Label>
-            <Select value={form.deb} onValueChange={(v) => setForm({ ...form, deb: v })}>
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione a conta..." />
-              </SelectTrigger>
-              <SelectContent>
-                {accounts.length > 0 ? (
-                  accounts.map((a) => (
-                    <SelectItem key={a.id} value={a.id}>
-                      {a.account_code ? `${a.account_code} - ` : ''}
-                      {a.account_name || 'Conta sem nome'}
-                    </SelectItem>
-                  ))
-                ) : (
-                  <div className="px-2 py-4 text-sm text-center text-slate-500">
-                    Nenhuma conta contábil cadastrada
-                  </div>
-                )}
-              </SelectContent>
-            </Select>
+            <AccountCombobox
+              accounts={accounts}
+              value={form.deb}
+              onChange={(v) => setForm({ ...form, deb: v })}
+              onClear={() => setForm({ ...form, deb: '' })}
+              placeholder="Selecione a conta débito..."
+            />
           </div>
           <div className="space-y-2">
             <Label className="flex items-center gap-2">
@@ -237,25 +226,13 @@ export default function EntryForm({ orgId, accounts, costCenters, mappings, onSu
                 </span>
               )}
             </Label>
-            <Select value={form.cred} onValueChange={(v) => setForm({ ...form, cred: v })}>
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione a conta..." />
-              </SelectTrigger>
-              <SelectContent>
-                {accounts.length > 0 ? (
-                  accounts.map((a) => (
-                    <SelectItem key={a.id} value={a.id}>
-                      {a.account_code ? `${a.account_code} - ` : ''}
-                      {a.account_name || 'Conta sem nome'}
-                    </SelectItem>
-                  ))
-                ) : (
-                  <div className="px-2 py-4 text-sm text-center text-slate-500">
-                    Nenhuma conta contábil cadastrada
-                  </div>
-                )}
-              </SelectContent>
-            </Select>
+            <AccountCombobox
+              accounts={accounts}
+              value={form.cred}
+              onChange={(v) => setForm({ ...form, cred: v })}
+              onClear={() => setForm({ ...form, cred: '' })}
+              placeholder="Selecione a conta crédito..."
+            />
           </div>
         </div>
         <div className="mt-6 flex justify-end pt-4 border-t">
