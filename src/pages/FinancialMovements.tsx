@@ -637,9 +637,12 @@ function ChartAccountTreeFilterContent({
           variant="secondary"
           size="sm"
           className="h-6 flex-1 text-[10px]"
-          onClick={() => onChange([])}
+          onClick={() => {
+            const allValues = Object.values(tree.children).flatMap((c) => c.allValues)
+            onChange(Array.from(new Set(allValues)))
+          }}
         >
-          Todos
+          Marcar Todos
         </Button>
         <Button
           variant="secondary"
@@ -647,7 +650,7 @@ function ChartAccountTreeFilterContent({
           className="h-6 flex-1 text-[10px]"
           onClick={() => onChange([])}
         >
-          Limpar
+          Desmarcar Todos
         </Button>
       </div>
       <div className="max-h-[300px] overflow-y-auto custom-scrollbar p-1">
@@ -815,9 +818,9 @@ function CostCenterTreeFilterContent({
           variant="secondary"
           size="sm"
           className="h-6 flex-1 text-[10px]"
-          onClick={() => onChange([])}
+          onClick={() => onChange(options.map((o) => o.value))}
         >
-          Todos
+          Marcar Todos
         </Button>
         <Button
           variant="secondary"
@@ -825,7 +828,7 @@ function CostCenterTreeFilterContent({
           className="h-6 flex-1 text-[10px]"
           onClick={() => onChange([])}
         >
-          Limpar
+          Desmarcar Todos
         </Button>
       </div>
       <div className="max-h-[300px] overflow-y-auto custom-scrollbar p-1">
@@ -936,10 +939,10 @@ function ColumnFilter({
                     }}
                     onClick={(e) => {
                       e.stopPropagation()
-                      onChange([])
+                      onChange(options)
                     }}
                   >
-                    Todos
+                    Marcar Todos
                   </Button>
                   <Button
                     variant="secondary"
@@ -954,7 +957,7 @@ function ColumnFilter({
                       onChange([])
                     }}
                   >
-                    Limpar
+                    Desmarcar Todos
                   </Button>
                 </div>
                 <Button
@@ -1049,10 +1052,10 @@ function FilterDropdown({
                 }}
                 onClick={(e) => {
                   e.stopPropagation()
-                  onChange([])
+                  onChange(options.map((o) => o.value))
                 }}
               >
-                Todos
+                Marcar Todos
               </Button>
               <Button
                 variant="secondary"
@@ -1067,7 +1070,7 @@ function FilterDropdown({
                   onChange([])
                 }}
               >
-                Limpar
+                Desmarcar Todos
               </Button>
             </div>
             <CommandList className="max-h-[200px] overflow-y-auto custom-scrollbar">
@@ -9053,12 +9056,12 @@ export default function FinancialMovements() {
                                                 e.stopPropagation()
                                                 setFilters((prev) => ({
                                                   ...prev,
-                                                  [h.key]: [],
+                                                  [h.key]: options.map((o) => o.value),
                                                 }))
                                                 setPage(0)
                                               }}
                                             >
-                                              Todos
+                                              Marcar Todos
                                             </Button>
                                             <Button
                                               variant="secondary"
@@ -9077,7 +9080,7 @@ export default function FinancialMovements() {
                                                 setPage(0)
                                               }}
                                             >
-                                              Limpar
+                                              Desmarcar Todos
                                             </Button>
                                           </div>
                                           <CommandList className="max-h-[200px] overflow-y-auto">
@@ -12064,11 +12067,11 @@ export default function FinancialMovements() {
                                             e.stopPropagation()
                                             setResumoFilters((prev) => ({
                                               ...prev,
-                                              [key]: [],
+                                              [key]: options.map((o) => o.value),
                                             }))
                                           }}
                                         >
-                                          Todos
+                                          Marcar Todos
                                         </Button>
                                         <Button
                                           variant="secondary"
@@ -12086,7 +12089,7 @@ export default function FinancialMovements() {
                                             }))
                                           }}
                                         >
-                                          Limpar
+                                          Desmarcar Todos
                                         </Button>
                                       </div>
                                       <CommandList className="max-h-[200px] overflow-y-auto">
@@ -13056,14 +13059,15 @@ export default function FinancialMovements() {
                                               }}
                                               onClick={(e) => {
                                                 e.stopPropagation()
+                                                const options = dryRunOptions[colDef.key] || []
                                                 setDryRunFilters((prev) => ({
                                                   ...prev,
-                                                  [colDef.key]: [],
+                                                  [colDef.key]: options.map((o: any) => o.value),
                                                 }))
                                                 setDryRunPage(0)
                                               }}
                                             >
-                                              Todos
+                                              Marcar Todos
                                             </Button>
                                             <Button
                                               variant="secondary"
@@ -13082,7 +13086,7 @@ export default function FinancialMovements() {
                                                 setDryRunPage(0)
                                               }}
                                             >
-                                              Limpar
+                                              Desmarcar Todos
                                             </Button>
                                           </div>
                                           <CommandList className="max-h-[200px] overflow-y-auto">

@@ -111,7 +111,7 @@ export function MultiSelect({
                 onChange(options.map((o) => o.value))
               }}
             >
-              Todos
+              Marcar Todos
             </Button>
             <Button
               variant="secondary"
@@ -126,7 +126,7 @@ export function MultiSelect({
                 onChange([])
               }}
             >
-              Nenhum
+              Desmarcar Todos
             </Button>
           </div>
           <CommandList className="max-h-[200px] overflow-y-auto">
