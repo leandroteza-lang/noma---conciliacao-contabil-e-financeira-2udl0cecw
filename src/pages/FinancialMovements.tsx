@@ -174,7 +174,7 @@ function HeaderAlignmentMenu({
           size="icon"
           className={cn(
             'h-6 w-6 rounded-sm text-white/70 hover:text-white hover:bg-white/20 relative shrink-0 ml-1 transition-all',
-            iconClassName
+            iconClassName,
           )}
           onClick={(e) => e.stopPropagation()}
         >
@@ -788,108 +788,110 @@ function ColumnFilter({
       <div className="flex items-center shrink-0">
         <Popover open={open} onOpenChange={setOpen}>
           <PopoverTrigger asChild>
-          <Button
-            variant="ghost"
-            size="icon"
-            className={cn(
-              'h-6 w-6 text-white hover:bg-white/20 shrink-0',
-              selected.length > 0 && 'bg-white/20',
-            )}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <Filter className="h-3 w-3" />
-            {selected.length > 0 && (
-              <span className="absolute -top-0.5 -right-0.5 flex h-2 w-2 items-center justify-center rounded-full bg-red-500 text-[8px] text-white"></span>
-            )}
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-[200px] p-0 z-[110]" align="start">
-          <Command>
-            <CommandInput placeholder="Buscar..." className="h-8 text-xs" />
-            <CommandList className="max-h-[200px] overflow-y-auto custom-scrollbar">
-              <CommandEmpty className="py-2 text-xs text-center text-slate-500">
-                Nenhum encontrado.
-              </CommandEmpty>
-              <CommandGroup>
-                {options.map((opt) => (
-                  <CommandItem
-                    key={opt}
-                    value={opt}
-                    className="text-xs cursor-pointer"
+            <Button
+              variant="ghost"
+              size="icon"
+              className={cn(
+                'h-6 w-6 text-white hover:bg-white/20 shrink-0',
+                selected.length > 0 && 'bg-white/20',
+              )}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <Filter className="h-3 w-3" />
+              {selected.length > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 flex h-2 w-2 items-center justify-center rounded-full bg-red-500 text-[8px] text-white"></span>
+              )}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-[200px] p-0 z-[110]" align="start">
+            <Command>
+              <CommandInput placeholder="Buscar..." className="h-8 text-xs" />
+              <CommandList className="max-h-[200px] overflow-y-auto custom-scrollbar">
+                <CommandEmpty className="py-2 text-xs text-center text-slate-500">
+                  Nenhum encontrado.
+                </CommandEmpty>
+                <CommandGroup>
+                  {options.map((opt) => (
+                    <CommandItem
+                      key={opt}
+                      value={opt}
+                      className="text-xs cursor-pointer"
+                      onMouseDown={(e) => {
+                        e.preventDefault()
+                        e.stopPropagation()
+                      }}
+                      onSelect={() => {
+                        onChange(
+                          selected.includes(opt)
+                            ? selected.filter((x) => x !== opt)
+                            : [...selected, opt],
+                        )
+                      }}
+                    >
+                      <div
+                        className={cn(
+                          'mr-2 flex h-3 w-3 shrink-0 items-center justify-center border rounded-sm',
+                          selected.includes(opt)
+                            ? 'bg-primary border-primary text-white'
+                            : 'opacity-50 border-slate-400',
+                        )}
+                      >
+                        <Check className="h-2 w-2" />
+                      </div>
+                      <span className="truncate" title={opt}>
+                        {opt}
+                      </span>
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              </CommandList>
+              <div className="p-1 border-t border-slate-100 bg-slate-50 flex flex-col gap-1">
+                <div className="flex items-center gap-1 w-full">
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    className="h-6 flex-1 text-[10px]"
                     onMouseDown={(e) => {
                       e.preventDefault()
                       e.stopPropagation()
                     }}
-                    onSelect={() => {
-                      onChange(
-                        selected.includes(opt)
-                          ? selected.filter((x) => x !== opt)
-                          : [...selected, opt],
-                      )
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onChange(options)
                     }}
                   >
-                    <div
-                      className={cn(
-                        'mr-2 flex h-3 w-3 shrink-0 items-center justify-center border rounded-sm',
-                        selected.includes(opt)
-                          ? 'bg-primary border-primary text-white'
-                          : 'opacity-50 border-slate-400',
-                      )}
-                    >
-                      <Check className="h-2 w-2" />
-                    </div>
-                    <span className="truncate" title={opt}>
-                      {opt}
-                    </span>
-                  </CommandItem>
-                ))}
-              </CommandGroup>
-            </CommandList>
-            <div className="p-1 border-t border-slate-100 bg-slate-50 flex flex-col gap-1">
-              <div className="flex items-center gap-1 w-full">
+                    Todos
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    className="h-6 flex-1 text-[10px]"
+                    onMouseDown={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                    }}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onChange([])
+                    }}
+                  >
+                    Nenhum
+                  </Button>
+                </div>
                 <Button
-                  variant="secondary"
+                  variant="outline"
                   size="sm"
-                  className="h-6 flex-1 text-[10px]"
-                  onMouseDown={(e) => {
-                    e.preventDefault()
-                    e.stopPropagation()
-                  }}
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    onChange(options)
-                  }}
+                  className="h-6 w-full text-[10px]"
+                  onClick={() => setOpen(false)}
                 >
-                  Todos
-                </Button>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  className="h-6 flex-1 text-[10px]"
-                  onMouseDown={(e) => {
-                    e.preventDefault()
-                    e.stopPropagation()
-                  }}
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    onChange([])
-                  }}
-                >
-                  Nenhum
+                  Fechar
                 </Button>
               </div>
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-6 w-full text-[10px]"
-                onClick={() => setOpen(false)}
-              >
-                Fechar
-              </Button>
-            </div>
-          </Command>
-        </PopoverContent>
-      </Popover>
+            </Command>
+          </PopoverContent>
+        </Popover>
+        {alignmentMenu}
+      </div>
     </div>
   )
 }
@@ -1741,31 +1743,34 @@ function ColumnTreeFilterHeader({
   selected,
   onChange,
   content,
+  alignmentMenu,
 }: {
   title: React.ReactNode
   selected: string[]
   onChange: (val: string[]) => void
   content: React.ReactNode
+  alignmentMenu?: React.ReactNode
 }) {
   const [open, setOpen] = useState(false)
 
   return (
     <div className="flex items-center justify-between gap-1 w-full relative">
-      {typeof title === 'string' ? <span>{title}</span> : title}
-      <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>
-          <Button
-            variant="ghost"
-            size="icon"
-            className={cn(
-              'h-6 w-6 text-white hover:bg-white/20 shrink-0',
-              selected.length > 0 && 'bg-white/20',
-            )}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <Filter className="h-3 w-3" />
-            {selected.length > 0 && (
-              <span className="absolute -top-0.5 -right-0.5 flex h-2 w-2 items-center justify-center rounded-full bg-red-500 text-[8px] text-white"></span>
+      {typeof title === 'string' ? <span className="flex-1">{title}</span> : title}
+      <div className="flex items-center shrink-0">
+        <Popover open={open} onOpenChange={setOpen}>
+          <PopoverTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className={cn(
+                'h-6 w-6 text-white hover:bg-white/20 shrink-0',
+                selected.length > 0 && 'bg-white/20',
+              )}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <Filter className="h-3 w-3" />
+              {selected.length > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 flex h-2 w-2 items-center justify-center rounded-full bg-red-500 text-[8px] text-white"></span>
               )}
             </Button>
           </PopoverTrigger>
@@ -1998,154 +2003,218 @@ function AccountingCrossReferenceTable({
     )
   }
 
-  const columnsDef: Record<string, { label: string; filter: React.ReactNode; className: string; defaultAlign?: string }> =
-    {
-      cCusto: {
-        label: 'Centro de Custo',
-        defaultAlign: 'left',
-        filter: (
-          <ColumnTreeFilterHeader
-            title={
-              <div
-                className={cn("flex flex-1 items-center gap-1 cursor-pointer hover:bg-white/10 rounded px-1 -ml-1 transition-colors", getJustifyClass(prefs, 'cCusto', 'left'))}
-                onClick={() => handleSort('cCusto')}
-              >
-                <span>Centro de Custo</span>
-                {renderSortIcon('cCusto')}
-              </div>
-            }
-            selected={ccFilter}
-            onChange={setCcFilter}
-            content={
-              <CostCenterTreeFilterContent
-                options={ccOptions}
-                selected={ccFilter}
-                onChange={setCcFilter}
-                costCenters={costCenters}
-              />
-            }
-            alignmentMenu={<HeaderAlignmentMenu col="cCusto" prefs={prefs} updatePrefs={updatePrefs} boldIcon iconClassName="text-white opacity-100 font-bold" />}
-          />
-        ),
-        className: 'min-w-[200px] text-left',
-      },
-      contaCaixa: {
-        label: 'Conta Caixa/Banco',
-        defaultAlign: 'left',
-        filter: (
-          <ColumnFilter
-            title={
-              <div
-                className={cn("flex flex-1 items-center gap-1 cursor-pointer hover:bg-white/10 rounded px-1 -ml-1 transition-colors", getJustifyClass(prefs, 'contaCaixa', 'left'))}
-                onClick={() => handleSort('contaCaixa')}
-              >
-                <span>Conta Caixa/Banco</span>
-                {renderSortIcon('contaCaixa')}
-              </div>
-            }
-            options={cxOptions}
-            selected={cxFilter}
-            onChange={setCxFilter}
-            alignmentMenu={<HeaderAlignmentMenu col="contaCaixa" prefs={prefs} updatePrefs={updatePrefs} boldIcon iconClassName="text-white opacity-100 font-bold" />}
-          />
-        ),
-        className: 'min-w-[200px] text-left',
-      },
-      debitAccount: {
-        label: 'Conta Débito (D)',
-        defaultAlign: 'left',
-        filter: (
-          <ColumnTreeFilterHeader
-            title={
-              <div
-                className={cn("flex flex-1 items-center gap-1 cursor-pointer hover:bg-white/10 rounded px-1 -ml-1 transition-colors", getJustifyClass(prefs, 'debitAccount', 'left'))}
-                onClick={() => handleSort('debitAccount')}
-              >
-                <span>Conta Débito (D)</span>
-                {renderSortIcon('debitAccount')}
-              </div>
-            }
-            selected={debitFilter}
-            onChange={setDebitFilter}
-            content={
-              <ChartAccountTreeFilterContent
-                selected={debitFilter}
-                onChange={setDebitFilter}
-                chartOfAccounts={chartOfAccounts}
-              />
-            }
-            alignmentMenu={<HeaderAlignmentMenu col="debitAccount" prefs={prefs} updatePrefs={updatePrefs} boldIcon iconClassName="text-white opacity-100 font-bold" />}
-          />
-        ),
-        className: 'min-w-[250px] text-left',
-      },
-      creditAccount: {
-        label: 'Conta Crédito (C)',
-        defaultAlign: 'left',
-        filter: (
-          <ColumnTreeFilterHeader
-            title={
-              <div
-                className={cn("flex flex-1 items-center gap-1 cursor-pointer hover:bg-white/10 rounded px-1 -ml-1 transition-colors", getJustifyClass(prefs, 'creditAccount', 'left'))}
-                onClick={() => handleSort('creditAccount')}
-              >
-                <span>Conta Crédito (C)</span>
-                {renderSortIcon('creditAccount')}
-              </div>
-            }
-            selected={creditFilter}
-            onChange={setCreditFilter}
-            content={
-              <ChartAccountTreeFilterContent
-                selected={creditFilter}
-                onChange={setCreditFilter}
-                chartOfAccounts={chartOfAccounts}
-              />
-            }
-            alignmentMenu={<HeaderAlignmentMenu col="creditAccount" prefs={prefs} updatePrefs={updatePrefs} boldIcon iconClassName="text-white opacity-100 font-bold" />}
-          />
-        ),
-        className: 'min-w-[250px] text-left',
-      },
-      count: {
-        label: 'Lançamentos',
-        defaultAlign: 'center',
-        filter: (
-          <div className="flex items-center justify-between gap-1 w-full relative">
+  const columnsDef: Record<
+    string,
+    { label: string; filter: React.ReactNode; className: string; defaultAlign?: string }
+  > = {
+    cCusto: {
+      label: 'Centro de Custo',
+      defaultAlign: 'left',
+      filter: (
+        <ColumnTreeFilterHeader
+          title={
             <div
-              className={cn("flex flex-1 items-center gap-1 cursor-pointer hover:bg-white/10 rounded px-1 transition-colors", getJustifyClass(prefs, 'count', 'center'))}
-              onClick={() => handleSort('count')}
+              className={cn(
+                'flex flex-1 items-center gap-1 cursor-pointer hover:bg-white/10 rounded px-1 -ml-1 transition-colors',
+                getJustifyClass(prefs, 'cCusto', 'left'),
+              )}
+              onClick={() => handleSort('cCusto')}
             >
-              <span>Lançamentos</span>
-              {renderSortIcon('count')}
+              <span>Centro de Custo</span>
+              {renderSortIcon('cCusto')}
             </div>
-            <div className="flex items-center shrink-0">
-              <HeaderAlignmentMenu col="count" prefs={prefs} updatePrefs={updatePrefs} boldIcon iconClassName="text-white opacity-100 font-bold" />
-            </div>
-          </div>
-        ),
-        className: 'w-[100px] text-center',
-      },
-      amount: {
-        label: 'Valor Total',
-        defaultAlign: 'right',
-        filter: (
-          <div className="flex items-center justify-between gap-1 w-full relative">
+          }
+          selected={ccFilter}
+          onChange={setCcFilter}
+          content={
+            <CostCenterTreeFilterContent
+              options={ccOptions}
+              selected={ccFilter}
+              onChange={setCcFilter}
+              costCenters={costCenters}
+            />
+          }
+          alignmentMenu={
+            <HeaderAlignmentMenu
+              col="cCusto"
+              prefs={prefs}
+              updatePrefs={updatePrefs}
+              boldIcon
+              iconClassName="text-white opacity-100 font-bold"
+            />
+          }
+        />
+      ),
+      className: 'min-w-[200px] text-left',
+    },
+    contaCaixa: {
+      label: 'Conta Caixa/Banco',
+      defaultAlign: 'left',
+      filter: (
+        <ColumnFilter
+          title={
             <div
-              className={cn("flex flex-1 items-center gap-1 cursor-pointer hover:bg-white/10 rounded px-1 -mr-1 transition-colors", getJustifyClass(prefs, 'amount', 'right'))}
-              onClick={() => handleSort('amount')}
+              className={cn(
+                'flex flex-1 items-center gap-1 cursor-pointer hover:bg-white/10 rounded px-1 -ml-1 transition-colors',
+                getJustifyClass(prefs, 'contaCaixa', 'left'),
+              )}
+              onClick={() => handleSort('contaCaixa')}
             >
-              <span>Valor Total</span>
-              {renderSortIcon('amount')}
+              <span>Conta Caixa/Banco</span>
+              {renderSortIcon('contaCaixa')}
             </div>
-            <div className="flex items-center shrink-0">
-              <HeaderAlignmentMenu col="amount" prefs={prefs} updatePrefs={updatePrefs} boldIcon iconClassName="text-white opacity-100 font-bold" />
+          }
+          options={cxOptions}
+          selected={cxFilter}
+          onChange={setCxFilter}
+          alignmentMenu={
+            <HeaderAlignmentMenu
+              col="contaCaixa"
+              prefs={prefs}
+              updatePrefs={updatePrefs}
+              boldIcon
+              iconClassName="text-white opacity-100 font-bold"
+            />
+          }
+        />
+      ),
+      className: 'min-w-[200px] text-left',
+    },
+    debitAccount: {
+      label: 'Conta Débito (D)',
+      defaultAlign: 'left',
+      filter: (
+        <ColumnTreeFilterHeader
+          title={
+            <div
+              className={cn(
+                'flex flex-1 items-center gap-1 cursor-pointer hover:bg-white/10 rounded px-1 -ml-1 transition-colors',
+                getJustifyClass(prefs, 'debitAccount', 'left'),
+              )}
+              onClick={() => handleSort('debitAccount')}
+            >
+              <span>Conta Débito (D)</span>
+              {renderSortIcon('debitAccount')}
             </div>
+          }
+          selected={debitFilter}
+          onChange={setDebitFilter}
+          content={
+            <ChartAccountTreeFilterContent
+              selected={debitFilter}
+              onChange={setDebitFilter}
+              chartOfAccounts={chartOfAccounts}
+            />
+          }
+          alignmentMenu={
+            <HeaderAlignmentMenu
+              col="debitAccount"
+              prefs={prefs}
+              updatePrefs={updatePrefs}
+              boldIcon
+              iconClassName="text-white opacity-100 font-bold"
+            />
+          }
+        />
+      ),
+      className: 'min-w-[250px] text-left',
+    },
+    creditAccount: {
+      label: 'Conta Crédito (C)',
+      defaultAlign: 'left',
+      filter: (
+        <ColumnTreeFilterHeader
+          title={
+            <div
+              className={cn(
+                'flex flex-1 items-center gap-1 cursor-pointer hover:bg-white/10 rounded px-1 -ml-1 transition-colors',
+                getJustifyClass(prefs, 'creditAccount', 'left'),
+              )}
+              onClick={() => handleSort('creditAccount')}
+            >
+              <span>Conta Crédito (C)</span>
+              {renderSortIcon('creditAccount')}
+            </div>
+          }
+          selected={creditFilter}
+          onChange={setCreditFilter}
+          content={
+            <ChartAccountTreeFilterContent
+              selected={creditFilter}
+              onChange={setCreditFilter}
+              chartOfAccounts={chartOfAccounts}
+            />
+          }
+          alignmentMenu={
+            <HeaderAlignmentMenu
+              col="creditAccount"
+              prefs={prefs}
+              updatePrefs={updatePrefs}
+              boldIcon
+              iconClassName="text-white opacity-100 font-bold"
+            />
+          }
+        />
+      ),
+      className: 'min-w-[250px] text-left',
+    },
+    count: {
+      label: 'Lançamentos',
+      defaultAlign: 'center',
+      filter: (
+        <div className="flex items-center justify-between gap-1 w-full relative">
+          <div
+            className={cn(
+              'flex flex-1 items-center gap-1 cursor-pointer hover:bg-white/10 rounded px-1 transition-colors',
+              getJustifyClass(prefs, 'count', 'center'),
+            )}
+            onClick={() => handleSort('count')}
+          >
+            <span>Lançamentos</span>
+            {renderSortIcon('count')}
           </div>
-        ),
-        className: 'w-[120px] text-right',
-      },
-    }
+          <div className="flex items-center shrink-0">
+            <HeaderAlignmentMenu
+              col="count"
+              prefs={prefs}
+              updatePrefs={updatePrefs}
+              boldIcon
+              iconClassName="text-white opacity-100 font-bold"
+            />
+          </div>
+        </div>
+      ),
+      className: 'w-[100px] text-center',
+    },
+    amount: {
+      label: 'Valor Total',
+      defaultAlign: 'right',
+      filter: (
+        <div className="flex items-center justify-between gap-1 w-full relative">
+          <div
+            className={cn(
+              'flex flex-1 items-center gap-1 cursor-pointer hover:bg-white/10 rounded px-1 -mr-1 transition-colors',
+              getJustifyClass(prefs, 'amount', 'right'),
+            )}
+            onClick={() => handleSort('amount')}
+          >
+            <span>Valor Total</span>
+            {renderSortIcon('amount')}
+          </div>
+          <div className="flex items-center shrink-0">
+            <HeaderAlignmentMenu
+              col="amount"
+              prefs={prefs}
+              updatePrefs={updatePrefs}
+              boldIcon
+              iconClassName="text-white opacity-100 font-bold"
+            />
+          </div>
+        </div>
+      ),
+      className: 'w-[120px] text-right',
+    },
+  }
 
   return (
     <Table
@@ -2206,10 +2275,18 @@ function AccountingCrossReferenceTable({
                 return (
                   <TableCell
                     key={col}
-                    className={cn("px-2 py-1.5 border-r border-slate-200 text-slate-700 font-medium", getAlignClass(prefs, col, 'left'))}
+                    className={cn(
+                      'px-2 py-1.5 border-r border-slate-200 text-slate-700 font-medium',
+                      getAlignClass(prefs, col, 'left'),
+                    )}
                     style={getGridlineStyle(prefs)}
                   >
-                    <div className={cn("flex w-full items-center", getJustifyClass(prefs, col, 'left'))}>
+                    <div
+                      className={cn(
+                        'flex w-full items-center',
+                        getJustifyClass(prefs, col, 'left'),
+                      )}
+                    >
                       <span className="truncate max-w-[250px] inline-block" title={formatCc(item)}>
                         {formatCc(item)}
                       </span>
@@ -2220,10 +2297,18 @@ function AccountingCrossReferenceTable({
                 return (
                   <TableCell
                     key={col}
-                    className={cn("px-2 py-1.5 border-r border-slate-200 text-slate-700 font-medium", getAlignClass(prefs, col, 'left'))}
+                    className={cn(
+                      'px-2 py-1.5 border-r border-slate-200 text-slate-700 font-medium',
+                      getAlignClass(prefs, col, 'left'),
+                    )}
                     style={getGridlineStyle(prefs)}
                   >
-                    <div className={cn("flex w-full items-center", getJustifyClass(prefs, col, 'left'))}>
+                    <div
+                      className={cn(
+                        'flex w-full items-center',
+                        getJustifyClass(prefs, col, 'left'),
+                      )}
+                    >
                       <span className="truncate max-w-[250px] inline-block" title={formatCx(item)}>
                         {formatCx(item)}
                       </span>
@@ -2234,10 +2319,18 @@ function AccountingCrossReferenceTable({
                 return (
                   <TableCell
                     key={col}
-                    className={cn("px-2 py-1.5 border-r border-slate-200 text-slate-700 font-medium", getAlignClass(prefs, col, 'left'))}
+                    className={cn(
+                      'px-2 py-1.5 border-r border-slate-200 text-slate-700 font-medium',
+                      getAlignClass(prefs, col, 'left'),
+                    )}
                     style={getGridlineStyle(prefs)}
                   >
-                    <div className={cn("flex items-center gap-1.5 w-full", getJustifyClass(prefs, col, 'left'))}>
+                    <div
+                      className={cn(
+                        'flex items-center gap-1.5 w-full',
+                        getJustifyClass(prefs, col, 'left'),
+                      )}
+                    >
                       <span className="font-mono bg-blue-50 text-blue-800 px-1.5 py-0.5 rounded text-[0.85em] font-semibold border border-blue-200 shrink-0">
                         {item.debitAccount.account_code}
                       </span>
@@ -2259,10 +2352,18 @@ function AccountingCrossReferenceTable({
                 return (
                   <TableCell
                     key={col}
-                    className={cn("px-2 py-1.5 border-r border-slate-200 text-slate-700 font-medium", getAlignClass(prefs, col, 'left'))}
+                    className={cn(
+                      'px-2 py-1.5 border-r border-slate-200 text-slate-700 font-medium',
+                      getAlignClass(prefs, col, 'left'),
+                    )}
                     style={getGridlineStyle(prefs)}
                   >
-                    <div className={cn("flex items-center gap-1.5 w-full", getJustifyClass(prefs, col, 'left'))}>
+                    <div
+                      className={cn(
+                        'flex items-center gap-1.5 w-full',
+                        getJustifyClass(prefs, col, 'left'),
+                      )}
+                    >
                       <span className="font-mono bg-rose-50 text-rose-800 px-1.5 py-0.5 rounded text-[0.85em] font-semibold border border-rose-200 shrink-0">
                         {item.creditAccount.account_code}
                       </span>
@@ -2284,17 +2385,25 @@ function AccountingCrossReferenceTable({
                 return (
                   <TableCell
                     key={col}
-                    className={cn("px-2 py-1.5 text-slate-700 border-r border-slate-200", getAlignClass(prefs, col, 'center'))}
+                    className={cn(
+                      'px-2 py-1.5 text-slate-700 border-r border-slate-200',
+                      getAlignClass(prefs, col, 'center'),
+                    )}
                     style={getGridlineStyle(prefs)}
                   >
-                    <div className={cn("flex w-full items-center", getJustifyClass(prefs, col, 'center'))}>
-                      <Button
-                      variant="link"
-                      size="sm"
-                      className="h-auto p-0 text-indigo-600 font-bold hover:text-indigo-800"
-                      onClick={() => onDrillDown(`Lançamentos - ${formatCc(item)}`, item.rows)}
-                      title="Ver Lançamentos"
+                    <div
+                      className={cn(
+                        'flex w-full items-center',
+                        getJustifyClass(prefs, col, 'center'),
+                      )}
                     >
+                      <Button
+                        variant="link"
+                        size="sm"
+                        className="h-auto p-0 text-indigo-600 font-bold hover:text-indigo-800"
+                        onClick={() => onDrillDown(`Lançamentos - ${formatCc(item)}`, item.rows)}
+                        title="Ver Lançamentos"
+                      >
                         {item.count}
                       </Button>
                     </div>
@@ -2304,10 +2413,18 @@ function AccountingCrossReferenceTable({
                 return (
                   <TableCell
                     key={col}
-                    className={cn("px-2 py-1.5 text-slate-700 font-bold whitespace-nowrap", getAlignClass(prefs, col, 'right'))}
+                    className={cn(
+                      'px-2 py-1.5 text-slate-700 font-bold whitespace-nowrap',
+                      getAlignClass(prefs, col, 'right'),
+                    )}
                     style={getGridlineStyle(prefs)}
                   >
-                    <div className={cn("flex w-full items-center", getJustifyClass(prefs, col, 'right'))}>
+                    <div
+                      className={cn(
+                        'flex w-full items-center',
+                        getJustifyClass(prefs, col, 'right'),
+                      )}
+                    >
                       {formatVal(item.amount)}
                     </div>
                   </TableCell>
@@ -2334,7 +2451,10 @@ function AccountingCrossReferenceTable({
                     return (
                       <TableCell
                         key={col}
-                        className={cn("px-2 py-2 text-rose-600 font-medium border-r border-slate-200", getAlignClass(prefs, col, 'center'))}
+                        className={cn(
+                          'px-2 py-2 text-rose-600 font-medium border-r border-slate-200',
+                          getAlignClass(prefs, col, 'center'),
+                        )}
                         style={getGridlineStyle(prefs)}
                       >
                         -
@@ -2344,7 +2464,10 @@ function AccountingCrossReferenceTable({
                     return (
                       <TableCell
                         key={col}
-                        className={cn("px-2 py-2 text-rose-600 font-bold whitespace-nowrap", getAlignClass(prefs, col, 'right'))}
+                        className={cn(
+                          'px-2 py-2 text-rose-600 font-bold whitespace-nowrap',
+                          getAlignClass(prefs, col, 'right'),
+                        )}
                         style={getGridlineStyle(prefs)}
                       >
                         {formatVal(unmappedAmount)}
@@ -2355,10 +2478,18 @@ function AccountingCrossReferenceTable({
                     return (
                       <TableCell
                         key={col}
-                        className={cn("px-2 py-2 border-r border-slate-200 text-slate-600 italic", getAlignClass(prefs, col, 'left'))}
+                        className={cn(
+                          'px-2 py-2 border-r border-slate-200 text-slate-600 italic',
+                          getAlignClass(prefs, col, 'left'),
+                        )}
                         style={getGridlineStyle(prefs)}
                       >
-                        <div className={cn("flex items-center gap-2", getJustifyClass(prefs, col, 'left'))}>
+                        <div
+                          className={cn(
+                            'flex items-center gap-2',
+                            getJustifyClass(prefs, col, 'left'),
+                          )}
+                        >
                           <AlertCircle className="h-4 w-4 text-rose-500 shrink-0" />
                           <span className="truncate max-w-[300px]">
                             Valores Pendentes de Mapeamento Contábil (Ignorados)
@@ -2386,7 +2517,10 @@ function AccountingCrossReferenceTable({
                   return (
                     <TableCell
                       key={col}
-                      className={cn("px-2 py-2 text-slate-900 border-r border-slate-300", getAlignClass(prefs, col, 'center'))}
+                      className={cn(
+                        'px-2 py-2 text-slate-900 border-r border-slate-300',
+                        getAlignClass(prefs, col, 'center'),
+                      )}
                       style={getGridlineStyle(prefs)}
                     >
                       {totalCount}
@@ -2396,7 +2530,10 @@ function AccountingCrossReferenceTable({
                   return (
                     <TableCell
                       key={col}
-                      className={cn("px-2 py-2 text-indigo-700 whitespace-nowrap", getAlignClass(prefs, col, 'right'))}
+                      className={cn(
+                        'px-2 py-2 text-indigo-700 whitespace-nowrap',
+                        getAlignClass(prefs, col, 'right'),
+                      )}
                       style={getGridlineStyle(prefs)}
                     >
                       {formatVal(totalAmount)}
@@ -2407,7 +2544,10 @@ function AccountingCrossReferenceTable({
                   return (
                     <TableCell
                       key={col}
-                      className={cn("px-2 py-2 border-r border-slate-300 text-slate-900 uppercase", getAlignClass(prefs, col, 'right'))}
+                      className={cn(
+                        'px-2 py-2 border-r border-slate-300 text-slate-900 uppercase',
+                        getAlignClass(prefs, col, 'right'),
+                      )}
                       style={getGridlineStyle(prefs)}
                     >
                       Total Geral:
