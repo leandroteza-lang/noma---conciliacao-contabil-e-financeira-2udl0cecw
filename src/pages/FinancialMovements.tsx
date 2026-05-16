@@ -539,6 +539,10 @@ function ChartAccountTreeFilterContent({
   const toggleExpand = (key: string) => setExpanded((p) => ({ ...p, [key]: !p[key] }))
 
   const handleSelect = (node: Node) => {
+    if (selected.length === 0) {
+      onChange(node.allValues)
+      return
+    }
     const isAllSelected =
       node.allValues.length > 0 && node.allValues.every((v) => selected.includes(v))
     if (isAllSelected) {
@@ -566,9 +570,11 @@ function ChartAccountTreeFilterContent({
     const isExpanded = expanded[node.key] || hasSearch
 
     const isAllSelected =
-      node.allValues.length > 0 && node.allValues.every((v) => selected.includes(v))
+      selected.length === 0 ||
+      (node.allValues.length > 0 && node.allValues.every((v) => selected.includes(v)))
     const isSomeSelected =
-      node.allValues.length > 0 && node.allValues.some((v) => selected.includes(v))
+      selected.length === 0 ||
+      (node.allValues.length > 0 && node.allValues.some((v) => selected.includes(v)))
 
     return (
       <div key={node.key} className="flex flex-col">
@@ -631,7 +637,7 @@ function ChartAccountTreeFilterContent({
           variant="secondary"
           size="sm"
           className="h-6 flex-1 text-[10px]"
-          onClick={() => onChange(['PENDENTE', ...chartOfAccounts.map((o) => o.id)])}
+          onClick={() => onChange([])}
         >
           Todos
         </Button>
@@ -713,6 +719,10 @@ function CostCenterTreeFilterContent({
   const toggleExpand = (key: string) => setExpanded((p) => ({ ...p, [key]: !p[key] }))
 
   const handleSelect = (node: Node) => {
+    if (selected.length === 0) {
+      onChange(node.allValues)
+      return
+    }
     const isAllSelected =
       node.allValues.length > 0 && node.allValues.every((v) => selected.includes(v))
     if (isAllSelected) {
@@ -740,8 +750,9 @@ function CostCenterTreeFilterContent({
     const isExpanded = expanded[node.key] || hasSearch
 
     const isAllSelected =
-      node.allValues.length > 0 && node.allValues.every((v) => selected.includes(v))
-    const isSomeSelected = node.allValues.some((v) => selected.includes(v))
+      selected.length === 0 ||
+      (node.allValues.length > 0 && node.allValues.every((v) => selected.includes(v)))
+    const isSomeSelected = selected.length === 0 || node.allValues.some((v) => selected.includes(v))
 
     return (
       <div key={node.key} className="flex flex-col">
@@ -804,7 +815,7 @@ function CostCenterTreeFilterContent({
           variant="secondary"
           size="sm"
           className="h-6 flex-1 text-[10px]"
-          onClick={() => onChange(options.map((o) => o.value))}
+          onClick={() => onChange([])}
         >
           Todos
         </Button>
@@ -842,7 +853,8 @@ function ColumnFilter({
   alignmentMenu?: React.ReactNode
 }) {
   const [open, setOpen] = useState(false)
-  const isAllSelected = options.length > 0 && options.every((o) => selected.includes(o))
+  const isAllSelected =
+    selected.length === 0 || (options.length > 0 && options.every((o) => selected.includes(o)))
   const hasActiveFilter = selected.length > 0 && !isAllSelected
 
   return (
@@ -855,7 +867,7 @@ function ColumnFilter({
               variant="ghost"
               size="icon"
               className={cn(
-                'h-6 w-6 text-white hover:bg-white/20 shrink-0',
+                'relative h-6 w-6 text-white hover:bg-white/20 shrink-0',
                 hasActiveFilter && 'bg-white/20',
               )}
               onClick={(e) => e.stopPropagation()}
@@ -884,17 +896,21 @@ function ColumnFilter({
                         e.stopPropagation()
                       }}
                       onSelect={() => {
-                        onChange(
-                          selected.includes(opt)
+                        let newSelected: string[] = []
+                        if (selected.length === 0) {
+                          newSelected = [opt]
+                        } else {
+                          newSelected = selected.includes(opt)
                             ? selected.filter((x) => x !== opt)
-                            : [...selected, opt],
-                        )
+                            : [...selected, opt]
+                        }
+                        onChange(newSelected)
                       }}
                     >
                       <div
                         className={cn(
                           'mr-2 flex h-3 w-3 shrink-0 items-center justify-center border rounded-sm',
-                          selected.includes(opt)
+                          selected.length === 0 || selected.includes(opt)
                             ? 'bg-primary border-primary text-white'
                             : 'opacity-50 border-slate-400',
                         )}
@@ -920,7 +936,7 @@ function ColumnFilter({
                     }}
                     onClick={(e) => {
                       e.stopPropagation()
-                      onChange(options)
+                      onChange([])
                     }}
                   >
                     Todos
@@ -1033,7 +1049,7 @@ function FilterDropdown({
                 }}
                 onClick={(e) => {
                   e.stopPropagation()
-                  onChange(options.map((o) => o.value))
+                  onChange([])
                 }}
               >
                 Todos
@@ -1063,7 +1079,7 @@ function FilterDropdown({
                   if (opt.parent && !expandedDateGroups[`${filterKey}-${opt.parent}`]) {
                     return null
                   }
-                  const isSelected = selected.includes(opt.value)
+                  const isSelected = selected.length === 0 || selected.includes(opt.value)
                   return (
                     <CommandItem
                       key={opt.value}
@@ -1073,9 +1089,14 @@ function FilterDropdown({
                         e.stopPropagation()
                       }}
                       onSelect={() => {
-                        const updated = isSelected
-                          ? selected.filter((v) => v !== opt.value)
-                          : [...selected, opt.value]
+                        let updated: string[] = []
+                        if (selected.length === 0) {
+                          updated = [opt.value]
+                        } else {
+                          updated = selected.includes(opt.value)
+                            ? selected.filter((v) => v !== opt.value)
+                            : [...selected, opt.value]
+                        }
                         onChange(updated)
                       }}
                       className={cn('text-xs cursor-pointer', opt.parent ? 'pl-6' : '')}
@@ -1848,7 +1869,7 @@ function ColumnTreeFilterHeader({
               variant="ghost"
               size="icon"
               className={cn(
-                'h-6 w-6 text-white hover:bg-white/20 shrink-0',
+                'relative h-6 w-6 text-white hover:bg-white/20 shrink-0',
                 hasActiveFilter && 'bg-white/20',
               )}
               onClick={(e) => e.stopPropagation()}
@@ -8818,7 +8839,7 @@ export default function FinancialMovements() {
                                                 e.stopPropagation()
                                                 setFilters((prev) => ({
                                                   ...prev,
-                                                  [h.key]: options.map((o) => o.value),
+                                                  [h.key]: [],
                                                 }))
                                                 setPage(0)
                                               }}
@@ -8871,9 +8892,14 @@ export default function FinancialMovements() {
                                                     }}
                                                     onSelect={() => {
                                                       const current = filters[h.key] || []
-                                                      const updated = isSelected
-                                                        ? current.filter((v) => v !== opt.value)
-                                                        : [...current, opt.value]
+                                                      let updated: string[] = []
+                                                      if (current.length === 0) {
+                                                        updated = [opt.value]
+                                                      } else {
+                                                        updated = isSelected
+                                                          ? current.filter((v) => v !== opt.value)
+                                                          : [...current, opt.value]
+                                                      }
                                                       setFilters((prev) => ({
                                                         ...prev,
                                                         [h.key]: updated,
@@ -8915,7 +8941,8 @@ export default function FinancialMovements() {
                                                     <div
                                                       className={cn(
                                                         'mr-2 flex h-3 w-3 flex-shrink-0 items-center justify-center rounded-sm border border-primary',
-                                                        isSelected
+                                                        (filters[h.key]?.length || 0) === 0 ||
+                                                          isSelected
                                                           ? 'bg-primary text-primary-foreground'
                                                           : 'opacity-50 [&_svg]:invisible',
                                                       )}
@@ -11661,7 +11688,7 @@ export default function FinancialMovements() {
                                             e.stopPropagation()
                                             setResumoFilters((prev) => ({
                                               ...prev,
-                                              [key]: options.map((o) => o.value),
+                                              [key]: [],
                                             }))
                                           }}
                                         >
@@ -11705,9 +11732,14 @@ export default function FinancialMovements() {
                                                 }}
                                                 onSelect={() => {
                                                   const current = resumoFilters[key] || []
-                                                  const updated = isSelected
-                                                    ? current.filter((v) => v !== opt.value)
-                                                    : [...current, opt.value]
+                                                  let updated: string[] = []
+                                                  if (current.length === 0) {
+                                                    updated = [opt.value]
+                                                  } else {
+                                                    updated = isSelected
+                                                      ? current.filter((v) => v !== opt.value)
+                                                      : [...current, opt.value]
+                                                  }
                                                   setResumoFilters((prev) => ({
                                                     ...prev,
                                                     [key]: updated,
@@ -11718,7 +11750,8 @@ export default function FinancialMovements() {
                                                 <div
                                                   className={cn(
                                                     'mr-2 flex h-3 w-3 flex-shrink-0 items-center justify-center rounded-sm border border-primary',
-                                                    isSelected
+                                                    (resumoFilters[key]?.length || 0) === 0 ||
+                                                      isSelected
                                                       ? 'bg-primary text-primary-foreground'
                                                       : 'opacity-50 [&_svg]:invisible',
                                                   )}
@@ -12622,12 +12655,9 @@ export default function FinancialMovements() {
                                               }}
                                               onClick={(e) => {
                                                 e.stopPropagation()
-                                                const allVals = (
-                                                  dryRunOptions[colDef.key] || []
-                                                ).map((o) => o.value)
                                                 setDryRunFilters((prev) => ({
                                                   ...prev,
-                                                  [colDef.key]: allVals,
+                                                  [colDef.key]: [],
                                                 }))
                                                 setDryRunPage(0)
                                               }}
@@ -12674,9 +12704,14 @@ export default function FinancialMovements() {
                                                     onSelect={() => {
                                                       const current =
                                                         dryRunFilters[colDef.key] || []
-                                                      const updated = isSelected
-                                                        ? current.filter((v) => v !== opt.value)
-                                                        : [...current, opt.value]
+                                                      let updated: string[] = []
+                                                      if (current.length === 0) {
+                                                        updated = [opt.value]
+                                                      } else {
+                                                        updated = isSelected
+                                                          ? current.filter((v) => v !== opt.value)
+                                                          : [...current, opt.value]
+                                                      }
                                                       setDryRunFilters((prev) => ({
                                                         ...prev,
                                                         [colDef.key]: updated,
@@ -12689,7 +12724,8 @@ export default function FinancialMovements() {
                                                     <div
                                                       className={cn(
                                                         'mr-2 flex h-3 w-3 flex-shrink-0 items-center justify-center rounded-sm border border-primary',
-                                                        isSelected
+                                                        (dryRunFilters[colDef.key]?.length || 0) ===
+                                                          0 || isSelected
                                                           ? 'bg-primary text-primary-foreground'
                                                           : 'opacity-50 [&_svg]:invisible',
                                                       )}
