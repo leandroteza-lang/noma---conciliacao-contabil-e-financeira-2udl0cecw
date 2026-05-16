@@ -1876,28 +1876,30 @@ function AccountingCrossReferenceTable({
   prefs?: any
   updatePrefs?: any
 }) {
-  const [expandedNodes, setExpandedNodes] = useState<Record<string, { debit: boolean, credit: boolean }>>({})
-  
+  const [expandedNodes, setExpandedNodes] = useState<
+    Record<string, { debit: boolean; credit: boolean }>
+  >({})
+
   const toggleExpand = (key: string, side: 'debit' | 'credit') => {
-      setExpandedNodes(prev => ({
-          ...prev,
-          [key]: {
-              ...(prev[key] || { debit: false, credit: false }),
-              [side]: !prev[key]?.[side]
-          }
-      }))
+    setExpandedNodes((prev) => ({
+      ...prev,
+      [key]: {
+        ...(prev[key] || { debit: false, credit: false }),
+        [side]: !prev[key]?.[side],
+      },
+    }))
   }
 
   const expandAll = () => {
-      const all: Record<string, { debit: boolean, credit: boolean }> = {}
-      crossMap.forEach((val, key) => {
-          all[key] = { debit: true, credit: true }
-      })
-      setExpandedNodes(all)
+    const all: Record<string, { debit: boolean; credit: boolean }> = {}
+    crossMap.forEach((val, key) => {
+      all[key] = { debit: true, credit: true }
+    })
+    setExpandedNodes(all)
   }
 
   const collapseAll = () => {
-      setExpandedNodes({})
+    setExpandedNodes({})
   }
 
   const [ccFilter, setCcFilter] = useState<string[]>([])
@@ -2341,380 +2343,564 @@ function AccountingCrossReferenceTable({
   return (
     <div className="flex flex-col w-full">
       <div className="bg-slate-50 border-b border-slate-200 px-4 py-2 flex justify-between items-center shrink-0">
-        <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Hierarquia de Contas</span>
+        <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+          Hierarquia de Contas
+        </span>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" className="h-7 text-xs bg-white shadow-sm" onClick={expandAll}>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-7 text-xs bg-white shadow-sm"
+            onClick={expandAll}
+          >
             <ChevronsUpDown className="h-3 w-3 mr-1 text-slate-400" /> Expandir Todos
           </Button>
-          <Button variant="outline" size="sm" className="h-7 text-xs bg-white text-rose-600 hover:bg-rose-50 hover:text-rose-700 border-rose-200 shadow-sm" onClick={collapseAll}>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-7 text-xs bg-white text-rose-600 hover:bg-rose-50 hover:text-rose-700 border-rose-200 shadow-sm"
+            onClick={collapseAll}
+          >
             <ChevronRight className="h-3 w-3 mr-1" /> Recolher Todos
           </Button>
         </div>
       </div>
       <TopScrollTableWrapper>
-      <Table
-        className="w-full min-w-[1200px]"
-        style={{ fontSize: tableFontSize ? `${tableFontSize}px` : undefined }}
-        wrapperClassName="max-h-[600px] overflow-auto finance-table-scrollbar pb-3"
-      >
-        <TableHeader className="sticky top-0 z-10 shadow-sm border-b border-slate-600 bg-indigo-950">
-          <TableRow disableZebra className="bg-indigo-950 hover:bg-indigo-900 border-none">
-            {colOrder.map((col) => {
-              const def = columnsDef[col]
-              if (!def) return null
-              return (
-                <TableHead
-                  key={col}
-                  draggable
-                  onDragStart={(e) => {
-                    setDraggedCol(col)
-                    e.dataTransfer.effectAllowed = 'move'
-                  }}
-                  onDragOver={(e) => {
-                    e.preventDefault()
-                    e.dataTransfer.dropEffect = 'move'
-                  }}
-                  onDrop={(e) => {
-                    e.preventDefault()
-                    if (!draggedCol || draggedCol === col) return
-                    const newOrder = [...colOrder]
-                    const draggedIdx = newOrder.indexOf(draggedCol)
-                    const targetIdx = newOrder.indexOf(col)
-                    newOrder.splice(draggedIdx, 1)
-                    newOrder.splice(targetIdx, 0, draggedCol)
-                    setColOrder(newOrder)
-                    setDraggedCol(null)
-                  }}
-                  onDragEnd={() => setDraggedCol(null)}
-                  className={cn(
-                    'font-medium text-white border-r border-slate-600 px-2 py-1 h-8 whitespace-nowrap cursor-grab active:cursor-grabbing',
-                    def.className,
-                    draggedCol === col ? 'opacity-50 bg-indigo-900' : '',
-                  )}
-                  style={getGridlineStyle(prefs)}
-                >
-                  {def.filter}
-                </TableHead>
-              )
-            })}
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {aggregated.map((item, idx) => (
-            <TableRow
-              key={idx}
-              className="border-b border-slate-200 last:border-b-0 transition-colors"
-            >
+        <Table
+          className="w-full min-w-[1200px]"
+          style={{ fontSize: tableFontSize ? `${tableFontSize}px` : undefined }}
+          wrapperClassName="max-h-[600px] overflow-auto finance-table-scrollbar pb-3"
+        >
+          <TableHeader className="sticky top-0 z-10 shadow-sm border-b border-slate-600 bg-indigo-950">
+            <TableRow disableZebra className="bg-indigo-950 hover:bg-indigo-900 border-none">
               {colOrder.map((col) => {
-                if (col === 'cCusto')
-                  return (
-                    <TableCell
-                      key={col}
-                      className={cn(
-                        'px-2 py-1.5 border-r border-slate-200 text-slate-700 font-medium align-top pt-2',
-                        getAlignClass(prefs, col, 'left'),
-                      )}
-                      style={getGridlineStyle(prefs)}
-                    >
-                      <div
+                const def = columnsDef[col]
+                if (!def) return null
+                return (
+                  <TableHead
+                    key={col}
+                    draggable
+                    onDragStart={(e) => {
+                      setDraggedCol(col)
+                      e.dataTransfer.effectAllowed = 'move'
+                    }}
+                    onDragOver={(e) => {
+                      e.preventDefault()
+                      e.dataTransfer.dropEffect = 'move'
+                    }}
+                    onDrop={(e) => {
+                      e.preventDefault()
+                      if (!draggedCol || draggedCol === col) return
+                      const newOrder = [...colOrder]
+                      const draggedIdx = newOrder.indexOf(draggedCol)
+                      const targetIdx = newOrder.indexOf(col)
+                      newOrder.splice(draggedIdx, 1)
+                      newOrder.splice(targetIdx, 0, draggedCol)
+                      setColOrder(newOrder)
+                      setDraggedCol(null)
+                    }}
+                    onDragEnd={() => setDraggedCol(null)}
+                    className={cn(
+                      'font-medium text-white border-r border-slate-600 px-2 py-1 h-8 whitespace-nowrap cursor-grab active:cursor-grabbing',
+                      def.className,
+                      draggedCol === col ? 'opacity-50 bg-indigo-900' : '',
+                    )}
+                    style={getGridlineStyle(prefs)}
+                  >
+                    {def.filter}
+                  </TableHead>
+                )
+              })}
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {aggregated.map((item, idx) => (
+              <TableRow
+                key={idx}
+                className="border-b border-slate-200 last:border-b-0 transition-colors"
+              >
+                {colOrder.map((col) => {
+                  if (col === 'cCusto')
+                    return (
+                      <TableCell
+                        key={col}
                         className={cn(
-                          'flex w-full items-center',
-                          getJustifyClass(prefs, col, 'left'),
+                          'px-2 py-1.5 border-r border-slate-200 text-slate-700 font-medium align-top pt-2',
+                          getAlignClass(prefs, col, 'left'),
                         )}
+                        style={getGridlineStyle(prefs)}
                       >
-                        <span
-                          className="truncate max-w-[250px] inline-block"
-                          title={formatCc(item)}
-                        >
-                          {formatCc(item)}
-                        </span>
-                      </div>
-                    </TableCell>
-                  )
-                if (col === 'contaCaixa')
-                  return (
-                    <TableCell
-                      key={col}
-                      className={cn(
-                        'px-2 py-1.5 border-r border-slate-200 text-slate-700 font-medium align-top pt-2',
-                        getAlignClass(prefs, col, 'left'),
-                      )}
-                      style={getGridlineStyle(prefs)}
-                    >
-                      <div
-                        className={cn(
-                          'flex w-full items-center',
-                          getJustifyClass(prefs, col, 'left'),
-                        )}
-                      >
-                        <span
-                          className="truncate max-w-[250px] inline-block"
-                          title={formatCx(item)}
-                        >
-                          {formatCx(item)}
-                        </span>
-                      </div>
-                    </TableCell>
-                  )
-                if (col === 'debitAccount') {
-                  const isExpanded = expandedNodes[item.id]?.debit
-                  const hasHierarchy = item.debitAccount.hierarchyArray && item.debitAccount.hierarchyArray.length > 0
-                  return (
-                    <TableCell
-                      key={col}
-                      className={cn(
-                        'px-2 py-1.5 border-r border-slate-200 text-slate-700 font-medium align-top',
-                        getAlignClass(prefs, col, 'left'),
-                      )}
-                      style={getGridlineStyle(prefs)}
-                    >
-                      <div className="flex flex-col gap-1.5 w-full">
                         <div
                           className={cn(
-                            'flex items-center gap-1.5 w-full',
+                            'flex w-full items-center',
                             getJustifyClass(prefs, col, 'left'),
                           )}
                         >
-                          {hasHierarchy ? (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-6 w-6 p-0 shrink-0 hover:bg-slate-200"
-                              onClick={() => toggleExpand(item.id, 'debit')}
-                            >
-                              {isExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
-                            </Button>
-                          ) : (
-                            <span className="w-6 shrink-0 inline-block" />
-                          )}
-                          <span className="font-mono bg-blue-50 text-blue-800 px-1.5 py-0.5 rounded text-[0.85em] font-semibold border border-blue-200 shrink-0">
-                            {item.debitAccount.account_code}
-                          </span>
-                          {item.debitAccount.classification && (
-                            <span className="font-mono text-[0.85em] font-semibold text-slate-500 shrink-0">
-                              {item.debitAccount.classification}
-                            </span>
-                          )}
                           <span
-                            className="truncate max-w-[250px]"
-                            title={item.debitAccount.account_name}
+                            className="truncate max-w-[250px] inline-block"
+                            title={formatCc(item)}
                           >
-                            {item.debitAccount.account_name}
+                            {formatCc(item)}
                           </span>
                         </div>
-                        
-                        {isExpanded && hasHierarchy && (
-                          <div className="mt-1 rounded-md overflow-hidden border border-slate-200 shadow-sm animate-in fade-in slide-in-from-top-1 w-full max-w-sm self-start">
-                             <div className="bg-slate-50 px-2 py-1 border-b border-slate-200">
-                                <span className="text-[0.7em] font-bold uppercase text-slate-500 tracking-wider">Raiz Hierárquica</span>
-                             </div>
-                             <div className="flex flex-col">
+                      </TableCell>
+                    )
+                  if (col === 'contaCaixa')
+                    return (
+                      <TableCell
+                        key={col}
+                        className={cn(
+                          'px-2 py-1.5 border-r border-slate-200 text-slate-700 font-medium align-top pt-2',
+                          getAlignClass(prefs, col, 'left'),
+                        )}
+                        style={getGridlineStyle(prefs)}
+                      >
+                        <div
+                          className={cn(
+                            'flex w-full items-center',
+                            getJustifyClass(prefs, col, 'left'),
+                          )}
+                        >
+                          <span
+                            className="truncate max-w-[250px] inline-block"
+                            title={formatCx(item)}
+                          >
+                            {formatCx(item)}
+                          </span>
+                        </div>
+                      </TableCell>
+                    )
+                  if (col === 'debitAccount') {
+                    const isExpanded = expandedNodes[item.id]?.debit
+                    const hasHierarchy =
+                      item.debitAccount.hierarchyArray &&
+                      item.debitAccount.hierarchyArray.length > 0
+                    return (
+                      <TableCell
+                        key={col}
+                        className={cn(
+                          'px-2 py-1.5 border-r border-slate-200 text-slate-700 font-medium align-top',
+                          getAlignClass(prefs, col, 'left'),
+                        )}
+                        style={getGridlineStyle(prefs)}
+                      >
+                        <div className="flex flex-col gap-1.5 w-full">
+                          <div
+                            className={cn(
+                              'flex items-center gap-1.5 w-full',
+                              getJustifyClass(prefs, col, 'left'),
+                            )}
+                          >
+                            {hasHierarchy ? (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-6 w-6 p-0 shrink-0 hover:bg-slate-200"
+                                onClick={() => toggleExpand(item.id, 'debit')}
+                              >
+                                {isExpanded ? (
+                                  <ChevronDown className="h-3 w-3" />
+                                ) : (
+                                  <ChevronRight className="h-3 w-3" />
+                                )}
+                              </Button>
+                            ) : (
+                              <span className="w-6 shrink-0 inline-block" />
+                            )}
+                            <span className="font-mono bg-blue-50 text-blue-800 px-1.5 py-0.5 rounded text-[0.85em] font-semibold border border-blue-200 shrink-0">
+                              {item.debitAccount.account_code}
+                            </span>
+                            {item.debitAccount.classification && (
+                              <span className="font-mono text-[0.85em] font-semibold text-slate-500 shrink-0">
+                                {item.debitAccount.classification}
+                              </span>
+                            )}
+                            <span
+                              className="truncate max-w-[250px]"
+                              title={item.debitAccount.account_name}
+                            >
+                              {item.debitAccount.account_name}
+                            </span>
+                          </div>
+
+                          {isExpanded && hasHierarchy && (
+                            <div className="mt-1 rounded-md overflow-hidden border border-slate-200 shadow-sm animate-in fade-in slide-in-from-top-1 w-full max-w-sm self-start">
+                              <div className="bg-slate-50 px-2 py-1 border-b border-slate-200">
+                                <span className="text-[0.7em] font-bold uppercase text-slate-500 tracking-wider">
+                                  Raiz Hierárquica
+                                </span>
+                              </div>
+                              <div className="flex flex-col">
                                 {item.debitAccount.hierarchyArray.map((node: any) => {
                                   const code = node.classification || node.account_code || ''
                                   const nodeLevel = (code.match(/\./g) || []).length + 1
                                   const isSyn = node.account_level === 'Sintética'
 
-                                  let bg = '#ffffff', color = '#334155', fw = '500', badgeBg = '#f1f5f9', badgeColor = '#475569', badgeBorder = '#e2e8f0'
+                                  let bg = '#ffffff',
+                                    color = '#334155',
+                                    fw = '500',
+                                    badgeBg = '#f1f5f9',
+                                    badgeColor = '#475569',
+                                    badgeBorder = '#e2e8f0'
                                   if (isSyn) {
-                                      if (nodeLevel === 1) {
-                                          bg = '#1e1b4b'; color = '#ffffff'; fw = '700'; badgeBg = '#312e81'; badgeColor = '#ffffff'; badgeBorder = '#3730a3'
-                                      } else if (nodeLevel === 2) {
-                                          bg = '#312e81'; color = '#ffffff'; fw = '600'; badgeBg = '#3730a3'; badgeColor = '#ffffff'; badgeBorder = '#4338ca'
-                                      } else if (nodeLevel === 3) {
-                                          bg = '#3730a3'; color = '#ffffff'; fw = '500'; badgeBg = '#4338ca'; badgeColor = '#ffffff'; badgeBorder = '#4f46e5'
-                                      } else if (nodeLevel === 4) {
-                                          bg = '#e0e7ff'; color = '#1e1b4b'; fw = '500'; badgeBg = '#c7d2fe'; badgeColor = '#1e1b4b'; badgeBorder = '#a5b4fc'
-                                      } else {
-                                          bg = '#e0e7ff'; color = '#1e1b4b'; fw = '500'; badgeBg = '#c7d2fe'; badgeColor = '#1e1b4b'; badgeBorder = '#a5b4fc'
-                                      }
+                                    if (nodeLevel === 1) {
+                                      bg = '#1e1b4b'
+                                      color = '#ffffff'
+                                      fw = '700'
+                                      badgeBg = '#312e81'
+                                      badgeColor = '#ffffff'
+                                      badgeBorder = '#3730a3'
+                                    } else if (nodeLevel === 2) {
+                                      bg = '#312e81'
+                                      color = '#ffffff'
+                                      fw = '600'
+                                      badgeBg = '#3730a3'
+                                      badgeColor = '#ffffff'
+                                      badgeBorder = '#4338ca'
+                                    } else if (nodeLevel === 3) {
+                                      bg = '#3730a3'
+                                      color = '#ffffff'
+                                      fw = '500'
+                                      badgeBg = '#4338ca'
+                                      badgeColor = '#ffffff'
+                                      badgeBorder = '#4f46e5'
+                                    } else if (nodeLevel === 4) {
+                                      bg = '#e0e7ff'
+                                      color = '#1e1b4b'
+                                      fw = '500'
+                                      badgeBg = '#c7d2fe'
+                                      badgeColor = '#1e1b4b'
+                                      badgeBorder = '#a5b4fc'
+                                    } else {
+                                      bg = '#e0e7ff'
+                                      color = '#1e1b4b'
+                                      fw = '500'
+                                      badgeBg = '#c7d2fe'
+                                      badgeColor = '#1e1b4b'
+                                      badgeBorder = '#a5b4fc'
+                                    }
                                   }
 
                                   return (
-                                      <div key={node.id} className="flex items-center justify-start gap-2 px-2 py-1 transition-colors border-b border-slate-100/50 last:border-0" style={{ backgroundColor: bg }}>
-                                          <span style={{ backgroundColor: badgeBg, color: badgeColor, borderColor: badgeBorder }} className="font-mono text-[0.8em] px-1.5 py-0.5 rounded border shadow-sm shrink-0">
-                                              {code}
-                                          </span>
-                                          <span style={{ color, fontWeight: fw as any }} className="text-[0.85em] truncate">
-                                              {node.account_name}
-                                          </span>
-                                      </div>
+                                    <div
+                                      key={node.id}
+                                      className="flex items-center justify-start gap-2 px-2 py-1 transition-colors border-b border-slate-100/50 last:border-0"
+                                      style={{ backgroundColor: bg }}
+                                    >
+                                      <span
+                                        style={{
+                                          backgroundColor: badgeBg,
+                                          color: badgeColor,
+                                          borderColor: badgeBorder,
+                                        }}
+                                        className="font-mono text-[0.8em] px-1.5 py-0.5 rounded border shadow-sm shrink-0"
+                                      >
+                                        {code}
+                                      </span>
+                                      <span
+                                        style={{ color, fontWeight: fw as any }}
+                                        className="text-[0.85em] truncate"
+                                      >
+                                        {node.account_name}
+                                      </span>
+                                    </div>
                                   )
                                 })}
-                             </div>
-                          </div>
-                        )}
-                      </div>
-                    </TableCell>
-                  )
-                }
-                if (col === 'creditAccount') {
-                  const isExpanded = expandedNodes[item.id]?.credit
-                  const hasHierarchy = item.creditAccount.hierarchyArray && item.creditAccount.hierarchyArray.length > 0
-                  return (
-                    <TableCell
-                      key={col}
-                      className={cn(
-                        'px-2 py-1.5 border-r border-slate-200 text-slate-700 font-medium align-top',
-                        getAlignClass(prefs, col, 'left'),
-                      )}
-                      style={getGridlineStyle(prefs)}
-                    >
-                      <div className="flex flex-col gap-1.5 w-full">
-                        <div
-                          className={cn(
-                            'flex items-center gap-1.5 w-full',
-                            getJustifyClass(prefs, col, 'left'),
+                              </div>
+                            </div>
                           )}
-                        >
-                          {hasHierarchy ? (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-6 w-6 p-0 shrink-0 hover:bg-slate-200"
-                              onClick={() => toggleExpand(item.id, 'credit')}
-                            >
-                              {isExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
-                            </Button>
-                          ) : (
-                            <span className="w-6 shrink-0 inline-block" />
-                          )}
-                          <span className="font-mono bg-rose-50 text-rose-800 px-1.5 py-0.5 rounded text-[0.85em] font-semibold border border-rose-200 shrink-0">
-                            {item.creditAccount.account_code}
-                          </span>
-                          {item.creditAccount.classification && (
-                            <span className="font-mono text-[0.85em] font-semibold text-slate-500 shrink-0">
-                              {item.creditAccount.classification}
-                            </span>
-                          )}
-                          <span
-                            className="truncate max-w-[250px]"
-                            title={item.creditAccount.account_name}
-                          >
-                            {item.creditAccount.account_name}
-                          </span>
                         </div>
-                        
-                        {isExpanded && hasHierarchy && (
-                          <div className="mt-1 rounded-md overflow-hidden border border-slate-200 shadow-sm animate-in fade-in slide-in-from-top-1 w-full max-w-sm self-start">
-                             <div className="bg-slate-50 px-2 py-1 border-b border-slate-200">
-                                <span className="text-[0.7em] font-bold uppercase text-slate-500 tracking-wider">Raiz Hierárquica</span>
-                             </div>
-                             <div className="flex flex-col">
+                      </TableCell>
+                    )
+                  }
+                  if (col === 'creditAccount') {
+                    const isExpanded = expandedNodes[item.id]?.credit
+                    const hasHierarchy =
+                      item.creditAccount.hierarchyArray &&
+                      item.creditAccount.hierarchyArray.length > 0
+                    return (
+                      <TableCell
+                        key={col}
+                        className={cn(
+                          'px-2 py-1.5 border-r border-slate-200 text-slate-700 font-medium align-top',
+                          getAlignClass(prefs, col, 'left'),
+                        )}
+                        style={getGridlineStyle(prefs)}
+                      >
+                        <div className="flex flex-col gap-1.5 w-full">
+                          <div
+                            className={cn(
+                              'flex items-center gap-1.5 w-full',
+                              getJustifyClass(prefs, col, 'left'),
+                            )}
+                          >
+                            {hasHierarchy ? (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-6 w-6 p-0 shrink-0 hover:bg-slate-200"
+                                onClick={() => toggleExpand(item.id, 'credit')}
+                              >
+                                {isExpanded ? (
+                                  <ChevronDown className="h-3 w-3" />
+                                ) : (
+                                  <ChevronRight className="h-3 w-3" />
+                                )}
+                              </Button>
+                            ) : (
+                              <span className="w-6 shrink-0 inline-block" />
+                            )}
+                            <span className="font-mono bg-rose-50 text-rose-800 px-1.5 py-0.5 rounded text-[0.85em] font-semibold border border-rose-200 shrink-0">
+                              {item.creditAccount.account_code}
+                            </span>
+                            {item.creditAccount.classification && (
+                              <span className="font-mono text-[0.85em] font-semibold text-slate-500 shrink-0">
+                                {item.creditAccount.classification}
+                              </span>
+                            )}
+                            <span
+                              className="truncate max-w-[250px]"
+                              title={item.creditAccount.account_name}
+                            >
+                              {item.creditAccount.account_name}
+                            </span>
+                          </div>
+
+                          {isExpanded && hasHierarchy && (
+                            <div className="mt-1 rounded-md overflow-hidden border border-slate-200 shadow-sm animate-in fade-in slide-in-from-top-1 w-full max-w-sm self-start">
+                              <div className="bg-slate-50 px-2 py-1 border-b border-slate-200">
+                                <span className="text-[0.7em] font-bold uppercase text-slate-500 tracking-wider">
+                                  Raiz Hierárquica
+                                </span>
+                              </div>
+                              <div className="flex flex-col">
                                 {item.creditAccount.hierarchyArray.map((node: any) => {
                                   const code = node.classification || node.account_code || ''
                                   const nodeLevel = (code.match(/\./g) || []).length + 1
                                   const isSyn = node.account_level === 'Sintética'
 
-                                  let bg = '#ffffff', color = '#334155', fw = '500', badgeBg = '#f1f5f9', badgeColor = '#475569', badgeBorder = '#e2e8f0'
+                                  let bg = '#ffffff',
+                                    color = '#334155',
+                                    fw = '500',
+                                    badgeBg = '#f1f5f9',
+                                    badgeColor = '#475569',
+                                    badgeBorder = '#e2e8f0'
                                   if (isSyn) {
-                                      if (nodeLevel === 1) {
-                                          bg = '#1e1b4b'; color = '#ffffff'; fw = '700'; badgeBg = '#312e81'; badgeColor = '#ffffff'; badgeBorder = '#3730a3'
-                                      } else if (nodeLevel === 2) {
-                                          bg = '#312e81'; color = '#ffffff'; fw = '600'; badgeBg = '#3730a3'; badgeColor = '#ffffff'; badgeBorder = '#4338ca'
-                                      } else if (nodeLevel === 3) {
-                                          bg = '#3730a3'; color = '#ffffff'; fw = '500'; badgeBg = '#4338ca'; badgeColor = '#ffffff'; badgeBorder = '#4f46e5'
-                                      } else if (nodeLevel === 4) {
-                                          bg = '#e0e7ff'; color = '#1e1b4b'; fw = '500'; badgeBg = '#c7d2fe'; badgeColor = '#1e1b4b'; badgeBorder = '#a5b4fc'
-                                      } else {
-                                          bg = '#e0e7ff'; color = '#1e1b4b'; fw = '500'; badgeBg = '#c7d2fe'; badgeColor = '#1e1b4b'; badgeBorder = '#a5b4fc'
-                                      }
+                                    if (nodeLevel === 1) {
+                                      bg = '#1e1b4b'
+                                      color = '#ffffff'
+                                      fw = '700'
+                                      badgeBg = '#312e81'
+                                      badgeColor = '#ffffff'
+                                      badgeBorder = '#3730a3'
+                                    } else if (nodeLevel === 2) {
+                                      bg = '#312e81'
+                                      color = '#ffffff'
+                                      fw = '600'
+                                      badgeBg = '#3730a3'
+                                      badgeColor = '#ffffff'
+                                      badgeBorder = '#4338ca'
+                                    } else if (nodeLevel === 3) {
+                                      bg = '#3730a3'
+                                      color = '#ffffff'
+                                      fw = '500'
+                                      badgeBg = '#4338ca'
+                                      badgeColor = '#ffffff'
+                                      badgeBorder = '#4f46e5'
+                                    } else if (nodeLevel === 4) {
+                                      bg = '#e0e7ff'
+                                      color = '#1e1b4b'
+                                      fw = '500'
+                                      badgeBg = '#c7d2fe'
+                                      badgeColor = '#1e1b4b'
+                                      badgeBorder = '#a5b4fc'
+                                    } else {
+                                      bg = '#e0e7ff'
+                                      color = '#1e1b4b'
+                                      fw = '500'
+                                      badgeBg = '#c7d2fe'
+                                      badgeColor = '#1e1b4b'
+                                      badgeBorder = '#a5b4fc'
+                                    }
                                   }
 
                                   return (
-                                      <div key={node.id} className="flex items-center justify-start gap-2 px-2 py-1 transition-colors border-b border-slate-100/50 last:border-0" style={{ backgroundColor: bg }}>
-                                          <span style={{ backgroundColor: badgeBg, color: badgeColor, borderColor: badgeBorder }} className="font-mono text-[0.8em] px-1.5 py-0.5 rounded border shadow-sm shrink-0">
-                                              {code}
-                                          </span>
-                                          <span style={{ color, fontWeight: fw as any }} className="text-[0.85em] truncate">
-                                              {node.account_name}
-                                          </span>
-                                      </div>
+                                    <div
+                                      key={node.id}
+                                      className="flex items-center justify-start gap-2 px-2 py-1 transition-colors border-b border-slate-100/50 last:border-0"
+                                      style={{ backgroundColor: bg }}
+                                    >
+                                      <span
+                                        style={{
+                                          backgroundColor: badgeBg,
+                                          color: badgeColor,
+                                          borderColor: badgeBorder,
+                                        }}
+                                        className="font-mono text-[0.8em] px-1.5 py-0.5 rounded border shadow-sm shrink-0"
+                                      >
+                                        {code}
+                                      </span>
+                                      <span
+                                        style={{ color, fontWeight: fw as any }}
+                                        className="text-[0.85em] truncate"
+                                      >
+                                        {node.account_name}
+                                      </span>
+                                    </div>
                                   )
                                 })}
-                             </div>
-                          </div>
-                        )}
-                      </div>
-                    </TableCell>
-                  )
-                }
-                if (col === 'count')
-                  return (
-                    <TableCell
-                      key={col}
-                      className={cn(
-                        'px-2 py-1.5 text-slate-700 border-r border-slate-200 align-top pt-2',
-                        getAlignClass(prefs, col, 'center'),
-                      )}
-                      style={getGridlineStyle(prefs)}
-                    >
-                      <div
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </TableCell>
+                    )
+                  }
+                  if (col === 'count')
+                    return (
+                      <TableCell
+                        key={col}
                         className={cn(
-                          'flex w-full items-center',
-                          getJustifyClass(prefs, col, 'center'),
+                          'px-2 py-1.5 text-slate-700 border-r border-slate-200 align-top pt-2',
+                          getAlignClass(prefs, col, 'center'),
                         )}
+                        style={getGridlineStyle(prefs)}
                       >
-                        <Button
-                          variant="link"
-                          size="sm"
-                          className="h-auto p-0 text-indigo-600 font-bold hover:text-indigo-800"
-                          onClick={() => onDrillDown(`Lançamentos - ${formatCc(item)}`, item.rows)}
-                          title="Ver Lançamentos"
+                        <div
+                          className={cn(
+                            'flex w-full items-center',
+                            getJustifyClass(prefs, col, 'center'),
+                          )}
                         >
-                          {item.count}
-                        </Button>
-                      </div>
-                    </TableCell>
-                  )
-                if (col === 'amount')
-                  return (
-                    <TableCell
-                      key={col}
-                      className={cn(
-                        'px-2 py-1.5 text-slate-700 font-bold whitespace-nowrap align-top pt-2',
-                        getAlignClass(prefs, col, 'right'),
-                      )}
-                      style={getGridlineStyle(prefs)}
-                    >
-                      <div
+                          <Button
+                            variant="link"
+                            size="sm"
+                            className="h-auto p-0 text-indigo-600 font-bold hover:text-indigo-800"
+                            onClick={() =>
+                              onDrillDown(`Lançamentos - ${formatCc(item)}`, item.rows)
+                            }
+                            title="Ver Lançamentos"
+                          >
+                            {item.count}
+                          </Button>
+                        </div>
+                      </TableCell>
+                    )
+                  if (col === 'amount')
+                    return (
+                      <TableCell
+                        key={col}
                         className={cn(
-                          'flex w-full items-center',
-                          getJustifyClass(prefs, col, 'right'),
+                          'px-2 py-1.5 text-slate-700 font-bold whitespace-nowrap align-top pt-2',
+                          getAlignClass(prefs, col, 'right'),
                         )}
+                        style={getGridlineStyle(prefs)}
                       >
-                        {formatVal(item.amount)}
-                      </div>
-                    </TableCell>
-                  )
-                return null
-              })}
-            </TableRow>
-          ))}
-          {aggregated.length === 0 ? (
-            <TableRow disableZebra>
-              <TableCell
-                colSpan={colOrder.length}
-                className="text-center py-4 text-slate-500 border-t border-slate-200"
-              >
-                Nenhum dado para resumir.
-              </TableCell>
-            </TableRow>
-          ) : (
-            <>
-              {unmappedAmount > 0 && (
-                <TableRow disableZebra className="bg-rose-50/50 border-t border-slate-200">
+                        <div
+                          className={cn(
+                            'flex w-full items-center',
+                            getJustifyClass(prefs, col, 'right'),
+                          )}
+                        >
+                          {formatVal(item.amount)}
+                        </div>
+                      </TableCell>
+                    )
+                  return null
+                })}
+              </TableRow>
+            ))}
+            {aggregated.length === 0 ? (
+              <TableRow disableZebra>
+                <TableCell
+                  colSpan={colOrder.length}
+                  className="text-center py-4 text-slate-500 border-t border-slate-200"
+                >
+                  Nenhum dado para resumir.
+                </TableCell>
+              </TableRow>
+            ) : (
+              <>
+                {unmappedAmount > 0 && (
+                  <TableRow disableZebra className="bg-rose-50/50 border-t border-slate-200">
+                    {colOrder.map((col, i) => {
+                      if (col === 'count')
+                        return (
+                          <TableCell
+                            key={col}
+                            className={cn(
+                              'px-2 py-2 text-rose-600 font-medium border-r border-slate-200',
+                              getAlignClass(prefs, col, 'center'),
+                            )}
+                            style={getGridlineStyle(prefs)}
+                          >
+                            -
+                          </TableCell>
+                        )
+                      if (col === 'amount')
+                        return (
+                          <TableCell
+                            key={col}
+                            className={cn(
+                              'px-2 py-2 text-rose-600 font-bold whitespace-nowrap',
+                              getAlignClass(prefs, col, 'right'),
+                            )}
+                            style={getGridlineStyle(prefs)}
+                          >
+                            {formatVal(unmappedAmount)}
+                          </TableCell>
+                        )
+
+                      if (i === 0)
+                        return (
+                          <TableCell
+                            key={col}
+                            className={cn(
+                              'px-2 py-2 border-r border-slate-200 text-slate-600 italic',
+                              getAlignClass(prefs, col, 'left'),
+                            )}
+                            style={getGridlineStyle(prefs)}
+                          >
+                            <div
+                              className={cn(
+                                'flex items-center gap-2',
+                                getJustifyClass(prefs, col, 'left'),
+                              )}
+                            >
+                              <AlertCircle className="h-4 w-4 text-rose-500 shrink-0" />
+                              <span className="truncate max-w-[300px]">
+                                Valores Pendentes de Mapeamento Contábil (Ignorados)
+                              </span>
+                            </div>
+                          </TableCell>
+                        )
+
+                      return (
+                        <TableCell
+                          key={col}
+                          className="px-2 py-2 border-r border-slate-200"
+                          style={getGridlineStyle(prefs)}
+                        ></TableCell>
+                      )
+                    })}
+                  </TableRow>
+                )}
+                <TableRow
+                  disableZebra
+                  className="bg-slate-100 font-bold border-t-2 border-slate-300 shadow-inner"
+                >
                   {colOrder.map((col, i) => {
                     if (col === 'count')
                       return (
                         <TableCell
                           key={col}
                           className={cn(
-                            'px-2 py-2 text-rose-600 font-medium border-r border-slate-200',
+                            'px-2 py-2 text-slate-900 border-r border-slate-300',
                             getAlignClass(prefs, col, 'center'),
                           )}
                           style={getGridlineStyle(prefs)}
                         >
-                          -
+                          {totalCount}
                         </TableCell>
                       )
                     if (col === 'amount')
@@ -2722,12 +2908,12 @@ function AccountingCrossReferenceTable({
                         <TableCell
                           key={col}
                           className={cn(
-                            'px-2 py-2 text-rose-600 font-bold whitespace-nowrap',
+                            'px-2 py-2 text-indigo-700 whitespace-nowrap',
                             getAlignClass(prefs, col, 'right'),
                           )}
                           style={getGridlineStyle(prefs)}
                         >
-                          {formatVal(unmappedAmount)}
+                          {formatVal(totalAmount)}
                         </TableCell>
                       )
 
@@ -2736,95 +2922,30 @@ function AccountingCrossReferenceTable({
                         <TableCell
                           key={col}
                           className={cn(
-                            'px-2 py-2 border-r border-slate-200 text-slate-600 italic',
-                            getAlignClass(prefs, col, 'left'),
+                            'px-2 py-2 border-r border-slate-300 text-slate-900 uppercase',
+                            getAlignClass(prefs, col, 'right'),
                           )}
                           style={getGridlineStyle(prefs)}
                         >
-                          <div
-                            className={cn(
-                              'flex items-center gap-2',
-                              getJustifyClass(prefs, col, 'left'),
-                            )}
-                          >
-                            <AlertCircle className="h-4 w-4 text-rose-500 shrink-0" />
-                            <span className="truncate max-w-[300px]">
-                              Valores Pendentes de Mapeamento Contábil (Ignorados)
-                            </span>
-                          </div>
+                          Total Geral:
                         </TableCell>
                       )
 
                     return (
                       <TableCell
                         key={col}
-                        className="px-2 py-2 border-r border-slate-200"
+                        className="px-2 py-2 border-r border-slate-300 text-right text-slate-900 uppercase"
                         style={getGridlineStyle(prefs)}
                       ></TableCell>
                     )
                   })}
                 </TableRow>
-              )}
-              <TableRow
-                disableZebra
-                className="bg-slate-100 font-bold border-t-2 border-slate-300 shadow-inner"
-              >
-                {colOrder.map((col, i) => {
-                  if (col === 'count')
-                    return (
-                      <TableCell
-                        key={col}
-                        className={cn(
-                          'px-2 py-2 text-slate-900 border-r border-slate-300',
-                          getAlignClass(prefs, col, 'center'),
-                        )}
-                        style={getGridlineStyle(prefs)}
-                      >
-                        {totalCount}
-                      </TableCell>
-                    )
-                  if (col === 'amount')
-                    return (
-                      <TableCell
-                        key={col}
-                        className={cn(
-                          'px-2 py-2 text-indigo-700 whitespace-nowrap',
-                          getAlignClass(prefs, col, 'right'),
-                        )}
-                        style={getGridlineStyle(prefs)}
-                      >
-                        {formatVal(totalAmount)}
-                      </TableCell>
-                    )
-
-                  if (i === 0)
-                    return (
-                      <TableCell
-                        key={col}
-                        className={cn(
-                          'px-2 py-2 border-r border-slate-300 text-slate-900 uppercase',
-                          getAlignClass(prefs, col, 'right'),
-                        )}
-                        style={getGridlineStyle(prefs)}
-                      >
-                        Total Geral:
-                      </TableCell>
-                    )
-
-                  return (
-                    <TableCell
-                      key={col}
-                      className="px-2 py-2 border-r border-slate-300 text-right text-slate-900 uppercase"
-                      style={getGridlineStyle(prefs)}
-                    ></TableCell>
-                  )
-                })}
-              </TableRow>
-            </>
-          )}
-        </TableBody>
-      </Table>
-    </TopScrollTableWrapper>
+              </>
+            )}
+          </TableBody>
+        </Table>
+      </TopScrollTableWrapper>
+    </div>
   )
 }
 
