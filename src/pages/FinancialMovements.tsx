@@ -2932,19 +2932,7 @@ export default function FinancialMovements() {
   const [generateScope, setGenerateScope] = useState<'global' | 'dry_run'>('global')
 
   const [dryRunFiltersOpen, setDryRunFiltersOpen] = useState(false)
-  const [dryRunFilters, setDryRunFilters] = useState<{
-    data_emissao: string[]
-    dt_compens: string[]
-    debito: string[]
-    credito: string[]
-    status: string[]
-  }>({
-    data_emissao: [],
-    dt_compens: [],
-    debito: [],
-    credito: [],
-    status: [],
-  })
+  const [dryRunFilters, setDryRunFilters] = useState<Record<string, string[]>>({})
 
   const getMappedAccountForCC = (cCustoCode: string | null, orgId: string | null) => {
     if (!cCustoCode || !orgId) return null
@@ -3048,90 +3036,11 @@ export default function FinancialMovements() {
     return { debitAccount, creditAccount, isMapped: !!debitAccount && !!creditAccount }
   }
 
-  const dryRunOptions = useMemo(() => {
-    const emSet = new Set<string>()
-    const compSet = new Set<string>()
-    const debitoSet = new Set<string>()
-    const creditoSet = new Set<string>()
-    const statusSet = new Set<string>()
-
-    summaryData.forEach((row) => {
-      if (row.status === 'Ignorado') return
-
-      if (row.data_emissao) emSet.add(row.data_emissao.substring(0, 7))
-      if (row.dt_compens) compSet.add(row.dt_compens.substring(0, 7))
-      if (row.status) statusSet.add(row.status)
-
-      const sim = getAccountingEntriesSimulation(
-        row,
-        generateOptions.valueBase as 'valor' | 'valor_liquido',
-      )
-      if (sim.debitAccount)
-        debitoSet.add(`${sim.debitAccount.account_code} - ${sim.debitAccount.account_name}`)
-      if (sim.creditAccount)
-        creditoSet.add(`${sim.creditAccount.account_code} - ${sim.creditAccount.account_name}`)
-    })
-
-    const sortByMonth = (a: string, b: string) => a.localeCompare(b)
-
-    return {
-      data_emissao: Array.from(emSet)
-        .sort(sortByMonth)
-        .map((m) => ({ label: m.split('-').reverse().join('/'), value: m })),
-      dt_compens: Array.from(compSet)
-        .sort(sortByMonth)
-        .map((m) => ({ label: m.split('-').reverse().join('/'), value: m })),
-      debito: Array.from(debitoSet).sort(),
-      credito: Array.from(creditoSet).sort(),
-      status: Array.from(statusSet).sort(),
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [summaryData, generateOptions.valueBase])
-
-  const filteredDryRunData = useMemo(() => {
-    return summaryData.filter((row) => {
-      if (row.status === 'Ignorado') return false
-
-      const sim = getAccountingEntriesSimulation(
-        row,
-        generateOptions.valueBase as 'valor' | 'valor_liquido',
-      )
-
-      const de = row.data_emissao ? row.data_emissao.substring(0, 7) : null
-      const dc = row.dt_compens ? row.dt_compens.substring(0, 7) : null
-      const deb = sim.debitAccount
-        ? `${sim.debitAccount.account_code} - ${sim.debitAccount.account_name}`
-        : null
-      const cred = sim.creditAccount
-        ? `${sim.creditAccount.account_code} - ${sim.creditAccount.account_name}`
-        : null
-
-      if (
-        dryRunFilters.data_emissao.length > 0 &&
-        (!de || !dryRunFilters.data_emissao.includes(de))
-      )
-        return false
-      if (dryRunFilters.dt_compens.length > 0 && (!dc || !dryRunFilters.dt_compens.includes(dc)))
-        return false
-      if (dryRunFilters.debito.length > 0 && (!deb || !dryRunFilters.debito.includes(deb)))
-        return false
-      if (dryRunFilters.credito.length > 0 && (!cred || !dryRunFilters.credito.includes(cred)))
-        return false
-      if (
-        dryRunFilters.status.length > 0 &&
-        (!row.status || !dryRunFilters.status.includes(row.status))
-      )
-        return false
-
-      return true
-    })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [summaryData, dryRunFilters, generateOptions.valueBase])
-
   const dryRunHeaders = useMemo(
     () => [
       { key: 'status', label: 'Status', defaultAlign: 'center' },
-      { key: 'data_emissao', label: 'Data', defaultAlign: 'center' },
+      { key: 'data_emissao', label: 'Data Emissão', defaultAlign: 'center' },
+      { key: 'dt_compens', label: 'Competência', defaultAlign: 'center' },
       { key: 'conta_debito', label: 'Conta Débito', defaultAlign: 'left' },
       { key: 'conta_credito', label: 'Conta Crédito', defaultAlign: 'left' },
       { key: 'valor', label: 'Valor', defaultAlign: 'right' },
@@ -3143,27 +3052,121 @@ export default function FinancialMovements() {
     [],
   )
 
+  const dryRunOptions = useMemo(() => {
+    const options: Record<string, { label: string; value: string }[]> = {}
+
+    dryRunHeaders.forEach((h) => {
+      const key = h.key
+      if (key === 'valor') return // Skip value column for multi-select filter
+
+      const uniqueVals = new Set<string>()
+
+      summaryData.forEach((row) => {
+        if (row.status === 'Ignorado') return
+
+        let val = ''
+        if (key === 'status') val = row.status || ''
+        else if (key === 'data_emissao') {
+          val = row.data_emissao ? row.data_emissao.substring(0, 7) : ''
+        } else if (key === 'dt_compens') {
+          val = row.dt_compens ? row.dt_compens.substring(0, 7) : ''
+        } else if (key === 'conta_debito' || key === 'conta_credito') {
+          const sim = getAccountingEntriesSimulation(
+            row,
+            generateOptions.valueBase as 'valor' | 'valor_liquido',
+          )
+          const acc = key === 'conta_debito' ? sim.debitAccount : sim.creditAccount
+          val = acc ? `${acc.account_code} - ${acc.account_name}` : 'Pendente'
+        } else if (key === 'c_custo') {
+          val = row.c_custo || 'Sem C.Custo'
+        } else if (key === 'descricao_c_custo') {
+          val = row.descricao_c_custo || ''
+        } else if (key === 'conta_caixa') {
+          val = row.conta_caixa ? `${row.conta_caixa} - ${row.nome_caixa || ''}` : 'Sem Conta Caixa'
+        } else if (key === 'historico') {
+          val = row.historico || ''
+        } else {
+          val = row[key as keyof typeof row] || ''
+        }
+
+        if (val) uniqueVals.add(val)
+      })
+
+      options[key] = Array.from(uniqueVals).sort((a, b) => a.localeCompare(b)).map(v => {
+        let label = v
+        if (key === 'data_emissao' || key === 'dt_compens') {
+          if (v.length === 7) {
+            label = v.split('-').reverse().join('/')
+          }
+        }
+        return { label, value: v }
+      })
+    })
+
+    return options
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [summaryData, generateOptions.valueBase, dryRunHeaders])
+
+  const filteredDryRunData = useMemo(() => {
+    return summaryData.filter((row) => {
+      if (row.status === 'Ignorado') return false
+
+      const sim = getAccountingEntriesSimulation(
+        row,
+        generateOptions.valueBase as 'valor' | 'valor_liquido',
+      )
+
+      for (const key of Object.keys(dryRunFilters)) {
+        if (!dryRunFilters[key] || dryRunFilters[key].length === 0) continue
+
+        let val = ''
+        if (key === 'status') val = row.status || ''
+        else if (key === 'data_emissao') {
+          val = row.data_emissao ? row.data_emissao.substring(0, 7) : ''
+        } else if (key === 'dt_compens') {
+          val = row.dt_compens ? row.dt_compens.substring(0, 7) : ''
+        } else if (key === 'conta_debito' || key === 'conta_credito') {
+          const acc = key === 'conta_debito' ? sim.debitAccount : sim.creditAccount
+          val = acc ? `${acc.account_code} - ${acc.account_name}` : 'Pendente'
+        } else if (key === 'c_custo') {
+          val = row.c_custo || 'Sem C.Custo'
+        } else if (key === 'descricao_c_custo') {
+          val = row.descricao_c_custo || ''
+        } else if (key === 'conta_caixa') {
+          val = row.conta_caixa ? `${row.conta_caixa} - ${row.nome_caixa || ''}` : 'Sem Conta Caixa'
+        } else if (key === 'historico') {
+          val = row.historico || ''
+        } else {
+          val = row[key as keyof typeof row] || ''
+        }
+
+        if (!dryRunFilters[key].includes(val)) {
+          return false
+        }
+      }
+
+      return true
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [summaryData, dryRunFilters, generateOptions.valueBase])
+
   const [dryRunColOrder, setDryRunColOrder] = useState<string[]>(() => {
+    const defaultOrder = dryRunHeaders.map(h => h.key)
     const saved = localStorage.getItem('fin_mov_dry_run_cols')
     if (saved) {
       try {
         const parsed = JSON.parse(saved)
-        if (Array.isArray(parsed) && parsed.length === 9) return parsed
+        if (Array.isArray(parsed)) {
+          const validKeys = new Set(defaultOrder)
+          const validParsed = parsed.filter(key => validKeys.has(key))
+          const missingKeys = defaultOrder.filter(key => !validParsed.includes(key))
+          return [...validParsed, ...missingKeys]
+        }
       } catch {
         /* intentionally ignored */
       }
     }
-    return [
-      'status',
-      'data_emissao',
-      'conta_debito',
-      'conta_credito',
-      'valor',
-      'c_custo',
-      'descricao_c_custo',
-      'conta_caixa',
-      'historico',
-    ]
+    return defaultOrder
   })
 
   useEffect(() => {
@@ -3224,8 +3227,12 @@ export default function FinancialMovements() {
           valB = b.status || ''
           break
         case 'data_emissao':
-          valA = a[generateOptions.dateBase as keyof typeof a] || ''
-          valB = b[generateOptions.dateBase as keyof typeof b] || ''
+          valA = a.data_emissao || ''
+          valB = b.data_emissao || ''
+          break
+        case 'dt_compens':
+          valA = a.dt_compens || ''
+          valB = b.dt_compens || ''
           break
         case 'conta_debito':
           valA = simA.debitAccount?.account_name || ''
@@ -10497,10 +10504,10 @@ export default function FinancialMovements() {
                         className="h-9 text-xs relative bg-white border-slate-300 shadow-sm"
                       >
                         <Filter className="mr-2 h-4 w-4" /> Filtros do Dry Run
-                        {Object.values(dryRunFilters).some((arr) => arr.length > 0) && (
-                          <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-indigo-600 text-[9px] font-bold text-white shadow-sm">
+                        {Object.values(dryRunFilters).some((arr) => arr && arr.length > 0) && (
+                          <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-indigo-600 text-[9px] font-bold text-white shadow-sm border-2 border-white">
                             {Object.values(dryRunFilters).reduce(
-                              (acc, val) => acc + (val.length > 0 ? 1 : 0),
+                              (acc, val) => acc + (val?.length > 0 ? 1 : 0),
                               0,
                             )}
                           </span>
@@ -10511,21 +10518,16 @@ export default function FinancialMovements() {
                       className="w-[320px] p-4 flex flex-col gap-4 shadow-xl border-slate-200"
                       align="end"
                     >
-                      <div className="flex items-center justify-between">
+                      <div className="flex items-center justify-between mb-2">
                         <h4 className="font-semibold text-sm text-slate-800">
                           Filtros (Apenas nesta visão)
                         </h4>
-                        {Object.values(dryRunFilters).some((arr) => arr.length > 0) && (
+                        {Object.values(dryRunFilters).some((arr) => arr && arr.length > 0) && (
                           <Button
                             variant="ghost"
                             size="sm"
                             onClick={() => {
-                              setDryRunFilters({
-                                data_emissao: [],
-                                dt_compens: [],
-                                debito: [],
-                                credito: [],
-                              })
+                              setDryRunFilters({})
                               setDryRunPage(0)
                             }}
                             className="h-6 text-xs px-2 text-slate-500 hover:text-red-600 hover:bg-red-50"
@@ -10535,73 +10537,27 @@ export default function FinancialMovements() {
                         )}
                       </div>
 
-                      <div className="space-y-1.5">
-                        <Label className="text-xs font-semibold text-slate-700">
-                          Data Emissão (Mês/Ano)
-                        </Label>
-                        <MultiSelect
-                          title="Todos os meses"
-                          options={dryRunOptions.data_emissao}
-                          selected={dryRunFilters.data_emissao}
-                          onChange={(v: string[]) => {
-                            setDryRunFilters((p) => ({ ...p, data_emissao: v }))
-                            setDryRunPage(0)
-                          }}
-                        />
-                      </div>
-                      <div className="space-y-1.5">
-                        <Label className="text-xs font-semibold text-slate-700">
-                          Competência (Mês/Ano)
-                        </Label>
-                        <MultiSelect
-                          title="Todos os meses"
-                          options={dryRunOptions.dt_compens}
-                          selected={dryRunFilters.dt_compens}
-                          onChange={(v: string[]) => {
-                            setDryRunFilters((p) => ({ ...p, dt_compens: v }))
-                            setDryRunPage(0)
-                          }}
-                        />
-                      </div>
-                      <div className="space-y-1.5">
-                        <Label className="text-xs font-semibold text-slate-700">
-                          Conta Débito (Prevista)
-                        </Label>
-                        <MultiSelect
-                          title="Todas as contas"
-                          options={dryRunOptions.debito.map((d) => ({ label: d, value: d }))}
-                          selected={dryRunFilters.debito}
-                          onChange={(v: string[]) => {
-                            setDryRunFilters((p) => ({ ...p, debito: v }))
-                            setDryRunPage(0)
-                          }}
-                        />
-                      </div>
-                      <div className="space-y-1.5">
-                        <Label className="text-xs font-semibold text-slate-700">
-                          Conta Crédito (Prevista)
-                        </Label>
-                        <MultiSelect
-                          title="Todas as contas"
-                          options={dryRunOptions.credito.map((d) => ({ label: d, value: d }))}
-                          selected={dryRunFilters.credito}
-                          onChange={(v: string[]) => {
-                            setDryRunFilters((p) => ({ ...p, credito: v }))
-                            setDryRunPage(0)
-                          }}
-                        />
-                      </div>
-                      <div className="space-y-1.5">
-                        <Label className="text-xs font-semibold text-slate-700">Status</Label>
-                        <MultiSelect
-                          title="Todos os status"
-                          options={dryRunOptions.status.map((d) => ({ label: d, value: d }))}
-                          selected={dryRunFilters.status}
-                          onChange={(v: string[]) => {
-                            setDryRunFilters((p) => ({ ...p, status: v }))
-                            setDryRunPage(0)
-                          }}
-                        />
+                      <div className="max-h-[60vh] overflow-y-auto pr-2 flex flex-col gap-3 custom-scrollbar">
+                        {dryRunHeaders.map((col) => {
+                          if (col.key === 'valor') return null
+                          const options = dryRunOptions[col.key] || []
+                          if (options.length === 0) return null
+
+                          return (
+                            <div key={col.key} className="space-y-1.5">
+                              <Label className="text-xs font-semibold text-slate-700">{col.label}</Label>
+                              <MultiSelect
+                                title={\`Todos os \${col.label}\`}
+                                options={options}
+                                selected={dryRunFilters[col.key] || []}
+                                onChange={(v: string[]) => {
+                                  setDryRunFilters((p) => ({ ...p, [col.key]: v }))
+                                  setDryRunPage(0)
+                                }}
+                              />
+                            </div>
+                          )
+                        })}
                       </div>
                     </PopoverContent>
                   </Popover>
@@ -10723,7 +10679,14 @@ export default function FinancialMovements() {
                           >
                             <div className="flex items-center justify-between gap-1 w-full h-full">
                               <div
-                                className="flex flex-1 items-center justify-center cursor-pointer hover:bg-white/10 rounded px-1 -ml-1 transition-colors"
+                                className={cn(
+                                  'flex flex-1 items-center cursor-pointer hover:bg-white/10 rounded px-1 -ml-1 transition-colors',
+                                  (dryRunPrefs.alignments?.[colDef.key] || colDef.defaultAlign) === 'right'
+                                    ? 'justify-end'
+                                    : (dryRunPrefs.alignments?.[colDef.key] || colDef.defaultAlign) === 'center'
+                                      ? 'justify-center'
+                                      : 'justify-start'
+                                )}
                                 onClick={() => {
                                   if (dryRunSortColumn === colDef.key) {
                                     setDryRunSortDirection(
@@ -10747,88 +10710,203 @@ export default function FinancialMovements() {
                                   <ArrowUpDown className="h-3 w-3 ml-1 opacity-50 text-indigo-300" />
                                 )}
                               </div>
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-6 w-6 rounded-sm text-indigo-200 hover:text-white hover:bg-white/20 relative shrink-0 ml-1 transition-all"
-                                  >
-                                    <MoreVertical className="h-4 w-4" />
-                                  </Button>
-                                </DropdownMenuTrigger>{' '}
-                                <DropdownMenuContent align="start" className="w-48">
-                                  <DropdownMenuGroup>
-                                    <DropdownMenuLabel className="text-xs text-slate-500 uppercase tracking-wider">
-                                      Alinhamento
-                                    </DropdownMenuLabel>
-                                    <div className="flex items-center gap-1 px-2 py-1.5">
+                              <div className="flex items-center flex-shrink-0 relative">
+                                {colDef.key !== 'valor' && (
+                                  <Popover>
+                                    <PopoverTrigger asChild>
                                       <Button
-                                        variant={
-                                          (dryRunPrefs.alignments?.[colDef.key] ||
-                                            colDef.defaultAlign) === 'left'
-                                            ? 'secondary'
-                                            : 'ghost'
-                                        }
+                                        variant="ghost"
                                         size="icon"
-                                        className="h-7 w-7"
-                                        onClick={() =>
-                                          updateDryRunPrefs({
-                                            alignments: {
-                                              ...(dryRunPrefs.alignments || {}),
-                                              [colDef.key]: 'left',
-                                            },
-                                          })
-                                        }
+                                        className={cn(
+                                          'h-5 w-5 rounded-sm relative',
+                                          (dryRunFilters[colDef.key] && dryRunFilters[colDef.key].length > 0)
+                                            ? 'text-white bg-primary/40'
+                                            : 'text-indigo-200 hover:text-white hover:bg-indigo-800/50',
+                                        )}
+                                        title="Filtrar coluna"
                                       >
-                                        <AlignLeft className="h-3.5 w-3.5" />
+                                        <Filter className="h-3 w-3" />
+                                        {dryRunFilters[colDef.key] && dryRunFilters[colDef.key].length > 0 && (
+                                          <span className="absolute -top-0.5 -right-0.5 flex h-2 w-2 items-center justify-center rounded-full bg-primary text-[8px] text-primary-foreground"></span>
+                                        )}
                                       </Button>
-                                      <Button
-                                        variant={
-                                          (dryRunPrefs.alignments?.[colDef.key] ||
-                                            colDef.defaultAlign) === 'center'
-                                            ? 'secondary'
-                                            : 'ghost'
-                                        }
-                                        size="icon"
-                                        className="h-7 w-7"
-                                        onClick={() =>
-                                          updateDryRunPrefs({
-                                            alignments: {
-                                              ...(dryRunPrefs.alignments || {}),
-                                              [colDef.key]: 'center',
-                                            },
-                                          })
-                                        }
-                                      >
-                                        <AlignCenter className="h-3.5 w-3.5" />
-                                      </Button>
-                                      <Button
-                                        variant={
-                                          (dryRunPrefs.alignments?.[colDef.key] ||
-                                            colDef.defaultAlign) === 'right'
-                                            ? 'secondary'
-                                            : 'ghost'
-                                        }
-                                        size="icon"
-                                        className="h-7 w-7"
-                                        onClick={() =>
-                                          updateDryRunPrefs({
-                                            alignments: {
-                                              ...(dryRunPrefs.alignments || {}),
-                                              [colDef.key]: 'right',
-                                            },
-                                          })
-                                        }
-                                      >
-                                        <AlignRight className="h-3.5 w-3.5" />
-                                      </Button>
-                                    </div>
-                                  </DropdownMenuGroup>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            </div>
-                          </TableHead>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-[200px] p-0" align="start">
+                                      <Command>
+                                        <CommandInput placeholder="Buscar..." className="h-8 text-xs" />
+                                        <div className="flex items-center gap-1 p-1 border-b border-slate-100 bg-slate-50">
+                                          <Button
+                                            variant="secondary"
+                                            size="sm"
+                                            className="h-6 flex-1 text-[10px]"
+                                            onMouseDown={(e) => {
+                                              e.preventDefault()
+                                              e.stopPropagation()
+                                            }}
+                                            onClick={(e) => {
+                                              e.stopPropagation()
+                                              const allVals = (dryRunOptions[colDef.key] || []).map(o => o.value)
+                                              setDryRunFilters((prev) => ({
+                                                ...prev,
+                                                [colDef.key]: allVals,
+                                              }))
+                                              setDryRunPage(0)
+                                            }}
+                                          >
+                                            Todos
+                                          </Button>
+                                          <Button
+                                            variant="secondary"
+                                            size="sm"
+                                            className="h-6 flex-1 text-[10px]"
+                                            onMouseDown={(e) => {
+                                              e.preventDefault()
+                                              e.stopPropagation()
+                                            }}
+                                            onClick={(e) => {
+                                              e.stopPropagation()
+                                              setDryRunFilters((prev) => ({
+                                                ...prev,
+                                                [colDef.key]: [],
+                                              }))
+                                              setDryRunPage(0)
+                                            }}
+                                          >
+                                            Nenhum
+                                          </Button>
+                                        </div>
+                                        <CommandList className="max-h-[200px] overflow-y-auto">
+                                          <CommandEmpty className="py-2 text-xs text-center text-slate-500">
+                                            Nenhum encontrado.
+                                          </CommandEmpty>
+                                          <CommandGroup>
+                                            {(dryRunOptions[colDef.key] || []).map((opt) => {
+                                              const isSelected = dryRunFilters[colDef.key]?.includes(opt.value)
+                                              return (
+                                                <CommandItem
+                                                  key={opt.value}
+                                                  onMouseDown={(e) => {
+                                                    e.preventDefault()
+                                                    e.stopPropagation()
+                                                  }}
+                                                  onSelect={() => {
+                                                    const current = dryRunFilters[colDef.key] || []
+                                                    const updated = isSelected
+                                                      ? current.filter((v) => v !== opt.value)
+                                                      : [...current, opt.value]
+                                                    setDryRunFilters((prev) => ({
+                                                      ...prev,
+                                                      [colDef.key]: updated,
+                                                    }))
+                                                    setDryRunPage(0)
+                                                  }}
+                                                  className="text-xs cursor-pointer"
+                                                >
+                                                  <div
+                                                    className={cn(
+                                                      'mr-2 flex h-3 w-3 flex-shrink-0 items-center justify-center rounded-sm border border-primary',
+                                                      isSelected
+                                                        ? 'bg-primary text-primary-foreground'
+                                                        : 'opacity-50 [&_svg]:invisible',
+                                                    )}
+                                                  >
+                                                    <Check className="h-2 w-2" />
+                                                  </div>
+                                                  <span className="truncate max-w-[140px]" title={opt.label}>
+                                                    {opt.label}
+                                                  </span>
+                                                </CommandItem>
+                                              )
+                                            })}
+                                          </CommandGroup>
+                                        </CommandList>
+                                      </Command>
+                                    </PopoverContent>
+                                  </Popover>
+                                )}
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-6 w-6 rounded-sm text-indigo-200 hover:text-white hover:bg-white/20 relative ml-0.5"
+                                      title="Opções de visualização"
+                                    >
+                                      <MoreVertical className="h-4 w-4" />
+                                    </Button>
+                                  </DropdownMenuTrigger> 
+                                  <DropdownMenuContent align="start" className="w-48">
+                                    <DropdownMenuGroup>
+                                      <DropdownMenuLabel className="text-xs text-slate-500 uppercase tracking-wider">
+                                        Alinhamento
+                                      </DropdownMenuLabel>
+                                      <div className="flex items-center gap-1 px-2 py-1.5">
+                                        <Button
+                                          variant={
+                                            (dryRunPrefs.alignments?.[colDef.key] ||
+                                              colDef.defaultAlign) === 'left'
+                                              ? 'secondary'
+                                              : 'ghost'
+                                          }
+                                          size="icon"
+                                          className="h-7 w-7"
+                                          onClick={() =>
+                                            updateDryRunPrefs({
+                                              alignments: {
+                                                ...(dryRunPrefs.alignments || {}),
+                                                [colDef.key]: 'left',
+                                              },
+                                            })
+                                          }
+                                        >
+                                          <AlignLeft className="h-3.5 w-3.5" />
+                                        </Button>
+                                        <Button
+                                          variant={
+                                            (dryRunPrefs.alignments?.[colDef.key] ||
+                                              colDef.defaultAlign) === 'center'
+                                              ? 'secondary'
+                                              : 'ghost'
+                                          }
+                                          size="icon"
+                                          className="h-7 w-7"
+                                          onClick={() =>
+                                            updateDryRunPrefs({
+                                              alignments: {
+                                                ...(dryRunPrefs.alignments || {}),
+                                                [colDef.key]: 'center',
+                                              },
+                                            })
+                                          }
+                                        >
+                                          <AlignCenter className="h-3.5 w-3.5" />
+                                        </Button>
+                                        <Button
+                                          variant={
+                                            (dryRunPrefs.alignments?.[colDef.key] ||
+                                              colDef.defaultAlign) === 'right'
+                                              ? 'secondary'
+                                              : 'ghost'
+                                          }
+                                          size="icon"
+                                          className="h-7 w-7"
+                                          onClick={() =>
+                                            updateDryRunPrefs({
+                                              alignments: {
+                                                ...(dryRunPrefs.alignments || {}),
+                                                [colDef.key]: 'right',
+                                              },
+                                            })
+                                          }
+                                        >
+                                          <AlignRight className="h-3.5 w-3.5" />
+                                        </Button>
+                                      </div>
+                                    </DropdownMenuGroup>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              </div>
+                            </div>                          </TableHead>
                         )
                       })}
                     </TableRow>
@@ -10921,6 +10999,7 @@ export default function FinancialMovements() {
                               }
 
                               if (key === 'data_emissao') {
+                                const valStr = row.data_emissao ? formatDate(row.data_emissao) : '-'
                                 return (
                                   <TableCell
                                     key={key}
@@ -10930,7 +11009,23 @@ export default function FinancialMovements() {
                                       isError ? 'text-red-700' : 'text-slate-600 whitespace-nowrap',
                                     )}
                                   >
-                                    {dt}
+                                    {valStr}
+                                  </TableCell>
+                                )
+                              }
+
+                              if (key === 'dt_compens') {
+                                const valStr = row.dt_compens ? formatDate(row.dt_compens) : '-'
+                                return (
+                                  <TableCell
+                                    key={key}
+                                    {...getDryRunCellProps(
+                                      key,
+                                      'center',
+                                      isError ? 'text-red-700' : 'text-slate-600 whitespace-nowrap',
+                                    )}
+                                  >
+                                    {valStr}
                                   </TableCell>
                                 )
                               }
