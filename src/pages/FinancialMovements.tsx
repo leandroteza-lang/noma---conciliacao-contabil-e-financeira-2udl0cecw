@@ -156,10 +156,14 @@ function HeaderAlignmentMenu({
   col,
   prefs,
   updatePrefs,
+  iconClassName,
+  boldIcon,
 }: {
   col: string
   prefs: any
   updatePrefs: any
+  iconClassName?: string
+  boldIcon?: boolean
 }) {
   const align = prefs?.alignments?.[col] || 'left'
   return (
@@ -168,10 +172,13 @@ function HeaderAlignmentMenu({
         <Button
           variant="ghost"
           size="icon"
-          className="h-6 w-6 rounded-sm text-white/70 hover:text-white hover:bg-white/20 relative shrink-0 ml-1 transition-all"
+          className={cn(
+            'h-6 w-6 rounded-sm text-white/70 hover:text-white hover:bg-white/20 relative shrink-0 ml-1 transition-all',
+            iconClassName
+          )}
           onClick={(e) => e.stopPropagation()}
         >
-          <MoreVertical className="h-4 w-4" />
+          <MoreVertical className="h-4 w-4" strokeWidth={boldIcon ? 3 : 2} />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-48">
@@ -765,19 +772,22 @@ function ColumnFilter({
   options,
   selected,
   onChange,
+  alignmentMenu,
 }: {
   title: React.ReactNode
   options: string[]
   selected: string[]
   onChange: (val: string[]) => void
+  alignmentMenu?: React.ReactNode
 }) {
   const [open, setOpen] = useState(false)
 
   return (
     <div className="flex items-center justify-between gap-1 w-full relative">
-      {typeof title === 'string' ? <span>{title}</span> : title}
-      <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>
+      {typeof title === 'string' ? <span className="flex-1">{title}</span> : title}
+      <div className="flex items-center shrink-0">
+        <Popover open={open} onOpenChange={setOpen}>
+          <PopoverTrigger asChild>
           <Button
             variant="ghost"
             size="icon"
@@ -1756,13 +1766,15 @@ function ColumnTreeFilterHeader({
             <Filter className="h-3 w-3" />
             {selected.length > 0 && (
               <span className="absolute -top-0.5 -right-0.5 flex h-2 w-2 items-center justify-center rounded-full bg-red-500 text-[8px] text-white"></span>
-            )}
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-[300px] p-0 z-[110]" align="start">
-          {content}
-        </PopoverContent>
-      </Popover>
+              )}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-[300px] p-0 z-[110]" align="start">
+            {content}
+          </PopoverContent>
+        </Popover>
+        {alignmentMenu}
+      </div>
     </div>
   )
 }
@@ -1774,6 +1786,8 @@ function AccountingCrossReferenceTable({
   onDrillDown,
   chartOfAccounts,
   costCenters,
+  prefs,
+  updatePrefs,
 }: {
   data: any[]
   tableFontSize?: number
@@ -1781,6 +1795,8 @@ function AccountingCrossReferenceTable({
   onDrillDown: (title: string, rows: any[]) => void
   chartOfAccounts: any[]
   costCenters: any[]
+  prefs?: any
+  updatePrefs?: any
 }) {
   const [ccFilter, setCcFilter] = useState<string[]>([])
   const [cxFilter, setCxFilter] = useState<string[]>([])
@@ -1982,15 +1998,16 @@ function AccountingCrossReferenceTable({
     )
   }
 
-  const columnsDef: Record<string, { label: string; filter: React.ReactNode; className: string }> =
+  const columnsDef: Record<string, { label: string; filter: React.ReactNode; className: string; defaultAlign?: string }> =
     {
       cCusto: {
         label: 'Centro de Custo',
+        defaultAlign: 'left',
         filter: (
           <ColumnTreeFilterHeader
             title={
               <div
-                className="flex items-center gap-1 cursor-pointer hover:bg-white/10 rounded px-1 -ml-1 transition-colors"
+                className={cn("flex flex-1 items-center gap-1 cursor-pointer hover:bg-white/10 rounded px-1 -ml-1 transition-colors", getJustifyClass(prefs, 'cCusto', 'left'))}
                 onClick={() => handleSort('cCusto')}
               >
                 <span>Centro de Custo</span>
@@ -2007,17 +2024,19 @@ function AccountingCrossReferenceTable({
                 costCenters={costCenters}
               />
             }
+            alignmentMenu={<HeaderAlignmentMenu col="cCusto" prefs={prefs} updatePrefs={updatePrefs} boldIcon iconClassName="text-white opacity-100 font-bold" />}
           />
         ),
         className: 'min-w-[200px] text-left',
       },
       contaCaixa: {
         label: 'Conta Caixa/Banco',
+        defaultAlign: 'left',
         filter: (
           <ColumnFilter
             title={
               <div
-                className="flex items-center gap-1 cursor-pointer hover:bg-white/10 rounded px-1 -ml-1 transition-colors"
+                className={cn("flex flex-1 items-center gap-1 cursor-pointer hover:bg-white/10 rounded px-1 -ml-1 transition-colors", getJustifyClass(prefs, 'contaCaixa', 'left'))}
                 onClick={() => handleSort('contaCaixa')}
               >
                 <span>Conta Caixa/Banco</span>
@@ -2027,17 +2046,19 @@ function AccountingCrossReferenceTable({
             options={cxOptions}
             selected={cxFilter}
             onChange={setCxFilter}
+            alignmentMenu={<HeaderAlignmentMenu col="contaCaixa" prefs={prefs} updatePrefs={updatePrefs} boldIcon iconClassName="text-white opacity-100 font-bold" />}
           />
         ),
         className: 'min-w-[200px] text-left',
       },
       debitAccount: {
         label: 'Conta Débito (D)',
+        defaultAlign: 'left',
         filter: (
           <ColumnTreeFilterHeader
             title={
               <div
-                className="flex items-center gap-1 cursor-pointer hover:bg-white/10 rounded px-1 -ml-1 transition-colors"
+                className={cn("flex flex-1 items-center gap-1 cursor-pointer hover:bg-white/10 rounded px-1 -ml-1 transition-colors", getJustifyClass(prefs, 'debitAccount', 'left'))}
                 onClick={() => handleSort('debitAccount')}
               >
                 <span>Conta Débito (D)</span>
@@ -2053,17 +2074,19 @@ function AccountingCrossReferenceTable({
                 chartOfAccounts={chartOfAccounts}
               />
             }
+            alignmentMenu={<HeaderAlignmentMenu col="debitAccount" prefs={prefs} updatePrefs={updatePrefs} boldIcon iconClassName="text-white opacity-100 font-bold" />}
           />
         ),
         className: 'min-w-[250px] text-left',
       },
       creditAccount: {
         label: 'Conta Crédito (C)',
+        defaultAlign: 'left',
         filter: (
           <ColumnTreeFilterHeader
             title={
               <div
-                className="flex items-center gap-1 cursor-pointer hover:bg-white/10 rounded px-1 -ml-1 transition-colors"
+                className={cn("flex flex-1 items-center gap-1 cursor-pointer hover:bg-white/10 rounded px-1 -ml-1 transition-colors", getJustifyClass(prefs, 'creditAccount', 'left'))}
                 onClick={() => handleSort('creditAccount')}
               >
                 <span>Conta Crédito (C)</span>
@@ -2079,32 +2102,45 @@ function AccountingCrossReferenceTable({
                 chartOfAccounts={chartOfAccounts}
               />
             }
+            alignmentMenu={<HeaderAlignmentMenu col="creditAccount" prefs={prefs} updatePrefs={updatePrefs} boldIcon iconClassName="text-white opacity-100 font-bold" />}
           />
         ),
         className: 'min-w-[250px] text-left',
       },
       count: {
         label: 'Lançamentos',
+        defaultAlign: 'center',
         filter: (
-          <div
-            className="flex items-center gap-1 cursor-pointer justify-center hover:bg-white/10 rounded px-1 transition-colors"
-            onClick={() => handleSort('count')}
-          >
-            <span>Lançamentos</span>
-            {renderSortIcon('count')}
+          <div className="flex items-center justify-between gap-1 w-full relative">
+            <div
+              className={cn("flex flex-1 items-center gap-1 cursor-pointer hover:bg-white/10 rounded px-1 transition-colors", getJustifyClass(prefs, 'count', 'center'))}
+              onClick={() => handleSort('count')}
+            >
+              <span>Lançamentos</span>
+              {renderSortIcon('count')}
+            </div>
+            <div className="flex items-center shrink-0">
+              <HeaderAlignmentMenu col="count" prefs={prefs} updatePrefs={updatePrefs} boldIcon iconClassName="text-white opacity-100 font-bold" />
+            </div>
           </div>
         ),
         className: 'w-[100px] text-center',
       },
       amount: {
         label: 'Valor Total',
+        defaultAlign: 'right',
         filter: (
-          <div
-            className="flex items-center gap-1 cursor-pointer justify-end hover:bg-white/10 rounded px-1 -mr-1 transition-colors"
-            onClick={() => handleSort('amount')}
-          >
-            <span>Valor Total</span>
-            {renderSortIcon('amount')}
+          <div className="flex items-center justify-between gap-1 w-full relative">
+            <div
+              className={cn("flex flex-1 items-center gap-1 cursor-pointer hover:bg-white/10 rounded px-1 -mr-1 transition-colors", getJustifyClass(prefs, 'amount', 'right'))}
+              onClick={() => handleSort('amount')}
+            >
+              <span>Valor Total</span>
+              {renderSortIcon('amount')}
+            </div>
+            <div className="flex items-center shrink-0">
+              <HeaderAlignmentMenu col="amount" prefs={prefs} updatePrefs={updatePrefs} boldIcon iconClassName="text-white opacity-100 font-bold" />
+            </div>
           </div>
         ),
         className: 'w-[120px] text-right',
@@ -2113,9 +2149,9 @@ function AccountingCrossReferenceTable({
 
   return (
     <Table
-      className="w-full min-w-[1200px]"
+      className="transform scale-y-[-1] w-full min-w-[1200px]"
       style={{ fontSize: tableFontSize ? `${tableFontSize}px` : undefined }}
-      wrapperClassName="max-h-[600px] overflow-auto finance-table-scrollbar"
+      wrapperClassName="transform scale-y-[-1] max-h-[600px] overflow-auto finance-table-scrollbar pb-3"
     >
       <TableHeader className="sticky top-0 z-10 shadow-sm border-b border-slate-600 bg-indigo-950">
         <TableRow disableZebra className="bg-indigo-950 hover:bg-indigo-900 border-none">
@@ -2151,6 +2187,7 @@ function AccountingCrossReferenceTable({
                   def.className,
                   draggedCol === col ? 'opacity-50 bg-indigo-900' : '',
                 )}
+                style={getGridlineStyle(prefs)}
               >
                 {def.filter}
               </TableHead>
@@ -2169,31 +2206,38 @@ function AccountingCrossReferenceTable({
                 return (
                   <TableCell
                     key={col}
-                    className="px-2 py-1.5 border-r border-slate-200 text-slate-700 font-medium"
+                    className={cn("px-2 py-1.5 border-r border-slate-200 text-slate-700 font-medium", getAlignClass(prefs, col, 'left'))}
+                    style={getGridlineStyle(prefs)}
                   >
-                    <span className="truncate max-w-[250px] inline-block" title={formatCc(item)}>
-                      {formatCc(item)}
-                    </span>
+                    <div className={cn("flex w-full items-center", getJustifyClass(prefs, col, 'left'))}>
+                      <span className="truncate max-w-[250px] inline-block" title={formatCc(item)}>
+                        {formatCc(item)}
+                      </span>
+                    </div>
                   </TableCell>
                 )
               if (col === 'contaCaixa')
                 return (
                   <TableCell
                     key={col}
-                    className="px-2 py-1.5 border-r border-slate-200 text-slate-700 font-medium"
+                    className={cn("px-2 py-1.5 border-r border-slate-200 text-slate-700 font-medium", getAlignClass(prefs, col, 'left'))}
+                    style={getGridlineStyle(prefs)}
                   >
-                    <span className="truncate max-w-[250px] inline-block" title={formatCx(item)}>
-                      {formatCx(item)}
-                    </span>
+                    <div className={cn("flex w-full items-center", getJustifyClass(prefs, col, 'left'))}>
+                      <span className="truncate max-w-[250px] inline-block" title={formatCx(item)}>
+                        {formatCx(item)}
+                      </span>
+                    </div>
                   </TableCell>
                 )
               if (col === 'debitAccount')
                 return (
                   <TableCell
                     key={col}
-                    className="px-2 py-1.5 border-r border-slate-200 text-slate-700 font-medium"
+                    className={cn("px-2 py-1.5 border-r border-slate-200 text-slate-700 font-medium", getAlignClass(prefs, col, 'left'))}
+                    style={getGridlineStyle(prefs)}
                   >
-                    <div className="flex items-center gap-1.5">
+                    <div className={cn("flex items-center gap-1.5 w-full", getJustifyClass(prefs, col, 'left'))}>
                       <span className="font-mono bg-blue-50 text-blue-800 px-1.5 py-0.5 rounded text-[0.85em] font-semibold border border-blue-200 shrink-0">
                         {item.debitAccount.account_code}
                       </span>
@@ -2215,9 +2259,10 @@ function AccountingCrossReferenceTable({
                 return (
                   <TableCell
                     key={col}
-                    className="px-2 py-1.5 border-r border-slate-200 text-slate-700 font-medium"
+                    className={cn("px-2 py-1.5 border-r border-slate-200 text-slate-700 font-medium", getAlignClass(prefs, col, 'left'))}
+                    style={getGridlineStyle(prefs)}
                   >
-                    <div className="flex items-center gap-1.5">
+                    <div className={cn("flex items-center gap-1.5 w-full", getJustifyClass(prefs, col, 'left'))}>
                       <span className="font-mono bg-rose-50 text-rose-800 px-1.5 py-0.5 rounded text-[0.85em] font-semibold border border-rose-200 shrink-0">
                         {item.creditAccount.account_code}
                       </span>
@@ -2239,26 +2284,32 @@ function AccountingCrossReferenceTable({
                 return (
                   <TableCell
                     key={col}
-                    className="px-2 py-1.5 text-center text-slate-700 border-r border-slate-200"
+                    className={cn("px-2 py-1.5 text-slate-700 border-r border-slate-200", getAlignClass(prefs, col, 'center'))}
+                    style={getGridlineStyle(prefs)}
                   >
-                    <Button
+                    <div className={cn("flex w-full items-center", getJustifyClass(prefs, col, 'center'))}>
+                      <Button
                       variant="link"
                       size="sm"
                       className="h-auto p-0 text-indigo-600 font-bold hover:text-indigo-800"
                       onClick={() => onDrillDown(`Lançamentos - ${formatCc(item)}`, item.rows)}
                       title="Ver Lançamentos"
                     >
-                      {item.count}
-                    </Button>
+                        {item.count}
+                      </Button>
+                    </div>
                   </TableCell>
                 )
               if (col === 'amount')
                 return (
                   <TableCell
                     key={col}
-                    className="px-2 py-1.5 text-right text-slate-700 font-bold whitespace-nowrap"
+                    className={cn("px-2 py-1.5 text-slate-700 font-bold whitespace-nowrap", getAlignClass(prefs, col, 'right'))}
+                    style={getGridlineStyle(prefs)}
                   >
-                    {formatVal(item.amount)}
+                    <div className={cn("flex w-full items-center", getJustifyClass(prefs, col, 'right'))}>
+                      {formatVal(item.amount)}
+                    </div>
                   </TableCell>
                 )
               return null
@@ -2283,7 +2334,8 @@ function AccountingCrossReferenceTable({
                     return (
                       <TableCell
                         key={col}
-                        className="px-2 py-2 text-center text-rose-600 font-medium border-r border-slate-200"
+                        className={cn("px-2 py-2 text-rose-600 font-medium border-r border-slate-200", getAlignClass(prefs, col, 'center'))}
+                        style={getGridlineStyle(prefs)}
                       >
                         -
                       </TableCell>
@@ -2292,7 +2344,8 @@ function AccountingCrossReferenceTable({
                     return (
                       <TableCell
                         key={col}
-                        className="px-2 py-2 text-right text-rose-600 font-bold whitespace-nowrap"
+                        className={cn("px-2 py-2 text-rose-600 font-bold whitespace-nowrap", getAlignClass(prefs, col, 'right'))}
+                        style={getGridlineStyle(prefs)}
                       >
                         {formatVal(unmappedAmount)}
                       </TableCell>
@@ -2302,9 +2355,10 @@ function AccountingCrossReferenceTable({
                     return (
                       <TableCell
                         key={col}
-                        className="px-2 py-2 border-r border-slate-200 text-slate-600 italic"
+                        className={cn("px-2 py-2 border-r border-slate-200 text-slate-600 italic", getAlignClass(prefs, col, 'left'))}
+                        style={getGridlineStyle(prefs)}
                       >
-                        <div className="flex items-center gap-2">
+                        <div className={cn("flex items-center gap-2", getJustifyClass(prefs, col, 'left'))}>
                           <AlertCircle className="h-4 w-4 text-rose-500 shrink-0" />
                           <span className="truncate max-w-[300px]">
                             Valores Pendentes de Mapeamento Contábil (Ignorados)
@@ -2317,6 +2371,7 @@ function AccountingCrossReferenceTable({
                     <TableCell
                       key={col}
                       className="px-2 py-2 border-r border-slate-200"
+                      style={getGridlineStyle(prefs)}
                     ></TableCell>
                   )
                 })}
@@ -2331,7 +2386,8 @@ function AccountingCrossReferenceTable({
                   return (
                     <TableCell
                       key={col}
-                      className="px-2 py-2 text-center text-slate-900 border-r border-slate-300"
+                      className={cn("px-2 py-2 text-slate-900 border-r border-slate-300", getAlignClass(prefs, col, 'center'))}
+                      style={getGridlineStyle(prefs)}
                     >
                       {totalCount}
                     </TableCell>
@@ -2340,7 +2396,8 @@ function AccountingCrossReferenceTable({
                   return (
                     <TableCell
                       key={col}
-                      className="px-2 py-2 text-right text-indigo-700 whitespace-nowrap"
+                      className={cn("px-2 py-2 text-indigo-700 whitespace-nowrap", getAlignClass(prefs, col, 'right'))}
+                      style={getGridlineStyle(prefs)}
                     >
                       {formatVal(totalAmount)}
                     </TableCell>
@@ -2350,7 +2407,8 @@ function AccountingCrossReferenceTable({
                   return (
                     <TableCell
                       key={col}
-                      className="px-2 py-2 border-r border-slate-300 text-right text-slate-900 uppercase"
+                      className={cn("px-2 py-2 border-r border-slate-300 text-slate-900 uppercase", getAlignClass(prefs, col, 'right'))}
+                      style={getGridlineStyle(prefs)}
                     >
                       Total Geral:
                     </TableCell>
@@ -2360,6 +2418,7 @@ function AccountingCrossReferenceTable({
                   <TableCell
                     key={col}
                     className="px-2 py-2 border-r border-slate-300 text-right text-slate-900 uppercase"
+                    style={getGridlineStyle(prefs)}
                   ></TableCell>
                 )
               })}
@@ -2800,6 +2859,9 @@ export default function FinancialMovements() {
 
   const { prefs: deparaPrefs, updatePrefs: updateDeparaPrefs } =
     useTablePreferences('fin_mov_resumo_depara')
+
+  const { prefs: crossPrefs, updatePrefs: updateCrossPrefs } =
+    useTablePreferences('fin_mov_cross_table')
 
   const getDeparaCellProps = (key: string, defaultAlign?: string, extraClass?: string) => {
     const align = deparaPrefs.alignments?.[key] || defaultAlign || 'left'
@@ -9506,6 +9568,9 @@ export default function FinancialMovements() {
             {visibleCards.cruzamento_contabil !== false && (
               <Card className="shadow-sm border-4 border-indigo-950 overflow-hidden lg:col-span-2 xl:col-span-2">
                 <CardHeader className="bg-indigo-950 text-white hover:bg-indigo-900 border-none pb-3 pt-4 transition-colors relative">
+                  <div className="absolute left-4 top-1/2 -translate-y-1/2 flex items-center gap-1 bg-indigo-900 rounded-md p-0.5 border border-indigo-800 shadow-sm">
+                    <TableSettingsControls prefs={crossPrefs} updatePrefs={updateCrossPrefs} />
+                  </div>
                   <h2 className="text-base font-bold text-center w-full uppercase tracking-wider flex items-center justify-center gap-2">
                     <Columns className="h-5 w-5" />
                     Matriz de Cruzamento: Débito x Crédito
@@ -9523,6 +9588,8 @@ export default function FinancialMovements() {
                     }}
                     chartOfAccounts={chartOfAccounts}
                     costCenters={costCenters}
+                    prefs={crossPrefs}
+                    updatePrefs={updateCrossPrefs}
                   />
                 </CardContent>
               </Card>
