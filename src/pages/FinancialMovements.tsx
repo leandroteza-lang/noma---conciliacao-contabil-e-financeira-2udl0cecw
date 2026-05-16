@@ -1862,6 +1862,7 @@ function AccountingCrossReferenceTable({
   tableFontSize,
   getAccountingEntriesSimulation,
   onDrillDown,
+  onUpdateStatus,
   chartOfAccounts,
   costCenters,
   prefs,
@@ -1871,6 +1872,7 @@ function AccountingCrossReferenceTable({
   tableFontSize?: number
   getAccountingEntriesSimulation: (row: any) => any
   onDrillDown: (title: string, rows: any[]) => void
+  onUpdateStatus?: (rowIds: string[], newStatus: string) => void
   chartOfAccounts: any[]
   costCenters: any[]
   prefs?: any
@@ -1902,6 +1904,7 @@ function AccountingCrossReferenceTable({
     setExpandedNodes({})
   }
 
+  const [statusFilter, setStatusFilter] = useState<string[]>([])
   const [ccFilter, setCcFilter] = useState<string[]>([])
   const [cxFilter, setCxFilter] = useState<string[]>([])
   const [debitFilter, setDebitFilter] = useState<string[]>([])
@@ -1911,6 +1914,7 @@ function AccountingCrossReferenceTable({
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc')
 
   const defaultColOrder = [
+    'status',
     'cCusto',
     'contaCaixa',
     'debitAccount',
@@ -1955,6 +1959,8 @@ function AccountingCrossReferenceTable({
         count: number
         amount: number
         rows: any[]
+        statusSet: Set<string>
+        groupStatus?: string
       }
     >()
     let unmappedAmount = 0
@@ -2002,12 +2008,14 @@ function AccountingCrossReferenceTable({
           count: 0,
           amount: 0,
           rows: [],
+          statusSet: new Set<string>(),
         })
       }
       const group = map.get(key)!
       group.count += 1
       group.amount += amt
       group.rows.push(row)
+      group.statusSet.add(row.status || 'Pendente')
     }
     return { map, unmappedAmount }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -2020,23 +2028,34 @@ function AccountingCrossReferenceTable({
   const formatCx = (item: any) =>
     item.contaCaixa ? `${item.contaCaixa} - ${item.nomeCaixa}` : 'Sem Conta Caixa'
 
-  const { ccOptions, cxOptions } = useMemo(() => {
+  const { ccOptions, cxOptions, statusOptions } = useMemo(() => {
     const cc = new Map<string, string>()
     const cx = new Set<string>()
+    const st = new Set<string>()
     crossMap.forEach((val) => {
       cc.set(val.cCusto || 'Sem C. Custo', formatCc(val))
       cx.add(formatCx(val))
+      const statuses = Array.from(val.statusSet)
+      const s = statuses.length === 1 ? statuses[0] : 'Misto'
+      val.groupStatus = s
+      st.add(s)
     })
     return {
       ccOptions: Array.from(cc.entries())
         .map(([value, label]) => ({ value, label }))
         .sort((a, b) => a.value.localeCompare(b.value)),
       cxOptions: Array.from(cx).sort((a, b) => a.localeCompare(b)),
+      statusOptions: Array.from(st)
+        .map((s) => ({ label: s, value: s }))
+        .sort((a, b) => a.label.localeCompare(b.label)),
     }
   }, [crossMap])
 
   const aggregated = useMemo(() => {
     let result = Array.from(crossMap.values())
+    if (statusFilter.length > 0) {
+      result = result.filter((item) => statusFilter.includes(item.groupStatus))
+    }
     if (ccFilter.length > 0) {
       result = result.filter((item) => ccFilter.includes(item.cCusto || 'Sem C. Custo'))
     }
@@ -2055,7 +2074,10 @@ function AccountingCrossReferenceTable({
     }
     result.sort((a, b) => {
       let valA: any, valB: any
-      if (sortColumn === 'cCusto') {
+      if (sortColumn === 'status') {
+        valA = a.groupStatus
+        valB = b.groupStatus
+      } else if (sortColumn === 'cCusto') {
         valA = formatCc(a)
         valB = formatCc(b)
       } else if (sortColumn === 'contaCaixa') {
@@ -2131,6 +2153,39 @@ function AccountingCrossReferenceTable({
     string,
     { label: string; filter: React.ReactNode; className: string; defaultAlign?: string }
   > = {
+    status: {
+      label: 'Status',
+      defaultAlign: 'center',
+      filter: (
+        <ColumnFilter
+          title={
+            <div
+              className={cn(
+                'flex flex-1 items-center gap-1 cursor-pointer hover:bg-white/10 rounded px-1 -ml-1 transition-colors',
+                getJustifyClass(prefs, 'status', 'center'),
+              )}
+              onClick={() => handleSort('status')}
+            >
+              <span>Status</span>
+              {renderSortIcon('status')}
+            </div>
+          }
+          options={statusOptions.map((o) => o.value)}
+          selected={statusFilter}
+          onChange={setStatusFilter}
+          alignmentMenu={
+            <HeaderAlignmentMenu
+              col="status"
+              prefs={prefs}
+              updatePrefs={updatePrefs}
+              boldIcon
+              iconClassName="text-white opacity-100 font-bold"
+            />
+          }
+        />
+      ),
+      className: 'w-[140px] text-center',
+    },
     cCusto: {
       label: 'Centro de Custo',
       defaultAlign: 'left',
@@ -2420,6 +2475,75 @@ function AccountingCrossReferenceTable({
                 className="border-b border-slate-200 last:border-b-0 transition-colors"
               >
                 {colOrder.map((col) => {
+                  if (col === 'status') {
+                    const isMisto = item.groupStatus === 'Misto'
+                    return (
+                      <TableCell
+                        key={col}
+                        className={cn(
+                          'px-2 py-1.5 border-r border-slate-200 align-top pt-2',
+                          getAlignClass(prefs, col, 'center'),
+                        )}
+                        style={getGridlineStyle(prefs)}
+                      >
+                        <div
+                          className={cn(
+                            'flex w-full items-center',
+                            getJustifyClass(prefs, col, 'center'),
+                          )}
+                        >
+                          <Select
+                            value={isMisto ? '' : item.groupStatus}
+                            onValueChange={(val) =>
+                              onUpdateStatus?.(
+                                item.rows.map((r: any) => r.id),
+                                val,
+                              )
+                            }
+                          >
+                            <SelectTrigger
+                              className={cn(
+                                'h-7 text-[10.5px] font-bold w-[115px] shadow-sm border focus:ring-0 uppercase tracking-wider',
+                                item.groupStatus === 'Aprovado'
+                                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                  : item.groupStatus === 'Revisar'
+                                    ? 'bg-amber-50 text-amber-700 border-amber-200'
+                                    : item.groupStatus === 'Concluído'
+                                      ? 'bg-blue-50 text-blue-700 border-blue-200'
+                                      : item.groupStatus === 'Ignorado'
+                                        ? 'bg-slate-100 text-slate-700 border-slate-200'
+                                        : item.groupStatus === 'Misto'
+                                          ? 'bg-purple-50 text-purple-700 border-purple-200'
+                                          : 'bg-rose-50 text-rose-700 border-rose-200',
+                              )}
+                            >
+                              <SelectValue placeholder={isMisto ? 'Misto' : 'Status'} />
+                            </SelectTrigger>
+                            <SelectContent className="z-[120]">
+                              <SelectItem
+                                value="Pendente"
+                                className="text-xs font-semibold text-rose-700"
+                              >
+                                Pendente
+                              </SelectItem>
+                              <SelectItem
+                                value="Revisar"
+                                className="text-xs font-semibold text-amber-700"
+                              >
+                                Revisar
+                              </SelectItem>
+                              <SelectItem
+                                value="Aprovado"
+                                className="text-xs font-semibold text-emerald-700"
+                              >
+                                Aprovado
+                              </SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </TableCell>
+                    )
+                  }
                   if (col === 'cCusto')
                     return (
                       <TableCell
@@ -2890,6 +3014,14 @@ function AccountingCrossReferenceTable({
                   className="bg-slate-100 font-bold border-t-2 border-slate-300 shadow-inner"
                 >
                   {colOrder.map((col, i) => {
+                    if (col === 'status')
+                      return (
+                        <TableCell
+                          key={col}
+                          className="px-2 py-2 border-r border-slate-300"
+                          style={getGridlineStyle(prefs)}
+                        ></TableCell>
+                      )
                     if (col === 'count')
                       return (
                         <TableCell
@@ -3335,6 +3467,34 @@ export default function FinancialMovements() {
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc')
   const [isImportOpen, setIsImportOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
+
+  const handleUpdateCrossReferenceStatus = async (rowIds: string[], newStatus: string) => {
+    if (!user) return
+    const toastId = toast.loading('Atualizando status...')
+    try {
+      const chunkSize = 200
+      for (let i = 0; i < rowIds.length; i += chunkSize) {
+        const chunk = rowIds.slice(i, i + chunkSize)
+        const { error } = await supabase
+          .from('erp_financial_movements')
+          .update({ status: newStatus })
+          .in('id', chunk)
+        if (error) throw error
+      }
+      toast.success('Status atualizado com sucesso!', { id: toastId })
+
+      setResumoData((prev) =>
+        prev.map((r) => (rowIds.includes(r.id) ? { ...r, status: newStatus } : r)),
+      )
+      setData((prev) => prev.map((r) => (rowIds.includes(r.id) ? { ...r, status: newStatus } : r)))
+      setSummaryData((prev) =>
+        prev.map((r) => (rowIds.includes(r.id) ? { ...r, status: newStatus } : r)),
+      )
+      setRefreshKey((k) => k + 1)
+    } catch (e: any) {
+      toast.error('Erro ao atualizar status: ' + e.message, { id: toastId })
+    }
+  }
   const [editForm, setEditForm] = useState<any>({})
   const [activeImport, setActiveImport] = useState<any>(null)
   const [elapsedSeconds, setElapsedSeconds] = useState(0)
@@ -5046,6 +5206,8 @@ export default function FinancialMovements() {
       if (h.key === 'status') {
         options['status'] = [
           { label: 'Pendente', value: 'Pendente' },
+          { label: 'Revisar', value: 'Revisar' },
+          { label: 'Aprovado', value: 'Aprovado' },
           { label: 'Concluído', value: 'Concluído' },
           { label: 'Erro', value: 'Erro' },
           { label: 'Ignorado', value: 'Ignorado' },
@@ -9561,15 +9723,23 @@ export default function FinancialMovements() {
                                               Dados Incompletos
                                             </span>
                                           ) : row.status === 'Concluído' ? (
-                                            <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[0.85em] font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                            <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[0.85em] font-semibold bg-blue-100 text-blue-800 border border-blue-200">
                                               Concluído
+                                            </span>
+                                          ) : row.status === 'Aprovado' ? (
+                                            <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[0.85em] font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                              Aprovado
+                                            </span>
+                                          ) : row.status === 'Revisar' ? (
+                                            <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[0.85em] font-semibold bg-amber-100 text-amber-800 border border-amber-200">
+                                              Revisar
                                             </span>
                                           ) : row.status === 'Ignorado' ? (
                                             <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[0.85em] font-semibold bg-slate-100 text-slate-800 border border-slate-200">
                                               Ignorado
                                             </span>
                                           ) : (
-                                            <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[0.85em] font-semibold bg-amber-100 text-amber-800 border border-amber-200">
+                                            <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[0.85em] font-semibold bg-rose-100 text-rose-800 border border-rose-200">
                                               {row.status || 'Pendente'}
                                             </span>
                                           )}
@@ -10120,6 +10290,7 @@ export default function FinancialMovements() {
                       setDrillDownData(rows)
                       setDrillDownOpen(true)
                     }}
+                    onUpdateStatus={handleUpdateCrossReferenceStatus}
                     chartOfAccounts={chartOfAccounts}
                     costCenters={costCenters}
                     prefs={crossPrefs}
@@ -12655,15 +12826,23 @@ export default function FinancialMovements() {
                                 return (
                                   <TableCell key={key} {...getDryRunCellProps(key, 'center')}>
                                     {row.status === 'Concluído' ? (
-                                      <span className="text-emerald-700 font-semibold text-[0.85em] bg-emerald-100 px-2 py-0.5 rounded-full border border-emerald-200">
+                                      <span className="text-blue-700 font-semibold text-[0.85em] bg-blue-100 px-2 py-0.5 rounded-full border border-blue-200">
                                         Concluído
+                                      </span>
+                                    ) : row.status === 'Aprovado' ? (
+                                      <span className="text-emerald-700 font-semibold text-[0.85em] bg-emerald-100 px-2 py-0.5 rounded-full border border-emerald-200">
+                                        Aprovado
+                                      </span>
+                                    ) : row.status === 'Revisar' ? (
+                                      <span className="text-amber-700 font-semibold text-[0.85em] bg-amber-100 px-2 py-0.5 rounded-full border border-amber-200">
+                                        Revisar
                                       </span>
                                     ) : row.status === 'Ignorado' ? (
                                       <span className="text-slate-600 font-semibold text-[0.85em] bg-slate-100 px-2 py-0.5 rounded-full border border-slate-200">
                                         Ignorado
                                       </span>
                                     ) : (
-                                      <span className="text-amber-700 font-semibold text-[0.85em] bg-amber-100 px-2 py-0.5 rounded-full border border-amber-200">
+                                      <span className="text-rose-700 font-semibold text-[0.85em] bg-rose-100 px-2 py-0.5 rounded-full border border-rose-200">
                                         {row.status || 'Pendente'}
                                       </span>
                                     )}
