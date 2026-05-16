@@ -8038,7 +8038,7 @@ export default function FinancialMovements() {
                                             {isSimplifiedMode &&
                                               row.conta_caixa &&
                                               row.nome_caixa && (
-                                                <span className="text-slate-500 truncate">
+                                                <span className="text-slate-700 font-medium truncate">
                                                   - {row.nome_caixa}
                                                 </span>
                                               )}
@@ -8201,7 +8201,7 @@ export default function FinancialMovements() {
                                             {isSimplifiedMode &&
                                               row.c_custo &&
                                               row.descricao_c_custo && (
-                                                <span className="text-slate-500 truncate max-w-[200px]">
+                                                <span className="text-slate-700 font-medium truncate max-w-[200px]">
                                                   - {row.descricao_c_custo}
                                                 </span>
                                               )}
