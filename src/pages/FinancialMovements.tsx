@@ -5370,6 +5370,7 @@ export default function FinancialMovements() {
         'historico',
         'conta_caixa',
         'c_custo',
+        'status',
       ]
 
       const newVisible = tableHeaders.reduce(
@@ -7359,7 +7360,8 @@ export default function FinancialMovements() {
   ])
 
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize))
-  const visibleCount = tableHeaders.filter((h) => visibleColumns[h.key] !== false).length + 2
+  const visibleCount =
+    tableHeaders.filter((h) => visibleColumns[h.key] !== false).length + (isSimplifiedMode ? 1 : 2)
   const hiddenColumnsCount = tableHeaders.filter((h) => visibleColumns[h.key] === false).length
 
   return (
@@ -9014,12 +9016,14 @@ export default function FinancialMovements() {
                             </TableHead>
                           )
                         })}
-                      <TableHead
-                        className="h-8 px-2 py-1 text-sm font-bold whitespace-nowrap text-center"
-                        style={getGridlineStyle()}
-                      >
-                        Ações
-                      </TableHead>
+                      {!isSimplifiedMode && (
+                        <TableHead
+                          className="h-8 px-2 py-1 text-sm font-bold whitespace-nowrap text-center"
+                          style={getGridlineStyle()}
+                        >
+                          Ações
+                        </TableHead>
+                      )}
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -9043,12 +9047,14 @@ export default function FinancialMovements() {
                                 <Skeleton className="h-4 w-full min-w-[60px] max-w-[200px] rounded" />
                               </TableCell>
                             ))}
-                          <TableCell
-                            className="px-2 py-2 text-center border-0"
-                            style={getGridlineStyle()}
-                          >
-                            <Skeleton className="h-6 w-12 rounded mx-auto" />
-                          </TableCell>
+                          {!isSimplifiedMode && (
+                            <TableCell
+                              className="px-2 py-2 text-center border-0"
+                              style={getGridlineStyle()}
+                            >
+                              <Skeleton className="h-6 w-12 rounded mx-auto" />
+                            </TableCell>
+                          )}
                         </TableRow>
                       ))
                     ) : data.length === 0 ? (
@@ -9749,64 +9755,66 @@ export default function FinancialMovements() {
                                       return null
                                   }
                                 })}
-                              <TableCell
-                                className="px-2 py-0.5 text-center border-0"
-                                style={getGridlineStyle()}
-                              >
-                                {editingId === row.id ? (
-                                  <div className="flex items-center justify-center gap-1">
+                              {!isSimplifiedMode && (
+                                <TableCell
+                                  className="px-2 py-0.5 text-center border-0"
+                                  style={getGridlineStyle()}
+                                >
+                                  {editingId === row.id ? (
+                                    <div className="flex items-center justify-center gap-1">
+                                      <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        className="h-6 px-2 text-[0.85em] text-green-600 font-semibold hover:text-green-700 bg-white/90 hover:bg-white"
+                                        onClick={async () => {
+                                          const newMappedAccount = getMappedAccountForCC(
+                                            editForm.c_custo,
+                                            row.organization_id,
+                                          )
+                                          const payload = {
+                                            ...editForm,
+                                            mapped_account_id: newMappedAccount
+                                              ? newMappedAccount.id
+                                              : null,
+                                          }
+                                          const { error } = await supabase
+                                            .from('erp_financial_movements')
+                                            .update(payload)
+                                            .eq('id', row.id)
+                                          if (!error) {
+                                            setEditingId(null)
+                                            setRefreshKey((k) => k + 1)
+                                          } else {
+                                            toast.error('Erro ao salvar: ' + error.message)
+                                          }
+                                        }}
+                                      >
+                                        Salvar
+                                      </Button>
+                                      <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        className="h-6 px-2 text-[0.85em] text-red-600 hover:text-red-700 bg-white/90 hover:bg-white"
+                                        onClick={() => setEditingId(null)}
+                                      >
+                                        Cancelar
+                                      </Button>
+                                    </div>
+                                  ) : (
                                     <Button
                                       size="sm"
-                                      variant="ghost"
-                                      className="h-6 px-2 text-[0.85em] text-green-600 font-semibold hover:text-green-700 bg-white/90 hover:bg-white"
-                                      onClick={async () => {
-                                        const newMappedAccount = getMappedAccountForCC(
-                                          editForm.c_custo,
-                                          row.organization_id,
-                                        )
-                                        const payload = {
-                                          ...editForm,
-                                          mapped_account_id: newMappedAccount
-                                            ? newMappedAccount.id
-                                            : null,
-                                        }
-                                        const { error } = await supabase
-                                          .from('erp_financial_movements')
-                                          .update(payload)
-                                          .eq('id', row.id)
-                                        if (!error) {
-                                          setEditingId(null)
-                                          setRefreshKey((k) => k + 1)
-                                        } else {
-                                          toast.error('Erro ao salvar: ' + error.message)
-                                        }
+                                      variant="outline"
+                                      className="h-6 px-2 text-[0.85em]"
+                                      onClick={() => {
+                                        setEditingId(row.id)
+                                        setEditForm(row)
                                       }}
                                     >
-                                      Salvar
+                                      Editar
                                     </Button>
-                                    <Button
-                                      size="sm"
-                                      variant="ghost"
-                                      className="h-6 px-2 text-[0.85em] text-red-600 hover:text-red-700 bg-white/90 hover:bg-white"
-                                      onClick={() => setEditingId(null)}
-                                    >
-                                      Cancelar
-                                    </Button>
-                                  </div>
-                                ) : (
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    className="h-6 px-2 text-[0.85em]"
-                                    onClick={() => {
-                                      setEditingId(row.id)
-                                      setEditForm(row)
-                                    }}
-                                  >
-                                    Editar
-                                  </Button>
-                                )}
-                              </TableCell>
+                                  )}
+                                </TableCell>
+                              )}
                             </TableRow>
                           )
                         })}
