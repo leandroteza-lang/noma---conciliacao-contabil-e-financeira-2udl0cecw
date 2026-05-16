@@ -3460,12 +3460,13 @@ export default function FinancialMovements() {
       const key = h.key
       if (key === 'valor') return // Skip value column for multi-select filter
 
-      const uniqueVals = new Set<string>()
+      const uniqueVals = new Map<string, string>()
 
       summaryData.forEach((row) => {
         if (row.status === 'Ignorado') return
 
         let val = ''
+        let label = ''
         if (key === 'status') val = row.status || ''
         else if (key === 'data_emissao') {
           val = row.data_emissao ? row.data_emissao.substring(0, 7) : ''
@@ -3477,9 +3478,11 @@ export default function FinancialMovements() {
             generateOptions.valueBase as 'valor' | 'valor_liquido',
           )
           const acc = key === 'conta_debito' ? sim.debitAccount : sim.creditAccount
-          val = acc ? `${acc.account_code} - ${acc.account_name}` : 'Pendente'
+          val = acc ? acc.id : 'PENDENTE'
+          label = acc ? `${acc.account_code} - ${acc.account_name}` : '⚠️ Pendente / Não Mapeado'
         } else if (key === 'c_custo') {
-          val = row.c_custo || 'Sem C.Custo'
+          val = row.c_custo || ''
+          label = val ? `${val} - ${row.descricao_c_custo || ''}` : 'Sem C.Custo'
         } else if (key === 'descricao_c_custo') {
           val = row.descricao_c_custo || ''
         } else if (key === 'conta_caixa') {
@@ -3490,20 +3493,20 @@ export default function FinancialMovements() {
           val = row[key as keyof typeof row] || ''
         }
 
-        if (val) uniqueVals.add(val)
-      })
-
-      options[key] = Array.from(uniqueVals)
-        .sort((a, b) => a.localeCompare(b))
-        .map((v) => {
-          let label = v
+        if (val || key === 'c_custo') {
+          if (!label) label = val || (key === 'c_custo' ? 'Sem C.Custo' : '')
           if (key === 'data_emissao' || key === 'dt_compens') {
-            if (v.length === 7) {
-              label = v.split('-').reverse().join('/')
+            if (val.length === 7) {
+              label = val.split('-').reverse().join('/')
             }
           }
-          return { label, value: v }
-        })
+          uniqueVals.set(val, label)
+        }
+      })
+
+      options[key] = Array.from(uniqueVals.entries())
+        .sort((a, b) => a[0].localeCompare(b[0]))
+        .map(([v, l]) => ({ label: l, value: v }))
     })
 
     return options
@@ -3530,9 +3533,9 @@ export default function FinancialMovements() {
           val = row.dt_compens ? row.dt_compens.substring(0, 7) : ''
         } else if (key === 'conta_debito' || key === 'conta_credito') {
           const acc = key === 'conta_debito' ? sim.debitAccount : sim.creditAccount
-          val = acc ? `${acc.account_code} - ${acc.account_name}` : 'Pendente'
+          val = acc ? acc.id : 'PENDENTE'
         } else if (key === 'c_custo') {
-          val = row.c_custo || 'Sem C.Custo'
+          val = row.c_custo || ''
         } else if (key === 'descricao_c_custo') {
           val = row.descricao_c_custo || ''
         } else if (key === 'conta_caixa') {
@@ -11057,15 +11060,40 @@ export default function FinancialMovements() {
                               <Label className="text-xs font-semibold text-slate-700">
                                 {col.label}
                               </Label>
-                              <MultiSelect
-                                title={`Todos os ${col.label}`}
-                                options={options}
-                                selected={dryRunFilters[col.key] || []}
-                                onChange={(v: string[]) => {
-                                  setDryRunFilters((p) => ({ ...p, [col.key]: v }))
-                                  setDryRunPage(0)
-                                }}
-                              />
+                              {col.key === 'c_custo' ? (
+                                <div className="border border-slate-200 rounded-md bg-white">
+                                  <CostCenterTreeFilterContent
+                                    options={options}
+                                    selected={dryRunFilters[col.key] || []}
+                                    onChange={(v) => {
+                                      setDryRunFilters((p) => ({ ...p, [col.key]: v }))
+                                      setDryRunPage(0)
+                                    }}
+                                    costCenters={costCenters}
+                                  />
+                                </div>
+                              ) : col.key === 'conta_debito' || col.key === 'conta_credito' ? (
+                                <div className="border border-slate-200 rounded-md bg-white">
+                                  <ChartAccountTreeFilterContent
+                                    selected={dryRunFilters[col.key] || []}
+                                    onChange={(v) => {
+                                      setDryRunFilters((p) => ({ ...p, [col.key]: v }))
+                                      setDryRunPage(0)
+                                    }}
+                                    chartOfAccounts={chartOfAccounts}
+                                  />
+                                </div>
+                              ) : (
+                                <MultiSelect
+                                  title={`Todos os ${col.label}`}
+                                  options={options}
+                                  selected={dryRunFilters[col.key] || []}
+                                  onChange={(v: string[]) => {
+                                    setDryRunFilters((p) => ({ ...p, [col.key]: v }))
+                                    setDryRunPage(0)
+                                  }}
+                                />
+                              )}
                             </div>
                           )
                         })}
@@ -11245,106 +11273,138 @@ export default function FinancialMovements() {
                                         )}
                                     </Button>
                                   </PopoverTrigger>
-                                  <PopoverContent className="w-[200px] p-0" align="start">
-                                    <Command>
-                                      <CommandInput
-                                        placeholder="Buscar..."
-                                        className="h-8 text-xs"
+                                  <PopoverContent
+                                    className={cn(
+                                      'p-0',
+                                      colDef.key === 'c_custo' ||
+                                        colDef.key === 'conta_debito' ||
+                                        colDef.key === 'conta_credito'
+                                        ? 'w-[300px]'
+                                        : 'w-[200px]',
+                                    )}
+                                    align="start"
+                                  >
+                                    {colDef.key === 'c_custo' ? (
+                                      <CostCenterTreeFilterContent
+                                        options={dryRunOptions[colDef.key] || []}
+                                        selected={dryRunFilters[colDef.key] || []}
+                                        onChange={(v) => {
+                                          setDryRunFilters((p) => ({ ...p, [colDef.key]: v }))
+                                          setDryRunPage(0)
+                                        }}
+                                        costCenters={costCenters}
                                       />
-                                      <div className="flex items-center gap-1 p-1 border-b border-slate-100 bg-slate-50">
-                                        <Button
-                                          variant="secondary"
-                                          size="sm"
-                                          className="h-6 flex-1 text-[10px]"
-                                          onMouseDown={(e) => {
-                                            e.preventDefault()
-                                            e.stopPropagation()
-                                          }}
-                                          onClick={(e) => {
-                                            e.stopPropagation()
-                                            const allVals = (dryRunOptions[colDef.key] || []).map(
-                                              (o) => o.value,
-                                            )
-                                            setDryRunFilters((prev) => ({
-                                              ...prev,
-                                              [colDef.key]: allVals,
-                                            }))
-                                            setDryRunPage(0)
-                                          }}
-                                        >
-                                          Todos
-                                        </Button>
-                                        <Button
-                                          variant="secondary"
-                                          size="sm"
-                                          className="h-6 flex-1 text-[10px]"
-                                          onMouseDown={(e) => {
-                                            e.preventDefault()
-                                            e.stopPropagation()
-                                          }}
-                                          onClick={(e) => {
-                                            e.stopPropagation()
-                                            setDryRunFilters((prev) => ({
-                                              ...prev,
-                                              [colDef.key]: [],
-                                            }))
-                                            setDryRunPage(0)
-                                          }}
-                                        >
-                                          Nenhum
-                                        </Button>
-                                      </div>
-                                      <CommandList className="max-h-[200px] overflow-y-auto">
-                                        <CommandEmpty className="py-2 text-xs text-center text-slate-500">
-                                          Nenhum encontrado.
-                                        </CommandEmpty>
-                                        <CommandGroup>
-                                          {(dryRunOptions[colDef.key] || []).map((opt) => {
-                                            const isSelected = dryRunFilters[colDef.key]?.includes(
-                                              opt.value,
-                                            )
-                                            return (
-                                              <CommandItem
-                                                key={opt.value}
-                                                onMouseDown={(e) => {
-                                                  e.preventDefault()
-                                                  e.stopPropagation()
-                                                }}
-                                                onSelect={() => {
-                                                  const current = dryRunFilters[colDef.key] || []
-                                                  const updated = isSelected
-                                                    ? current.filter((v) => v !== opt.value)
-                                                    : [...current, opt.value]
-                                                  setDryRunFilters((prev) => ({
-                                                    ...prev,
-                                                    [colDef.key]: updated,
-                                                  }))
-                                                  setDryRunPage(0)
-                                                }}
-                                                className="text-xs cursor-pointer"
-                                              >
-                                                <div
-                                                  className={cn(
-                                                    'mr-2 flex h-3 w-3 flex-shrink-0 items-center justify-center rounded-sm border border-primary',
-                                                    isSelected
-                                                      ? 'bg-primary text-primary-foreground'
-                                                      : 'opacity-50 [&_svg]:invisible',
-                                                  )}
+                                    ) : colDef.key === 'conta_debito' ||
+                                      colDef.key === 'conta_credito' ? (
+                                      <ChartAccountTreeFilterContent
+                                        selected={dryRunFilters[colDef.key] || []}
+                                        onChange={(v) => {
+                                          setDryRunFilters((p) => ({ ...p, [colDef.key]: v }))
+                                          setDryRunPage(0)
+                                        }}
+                                        chartOfAccounts={chartOfAccounts}
+                                      />
+                                    ) : (
+                                      <Command>
+                                        <CommandInput
+                                          placeholder="Buscar..."
+                                          className="h-8 text-xs"
+                                        />
+                                        <div className="flex items-center gap-1 p-1 border-b border-slate-100 bg-slate-50">
+                                          <Button
+                                            variant="secondary"
+                                            size="sm"
+                                            className="h-6 flex-1 text-[10px]"
+                                            onMouseDown={(e) => {
+                                              e.preventDefault()
+                                              e.stopPropagation()
+                                            }}
+                                            onClick={(e) => {
+                                              e.stopPropagation()
+                                              const allVals = (dryRunOptions[colDef.key] || []).map(
+                                                (o) => o.value,
+                                              )
+                                              setDryRunFilters((prev) => ({
+                                                ...prev,
+                                                [colDef.key]: allVals,
+                                              }))
+                                              setDryRunPage(0)
+                                            }}
+                                          >
+                                            Todos
+                                          </Button>
+                                          <Button
+                                            variant="secondary"
+                                            size="sm"
+                                            className="h-6 flex-1 text-[10px]"
+                                            onMouseDown={(e) => {
+                                              e.preventDefault()
+                                              e.stopPropagation()
+                                            }}
+                                            onClick={(e) => {
+                                              e.stopPropagation()
+                                              setDryRunFilters((prev) => ({
+                                                ...prev,
+                                                [colDef.key]: [],
+                                              }))
+                                              setDryRunPage(0)
+                                            }}
+                                          >
+                                            Nenhum
+                                          </Button>
+                                        </div>
+                                        <CommandList className="max-h-[200px] overflow-y-auto">
+                                          <CommandEmpty className="py-2 text-xs text-center text-slate-500">
+                                            Nenhum encontrado.
+                                          </CommandEmpty>
+                                          <CommandGroup>
+                                            {(dryRunOptions[colDef.key] || []).map((opt) => {
+                                              const isSelected = dryRunFilters[
+                                                colDef.key
+                                              ]?.includes(opt.value)
+                                              return (
+                                                <CommandItem
+                                                  key={opt.value}
+                                                  onMouseDown={(e) => {
+                                                    e.preventDefault()
+                                                    e.stopPropagation()
+                                                  }}
+                                                  onSelect={() => {
+                                                    const current = dryRunFilters[colDef.key] || []
+                                                    const updated = isSelected
+                                                      ? current.filter((v) => v !== opt.value)
+                                                      : [...current, opt.value]
+                                                    setDryRunFilters((prev) => ({
+                                                      ...prev,
+                                                      [colDef.key]: updated,
+                                                    }))
+                                                    setDryRunPage(0)
+                                                  }}
+                                                  className="text-xs cursor-pointer"
                                                 >
-                                                  <Check className="h-2 w-2" />
-                                                </div>
-                                                <span
-                                                  className="truncate max-w-[140px]"
-                                                  title={opt.label}
-                                                >
-                                                  {opt.label}
-                                                </span>
-                                              </CommandItem>
-                                            )
-                                          })}
-                                        </CommandGroup>
-                                      </CommandList>
-                                    </Command>
+                                                  <div
+                                                    className={cn(
+                                                      'mr-2 flex h-3 w-3 flex-shrink-0 items-center justify-center rounded-sm border border-primary',
+                                                      isSelected
+                                                        ? 'bg-primary text-primary-foreground'
+                                                        : 'opacity-50 [&_svg]:invisible',
+                                                    )}
+                                                  >
+                                                    <Check className="h-2 w-2" />
+                                                  </div>
+                                                  <span
+                                                    className="truncate max-w-[140px]"
+                                                    title={opt.label}
+                                                  >
+                                                    {opt.label}
+                                                  </span>
+                                                </CommandItem>
+                                              )
+                                            })}
+                                          </CommandGroup>
+                                        </CommandList>
+                                      </Command>
+                                    )}
                                   </PopoverContent>
                                 </Popover>
                               )}
