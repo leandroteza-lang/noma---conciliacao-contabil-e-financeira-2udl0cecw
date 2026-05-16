@@ -10616,8 +10616,8 @@ export default function FinancialMovements() {
             <CardContent className="p-0">
               <div className="border-4 border-indigo-950 rounded-lg overflow-hidden relative">
                 <Table
-                  wrapperClassName="max-h-[600px] overflow-auto custom-scrollbar"
-                  className="w-full"
+                  wrapperClassName="max-h-[600px] overflow-x-auto overflow-y-auto custom-scrollbar"
+                  className="w-full min-w-max"
                   style={{ fontSize: `${tableFontSize}px` }}
                 >
                   <TableHeader className="bg-indigo-950 sticky top-0 z-10 shadow-sm border-none">
@@ -10676,7 +10676,7 @@ export default function FinancialMovements() {
                             }}
                             onDragEnd={() => setDraggedDryRunCol(null)}
                             className={cn(
-                              'text-white font-bold px-2 py-1 h-8 cursor-grab active:cursor-grabbing',
+                              'text-white font-bold px-2 py-1 h-8 cursor-grab active:cursor-grabbing whitespace-nowrap',
                               draggedDryRunCol === colDef.key ? 'opacity-50 bg-indigo-900' : '',
                             )}
                             style={getDryRunGridlineStyle()}
@@ -10847,7 +10847,7 @@ export default function FinancialMovements() {
                                     <Button
                                       variant="ghost"
                                       size="icon"
-                                      className="h-6 w-6 rounded-sm text-indigo-200 hover:text-white hover:bg-white/20 relative ml-0.5"
+                                      className="h-6 w-6 rounded-sm text-white opacity-70 hover:opacity-100 hover:bg-white/20 relative ml-0.5"
                                       title="Opções de visualização"
                                     >
                                       <MoreVertical className="h-4 w-4" />
