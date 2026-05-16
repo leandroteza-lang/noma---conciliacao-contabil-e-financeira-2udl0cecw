@@ -553,6 +553,179 @@ function TreeColumnFilter({
   )
 }
 
+function CostCenterTreeFilterContent({
+  options,
+  selected,
+  onChange,
+  costCenters,
+}: {
+  options: { label: string; value: string }[]
+  selected: string[]
+  onChange: (val: string[]) => void
+  costCenters: any[]
+}) {
+  const [search, setSearch] = useState('')
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({})
+
+  type Node = {
+    key: string
+    label: string
+    value: string | null
+    children: Record<string, Node>
+    allValues: string[]
+  }
+
+  const tree = useMemo(() => {
+    const root: Node = { key: 'root', label: 'root', value: null, children: {}, allValues: [] }
+
+    const sortedOptions = [...options].sort((a, b) => a.value.localeCompare(b.value))
+
+    for (const opt of sortedOptions) {
+      const parts = opt.value.split('.')
+      let current = root
+      let currentKey = ''
+      for (let i = 0; i < parts.length; i++) {
+        currentKey = currentKey ? `${currentKey}.${parts[i]}` : parts[i]
+        if (!current.children[currentKey]) {
+          const cc = costCenters.find((c) => c.code === currentKey)
+          const desc = cc ? cc.description : ''
+          current.children[currentKey] = {
+            key: currentKey,
+            label: desc ? `${currentKey} - ${desc}` : currentKey,
+            value: null,
+            children: {},
+            allValues: [],
+          }
+        }
+        current = current.children[currentKey]
+        if (!current.allValues.includes(opt.value)) {
+          current.allValues.push(opt.value)
+        }
+      }
+      current.value = opt.value
+      current.label = opt.label
+    }
+    return root
+  }, [options, costCenters])
+
+  const toggleExpand = (key: string) => setExpanded((p) => ({ ...p, [key]: !p[key] }))
+
+  const handleSelect = (node: Node) => {
+    const isAllSelected =
+      node.allValues.length > 0 && node.allValues.every((v) => selected.includes(v))
+    if (isAllSelected) {
+      onChange(selected.filter((v) => !node.allValues.includes(v)))
+    } else {
+      const newSelected = new Set([...selected, ...node.allValues])
+      onChange(Array.from(newSelected))
+    }
+  }
+
+  const renderNode = (node: Node, depth: number) => {
+    const hasSearch = search.trim().length > 0
+
+    const hasMatchingChild = (n: Node): boolean => {
+      if (n.label.toLowerCase().includes(search.toLowerCase())) return true
+      return Object.values(n.children).some(hasMatchingChild)
+    }
+
+    if (hasSearch && !hasMatchingChild(node)) {
+      return null
+    }
+
+    const childrenList = Object.values(node.children)
+    const hasChildren = childrenList.length > 0
+    const isExpanded = expanded[node.key] || hasSearch
+
+    const isAllSelected =
+      node.allValues.length > 0 && node.allValues.every((v) => selected.includes(v))
+    const isSomeSelected = node.allValues.some((v) => selected.includes(v))
+
+    return (
+      <div key={node.key} className="flex flex-col">
+        <div className="flex items-center gap-1 hover:bg-slate-100 rounded px-1 py-1">
+          <div style={{ width: depth * 12 }} className="shrink-0" />
+          {hasChildren ? (
+            <button
+              className="h-5 w-5 flex items-center justify-center rounded hover:bg-slate-200 shrink-0"
+              onClick={() => toggleExpand(node.key)}
+            >
+              {isExpanded ? (
+                <ChevronDown className="h-3 w-3 text-slate-500" />
+              ) : (
+                <ChevronRight className="h-3 w-3 text-slate-500" />
+              )}
+            </button>
+          ) : (
+            <div className="h-5 w-5 shrink-0" />
+          )}
+          <div
+            className="flex flex-1 items-center gap-2 cursor-pointer min-w-0"
+            onClick={() => handleSelect(node)}
+          >
+            <div
+              className={cn(
+                'flex h-3 w-3 shrink-0 items-center justify-center border rounded-sm',
+                isAllSelected
+                  ? 'bg-primary border-primary text-primary-foreground'
+                  : isSomeSelected
+                    ? 'bg-primary/50 border-primary text-primary-foreground'
+                    : 'border-slate-300',
+              )}
+            >
+              {(isAllSelected || isSomeSelected) && <Check className="h-2 w-2" />}
+            </div>
+            <span className="text-[11px] font-medium text-slate-700 truncate" title={node.label}>
+              {node.label}
+            </span>
+          </div>
+        </div>
+        {hasChildren && isExpanded && (
+          <div className="flex flex-col">{childrenList.map((c) => renderNode(c, depth + 1))}</div>
+        )}
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex flex-col w-full">
+      <div className="p-2 border-b border-slate-100">
+        <Input
+          placeholder="Buscar centro de custo..."
+          className="h-8 text-xs"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+      </div>
+      <div className="flex items-center gap-1 p-1 border-b border-slate-100 bg-slate-50">
+        <Button
+          variant="secondary"
+          size="sm"
+          className="h-6 flex-1 text-[10px]"
+          onClick={() => onChange(options.map((o) => o.value))}
+        >
+          Todos
+        </Button>
+        <Button
+          variant="secondary"
+          size="sm"
+          className="h-6 flex-1 text-[10px]"
+          onClick={() => onChange([])}
+        >
+          Nenhum
+        </Button>
+      </div>
+      <div className="max-h-[300px] overflow-y-auto custom-scrollbar p-1">
+        {Object.values(tree.children).length === 0 ? (
+          <div className="py-2 text-xs text-center text-slate-500">Nenhum encontrado.</div>
+        ) : (
+          Object.values(tree.children).map((c) => renderNode(c, 0))
+        )}
+      </div>
+    </div>
+  )
+}
+
 function ColumnFilter({
   title,
   options,
@@ -3901,6 +4074,18 @@ export default function FinancialMovements() {
           })
 
           options[h.key] = dateOptions
+        } else if (h.key === 'c_custo') {
+          const map = new Map<string, string>()
+          movs.forEach((m) => {
+            if (m.c_custo) {
+              map.set(m.c_custo, m.descricao_c_custo || '')
+            }
+          })
+          const uniqueVals = Array.from(map.keys()).sort()
+          options[h.key] = uniqueVals.map((v) => ({
+            label: `${v}${map.get(v) ? ` - ${map.get(v)}` : ''}`,
+            value: v,
+          }))
         } else {
           const uniqueVals = Array.from(
             new Set(
@@ -7073,130 +7258,150 @@ export default function FinancialMovements() {
                                       )}
                                     </Button>
                                   </PopoverTrigger>
-                                  <PopoverContent className="w-[200px] p-0" align="start">
-                                    <Command>
-                                      <CommandInput
-                                        placeholder="Buscar..."
-                                        className="h-8 text-xs"
+                                  <PopoverContent
+                                    className={cn(
+                                      'p-0',
+                                      h.key === 'c_custo' ? 'w-[300px]' : 'w-[200px]',
+                                    )}
+                                    align="start"
+                                  >
+                                    {h.key === 'c_custo' ? (
+                                      <CostCenterTreeFilterContent
+                                        options={options}
+                                        selected={filters[h.key] || []}
+                                        onChange={(v) => {
+                                          setFilters((prev) => ({ ...prev, [h.key]: v }))
+                                          setPage(0)
+                                        }}
+                                        costCenters={costCenters}
                                       />
-                                      <div className="flex items-center gap-1 p-1 border-b border-slate-100 bg-slate-50">
-                                        <Button
-                                          variant="secondary"
-                                          size="sm"
-                                          className="h-6 flex-1 text-[10px]"
-                                          onMouseDown={(e) => {
-                                            e.preventDefault()
-                                            e.stopPropagation()
-                                          }}
-                                          onClick={(e) => {
-                                            e.stopPropagation()
-                                            setFilters((prev) => ({
-                                              ...prev,
-                                              [h.key]: options.map((o) => o.value),
-                                            }))
-                                            setPage(0)
-                                          }}
-                                        >
-                                          Todos
-                                        </Button>
-                                        <Button
-                                          variant="secondary"
-                                          size="sm"
-                                          className="h-6 flex-1 text-[10px]"
-                                          onMouseDown={(e) => {
-                                            e.preventDefault()
-                                            e.stopPropagation()
-                                          }}
-                                          onClick={(e) => {
-                                            e.stopPropagation()
-                                            setFilters((prev) => ({
-                                              ...prev,
-                                              [h.key]: [],
-                                            }))
-                                            setPage(0)
-                                          }}
-                                        >
-                                          Nenhum
-                                        </Button>
-                                      </div>
-                                      <CommandList className="max-h-[200px] overflow-y-auto">
-                                        <CommandEmpty className="py-2 text-xs text-center text-slate-500">
-                                          Nenhum encontrado.
-                                        </CommandEmpty>
-                                        <CommandGroup>
-                                          {options.map((opt) => {
-                                            if (
-                                              opt.parent &&
-                                              !expandedDateGroups[`${h.key}-${opt.parent}`]
-                                            ) {
-                                              return null
-                                            }
+                                    ) : (
+                                      <Command>
+                                        <CommandInput
+                                          placeholder="Buscar..."
+                                          className="h-8 text-xs"
+                                        />
+                                        <div className="flex items-center gap-1 p-1 border-b border-slate-100 bg-slate-50">
+                                          <Button
+                                            variant="secondary"
+                                            size="sm"
+                                            className="h-6 flex-1 text-[10px]"
+                                            onMouseDown={(e) => {
+                                              e.preventDefault()
+                                              e.stopPropagation()
+                                            }}
+                                            onClick={(e) => {
+                                              e.stopPropagation()
+                                              setFilters((prev) => ({
+                                                ...prev,
+                                                [h.key]: options.map((o) => o.value),
+                                              }))
+                                              setPage(0)
+                                            }}
+                                          >
+                                            Todos
+                                          </Button>
+                                          <Button
+                                            variant="secondary"
+                                            size="sm"
+                                            className="h-6 flex-1 text-[10px]"
+                                            onMouseDown={(e) => {
+                                              e.preventDefault()
+                                              e.stopPropagation()
+                                            }}
+                                            onClick={(e) => {
+                                              e.stopPropagation()
+                                              setFilters((prev) => ({
+                                                ...prev,
+                                                [h.key]: [],
+                                              }))
+                                              setPage(0)
+                                            }}
+                                          >
+                                            Nenhum
+                                          </Button>
+                                        </div>
+                                        <CommandList className="max-h-[200px] overflow-y-auto">
+                                          <CommandEmpty className="py-2 text-xs text-center text-slate-500">
+                                            Nenhum encontrado.
+                                          </CommandEmpty>
+                                          <CommandGroup>
+                                            {options.map((opt) => {
+                                              if (
+                                                opt.parent &&
+                                                !expandedDateGroups[`${h.key}-${opt.parent}`]
+                                              ) {
+                                                return null
+                                              }
 
-                                            const isSelected = filters[h.key]?.includes(opt.value)
-                                            return (
-                                              <CommandItem
-                                                key={opt.value}
-                                                onMouseDown={(e) => {
-                                                  e.preventDefault()
-                                                  e.stopPropagation()
-                                                }}
-                                                onSelect={() => {
-                                                  const current = filters[h.key] || []
-                                                  const updated = isSelected
-                                                    ? current.filter((v) => v !== opt.value)
-                                                    : [...current, opt.value]
-                                                  setFilters((prev) => ({
-                                                    ...prev,
-                                                    [h.key]: updated,
-                                                  }))
-                                                  setPage(0)
-                                                }}
-                                                className={cn(
-                                                  'text-xs cursor-pointer',
-                                                  opt.parent ? 'pl-6' : '',
-                                                )}
-                                              >
-                                                {opt.isParent && (
-                                                  <div
-                                                    className="mr-1 flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-sm hover:bg-slate-200"
-                                                    onPointerDown={(e) => e.stopPropagation()}
-                                                    onClick={(e) => {
-                                                      e.stopPropagation()
-                                                      e.preventDefault()
-                                                      setExpandedDateGroups((prev) => ({
-                                                        ...prev,
-                                                        [`${h.key}-${opt.value}`]:
-                                                          !prev[`${h.key}-${opt.value}`],
-                                                      }))
-                                                    }}
-                                                  >
-                                                    {expandedDateGroups[`${h.key}-${opt.value}`] ? (
-                                                      <ChevronDown className="h-3 w-3" />
-                                                    ) : (
-                                                      <ChevronRight className="h-3 w-3" />
-                                                    )}
-                                                  </div>
-                                                )}
-                                                {!opt.isParent && opt.parent && (
-                                                  <div className="w-4 mr-1 flex-shrink-0"></div>
-                                                )}
-                                                <div
+                                              const isSelected = filters[h.key]?.includes(opt.value)
+                                              return (
+                                                <CommandItem
+                                                  key={opt.value}
+                                                  onMouseDown={(e) => {
+                                                    e.preventDefault()
+                                                    e.stopPropagation()
+                                                  }}
+                                                  onSelect={() => {
+                                                    const current = filters[h.key] || []
+                                                    const updated = isSelected
+                                                      ? current.filter((v) => v !== opt.value)
+                                                      : [...current, opt.value]
+                                                    setFilters((prev) => ({
+                                                      ...prev,
+                                                      [h.key]: updated,
+                                                    }))
+                                                    setPage(0)
+                                                  }}
                                                   className={cn(
-                                                    'mr-2 flex h-3 w-3 flex-shrink-0 items-center justify-center rounded-sm border border-primary',
-                                                    isSelected
-                                                      ? 'bg-primary text-primary-foreground'
-                                                      : 'opacity-50 [&_svg]:invisible',
+                                                    'text-xs cursor-pointer',
+                                                    opt.parent ? 'pl-6' : '',
                                                   )}
                                                 >
-                                                  <Check className="h-2 w-2" />
-                                                </div>
-                                                <span>{opt.label}</span>
-                                              </CommandItem>
-                                            )
-                                          })}
-                                        </CommandGroup>
-                                      </CommandList>
-                                    </Command>
+                                                  {opt.isParent && (
+                                                    <div
+                                                      className="mr-1 flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-sm hover:bg-slate-200"
+                                                      onPointerDown={(e) => e.stopPropagation()}
+                                                      onClick={(e) => {
+                                                        e.stopPropagation()
+                                                        e.preventDefault()
+                                                        setExpandedDateGroups((prev) => ({
+                                                          ...prev,
+                                                          [`${h.key}-${opt.value}`]:
+                                                            !prev[`${h.key}-${opt.value}`],
+                                                        }))
+                                                      }}
+                                                    >
+                                                      {expandedDateGroups[
+                                                        `${h.key}-${opt.value}`
+                                                      ] ? (
+                                                        <ChevronDown className="h-3 w-3" />
+                                                      ) : (
+                                                        <ChevronRight className="h-3 w-3" />
+                                                      )}
+                                                    </div>
+                                                  )}
+                                                  {!opt.isParent && opt.parent && (
+                                                    <div className="w-4 mr-1 flex-shrink-0"></div>
+                                                  )}
+                                                  <div
+                                                    className={cn(
+                                                      'mr-2 flex h-3 w-3 flex-shrink-0 items-center justify-center rounded-sm border border-primary',
+                                                      isSelected
+                                                        ? 'bg-primary text-primary-foreground'
+                                                        : 'opacity-50 [&_svg]:invisible',
+                                                    )}
+                                                  >
+                                                    <Check className="h-2 w-2" />
+                                                  </div>
+                                                  <span>{opt.label}</span>
+                                                </CommandItem>
+                                              )
+                                            })}
+                                          </CommandGroup>
+                                        </CommandList>
+                                      </Command>
+                                    )}
                                   </PopoverContent>
                                 </Popover>
                                 <DropdownMenu>
