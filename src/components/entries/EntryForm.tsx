@@ -77,7 +77,6 @@ export default function EntryForm({ orgId, accounts, costCenters, mappings, onSu
 
     setLoading(true)
 
-    // 1. Salvar na tabela de accounting_entries
     const { error: err1 } = await supabase.from('accounting_entries').insert({
       organization_id: orgId,
       entry_date: form.date,
@@ -94,7 +93,6 @@ export default function EntryForm({ orgId, accounts, costCenters, mappings, onSu
       return toast.error('Erro contábil: ' + err1.message)
     }
 
-    // 2. Salvar na tabela de financial_movements
     await supabase.from('financial_movements').insert({
       organization_id: orgId,
       movement_date: form.date,
@@ -171,11 +169,18 @@ export default function EntryForm({ orgId, accounts, costCenters, mappings, onSu
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="none">Nenhum</SelectItem>
-                {costCenters.map((c) => (
-                  <SelectItem key={c.id} value={c.id}>
-                    {c.code} - {c.description}
-                  </SelectItem>
-                ))}
+                {costCenters.length > 0 ? (
+                  costCenters.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.code ? `${c.code} - ` : ''}
+                      {c.description || 'Sem descrição'}
+                    </SelectItem>
+                  ))
+                ) : (
+                  <div className="px-2 py-4 text-sm text-center text-slate-500">
+                    Nenhum centro de custo cadastrado
+                  </div>
+                )}
               </SelectContent>
             </Select>
           </div>
@@ -208,11 +213,18 @@ export default function EntryForm({ orgId, accounts, costCenters, mappings, onSu
                 <SelectValue placeholder="Selecione a conta..." />
               </SelectTrigger>
               <SelectContent>
-                {accounts.map((a) => (
-                  <SelectItem key={a.id} value={a.id}>
-                    {a.account_code} - {a.account_name}
-                  </SelectItem>
-                ))}
+                {accounts.length > 0 ? (
+                  accounts.map((a) => (
+                    <SelectItem key={a.id} value={a.id}>
+                      {a.account_code ? `${a.account_code} - ` : ''}
+                      {a.account_name || 'Conta sem nome'}
+                    </SelectItem>
+                  ))
+                ) : (
+                  <div className="px-2 py-4 text-sm text-center text-slate-500">
+                    Nenhuma conta contábil cadastrada
+                  </div>
+                )}
               </SelectContent>
             </Select>
           </div>
@@ -230,11 +242,18 @@ export default function EntryForm({ orgId, accounts, costCenters, mappings, onSu
                 <SelectValue placeholder="Selecione a conta..." />
               </SelectTrigger>
               <SelectContent>
-                {accounts.map((a) => (
-                  <SelectItem key={a.id} value={a.id}>
-                    {a.account_code} - {a.account_name}
-                  </SelectItem>
-                ))}
+                {accounts.length > 0 ? (
+                  accounts.map((a) => (
+                    <SelectItem key={a.id} value={a.id}>
+                      {a.account_code ? `${a.account_code} - ` : ''}
+                      {a.account_name || 'Conta sem nome'}
+                    </SelectItem>
+                  ))
+                ) : (
+                  <div className="px-2 py-4 text-sm text-center text-slate-500">
+                    Nenhuma conta contábil cadastrada
+                  </div>
+                )}
               </SelectContent>
             </Select>
           </div>

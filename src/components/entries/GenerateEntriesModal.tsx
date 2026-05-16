@@ -134,11 +134,18 @@ export default function GenerateEntriesModal({
                     <SelectValue placeholder="Selecione..." />
                   </SelectTrigger>
                   <SelectContent>
-                    {costCenters.map((cc) => (
-                      <SelectItem key={cc.id} value={cc.id}>
-                        {cc.code} - {cc.description}
-                      </SelectItem>
-                    ))}
+                    {costCenters.length > 0 ? (
+                      costCenters.map((cc) => (
+                        <SelectItem key={cc.id} value={cc.id}>
+                          {cc.code ? `${cc.code} - ` : ''}
+                          {cc.description || 'Sem descrição'}
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <div className="px-2 py-4 text-sm text-center text-slate-500">
+                        Nenhum centro de custo cadastrado
+                      </div>
+                    )}
                   </SelectContent>
                 </Select>
               </div>
@@ -154,11 +161,18 @@ export default function GenerateEntriesModal({
                   <SelectValue placeholder="Selecione a conta para fechar o saldo..." />
                 </SelectTrigger>
                 <SelectContent>
-                  {accounts.map((a) => (
-                    <SelectItem key={a.id} value={a.id}>
-                      {a.account_code} - {a.account_name}
-                    </SelectItem>
-                  ))}
+                  {accounts.length > 0 ? (
+                    accounts.map((a) => (
+                      <SelectItem key={a.id} value={a.id}>
+                        {a.account_code ? `${a.account_code} - ` : ''}
+                        {a.account_name || 'Conta sem nome'}
+                      </SelectItem>
+                    ))
+                  ) : (
+                    <div className="px-2 py-4 text-sm text-center text-slate-500">
+                      Nenhuma conta contábil cadastrada
+                    </div>
+                  )}
                 </SelectContent>
               </Select>
             </div>

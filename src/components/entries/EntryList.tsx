@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/lib/supabase/client'
 import {
   Table,
@@ -45,14 +45,28 @@ export default function EntryList({
   refreshKey: number
 }) {
   const [entries, setEntries] = useState<any[]>([])
-  const [dateFrom, setDateFrom] = useState('')
-  const [dateTo, setDateTo] = useState('')
-  const [status, setStatus] = useState('Todos')
-  const [ccFilter, setCcFilter] = useState('Todos')
+
+  // Persistência de Filtros via localStorage
+  const [dateFrom, setDateFrom] = useState(() => localStorage.getItem('gc-entries-dateFrom') || '')
+  const [dateTo, setDateTo] = useState(() => localStorage.getItem('gc-entries-dateTo') || '')
+  const [status, setStatus] = useState(() => localStorage.getItem('gc-entries-status') || 'Todos')
+  const [ccFilter, setCcFilter] = useState(
+    () => localStorage.getItem('gc-entries-ccFilter') || 'Todos',
+  )
+
   const [editId, setEditId] = useState<string | null>(null)
   const [editForm, setEditForm] = useState<any>({})
 
-  const fetchEntries = async () => {
+  useEffect(() => {
+    localStorage.setItem('gc-entries-dateFrom', dateFrom)
+    localStorage.setItem('gc-entries-dateTo', dateTo)
+    localStorage.setItem('gc-entries-status', status)
+    localStorage.setItem('gc-entries-ccFilter', ccFilter)
+  }, [dateFrom, dateTo, status, ccFilter])
+
+  const fetchEntries = useCallback(async () => {
+    if (!orgId) return
+
     let q = supabase
       .from('accounting_entries')
       .select('*')
@@ -65,9 +79,13 @@ export default function EntryList({
     if (status !== 'Todos') q = q.eq('status', status)
     if (ccFilter !== 'Todos') q = q.eq('cost_center_id', ccFilter)
 
-    const { data } = await q
+    const { data, error } = await q
+    if (error) {
+      console.error('Erro ao buscar lançamentos:', error)
+      return
+    }
     if (data) setEntries(data)
-  }
+  }, [orgId, dateFrom, dateTo, status, ccFilter])
 
   useEffect(() => {
     if (orgId) {
@@ -93,7 +111,7 @@ export default function EntryList({
         supabase.removeChannel(channel)
       }
     }
-  }, [orgId, refreshKey, dateFrom, dateTo, status, ccFilter])
+  }, [orgId, refreshKey, fetchEntries])
 
   const handleDelete = async (id: string) => {
     const { error } = await supabase.from('accounting_entries').delete().eq('id', id)
@@ -161,11 +179,16 @@ export default function EntryList({
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="Todos">Todos</SelectItem>
-              {costCenters?.map((c) => (
-                <SelectItem key={c.id} value={c.id}>
-                  {c.code} - {c.description}
-                </SelectItem>
-              ))}
+              {costCenters?.length > 0 ? (
+                costCenters.map((c) => (
+                  <SelectItem key={c.id} value={c.id}>
+                    {c.code ? `${c.code} - ` : ''}
+                    {c.description || 'Sem descrição'}
+                  </SelectItem>
+                ))
+              ) : (
+                <div className="px-2 py-2 text-sm text-center text-slate-500">Vazio</div>
+              )}
             </SelectContent>
           </Select>
         </div>
@@ -191,6 +214,10 @@ export default function EntryList({
             setDateTo('')
             setCcFilter('Todos')
             setStatus('Todos')
+            localStorage.removeItem('gc-entries-dateFrom')
+            localStorage.removeItem('gc-entries-dateTo')
+            localStorage.removeItem('gc-entries-status')
+            localStorage.removeItem('gc-entries-ccFilter')
           }}
         >
           Limpar Filtros
@@ -256,11 +283,15 @@ export default function EntryList({
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="none">Nenhum</SelectItem>
-                        {costCenters?.map((c) => (
-                          <SelectItem key={c.id} value={c.id}>
-                            {c.code}
-                          </SelectItem>
-                        ))}
+                        {costCenters?.length > 0 ? (
+                          costCenters.map((c) => (
+                            <SelectItem key={c.id} value={c.id}>
+                              {c.code || c.description}
+                            </SelectItem>
+                          ))
+                        ) : (
+                          <div className="px-2 py-2 text-xs text-center text-slate-500">Vazio</div>
+                        )}
                       </SelectContent>
                     </Select>
                   </TableCell>
@@ -273,11 +304,15 @@ export default function EntryList({
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        {accounts.map((a) => (
-                          <SelectItem key={a.id} value={a.id}>
-                            {a.account_name}
-                          </SelectItem>
-                        ))}
+                        {accounts?.length > 0 ? (
+                          accounts.map((a) => (
+                            <SelectItem key={a.id} value={a.id}>
+                              {a.account_name || a.account_code}
+                            </SelectItem>
+                          ))
+                        ) : (
+                          <div className="px-2 py-2 text-xs text-center text-slate-500">Vazio</div>
+                        )}
                       </SelectContent>
                     </Select>
                   </TableCell>
@@ -290,11 +325,15 @@ export default function EntryList({
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        {accounts.map((a) => (
-                          <SelectItem key={a.id} value={a.id}>
-                            {a.account_name}
-                          </SelectItem>
-                        ))}
+                        {accounts?.length > 0 ? (
+                          accounts.map((a) => (
+                            <SelectItem key={a.id} value={a.id}>
+                              {a.account_name || a.account_code}
+                            </SelectItem>
+                          ))
+                        ) : (
+                          <div className="px-2 py-2 text-xs text-center text-slate-500">Vazio</div>
+                        )}
                       </SelectContent>
                     </Select>
                   </TableCell>
