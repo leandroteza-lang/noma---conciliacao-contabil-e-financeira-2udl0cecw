@@ -4324,6 +4324,18 @@ export default function FinancialMovements() {
             label: `${v}${map.get(v) ? ` - ${map.get(v)}` : ''}`,
             value: v,
           }))
+        } else if (h.key === 'conta_caixa') {
+          const map = new Map<string, string>()
+          movs.forEach((m) => {
+            if (m.conta_caixa) {
+              map.set(m.conta_caixa, m.nome_caixa || '')
+            }
+          })
+          const uniqueVals = Array.from(map.keys()).sort()
+          options[h.key] = uniqueVals.map((v) => ({
+            label: `${v}${map.get(v) ? ` - ${map.get(v)}` : ''}`,
+            value: v,
+          }))
         } else {
           const uniqueVals = Array.from(
             new Set(
@@ -7549,7 +7561,8 @@ export default function FinancialMovements() {
                                       'p-0',
                                       h.key === 'c_custo' ||
                                         h.key === 'conta_debito' ||
-                                        h.key === 'conta_credito'
+                                        h.key === 'conta_credito' ||
+                                        h.key === 'conta_caixa'
                                         ? 'w-[300px]'
                                         : 'w-[200px]',
                                     )}
@@ -8032,13 +8045,13 @@ export default function FinancialMovements() {
                                                   : 'justify-start',
                                             )}
                                           >
-                                            <span className="font-medium text-slate-700">
+                                            <span className="font-medium text-slate-900">
                                               {row.conta_caixa || '-'}
                                             </span>
                                             {isSimplifiedMode &&
                                               row.conta_caixa &&
                                               row.nome_caixa && (
-                                                <span className="text-slate-700 font-medium truncate">
+                                                <span className="text-slate-900 font-medium truncate">
                                                   - {row.nome_caixa}
                                                 </span>
                                               )}
@@ -8195,13 +8208,13 @@ export default function FinancialMovements() {
                                                   : 'justify-start',
                                             )}
                                           >
-                                            <span className="font-medium text-slate-700">
+                                            <span className="font-medium text-slate-900">
                                               {row.c_custo || 'Sem C. Custo'}
                                             </span>
                                             {isSimplifiedMode &&
                                               row.c_custo &&
                                               row.descricao_c_custo && (
-                                                <span className="text-slate-700 font-medium truncate max-w-[200px]">
+                                                <span className="text-slate-900 font-medium truncate max-w-[200px]">
                                                   - {row.descricao_c_custo}
                                                 </span>
                                               )}
