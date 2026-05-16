@@ -21,8 +21,8 @@ export default function Entries() {
       supabase
         .from('organizations')
         .select('id')
-        .eq('user_id', user.id)
-        .single()
+        .limit(1)
+        .maybeSingle()
         .then(({ data: org }) => {
           if (org) {
             setOrgId(org.id)
@@ -31,9 +31,19 @@ export default function Entries() {
                 .from('chart_of_accounts')
                 .select('*')
                 .eq('organization_id', org.id)
+                .is('deleted_at', null)
                 .order('account_code'),
-              supabase.from('cost_centers').select('*').eq('organization_id', org.id).order('code'),
-              supabase.from('account_mapping').select('*').eq('organization_id', org.id),
+              supabase
+                .from('cost_centers')
+                .select('*')
+                .eq('organization_id', org.id)
+                .is('deleted_at', null)
+                .order('code'),
+              supabase
+                .from('account_mapping')
+                .select('*')
+                .eq('organization_id', org.id)
+                .is('deleted_at', null),
             ]).then(([accs, ccs, maps]) => {
               setData({
                 accounts: accs.data || [],
@@ -42,10 +52,12 @@ export default function Entries() {
               })
               setLoading(false)
             })
+          } else {
+            setLoading(false)
           }
         })
     }
-  }, [user])
+  }, [user, refreshKey])
 
   if (loading)
     return (
