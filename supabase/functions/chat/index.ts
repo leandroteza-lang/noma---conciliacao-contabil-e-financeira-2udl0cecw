@@ -125,8 +125,7 @@ Deno.serve(async (req: Request) => {
             properties: {
               limit: {
                 type: 'number',
-                description:
-                  'Número de registros para retornar. Sempre use 100000 se quiser calcular totais.',
+                description: 'Número de registros para retornar. Sempre use 100000 se quiser calcular totais.',
               },
             },
           },
@@ -231,13 +230,11 @@ Deno.serve(async (req: Request) => {
               },
               search_term: {
                 type: 'string',
-                description:
-                  'Varredura Full-Text. Termo genérico para busca em todos os campos de texto (histórico, descrição, fornecedor, documento). Use este campo para buscar qualquer texto mencionado na pergunta (ex: "vendas a vista").',
+                description: 'Varredura Full-Text. Termo genérico para busca em todos os campos de texto (histórico, descrição, fornecedor, documento). Use este campo para buscar qualquer texto mencionado na pergunta (ex: "vendas a vista").',
               },
               limit: {
                 type: 'number',
-                description:
-                  'Número máximo de registros para retornar. Sempre envie 100000 para garantir que a soma inclua tudo.',
+                description: 'Número máximo de registros para retornar. Sempre envie 100000 para garantir que a soma inclua tudo.',
               },
             },
           },
@@ -305,19 +302,18 @@ Deno.serve(async (req: Request) => {
 
           let totalValor = 0
           let totalValorAbsoluto = 0
-          const formattedData =
-            data?.map((d: any) => {
-              const val = Number(d.amount || 0)
-              totalValor += val
-              totalValorAbsoluto += Math.abs(val)
-              let md = d.movement_date
-              if (md) {
-                const cleanDate = md.split('T')[0]
-                const p = cleanDate.split('-')
-                if (p.length === 3) md = `${p[2]}/${p[1]}/${p[0]}`
-              }
-              return { ...d, movement_date: md }
-            }) || []
+          const formattedData = data?.map((d: any) => {
+            const val = Number(d.amount || 0)
+            totalValor += val
+            totalValorAbsoluto += Math.abs(val)
+            let md = d.movement_date
+            if (md) {
+              const cleanDate = md.split('T')[0]
+              const p = cleanDate.split('-')
+              if (p.length === 3) md = `${p[2]}/${p[1]}/${p[0]}`
+            }
+            return { ...d, movement_date: md }
+          }) || []
 
           const totalRegistros = formattedData.length
           let finalData = formattedData
@@ -330,10 +326,8 @@ Deno.serve(async (req: Request) => {
           return JSON.stringify({
             registros_encontrados: totalRegistros,
             total_valor: totalValor,
-            nota: truncated
-              ? 'A lista foi truncada para 150 itens, mas os totais acima consideram todos os registros.'
-              : '',
-            registros: finalData,
+            nota: truncated ? 'A lista foi truncada para 150 itens, mas os totais acima consideram todos os registros.' : '',
+            registros: finalData
           })
         }
         if (name === 'get_users') {
@@ -382,19 +376,18 @@ Deno.serve(async (req: Request) => {
 
           let totalValor = 0
           let totalValorAbsoluto = 0
-          const formattedData =
-            data?.map((d: any) => {
-              const val = Number(d.amount || 0)
-              totalValor += val
-              totalValorAbsoluto += Math.abs(val)
-              let ed = d.entry_date
-              if (ed) {
-                const cleanDate = ed.split('T')[0]
-                const p = cleanDate.split('-')
-                if (p.length === 3) ed = `${p[2]}/${p[1]}/${p[0]}`
-              }
-              return { ...d, entry_date: ed }
-            }) || []
+          const formattedData = data?.map((d: any) => {
+            const val = Number(d.amount || 0)
+            totalValor += val
+            totalValorAbsoluto += Math.abs(val)
+            let ed = d.entry_date
+            if (ed) {
+              const cleanDate = ed.split('T')[0]
+              const p = cleanDate.split('-')
+              if (p.length === 3) ed = `${p[2]}/${p[1]}/${p[0]}`
+            }
+            return { ...d, entry_date: ed }
+          }) || []
 
           const totalRegistros = formattedData.length
           let finalData = formattedData
@@ -407,10 +400,8 @@ Deno.serve(async (req: Request) => {
           return JSON.stringify({
             registros_encontrados: totalRegistros,
             total_valor: totalValor,
-            nota: truncated
-              ? 'A lista foi truncada para 150 itens, mas os totais acima consideram todos os registros.'
-              : '',
-            registros: finalData,
+            nota: truncated ? 'A lista foi truncada para 150 itens, mas os totais acima consideram todos os registros.' : '',
+            registros: finalData
           })
         }
         if (name === 'get_account_mappings') {
@@ -440,13 +431,11 @@ Deno.serve(async (req: Request) => {
           if (!hasPerm(['view_entries', 'view_financial_movements']))
             return 'Acesso negado: Você não tem permissão para visualizar movimentações do TGA.'
           if (orgIds.length === 0) return JSON.stringify({ erro: 'Nenhuma empresa associada.' })
-
+          
           const limit = Math.min(args.limit || 100000, 100000)
           let query = supabase
             .from('erp_financial_movements')
-            .select(
-              'data_emissao, dt_compens, c_custo, descricao_c_custo, valor, valor_liquido, nome_cli_fornec, historico, n_documento, status',
-            )
+            .select('data_emissao, dt_compens, c_custo, descricao_c_custo, valor, valor_liquido, nome_cli_fornec, historico, n_documento, status')
             .in('organization_id', orgIds)
             .is('deleted_at', null)
 
@@ -454,38 +443,23 @@ Deno.serve(async (req: Request) => {
           if (args.end_date) query = query.lte('data_emissao', args.end_date)
           if (args.min_amount) query = query.gte('valor', args.min_amount)
           if (args.max_amount) query = query.lte('valor', args.max_amount)
-
+          
           if (args.supplier_name) {
-            const cleanW = args.supplier_name
-              .trim()
-              .replace(/\s+/g, '%')
-              .replace(/[aeiouáàãâäéèêëíìîïóòõôöúùûücç]/gi, '_')
+            const cleanW = args.supplier_name.trim().replace(/\s+/g, '%').replace(/[aeiouáàãâäéèêëíìîïóòõôöúùûücç]/gi, '_')
             query = query.or(`nome_cli_fornec.ilike.%${cleanW}%,historico.ilike.%${cleanW}%`)
           }
-
+          
           if (args.cost_center) {
-            const cleanW = args.cost_center
-              .trim()
-              .replace(/\s+/g, '%')
-              .replace(/[aeiouáàãâäéèêëíìîïóòõôöúùûücç]/gi, '_')
-            query = query.or(
-              `c_custo.ilike.%${cleanW}%,descricao_c_custo.ilike.%${cleanW}%,historico.ilike.%${cleanW}%`,
-            )
+            const cleanW = args.cost_center.trim().replace(/\s+/g, '%').replace(/[aeiouáàãâäéèêëíìîïóòõôöúùûücç]/gi, '_')
+            query = query.or(`c_custo.ilike.%${cleanW}%,descricao_c_custo.ilike.%${cleanW}%,historico.ilike.%${cleanW}%`)
           }
-
+          
           if (args.search_term) {
-            const cleanW = args.search_term
-              .trim()
-              .replace(/\s+/g, '%')
-              .replace(/[aeiouáàãâäéèêëíìîïóòõôöúùûücç]/gi, '_')
-            query = query.or(
-              `c_custo.ilike.%${cleanW}%,descricao_c_custo.ilike.%${cleanW}%,nome_cli_fornec.ilike.%${cleanW}%,historico.ilike.%${cleanW}%,n_documento.ilike.%${cleanW}%`,
-            )
+            const cleanW = args.search_term.trim().replace(/\s+/g, '%').replace(/[aeiouáàãâäéèêëíìîïóòõôöúùûücç]/gi, '_')
+            query = query.or(`c_custo.ilike.%${cleanW}%,descricao_c_custo.ilike.%${cleanW}%,nome_cli_fornec.ilike.%${cleanW}%,historico.ilike.%${cleanW}%,n_documento.ilike.%${cleanW}%`)
           }
 
-          const { data, error } = await query
-            .order('data_emissao', { ascending: false })
-            .limit(limit)
+          const { data, error } = await query.order('data_emissao', { ascending: false }).limit(limit)
           if (error) return JSON.stringify({ erro: error.message })
 
           let totalValor = 0
@@ -495,36 +469,35 @@ Deno.serve(async (req: Request) => {
           let totalEntradasLiquido = 0
           let totalSaidasLiquido = 0
 
-          const formattedData =
-            data?.map((d: any) => {
-              const val = Number(d.valor || 0)
-              const valLiq = Number(d.valor_liquido || 0)
-              totalValor += val
-              totalValorLiquido += valLiq
-              totalValorAbsoluto += Math.abs(val)
-              totalValorLiquidoAbsoluto += Math.abs(valLiq)
+          const formattedData = data?.map((d: any) => {
+            const val = Number(d.valor || 0)
+            const valLiq = Number(d.valor_liquido || 0)
+            totalValor += val
+            totalValorLiquido += valLiq
+            totalValorAbsoluto += Math.abs(val)
+            totalValorLiquidoAbsoluto += Math.abs(valLiq)
+            
+            if (valLiq > 0) totalEntradasLiquido += valLiq
+            else totalSaidasLiquido += Math.abs(valLiq)
 
-              if (valLiq > 0) totalEntradasLiquido += valLiq
-              else totalSaidasLiquido += Math.abs(valLiq)
-
-              let dataEmissaoStr = d.data_emissao
-              if (dataEmissaoStr) {
-                const cleanDate = dataEmissaoStr.split('T')[0]
-                const parts = cleanDate.split('-')
-                if (parts.length === 3) dataEmissaoStr = `${parts[2]}/${parts[1]}/${parts[0]}`
-              }
-              let dtCompensStr = d.dt_compens
-              if (dtCompensStr) {
-                const cleanDate = dtCompensStr.split('T')[0]
-                const parts = cleanDate.split('-')
-                if (parts.length === 3) dtCompensStr = `${parts[2]}/${parts[1]}/${parts[0]}`
-              }
-              return {
-                ...d,
-                data_emissao: dataEmissaoStr,
-                dt_compens: dtCompensStr,
-              }
-            }) || []
+            let dataEmissaoStr = d.data_emissao
+            if (dataEmissaoStr) {
+              const cleanDate = dataEmissaoStr.split('T')[0]
+              const parts = cleanDate.split('-')
+              if (parts.length === 3) dataEmissaoStr = `${parts[2]}/${parts[1]}/${parts[0]}`
+            }
+            let dtCompensStr = d.dt_compens
+            if (dtCompensStr) {
+              const cleanDate = dtCompensStr.split('T')[0]
+              const parts = cleanDate.split('-')
+              if (parts.length === 3) dtCompensStr = `${parts[2]}/${parts[1]}/${parts[0]}`
+            }
+            return {
+              ...d,
+              data_emissao: dataEmissaoStr,
+              dt_compens: dtCompensStr
+            }
+          }) || []
 
           const totalRegistros = formattedData.length
           let finalData = formattedData
@@ -542,10 +515,8 @@ Deno.serve(async (req: Request) => {
             total_saidas_liquido: totalSaidasLiquido,
             total_valor_absoluto: totalValorAbsoluto,
             total_valor_liquido_absoluto: totalValorLiquidoAbsoluto,
-            nota: truncated
-              ? 'A lista de registros foi truncada para 150 itens devido ao limite de exibição, mas os totais acima consideram todos os registros encontrados na busca.'
-              : 'Todos os registros listados.',
-            registros: finalData,
+            nota: truncated ? 'A lista de registros foi truncada para 150 itens devido ao limite de exibição, mas os totais acima consideram todos os registros encontrados na busca.' : 'Todos os registros listados.',
+            registros: finalData
           })
         }
         return 'Função não encontrada'
