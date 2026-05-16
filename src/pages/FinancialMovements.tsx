@@ -3132,12 +3132,24 @@ export default function FinancialMovements() {
       if (scope === 'filtered') {
         if (filters['apenas_pendentes'] && filters['apenas_pendentes'].length > 0) {
           allData = allData.filter((row) => {
+            const missing =
+              !row.data_emissao ||
+              !row.c_custo ||
+              row.valor_liquido === null ||
+              row.valor_liquido === undefined
+            if (missing) return true
             const sim = getAccountingEntriesSimulation(row)
             return !sim.debitAccount || !sim.creditAccount
           })
         }
         if (filters['apenas_mapeados'] && filters['apenas_mapeados'].length > 0) {
           allData = allData.filter((row) => {
+            const missing =
+              !row.data_emissao ||
+              !row.c_custo ||
+              row.valor_liquido === null ||
+              row.valor_liquido === undefined
+            if (missing) return false
             const sim = getAccountingEntriesSimulation(row)
             return !!sim.debitAccount && !!sim.creditAccount
           })
@@ -5068,6 +5080,12 @@ export default function FinancialMovements() {
 
     if (filters['apenas_pendentes'] && filters['apenas_pendentes'].length > 0) {
       finalData = finalData.filter((row) => {
+        const missing =
+          !row.data_emissao ||
+          !row.c_custo ||
+          row.valor_liquido === null ||
+          row.valor_liquido === undefined
+        if (missing) return true
         const sim = getAccountingEntriesSimulation(row)
         return !sim.debitAccount || !sim.creditAccount
       })
@@ -5075,13 +5093,12 @@ export default function FinancialMovements() {
 
     if (filters['apenas_mapeados'] && filters['apenas_mapeados'].length > 0) {
       finalData = finalData.filter((row) => {
-        const sim = getAccountingEntriesSimulation(row)
-        return !!sim.debitAccount && !!sim.creditAccount
-      })
-    }
-
-    if (filters['apenas_mapeados'] && filters['apenas_mapeados'].length > 0) {
-      finalData = finalData.filter((row) => {
+        const missing =
+          !row.data_emissao ||
+          !row.c_custo ||
+          row.valor_liquido === null ||
+          row.valor_liquido === undefined
+        if (missing) return false
         const sim = getAccountingEntriesSimulation(row)
         return !!sim.debitAccount && !!sim.creditAccount
       })
@@ -5258,6 +5275,12 @@ export default function FinancialMovements() {
 
     if (resumoFilters['apenas_pendentes'] && resumoFilters['apenas_pendentes'].length > 0) {
       allData = allData.filter((row) => {
+        const missing =
+          !row.data_emissao ||
+          !row.c_custo ||
+          row.valor_liquido === null ||
+          row.valor_liquido === undefined
+        if (missing) return true
         const sim = getAccountingEntriesSimulation(row)
         return !sim.debitAccount || !sim.creditAccount
       })
@@ -5265,6 +5288,12 @@ export default function FinancialMovements() {
 
     if (resumoFilters['apenas_mapeados'] && resumoFilters['apenas_mapeados'].length > 0) {
       allData = allData.filter((row) => {
+        const missing =
+          !row.data_emissao ||
+          !row.c_custo ||
+          row.valor_liquido === null ||
+          row.valor_liquido === undefined
+        if (missing) return false
         const sim = getAccountingEntriesSimulation(row)
         return !!sim.debitAccount && !!sim.creditAccount
       })
@@ -5358,8 +5387,27 @@ export default function FinancialMovements() {
 
     if (filters['apenas_pendentes'] && filters['apenas_pendentes'].length > 0) {
       finalData = finalData.filter((row) => {
+        const missing =
+          !row.data_emissao ||
+          !row.c_custo ||
+          row.valor_liquido === null ||
+          row.valor_liquido === undefined
+        if (missing) return true
         const sim = getAccountingEntriesSimulation(row)
         return !sim.debitAccount || !sim.creditAccount
+      })
+    }
+
+    if (filters['apenas_mapeados'] && filters['apenas_mapeados'].length > 0) {
+      finalData = finalData.filter((row) => {
+        const missing =
+          !row.data_emissao ||
+          !row.c_custo ||
+          row.valor_liquido === null ||
+          row.valor_liquido === undefined
+        if (missing) return false
+        const sim = getAccountingEntriesSimulation(row)
+        return !!sim.debitAccount && !!sim.creditAccount
       })
     }
 
