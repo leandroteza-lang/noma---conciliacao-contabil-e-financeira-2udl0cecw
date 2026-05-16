@@ -1271,7 +1271,7 @@ function PeriodConsolidatedTable({
       }
     })
     return result
-  }, [baseMap, filterText, colFilter, sortColumn, sortDirection])
+  }, [baseMap, options, filterText, colFilter, sortColumn, sortDirection])
 
   const formatVal = (v: number) =>
     new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v)
@@ -1704,7 +1704,7 @@ function AccountingConsolidatedTable({
       }
     })
     return result
-  }, [baseMap, colFilter, sortColumn, sortDirection])
+  }, [baseMap, options, colFilter, sortColumn, sortDirection])
 
   const formatVal = (v: number) =>
     new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v)
@@ -2171,7 +2171,20 @@ function AccountingCrossReferenceTable({
       return ca.localeCompare(cb)
     })
     return result
-  }, [crossMap, ccFilter, cxFilter, debitFilter, creditFilter, sortColumn, sortDirection])
+  }, [
+    crossMap,
+    statusOptions,
+    statusFilter,
+    ccOptions,
+    ccFilter,
+    cxOptions,
+    cxFilter,
+    debitFilter,
+    creditFilter,
+    chartOfAccounts,
+    sortColumn,
+    sortDirection,
+  ])
 
   const formatVal = (v: number) =>
     new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v)
@@ -3312,7 +3325,7 @@ function SummaryTable({
 
     result.sort((a, b) => sortDatesOrStrings(a.name, b.name))
     return result
-  }, [baseMap, filterText, col1Filter, col2Filter])
+  }, [baseMap, col1Options, col2Options, filterText, col1Filter, col2Filter])
 
   const formatVal = (v: number) =>
     new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v)
@@ -4484,7 +4497,7 @@ export default function FinancialMovements() {
       return true
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [summaryData, dryRunFilters, generateOptions.valueBase])
+  }, [summaryData, dryRunFilters, dryRunOptions, generateOptions.valueBase])
 
   const [dryRunColOrder, setDryRunColOrder] = useState<string[]>(() => {
     const defaultOrder = dryRunHeaders.map((h) => h.key)
