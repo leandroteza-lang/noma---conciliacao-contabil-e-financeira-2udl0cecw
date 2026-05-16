@@ -4691,6 +4691,7 @@ export default function FinancialMovements() {
       const simplifiedList = [
         'prontidao',
         'data_emissao',
+        'dt_compens',
         'conta_debito',
         'conta_credito',
         'valor_liquido',
