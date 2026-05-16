@@ -86,7 +86,6 @@ import { Label } from '@/components/ui/label'
 import { Filter, Check } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { MultiSelect } from '@/components/MultiSelect'
 import {
   Command,
   CommandEmpty,
@@ -1058,6 +1057,172 @@ function ColumnFilter({
         </PopoverContent>
       </Popover>
     </div>
+  )
+}
+
+function FilterDropdown({
+  title,
+  options,
+  selected,
+  onChange,
+  type = 'flat',
+  costCenters = [],
+  chartOfAccounts = [],
+  expandedDateGroups = {},
+  setExpandedDateGroups = () => {},
+  filterKey = '',
+}: {
+  title: string
+  options: any[]
+  selected: string[]
+  onChange: (val: string[]) => void
+  type?: 'flat' | 'cost_center' | 'chart_account'
+  costCenters?: any[]
+  chartOfAccounts?: any[]
+  expandedDateGroups?: Record<string, boolean>
+  setExpandedDateGroups?: React.Dispatch<React.SetStateAction<Record<string, boolean>>>
+  filterKey?: string
+}) {
+  const [open, setOpen] = useState(false)
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          className="w-full justify-between h-8 text-xs px-2 font-normal bg-white text-slate-700"
+        >
+          <span className="truncate">
+            {selected.length > 0 ? `${selected.length} selecionados` : title}
+          </span>
+          <ChevronsUpDown className="h-3 w-3 opacity-50 shrink-0 ml-1" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent
+        className={cn('p-0', type === 'flat' ? 'w-[200px]' : 'w-[300px]')}
+        align="start"
+      >
+        {type === 'cost_center' ? (
+          <CostCenterTreeFilterContent
+            options={options}
+            selected={selected}
+            onChange={onChange}
+            costCenters={costCenters}
+          />
+        ) : type === 'chart_account' ? (
+          <ChartAccountTreeFilterContent
+            selected={selected}
+            onChange={onChange}
+            chartOfAccounts={chartOfAccounts}
+          />
+        ) : (
+          <Command>
+            <CommandInput placeholder="Buscar..." className="h-8 text-xs" />
+            <div className="flex items-center gap-1 p-1 border-b border-slate-100 bg-slate-50">
+              <Button
+                variant="secondary"
+                size="sm"
+                className="h-6 flex-1 text-[10px]"
+                onMouseDown={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                }}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onChange(options.map((o) => o.value))
+                }}
+              >
+                Todos
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                className="h-6 flex-1 text-[10px]"
+                onMouseDown={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                }}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onChange([])
+                }}
+              >
+                Nenhum
+              </Button>
+            </div>
+            <CommandList className="max-h-[200px] overflow-y-auto custom-scrollbar">
+              <CommandEmpty className="py-2 text-xs text-center text-slate-500">
+                Nenhum encontrado.
+              </CommandEmpty>
+              <CommandGroup>
+                {options.map((opt) => {
+                  if (opt.parent && !expandedDateGroups[`${filterKey}-${opt.parent}`]) {
+                    return null
+                  }
+                  const isSelected = selected.includes(opt.value)
+                  return (
+                    <CommandItem
+                      key={opt.value}
+                      onMouseDown={(e) => {
+                        e.preventDefault()
+                        e.stopPropagation()
+                      }}
+                      onSelect={() => {
+                        const updated = isSelected
+                          ? selected.filter((v) => v !== opt.value)
+                          : [...selected, opt.value]
+                        onChange(updated)
+                      }}
+                      className={cn('text-xs cursor-pointer', opt.parent ? 'pl-6' : '')}
+                    >
+                      {opt.isParent && (
+                        <div
+                          className="mr-1 flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-sm hover:bg-slate-200"
+                          onPointerDown={(e) => {
+                            e.stopPropagation()
+                            e.preventDefault()
+                          }}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            e.preventDefault()
+                            setExpandedDateGroups((prev) => ({
+                              ...prev,
+                              [`${filterKey}-${opt.value}`]: !prev[`${filterKey}-${opt.value}`],
+                            }))
+                          }}
+                        >
+                          {expandedDateGroups[`${filterKey}-${opt.value}`] ? (
+                            <ChevronDown className="h-3 w-3" />
+                          ) : (
+                            <ChevronRight className="h-3 w-3" />
+                          )}
+                        </div>
+                      )}
+                      {!opt.isParent && opt.parent && (
+                        <div className="w-4 mr-1 flex-shrink-0"></div>
+                      )}
+                      <div
+                        className={cn(
+                          'mr-2 flex h-3 w-3 shrink-0 items-center justify-center border rounded-sm',
+                          isSelected
+                            ? 'bg-primary border-primary text-primary-foreground'
+                            : 'opacity-50',
+                        )}
+                      >
+                        <Check className="h-2 w-2" />
+                      </div>
+                      <span className="truncate" title={opt.label}>
+                        {opt.label}
+                      </span>
+                    </CommandItem>
+                  )
+                })}
+              </CommandGroup>
+            </CommandList>
+          </Command>
+        )}
+      </PopoverContent>
+    </Popover>
   )
 }
 
@@ -6846,14 +7011,13 @@ export default function FinancialMovements() {
                                     />
                                     Natureza
                                   </Label>
-                                  <MultiSelect
+                                  <FilterDropdown
                                     title="Ambas"
                                     options={[
                                       { label: 'Entradas (+)', value: 'positivo' },
                                       { label: 'Saídas (-)', value: 'negativo' },
                                     ]}
                                     selected={filters['natureza'] || []}
-                                    isActive={isNaturezaActive}
                                     onChange={(v) => {
                                       setFilters((p) => ({ ...p, natureza: v }))
                                       setPage(0)
@@ -6926,15 +7090,26 @@ export default function FinancialMovements() {
                                   />
                                   {h.label}
                                 </Label>
-                                <MultiSelect
+                                <FilterDropdown
                                   title="Todos"
                                   options={filterOptions[h.key] || []}
                                   selected={filters[h.key] || []}
-                                  isActive={isColActive}
                                   onChange={(v) => {
                                     setFilters((p) => ({ ...p, [h.key]: v }))
                                     setPage(0)
                                   }}
+                                  type={
+                                    h.key === 'c_custo'
+                                      ? 'cost_center'
+                                      : h.key === 'conta_debito' || h.key === 'conta_credito'
+                                        ? 'chart_account'
+                                        : 'flat'
+                                  }
+                                  costCenters={costCenters}
+                                  chartOfAccounts={chartOfAccounts}
+                                  expandedDateGroups={expandedDateGroups}
+                                  setExpandedDateGroups={setExpandedDateGroups}
+                                  filterKey={h.key}
                                 />
                                 {isColActive && (
                                   <div className="flex flex-wrap gap-1 mt-1">
@@ -8865,14 +9040,13 @@ export default function FinancialMovements() {
                           >
                             Natureza
                           </Label>
-                          <MultiSelect
+                          <FilterDropdown
                             title="Ambas"
                             options={[
                               { label: 'Entradas (+)', value: 'positivo' },
                               { label: 'Saídas (-)', value: 'negativo' },
                             ]}
                             selected={resumoFilters['natureza'] || []}
-                            isActive={isNaturezaActive}
                             onChange={(v) => {
                               setResumoFilters((p) => ({ ...p, natureza: v }))
                             }}
@@ -8916,14 +9090,25 @@ export default function FinancialMovements() {
                         >
                           {h.label}
                         </Label>
-                        <MultiSelect
+                        <FilterDropdown
                           title="Todos"
                           options={filterOptions[h.key] || []}
                           selected={resumoFilters[h.key] || []}
-                          isActive={isColActive}
                           onChange={(v) => {
                             setResumoFilters((p) => ({ ...p, [h.key]: v }))
                           }}
+                          type={
+                            h.key === 'c_custo'
+                              ? 'cost_center'
+                              : h.key === 'conta_debito' || h.key === 'conta_credito'
+                                ? 'chart_account'
+                                : 'flat'
+                          }
+                          costCenters={costCenters}
+                          chartOfAccounts={chartOfAccounts}
+                          expandedDateGroups={expandedDateGroups}
+                          setExpandedDateGroups={setExpandedDateGroups}
+                          filterKey={h.key}
                         />
                         {isColActive && (
                           <div className="flex flex-wrap gap-1 mt-1">
@@ -9213,7 +9398,7 @@ export default function FinancialMovements() {
                   </div>
 
                   <div className="w-[180px]">
-                    <MultiSelect
+                    <FilterDropdown
                       title={`Períodos (${activePeriods.length})`}
                       options={availableMonths.map((m) => {
                         const [y, mo] = m.split('-')
@@ -9963,7 +10148,7 @@ export default function FinancialMovements() {
                 </p>
               </div>
               <div className="w-full lg:w-[400px]">
-                <MultiSelect
+                <FilterDropdown
                   title="Selecionar Centros de Custo (Max 5)"
                   options={dashboardData.availableCCs.map((cc) => ({ label: cc, value: cc }))}
                   selected={dashSelectedCCs}
@@ -11060,40 +11245,27 @@ export default function FinancialMovements() {
                               <Label className="text-xs font-semibold text-slate-700">
                                 {col.label}
                               </Label>
-                              {col.key === 'c_custo' ? (
-                                <div className="border border-slate-200 rounded-md bg-white">
-                                  <CostCenterTreeFilterContent
-                                    options={options}
-                                    selected={dryRunFilters[col.key] || []}
-                                    onChange={(v) => {
-                                      setDryRunFilters((p) => ({ ...p, [col.key]: v }))
-                                      setDryRunPage(0)
-                                    }}
-                                    costCenters={costCenters}
-                                  />
-                                </div>
-                              ) : col.key === 'conta_debito' || col.key === 'conta_credito' ? (
-                                <div className="border border-slate-200 rounded-md bg-white">
-                                  <ChartAccountTreeFilterContent
-                                    selected={dryRunFilters[col.key] || []}
-                                    onChange={(v) => {
-                                      setDryRunFilters((p) => ({ ...p, [col.key]: v }))
-                                      setDryRunPage(0)
-                                    }}
-                                    chartOfAccounts={chartOfAccounts}
-                                  />
-                                </div>
-                              ) : (
-                                <MultiSelect
-                                  title={`Todos os ${col.label}`}
-                                  options={options}
-                                  selected={dryRunFilters[col.key] || []}
-                                  onChange={(v: string[]) => {
-                                    setDryRunFilters((p) => ({ ...p, [col.key]: v }))
-                                    setDryRunPage(0)
-                                  }}
-                                />
-                              )}
+                              <FilterDropdown
+                                title={`Todos os ${col.label}`}
+                                options={options}
+                                selected={dryRunFilters[col.key] || []}
+                                onChange={(v: string[]) => {
+                                  setDryRunFilters((p) => ({ ...p, [col.key]: v }))
+                                  setDryRunPage(0)
+                                }}
+                                type={
+                                  col.key === 'c_custo'
+                                    ? 'cost_center'
+                                    : col.key === 'conta_debito' || col.key === 'conta_credito'
+                                      ? 'chart_account'
+                                      : 'flat'
+                                }
+                                costCenters={costCenters}
+                                chartOfAccounts={chartOfAccounts}
+                                expandedDateGroups={expandedDateGroups}
+                                setExpandedDateGroups={setExpandedDateGroups}
+                                filterKey={col.key}
+                              />
                             </div>
                           )
                         })}
@@ -12159,7 +12331,7 @@ export default function FinancialMovements() {
                       {!isPartSynced && (
                         <>
                           <div className="w-[120px]">
-                            <MultiSelect
+                            <FilterDropdown
                               title="Tipos"
                               options={[
                                 { label: 'Receitas', value: 'receita' },
@@ -12376,7 +12548,7 @@ export default function FinancialMovements() {
                       {!isEvolSynced && (
                         <>
                           <div className="w-[120px]">
-                            <MultiSelect
+                            <FilterDropdown
                               title="Tipos"
                               options={[
                                 { label: 'Receitas', value: 'receita' },
@@ -12578,7 +12750,7 @@ export default function FinancialMovements() {
                         {!isCompSynced && (
                           <div className="flex flex-wrap items-center gap-2 bg-white px-2 py-1.5 rounded-lg border border-slate-200 w-full lg:w-auto">
                             <div className="w-[120px]">
-                              <MultiSelect
+                              <FilterDropdown
                                 title="Tipos"
                                 options={[
                                   { label: 'Receitas', value: 'receita' },
@@ -12940,7 +13112,7 @@ export default function FinancialMovements() {
                       {!isTableSynced && (
                         <div className="flex flex-wrap items-center gap-2 bg-slate-50 border border-slate-200 p-1.5 rounded-lg w-full sm:w-auto">
                           <div className="w-[120px]">
-                            <MultiSelect
+                            <FilterDropdown
                               title="Tipos"
                               options={[
                                 { label: 'Receitas', value: 'receita' },
