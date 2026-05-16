@@ -12,7 +12,6 @@ import {
   CommandList,
 } from '@/components/ui/command'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { supabase } from '@/lib/supabase/client'
 
 export interface Account {
   id: string
@@ -34,6 +33,15 @@ interface AccountComboboxProps {
   disabled?: boolean
 }
 
+type Node = {
+  key: string
+  label: string
+  value: string | null
+  account: Account | null
+  children: Record<string, Node>
+  allValues: string[]
+}
+
 export function AccountCombobox({
   accounts,
   value,
@@ -45,76 +53,86 @@ export function AccountCombobox({
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState('')
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
-  useEffect(() => {
-    const allIds = new Set<string>()
-    accounts.forEach((a) => {
-      allIds.add(a.id)
+
+  const tree = useMemo(() => {
+    const root: Node = {
+      key: 'root',
+      label: 'root',
+      value: null,
+      account: null,
+      children: {},
+      allValues: [],
+    }
+
+    const sorted = [...accounts].sort((a, b) => {
+      const classA = a.classification || a.account_code || ''
+      const classB = b.classification || b.account_code || ''
+      return classA.localeCompare(classB, undefined, { numeric: true })
     })
-    setExpanded(allIds)
+
+    for (const acc of sorted) {
+      const classification = acc.classification || acc.account_code || ''
+      if (!classification) {
+        root.children[acc.id] = {
+          key: acc.id,
+          label: acc.account_name || 'Conta sem nome',
+          value: acc.id,
+          account: acc,
+          children: {},
+          allValues: [acc.id],
+        }
+        continue
+      }
+
+      const parts = classification.split('.')
+      let current = root
+      let currentKey = ''
+      for (let i = 0; i < parts.length; i++) {
+        currentKey = currentKey ? `${currentKey}.${parts[i]}` : parts[i]
+        if (!current.children[currentKey]) {
+          const parentAcc = accounts.find(
+            (c) => c.classification === currentKey || c.account_code === currentKey,
+          )
+          const desc = parentAcc ? parentAcc.account_name : ''
+          current.children[currentKey] = {
+            key: currentKey,
+            label: desc ? `${currentKey} - ${desc}` : currentKey,
+            value: parentAcc ? parentAcc.id : null,
+            account: parentAcc || null,
+            children: {},
+            allValues: [],
+          }
+        }
+        current = current.children[currentKey]
+        if (acc.id && !current.allValues.includes(acc.id)) {
+          current.allValues.push(acc.id)
+        }
+      }
+      current.value = acc.id
+      current.account = acc
+      current.label = acc.account_name ? `${classification} - ${acc.account_name}` : classification
+    }
+
+    return root
   }, [accounts])
 
-  const selected = useMemo(() => accounts.find((a) => a.id === value), [accounts, value])
-
-  const { roots, childrenMap } = useMemo(() => {
-    const cmap = new Map<string, Account[]>()
-    const rts: Account[] = []
-
-    const getSortKey = (a: Account) => (a.classification || a.account_code || '').trim()
-
-    const sorted = [...accounts].sort((a, b) =>
-      getSortKey(a).localeCompare(getSortKey(b), undefined, { numeric: true }),
-    )
-
-    sorted.forEach((node) => {
-      let parentId: string | null = null
-      let maxLen = -1
-
-      const nClass = getSortKey(node)
-
-      if (nClass) {
-        sorted.forEach((p) => {
-          if (p.id === node.id) return
-          const pClass = getSortKey(p)
-
-          if (!pClass) return
-
-          if (nClass.startsWith(pClass) && nClass !== pClass) {
-            const hasSeparator = nClass.includes('.') || nClass.includes('-')
-            let isValidPrefix = false
-
-            if (hasSeparator) {
-              const nextChar = nClass[pClass.length]
-              if (nextChar === '.' || nextChar === '-' || nextChar === undefined) {
-                isValidPrefix = true
-              }
-            } else {
-              isValidPrefix = true
-            }
-
-            if (isValidPrefix && pClass.length > maxLen) {
-              maxLen = pClass.length
-              parentId = p.id
-            }
+  useEffect(() => {
+    if (expanded.size === 0 && Object.keys(tree.children).length > 0) {
+      const allIds = new Set<string>()
+      const traverse = (nodes: Node[]) => {
+        nodes.forEach((n) => {
+          if (Object.keys(n.children).length > 0) {
+            allIds.add(n.key)
+            traverse(Object.values(n.children))
           }
         })
       }
+      traverse(Object.values(tree.children))
+      setExpanded(allIds)
+    }
+  }, [tree])
 
-      if (parentId) {
-        if (!cmap.has(parentId)) cmap.set(parentId, [])
-        cmap.get(parentId)!.push(node)
-      } else {
-        rts.push(node)
-      }
-    })
-
-    cmap.forEach((children) => {
-      children.sort((a, b) =>
-        getSortKey(a).localeCompare(getSortKey(b), undefined, { numeric: true }),
-      )
-    })
-
-    return { roots: rts, childrenMap: cmap }
-  }, [accounts])
+  const selected = useMemo(() => accounts.find((a) => a.id === value), [accounts, value])
 
   const toggleExpand = (id: string) => {
     setExpanded((prev) => {
@@ -125,104 +143,115 @@ export function AccountCombobox({
     })
   }
 
-  const renderTree = (nodes: Account[], level = 0) => {
-    return nodes.flatMap((node) => {
-      const children = childrenMap.get(node.id) || []
-      const hasChildren = children.length > 0
-      const isExpanded = expanded.has(node.id)
-      const searchString =
-        `${node.account_code || ''} ${node.classification || ''} ${node.account_name || ''}`.toLowerCase()
+  const renderNode = (node: Node, depth: number) => {
+    const hasSearch = search.trim().length > 0
 
-      const item = (
-        <CommandItem
-          key={node.id}
-          value={searchString}
-          onMouseDown={(e) => {
-            e.preventDefault()
-            e.stopPropagation()
-          }}
-          onSelect={() => {
-            onChange(node.id)
+    const hasMatchingChild = (n: Node): boolean => {
+      const searchString =
+        `${n.account?.account_code || ''} ${n.account?.classification || ''} ${n.label}`.toLowerCase()
+      if (searchString.includes(search.toLowerCase())) return true
+      return Object.values(n.children).some(hasMatchingChild)
+    }
+
+    if (hasSearch && !hasMatchingChild(node)) {
+      return null
+    }
+
+    const childrenList = Object.values(node.children)
+    const hasChildren = childrenList.length > 0
+    const isExpanded = expanded.has(node.key) || hasSearch
+
+    const item = (
+      <CommandItem
+        key={node.key}
+        value={`${node.account?.account_code || ''} ${node.account?.classification || ''} ${node.label}`.toLowerCase()}
+        onMouseDown={(e) => {
+          e.preventDefault()
+          e.stopPropagation()
+        }}
+        onSelect={() => {
+          if (node.value) {
+            onChange(node.value)
             setOpen(false)
-          }}
-          className={cn('flex items-center justify-between py-1.5 px-2 cursor-pointer w-full')}
+          }
+        }}
+        className={cn(
+          'flex items-center justify-between py-1.5 px-2 w-full',
+          node.value ? 'cursor-pointer' : 'opacity-70 cursor-default',
+        )}
+      >
+        <div
+          className="flex items-center flex-1 min-w-0"
+          style={{ paddingLeft: `${depth * 16}px` }}
         >
           <div
-            className="flex items-center flex-1 min-w-0"
-            style={{ paddingLeft: `${level * 16}px` }}
-          >
-            <div
-              className={cn(
-                'w-6 h-6 flex items-center justify-center shrink-0 mr-1 rounded hover:bg-slate-200 transition-colors',
-                hasChildren ? 'cursor-pointer' : 'opacity-40 cursor-default',
-              )}
-              onPointerDown={(e) => {
-                if (hasChildren) {
-                  e.preventDefault()
-                  e.stopPropagation()
-                }
-              }}
-              onClick={(e) => {
-                if (hasChildren) {
-                  e.preventDefault()
-                  e.stopPropagation()
-                  toggleExpand(node.id)
-                }
-              }}
-            >
-              {hasChildren ? (
-                isExpanded ? (
-                  <ChevronDown className="h-4 w-4 text-slate-600" />
-                ) : (
-                  <ChevronRight className="h-4 w-4 text-slate-600" />
-                )
-              ) : (
-                <div className="w-1.5 h-1.5 rounded-full bg-slate-300" />
-              )}
-            </div>
-
-            <div className="flex flex-col min-w-0 flex-1">
-              <span className="text-[13px] flex items-center gap-1.5 min-w-0">
-                {node.classification && (
-                  <span className="font-mono text-slate-500 shrink-0">{node.classification}</span>
-                )}
-                <span
-                  className={cn(
-                    'truncate',
-                    hasChildren ? 'font-bold text-slate-800' : 'font-medium text-slate-700',
-                  )}
-                  title={node.account_name || 'Sem nome'}
-                >
-                  {node.account_name || <span className="italic opacity-50">Sem nome</span>}
-                </span>
-              </span>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2 shrink-0 ml-2">
-            {node.account_code && (
-              <Badge
-                variant="secondary"
-                className="bg-indigo-950/10 text-indigo-950 font-bold hover:bg-indigo-950/20 border-0 px-1.5 py-0.5 rounded text-[10px]"
-              >
-                {node.account_code}
-              </Badge>
+            className={cn(
+              'w-6 h-6 flex items-center justify-center shrink-0 mr-1 rounded hover:bg-slate-200 transition-colors',
+              hasChildren ? 'cursor-pointer' : 'opacity-40 cursor-default',
             )}
-            <Check
-              className={cn(
-                'h-4 w-4 shrink-0 transition-opacity',
-                value === node.id ? 'opacity-100 text-indigo-600' : 'opacity-0',
-              )}
-            />
+            onPointerDown={(e) => {
+              if (hasChildren) {
+                e.preventDefault()
+                e.stopPropagation()
+              }
+            }}
+            onClick={(e) => {
+              if (hasChildren) {
+                e.preventDefault()
+                e.stopPropagation()
+                toggleExpand(node.key)
+              }
+            }}
+          >
+            {hasChildren ? (
+              isExpanded ? (
+                <ChevronDown className="h-4 w-4 text-slate-600" />
+              ) : (
+                <ChevronRight className="h-4 w-4 text-slate-600" />
+              )
+            ) : (
+              <div className="w-1.5 h-1.5 rounded-full bg-slate-300" />
+            )}
           </div>
-        </CommandItem>
-      )
 
-      if (isExpanded && hasChildren) {
-        return [item, ...renderTree(children, level + 1)]
-      }
-      return [item]
-    })
+          <div className="flex flex-col min-w-0 flex-1">
+            <span className="text-[13px] flex items-center gap-1.5 min-w-0">
+              <span
+                className={cn(
+                  'truncate',
+                  hasChildren ? 'font-bold text-slate-800' : 'font-medium text-slate-700',
+                )}
+                title={node.label}
+              >
+                {node.label}
+              </span>
+            </span>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 shrink-0 ml-2">
+          {node.account?.account_code && (
+            <Badge
+              variant="secondary"
+              className="bg-indigo-950/10 text-indigo-950 font-bold hover:bg-indigo-950/20 border-0 px-1.5 py-0.5 rounded text-[10px]"
+            >
+              {node.account.account_code}
+            </Badge>
+          )}
+          <Check
+            className={cn(
+              'h-4 w-4 shrink-0 transition-opacity',
+              value === node.value ? 'opacity-100 text-indigo-600' : 'opacity-0',
+            )}
+          />
+        </div>
+      </CommandItem>
+    )
+
+    if (isExpanded && hasChildren) {
+      return [item, ...childrenList.flatMap((c) => renderNode(c, depth + 1))]
+    }
+    return [item]
   }
 
   const renderFlat = () => {
@@ -352,7 +381,7 @@ export function AccountCombobox({
         </Button>
       </PopoverTrigger>
       <PopoverContent
-        className="w-[var(--radix-popover-trigger-width)] min-w-[350px] max-w-[90vw] p-0 z-[110]"
+        className="w-[var(--radix-popover-trigger-width)] min-w-[400px] max-w-[90vw] p-0 z-[110]"
         align="start"
       >
         <Command shouldFilter={false}>
@@ -371,9 +400,15 @@ export function AccountCombobox({
                     type="button"
                     onClick={() => {
                       const allIds = new Set<string>()
-                      accounts.forEach((a) => {
-                        if (childrenMap.has(a.id)) allIds.add(a.id)
-                      })
+                      const traverse = (nodes: Node[]) => {
+                        nodes.forEach((n) => {
+                          if (Object.keys(n.children).length > 0) {
+                            allIds.add(n.key)
+                            traverse(Object.values(n.children))
+                          }
+                        })
+                      }
+                      traverse(Object.values(tree.children))
                       setExpanded(allIds)
                     }}
                     className="text-[10px] uppercase font-bold tracking-wider text-slate-400 hover:text-indigo-600 transition-colors"
@@ -394,7 +429,11 @@ export function AccountCombobox({
             <CommandEmpty className="py-6 text-center text-sm text-slate-500">
               Nenhuma conta encontrada.
             </CommandEmpty>
-            <CommandGroup>{search ? renderFlat() : renderTree(roots, 0)}</CommandGroup>
+            <CommandGroup>
+              {search
+                ? renderFlat()
+                : Object.values(tree.children).flatMap((c) => renderNode(c, 0))}
+            </CommandGroup>
           </CommandList>
         </Command>
       </PopoverContent>
