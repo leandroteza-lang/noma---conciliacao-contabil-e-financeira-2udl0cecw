@@ -553,6 +553,185 @@ function TreeColumnFilter({
   )
 }
 
+function ChartAccountTreeFilterContent({
+  selected,
+  onChange,
+  chartOfAccounts,
+}: {
+  selected: string[]
+  onChange: (val: string[]) => void
+  chartOfAccounts: any[]
+}) {
+  const [search, setSearch] = useState('')
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({})
+
+  type Node = {
+    key: string
+    label: string
+    value: string | null
+    children: Record<string, Node>
+    allValues: string[]
+  }
+
+  const tree = useMemo(() => {
+    const root: Node = { key: 'root', label: 'root', value: null, children: {}, allValues: [] }
+
+    const sorted = [...chartOfAccounts].sort((a, b) => {
+      const classA = a.classification || a.account_code || ''
+      const classB = b.classification || b.account_code || ''
+      return classA.localeCompare(classB)
+    })
+
+    for (const acc of sorted) {
+      const classification = acc.classification || acc.account_code || ''
+      if (!classification) continue
+
+      const parts = classification.split('.')
+      let current = root
+      let currentKey = ''
+      for (let i = 0; i < parts.length; i++) {
+        currentKey = currentKey ? `${currentKey}.${parts[i]}` : parts[i]
+        if (!current.children[currentKey]) {
+          const parentAcc = chartOfAccounts.find(
+            (c) => c.classification === currentKey || c.account_code === currentKey,
+          )
+          const desc = parentAcc ? parentAcc.account_name : ''
+          current.children[currentKey] = {
+            key: currentKey,
+            label: desc ? `${currentKey} - ${desc}` : currentKey,
+            value: parentAcc ? parentAcc.id : null,
+            children: {},
+            allValues: [],
+          }
+        }
+        current = current.children[currentKey]
+        if (acc.id && !current.allValues.includes(acc.id)) {
+          current.allValues.push(acc.id)
+        }
+      }
+    }
+    return root
+  }, [chartOfAccounts])
+
+  const toggleExpand = (key: string) => setExpanded((p) => ({ ...p, [key]: !p[key] }))
+
+  const handleSelect = (node: Node) => {
+    const isAllSelected =
+      node.allValues.length > 0 && node.allValues.every((v) => selected.includes(v))
+    if (isAllSelected) {
+      onChange(selected.filter((v) => !node.allValues.includes(v)))
+    } else {
+      const newSelected = new Set([...selected, ...node.allValues])
+      onChange(Array.from(newSelected))
+    }
+  }
+
+  const renderNode = (node: Node, depth: number) => {
+    const hasSearch = search.trim().length > 0
+
+    const hasMatchingChild = (n: Node): boolean => {
+      if (n.label.toLowerCase().includes(search.toLowerCase())) return true
+      return Object.values(n.children).some(hasMatchingChild)
+    }
+
+    if (hasSearch && !hasMatchingChild(node)) {
+      return null
+    }
+
+    const childrenList = Object.values(node.children)
+    const hasChildren = childrenList.length > 0
+    const isExpanded = expanded[node.key] || hasSearch
+
+    const isAllSelected =
+      node.allValues.length > 0 && node.allValues.every((v) => selected.includes(v))
+    const isSomeSelected =
+      node.allValues.length > 0 && node.allValues.some((v) => selected.includes(v))
+
+    return (
+      <div key={node.key} className="flex flex-col">
+        <div className="flex items-center gap-1 hover:bg-slate-100 rounded px-1 py-1">
+          <div style={{ width: depth * 12 }} className="shrink-0" />
+          {hasChildren ? (
+            <button
+              className="h-5 w-5 flex items-center justify-center rounded hover:bg-slate-200 shrink-0"
+              onClick={() => toggleExpand(node.key)}
+            >
+              {isExpanded ? (
+                <ChevronDown className="h-3 w-3 text-slate-500" />
+              ) : (
+                <ChevronRight className="h-3 w-3 text-slate-500" />
+              )}
+            </button>
+          ) : (
+            <div className="h-5 w-5 shrink-0" />
+          )}
+          <div
+            className="flex flex-1 items-center gap-2 cursor-pointer min-w-0"
+            onClick={() => handleSelect(node)}
+          >
+            <div
+              className={cn(
+                'flex h-3 w-3 shrink-0 items-center justify-center border rounded-sm',
+                isAllSelected
+                  ? 'bg-primary border-primary text-primary-foreground'
+                  : isSomeSelected
+                    ? 'bg-primary/50 border-primary text-primary-foreground'
+                    : 'border-slate-300',
+              )}
+            >
+              {(isAllSelected || isSomeSelected) && <Check className="h-2 w-2" />}
+            </div>
+            <span className="text-[11px] font-medium text-slate-700 truncate" title={node.label}>
+              {node.label}
+            </span>
+          </div>
+        </div>
+        {hasChildren && isExpanded && (
+          <div className="flex flex-col">{childrenList.map((c) => renderNode(c, depth + 1))}</div>
+        )}
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex flex-col w-full">
+      <div className="p-2 border-b border-slate-100">
+        <Input
+          placeholder="Buscar conta contábil..."
+          className="h-8 text-xs"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+      </div>
+      <div className="flex items-center gap-1 p-1 border-b border-slate-100 bg-slate-50">
+        <Button
+          variant="secondary"
+          size="sm"
+          className="h-6 flex-1 text-[10px]"
+          onClick={() => onChange(chartOfAccounts.map((o) => o.id))}
+        >
+          Todos
+        </Button>
+        <Button
+          variant="secondary"
+          size="sm"
+          className="h-6 flex-1 text-[10px]"
+          onClick={() => onChange([])}
+        >
+          Nenhum
+        </Button>
+      </div>
+      <div className="max-h-[300px] overflow-y-auto custom-scrollbar p-1">
+        {Object.values(tree.children).length === 0 ? (
+          <div className="py-2 text-xs text-center text-slate-500">Nenhum encontrado.</div>
+        ) : (
+          Object.values(tree.children).map((c) => renderNode(c, 0))
+        )}
+      </div>
+    </div>
+  )
+}
+
 function CostCenterTreeFilterContent({
   options,
   selected,
@@ -2750,18 +2929,32 @@ export default function FinancialMovements() {
         }
       }
 
-      if (scope === 'filtered' && filters['prontidao'] && filters['prontidao'].length > 0) {
-        allData = allData.filter((row) => {
-          const missing =
-            !row.data_emissao ||
-            !row.c_custo ||
-            row.valor_liquido === null ||
-            row.valor_liquido === undefined
-          let statusText = 'Pendente'
-          if (missing) statusText = 'Incompleto'
-          else if (getMappedAccount(row)) statusText = 'Mapeado'
-          return filters['prontidao'].includes(statusText)
-        })
+      if (scope === 'filtered') {
+        if (filters['prontidao'] && filters['prontidao'].length > 0) {
+          allData = allData.filter((row) => {
+            const missing =
+              !row.data_emissao ||
+              !row.c_custo ||
+              row.valor_liquido === null ||
+              row.valor_liquido === undefined
+            let statusText = 'Pendente'
+            if (missing) statusText = 'Incompleto'
+            else if (getMappedAccount(row)) statusText = 'Mapeado'
+            return filters['prontidao'].includes(statusText)
+          })
+        }
+        if (filters['conta_debito'] && filters['conta_debito'].length > 0) {
+          allData = allData.filter((row) => {
+            const sim = getAccountingEntriesSimulation(row)
+            return sim.debitAccount && filters['conta_debito'].includes(sim.debitAccount.id)
+          })
+        }
+        if (filters['conta_credito'] && filters['conta_credito'].length > 0) {
+          allData = allData.filter((row) => {
+            const sim = getAccountingEntriesSimulation(row)
+            return sim.creditAccount && filters['conta_credito'].includes(sim.creditAccount.id)
+          })
+        }
       }
 
       const exportTotals = {
@@ -4020,6 +4213,10 @@ export default function FinancialMovements() {
         ]
         return
       }
+      if (h.key === 'conta_debito' || h.key === 'conta_credito') {
+        options[h.key] = []
+        return
+      }
       if (h.key === 'status') {
         options['status'] = [
           { label: 'Pendente', value: 'Pendente' },
@@ -4472,7 +4669,7 @@ export default function FinancialMovements() {
           }
         } else if (key === 'empresa') {
           q = q.in('organization_id', values)
-        } else if (key === 'prontidao') {
+        } else if (['prontidao', 'conta_debito', 'conta_credito'].includes(key)) {
           // Filtragem client-side é aplicada após a busca dos resultados da query
           // em fetchData, fetchDataSilent, e handleExport para garantir precisão
         } else if (dateCols.includes(key)) {
@@ -4548,6 +4745,20 @@ export default function FinancialMovements() {
         if (missing) statusText = 'Incompleto'
         else if (getMappedAccount(row)) statusText = 'Mapeado'
         return filters['prontidao'].includes(statusText)
+      })
+    }
+
+    if (filters['conta_debito'] && filters['conta_debito'].length > 0) {
+      finalData = finalData.filter((row) => {
+        const sim = getAccountingEntriesSimulation(row)
+        return sim.debitAccount && filters['conta_debito'].includes(sim.debitAccount.id)
+      })
+    }
+
+    if (filters['conta_credito'] && filters['conta_credito'].length > 0) {
+      finalData = finalData.filter((row) => {
+        const sim = getAccountingEntriesSimulation(row)
+        return sim.creditAccount && filters['conta_credito'].includes(sim.creditAccount.id)
       })
     }
 
@@ -4702,6 +4913,20 @@ export default function FinancialMovements() {
       })
     }
 
+    if (resumoFilters['conta_debito'] && resumoFilters['conta_debito'].length > 0) {
+      allData = allData.filter((row) => {
+        const sim = getAccountingEntriesSimulation(row)
+        return sim.debitAccount && resumoFilters['conta_debito'].includes(sim.debitAccount.id)
+      })
+    }
+
+    if (resumoFilters['conta_credito'] && resumoFilters['conta_credito'].length > 0) {
+      allData = allData.filter((row) => {
+        const sim = getAccountingEntriesSimulation(row)
+        return sim.creditAccount && resumoFilters['conta_credito'].includes(sim.creditAccount.id)
+      })
+    }
+
     allData = allData.filter((r) => r.status !== 'Ignorado')
 
     setResumoData(allData)
@@ -4768,6 +4993,20 @@ export default function FinancialMovements() {
         if (missing) statusText = 'Incompleto'
         else if (getMappedAccount(row)) statusText = 'Mapeado'
         return filters['prontidao'].includes(statusText)
+      })
+    }
+
+    if (filters['conta_debito'] && filters['conta_debito'].length > 0) {
+      finalData = finalData.filter((row) => {
+        const sim = getAccountingEntriesSimulation(row)
+        return sim.debitAccount && filters['conta_debito'].includes(sim.debitAccount.id)
+      })
+    }
+
+    if (filters['conta_credito'] && filters['conta_credito'].length > 0) {
+      finalData = finalData.filter((row) => {
+        const sim = getAccountingEntriesSimulation(row)
+        return sim.creditAccount && filters['conta_credito'].includes(sim.creditAccount.id)
       })
     }
 
@@ -7261,7 +7500,11 @@ export default function FinancialMovements() {
                                   <PopoverContent
                                     className={cn(
                                       'p-0',
-                                      h.key === 'c_custo' ? 'w-[300px]' : 'w-[200px]',
+                                      h.key === 'c_custo' ||
+                                        h.key === 'conta_debito' ||
+                                        h.key === 'conta_credito'
+                                        ? 'w-[300px]'
+                                        : 'w-[200px]',
                                     )}
                                     align="start"
                                   >
@@ -7274,6 +7517,15 @@ export default function FinancialMovements() {
                                           setPage(0)
                                         }}
                                         costCenters={costCenters}
+                                      />
+                                    ) : h.key === 'conta_debito' || h.key === 'conta_credito' ? (
+                                      <ChartAccountTreeFilterContent
+                                        selected={filters[h.key] || []}
+                                        onChange={(v) => {
+                                          setFilters((prev) => ({ ...prev, [h.key]: v }))
+                                          setPage(0)
+                                        }}
+                                        chartOfAccounts={chartOfAccounts}
                                       />
                                     ) : (
                                       <Command>
