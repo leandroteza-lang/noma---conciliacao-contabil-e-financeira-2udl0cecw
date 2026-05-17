@@ -5684,152 +5684,121 @@ export default function FinancialMovements() {
       .is('deleted_at', null)
       .order('name')
 
-    let allMovs: any[] = []
-    let fetchHasMore = true
-    let fetchPage = 0
-    const fetchLimit = 1000
-
-    while (fetchHasMore) {
-      const { data, error } = await supabase
-        .from('erp_financial_movements')
-        .select(
-          'data_emissao, dt_compens, data_vencto, data_canc, data_estorno, organization_id, tipo_operacao, status, conta_caixa, nome_caixa, conta_caixa_destino, forma_pagto, c_custo, descricao_c_custo, valor, valor_liquido, n_documento, nome_cli_fornec, historico, fp, n_cheque, nominal_a, emitente_cheque, cnpj_cpf, n_extrato, filial, banco, c_corrente, cod_cli_for, departamento, compensado',
-        )
-        .is('deleted_at', null)
-        .range(fetchPage * fetchLimit, (fetchPage + 1) * fetchLimit - 1)
-
-      if (error || !data || data.length === 0) {
-        fetchHasMore = false
-      } else {
-        allMovs = allMovs.concat(data)
-        fetchPage++
-        if (data.length < fetchLimit) {
-          fetchHasMore = false
-        }
-      }
-    }
-
-    const movs = allMovs
-
-    const options: Record<string, { label: string; value: string }[]> = {}
+    const options: Record<string, any[]> = {}
     options['empresa'] = (orgs || []).map((e) => ({ label: e.name, value: e.id }))
 
+    options['prontidao'] = [
+      { label: 'Mapeado', value: 'Mapeado' },
+      { label: 'Pendente', value: 'Pendente' },
+      { label: 'Incompleto', value: 'Incompleto' },
+    ]
+    options['status'] = [
+      { label: 'Pendente', value: 'Pendente' },
+      { label: 'Revisar', value: 'Revisar' },
+      { label: 'Aprovado', value: 'Aprovado' },
+      { label: 'Concluído', value: 'Concluído' },
+      { label: 'Erro', value: 'Erro' },
+      { label: 'Ignorado', value: 'Ignorado' },
+    ]
+    options['conta_debito'] = [
+      { label: '⚠️ Pendente / Não Mapeado', value: 'PENDENTE' },
+      ...(chartOfAccounts || []).map((acc) => ({
+        label: `${acc.account_code || ''} ${acc.account_name || ''}`.trim(),
+        value: acc.id,
+      })),
+    ]
+    options['conta_credito'] = options['conta_debito']
+
+    const ccMap = new Map<string, string>()
+    costCenters.forEach((c) => {
+      if (c.code) ccMap.set(c.code, c.description || '')
+    })
+    options['c_custo'] = Array.from(ccMap.entries())
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([code, desc]) => ({
+        label: `${code} - ${desc}`,
+        value: code,
+      }))
+
+    const baMap = new Map<string, string>()
+    bankAccounts.forEach((b) => {
+      const key = b.account_number || b.code
+      if (key) baMap.set(key, b.description || '')
+    })
+    options['conta_caixa'] = Array.from(baMap.entries())
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([code, desc]) => ({
+        label: `${code} - ${desc}`,
+        value: code,
+      }))
+
+    const { data: sampleMovs } = await supabase
+      .from('erp_financial_movements')
+      .select(
+        'data_emissao, dt_compens, data_vencto, data_canc, data_estorno, tipo_operacao, forma_pagto, departamento, compensado, fp, banco',
+      )
+      .is('deleted_at', null)
+      .order('data_emissao', { ascending: false })
+      .limit(5000)
+
+    const movs = sampleMovs || []
     const dateCols = ['data_emissao', 'dt_compens', 'data_vencto', 'data_canc', 'data_estorno']
 
     tableHeaders.forEach((h) => {
-      if (h.key === 'empresa') return
-      if (h.key === 'prontidao') {
-        options['prontidao'] = [
-          { label: 'Mapeado', value: 'Mapeado' },
-          { label: 'Pendente', value: 'Pendente' },
-          { label: 'Incompleto', value: 'Incompleto' },
-        ]
+      if (
+        [
+          'empresa',
+          'prontidao',
+          'conta_debito',
+          'conta_credito',
+          'status',
+          'c_custo',
+          'conta_caixa',
+        ].includes(h.key)
+      )
         return
-      }
-      if (h.key === 'conta_debito' || h.key === 'conta_credito') {
-        options[h.key] = [
-          { label: '⚠️ Pendente / Não Mapeado', value: 'PENDENTE' },
-          ...(chartOfAccounts || []).map((acc) => ({
-            label: `${acc.account_code || ''} ${acc.account_name || ''}`.trim(),
-            value: acc.id,
-          })),
-        ]
-        return
-      }
-      if (h.key === 'status') {
-        options['status'] = [
-          { label: 'Pendente', value: 'Pendente' },
-          { label: 'Revisar', value: 'Revisar' },
-          { label: 'Aprovado', value: 'Aprovado' },
-          { label: 'Concluído', value: 'Concluído' },
-          { label: 'Erro', value: 'Erro' },
-          { label: 'Ignorado', value: 'Ignorado' },
-        ]
-        return
-      }
 
-      if (movs) {
-        if (dateCols.includes(h.key)) {
-          const uniqueDates = Array.from(
-            new Set(
-              movs
-                .map((m) => {
-                  const val = m[h.key]
-                  if (!val) return null
-                  return String(val).substring(0, 10)
-                })
-                .filter(Boolean),
-            ),
-          ).sort((a, b) => (b as string).localeCompare(a as string))
-
-          const dateOptions: any[] = []
-          const groupedByMonth = new Map<string, string[]>()
-
-          uniqueDates.forEach((d: string) => {
-            const [dy, dm, dd] = d.split('-')
-            const monthKey = `${dy}-${dm}`
-            if (!groupedByMonth.has(monthKey)) {
-              groupedByMonth.set(monthKey, [])
-            }
-            groupedByMonth.get(monthKey)!.push(d)
-          })
-
-          Array.from(groupedByMonth.entries()).forEach(([monthKey, days]) => {
-            const [dy, dm] = monthKey.split('-')
-            dateOptions.push({
-              label: `${dm}/${dy}`,
-              value: monthKey,
-              isParent: true,
-            })
-            days.forEach((d) => {
-              const [dy2, dm2, dd2] = d.split('-')
-              dateOptions.push({
-                label: `${dd2}/${dm2}/${dy2}`,
-                value: d,
-                parent: monthKey,
-              })
-            })
-          })
-
-          options[h.key] = dateOptions
-        } else if (h.key === 'c_custo') {
-          const map = new Map<string, string>()
-          movs.forEach((m) => {
-            const val = m.c_custo || ''
-            if (!map.has(val)) {
-              map.set(val, m.descricao_c_custo || '')
-            }
-          })
-          const uniqueVals = Array.from(map.keys()).sort()
-          options[h.key] = uniqueVals.map((v) => ({
-            label: v ? `${v}${map.get(v) ? ` - ${map.get(v)}` : ''}` : 'Sem C. Custo',
-            value: v,
-          }))
-        } else if (h.key === 'conta_caixa') {
-          const map = new Map<string, string>()
-          movs.forEach((m) => {
-            const val = m.conta_caixa || ''
-            if (!map.has(val)) {
-              map.set(val, m.nome_caixa || '')
-            }
-          })
-          const uniqueVals = Array.from(map.keys()).sort()
-          options[h.key] = uniqueVals.map((v) => ({
-            label: v ? `${v}${map.get(v) ? ` - ${map.get(v)}` : ''}` : 'Sem Conta Caixa',
-            value: v,
-          }))
-        } else {
-          const uniqueVals = Array.from(new Set(movs.map((m) => m[h.key] || ''))).sort()
-          options[h.key] = uniqueVals.map((v) => {
-            let label = String(v) || 'Vazio'
-            if (['valor', 'valor_liquido'].includes(h.key) && v) {
-              label = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(
-                Number(v),
+      if (dateCols.includes(h.key)) {
+        const uniqueDates = Array.from(
+          new Set(
+            movs
+              .map((m) =>
+                m[h.key as keyof typeof m]
+                  ? String(m[h.key as keyof typeof m]).substring(0, 10)
+                  : null,
               )
-            }
-            return { label, value: String(v) }
+              .filter(Boolean),
+          ),
+        ).sort((a, b) => (b as string).localeCompare(a as string))
+
+        const dateOptions: any[] = []
+        const groupedByMonth = new Map<string, string[]>()
+
+        uniqueDates.forEach((d: string) => {
+          const [dy, dm, dd] = d.split('-')
+          const monthKey = `${dy}-${dm}`
+          if (!groupedByMonth.has(monthKey)) groupedByMonth.set(monthKey, [])
+          groupedByMonth.get(monthKey)!.push(d)
+        })
+
+        Array.from(groupedByMonth.entries()).forEach(([monthKey, days]) => {
+          const [dy, dm] = monthKey.split('-')
+          dateOptions.push({ label: `${dm}/${dy}`, value: monthKey, isParent: true })
+          days.forEach((d) => {
+            const [dy2, dm2, dd2] = d.split('-')
+            dateOptions.push({ label: `${dd2}/${dm2}/${dy2}`, value: d, parent: monthKey })
           })
-        }
+        })
+        options[h.key] = dateOptions
+      } else if (
+        ['tipo_operacao', 'forma_pagto', 'departamento', 'compensado', 'fp', 'banco'].includes(
+          h.key,
+        )
+      ) {
+        const uniqueVals = Array.from(new Set(movs.map((m) => m[h.key as keyof typeof m] || '')))
+          .filter(Boolean)
+          .sort()
+        options[h.key] = uniqueVals.map((v) => ({ label: String(v), value: String(v) }))
       } else {
         options[h.key] = []
       }
