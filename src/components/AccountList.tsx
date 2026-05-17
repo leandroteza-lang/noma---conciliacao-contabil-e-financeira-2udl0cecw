@@ -40,6 +40,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Switch } from '@/components/ui/switch'
 import { Slider } from '@/components/ui/slider'
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import {
   Select,
   SelectContent,
@@ -141,9 +142,13 @@ const getHierarchyBadgeStyle = (level: number) => {
 function AppearanceSettings({
   showGridlines,
   setShowGridlines,
+  density,
+  setDensity,
 }: {
   showGridlines: boolean
   setShowGridlines: (v: boolean) => void
+  density: string
+  setDensity: (v: string) => void
 }) {
   const [thickness, setThickness] = useState<number>(() =>
     parseInt(localStorage.getItem('bank_accounts_gridline_thickness') || '1', 10),
@@ -166,11 +171,17 @@ function AppearanceSettings({
 
   return (
     <PopoverContent align="end" className="w-72 space-y-4">
-      <div className="space-y-3">
-        <h4 className="font-semibold text-sm">Linhas de Grade</h4>
+      <div className="space-y-1.5 pb-3 border-b border-border">
+        <h4 className="font-semibold leading-none">Visualização da Tabela</h4>
+        <p className="text-xs text-muted-foreground mt-1">
+          Personalize as linhas de grade para facilitar a leitura.
+        </p>
+      </div>
+
+      <div className="space-y-3 pt-1">
         <div className="flex items-center justify-between">
           <Label htmlFor="show-gridlines" className="text-sm cursor-pointer">
-            Exibir linhas de grade
+            Linhas de Grade
           </Label>
           <Switch id="show-gridlines" checked={showGridlines} onCheckedChange={setShowGridlines} />
         </div>
@@ -180,7 +191,7 @@ function AppearanceSettings({
         <>
           <div className="space-y-3 pt-3 border-t border-border">
             <div className="flex items-center justify-between">
-              <Label className="text-sm">Espessura</Label>
+              <Label className="text-sm">Espessura das Linhas</Label>
               <span className="text-xs font-mono bg-muted px-1.5 py-0.5 rounded">
                 {thickness}px
               </span>
@@ -195,7 +206,7 @@ function AppearanceSettings({
           </div>
 
           <div className="space-y-3 pt-3 border-t border-border">
-            <Label className="text-sm block">Cor da Linha</Label>
+            <Label className="text-sm block">Cor das Linhas</Label>
             <div className="flex items-center gap-3">
               <div className="relative h-8 w-14 rounded-md overflow-hidden border border-input cursor-pointer">
                 <input
@@ -214,6 +225,30 @@ function AppearanceSettings({
           </div>
         </>
       )}
+
+      <div className="space-y-3 pt-3 border-t border-border">
+        <Label className="text-sm block font-semibold mb-2">Densidade das Linhas</Label>
+        <RadioGroup value={density} onValueChange={setDensity} className="gap-2.5">
+          <div className="flex items-center space-x-2">
+            <RadioGroupItem value="compact" id="compact" />
+            <Label htmlFor="compact" className="font-normal cursor-pointer">
+              Compacto (Menor)
+            </Label>
+          </div>
+          <div className="flex items-center space-x-2">
+            <RadioGroupItem value="standard" id="standard" />
+            <Label htmlFor="standard" className="font-normal cursor-pointer">
+              Padrão
+            </Label>
+          </div>
+          <div className="flex items-center space-x-2">
+            <RadioGroupItem value="comfortable" id="comfortable" />
+            <Label htmlFor="comfortable" className="font-normal cursor-pointer">
+              Confortável (Maior)
+            </Label>
+          </div>
+        </RadioGroup>
+      </div>
     </PopoverContent>
   )
 }
@@ -328,7 +363,7 @@ function EditableCell({
         onChange={(e) => setTempVal(e.target.value)}
         onBlur={handleBlur}
         onKeyDown={handleKeyDown}
-        className="w-full text-[1em] border border-primary/50 rounded p-0.5 outline-none ring-2 ring-primary/20 bg-background text-foreground h-6"
+        className="w-full text-[1em] border border-primary/50 rounded p-0.5 outline-none ring-2 ring-primary/20 bg-background text-foreground"
       >
         <option value="">Selecione...</option>
         <option value="CAIXA">CAIXA</option>
@@ -348,7 +383,7 @@ function EditableCell({
         onChange={(e) => setTempVal(e.target.value)}
         onBlur={handleBlur}
         onKeyDown={handleKeyDown}
-        className="w-full text-[1em] border border-primary/50 rounded p-0.5 outline-none ring-2 ring-primary/20 bg-background text-foreground h-6"
+        className="w-full text-[1em] border border-primary/50 rounded p-0.5 outline-none ring-2 ring-primary/20 bg-background text-foreground"
       >
         <option value="">Selecione...</option>
         <option value="C">C</option>
@@ -364,7 +399,7 @@ function EditableCell({
       onChange={(e) => setTempVal(e.target.value)}
       onBlur={handleBlur}
       onKeyDown={handleKeyDown}
-      className="h-6 py-0 px-1 text-[1em] border-primary/50 focus-visible:ring-primary min-w-[100px] w-full"
+      className="py-0 px-1 text-[1em] border-primary/50 focus-visible:ring-primary min-w-[100px] w-full h-full min-h-[20px]"
     />
   )
 }
@@ -533,6 +568,43 @@ export function AccountList({
   useEffect(() => {
     localStorage.setItem('bank_accounts_gridlines', showGridlines.toString())
   }, [showGridlines])
+
+  const [density, setDensity] = useState<string>(() => {
+    return localStorage.getItem('bank_accounts_density') || 'standard'
+  })
+
+  useEffect(() => {
+    localStorage.setItem('bank_accounts_density', density)
+  }, [density])
+
+  const getDensityClasses = () => {
+    switch (density) {
+      case 'compact':
+        return {
+          row: 'h-6',
+          cell: 'py-0 px-1',
+          text: 'text-[0.9em]',
+          inputHeight: 'h-5',
+        }
+      case 'comfortable':
+        return {
+          row: 'h-10',
+          cell: 'py-1.5 px-2',
+          text: 'text-[1.1em]',
+          inputHeight: 'h-8',
+        }
+      case 'standard':
+      default:
+        return {
+          row: 'h-7',
+          cell: 'py-0 px-2',
+          text: 'text-[1em]',
+          inputHeight: 'h-6',
+        }
+    }
+  }
+
+  const densityStyles = getDensityClasses()
 
   useEffect(() => {
     const thick = localStorage.getItem('bank_accounts_gridline_thickness') || '1'
@@ -1111,6 +1183,8 @@ export function AccountList({
               <AppearanceSettings
                 showGridlines={showGridlines}
                 setShowGridlines={setShowGridlines}
+                density={density}
+                setDensity={setDensity}
               />
             </Popover>
 
@@ -1264,7 +1338,12 @@ export function AccountList({
             >
               <TableHeader className="bg-indigo-950 sticky top-0 z-20 shadow-md">
                 <TableRow disableZebra className="border-0 hover:bg-indigo-950 bg-indigo-950">
-                  <TableHead className="w-12 text-center py-1 px-2 text-white font-normal text-[1.1em] border-0 sticky top-0 bg-indigo-950 z-20 hover:bg-indigo-950">
+                  <TableHead
+                    className={cn(
+                      'w-12 text-center text-white font-normal text-[1.1em] border-0 sticky top-0 bg-indigo-950 z-20 hover:bg-indigo-950',
+                      densityStyles.cell,
+                    )}
+                  >
                     <Checkbox
                       className="border-white data-[state=checked]:bg-white data-[state=checked]:text-indigo-950"
                       checked={
@@ -1287,12 +1366,13 @@ export function AccountList({
                         onDragOver={(e) => e.preventDefault()}
                         onDrop={(e) => handleDrop(e, idx)}
                         className={cn(
-                          'cursor-move py-1 px-2 text-white font-normal text-[1.1em] border-0 select-none sticky top-0 bg-indigo-950 z-20 hover:bg-indigo-950',
+                          'cursor-move text-white font-normal text-[1.1em] border-0 select-none sticky top-0 bg-indigo-950 z-20 hover:bg-indigo-950',
                           align === 'center'
                             ? 'text-center'
                             : align === 'right'
                               ? 'text-right'
                               : 'text-left',
+                          densityStyles.cell,
                         )}
                       >
                         <div
@@ -1353,7 +1433,12 @@ export function AccountList({
                       </TableHead>
                     )
                   })}
-                  <TableHead className="text-right py-1 px-2 text-white font-normal text-[1.1em] border-0 w-24 sticky top-0 bg-indigo-950 z-20 hover:bg-indigo-950">
+                  <TableHead
+                    className={cn(
+                      'text-right text-white font-normal text-[1.1em] border-0 w-24 sticky top-0 bg-indigo-950 z-20 hover:bg-indigo-950',
+                      densityStyles.cell,
+                    )}
+                  >
                     Ações
                   </TableHead>
                 </TableRow>
@@ -1367,12 +1452,20 @@ export function AccountList({
                     <Fragment key={acc.id}>
                       <TableRow
                         className={cn(
-                          'border-0 group/row text-[1em] transition-colors h-7',
+                          'border-0 group/row transition-colors',
                           isEven ? 'bg-[#bfdbfe]/40 dark:bg-slate-800/40' : 'bg-transparent',
                           'hover:bg-muted/50 dark:hover:bg-slate-700/50',
+                          densityStyles.row,
+                          densityStyles.text,
                         )}
                       >
-                        <TableCell className="text-center py-0 px-2 border-0 h-7">
+                        <TableCell
+                          className={cn(
+                            'text-center border-0',
+                            densityStyles.cell,
+                            densityStyles.row,
+                          )}
+                        >
                           <Checkbox
                             className={cn(
                               'data-[state=checked]:bg-indigo-950 data-[state=checked]:border-indigo-950 data-[state=checked]:text-white',
@@ -1395,7 +1488,7 @@ export function AccountList({
                             <TableCell
                               key={col.id}
                               className={cn(
-                                'py-0 px-2 border-0 h-7 transition-colors',
+                                'border-0 transition-colors',
                                 col.id === 'contaContabil' ? 'font-mono text-[0.95em]' : '',
                                 isCodeCol ? 'font-medium' : '',
                                 col.id === 'tipoConta'
@@ -1406,6 +1499,8 @@ export function AccountList({
                                   : align === 'right'
                                     ? 'text-right'
                                     : 'text-left',
+                                densityStyles.cell,
+                                densityStyles.row,
                               )}
                             >
                               <div
@@ -1454,14 +1549,21 @@ export function AccountList({
                             </TableCell>
                           )
                         })}
-                        <TableCell className="text-right py-0 px-2 border-0 h-7">
+                        <TableCell
+                          className={cn(
+                            'text-right border-0',
+                            densityStyles.cell,
+                            densityStyles.row,
+                          )}
+                        >
                           <div className="flex justify-end items-center gap-1 opacity-100 transition-opacity">
                             {acc.hierarchyArray && acc.hierarchyArray.length > 0 && (
                               <Button
                                 variant="ghost"
                                 size="sm"
                                 className={cn(
-                                  'h-6 px-1.5 text-[10px] transition-colors gap-1 border',
+                                  'px-1.5 text-[10px] transition-colors gap-1 border',
+                                  density === 'compact' ? 'h-5' : 'h-6',
                                   isEven
                                     ? 'text-black/70 hover:text-indigo-950 hover:bg-black/10 border-black/10'
                                     : 'text-muted-foreground hover:text-primary hover:bg-primary/10 border-border',
@@ -1483,7 +1585,8 @@ export function AccountList({
                               variant="ghost"
                               size="icon"
                               className={cn(
-                                'h-6 w-6 transition-colors',
+                                'transition-colors',
+                                density === 'compact' ? 'h-5 w-5' : 'h-6 w-6',
                                 isEven
                                   ? 'text-black/70 hover:text-indigo-950 hover:bg-black/10'
                                   : 'text-muted-foreground hover:text-primary hover:bg-primary/10',
@@ -1491,13 +1594,16 @@ export function AccountList({
                               onClick={() => setEditModalAccount(acc)}
                               title="Editar"
                             >
-                              <Edit className="h-3 w-3" />
+                              <Edit
+                                className={cn(density === 'compact' ? 'h-2.5 w-2.5' : 'h-3 w-3')}
+                              />
                             </Button>
                             <Button
                               variant="ghost"
                               size="icon"
                               className={cn(
-                                'h-6 w-6 transition-colors',
+                                'transition-colors',
+                                density === 'compact' ? 'h-5 w-5' : 'h-6 w-6',
                                 isEven
                                   ? 'text-black/70 hover:text-red-700 hover:bg-red-500/20'
                                   : 'text-muted-foreground hover:text-destructive hover:bg-destructive/10',
@@ -1505,7 +1611,9 @@ export function AccountList({
                               onClick={() => onDelete(acc.id)}
                               title="Excluir"
                             >
-                              <Trash2 className="h-3 w-3" />
+                              <Trash2
+                                className={cn(density === 'compact' ? 'h-2.5 w-2.5' : 'h-3 w-3')}
+                              />
                             </Button>
                           </div>
                         </TableCell>
