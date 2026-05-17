@@ -3478,6 +3478,7 @@ const defaultTabsOrderConfig = [
     activeClass: 'data-[state=active]:bg-indigo-900 data-[state=active]:text-white',
     inactiveClass:
       'data-[state=inactive]:text-slate-600 data-[state=inactive]:hover:bg-slate-200/50',
+    tooltip: 'Visualização detalhada linha a linha dos movimentos do ERP',
   },
   {
     id: 'resumo',
@@ -3485,6 +3486,7 @@ const defaultTabsOrderConfig = [
     activeClass: 'data-[state=active]:bg-indigo-800 data-[state=active]:text-white',
     inactiveClass:
       'data-[state=inactive]:text-slate-600 data-[state=inactive]:hover:bg-slate-200/50',
+    tooltip: 'Visão agrupada e consolidada por conta, centro de custo e matriz',
   },
   {
     id: 'balancete',
@@ -3492,18 +3494,21 @@ const defaultTabsOrderConfig = [
     activeClass:
       'data-[state=active]:bg-emerald-700 data-[state=active]:text-white text-emerald-700',
     inactiveClass: 'data-[state=inactive]:hover:bg-emerald-50',
+    tooltip: 'Análise horizontal e vertical da evolução dos saldos ao longo do tempo',
   },
   {
     id: 'dashboard',
     label: 'Dashboard Gerencial',
     activeClass: 'data-[state=active]:bg-blue-700 data-[state=active]:text-white text-blue-700',
     inactiveClass: 'data-[state=inactive]:hover:bg-blue-50',
+    tooltip: 'Gráficos e indicadores estratégicos consolidados do período',
   },
   {
     id: 'resumo-mapeamento',
     label: 'Resumo DE/PARA',
     activeClass: 'data-[state=active]:bg-[#800000] data-[state=active]:text-white text-[#800000]',
     inactiveClass: 'data-[state=inactive]:hover:bg-red-50',
+    tooltip: 'Visualização da hierarquia e do status de mapeamento dos centros de custo',
   },
   {
     id: 'sankey',
@@ -3511,6 +3516,7 @@ const defaultTabsOrderConfig = [
     activeClass: 'data-[state=active]:bg-violet-700 data-[state=active]:text-white',
     inactiveClass:
       'data-[state=inactive]:text-slate-600 data-[state=inactive]:hover:bg-slate-200/50',
+    tooltip: 'Diagrama de fluxo de valores dos centros de custo para contas contábeis',
   },
   {
     id: 'analise-grupos',
@@ -3518,6 +3524,7 @@ const defaultTabsOrderConfig = [
     activeClass: 'data-[state=active]:bg-orange-700 data-[state=active]:text-white',
     inactiveClass:
       'data-[state=inactive]:text-slate-600 data-[state=inactive]:hover:bg-slate-200/50',
+    tooltip: 'Navegação em drill-down pelos níveis hierárquicos e subníveis',
   },
   {
     id: 'dry-run',
@@ -3525,6 +3532,7 @@ const defaultTabsOrderConfig = [
     activeClass: 'data-[state=active]:bg-slate-900 data-[state=active]:text-emerald-400',
     inactiveClass:
       'data-[state=inactive]:text-slate-600 data-[state=inactive]:hover:bg-slate-200/50',
+    tooltip: 'Pré-conferência dos lançamentos contábeis antes da efetivação',
   },
 ]
 
@@ -7819,72 +7827,107 @@ export default function FinancialMovements() {
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <div className="hidden sm:flex items-center gap-1 bg-white rounded-md p-0.5 border border-slate-200 shadow-sm mr-2">
-            <div className="flex items-center gap-1" title="Tamanho da Fonte das Tabelas">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 text-[12px] font-bold text-slate-600 hover:text-slate-900 bg-transparent"
-                onClick={() => setTableFontSize((p) => Math.max(8, p - 1))}
-              >
-                A-
-              </Button>
-              <span className="text-[12px] font-medium text-slate-500 w-5 text-center select-none">
-                {tableFontSize}
-              </span>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 text-[14px] font-bold text-slate-600 hover:text-slate-900 bg-transparent"
-                onClick={() => setTableFontSize((p) => Math.min(24, p + 1))}
-              >
-                A+
-              </Button>
-            </div>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-[12px] font-bold text-slate-600 hover:text-slate-900 bg-transparent"
+                    onClick={() => setTableFontSize((p) => Math.max(8, p - 1))}
+                  >
+                    A-
+                  </Button>
+                  <span className="text-[12px] font-medium text-slate-500 w-5 text-center select-none">
+                    {tableFontSize}
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-[14px] font-bold text-slate-600 hover:text-slate-900 bg-transparent"
+                    onClick={() => setTableFontSize((p) => Math.min(24, p + 1))}
+                  >
+                    A+
+                  </Button>
+                </div>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Tamanho da Fonte das Tabelas</p>
+              </TooltipContent>
+            </Tooltip>
             <div className="w-px h-4 bg-slate-200 mx-1"></div>
             <TableSettingsControls prefs={prefs} updatePrefs={updatePrefs} />
           </div>
-          <Button
-            variant="outline"
-            onClick={syncMappings}
-            disabled={isSyncing || loading}
-            className="shadow-sm"
-          >
-            {isSyncing ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <RefreshCw className="mr-2 h-4 w-4" />
-            )}
-            Sincronizar Mapeamentos
-          </Button>
-          {activeTab === 'grade' && (
-            <>
+          <Tooltip>
+            <TooltipTrigger asChild>
               <Button
                 variant="outline"
-                onClick={() => {
-                  setDeleteMode('all')
-                  setDeleteModalOpen(true)
-                }}
-                className="shadow-sm text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
-                disabled={totalCount === 0 || loading}
+                onClick={syncMappings}
+                disabled={isSyncing || loading}
+                className="shadow-sm"
               >
-                <Trash2 className="mr-2 h-4 w-4" />
-                Excluir Todos
+                {isSyncing ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                )}
+                Sincronizar Mapeamentos
               </Button>
-              <Button
-                variant="default"
-                onClick={() => setGenerateModalOpen(true)}
-                className="shadow-sm bg-indigo-600 hover:bg-indigo-700 text-white"
-                disabled={totalCount === 0 || loading}
-              >
-                <CheckCircle2 className="mr-2 h-4 w-4" />
-                Gerar Lançamentos Contábeis
-              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Sincroniza os mapeamentos DE/PARA entre ERP e Contábil</p>
+            </TooltipContent>
+          </Tooltip>
+          {activeTab === 'grade' && (
+            <>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setDeleteMode('all')
+                      setDeleteModalOpen(true)
+                    }}
+                    className="shadow-sm text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
+                    disabled={totalCount === 0 || loading}
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Excluir Todos
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Exclui todos os registros de movimento financeiro da base</p>
+                </TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="default"
+                    onClick={() => setGenerateModalOpen(true)}
+                    className="shadow-sm bg-indigo-600 hover:bg-indigo-700 text-white"
+                    disabled={totalCount === 0 || loading}
+                  >
+                    <CheckCircle2 className="mr-2 h-4 w-4" />
+                    Gerar Lançamentos Contábeis
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Gera os lançamentos contábeis a partir dos movimentos mapeados</p>
+                </TooltipContent>
+              </Tooltip>
             </>
           )}
-          <Button onClick={() => setIsImportOpen(true)} className="shadow-sm">
-            <UploadCloud className="mr-2 h-4 w-4" />
-            Importar Planilha
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button onClick={() => setIsImportOpen(true)} className="shadow-sm">
+                <UploadCloud className="mr-2 h-4 w-4" />
+                Importar Planilha
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Importar nova planilha de movimentos financeiros do ERP</p>
+            </TooltipContent>
+          </Tooltip>
         </div>
       </div>
 
@@ -8012,39 +8055,45 @@ export default function FinancialMovements() {
             const tabConfig = defaultTabsOrderConfig.find((t) => t.id === tabId)
             if (!tabConfig) return null
             return (
-              <TabsTrigger
-                key={tabId}
-                value={tabId}
-                draggable
-                onDragStart={(e) => {
-                  setDraggedTab(tabId)
-                  e.dataTransfer.effectAllowed = 'move'
-                }}
-                onDragOver={(e) => {
-                  e.preventDefault()
-                  e.dataTransfer.dropEffect = 'move'
-                }}
-                onDrop={(e) => {
-                  e.preventDefault()
-                  if (!draggedTab || draggedTab === tabId) return
-                  const newOrder = [...tabsOrder]
-                  const draggedIdx = newOrder.indexOf(draggedTab)
-                  const targetIdx = newOrder.indexOf(tabId)
-                  newOrder.splice(draggedIdx, 1)
-                  newOrder.splice(targetIdx, 0, draggedTab)
-                  setTabsOrder(newOrder)
-                  setDraggedTab(null)
-                }}
-                onDragEnd={() => setDraggedTab(null)}
-                className={cn(
-                  'whitespace-nowrap px-4 py-2 font-medium transition-all data-[state=active]:font-bold data-[state=active]:shadow-md rounded-md cursor-grab active:cursor-grabbing',
-                  tabConfig.activeClass,
-                  tabConfig.inactiveClass,
-                  draggedTab === tabId ? 'opacity-50' : '',
-                )}
-              >
-                {tabConfig.label}
-              </TabsTrigger>
+              <Tooltip key={tabId}>
+                <TooltipTrigger asChild>
+                  <TabsTrigger
+                    value={tabId}
+                    draggable
+                    onDragStart={(e) => {
+                      setDraggedTab(tabId)
+                      e.dataTransfer.effectAllowed = 'move'
+                    }}
+                    onDragOver={(e) => {
+                      e.preventDefault()
+                      e.dataTransfer.dropEffect = 'move'
+                    }}
+                    onDrop={(e) => {
+                      e.preventDefault()
+                      if (!draggedTab || draggedTab === tabId) return
+                      const newOrder = [...tabsOrder]
+                      const draggedIdx = newOrder.indexOf(draggedTab)
+                      const targetIdx = newOrder.indexOf(tabId)
+                      newOrder.splice(draggedIdx, 1)
+                      newOrder.splice(targetIdx, 0, draggedTab)
+                      setTabsOrder(newOrder)
+                      setDraggedTab(null)
+                    }}
+                    onDragEnd={() => setDraggedTab(null)}
+                    className={cn(
+                      'whitespace-nowrap px-4 py-2 font-medium transition-all data-[state=active]:font-bold data-[state=active]:shadow-md rounded-md cursor-grab active:cursor-grabbing',
+                      tabConfig.activeClass,
+                      tabConfig.inactiveClass,
+                      draggedTab === tabId ? 'opacity-50' : '',
+                    )}
+                  >
+                    {tabConfig.label}
+                  </TabsTrigger>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>{tabConfig.tooltip}</p>
+                </TooltipContent>
+              </Tooltip>
             )
           })}
         </TabsList>
@@ -8067,83 +8116,106 @@ export default function FinancialMovements() {
                   />
                 </div>
                 <div className="flex flex-wrap items-center gap-3 xl:ml-auto bg-white p-1.5 rounded-md border shadow-sm">
-                  <Button
-                    variant={filters['apenas_pendentes']?.length > 0 ? 'default' : 'outline'}
-                    size="sm"
-                    className={cn(
-                      'h-7 text-xs font-semibold whitespace-nowrap transition-colors',
-                      filters['apenas_pendentes']?.length > 0
-                        ? 'bg-amber-100 text-amber-800 border-amber-200 hover:bg-amber-200 hover:text-amber-900 shadow-sm'
-                        : 'bg-white text-slate-600 hover:bg-slate-50',
-                    )}
-                    onClick={() => {
-                      const isActive = filters['apenas_pendentes']?.length > 0
-                      setFilters((p) => ({
-                        ...p,
-                        apenas_pendentes: isActive ? [] : ['true'],
-                        apenas_mapeados: [],
-                      }))
-                      setPage(0)
-                    }}
-                  >
-                    <AlertCircle
-                      className={cn(
-                        'h-3.5 w-3.5 mr-1.5',
-                        filters['apenas_pendentes']?.length > 0
-                          ? 'text-amber-600'
-                          : 'text-slate-400',
-                      )}
-                    />
-                    Mapeamentos Pendentes
-                  </Button>
-                  <Button
-                    variant={filters['apenas_mapeados']?.length > 0 ? 'default' : 'outline'}
-                    size="sm"
-                    className={cn(
-                      'h-7 text-xs font-semibold whitespace-nowrap transition-colors',
-                      filters['apenas_mapeados']?.length > 0
-                        ? 'bg-emerald-100 text-emerald-800 border-emerald-200 hover:bg-emerald-200 hover:text-emerald-900 shadow-sm'
-                        : 'bg-white text-slate-600 hover:bg-slate-50',
-                    )}
-                    onClick={() => {
-                      const isActive = filters['apenas_mapeados']?.length > 0
-                      setFilters((p) => ({
-                        ...p,
-                        apenas_mapeados: isActive ? [] : ['true'],
-                        apenas_pendentes: [],
-                      }))
-                      setPage(0)
-                    }}
-                  >
-                    <CheckCircle2
-                      className={cn(
-                        'h-3.5 w-3.5 mr-1.5',
-                        filters['apenas_mapeados']?.length > 0
-                          ? 'text-emerald-600'
-                          : 'text-slate-400',
-                      )}
-                    />
-                    Mapeados 100%
-                  </Button>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant={filters['apenas_pendentes']?.length > 0 ? 'default' : 'outline'}
+                        size="sm"
+                        className={cn(
+                          'h-7 text-xs font-semibold whitespace-nowrap transition-colors',
+                          filters['apenas_pendentes']?.length > 0
+                            ? 'bg-amber-100 text-amber-800 border-amber-200 hover:bg-amber-200 hover:text-amber-900 shadow-sm'
+                            : 'bg-white text-slate-600 hover:bg-slate-50',
+                        )}
+                        onClick={() => {
+                          const isActive = filters['apenas_pendentes']?.length > 0
+                          setFilters((p) => ({
+                            ...p,
+                            apenas_pendentes: isActive ? [] : ['true'],
+                            apenas_mapeados: [],
+                          }))
+                          setPage(0)
+                        }}
+                      >
+                        <AlertCircle
+                          className={cn(
+                            'h-3.5 w-3.5 mr-1.5',
+                            filters['apenas_pendentes']?.length > 0
+                              ? 'text-amber-600'
+                              : 'text-slate-400',
+                          )}
+                        />
+                        Mapeamentos Pendentes
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Mostrar apenas lançamentos com mapeamento incompleto</p>
+                    </TooltipContent>
+                  </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant={filters['apenas_mapeados']?.length > 0 ? 'default' : 'outline'}
+                        size="sm"
+                        className={cn(
+                          'h-7 text-xs font-semibold whitespace-nowrap transition-colors',
+                          filters['apenas_mapeados']?.length > 0
+                            ? 'bg-emerald-100 text-emerald-800 border-emerald-200 hover:bg-emerald-200 hover:text-emerald-900 shadow-sm'
+                            : 'bg-white text-slate-600 hover:bg-slate-50',
+                        )}
+                        onClick={() => {
+                          const isActive = filters['apenas_mapeados']?.length > 0
+                          setFilters((p) => ({
+                            ...p,
+                            apenas_mapeados: isActive ? [] : ['true'],
+                            apenas_pendentes: [],
+                          }))
+                          setPage(0)
+                        }}
+                      >
+                        <CheckCircle2
+                          className={cn(
+                            'h-3.5 w-3.5 mr-1.5',
+                            filters['apenas_mapeados']?.length > 0
+                              ? 'text-emerald-600'
+                              : 'text-slate-400',
+                          )}
+                        />
+                        Mapeados 100%
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Mostrar apenas lançamentos com mapeamento completo</p>
+                    </TooltipContent>
+                  </Tooltip>
 
-                  <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 px-2 py-1 rounded-md shadow-sm h-7 mr-1 transition-all">
-                    <div className="scale-75 origin-left flex items-center">
-                      <Switch
-                        id="simplified-mode"
-                        checked={isSimplifiedMode}
-                        onCheckedChange={toggleSimplifiedMode}
-                      />
-                    </div>
-                    <Label
-                      htmlFor="simplified-mode"
-                      className={cn(
-                        'text-[10px] font-bold cursor-pointer whitespace-nowrap -ml-1 uppercase tracking-wider',
-                        isSimplifiedMode ? 'text-indigo-700' : 'text-slate-600',
-                      )}
-                    >
-                      Simplificado
-                    </Label>
-                  </div>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 px-2 py-1 rounded-md shadow-sm h-7 mr-1 transition-all">
+                        <div className="scale-75 origin-left flex items-center">
+                          <Switch
+                            id="simplified-mode"
+                            checked={isSimplifiedMode}
+                            onCheckedChange={toggleSimplifiedMode}
+                          />
+                        </div>
+                        <Label
+                          htmlFor="simplified-mode"
+                          className={cn(
+                            'text-[10px] font-bold cursor-pointer whitespace-nowrap -ml-1 uppercase tracking-wider',
+                            isSimplifiedMode ? 'text-indigo-700' : 'text-slate-600',
+                          )}
+                        >
+                          Simplificado
+                        </Label>
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>
+                        Alternar entre visualização com colunas reduzidas ou visualização completa
+                      </p>
+                    </TooltipContent>
+                  </Tooltip>
 
                   <Select
                     value={filters['natureza']?.length === 1 ? filters['natureza'][0] : 'todos'}
@@ -8169,23 +8241,30 @@ export default function FinancialMovements() {
                     </SelectContent>
                   </Select>
 
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-7 text-xs flex items-center gap-1.5 px-2 relative"
-                    onClick={() => setFiltersOpen(true)}
-                  >
-                    <Filter className="h-3.5 w-3.5" />
-                    <span className="hidden sm:inline">Filtros</span>
-                    {hasActiveFilters && (
-                      <span className="absolute -top-1 -right-1 flex h-3 w-3 items-center justify-center rounded-full bg-primary text-[8px] text-primary-foreground">
-                        {Object.values(filters).reduce(
-                          (acc: number, val: any) => acc + (val?.length > 0 ? 1 : 0),
-                          0,
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 text-xs flex items-center gap-1.5 px-2 relative"
+                        onClick={() => setFiltersOpen(true)}
+                      >
+                        <Filter className="h-3.5 w-3.5" />
+                        <span className="hidden sm:inline">Filtros</span>
+                        {hasActiveFilters && (
+                          <span className="absolute -top-1 -right-1 flex h-3 w-3 items-center justify-center rounded-full bg-primary text-[8px] text-primary-foreground">
+                            {Object.values(filters).reduce(
+                              (acc: number, val: any) => acc + (val?.length > 0 ? 1 : 0),
+                              0,
+                            )}
+                          </span>
                         )}
-                      </span>
-                    )}
-                  </Button>
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Abrir painel de filtros avançados</p>
+                    </TooltipContent>
+                  </Tooltip>
 
                   <FloatingPanel
                     open={filtersOpen}
@@ -8460,22 +8539,29 @@ export default function FinancialMovements() {
                     </Tabs>
                   </FloatingPanel>
 
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-7 text-xs flex items-center gap-1.5 px-2 relative"
-                    onClick={() => setColumnsOpen(true)}
-                  >
-                    <Columns className="h-3.5 w-3.5" />
-                    <span className="hidden sm:inline">
-                      Colunas {hiddenColumnsCount > 0 ? `(${hiddenColumnsCount})` : ''}
-                    </span>
-                    {hiddenColumnsCount > 0 && (
-                      <span className="absolute -top-1 -right-1 flex h-3 w-3 items-center justify-center rounded-full bg-primary text-[8px] text-primary-foreground sm:hidden">
-                        {hiddenColumnsCount}
-                      </span>
-                    )}
-                  </Button>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 text-xs flex items-center gap-1.5 px-2 relative"
+                        onClick={() => setColumnsOpen(true)}
+                      >
+                        <Columns className="h-3.5 w-3.5" />
+                        <span className="hidden sm:inline">
+                          Colunas {hiddenColumnsCount > 0 ? `(${hiddenColumnsCount})` : ''}
+                        </span>
+                        {hiddenColumnsCount > 0 && (
+                          <span className="absolute -top-1 -right-1 flex h-3 w-3 items-center justify-center rounded-full bg-primary text-[8px] text-primary-foreground sm:hidden">
+                            {hiddenColumnsCount}
+                          </span>
+                        )}
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Escolher colunas visíveis e ordenar</p>
+                    </TooltipContent>
+                  </Tooltip>
 
                   <TableSettingsControls prefs={prefs} updatePrefs={updatePrefs} />
 
@@ -8727,133 +8813,170 @@ export default function FinancialMovements() {
             <CardContent className="p-0 bg-white">
               <div className="p-4 border-b bg-slate-50/50 flex flex-col xl:flex-row items-center justify-between shadow-sm gap-4 overflow-hidden">
                 <div className="flex flex-1 overflow-x-auto custom-scrollbar pb-2 xl:pb-0 items-center justify-start gap-4 w-full">
-                  <div className="card-plano-contas bg-bruto">
-                    <span className="titulo">Total (Bruto)</span>
-                    {loading ? (
-                      <Skeleton className="h-8 w-24 bg-white/20 mt-1 rounded-md" />
-                    ) : (
-                      <span
-                        className="valor"
-                        title={new Intl.NumberFormat('pt-BR', {
-                          style: 'currency',
-                          currency: 'BRL',
-                        }).format(totals.valor)}
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div className="card-plano-contas bg-bruto">
+                        <span className="titulo">Total (Bruto)</span>
+                        {loading ? (
+                          <Skeleton className="h-8 w-24 bg-white/20 mt-1 rounded-md" />
+                        ) : (
+                          <span
+                            className="valor"
+                            title={new Intl.NumberFormat('pt-BR', {
+                              style: 'currency',
+                              currency: 'BRL',
+                            }).format(totals.valor)}
+                          >
+                            {new Intl.NumberFormat('pt-BR', {
+                              style: 'currency',
+                              currency: 'BRL',
+                            }).format(totals.valor)}
+                          </span>
+                        )}
+                        <CircleDollarSign className="icone" />
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Soma do valor bruto de todos os lançamentos filtrados</p>
+                    </TooltipContent>
+                  </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div className="card-plano-contas bg-liquido">
+                        <span className="titulo">Total (Líquido)</span>
+                        {loading ? (
+                          <Skeleton className="h-8 w-24 bg-white/20 mt-1 rounded-md" />
+                        ) : (
+                          <span
+                            className="valor"
+                            title={new Intl.NumberFormat('pt-BR', {
+                              style: 'currency',
+                              currency: 'BRL',
+                            }).format(totals.valor_liquido)}
+                          >
+                            {new Intl.NumberFormat('pt-BR', {
+                              style: 'currency',
+                              currency: 'BRL',
+                            }).format(totals.valor_liquido)}
+                          </span>
+                        )}
+                        <Wallet className="icone" />
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Soma do valor líquido (saldo real) dos lançamentos filtrados</p>
+                    </TooltipContent>
+                  </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div
+                        className={cn(
+                          'card-plano-contas bg-positivos cursor-pointer transition-all hover:scale-[1.02] hover:ring-2 hover:ring-offset-2 hover:ring-blue-400',
+                          filters['natureza']?.length === 1 && filters['natureza'][0] === 'positivo'
+                            ? 'ring-2 ring-offset-2 ring-blue-600 scale-[1.02] shadow-lg'
+                            : '',
+                        )}
+                        onClick={() => {
+                          if (loading) return
+                          const isPos =
+                            filters['natureza']?.length === 1 &&
+                            filters['natureza'][0] === 'positivo'
+                          setFilters((p) => ({ ...p, natureza: isPos ? [] : ['positivo'] }))
+                          setPage(0)
+                        }}
                       >
-                        {new Intl.NumberFormat('pt-BR', {
-                          style: 'currency',
-                          currency: 'BRL',
-                        }).format(totals.valor)}
-                      </span>
-                    )}
-                    <CircleDollarSign className="icone" />
-                  </div>
-                  <div className="card-plano-contas bg-liquido">
-                    <span className="titulo">Total (Líquido)</span>
-                    {loading ? (
-                      <Skeleton className="h-8 w-24 bg-white/20 mt-1 rounded-md" />
-                    ) : (
-                      <span
-                        className="valor"
-                        title={new Intl.NumberFormat('pt-BR', {
-                          style: 'currency',
-                          currency: 'BRL',
-                        }).format(totals.valor_liquido)}
+                        <span className="titulo">Entradas / Positivos</span>
+                        {loading ? (
+                          <Skeleton className="h-8 w-24 bg-white/20 mt-1 rounded-md" />
+                        ) : (
+                          <span
+                            className="valor"
+                            title={new Intl.NumberFormat('pt-BR', {
+                              style: 'currency',
+                              currency: 'BRL',
+                            }).format(totals.entradas)}
+                          >
+                            {new Intl.NumberFormat('pt-BR', {
+                              style: 'currency',
+                              currency: 'BRL',
+                            }).format(totals.entradas)}
+                          </span>
+                        )}
+                        <TrendingUp className="icone" />
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Soma de todas as entradas (+). Clique para filtrar por entradas.</p>
+                    </TooltipContent>
+                  </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div
+                        className={cn(
+                          'card-plano-contas bg-negativos cursor-pointer transition-all hover:scale-[1.02] hover:ring-2 hover:ring-offset-2 hover:ring-red-400',
+                          filters['natureza']?.length === 1 && filters['natureza'][0] === 'negativo'
+                            ? 'ring-2 ring-offset-2 ring-red-800 scale-[1.02] shadow-lg'
+                            : '',
+                        )}
+                        onClick={() => {
+                          if (loading) return
+                          const isNeg =
+                            filters['natureza']?.length === 1 &&
+                            filters['natureza'][0] === 'negativo'
+                          setFilters((p) => ({ ...p, natureza: isNeg ? [] : ['negativo'] }))
+                          setPage(0)
+                        }}
                       >
-                        {new Intl.NumberFormat('pt-BR', {
-                          style: 'currency',
-                          currency: 'BRL',
-                        }).format(totals.valor_liquido)}
-                      </span>
-                    )}
-                    <Wallet className="icone" />
-                  </div>
-                  <div
-                    className={cn(
-                      'card-plano-contas bg-positivos cursor-pointer transition-all hover:scale-[1.02] hover:ring-2 hover:ring-offset-2 hover:ring-blue-400',
-                      filters['natureza']?.length === 1 && filters['natureza'][0] === 'positivo'
-                        ? 'ring-2 ring-offset-2 ring-blue-600 scale-[1.02] shadow-lg'
-                        : '',
-                    )}
-                    onClick={() => {
-                      if (loading) return
-                      const isPos =
-                        filters['natureza']?.length === 1 && filters['natureza'][0] === 'positivo'
-                      setFilters((p) => ({ ...p, natureza: isPos ? [] : ['positivo'] }))
-                      setPage(0)
-                    }}
-                  >
-                    <span className="titulo">Entradas / Positivos</span>
-                    {loading ? (
-                      <Skeleton className="h-8 w-24 bg-white/20 mt-1 rounded-md" />
-                    ) : (
-                      <span
-                        className="valor"
-                        title={new Intl.NumberFormat('pt-BR', {
-                          style: 'currency',
-                          currency: 'BRL',
-                        }).format(totals.entradas)}
-                      >
-                        {new Intl.NumberFormat('pt-BR', {
-                          style: 'currency',
-                          currency: 'BRL',
-                        }).format(totals.entradas)}
-                      </span>
-                    )}
-                    <TrendingUp className="icone" />
-                  </div>
-                  <div
-                    className={cn(
-                      'card-plano-contas bg-negativos cursor-pointer transition-all hover:scale-[1.02] hover:ring-2 hover:ring-offset-2 hover:ring-red-400',
-                      filters['natureza']?.length === 1 && filters['natureza'][0] === 'negativo'
-                        ? 'ring-2 ring-offset-2 ring-red-800 scale-[1.02] shadow-lg'
-                        : '',
-                    )}
-                    onClick={() => {
-                      if (loading) return
-                      const isNeg =
-                        filters['natureza']?.length === 1 && filters['natureza'][0] === 'negativo'
-                      setFilters((p) => ({ ...p, natureza: isNeg ? [] : ['negativo'] }))
-                      setPage(0)
-                    }}
-                  >
-                    <span className="titulo">Saídas / Negativos</span>
-                    {loading ? (
-                      <Skeleton className="h-8 w-24 bg-white/20 mt-1 rounded-md" />
-                    ) : (
-                      <span
-                        className="valor"
-                        title={new Intl.NumberFormat('pt-BR', {
-                          style: 'currency',
-                          currency: 'BRL',
-                        }).format(totals.saidas)}
-                      >
-                        {new Intl.NumberFormat('pt-BR', {
-                          style: 'currency',
-                          currency: 'BRL',
-                        }).format(totals.saidas)}
-                      </span>
-                    )}
-                    <TrendingDown className="icone" />
-                  </div>
+                        <span className="titulo">Saídas / Negativos</span>
+                        {loading ? (
+                          <Skeleton className="h-8 w-24 bg-white/20 mt-1 rounded-md" />
+                        ) : (
+                          <span
+                            className="valor"
+                            title={new Intl.NumberFormat('pt-BR', {
+                              style: 'currency',
+                              currency: 'BRL',
+                            }).format(totals.saidas)}
+                          >
+                            {new Intl.NumberFormat('pt-BR', {
+                              style: 'currency',
+                              currency: 'BRL',
+                            }).format(totals.saidas)}
+                          </span>
+                        )}
+                        <TrendingDown className="icone" />
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Soma de todas as saídas (-). Clique para filtrar por saídas.</p>
+                    </TooltipContent>
+                  </Tooltip>
                 </div>
 
                 <div className="flex items-center gap-2 shrink-0 xl:ml-auto">
                   <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-9 shadow-sm bg-white hover:bg-slate-50 text-slate-700 font-medium"
-                        disabled={isExporting}
-                      >
-                        {isExporting ? (
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        ) : (
-                          <Download className="h-4 w-4 mr-2" />
-                        )}
-                        Exportar Dados
-                      </Button>
-                    </DropdownMenuTrigger>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-9 shadow-sm bg-white hover:bg-slate-50 text-slate-700 font-medium"
+                            disabled={isExporting}
+                          >
+                            {isExporting ? (
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            ) : (
+                              <Download className="h-4 w-4 mr-2" />
+                            )}
+                            Exportar Dados
+                          </Button>
+                        </DropdownMenuTrigger>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Exportar registros visíveis para Excel, PDF ou TXT</p>
+                      </TooltipContent>
+                    </Tooltip>
                     <DropdownMenuContent align="end" className="w-56">
                       <DropdownMenuGroup>
                         <DropdownMenuLabel className="text-xs text-slate-500 uppercase tracking-wider">
@@ -10156,81 +10279,102 @@ export default function FinancialMovements() {
 
               <div className="h-4 w-px bg-slate-200 mx-1"></div>
 
-              <Button
-                variant={resumoFilters['apenas_pendentes']?.length > 0 ? 'default' : 'outline'}
-                size="sm"
-                className={cn(
-                  'h-8 text-xs font-semibold whitespace-nowrap transition-colors',
-                  resumoFilters['apenas_pendentes']?.length > 0
-                    ? 'bg-amber-100 text-amber-800 border-amber-200 hover:bg-amber-200 hover:text-amber-900 shadow-sm'
-                    : 'bg-white text-slate-600 hover:bg-slate-50',
-                )}
-                onClick={() => {
-                  const isActive = resumoFilters['apenas_pendentes']?.length > 0
-                  setResumoFilters((p) => ({
-                    ...p,
-                    apenas_pendentes: isActive ? [] : ['true'],
-                    apenas_mapeados: [],
-                  }))
-                }}
-              >
-                <AlertCircle
-                  className={cn(
-                    'h-3.5 w-3.5 mr-1.5',
-                    resumoFilters['apenas_pendentes']?.length > 0
-                      ? 'text-amber-600'
-                      : 'text-slate-400',
-                  )}
-                />
-                Mapeamentos Pendentes
-              </Button>
-
-              <Button
-                variant={resumoFilters['apenas_mapeados']?.length > 0 ? 'default' : 'outline'}
-                size="sm"
-                className={cn(
-                  'h-8 text-xs font-semibold whitespace-nowrap transition-colors',
-                  resumoFilters['apenas_mapeados']?.length > 0
-                    ? 'bg-emerald-100 text-emerald-800 border-emerald-200 hover:bg-emerald-200 hover:text-emerald-900 shadow-sm'
-                    : 'bg-white text-slate-600 hover:bg-slate-50',
-                )}
-                onClick={() => {
-                  const isActive = resumoFilters['apenas_mapeados']?.length > 0
-                  setResumoFilters((p) => ({
-                    ...p,
-                    apenas_mapeados: isActive ? [] : ['true'],
-                    apenas_pendentes: [],
-                  }))
-                }}
-              >
-                <CheckCircle2
-                  className={cn(
-                    'h-3.5 w-3.5 mr-1.5',
-                    resumoFilters['apenas_mapeados']?.length > 0
-                      ? 'text-emerald-600'
-                      : 'text-slate-400',
-                  )}
-                />
-                Mapeados 100%
-              </Button>
-
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-8 text-xs flex items-center gap-1.5 px-2.5 relative border-slate-200 hover:bg-slate-50"
-                onClick={() => setResumoFiltersOpen(true)}
-              >
-                <Filter className="h-3.5 w-3.5 text-slate-500" />
-                <span>Filtros do Resumo</span>
-                {Object.values(resumoFilters).some((arr) => arr && arr.length > 0) && (
-                  <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-indigo-600 text-[9px] font-bold text-white shadow-sm border-2 border-white">
-                    {Object.values(resumoFilters).reduce(
-                      (acc: number, val: any) => acc + (val?.length > 0 ? 1 : 0),
-                      0,
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant={resumoFilters['apenas_pendentes']?.length > 0 ? 'default' : 'outline'}
+                    size="sm"
+                    className={cn(
+                      'h-8 text-xs font-semibold whitespace-nowrap transition-colors',
+                      resumoFilters['apenas_pendentes']?.length > 0
+                        ? 'bg-amber-100 text-amber-800 border-amber-200 hover:bg-amber-200 hover:text-amber-900 shadow-sm'
+                        : 'bg-white text-slate-600 hover:bg-slate-50',
                     )}
-                  </span>
-                )}
-              </Button>
+                    onClick={() => {
+                      const isActive = resumoFilters['apenas_pendentes']?.length > 0
+                      setResumoFilters((p) => ({
+                        ...p,
+                        apenas_pendentes: isActive ? [] : ['true'],
+                        apenas_mapeados: [],
+                      }))
+                    }}
+                  >
+                    <AlertCircle
+                      className={cn(
+                        'h-3.5 w-3.5 mr-1.5',
+                        resumoFilters['apenas_pendentes']?.length > 0
+                          ? 'text-amber-600'
+                          : 'text-slate-400',
+                      )}
+                    />
+                    Mapeamentos Pendentes
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Mostrar apenas lançamentos com mapeamento incompleto</p>
+                </TooltipContent>
+              </Tooltip>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant={resumoFilters['apenas_mapeados']?.length > 0 ? 'default' : 'outline'}
+                    size="sm"
+                    className={cn(
+                      'h-8 text-xs font-semibold whitespace-nowrap transition-colors',
+                      resumoFilters['apenas_mapeados']?.length > 0
+                        ? 'bg-emerald-100 text-emerald-800 border-emerald-200 hover:bg-emerald-200 hover:text-emerald-900 shadow-sm'
+                        : 'bg-white text-slate-600 hover:bg-slate-50',
+                    )}
+                    onClick={() => {
+                      const isActive = resumoFilters['apenas_mapeados']?.length > 0
+                      setResumoFilters((p) => ({
+                        ...p,
+                        apenas_mapeados: isActive ? [] : ['true'],
+                        apenas_pendentes: [],
+                      }))
+                    }}
+                  >
+                    <CheckCircle2
+                      className={cn(
+                        'h-3.5 w-3.5 mr-1.5',
+                        resumoFilters['apenas_mapeados']?.length > 0
+                          ? 'text-emerald-600'
+                          : 'text-slate-400',
+                      )}
+                    />
+                    Mapeados 100%
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Mostrar apenas lançamentos com mapeamento completo</p>
+                </TooltipContent>
+              </Tooltip>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 text-xs flex items-center gap-1.5 px-2.5 relative border-slate-200 hover:bg-slate-50"
+                    onClick={() => setResumoFiltersOpen(true)}
+                  >
+                    <Filter className="h-3.5 w-3.5 text-slate-500" />
+                    <span>Filtros do Resumo</span>
+                    {Object.values(resumoFilters).some((arr) => arr && arr.length > 0) && (
+                      <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-indigo-600 text-[9px] font-bold text-white shadow-sm border-2 border-white">
+                        {Object.values(resumoFilters).reduce(
+                          (acc: number, val: any) => acc + (val?.length > 0 ? 1 : 0),
+                          0,
+                        )}
+                      </span>
+                    )}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Abrir painel de filtros avançados do Resumo</p>
+                </TooltipContent>
+              </Tooltip>
 
               {(Object.values(resumoFilters).some((arr) => arr && arr.length > 0) ||
                 resumoSearch) && (
@@ -10248,34 +10392,47 @@ export default function FinancialMovements() {
                 </Button>
               )}
 
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-8 text-xs px-2.5 text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 font-medium ml-1"
-                onClick={() => {
-                  setResumoFilters(filters)
-                  setResumoSearch(search)
-                  toast.success('Filtros importados da grade com sucesso!')
-                }}
-                title="Importar filtros atualmente aplicados na grade de movimentos"
-              >
-                <Download className="h-3.5 w-3.5 mr-1.5" />
-                Importar da Grade
-              </Button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 text-xs px-2.5 text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 font-medium ml-1"
+                    onClick={() => {
+                      setResumoFilters(filters)
+                      setResumoSearch(search)
+                      toast.success('Filtros importados da grade com sucesso!')
+                    }}
+                  >
+                    <Download className="h-3.5 w-3.5 mr-1.5" />
+                    Importar da Grade
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Importar filtros atualmente aplicados na grade de movimentos</p>
+                </TooltipContent>
+              </Tooltip>
 
               <div className="h-4 w-px bg-slate-200 mx-1"></div>
 
               <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-8 text-xs flex items-center gap-1.5 px-2.5 relative border-slate-200 hover:bg-slate-50"
-                  >
-                    <Eye className="h-3.5 w-3.5 text-slate-500" />
-                    <span>Exibir Cards</span>
-                  </Button>
-                </PopoverTrigger>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-8 text-xs flex items-center gap-1.5 px-2.5 relative border-slate-200 hover:bg-slate-50"
+                      >
+                        <Eye className="h-3.5 w-3.5 text-slate-500" />
+                        <span>Exibir Cards</span>
+                      </Button>
+                    </PopoverTrigger>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Ocultar ou exibir os diferentes quadros de resumo</p>
+                  </TooltipContent>
+                </Tooltip>
                 <PopoverContent align="end" className="w-72 p-2 z-[110]">
                   <div className="flex flex-col gap-2">
                     <div className="flex items-center justify-between px-1">
@@ -12755,23 +12912,30 @@ export default function FinancialMovements() {
                     </Button>
                   </div>
                   <Popover open={dryRunFiltersOpen} onOpenChange={setDryRunFiltersOpen}>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-9 text-xs relative bg-white border-slate-300 shadow-sm"
-                      >
-                        <Filter className="mr-2 h-4 w-4" /> Filtros do Dry Run
-                        {Object.values(dryRunFilters).some((arr) => arr && arr.length > 0) && (
-                          <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-indigo-600 text-[9px] font-bold text-white shadow-sm border-2 border-white">
-                            {Object.values(dryRunFilters).reduce(
-                              (acc, val) => acc + (val?.length > 0 ? 1 : 0),
-                              0,
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-9 text-xs relative bg-white border-slate-300 shadow-sm"
+                          >
+                            <Filter className="mr-2 h-4 w-4" /> Filtros do Dry Run
+                            {Object.values(dryRunFilters).some((arr) => arr && arr.length > 0) && (
+                              <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-indigo-600 text-[9px] font-bold text-white shadow-sm border-2 border-white">
+                                {Object.values(dryRunFilters).reduce(
+                                  (acc, val) => acc + (val?.length > 0 ? 1 : 0),
+                                  0,
+                                )}
+                              </span>
                             )}
-                          </span>
-                        )}
-                      </Button>
-                    </PopoverTrigger>
+                          </Button>
+                        </PopoverTrigger>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Filtrar os lançamentos do Dry Run</p>
+                      </TooltipContent>
+                    </Tooltip>
                     <PopoverContent
                       className="w-[320px] p-4 flex flex-col gap-4 shadow-xl border-slate-200 z-[110]"
                       align="end"
@@ -12835,15 +12999,22 @@ export default function FinancialMovements() {
                   </Popover>
 
                   <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        size="sm"
-                        className="h-9 shadow-sm bg-red-600 hover:bg-red-700 text-white"
-                        disabled={filteredDryRunData.length === 0 && selectedIds.length === 0}
-                      >
-                        <Trash2 className="mr-2 h-4 w-4" /> Excluir...
-                      </Button>
-                    </DropdownMenuTrigger>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            size="sm"
+                            className="h-9 shadow-sm bg-red-600 hover:bg-red-700 text-white"
+                            disabled={filteredDryRunData.length === 0 && selectedIds.length === 0}
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" /> Excluir...
+                          </Button>
+                        </DropdownMenuTrigger>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Remover registros do Dry Run (não exclui do banco de dados)</p>
+                      </TooltipContent>
+                    </Tooltip>
                     <DropdownMenuContent align="end">
                       <DropdownMenuItem
                         disabled={selectedIds.length === 0}
@@ -12868,16 +13039,23 @@ export default function FinancialMovements() {
                     </DropdownMenuContent>
                   </DropdownMenu>
 
-                  <Button
-                    onClick={() => {
-                      setGenerateScope('dry_run')
-                      setGenerateModalOpen(true)
-                    }}
-                    className="bg-indigo-600 hover:bg-indigo-700 shadow-sm h-9 shrink-0 text-xs sm:text-sm px-3 text-white"
-                    disabled={filteredDryRunData.length === 0 && selectedIds.length === 0}
-                  >
-                    <CheckCircle2 className="mr-2 h-4 w-4" /> Efetivar Filtrados/Selecionados
-                  </Button>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        onClick={() => {
+                          setGenerateScope('dry_run')
+                          setGenerateModalOpen(true)
+                        }}
+                        className="bg-indigo-600 hover:bg-indigo-700 shadow-sm h-9 shrink-0 text-xs sm:text-sm px-3 text-white"
+                        disabled={filteredDryRunData.length === 0 && selectedIds.length === 0}
+                      >
+                        <CheckCircle2 className="mr-2 h-4 w-4" /> Efetivar Filtrados/Selecionados
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Gerar lançamentos contábeis para os registros selecionados no Dry Run</p>
+                    </TooltipContent>
+                  </Tooltip>
                 </div>
               </div>
             </CardHeader>
