@@ -6007,6 +6007,7 @@ export default function FinancialMovements() {
       total: mode === 'all' ? 0 : totalCount,
       processed: 0,
       status: 'Processing',
+      errors: [],
     })
 
     try {
@@ -6045,7 +6046,7 @@ export default function FinancialMovements() {
             setDeletionState((prev) => ({
               ...prev,
               errors: [
-                ...prev.errors,
+                ...(prev.errors || []),
                 { chunk: processed, message: updateErr.message || 'Erro desconhecido' },
               ],
             }))
@@ -6160,7 +6161,7 @@ export default function FinancialMovements() {
             setDeletionState((prev) => ({
               ...prev,
               errors: [
-                ...prev.errors,
+                ...(prev.errors || []),
                 { chunk: processed, message: updateErr.message || 'Erro desconhecido' },
               ],
             }))
@@ -6179,7 +6180,7 @@ export default function FinancialMovements() {
       }
 
       setDeletionState((prev) => {
-        const finalStatus = prev.errors.length > 0 ? 'Error' : 'Completed'
+        const finalStatus = prev.errors && prev.errors.length > 0 ? 'Error' : 'Completed'
         if (finalStatus === 'Completed') {
           toast.success(
             mode === 'all'
@@ -6200,7 +6201,7 @@ export default function FinancialMovements() {
       setDeletionState((prev) => ({
         ...prev,
         status: 'Error',
-        errors: [...prev.errors, { chunk: 0, message: error.message }],
+        errors: [...(prev.errors || []), { chunk: 0, message: error.message }],
       }))
       toast.error('Erro ao excluir registros: ' + error.message)
     }
