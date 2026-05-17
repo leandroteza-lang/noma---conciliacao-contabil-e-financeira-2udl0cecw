@@ -1095,6 +1095,7 @@ export default function ChartAccounts() {
               showGridlines={prefs.showGridlines}
               gridlineWidth={prefs.gridlineWidth}
               gridlineColor={prefs.gridlineColor}
+              rowHeight={prefs.rowHeight}
             >
               <TableHeader className="bg-slate-50/80">
                 <TableRow disableZebra>

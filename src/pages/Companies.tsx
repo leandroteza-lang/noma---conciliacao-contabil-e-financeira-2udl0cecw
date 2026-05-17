@@ -890,6 +890,7 @@ export default function Companies() {
                 showGridlines={prefs.showGridlines}
                 gridlineWidth={prefs.gridlineWidth}
                 gridlineColor={prefs.gridlineColor}
+                rowHeight={prefs.rowHeight}
               >
                 <TableHeader className="!bg-indigo-950 [&_tr]:border-b [&_tr]:border-b-indigo-900/50">
                   <TableRow className="border-0 !bg-indigo-950 hover:!bg-indigo-950">

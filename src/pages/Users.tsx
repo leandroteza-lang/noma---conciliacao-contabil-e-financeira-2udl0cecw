@@ -466,6 +466,7 @@ export default function Users() {
           showGridlines={prefs.showGridlines}
           gridlineWidth={prefs.gridlineWidth}
           gridlineColor={prefs.gridlineColor}
+          rowHeight={prefs.rowHeight}
         >
           <TableHeader className="!bg-indigo-950">
             <TableRow className="border-0 !bg-indigo-950 hover:!bg-indigo-950">

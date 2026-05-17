@@ -689,6 +689,7 @@ export default function Departments() {
                 showGridlines={prefs.showGridlines}
                 gridlineWidth={prefs.gridlineWidth}
                 gridlineColor={prefs.gridlineColor}
+                rowHeight={prefs.rowHeight}
               >
                 <TableHeader className="bg-[#1e1b4b]">
                   <TableRow disableZebra className="h-9 border-0 hover:bg-transparent">

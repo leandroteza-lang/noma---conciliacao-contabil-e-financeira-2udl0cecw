@@ -1362,6 +1362,7 @@ function PeriodConsolidatedTable({
         className="w-full min-w-max"
         style={{ fontSize: tableFontSize ? `${tableFontSize}px` : undefined }}
         wrapperClassName="max-h-[500px] overflow-auto finance-table-scrollbar"
+        rowHeight={prefs?.rowHeight}
       >
         <TableHeader className="sticky top-0 z-10 shadow-sm border-b border-black">
           <TableRow disableZebra className="bg-blue-500 hover:bg-blue-400 border-none">
@@ -1720,6 +1721,7 @@ function AccountingConsolidatedTable({
       className="w-full min-w-max"
       style={{ fontSize: tableFontSize ? `${tableFontSize}px` : undefined }}
       wrapperClassName="max-h-[500px] overflow-auto finance-table-scrollbar"
+      rowHeight={prefs?.rowHeight}
     >
       <TableHeader className="sticky top-0 z-10 shadow-sm border-b border-black">
         <TableRow disableZebra className="bg-indigo-950 hover:bg-indigo-900 border-none">
@@ -2493,6 +2495,7 @@ function AccountingCrossReferenceTable({
           className="w-full min-w-[1200px]"
           style={{ fontSize: tableFontSize ? `${tableFontSize}px` : undefined }}
           wrapperClassName="max-h-[600px] overflow-auto finance-table-scrollbar pb-3"
+          rowHeight={prefs?.rowHeight}
         >
           <TableHeader className="sticky top-0 z-10 shadow-sm border-b border-slate-600 bg-indigo-950">
             <TableRow disableZebra className="bg-indigo-950 hover:bg-indigo-900 border-none">
@@ -8907,6 +8910,7 @@ export default function FinancialMovements() {
                 <Table
                   wrapperClassName="overflow-x-auto overflow-y-hidden finance-table-scrollbar pb-3 border-4 border-indigo-950 rounded-b-lg rounded-t-none border-t-0"
                   className="w-full min-w-max"
+                  rowHeight={prefs?.rowHeight}
                 >
                   <TableHeader>
                     <TableRow
@@ -10884,6 +10888,7 @@ export default function FinancialMovements() {
                 wrapperClassName="absolute inset-0 overflow-auto custom-scrollbar border-4 border-indigo-950 rounded-lg"
                 className="w-full min-w-max border-collapse"
                 style={{ fontSize: `${tableFontSize}px` }}
+                rowHeight={balancetePrefs?.rowHeight}
               >
                 <TableHeader className="sticky top-0 z-30 shadow-sm border-none bg-indigo-950">
                   <TableRow
@@ -11858,6 +11863,7 @@ export default function FinancialMovements() {
                 wrapperClassName="max-h-[650px] overflow-auto finance-table-scrollbar border-4 border-[#221c5a] rounded-lg"
                 className="w-full min-w-max relative"
                 style={{ fontSize: `${tableFontSize}px` }}
+                rowHeight={deparaPrefs?.rowHeight}
               >
                 <TableHeader className="bg-[#221c5a] sticky top-0 z-20 shadow-md border-none">
                   <TableRow className="hover:bg-[#221c5a] border-none">
@@ -12881,6 +12887,7 @@ export default function FinancialMovements() {
                   wrapperClassName="overflow-x-auto overflow-y-hidden finance-table-scrollbar pb-3 border-4 border-indigo-950 rounded-b-lg rounded-t-none border-t-0"
                   className="w-full min-w-max"
                   style={{ fontSize: `${tableFontSize}px` }}
+                  rowHeight={dryRunPrefs?.rowHeight}
                 >
                   <TableHeader>
                     <TableRow
@@ -14773,7 +14780,7 @@ export default function FinancialMovements() {
                     </div>
                   </div>
                   <div className="overflow-auto finance-table-scrollbar border border-slate-200 rounded-lg">
-                    <Table className="w-full min-w-max">
+                    <Table className="w-full min-w-max" rowHeight={analiseGruposPrefs?.rowHeight}>
                       <TableHeader className="bg-slate-50">
                         <TableRow className="border-none">
                           {analiseGruposHeaders.map((col) => (
@@ -15142,6 +15149,7 @@ export default function FinancialMovements() {
             <Table
               className="bg-white border border-slate-200 rounded-lg shadow-sm"
               style={{ fontSize: `${tableFontSize}px` }}
+              rowHeight={prefs?.rowHeight}
             >
               <TableHeader className="bg-slate-100 sticky top-0 z-10 shadow-sm">
                 <TableRow className="border-b-slate-200 hover:bg-slate-100">

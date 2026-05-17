@@ -422,6 +422,7 @@ export default function TgaAccountTypes() {
           showGridlines={prefs.showGridlines}
           gridlineWidth={prefs.gridlineWidth}
           gridlineColor={prefs.gridlineColor}
+          rowHeight={prefs.rowHeight}
         >
           <TableHeader className="bg-indigo-950">
             <TableRow className="bg-indigo-950 hover:bg-indigo-950 border-0">

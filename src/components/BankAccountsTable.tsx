@@ -37,6 +37,7 @@ export function BankAccountsTable({
   itemsPerPage,
   onItemsPerPageChange,
   tableFontSize,
+  prefs,
 }: any) {
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
 
@@ -183,7 +184,13 @@ export function BankAccountsTable({
         </Button>
       </div>
       <div className="overflow-x-auto w-full">
-        <Table style={{ fontSize: `${tableFontSize}px` }}>
+        <Table
+          style={{ fontSize: `${tableFontSize}px` }}
+          showGridlines={prefs?.showGridlines}
+          gridlineWidth={prefs?.gridlineWidth}
+          gridlineColor={prefs?.gridlineColor}
+          rowHeight={prefs?.rowHeight}
+        >
           <TableHeader className="bg-slate-50 sticky top-0 z-20 shadow-sm">
             <TableRow disableZebra className="bg-slate-50 hover:bg-slate-50 hover:!bg-slate-50">
               <TableHead className="w-[50px] text-center sticky top-0 bg-slate-50 z-20">
