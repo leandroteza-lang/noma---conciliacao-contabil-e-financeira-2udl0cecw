@@ -7,6 +7,7 @@ import {
   Trash2,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   FileText,
   FileSpreadsheet,
   Download,
@@ -53,6 +54,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { ScrollArea } from '@/components/ui/scroll-area'
 import {
   Dialog,
   DialogContent,
@@ -80,6 +83,58 @@ import { useTablePreferences } from '@/hooks/use-table-preferences'
 import { TableSettingsControls } from '@/components/TableSettingsControls'
 import { useAuditLog } from '@/hooks/use-audit-log'
 import { cn } from '@/lib/utils'
+
+const TreeNode = ({ node, selectedCodes, onToggle, expandedNodes, onToggleExpand }: any) => {
+  const isExpanded = expandedNodes.includes(node.code)
+  const isSelected = selectedCodes.includes(node.code)
+  const hasChildren = node.children && node.children.length > 0
+
+  return (
+    <div className="flex flex-col">
+      <div className="flex items-center gap-2 py-1 px-1 hover:bg-slate-50 rounded-md transition-colors">
+        <div className="flex items-center justify-center w-4 h-4">
+          {hasChildren ? (
+            <button
+              onClick={() => onToggleExpand(node.code)}
+              className="hover:bg-slate-200 rounded text-slate-500 p-0.5 transition-colors"
+            >
+              {isExpanded ? (
+                <ChevronDown className="h-3 w-3" />
+              ) : (
+                <ChevronRight className="h-3 w-3" />
+              )}
+            </button>
+          ) : null}
+        </div>
+        <Checkbox
+          checked={isSelected}
+          onCheckedChange={() => onToggle(node.code)}
+          className="h-3.5 w-3.5"
+        />
+        <span
+          className="text-[13px] font-medium text-slate-700 truncate cursor-pointer select-none"
+          onClick={() => onToggle(node.code)}
+        >
+          {node.code} - {node.description}
+        </span>
+      </div>
+      {hasChildren && isExpanded && (
+        <div className="ml-[10px] pl-2 border-l border-slate-200">
+          {node.children.map((child: any) => (
+            <TreeNode
+              key={child.code}
+              node={child}
+              selectedCodes={selectedCodes}
+              onToggle={onToggle}
+              expandedNodes={expandedNodes}
+              onToggleExpand={onToggleExpand}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
 
 interface CostCenter {
   id: string
@@ -114,6 +169,10 @@ export default function CostCenters() {
   const [filterOrg, setFilterOrg] = useState<string>('all')
   const [filterTipoLcto, setFilterTipoLcto] = useState<string>('all')
   const [filterCategory, setFilterCategory] = useState<string>('all')
+
+  const [isHierarchyFilterOpen, setIsHierarchyFilterOpen] = useState(false)
+  const [selectedHierarchyCodes, setSelectedHierarchyCodes] = useState<string[]>([])
+  const [expandedHierarchyNodes, setExpandedHierarchyNodes] = useState<string[]>([])
 
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>({
     key: 'code',
@@ -234,6 +293,50 @@ export default function CostCenters() {
     }
   }, [user])
 
+  const treeData = useMemo(() => {
+    const relevant =
+      filterOrg === 'all' ? costCenters : costCenters.filter((c) => c.organization_id === filterOrg)
+    const sorted = [...relevant].sort((a, b) => (a.code || '').localeCompare(b.code || ''))
+
+    const root: any[] = []
+    const map = new Map<string, any>()
+
+    sorted.forEach((cc) => {
+      if (!cc.code) return
+      const node = { ...cc, children: [] }
+      map.set(cc.code, node)
+
+      const parts = cc.code.split('.')
+      if (parts.length > 1) {
+        parts.pop()
+        const parentCode = parts.join('.')
+        if (map.has(parentCode)) {
+          map.get(parentCode).children.push(node)
+        } else {
+          root.push(node)
+        }
+      } else {
+        root.push(node)
+      }
+    })
+
+    return root
+  }, [costCenters, filterOrg])
+
+  const handleToggleHierarchy = (code: string) => {
+    setSelectedHierarchyCodes((prev) => {
+      if (prev.includes(code)) return prev.filter((c) => c !== code)
+      return [...prev, code]
+    })
+  }
+
+  const handleToggleExpandHierarchy = (code: string) => {
+    setExpandedHierarchyNodes((prev) => {
+      if (prev.includes(code)) return prev.filter((c) => c !== code)
+      return [...prev, code]
+    })
+  }
+
   const filteredData = costCenters.filter((cc) => {
     const term = search.toLowerCase()
     const matchesSearch =
@@ -253,7 +356,13 @@ export default function CostCenters() {
       matchesCategory = cc.code ? cc.code.startsWith('3') : false
     }
 
-    return matchesSearch && matchesOrg && matchesTipo && matchesCategory
+    const matchesHierarchy =
+      selectedHierarchyCodes.length === 0 ||
+      selectedHierarchyCodes.some(
+        (c) => cc.code && (cc.code.startsWith(c) || c.startsWith(cc.code)),
+      )
+
+    return matchesSearch && matchesOrg && matchesTipo && matchesCategory && matchesHierarchy
   })
 
   const handleSort = (key: string) => {
@@ -1168,15 +1277,83 @@ export default function CostCenters() {
 
       <Card>
         <CardHeader className="pb-4">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-            <div className="space-y-1">
+          <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4">
+            <div className="space-y-1 shrink-0">
               <CardTitle>Lista de Centros de Custo</CardTitle>
               <CardDescription>Visualize e filtre sua estrutura hierárquica.</CardDescription>
             </div>
-            <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap w-full sm:w-auto">
+            <div className="flex flex-wrap items-center justify-start sm:justify-end gap-2 w-full xl:w-auto">
+              <Popover open={isHierarchyFilterOpen} onOpenChange={setIsHierarchyFilterOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="w-full sm:w-[240px] justify-between bg-white text-left font-normal border-slate-200"
+                  >
+                    <div className="flex items-center gap-2 truncate">
+                      <Filter className="h-4 w-4 text-slate-500 shrink-0" />
+                      <span className="truncate text-slate-700">
+                        {selectedHierarchyCodes.length > 0
+                          ? `${selectedHierarchyCodes.length} contas selecionadas`
+                          : 'Todas as contas sintéticas...'}
+                      </span>
+                    </div>
+                    <ChevronDown className="h-4 w-4 text-slate-400 shrink-0" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[360px] p-0 shadow-lg border-slate-200" align="start">
+                  <div className="p-2.5 border-b border-slate-100 flex justify-between items-center bg-slate-50/80 rounded-t-md">
+                    <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                      Hierarquia
+                    </span>
+                    <div className="flex gap-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 text-[11px] px-2.5 text-blue-600 hover:text-blue-700 hover:bg-blue-50 font-medium"
+                        onClick={() => setExpandedHierarchyNodes(treeData.map((n) => n.code))}
+                      >
+                        Expandir Todos
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 text-[11px] px-2.5 text-slate-600 hover:text-slate-700 hover:bg-slate-200 font-medium"
+                        onClick={() => setExpandedHierarchyNodes([])}
+                      >
+                        Recolher
+                      </Button>
+                    </div>
+                  </div>
+                  <ScrollArea className="h-[340px] p-2">
+                    {treeData.map((node) => (
+                      <TreeNode
+                        key={node.code}
+                        node={node}
+                        selectedCodes={selectedHierarchyCodes}
+                        onToggle={handleToggleHierarchy}
+                        expandedNodes={expandedHierarchyNodes}
+                        onToggleExpand={handleToggleExpandHierarchy}
+                      />
+                    ))}
+                    {treeData.length === 0 && (
+                      <div className="text-center p-6 text-sm text-slate-500">
+                        Nenhum centro de custo encontrado.
+                      </div>
+                    )}
+                  </ScrollArea>
+                  <div className="p-2.5 border-t border-slate-100 bg-slate-50/50 rounded-b-md">
+                    <Button
+                      className="w-full bg-red-600 hover:bg-red-700 text-white font-semibold shadow-sm transition-colors"
+                      onClick={() => setIsHierarchyFilterOpen(false)}
+                    >
+                      Pronto
+                    </Button>
+                  </div>
+                </PopoverContent>
+              </Popover>
+
               <Select value={filterOrg} onValueChange={setFilterOrg}>
-                <SelectTrigger className="w-[180px] bg-white">
-                  <Filter className="h-4 w-4 mr-2 text-muted-foreground" />
+                <SelectTrigger className="w-full sm:w-[180px] bg-white border-slate-200">
                   <SelectValue placeholder="Empresa" />
                 </SelectTrigger>
                 <SelectContent>
@@ -1189,7 +1366,7 @@ export default function CostCenters() {
                 </SelectContent>
               </Select>
               <Select value={filterCategory} onValueChange={setFilterCategory}>
-                <SelectTrigger className="w-[160px] bg-white">
+                <SelectTrigger className="w-full sm:w-[160px] bg-white border-slate-200">
                   <SelectValue placeholder="Categoria" />
                 </SelectTrigger>
                 <SelectContent>
@@ -1200,7 +1377,7 @@ export default function CostCenters() {
                 </SelectContent>
               </Select>
               <Select value={filterTipoLcto} onValueChange={setFilterTipoLcto}>
-                <SelectTrigger className="w-[140px] bg-white">
+                <SelectTrigger className="w-full sm:w-[140px] bg-white border-slate-200">
                   <SelectValue placeholder="Tipo" />
                 </SelectTrigger>
                 <SelectContent>
@@ -1209,12 +1386,12 @@ export default function CostCenters() {
                   <SelectItem value="A">Analítico (A)</SelectItem>
                 </SelectContent>
               </Select>
-              <div className="relative w-full sm:w-64">
-                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <div className="relative w-full sm:w-64 shrink-0">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                 <Input
                   type="search"
-                  placeholder="Buscar..."
-                  className="pl-8 bg-white"
+                  placeholder="Buscar código, nome..."
+                  className="pl-9 bg-white w-full border-slate-200 placeholder:text-slate-400"
                   value={search}
                   onChange={(e) => {
                     setSearch(e.target.value)
