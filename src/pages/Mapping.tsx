@@ -66,6 +66,8 @@ import { toast } from 'sonner'
 import { AccountCombobox, Account } from '@/components/AccountCombobox'
 import { ImportMappingModal } from '@/components/ImportMappingModal'
 import { MappingRow } from '@/components/MappingRow'
+import { useTablePreferences } from '@/hooks/use-table-preferences'
+import { TableSettingsControls } from '@/components/TableSettingsControls'
 import { cn } from '@/lib/utils'
 
 export default function Mapping() {
@@ -100,6 +102,8 @@ export default function Mapping() {
     const saved = localStorage.getItem('mapping_table_font_size')
     return saved ? parseInt(saved, 10) : 11
   })
+
+  const { prefs, updatePrefs } = useTablePreferences('mapping')
 
   useEffect(() => {
     localStorage.setItem('mapping_table_font_size', tableFontSize.toString())
@@ -870,29 +874,30 @@ export default function Mapping() {
           </p>
         </div>
         <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto mt-4 md:mt-0">
-          <div
-            className="hidden sm:flex items-center gap-1 bg-white rounded-md p-0.5 border border-slate-200 shadow-sm"
-            title="Tamanho da Fonte das Tabelas"
-          >
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 text-[12px] font-bold text-slate-600 hover:text-slate-900 bg-transparent"
-              onClick={() => setTableFontSize((p) => Math.max(8, p - 1))}
-            >
-              A-
-            </Button>
-            <span className="text-[12px] font-medium text-slate-500 w-5 text-center select-none">
-              {tableFontSize}
-            </span>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 text-[14px] font-bold text-slate-600 hover:text-slate-900 bg-transparent"
-              onClick={() => setTableFontSize((p) => Math.min(24, p + 1))}
-            >
-              A+
-            </Button>
+          <div className="hidden sm:flex items-center gap-1 bg-white rounded-md p-0.5 border border-slate-200 shadow-sm">
+            <div className="flex items-center gap-1" title="Tamanho da Fonte das Tabelas">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-[12px] font-bold text-slate-600 hover:text-slate-900 bg-transparent"
+                onClick={() => setTableFontSize((p) => Math.max(8, p - 1))}
+              >
+                A-
+              </Button>
+              <span className="text-[12px] font-medium text-slate-500 w-5 text-center select-none">
+                {tableFontSize}
+              </span>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-[14px] font-bold text-slate-600 hover:text-slate-900 bg-transparent"
+                onClick={() => setTableFontSize((p) => Math.min(24, p + 1))}
+              >
+                A+
+              </Button>
+            </div>
+            <div className="w-px h-5 bg-slate-200 mx-1" />
+            <TableSettingsControls prefs={prefs} updatePrefs={updatePrefs} />
           </div>
           <Button
             variant="secondary"
@@ -978,6 +983,36 @@ export default function Mapping() {
         }
         .mapping-table-wrapper .font-mono {
           font-size: 0.95em !important;
+        }
+        
+        ${
+          prefs.showGridlines
+            ? `
+        .mapping-table-wrapper td, .mapping-table-wrapper th {
+          border-right: ${prefs.gridlineWidth}px solid ${prefs.gridlineColor} !important;
+          border-bottom: ${prefs.gridlineWidth}px solid ${prefs.gridlineColor} !important;
+        }
+        .mapping-table-wrapper table {
+          border-top: ${prefs.gridlineWidth}px solid ${prefs.gridlineColor} !important;
+          border-left: ${prefs.gridlineWidth}px solid ${prefs.gridlineColor} !important;
+        }
+        .mapping-table-wrapper th {
+          border-top: ${prefs.gridlineWidth}px solid ${prefs.gridlineColor} !important;
+        }
+        `
+            : ''
+        }
+
+        ${
+          prefs.rowHeight === 'compact'
+            ? `
+        .mapping-table-wrapper td { padding-top: 2px !important; padding-bottom: 2px !important; }
+        `
+            : prefs.rowHeight === 'comfortable'
+              ? `
+        .mapping-table-wrapper td { padding-top: 12px !important; padding-bottom: 12px !important; }
+        `
+              : ''
         }
       `}</style>
 
