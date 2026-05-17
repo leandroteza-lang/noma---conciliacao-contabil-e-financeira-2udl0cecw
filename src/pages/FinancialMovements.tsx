@@ -51,7 +51,20 @@ import {
   AlignLeft,
   AlignCenter,
   AlignRight,
+  HelpCircle,
+  BookOpen,
+  Lightbulb,
+  MousePointerClick,
 } from 'lucide-react'
+import {
+  Drawer,
+  DrawerClose,
+  DrawerContent,
+  DrawerDescription,
+  DrawerFooter,
+  DrawerHeader,
+  DrawerTitle,
+} from '@/components/ui/drawer'
 import { TableSettingsControls } from '@/components/TableSettingsControls'
 import { useTablePreferences } from '@/hooks/use-table-preferences'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -133,6 +146,229 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog'
 import { Skeleton } from '@/components/ui/skeleton'
+
+const helpTopicsMap: Record<string, { title: string; steps: string[]; tips: string[] }> = {
+  grade: {
+    title: 'Grade de Movimentos',
+    steps: [
+      'Nesta aba, você visualiza linha a linha todos os movimentos importados do seu ERP.',
+      'A coluna "Status" é fundamental: ela indica se o lançamento tem mapeamento DE/PARA completo (Mapeado) ou se possui pendências de contas.',
+      'Você pode selecionar os registros usando as caixas de seleção à esquerda e usar as opções de Efetivação em lote.',
+      'Utilize os filtros nos cabeçalhos das colunas para localizar movimentos específicos rapidamente.',
+    ],
+    tips: [
+      'Ao identificar um status Pendente, clique em "Editar" na linha ou na aba "Resumo DE/PARA" para vincular o centro de custo a uma conta contábil.',
+      'Ative o "Modo Simplificado" na barra de filtros para exibir apenas as informações críticas.',
+    ],
+  },
+  resumo: {
+    title: 'Resumo Consolidado',
+    steps: [
+      'Visão sintética que agrupa todos os lançamentos por Conta Contábil, Centro de Custo e Caixa/Banco.',
+      'Na matriz Débito x Crédito, você pode verificar exatamente quais contas receberão os valores efetivados.',
+      'Se houverem registros não mapeados, eles aparecerão destacados para que você identifique a divergência.',
+    ],
+    tips: [
+      'Use esta tela como "Prova Real" antes de efetivar os lançamentos, conferindo se os totais batem com o balancete do ERP.',
+    ],
+  },
+  balancete: {
+    title: 'Balancete Comparativo',
+    steps: [
+      'Analise a evolução dos saldos de cada Centro de Custo ou Conta ao longo do tempo.',
+      'Ative as opções AV% (Análise Vertical) para ver a representatividade de cada conta no total do mês.',
+      'Ative a opção AH% (Análise Horizontal) para ver a variação percentual em relação ao mês anterior.',
+    ],
+    tips: [
+      'Utilize o botão de "Exportar CSV" para analisar os indicadores em planilhas externas se necessário.',
+    ],
+  },
+  dashboard: {
+    title: 'Dashboard Gerencial',
+    steps: [
+      'Acompanhe visualmente a distribuição de receitas e despesas através de gráficos interativos.',
+      'O gráfico de Top 10 Despesas ajuda a identificar rapidamente os maiores ofensores de custo.',
+      'Selecione até 5 centros de custo na "Evolução Comparativa" para traçar linhas de tendência simultâneas.',
+    ],
+    tips: [
+      'Clicar em uma fatia do gráfico de pizza abre automaticamente o detalhamento dos lançamentos que a compõem.',
+    ],
+  },
+  'resumo-mapeamento': {
+    title: 'Resumo DE/PARA',
+    steps: [
+      'Mostra a hierarquia atual dos Centros de Custo que vieram no movimento importado.',
+      'Permite auditar quais centros de custo já possuem uma Conta Contábil vinculada.',
+      'Você pode clicar em "Mapear" para criar rapidamente a regra de vínculo, que passará a valer para todos os lançamentos futuros deste centro de custo.',
+    ],
+    tips: [
+      'Resolver as pendências diretamente por esta tela é mais rápido do que editar linha a linha na Grade.',
+    ],
+  },
+  sankey: {
+    title: 'Análise Sankey',
+    steps: [
+      'Apresenta o fluxo de valores financeiros saindo dos Centros de Custo e indo para as Contas Contábeis.',
+      'A espessura da linha representa o volume financeiro transferido (quanto maior a linha, maior o valor).',
+      'Ajuda a encontrar anomalias estruturais, como um centro de custo de despesa alimentando uma conta de receita.',
+    ],
+    tips: ['Passe o mouse sobre os fluxos para ver o valor exato trafegado entre os nós.'],
+  },
+  'analise-grupos': {
+    title: 'Análise por Grupos',
+    steps: [
+      'Navegação estruturada (Drill-down) pelos níveis hierárquicos do seu plano de centro de custo.',
+      'Clique em "Explorar Nível" para aprofundar na árvore e detalhar as sub-contas.',
+      'Os totais são consolidados para a raiz exibida no momento.',
+    ],
+    tips: [
+      'Sincronize ou desvincule o período com o filtro global da tela para isolar análises históricas.',
+    ],
+  },
+  'dry-run': {
+    title: 'Pré-Conferência (Dry Run)',
+    steps: [
+      'Ambiente que simula como os lançamentos ficarão na contabilidade oficial.',
+      'Exibe as contas de Débito e Crédito que foram atribuídas de acordo com as lógicas financeiras e de mapeamento DE/PARA.',
+      'Lançamentos destacados em vermelho não puderam ter suas contas resolvidas (erro de mapeamento).',
+    ],
+    tips: [
+      'Você pode excluir registros seletivamente apenas do ambiente de Dry Run, forçando o status para "Ignorado", evitando que poluam a exportação final.',
+    ],
+  },
+  sync: {
+    title: 'Sincronizar Mapeamentos',
+    steps: [
+      'O sistema verifica todos os lançamentos com status "Pendente" na grade de movimentos.',
+      'Ele busca nas configurações globais de DE/PARA do sistema se há uma regra para o centro de custo ou conta bancária.',
+      'Se encontrar, ele vincula automaticamente a Conta Contábil e atualiza o status para "Mapeado".',
+    ],
+    tips: [
+      'Use esta opção sempre que alterar as regras no "Cadastro de Centros de Custo" para que a importação atual reflita as novas regras.',
+    ],
+  },
+  delete_all: {
+    title: 'Excluir Todos os Lançamentos',
+    steps: [
+      'Remove permanentemente todos os registros de movimento financeiro (ERP) visíveis ou ocultos na tela atual.',
+      'A ação é processada em lotes no fundo e pode levar alguns segundos dependendo do volume.',
+    ],
+    tips: [
+      'A exclusão envia os registros para a "Lixeira" (Central de Auditoria), não sendo apagados definitivamente do banco de dados na hora.',
+    ],
+  },
+  generate: {
+    title: 'Gerar Lançamentos Contábeis',
+    steps: [
+      'Converte as movimentações financeiras importadas em lançamentos contábeis oficiais (Accounting Entries).',
+      'Somente registros que estiverem com o mapeamento completo (Conta Débito e Crédito válidas) serão efetivados.',
+      'Os registros processados com sucesso terão o status alterado para "Concluído".',
+    ],
+    tips: [
+      'Lançamentos concluídos ficam disponíveis no menu "Lançamentos" para posterior envio ou emissão de razão.',
+    ],
+  },
+  import: {
+    title: 'Importar Planilha (ERP)',
+    steps: [
+      'Abre o modal de importação onde você pode carregar seu arquivo Excel (XLSX) ou CSV.',
+      'O sistema normaliza colunas comuns (como Valor, Data, Centro de Custo).',
+      'O processamento cria novos registros automaticamente se eles não forem encontrados no banco, evitando duplicações baseadas no Nº de Documento e Extrato.',
+    ],
+    tips: [
+      'Arquivos muito grandes são processados em segundo plano (background). Você pode continuar usando o sistema enquanto a barra de progresso avança.',
+    ],
+  },
+  kpi_gross: {
+    title: 'Total (Bruto)',
+    steps: [
+      'Representa a soma pura do campo "Valor Bruto" importado da sua planilha.',
+      'Não considera descontos ou impostos retidos na fonte.',
+      'É o indicador principal de volume de transações que passaram pela empresa no período filtrado.',
+    ],
+    tips: [],
+  },
+  kpi_net: {
+    title: 'Total (Líquido)',
+    steps: [
+      'Representa a soma do "Valor Líquido", que é o valor que efetivamente transitou no extrato bancário.',
+      'Diferenças entre o Total Bruto e Total Líquido normalmente indicam retenções, juros ou tarifas descontadas na operação.',
+    ],
+    tips: [],
+  },
+  kpi_in: {
+    title: 'Entradas (Positivos)',
+    steps: [
+      'Consolida a soma de todos os lançamentos que possuem o Valor Líquido maior que zero (> 0).',
+      'Traduz as receitas, recebimentos, aportes ou transferências de entrada na conta.',
+    ],
+    tips: [
+      'Clicar neste card aplica um atalho rápido no filtro da página, exibindo apenas as Entradas na tabela.',
+    ],
+  },
+  kpi_out: {
+    title: 'Saídas (Negativos)',
+    steps: [
+      'Consolida a soma em valor absoluto de todos os lançamentos que possuem o Valor Líquido menor que zero (< 0).',
+      'Traduz os pagamentos a fornecedores, despesas, tarifas ou transferências de saída.',
+    ],
+    tips: [
+      'Clicar neste card aplica um atalho rápido no filtro da página, exibindo apenas as Saídas na tabela.',
+    ],
+  },
+}
+
+function HelpContent({ topic }: { topic: string }) {
+  const data = helpTopicsMap[topic] || {
+    title: 'Visão Geral do Processo',
+    steps: ['Siga as instruções na tela para realizar a conciliação financeira.'],
+    tips: [],
+  }
+
+  return (
+    <div className="space-y-6 text-slate-700 text-left">
+      <div>
+        <h3 className="text-2xl font-bold text-slate-900 mb-2">{data.title}</h3>
+        <p className="text-slate-600 leading-relaxed">
+          Entenda os detalhes e as melhores práticas para utilizar esta funcionalidade de forma
+          eficiente.
+        </p>
+      </div>
+
+      <div className="bg-indigo-50/50 rounded-xl p-5 border border-indigo-100">
+        <h4 className="font-semibold text-indigo-900 flex items-center gap-2 mb-3">
+          <BookOpen className="h-4 w-4" /> Passo a Passo e Regras
+        </h4>
+        <ul className="space-y-3">
+          {data.steps.map((step, i) => (
+            <li key={i} className="flex items-start gap-3">
+              <span className="flex items-center justify-center bg-indigo-200 text-indigo-800 rounded-full h-5 w-5 text-xs font-bold shrink-0 mt-0.5">
+                {i + 1}
+              </span>
+              <span className="leading-relaxed text-sm">{step}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      {data.tips.length > 0 && (
+        <div className="bg-amber-50/50 rounded-xl p-5 border border-amber-100">
+          <h4 className="font-semibold text-amber-900 flex items-center gap-2 mb-3">
+            <Lightbulb className="h-4 w-4 text-amber-600" /> Dicas de Melhor Prática
+          </h4>
+          <ul className="space-y-2">
+            {data.tips.map((tip, i) => (
+              <li key={i} className="flex items-start gap-2.5 text-sm text-amber-800">
+                <div className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0 mt-1.5" />
+                <span className="leading-relaxed">{tip}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  )
+}
 
 const getGridlineStyle = (prefs: any) => {
   if (!prefs?.showGridlines) return undefined
@@ -3570,6 +3806,7 @@ export default function FinancialMovements() {
 
   const [dryRunFiltersOpen, setDryRunFiltersOpen] = useState(false)
   const [dryRunFilters, setDryRunFilters] = useState<Record<string, string[]>>({})
+  const [helpTopic, setHelpTopic] = useState<string | null>(null)
 
   const handleUpdateCrossReferenceStatus = async (rowIds: string[], newStatus: string) => {
     if (!user) return
@@ -7874,9 +8111,21 @@ export default function FinancialMovements() {
                 Sincronizar Mapeamentos
               </Button>
             </TooltipTrigger>
-            <TooltipContent>
-              <p>Sincroniza os mapeamentos DE/PARA entre ERP e Contábil</p>
-            </TooltipContent>
+            <TooltipContent className="pointer-events-auto select-none max-w-[280px]">
+              <p className="font-medium text-[13px]">
+                Sincroniza os mapeamentos DE/PARA entre ERP e Contábil
+              </p>
+              <div
+                className="mt-2 pt-2 border-t border-slate-700/50 flex items-center gap-1.5 text-[11px] font-bold text-indigo-300 hover:text-white cursor-pointer transition-colors"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setHelpTopic('sync')
+                }}
+              >
+                <MousePointerClick className="w-3.5 h-3.5" />
+                <span>Clique para explicação detalhada</span>
+              </div>
+            </TooltipContent>{' '}
           </Tooltip>
           {activeTab === 'grade' && (
             <>
@@ -7895,8 +8144,20 @@ export default function FinancialMovements() {
                     Excluir Todos
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent>
-                  <p>Exclui todos os registros de movimento financeiro da base</p>
+                <TooltipContent className="pointer-events-auto select-none max-w-[280px]">
+                  <p className="font-medium text-[13px]">
+                    Exclui todos os registros de movimento financeiro da base
+                  </p>
+                  <div
+                    className="mt-2 pt-2 border-t border-slate-700/50 flex items-center gap-1.5 text-[11px] font-bold text-indigo-300 hover:text-white cursor-pointer transition-colors"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setHelpTopic('delete_all')
+                    }}
+                  >
+                    <MousePointerClick className="w-3.5 h-3.5" />
+                    <span>Clique para explicação detalhada</span>
+                  </div>
                 </TooltipContent>
               </Tooltip>
               <Tooltip>
@@ -7911,8 +8172,20 @@ export default function FinancialMovements() {
                     Gerar Lançamentos Contábeis
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent>
-                  <p>Gera os lançamentos contábeis a partir dos movimentos mapeados</p>
+                <TooltipContent className="pointer-events-auto select-none max-w-[280px]">
+                  <p className="font-medium text-[13px]">
+                    Gera os lançamentos contábeis a partir dos movimentos mapeados
+                  </p>
+                  <div
+                    className="mt-2 pt-2 border-t border-slate-700/50 flex items-center gap-1.5 text-[11px] font-bold text-indigo-300 hover:text-white cursor-pointer transition-colors"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setHelpTopic('generate')
+                    }}
+                  >
+                    <MousePointerClick className="w-3.5 h-3.5" />
+                    <span>Clique para explicação detalhada</span>
+                  </div>
                 </TooltipContent>
               </Tooltip>
             </>
@@ -7924,8 +8197,20 @@ export default function FinancialMovements() {
                 Importar Planilha
               </Button>
             </TooltipTrigger>
-            <TooltipContent>
-              <p>Importar nova planilha de movimentos financeiros do ERP</p>
+            <TooltipContent className="pointer-events-auto select-none max-w-[280px]">
+              <p className="font-medium text-[13px]">
+                Importar nova planilha de movimentos financeiros do ERP
+              </p>
+              <div
+                className="mt-2 pt-2 border-t border-slate-700/50 flex items-center gap-1.5 text-[11px] font-bold text-indigo-300 hover:text-white cursor-pointer transition-colors"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setHelpTopic('import')
+                }}
+              >
+                <MousePointerClick className="w-3.5 h-3.5" />
+                <span>Clique para explicação detalhada</span>
+              </div>
             </TooltipContent>
           </Tooltip>
         </div>
@@ -8090,8 +8375,18 @@ export default function FinancialMovements() {
                     {tabConfig.label}
                   </TabsTrigger>
                 </TooltipTrigger>
-                <TooltipContent>
-                  <p>{tabConfig.tooltip}</p>
+                <TooltipContent className="pointer-events-auto select-none max-w-[280px]">
+                  <p className="font-medium text-[13px]">{tabConfig.tooltip}</p>
+                  <div
+                    className="mt-2 pt-2 border-t border-slate-700/50 flex items-center gap-1.5 text-[11px] font-bold text-indigo-300 hover:text-white cursor-pointer transition-colors"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setHelpTopic(tabId)
+                    }}
+                  >
+                    <MousePointerClick className="w-3.5 h-3.5" />
+                    <span>Clique para explicação detalhada</span>
+                  </div>
                 </TooltipContent>
               </Tooltip>
             )
@@ -8836,8 +9131,20 @@ export default function FinancialMovements() {
                         <CircleDollarSign className="icone" />
                       </div>
                     </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Soma do valor bruto de todos os lançamentos filtrados</p>
+                    <TooltipContent className="pointer-events-auto select-none max-w-[280px]">
+                      <p className="font-medium text-[13px]">
+                        Soma do valor bruto de todos os lançamentos filtrados
+                      </p>
+                      <div
+                        className="mt-2 pt-2 border-t border-slate-700/50 flex items-center gap-1.5 text-[11px] font-bold text-indigo-300 hover:text-white cursor-pointer transition-colors"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setHelpTopic('kpi_gross')
+                        }}
+                      >
+                        <MousePointerClick className="w-3.5 h-3.5" />
+                        <span>Clique para explicação detalhada</span>
+                      </div>
                     </TooltipContent>
                   </Tooltip>
                   <Tooltip>
@@ -8863,8 +9170,20 @@ export default function FinancialMovements() {
                         <Wallet className="icone" />
                       </div>
                     </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Soma do valor líquido (saldo real) dos lançamentos filtrados</p>
+                    <TooltipContent className="pointer-events-auto select-none max-w-[280px]">
+                      <p className="font-medium text-[13px]">
+                        Soma do valor líquido (saldo real) dos lançamentos filtrados
+                      </p>
+                      <div
+                        className="mt-2 pt-2 border-t border-slate-700/50 flex items-center gap-1.5 text-[11px] font-bold text-indigo-300 hover:text-white cursor-pointer transition-colors"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setHelpTopic('kpi_net')
+                        }}
+                      >
+                        <MousePointerClick className="w-3.5 h-3.5" />
+                        <span>Clique para explicação detalhada</span>
+                      </div>
                     </TooltipContent>
                   </Tooltip>
                   <Tooltip>
@@ -8905,8 +9224,20 @@ export default function FinancialMovements() {
                         <TrendingUp className="icone" />
                       </div>
                     </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Soma de todas as entradas (+). Clique para filtrar por entradas.</p>
+                    <TooltipContent className="pointer-events-auto select-none max-w-[280px]">
+                      <p className="font-medium text-[13px]">
+                        Soma de todas as entradas (+). Clique no card para filtrar por entradas.
+                      </p>
+                      <div
+                        className="mt-2 pt-2 border-t border-slate-700/50 flex items-center gap-1.5 text-[11px] font-bold text-indigo-300 hover:text-white cursor-pointer transition-colors"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setHelpTopic('kpi_in')
+                        }}
+                      >
+                        <MousePointerClick className="w-3.5 h-3.5" />
+                        <span>Clique para explicação detalhada</span>
+                      </div>
                     </TooltipContent>
                   </Tooltip>
                   <Tooltip>
@@ -8947,8 +9278,20 @@ export default function FinancialMovements() {
                         <TrendingDown className="icone" />
                       </div>
                     </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Soma de todas as saídas (-). Clique para filtrar por saídas.</p>
+                    <TooltipContent className="pointer-events-auto select-none max-w-[280px]">
+                      <p className="font-medium text-[13px]">
+                        Soma de todas as saídas (-). Clique no card para filtrar por saídas.
+                      </p>
+                      <div
+                        className="mt-2 pt-2 border-t border-slate-700/50 flex items-center gap-1.5 text-[11px] font-bold text-indigo-300 hover:text-white cursor-pointer transition-colors"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setHelpTopic('kpi_out')
+                        }}
+                      >
+                        <MousePointerClick className="w-3.5 h-3.5" />
+                        <span>Clique para explicação detalhada</span>
+                      </div>
                     </TooltipContent>
                   </Tooltip>
                 </div>
@@ -15716,6 +16059,32 @@ export default function FinancialMovements() {
           )}
         </SheetContent>
       </Sheet>
+
+      <Drawer open={!!helpTopic} onOpenChange={(open) => !open && setHelpTopic(null)}>
+        <DrawerContent className="max-h-[90vh]">
+          <DrawerHeader className="border-b border-slate-100 pb-4">
+            <DrawerTitle className="text-xl font-bold text-slate-800 flex items-center gap-2">
+              <HelpCircle className="h-5 w-5 text-indigo-600" />
+              Guia Detalhado do Processo
+            </DrawerTitle>
+            <DrawerDescription>
+              Aprenda como funciona esta etapa da gestão e conciliação financeira.
+            </DrawerDescription>
+          </DrawerHeader>
+          <div className="p-6 overflow-y-auto custom-scrollbar">
+            <div className="max-w-3xl mx-auto space-y-6">
+              <HelpContent topic={helpTopic || ''} />
+            </div>
+          </div>
+          <DrawerFooter className="border-t border-slate-100 pt-4">
+            <DrawerClose asChild>
+              <Button variant="outline" className="w-full sm:w-auto mx-auto">
+                Fechar Guia
+              </Button>
+            </DrawerClose>
+          </DrawerFooter>
+        </DrawerContent>
+      </Drawer>
     </div>
   )
 }
