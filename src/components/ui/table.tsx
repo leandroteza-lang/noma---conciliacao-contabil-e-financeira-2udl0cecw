@@ -10,47 +10,71 @@ const Table = React.forwardRef<
     showGridlines?: boolean
     gridlineWidth?: number
     gridlineColor?: string
+    rowHeight?: 'compact' | 'standard' | 'comfortable' | number
   }
 >(
   (
-    { className, wrapperClassName, showGridlines, gridlineWidth, gridlineColor, style, ...props },
+    {
+      className,
+      wrapperClassName,
+      showGridlines,
+      gridlineWidth,
+      gridlineColor,
+      rowHeight = 'standard',
+      style,
+      ...props
+    },
     ref,
-  ) => (
-    <div
-      className={cn('relative w-full overflow-auto', wrapperClassName)}
-      style={
-        {
-          ...(showGridlines
-            ? {
-                '--grid-width': `${gridlineWidth || 1}px`,
-                '--grid-color': gridlineColor || '#cbd5e1',
-              }
-            : {}),
-        } as React.CSSProperties
-      }
-    >
-      {showGridlines && (
+  ) => {
+    let paddingY = '0.375rem'
+    if (rowHeight === 'compact') paddingY = '0.1rem'
+    else if (rowHeight === 'comfortable') paddingY = '0.75rem'
+
+    return (
+      <div
+        className={cn('relative w-full overflow-auto', wrapperClassName)}
+        style={
+          {
+            '--table-padding-y': paddingY,
+            ...(showGridlines
+              ? {
+                  '--grid-width': `${gridlineWidth || 1}px`,
+                  '--grid-color': gridlineColor || '#cbd5e1',
+                }
+              : {}),
+            ...style,
+          } as React.CSSProperties
+        }
+      >
         <style>{`
-        .table-gridlines th, .table-gridlines td {
-          border: var(--grid-width) solid var(--grid-color) !important;
-        }
-        .table-gridlines {
-          border-collapse: collapse;
-        }
-      `}</style>
-      )}
-      <table
-        ref={ref}
-        className={cn(
-          'w-full caption-bottom text-sm',
-          showGridlines && 'table-gridlines',
-          className,
+          .table-custom-density th, .table-custom-density td {
+            padding-top: var(--table-padding-y) !important;
+            padding-bottom: var(--table-padding-y) !important;
+            height: auto !important;
+          }
+        `}</style>
+        {showGridlines && (
+          <style>{`
+          .table-gridlines th, .table-gridlines td {
+            border: var(--grid-width) solid var(--grid-color) !important;
+          }
+          .table-gridlines {
+            border-collapse: collapse;
+          }
+        `}</style>
         )}
-        style={style}
-        {...props}
-      />
-    </div>
-  ),
+        <table
+          ref={ref}
+          className={cn(
+            'w-full caption-bottom text-sm table-custom-density',
+            showGridlines && 'table-gridlines',
+            className,
+          )}
+          {...props}
+        />
+      </div>
+    )
+  },
 )
 Table.displayName = 'Table'
 

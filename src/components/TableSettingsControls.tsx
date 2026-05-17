@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { Slider } from '@/components/ui/slider'
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Settings2 } from 'lucide-react'
 import { TablePrefs } from '@/hooks/use-table-preferences'
 
@@ -77,6 +78,35 @@ export function TableSettingsControls({ prefs, updatePrefs, className }: Props) 
             </div>
           </div>
         )}
+        <div className="space-y-3 pt-4 border-t border-slate-100">
+          <Label className="text-sm font-medium block">Densidade das Linhas</Label>
+          <RadioGroup
+            value={prefs.rowHeight || 'standard'}
+            onValueChange={(val: 'compact' | 'standard' | 'comfortable') =>
+              updatePrefs({ rowHeight: val })
+            }
+            className="flex flex-col space-y-1"
+          >
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="compact" id="compact" />
+              <Label htmlFor="compact" className="font-normal cursor-pointer">
+                Compacto (Menor)
+              </Label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="standard" id="standard" />
+              <Label htmlFor="standard" className="font-normal cursor-pointer">
+                Padrão
+              </Label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="comfortable" id="comfortable" />
+              <Label htmlFor="comfortable" className="font-normal cursor-pointer">
+                Confortável (Maior)
+              </Label>
+            </div>
+          </RadioGroup>
+        </div>
       </PopoverContent>
     </Popover>
   )

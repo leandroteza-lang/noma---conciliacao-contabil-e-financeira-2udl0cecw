@@ -1232,6 +1232,7 @@ export default function CostCenters() {
               showGridlines={prefs.showGridlines}
               gridlineWidth={prefs.gridlineWidth}
               gridlineColor={prefs.gridlineColor}
+              rowHeight={prefs.rowHeight}
             >
               <TableHeader className="bg-slate-100 whitespace-nowrap border-b-2 border-slate-200">
                 <TableRow>
