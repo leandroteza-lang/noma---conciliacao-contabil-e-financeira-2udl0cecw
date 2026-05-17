@@ -1003,17 +1003,6 @@ export default function Mapping() {
             : ''
         }
 
-        ${
-          prefs.rowHeight === 'compact'
-            ? `
-        .mapping-table-wrapper td { padding-top: 2px !important; padding-bottom: 2px !important; }
-        `
-            : prefs.rowHeight === 'comfortable'
-              ? `
-        .mapping-table-wrapper td { padding-top: 12px !important; padding-bottom: 12px !important; }
-        `
-              : ''
-        }
       `}</style>
 
       <Card className="bg-white shadow-sm border-slate-200 overflow-hidden">
@@ -1275,7 +1264,16 @@ export default function Mapping() {
         <div className="overflow-x-auto mapping-table-wrapper">
           <Table className="border-collapse" style={{ fontSize: `${tableFontSize}px` }}>
             <TableHeader className="bg-indigo-950 border-b border-indigo-900 shadow-sm sticky top-0 z-10">
-              <TableRow className="h-14 hover:bg-indigo-950 border-b-0">
+              <TableRow
+                className={cn(
+                  'hover:bg-indigo-950 border-b-0',
+                  prefs.rowHeight === 'compact'
+                    ? 'h-10'
+                    : prefs.rowHeight === 'comfortable'
+                      ? 'h-16'
+                      : 'h-14',
+                )}
+              >
                 <TableHead className="w-[40px] text-center border-r border-indigo-900/50 align-middle">
                   <div className="flex justify-center">
                     <Checkbox
@@ -1328,6 +1326,7 @@ export default function Mapping() {
                   onToggleGroup={toggleGroup}
                   onMap={handleMap}
                   onRemove={handleRemove}
+                  rowHeight={prefs.rowHeight}
                 />
               ))}
               {paginatedCCs.length === 0 && (

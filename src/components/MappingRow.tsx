@@ -19,7 +19,15 @@ export const MappingRow = memo(function MappingRow({
   onToggleGroup,
   onMap,
   onRemove,
+  rowHeight = 'standard',
 }: any) {
+  const pyClass =
+    rowHeight === 'compact' ? 'py-0.5' : rowHeight === 'comfortable' ? 'py-3' : 'py-1.5'
+  const btnSizeClass =
+    rowHeight === 'compact' ? 'h-7' : rowHeight === 'comfortable' ? 'h-10' : 'h-8'
+  const btn9SizeClass =
+    rowHeight === 'compact' ? 'h-8' : rowHeight === 'comfortable' ? 'h-11' : 'h-9'
+
   const getRowStyle = (cc: any, index?: number) => {
     if (cc.isSynthetic) {
       const code = cc.code || ''
@@ -40,7 +48,12 @@ export const MappingRow = memo(function MappingRow({
       disableZebra
       className={cn('transition-colors border-b border-slate-100', getRowStyle(cc, index))}
     >
-      <TableCell className="p-1.5 px-4 w-[40px] border-r border-slate-200/40 align-middle text-center">
+      <TableCell
+        className={cn(
+          'px-4 w-[40px] border-r border-slate-200/40 align-middle text-center',
+          pyClass,
+        )}
+      >
         {!cc.isSynthetic && (
           <div className="flex justify-center">
             <Checkbox
@@ -54,7 +67,9 @@ export const MappingRow = memo(function MappingRow({
 
       {cc.isSynthetic && !cc.mappingId ? (
         <>
-          <TableCell className="p-1.5 border-r border-slate-200/40 align-middle max-w-0">
+          <TableCell
+            className={cn('px-1.5 border-r border-slate-200/40 align-middle max-w-0', pyClass)}
+          >
             <div
               className="flex items-center justify-start gap-2 w-full min-w-0"
               style={{ paddingLeft: cc.level > 0 ? `${cc.level * 1.25}rem` : undefined }}
@@ -89,14 +104,15 @@ export const MappingRow = memo(function MappingRow({
               </div>
             </div>
           </TableCell>
-          <TableCell className="p-1.5 px-2 pr-4 align-middle max-w-0">
+          <TableCell className={cn('px-2 pr-4 align-middle max-w-0', pyClass)}>
             <div className="flex justify-end shrink-0 w-full">
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => onToggleGroup(cc.id)}
                 className={cn(
-                  'h-8 px-3 text-[1em] font-medium transition-colors border-0',
+                  'px-3 text-[1em] font-medium transition-colors border-0',
+                  btnSizeClass,
                   ((cc.code || '').match(/\./g) || []).length + 1 <= 3
                     ? 'bg-white/10 text-white hover:bg-white/20 hover:text-white'
                     : 'bg-black/5 text-blue-950 hover:bg-black/10 hover:text-blue-950',
@@ -114,7 +130,9 @@ export const MappingRow = memo(function MappingRow({
         </>
       ) : (
         <>
-          <TableCell className="p-1.5 border-r border-slate-200/40 align-middle max-w-0">
+          <TableCell
+            className={cn('px-1.5 border-r border-slate-200/40 align-middle max-w-0', pyClass)}
+          >
             <div
               className="flex items-center justify-start gap-2 w-full min-w-0"
               style={{ paddingLeft: cc.level > 0 ? `${cc.level * 1.25}rem` : undefined }}
@@ -159,11 +177,19 @@ export const MappingRow = memo(function MappingRow({
               </div>
             </div>
           </TableCell>
-          <TableCell className="p-1.5 px-2 pr-4 align-middle max-w-0">
+          <TableCell className={cn('px-2 pr-4 align-middle max-w-0', pyClass)}>
             <div className="flex flex-col gap-1 w-full min-w-0">
               <div className="flex items-center gap-2 w-full min-w-0">
                 <div className="flex-1 min-w-0 flex items-center gap-2">
-                  <div className="flex-1 min-w-0">
+                  <div
+                    className={cn(
+                      'flex-1 min-w-0',
+                      rowHeight === 'compact' &&
+                        '[&_button[role=combobox]]:h-8 [&_button[role=combobox]]:min-h-8',
+                      rowHeight === 'comfortable' &&
+                        '[&_button[role=combobox]]:h-11 [&_button[role=combobox]]:min-h-11',
+                    )}
+                  >
                     <AccountCombobox
                       accounts={enrichedCAs}
                       value={cc.mappedCa?.id}
@@ -186,7 +212,10 @@ export const MappingRow = memo(function MappingRow({
                   {cc.ccPendingDeletion && (
                     <Badge
                       variant="outline"
-                      className="bg-red-50 text-red-600 border-red-200 whitespace-nowrap shrink-0 text-[0.85em] h-8 flex items-center px-2 shadow-sm mr-2"
+                      className={cn(
+                        'bg-red-50 text-red-600 border-red-200 whitespace-nowrap shrink-0 text-[0.85em] flex items-center px-2 shadow-sm mr-2',
+                        btnSizeClass,
+                      )}
                     >
                       CC em Exclusão
                     </Badge>
@@ -194,7 +223,10 @@ export const MappingRow = memo(function MappingRow({
                   {cc.pendingDeletion && !cc.ccPendingDeletion && (
                     <Badge
                       variant="outline"
-                      className="bg-orange-50 text-orange-600 border-orange-200 whitespace-nowrap shrink-0 text-[0.85em] h-8 flex items-center px-2 shadow-sm mr-2"
+                      className={cn(
+                        'bg-orange-50 text-orange-600 border-orange-200 whitespace-nowrap shrink-0 text-[0.85em] flex items-center px-2 shadow-sm mr-2',
+                        btnSizeClass,
+                      )}
                     >
                       Desvínculo Pendente
                     </Badge>
@@ -204,7 +236,10 @@ export const MappingRow = memo(function MappingRow({
                       variant="outline"
                       size="sm"
                       onClick={() => onRemove(cc.mappingId)}
-                      className="h-9 px-2 shrink-0 text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200 shadow-sm ml-2"
+                      className={cn(
+                        'px-2 shrink-0 text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200 shadow-sm ml-2',
+                        btn9SizeClass,
+                      )}
                       title="Desvincular"
                     >
                       <Unlink className="h-4 w-4" />
@@ -220,7 +255,8 @@ export const MappingRow = memo(function MappingRow({
                       size="sm"
                       onClick={() => onToggleExpand(cc.id)}
                       className={cn(
-                        'h-9 px-3 text-[1em] font-medium shrink-0 transition-colors shadow-sm',
+                        'px-3 text-[1em] font-medium shrink-0 transition-colors shadow-sm',
+                        btn9SizeClass,
                         isExpanded
                           ? 'bg-slate-100 text-slate-800 border-slate-300'
                           : 'bg-white text-slate-700 hover:bg-slate-50 border-slate-200',
@@ -271,7 +307,12 @@ export const MappingRow = memo(function MappingRow({
                         <div
                           key={node.id}
                           className={cn(
-                            'flex items-center justify-start gap-2 px-2 py-1.5 transition-colors border-b border-slate-100/50 last:border-0',
+                            'flex items-center justify-start gap-2 px-2 transition-colors border-b border-slate-100/50 last:border-0',
+                            rowHeight === 'compact'
+                              ? 'py-0.5'
+                              : rowHeight === 'comfortable'
+                                ? 'py-2.5'
+                                : 'py-1.5',
                             rowClass,
                           )}
                         >
