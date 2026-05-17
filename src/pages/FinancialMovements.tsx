@@ -92,6 +92,7 @@ import {
   DropdownMenuSubContent,
 } from '@/components/ui/dropdown-menu'
 import { ImportErpFinancialModal } from '@/components/ImportErpFinancialModal'
+import { ImportReportModal } from '@/components/ImportReportModal'
 import { Progress } from '@/components/ui/progress'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
@@ -3838,6 +3839,7 @@ export default function FinancialMovements() {
   const [editForm, setEditForm] = useState<any>({})
   const [activeImport, setActiveImport] = useState<any>(null)
   const [elapsedSeconds, setElapsedSeconds] = useState(0)
+  const [importReportOpen, setImportReportOpen] = useState(false)
   const [refreshKey, setRefreshKey] = useState(0)
 
   const [tableFontSize, setTableFontSize] = useState<number>(() => {
@@ -8004,51 +8006,105 @@ export default function FinancialMovements() {
               className={`h-2 ${activeImport.status === 'Error' ? 'bg-red-100 [&>div]:bg-red-600' : activeImport.status === 'Completed' ? 'bg-green-100 [&>div]:bg-green-600' : 'bg-blue-100 [&>div]:bg-blue-600'}`}
             />
             {['Completed', 'Processing', 'Error'].includes(activeImport.status) && (
-              <div className="text-xs text-slate-700 bg-white/60 p-2.5 rounded-md border border-slate-200 flex flex-wrap items-center gap-x-6 gap-y-2 font-medium">
-                <div className="flex items-center gap-1.5" title="Registros Inseridos (Novos)">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-sm shadow-emerald-200"></span>
-                  {activeImport.success_count || 0} Inseridos
-                </div>
-                <div
-                  className="flex items-center gap-1.5"
-                  title="Registros Atualizados (Substituídos)"
-                >
-                  <span className="w-2 h-2 rounded-full bg-blue-500 shadow-sm shadow-blue-200"></span>
-                  {activeImport.updated_count || 0} Atualizados
-                </div>
-                <div className="flex items-center gap-1.5" title="Registros Ignorados (Duplicados)">
-                  <span className="w-2 h-2 rounded-full bg-slate-400 shadow-sm shadow-slate-200"></span>
-                  {activeImport.ignored_count || 0} Ignorados
-                </div>
-                <div className="flex items-center gap-1.5" title="Registros com Erro">
-                  <span className="w-2 h-2 rounded-full bg-red-500 shadow-sm shadow-red-200"></span>
-                  <span className={activeImport.error_count > 0 ? 'text-red-600' : ''}>
-                    {activeImport.error_count || 0} Erros
+              <div className="flex flex-col gap-3 w-full mt-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-600 uppercase tracking-wider flex items-center gap-2">
+                    Auditoria de Processamento
+                    {activeImport.status === 'Processing' && (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-500" />
+                    )}
                   </span>
+                  {activeImport.status === 'Completed' && (
+                    <span className="text-[10px] text-emerald-700 font-bold flex items-center gap-1 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200 shadow-sm">
+                      <CheckCircle2 className="w-3.5 h-3.5" /> Verificação de Integridade Concluída:{' '}
+                      {new Date(activeImport.updated_at || activeImport.created_at).toLocaleString(
+                        'pt-BR',
+                      )}
+                    </span>
+                  )}
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <div className="bg-white p-3 rounded-lg border border-slate-200 shadow-sm flex flex-col gap-1.5 relative overflow-hidden">
+                    <div className="absolute left-0 top-0 bottom-0 w-1 bg-emerald-500" />
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-500 text-[10px] font-bold uppercase tracking-wide">
+                        Inseridos
+                      </span>
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-sm shadow-emerald-200"></span>
+                    </div>
+                    <div className="text-2xl font-black text-slate-800">
+                      {activeImport.success_count || 0}
+                    </div>
+                  </div>
+                  <div className="bg-white p-3 rounded-lg border border-slate-200 shadow-sm flex flex-col gap-1.5 relative overflow-hidden">
+                    <div className="absolute left-0 top-0 bottom-0 w-1 bg-blue-500" />
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-500 text-[10px] font-bold uppercase tracking-wide">
+                        Atualizados
+                      </span>
+                      <span className="w-2 h-2 rounded-full bg-blue-500 shadow-sm shadow-blue-200"></span>
+                    </div>
+                    <div className="text-2xl font-black text-slate-800">
+                      {activeImport.updated_count || 0}
+                    </div>
+                  </div>
+                  <div className="bg-white p-3 rounded-lg border border-slate-200 shadow-sm flex flex-col gap-1.5 relative overflow-hidden">
+                    <div className="absolute left-0 top-0 bottom-0 w-1 bg-slate-400" />
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-500 text-[10px] font-bold uppercase tracking-wide">
+                        Ignorados
+                      </span>
+                      <span className="w-2 h-2 rounded-full bg-slate-400 shadow-sm shadow-slate-200"></span>
+                    </div>
+                    <div className="text-2xl font-black text-slate-800">
+                      {activeImport.ignored_count || 0}
+                    </div>
+                  </div>
+                  <div className="bg-rose-50 p-3 rounded-lg border border-rose-200 shadow-sm flex flex-col gap-1.5 relative overflow-hidden">
+                    <div className="absolute left-0 top-0 bottom-0 w-1 bg-rose-500" />
+                    <div className="flex items-center justify-between">
+                      <span className="text-rose-700 text-[10px] font-bold uppercase tracking-wide">
+                        Erros
+                      </span>
+                      <span className="w-2 h-2 rounded-full bg-rose-500 shadow-sm shadow-rose-200"></span>
+                    </div>
+                    <div className="text-2xl font-black text-rose-700">
+                      {activeImport.error_count || 0}
+                    </div>
+                  </div>
+                </div>
+                {(() => {
+                  const accounted =
+                    (activeImport.success_count || 0) +
+                    (activeImport.updated_count || 0) +
+                    (activeImport.ignored_count || 0) +
+                    (activeImport.error_count || 0)
+                  const unaccounted = (activeImport.total_records || 0) - accounted
+                  if (unaccounted > 0 && ['Completed', 'Error'].includes(activeImport.status)) {
+                    return (
+                      <div className="text-xs text-amber-800 bg-amber-50 px-3 py-2 rounded-md border border-amber-200 flex items-start gap-2 shadow-sm">
+                        <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-amber-600" />
+                        <div>
+                          <strong>{unaccounted} registros não contabilizados.</strong> Isso ocorre
+                          devido a linhas em branco na planilha ou falhas sistêmicas em lote.
+                        </div>
+                      </div>
+                    )
+                  }
+                  return null
+                })()}
+                <div className="flex justify-end pt-1">
+                  <Button
+                    variant="default"
+                    size="sm"
+                    className="bg-[#1e1b4b] hover:bg-[#312e81] text-white shadow-sm h-8 text-xs font-semibold"
+                    onClick={() => setImportReportOpen(true)}
+                  >
+                    Ver Detalhes do Relatório <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
+                  </Button>
                 </div>
               </div>
             )}
-            {activeImport.status === 'Error' &&
-              activeImport.errors_list &&
-              activeImport.errors_list.length > 0 && (
-                <div className="text-xs text-red-600 mt-1 max-h-32 overflow-y-auto bg-red-50 border border-red-200 p-3 rounded-md shadow-sm">
-                  <p className="font-semibold mb-1.5 flex items-center gap-1.5">
-                    <AlertCircle className="w-3.5 h-3.5" /> Últimos erros encontrados:
-                  </p>
-                  <ul className="list-disc pl-5 space-y-1">
-                    {activeImport.errors_list.slice(0, 10).map((err: any, idx: number) => (
-                      <li key={idx}>
-                        Linha {err.row > 0 ? err.row : '?'}: {err.error}
-                      </li>
-                    ))}
-                    {activeImport.errors_list.length > 10 && (
-                      <li className="font-medium pt-1 text-red-700">
-                        ... e mais {activeImport.errors_list.length - 10} erros.
-                      </li>
-                    )}
-                  </ul>
-                </div>
-              )}
           </CardContent>
         </Card>
       )}
@@ -15548,6 +15604,12 @@ export default function FinancialMovements() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      <ImportReportModal
+        open={importReportOpen}
+        onOpenChange={setImportReportOpen}
+        importData={activeImport}
+      />
 
       <ImportErpFinancialModal
         open={isImportOpen}

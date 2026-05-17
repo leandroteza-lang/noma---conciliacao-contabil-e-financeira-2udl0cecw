@@ -295,7 +295,7 @@ Deno.serve(async (req: Request) => {
               .update({ total_records: normalizedRecords.length })
               .eq('id', history.id)
 
-            const CHUNK_SIZE = 2000
+            const CHUNK_SIZE = 500
             const totalChunks = Math.ceil(normalizedRecords.length / CHUNK_SIZE)
 
             if (totalChunks === 0) {
@@ -2809,10 +2809,12 @@ Deno.serve(async (req: Request) => {
           rpcPayload,
         )
         if (rpcErr) {
-          addError(0, `Erro RPC: ${rpcErr.message}`, {})
+          rejected += orgRecords.length
+          addError(0, `Erro Sistêmico (Lote de ${orgRecords.length} falhou): ${rpcErr.message}`, {})
         } else if (res) {
           if (res.success === false) {
-            addError(0, `Erro RPC: ${res.error}`, {})
+            rejected += orgRecords.length
+            addError(0, `Erro Sistêmico (Lote de ${orgRecords.length} falhou): ${res.error}`, {})
           } else {
             inserted += res.inserted || 0
             rejected += res.rejected || 0
@@ -2841,7 +2843,7 @@ Deno.serve(async (req: Request) => {
       await supabaseAdmin
         .from('import_history')
         .update({
-          processed_records: Math.min(nextChunk * 2000, payload.totalRecords || nextChunk * 2000),
+          processed_records: Math.min(nextChunk * 500, payload.totalRecords || nextChunk * 500),
           success_count: newInserted,
           error_count: newRejected,
           ignored_count: newIgnored,
