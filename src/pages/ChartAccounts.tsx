@@ -1198,7 +1198,12 @@ export default function ChartAccounts() {
                         <TableCell className="font-medium whitespace-nowrap">
                           {acc.classification || '-'}
                         </TableCell>
-                        <TableCell className="font-bold whitespace-nowrap">
+                        <TableCell
+                          className={cn(
+                            'whitespace-nowrap',
+                            acc.account_level === 'Sintética' ? 'font-bold' : 'font-normal',
+                          )}
+                        >
                           <div
                             className="flex items-center"
                             style={{ paddingLeft: `${getIndentFromAcc(acc)}rem` }}
