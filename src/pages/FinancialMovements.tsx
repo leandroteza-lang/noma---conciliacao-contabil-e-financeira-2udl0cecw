@@ -141,6 +141,7 @@ import {
 } from '@/components/ui/sheet'
 import {
   Dialog,
+  DialogTrigger,
   DialogContent,
   DialogHeader,
   DialogTitle,
@@ -5847,12 +5848,20 @@ export default function FinancialMovements() {
   >(null)
   const [isDeleting, setIsDeleting] = useState(false)
 
-  const [deletionState, setDeletionState] = useState({
+  const [deletionState, setDeletionState] = useState<{
+    active: boolean
+    progress: number
+    total: number
+    processed: number
+    status: 'Processing' | 'Completed' | 'Error'
+    errors: { chunk: number; message: string }[]
+  }>({
     active: false,
     progress: 0,
     total: 0,
     processed: 0,
-    status: 'Processing' as 'Processing' | 'Completed' | 'Error',
+    status: 'Processing',
+    errors: [],
   })
 
   const toggleColumn = (key: string) => {
@@ -5974,16 +5983,17 @@ export default function FinancialMovements() {
 
   const updateWithRetry = async (ids: string[], retries = 3) => {
     if (!user) return { error: new Error('Usuário não autenticado') }
+    let lastError = null
     for (let attempt = 1; attempt <= retries; attempt++) {
       const { error } = await supabase
         .from('erp_financial_movements')
         .update({ deleted_at: new Date().toISOString(), deleted_by: user.id })
         .in('id', ids)
       if (!error) return { error: null }
-      if (attempt === retries) return { error }
+      lastError = error
       await new Promise((res) => setTimeout(res, 1000 * attempt))
     }
-    return { error: new Error('Falha após múltiplas tentativas') }
+    return { error: lastError || new Error('Falha após múltiplas tentativas') }
   }
 
   const startBulkDelete = async (mode: 'all' | 'filtered') => {
@@ -6029,8 +6039,17 @@ export default function FinancialMovements() {
           if (!data || data.length === 0) break
 
           const ids = data.map((d) => d.id)
-          const { error: updateErr } = await updateWithRetry(ids)
-          if (updateErr) throw updateErr
+          const { error: updateErr } = await updateWithRetry(ids, 3)
+
+          if (updateErr) {
+            setDeletionState((prev) => ({
+              ...prev,
+              errors: [
+                ...prev.errors,
+                { chunk: processed, message: updateErr.message || 'Erro desconhecido' },
+              ],
+            }))
+          }
 
           processed += ids.length
           setDeletionState((prev) => ({
@@ -6135,8 +6154,17 @@ export default function FinancialMovements() {
         const chunkSize = 150
         for (let i = 0; i < idsToDelete.length; i += chunkSize) {
           const chunk = idsToDelete.slice(i, i + chunkSize)
-          const { error: updateErr } = await updateWithRetry(chunk)
-          if (updateErr) throw updateErr
+          const { error: updateErr } = await updateWithRetry(chunk, 3)
+
+          if (updateErr) {
+            setDeletionState((prev) => ({
+              ...prev,
+              errors: [
+                ...prev.errors,
+                { chunk: processed, message: updateErr.message || 'Erro desconhecido' },
+              ],
+            }))
+          }
 
           processed += chunk.length
           setDeletionState((prev) => ({
@@ -6150,19 +6178,30 @@ export default function FinancialMovements() {
         }
       }
 
-      setDeletionState((prev) => ({ ...prev, status: 'Completed', progress: 100 }))
-      toast.success(
-        mode === 'all'
-          ? 'Todos os registros foram excluídos com sucesso!'
-          : 'Registros filtrados foram excluídos com sucesso!',
-      )
+      setDeletionState((prev) => {
+        const finalStatus = prev.errors.length > 0 ? 'Error' : 'Completed'
+        if (finalStatus === 'Completed') {
+          toast.success(
+            mode === 'all'
+              ? 'Todos os registros foram excluídos com sucesso!'
+              : 'Registros filtrados foram excluídos com sucesso!',
+          )
+        } else {
+          toast.error('Exclusão finalizada com alguns erros. Verifique o painel.')
+        }
+        return { ...prev, status: finalStatus, progress: 100 }
+      })
 
       setSelectedIds([])
       setPage(0)
       setDryRunPage(0)
       setRefreshKey((k) => k + 1)
     } catch (error: any) {
-      setDeletionState((prev) => ({ ...prev, status: 'Error' }))
+      setDeletionState((prev) => ({
+        ...prev,
+        status: 'Error',
+        errors: [...prev.errors, { chunk: 0, message: error.message }],
+      }))
       toast.error('Erro ao excluir registros: ' + error.message)
     }
   }
@@ -8120,7 +8159,7 @@ export default function FinancialMovements() {
                 )}
                 <span className="font-medium text-slate-800">
                   {deletionState.status === 'Processing' && 'Excluindo registros em lote...'}
-                  {deletionState.status === 'Error' && 'Erro na exclusão'}
+                  {deletionState.status === 'Error' && 'Erro(s) na exclusão'}
                   {deletionState.status === 'Completed' && 'Exclusão Concluída'}
                 </span>
               </div>
@@ -8142,6 +8181,42 @@ export default function FinancialMovements() {
                     : 'bg-orange-100 [&>div]:bg-orange-600',
               )}
             />
+            {deletionState.errors && deletionState.errors.length > 0 && (
+              <div className="mt-2">
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 text-xs border-red-200 text-red-600 hover:bg-red-50 bg-white"
+                    >
+                      <AlertCircle className="w-3.5 h-3.5 mr-1.5" />
+                      Ver Detalhes do Erro ({deletionState.errors.length})
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col">
+                    <DialogHeader>
+                      <DialogTitle>Detalhes das Falhas de Exclusão</DialogTitle>
+                      <DialogDescription>
+                        A exclusão em massa encontrou erros nos seguintes blocos de processamento:
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="flex-1 overflow-auto bg-slate-50 rounded-md border border-slate-200 p-4 font-mono text-xs">
+                      {deletionState.errors.map((e, idx) => (
+                        <div
+                          key={idx}
+                          className="mb-3 border-b border-slate-200 pb-2 last:border-0 last:pb-0 text-red-600 break-words"
+                        >
+                          <strong>Erro ao processar lote a partir do registro {e.chunk}:</strong>
+                          <br />
+                          {e.message}
+                        </div>
+                      ))}
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}
