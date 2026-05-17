@@ -5732,16 +5732,13 @@ export default function FinancialMovements() {
         value: code,
       }))
 
-    const { data: sampleMovs } = await supabase
-      .from('erp_financial_movements')
-      .select(
-        'data_emissao, dt_compens, data_vencto, data_canc, data_estorno, tipo_operacao, forma_pagto, departamento, compensado, fp, banco',
-      )
-      .is('deleted_at', null)
-      .order('data_emissao', { ascending: false })
-      .limit(5000)
+    const { data: dbOptions } = await supabase.rpc('get_erp_filter_options' as any)
+    const parsedOptions = dbOptions
+      ? typeof dbOptions === 'string'
+        ? JSON.parse(dbOptions)
+        : dbOptions
+      : {}
 
-    const movs = sampleMovs || []
     const dateCols = ['data_emissao', 'dt_compens', 'data_vencto', 'data_canc', 'data_estorno']
 
     tableHeaders.forEach((h) => {
@@ -5759,17 +5756,7 @@ export default function FinancialMovements() {
         return
 
       if (dateCols.includes(h.key)) {
-        const uniqueDates = Array.from(
-          new Set(
-            movs
-              .map((m) =>
-                m[h.key as keyof typeof m]
-                  ? String(m[h.key as keyof typeof m]).substring(0, 10)
-                  : null,
-              )
-              .filter(Boolean),
-          ),
-        ).sort((a, b) => (b as string).localeCompare(a as string))
+        const uniqueDates: string[] = parsedOptions[h.key] || []
 
         const dateOptions: any[] = []
         const groupedByMonth = new Map<string, string[]>()
@@ -5795,9 +5782,7 @@ export default function FinancialMovements() {
           h.key,
         )
       ) {
-        const uniqueVals = Array.from(new Set(movs.map((m) => m[h.key as keyof typeof m] || '')))
-          .filter(Boolean)
-          .sort()
+        const uniqueVals: string[] = parsedOptions[h.key] || []
         options[h.key] = uniqueVals.map((v) => ({ label: String(v), value: String(v) }))
       } else {
         options[h.key] = []
