@@ -64,6 +64,7 @@ import { useToast } from '@/hooks/use-toast'
 import { useTablePreferences } from '@/hooks/use-table-preferences'
 import { TableSettingsControls } from '@/components/TableSettingsControls'
 import { useAuditLog } from '@/hooks/use-audit-log'
+import { ChartAccountTreeFilter } from '@/components/ChartAccountTreeFilter'
 import { Progress } from '@/components/ui/progress'
 import {
   AlertDialog,
@@ -105,6 +106,7 @@ export default function ChartAccounts() {
   const [levelFilter, setLevelFilter] = useState('all')
   const [behaviorFilter, setBehaviorFilter] = useState('all')
   const [natureFilter, setNatureFilter] = useState('all')
+  const [treeFilter, setTreeFilter] = useState<string[]>([])
 
   const [loading, setLoading] = useState(true)
   const [selectedIds, setSelectedIds] = useState<string[]>([])
@@ -243,6 +245,13 @@ export default function ChartAccounts() {
       query = query.eq('organization_id', orgFilter)
     }
 
+    if (treeFilter.length > 0) {
+      const orQuery = treeFilter
+        .map((c) => `classification.like.${c}.%,classification.like.${c}-%,classification.eq.${c}`)
+        .join(',')
+      query = query.or(orQuery)
+    }
+
     const sortCol = sortConfig?.key || 'classification'
     const sortDir = sortConfig?.direction === 'asc'
     query = query.order(sortCol, { ascending: sortDir })
@@ -279,6 +288,7 @@ export default function ChartAccounts() {
     behaviorFilter,
     natureFilter,
     orgFilter,
+    treeFilter,
     sortConfig,
     currentPage,
     itemsPerPage,
@@ -983,6 +993,7 @@ export default function ChartAccounts() {
                     value={orgFilter}
                     onValueChange={(v) => {
                       setOrgFilter(v)
+                      setTreeFilter([])
                       setCurrentPage(1)
                     }}
                   >
@@ -1059,6 +1070,16 @@ export default function ChartAccounts() {
                       <SelectItem value="OUTRAS">OUTRAS</SelectItem>
                     </SelectContent>
                   </Select>
+                </div>
+                <div className="w-full sm:w-auto">
+                  <ChartAccountTreeFilter
+                    orgId={orgFilter}
+                    selectedClassifications={treeFilter}
+                    onChange={(val) => {
+                      setTreeFilter(val)
+                      setCurrentPage(1)
+                    }}
+                  />
                 </div>
               </div>
 
