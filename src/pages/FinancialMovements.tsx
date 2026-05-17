@@ -3780,7 +3780,16 @@ export default function FinancialMovements() {
   const [page, setPage] = useState(0)
   const [pageSize, setPageSize] = useState(50)
   const [search, setSearch] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
   const [totalCount, setTotalCount] = useState(0)
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearch(search)
+      setPage(0)
+    }, 500)
+    return () => clearTimeout(handler)
+  }, [search])
   const [sortColumn, setSortColumn] = useState<string>('data_emissao')
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc')
   const [isImportOpen, setIsImportOpen] = useState(false)
@@ -4084,7 +4093,7 @@ export default function FinancialMovements() {
         .order('id', { ascending: true })
 
       if (scope === 'filtered') {
-        q = applyQueryFilters(q, search, filters, filterOptions)
+        q = applyQueryFilters(q, debouncedSearch, filters, filterOptions)
       }
       while (hasMore) {
         const { data, error } = await q.range(pageIdx * limit, (pageIdx + 1) * limit - 1)
@@ -5623,6 +5632,7 @@ export default function FinancialMovements() {
   const clearFilters = () => {
     setFilters({})
     setSearch('')
+    setDebouncedSearch('')
     setPage(0)
   }
 
@@ -5635,7 +5645,7 @@ export default function FinancialMovements() {
       id: crypto.randomUUID(),
       name: newFilterName,
       filters: { ...filters },
-      search,
+      search: debouncedSearch,
       filterOrder: [...filterOrder],
     }
     const updated = [...savedFilters, newFilter]
@@ -5648,6 +5658,7 @@ export default function FinancialMovements() {
   const applySavedFilter = (sf: any) => {
     setFilters(sf.filters)
     setSearch(sf.search || '')
+    setDebouncedSearch(sf.search || '')
     if (sf.filterOrder) {
       const validKeys = new Set(defaultFilterOrder)
       const validParsed = sf.filterOrder.filter((key: string) => validKeys.has(key))
@@ -6041,7 +6052,7 @@ export default function FinancialMovements() {
           )
           .is('deleted_at', null)
 
-        q = applyQueryFilters(q, search, filters, filterOptions)
+        q = applyQueryFilters(q, debouncedSearch, filters, filterOptions)
 
         while (hasMore) {
           const { data, error } = await q.range(pageIdx * limit, (pageIdx + 1) * limit - 1)
@@ -6371,7 +6382,8 @@ export default function FinancialMovements() {
           .order(orderCol, { ascending: sortDirection === 'asc' })
           .order('id', { ascending: true })
 
-        q = applyQueryFilters(q, search, filters, filterOptions)
+        q = applyQueryFilters(q, debouncedSearch, filters, filterOptions)
+
         const { data, error } = await q.range(pageIdx * limit, (pageIdx + 1) * limit - 1)
         if (error) {
           hasMore = false
@@ -6567,7 +6579,7 @@ export default function FinancialMovements() {
     activeImport?.created_at,
     user,
     page,
-    search,
+    debouncedSearch,
     pageSize,
     sortColumn,
     sortDirection,
@@ -6688,157 +6700,221 @@ export default function FinancialMovements() {
     )
       orderCol = 'data_emissao'
 
-    const fetchAllData = async () => {
-      let allData: any[] = []
-      let hasMore = true
-      let pageIdx = 0
-      const limit = 1000
-      while (hasMore) {
-        let q = supabase
-          .from('erp_financial_movements')
-          .select('*, organizations(name)')
-          .is('deleted_at', null)
-          .order(orderCol, { ascending: sortDirection === 'asc' })
-          .order('id', { ascending: true })
+    const hasComplexFilters =
+      filters['apenas_pendentes']?.length > 0 ||
+      filters['apenas_mapeados']?.length > 0 ||
+      filters['prontidao']?.length > 0 ||
+      filters['conta_debito']?.length > 0 ||
+      filters['conta_credito']?.length > 0
 
-        q = applyQueryFilters(q, search, filters)
+    if (hasComplexFilters || activeTab !== 'grade') {
+      const fetchAllData = async () => {
+        let allData: any[] = []
+        let hasMore = true
+        let pageIdx = 0
+        const limit = 2000
+        while (hasMore) {
+          let q = supabase
+            .from('erp_financial_movements')
+            .select('*, organizations(name)')
+            .is('deleted_at', null)
+            .order(orderCol, { ascending: sortDirection === 'asc' })
+            .order('id', { ascending: true })
 
-        const { data, error } = await q.range(pageIdx * limit, (pageIdx + 1) * limit - 1)
-        if (error) {
-          toast.error('Erro ao buscar dados: ' + error.message)
-          hasMore = false
-        } else if (!data || data.length === 0) {
-          hasMore = false
-        } else {
-          allData = allData.concat(data)
-          pageIdx++
-          if (data.length < limit) {
+          q = applyQueryFilters(q, debouncedSearch, filters, filterOptions)
+
+          const { data, error } = await q.range(pageIdx * limit, (pageIdx + 1) * limit - 1)
+          if (error) {
+            toast.error('Erro ao buscar dados: ' + error.message)
             hasMore = false
+          } else if (!data || data.length === 0) {
+            hasMore = false
+          } else {
+            allData = allData.concat(data)
+            pageIdx++
+            if (data.length < limit) {
+              hasMore = false
+            }
           }
         }
+        return allData
       }
-      return allData
-    }
 
-    const allData = await fetchAllData()
+      const allData = await fetchAllData()
 
-    let finalData = allData
+      let finalData = allData
 
-    if (filters['apenas_pendentes'] && filters['apenas_pendentes'].length > 0) {
-      finalData = finalData.filter((row) => {
-        const missing =
-          !row.data_emissao ||
-          !row.c_custo ||
-          row.valor_liquido === null ||
-          row.valor_liquido === undefined
-        if (missing) return true
-        const sim = getAccountingEntriesSimulation(row)
-        return !sim.debitAccount || !sim.creditAccount
-      })
-    }
-
-    if (filters['apenas_mapeados'] && filters['apenas_mapeados'].length > 0) {
-      finalData = finalData.filter((row) => {
-        const missing =
-          !row.data_emissao ||
-          !row.c_custo ||
-          row.valor_liquido === null ||
-          row.valor_liquido === undefined
-        if (missing) return false
-        const sim = getAccountingEntriesSimulation(row)
-        return !!sim.debitAccount && !!sim.creditAccount
-      })
-    }
-
-    if (filters['prontidao'] && filters['prontidao'].length > 0) {
-      finalData = finalData.filter((row) => {
-        const missing =
-          !row.data_emissao ||
-          !row.c_custo ||
-          row.valor_liquido === null ||
-          row.valor_liquido === undefined
-        let statusText = 'Pendente'
-        const sim = getAccountingEntriesSimulation(row)
-        if (missing) statusText = 'Incompleto'
-        else if (sim.debitAccount && sim.creditAccount) statusText = 'Mapeado'
-        return filters['prontidao'].includes(statusText)
-      })
-    }
-
-    if (filters['conta_debito'] && filters['conta_debito'].length > 0) {
-      finalData = finalData.filter((row) => {
-        const sim = getAccountingEntriesSimulation(row)
-        if (!sim.debitAccount) return filters['conta_debito'].includes('PENDENTE')
-        return filters['conta_debito'].includes(sim.debitAccount.id)
-      })
-    }
-
-    if (filters['conta_credito'] && filters['conta_credito'].length > 0) {
-      finalData = finalData.filter((row) => {
-        const sim = getAccountingEntriesSimulation(row)
-        if (!sim.creditAccount) return filters['conta_credito'].includes('PENDENTE')
-        return filters['conta_credito'].includes(sim.creditAccount.id)
-      })
-    }
-
-    if (sortColumn === 'prontidao') {
-      finalData.sort((a, b) => {
-        const getStatus = (row: any) => {
+      if (filters['apenas_pendentes'] && filters['apenas_pendentes'].length > 0) {
+        finalData = finalData.filter((row) => {
           const missing =
             !row.data_emissao ||
             !row.c_custo ||
             row.valor_liquido === null ||
             row.valor_liquido === undefined
-          if (missing) return 2
+          if (missing) return true
           const sim = getAccountingEntriesSimulation(row)
-          if (sim.debitAccount && sim.creditAccount) return 0
-          return 1
+          return !sim.debitAccount || !sim.creditAccount
+        })
+      }
+
+      if (filters['apenas_mapeados'] && filters['apenas_mapeados'].length > 0) {
+        finalData = finalData.filter((row) => {
+          const missing =
+            !row.data_emissao ||
+            !row.c_custo ||
+            row.valor_liquido === null ||
+            row.valor_liquido === undefined
+          if (missing) return false
+          const sim = getAccountingEntriesSimulation(row)
+          return !!sim.debitAccount && !!sim.creditAccount
+        })
+      }
+
+      if (filters['prontidao'] && filters['prontidao'].length > 0) {
+        finalData = finalData.filter((row) => {
+          const missing =
+            !row.data_emissao ||
+            !row.c_custo ||
+            row.valor_liquido === null ||
+            row.valor_liquido === undefined
+          let statusText = 'Pendente'
+          const sim = getAccountingEntriesSimulation(row)
+          if (missing) statusText = 'Incompleto'
+          else if (sim.debitAccount && sim.creditAccount) statusText = 'Mapeado'
+          return filters['prontidao'].includes(statusText)
+        })
+      }
+
+      if (filters['conta_debito'] && filters['conta_debito'].length > 0) {
+        finalData = finalData.filter((row) => {
+          const sim = getAccountingEntriesSimulation(row)
+          if (!sim.debitAccount) return filters['conta_debito'].includes('PENDENTE')
+          return filters['conta_debito'].includes(sim.debitAccount.id)
+        })
+      }
+
+      if (filters['conta_credito'] && filters['conta_credito'].length > 0) {
+        finalData = finalData.filter((row) => {
+          const sim = getAccountingEntriesSimulation(row)
+          if (!sim.creditAccount) return filters['conta_credito'].includes('PENDENTE')
+          return filters['conta_credito'].includes(sim.creditAccount.id)
+        })
+      }
+
+      if (sortColumn === 'prontidao') {
+        finalData.sort((a, b) => {
+          const getStatus = (row: any) => {
+            const missing =
+              !row.data_emissao ||
+              !row.c_custo ||
+              row.valor_liquido === null ||
+              row.valor_liquido === undefined
+            if (missing) return 2
+            const sim = getAccountingEntriesSimulation(row)
+            if (sim.debitAccount && sim.creditAccount) return 0
+            return 1
+          }
+          const statA = getStatus(a)
+          const statB = getStatus(b)
+          if (statA < statB) return sortDirection === 'asc' ? -1 : 1
+          if (statA > statB) return sortDirection === 'asc' ? 1 : -1
+          return 0
+        })
+      } else if (sortColumn === 'conta_debito') {
+        finalData.sort((a, b) => {
+          const simA = getAccountingEntriesSimulation(a)
+          const simB = getAccountingEntriesSimulation(b)
+          const valA = simA.debitAccount ? simA.debitAccount.account_code || '' : 'ZZZZZ'
+          const valB = simB.debitAccount ? simB.debitAccount.account_code || '' : 'ZZZZZ'
+          if (valA < valB) return sortDirection === 'asc' ? -1 : 1
+          if (valA > valB) return sortDirection === 'asc' ? 1 : -1
+          return 0
+        })
+      } else if (sortColumn === 'conta_credito') {
+        finalData.sort((a, b) => {
+          const simA = getAccountingEntriesSimulation(a)
+          const simB = getAccountingEntriesSimulation(b)
+          const valA = simA.creditAccount ? simA.creditAccount.account_code || '' : 'ZZZZZ'
+          const valB = simB.creditAccount ? simB.creditAccount.account_code || '' : 'ZZZZZ'
+          if (valA < valB) return sortDirection === 'asc' ? -1 : 1
+          if (valA > valB) return sortDirection === 'asc' ? 1 : -1
+          return 0
+        })
+      }
+
+      setSummaryData(finalData)
+
+      const sumV = finalData.reduce((acc, curr) => acc + (Number(curr.valor) || 0), 0)
+      const sumVL = finalData.reduce((acc, curr) => acc + (Number(curr.valor_liquido) || 0), 0)
+      const sumEntradas = finalData.reduce((acc, curr) => {
+        const val = Number(curr.valor_liquido) || 0
+        return val > 0 ? acc + val : acc
+      }, 0)
+      const sumSaidas = finalData.reduce((acc, curr) => {
+        const val = Number(curr.valor_liquido) || 0
+        return val < 0 ? acc + val : acc
+      }, 0)
+
+      setTotals({ valor: sumV, valor_liquido: sumVL, entradas: sumEntradas, saidas: sumSaidas })
+      setTotalCount(finalData.length)
+      setData(finalData.slice(page * pageSize, (page + 1) * pageSize))
+    } else {
+      let qPage = supabase
+        .from('erp_financial_movements')
+        .select('*, organizations(name)', { count: 'exact' })
+        .is('deleted_at', null)
+        .order(orderCol, { ascending: sortDirection === 'asc' })
+        .order('id', { ascending: true })
+
+      qPage = applyQueryFilters(qPage, debouncedSearch, filters, filterOptions)
+
+      const from = page * pageSize
+      const to = from + pageSize - 1
+      const { data: pageData, count, error } = await qPage.range(from, to)
+
+      if (error) {
+        toast.error('Erro ao buscar dados: ' + error.message)
+      } else {
+        setData(pageData || [])
+        setTotalCount(count || 0)
+
+        let qTotals = supabase
+          .from('erp_financial_movements')
+          .select('valor, valor_liquido')
+          .is('deleted_at', null)
+        qTotals = applyQueryFilters(qTotals, debouncedSearch, filters, filterOptions)
+
+        let allTotals: any[] = []
+        let hasMoreT = true
+        let pageIdxT = 0
+        const limitT = 10000
+        while (hasMoreT) {
+          const { data: tData, error: tErr } = await qTotals.range(
+            pageIdxT * limitT,
+            (pageIdxT + 1) * limitT - 1,
+          )
+          if (tErr || !tData || tData.length === 0) {
+            hasMoreT = false
+          } else {
+            allTotals = allTotals.concat(tData)
+            pageIdxT++
+            if (tData.length < limitT) hasMoreT = false
+          }
         }
-        const statA = getStatus(a)
-        const statB = getStatus(b)
-        if (statA < statB) return sortDirection === 'asc' ? -1 : 1
-        if (statA > statB) return sortDirection === 'asc' ? 1 : -1
-        return 0
-      })
-    } else if (sortColumn === 'conta_debito') {
-      finalData.sort((a, b) => {
-        const simA = getAccountingEntriesSimulation(a)
-        const simB = getAccountingEntriesSimulation(b)
-        const valA = simA.debitAccount ? simA.debitAccount.account_code || '' : 'ZZZZZ'
-        const valB = simB.debitAccount ? simB.debitAccount.account_code || '' : 'ZZZZZ'
-        if (valA < valB) return sortDirection === 'asc' ? -1 : 1
-        if (valA > valB) return sortDirection === 'asc' ? 1 : -1
-        return 0
-      })
-    } else if (sortColumn === 'conta_credito') {
-      finalData.sort((a, b) => {
-        const simA = getAccountingEntriesSimulation(a)
-        const simB = getAccountingEntriesSimulation(b)
-        const valA = simA.creditAccount ? simA.creditAccount.account_code || '' : 'ZZZZZ'
-        const valB = simB.creditAccount ? simB.creditAccount.account_code || '' : 'ZZZZZ'
-        if (valA < valB) return sortDirection === 'asc' ? -1 : 1
-        if (valA > valB) return sortDirection === 'asc' ? 1 : -1
-        return 0
-      })
+
+        const sumV = allTotals.reduce((acc, curr) => acc + (Number(curr.valor) || 0), 0)
+        const sumVL = allTotals.reduce((acc, curr) => acc + (Number(curr.valor_liquido) || 0), 0)
+        const sumEntradas = allTotals.reduce((acc, curr) => {
+          const val = Number(curr.valor_liquido) || 0
+          return val > 0 ? acc + val : acc
+        }, 0)
+        const sumSaidas = allTotals.reduce((acc, curr) => {
+          const val = Number(curr.valor_liquido) || 0
+          return val < 0 ? acc + val : acc
+        }, 0)
+        setTotals({ valor: sumV, valor_liquido: sumVL, entradas: sumEntradas, saidas: sumSaidas })
+      }
     }
-
-    setSummaryData(finalData)
-
-    const sumV = finalData.reduce((acc, curr) => acc + (Number(curr.valor) || 0), 0)
-    const sumVL = finalData.reduce((acc, curr) => acc + (Number(curr.valor_liquido) || 0), 0)
-    const sumEntradas = finalData.reduce((acc, curr) => {
-      const val = Number(curr.valor_liquido) || 0
-      return val > 0 ? acc + val : acc
-    }, 0)
-    const sumSaidas = finalData.reduce((acc, curr) => {
-      const val = Number(curr.valor_liquido) || 0
-      return val < 0 ? acc + val : acc
-    }, 0)
-
-    setTotals({ valor: sumV, valor_liquido: sumVL, entradas: sumEntradas, saidas: sumSaidas })
-
-    setTotalCount(finalData.length)
-    setData(finalData.slice(page * pageSize, (page + 1) * pageSize))
 
     setLoading(false)
   }
@@ -6852,7 +6928,17 @@ export default function FinancialMovements() {
 
   useEffect(() => {
     fetchData()
-  }, [user, page, search, pageSize, sortColumn, sortDirection, refreshKey, filters])
+  }, [
+    user,
+    page,
+    debouncedSearch,
+    pageSize,
+    sortColumn,
+    sortDirection,
+    refreshKey,
+    filters,
+    activeTab,
+  ])
 
   const getSankeyData = () => {
     const nodesMap = new Map()
