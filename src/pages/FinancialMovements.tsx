@@ -5832,7 +5832,7 @@ export default function FinancialMovements() {
 
   const [deleteModalOpen, setDeleteModalOpen] = useState(false)
   const [deleteMode, setDeleteMode] = useState<
-    'selected' | 'all' | 'filtered_dry_run' | 'selected_dry_run' | null
+    'selected' | 'all' | 'filtered' | 'filtered_dry_run' | 'selected_dry_run' | null
   >(null)
   const [isDeleting, setIsDeleting] = useState(false)
 
@@ -5975,63 +5975,177 @@ export default function FinancialMovements() {
     return { error: new Error('Falha após múltiplas tentativas') }
   }
 
-  const startBulkDelete = async () => {
+  const startBulkDelete = async (mode: 'all' | 'filtered') => {
     if (!user) return
     setDeleteModalOpen(false)
     setDeleteMode(null)
 
-    const { count, error: countErr } = await supabase
-      .from('erp_financial_movements')
-      .select('id', { count: 'exact', head: true })
-      .is('deleted_at', null)
-    if (countErr) {
-      toast.error('Erro ao preparar exclusão: ' + countErr.message)
-      return
-    }
-
-    const accurateTotal = count || 0
-    if (accurateTotal === 0) {
-      toast.info('Nenhum registro para excluir.')
-      return
-    }
-
     setDeletionState({
       active: true,
       progress: 0,
-      total: accurateTotal,
+      total: mode === 'all' ? 0 : totalCount,
       processed: 0,
       status: 'Processing',
     })
 
     try {
-      let processed = 0
-      const chunkSize = 150
-      while (true) {
-        const { data, error: fetchErr } = await supabase
+      if (mode === 'all') {
+        const { count, error: countErr } = await supabase
           .from('erp_financial_movements')
-          .select('id')
+          .select('id', { count: 'exact', head: true })
           .is('deleted_at', null)
-          .limit(chunkSize)
-        if (fetchErr) throw fetchErr
-        if (!data || data.length === 0) break
 
-        const ids = data.map((d) => d.id)
-        const { error: updateErr } = await updateWithRetry(ids)
-        if (updateErr) throw updateErr
+        if (countErr) throw countErr
 
-        processed += ids.length
-        setDeletionState((prev) => ({
-          ...prev,
-          processed,
-          progress:
-            accurateTotal > 0 ? Math.min(100, Math.round((processed / accurateTotal) * 100)) : 100,
-        }))
+        if (!count || count === 0) {
+          toast.info('Nenhum registro para excluir.')
+          setDeletionState((p) => ({ ...p, active: false }))
+          return
+        }
+
+        setDeletionState((p) => ({ ...p, total: count }))
+
+        let processed = 0
+        const chunkSize = 150
+        while (true) {
+          const { data, error: fetchErr } = await supabase
+            .from('erp_financial_movements')
+            .select('id')
+            .is('deleted_at', null)
+            .limit(chunkSize)
+
+          if (fetchErr) throw fetchErr
+          if (!data || data.length === 0) break
+
+          const ids = data.map((d) => d.id)
+          const { error: updateErr } = await updateWithRetry(ids)
+          if (updateErr) throw updateErr
+
+          processed += ids.length
+          setDeletionState((prev) => ({
+            ...prev,
+            processed,
+            progress: count > 0 ? Math.min(100, Math.round((processed / count) * 100)) : 100,
+          }))
+        }
+      } else {
+        let allData: any[] = []
+        let hasMore = true
+        let pageIdx = 0
+        const limit = 1000
+
+        let q = supabase
+          .from('erp_financial_movements')
+          .select(
+            'id, data_emissao, c_custo, valor_liquido, valor, organization_id, conta_caixa, nome_caixa, mapped_account_id',
+          )
+          .is('deleted_at', null)
+
+        q = applyQueryFilters(q, search, filters, filterOptions)
+
+        while (hasMore) {
+          const { data, error } = await q.range(pageIdx * limit, (pageIdx + 1) * limit - 1)
+          if (error) throw error
+          if (!data || data.length === 0) {
+            hasMore = false
+          } else {
+            allData = allData.concat(data)
+            pageIdx++
+            if (data.length < limit) {
+              hasMore = false
+            }
+          }
+        }
+
+        if (filters['apenas_pendentes'] && filters['apenas_pendentes'].length > 0) {
+          allData = allData.filter((row) => {
+            const missing =
+              !row.data_emissao ||
+              !row.c_custo ||
+              row.valor_liquido === null ||
+              row.valor_liquido === undefined
+            if (missing) return true
+            const sim = getAccountingEntriesSimulation(row)
+            return !sim.debitAccount || !sim.creditAccount
+          })
+        }
+        if (filters['apenas_mapeados'] && filters['apenas_mapeados'].length > 0) {
+          allData = allData.filter((row) => {
+            const missing =
+              !row.data_emissao ||
+              !row.c_custo ||
+              row.valor_liquido === null ||
+              row.valor_liquido === undefined
+            if (missing) return false
+            const sim = getAccountingEntriesSimulation(row)
+            return !!sim.debitAccount && !!sim.creditAccount
+          })
+        }
+        if (filters['prontidao'] && filters['prontidao'].length > 0) {
+          allData = allData.filter((row) => {
+            const missing =
+              !row.data_emissao ||
+              !row.c_custo ||
+              row.valor_liquido === null ||
+              row.valor_liquido === undefined
+            let statusText = 'Pendente'
+            const sim = getAccountingEntriesSimulation(row)
+            if (missing) statusText = 'Incompleto'
+            else if (sim.debitAccount && sim.creditAccount) statusText = 'Mapeado'
+            return filters['prontidao'].includes(statusText)
+          })
+        }
+        if (filters['conta_debito'] && filters['conta_debito'].length > 0) {
+          allData = allData.filter((row) => {
+            const sim = getAccountingEntriesSimulation(row)
+            if (!sim.debitAccount) return filters['conta_debito'].includes('PENDENTE')
+            return filters['conta_debito'].includes(sim.debitAccount.id)
+          })
+        }
+        if (filters['conta_credito'] && filters['conta_credito'].length > 0) {
+          allData = allData.filter((row) => {
+            const sim = getAccountingEntriesSimulation(row)
+            if (!sim.creditAccount) return filters['conta_credito'].includes('PENDENTE')
+            return filters['conta_credito'].includes(sim.creditAccount.id)
+          })
+        }
+
+        const idsToDelete = allData.map((d) => d.id)
+
+        if (idsToDelete.length === 0) {
+          toast.info('Nenhum registro encontrado para excluir com os filtros aplicados.')
+          setDeletionState((p) => ({ ...p, active: false }))
+          return
+        }
+
+        setDeletionState((p) => ({ ...p, total: idsToDelete.length }))
+
+        let processed = 0
+        const chunkSize = 150
+        for (let i = 0; i < idsToDelete.length; i += chunkSize) {
+          const chunk = idsToDelete.slice(i, i + chunkSize)
+          const { error: updateErr } = await updateWithRetry(chunk)
+          if (updateErr) throw updateErr
+
+          processed += chunk.length
+          setDeletionState((prev) => ({
+            ...prev,
+            processed,
+            progress:
+              idsToDelete.length > 0
+                ? Math.min(100, Math.round((processed / idsToDelete.length) * 100))
+                : 100,
+          }))
+        }
       }
+
       setDeletionState((prev) => ({ ...prev, status: 'Completed', progress: 100 }))
-      toast.success('Todos os registros foram excluídos com sucesso!')
-      setSummaryData([])
-      setData([])
-      setTotalCount(0)
+      toast.success(
+        mode === 'all'
+          ? 'Todos os registros foram excluídos com sucesso!'
+          : 'Registros filtrados foram excluídos com sucesso!',
+      )
+
       setSelectedIds([])
       setPage(0)
       setDryRunPage(0)
@@ -6044,8 +6158,8 @@ export default function FinancialMovements() {
 
   const handleDelete = async () => {
     if (!user || !deleteMode) return
-    if (deleteMode === 'all') {
-      await startBulkDelete()
+    if (deleteMode === 'all' || deleteMode === 'filtered') {
+      await startBulkDelete(deleteMode)
       return
     }
 
@@ -8185,37 +8299,65 @@ export default function FinancialMovements() {
           </Tooltip>
           {activeTab === 'grade' && (
             <>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="outline"
+              <DropdownMenu>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className="shadow-sm text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
+                        disabled={totalCount === 0 || loading}
+                      >
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Excluir...
+                      </Button>
+                    </DropdownMenuTrigger>
+                  </TooltipTrigger>
+                  <TooltipContent className="pointer-events-auto select-none max-w-[280px]">
+                    <p className="font-medium text-[13px]">
+                      Exclui registros de movimento financeiro da base
+                    </p>
+                    <div
+                      className="mt-2 pt-2 border-t border-slate-700/50 flex items-center gap-1.5 text-[11px] font-bold text-indigo-300 hover:text-white cursor-pointer transition-colors"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setHelpTopic('delete_all')
+                      }}
+                    >
+                      <MousePointerClick className="w-3.5 h-3.5" />
+                      <span>Clique para explicação detalhada</span>
+                    </div>
+                  </TooltipContent>
+                </Tooltip>
+                <DropdownMenuContent align="end" className="w-56">
+                  {(hasActiveFilters ||
+                    search ||
+                    filters['apenas_pendentes']?.length > 0 ||
+                    filters['apenas_mapeados']?.length > 0) && (
+                    <>
+                      <DropdownMenuItem
+                        onClick={() => {
+                          setDeleteMode('filtered')
+                          setDeleteModalOpen(true)
+                        }}
+                        className="text-red-600 focus:text-red-700 focus:bg-red-50 cursor-pointer"
+                      >
+                        Excluir Apenas Filtrados ({totalCount})
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                    </>
+                  )}
+                  <DropdownMenuItem
                     onClick={() => {
                       setDeleteMode('all')
                       setDeleteModalOpen(true)
                     }}
-                    className="shadow-sm text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
-                    disabled={totalCount === 0 || loading}
+                    className="text-red-600 focus:text-red-700 focus:bg-red-50 cursor-pointer"
                   >
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    Excluir Todos
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent className="pointer-events-auto select-none max-w-[280px]">
-                  <p className="font-medium text-[13px]">
-                    Exclui todos os registros de movimento financeiro da base
-                  </p>
-                  <div
-                    className="mt-2 pt-2 border-t border-slate-700/50 flex items-center gap-1.5 text-[11px] font-bold text-indigo-300 hover:text-white cursor-pointer transition-colors"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      setHelpTopic('delete_all')
-                    }}
-                  >
-                    <MousePointerClick className="w-3.5 h-3.5" />
-                    <span>Clique para explicação detalhada</span>
-                  </div>
-                </TooltipContent>
-              </Tooltip>
+                    Excluir Toda a Base
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
@@ -15628,18 +15770,22 @@ export default function FinancialMovements() {
         title={
           deleteMode === 'all'
             ? 'Excluir Todos os Registros'
-            : deleteMode === 'filtered_dry_run' || deleteMode === 'selected_dry_run'
-              ? 'Excluir do Dry Run (Ignorar)'
-              : 'Excluir Registros Selecionados'
+            : deleteMode === 'filtered'
+              ? 'Excluir Registros Filtrados'
+              : deleteMode === 'filtered_dry_run' || deleteMode === 'selected_dry_run'
+                ? 'Excluir do Dry Run (Ignorar)'
+                : 'Excluir Registros Selecionados'
         }
         description={
           deleteMode === 'all'
             ? 'Tem certeza que deseja excluir TODOS os registros de movimento financeiro da base? Esta ação enviará todos os dados para a lixeira.'
-            : deleteMode === 'filtered_dry_run'
-              ? `Tem certeza que deseja remover os ${filteredDryRunData.length} registros atualmente filtrados do Dry Run? Eles receberão o status "Ignorado" e CONTINUARÃO VISÍVEIS na Grade de Movimentos (NÃO serão deletados do sistema).`
-              : deleteMode === 'selected_dry_run'
-                ? `Tem certeza que deseja remover os ${selectedIds.length} registros selecionados do Dry Run? Eles receberão o status "Ignorado" e CONTINUARÃO VISÍVEIS na Grade de Movimentos (NÃO serão deletados do sistema).`
-                : `Tem certeza que deseja excluir os ${selectedIds.length} registros selecionados? Esta ação os enviará para a lixeira.`
+            : deleteMode === 'filtered'
+              ? `Tem certeza que deseja excluir os ${totalCount} registros que correspondem aos filtros atuais? Esta ação enviará estes dados para a lixeira.`
+              : deleteMode === 'filtered_dry_run'
+                ? `Tem certeza que deseja remover os ${filteredDryRunData.length} registros atualmente filtrados do Dry Run? Eles receberão o status "Ignorado" e CONTINUARÃO VISÍVEIS na Grade de Movimentos (NÃO serão deletados do sistema).`
+                : deleteMode === 'selected_dry_run'
+                  ? `Tem certeza que deseja remover os ${selectedIds.length} registros selecionados do Dry Run? Eles receberão o status "Ignorado" e CONTINUARÃO VISÍVEIS na Grade de Movimentos (NÃO serão deletados do sistema).`
+                  : `Tem certeza que deseja excluir os ${selectedIds.length} registros selecionados? Esta ação os enviará para a lixeira.`
         }
       />
 

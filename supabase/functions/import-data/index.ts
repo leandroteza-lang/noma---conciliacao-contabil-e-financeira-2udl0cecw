@@ -2843,7 +2843,8 @@ Deno.serve(async (req: Request) => {
       await supabaseAdmin
         .from('import_history')
         .update({
-          processed_records: Math.min(nextChunk * 500, payload.totalRecords || nextChunk * 500),          success_count: newInserted,
+          processed_records: Math.min(nextChunk * 500, payload.totalRecords || nextChunk * 500),
+          success_count: newInserted,
           error_count: newRejected,
           ignored_count: newIgnored,
           updated_count: newUpdated,
