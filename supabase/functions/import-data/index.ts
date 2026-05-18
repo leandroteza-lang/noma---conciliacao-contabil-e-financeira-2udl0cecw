@@ -295,10 +295,11 @@ Deno.serve(async (req: Request) => {
               .update({ total_records: normalizedRecords.length })
               .eq('id', history.id)
 
-            const CHUNK_SIZE = 1000
+            const CHUNK_SIZE = 250
             const totalChunks = Math.ceil(normalizedRecords.length / CHUNK_SIZE)
 
-            if (totalChunks === 0) {              await supabaseAdmin
+            if (totalChunks === 0) {
+              await supabaseAdmin
                 .from('import_history')
                 .update({ status: 'Completed', processed_records: 0 })
                 .eq('id', history.id)
@@ -321,9 +322,9 @@ Deno.serve(async (req: Request) => {
               }
             }
 
-            let success = false;
-            let lastError = null;
-            
+            let success = false
+            let lastError = null
+
             for (let attempt = 1; attempt <= 3; attempt++) {
               try {
                 const response = await fetch(`${supabaseUrl}/functions/v1/import-data`, {
@@ -356,15 +357,15 @@ Deno.serve(async (req: Request) => {
                   const errText = await response.text()
                   throw new Error(`Erro ao iniciar chunk 0: ${response.status} - ${errText}`)
                 }
-                success = true;
-                break;
+                success = true
+                break
               } catch (fetchErr) {
-                lastError = fetchErr;
-                await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+                lastError = fetchErr
+                await new Promise((resolve) => setTimeout(resolve, 1000 * attempt))
               }
             }
             if (!success && lastError) {
-              throw lastError;
+              throw lastError
             }
           } catch (e: any) {
             console.error('Fast background process error:', e)
@@ -764,7 +765,7 @@ Deno.serve(async (req: Request) => {
         errors.push({
           row: 0,
           error: 'Muitas ocorrências encontradas. A lista foi truncada para 15000 itens.',
-          type: 'Aviso'
+          type: 'Aviso',
         })
       }
     }
@@ -2812,58 +2813,61 @@ Deno.serve(async (req: Request) => {
       }
 
       for (const [orgId, orgRecords] of recordsByOrg.entries()) {
-        const rpcPayload = {
-          p_org_id: orgId,
-          p_import_id: payload.importId || null,
-          p_records: orgRecords,
-          p_mode: mode || 'INSERT_ONLY',
-        }
+        const SUB_CHUNK_SIZE = 50
 
-        let res: any = null
-        let rpcErr: any = null
+        for (let j = 0; j < orgRecords.length; j += SUB_CHUNK_SIZE) {
+          const subRecords = orgRecords.slice(j, j + SUB_CHUNK_SIZE)
 
-        // Retentativa Inteligente
-        for (let attempt = 1; attempt <= 3; attempt++) {
-          const result = await supabaseAdmin.rpc(
-            'import_erp_movements_batch_v2',
-            rpcPayload,
-          )
-          res = result.data
-          rpcErr = result.error
-          
-          if (!rpcErr && res && res.success !== false) {
-            break
+          const rpcPayload = {
+            p_org_id: orgId,
+            p_import_id: payload.importId || null,
+            p_records: subRecords,
+            p_mode: mode || 'INSERT_ONLY',
           }
-          
-          if (attempt < 3) {
-            await new Promise(resolve => setTimeout(resolve, 1000 * attempt))
-          }
-        }
 
-        if (rpcErr) {
-          rejected += orgRecords.length
-          orgRecords.forEach((r: any) => {
-            addError(r._originalIndex || 0, `Erro Sistêmico no lote: ${rpcErr.message}`, r)
-          })
-        } else if (res) {
-          if (res.success === false) {
-            rejected += orgRecords.length
-            orgRecords.forEach((r: any) => {
-              addError(r._originalIndex || 0, `Erro Sistêmico no lote: ${res.error}`, r)
+          let res: any = null
+          let rpcErr: any = null
+
+          // Retentativa Inteligente
+          for (let attempt = 1; attempt <= 3; attempt++) {
+            const result = await supabaseAdmin.rpc('import_erp_movements_batch_v2', rpcPayload)
+            res = result.data
+            rpcErr = result.error
+
+            if (!rpcErr && res && res.success !== false) {
+              break
+            }
+
+            if (attempt < 3) {
+              await new Promise((resolve) => setTimeout(resolve, 1000 * attempt))
+            }
+          }
+
+          if (rpcErr) {
+            rejected += subRecords.length
+            subRecords.forEach((r: any) => {
+              addError(r._originalIndex || 0, `Erro Sistêmico no lote: ${rpcErr.message}`, r)
             })
-          } else {
-            inserted += res.inserted || 0
-            rejected += res.rejected || 0
-            ignored += res.ignored || 0
-            updated += res.updated || 0
-            if (res.errors && Array.isArray(res.errors)) {
-              res.errors.forEach((err: any) => {
-                const isIgnored = err.type === 'Ignorado'
-                if (!isIgnored) rejected++
-                if (errors.length < 15000) {
-                  errors.push({ row: err.row || 0, error: err.error, type: err.type || 'Erro' })
-                }
+          } else if (res) {
+            if (res.success === false) {
+              rejected += subRecords.length
+              subRecords.forEach((r: any) => {
+                addError(r._originalIndex || 0, `Erro Sistêmico no lote: ${res.error}`, r)
               })
+            } else {
+              inserted += res.inserted || 0
+              rejected += res.rejected || 0
+              ignored += res.ignored || 0
+              updated += res.updated || 0
+              if (res.errors && Array.isArray(res.errors)) {
+                res.errors.forEach((err: any) => {
+                  const isIgnored = err.type === 'Ignorado'
+                  if (!isIgnored) rejected++
+                  if (errors.length < 15000) {
+                    errors.push({ row: err.row || 0, error: err.error, type: err.type || 'Erro' })
+                  }
+                })
+              }
             }
           }
         }
@@ -2883,7 +2887,12 @@ Deno.serve(async (req: Request) => {
       await supabaseAdmin
         .from('import_history')
         .update({
-          processed_records: payload.totalRecords ? Math.min(Math.round((nextChunk / payload.totalChunks) * payload.totalRecords), payload.totalRecords) : nextChunk * 1000,
+          processed_records: payload.totalRecords
+            ? Math.min(
+                Math.round((nextChunk / payload.totalChunks) * payload.totalRecords),
+                payload.totalRecords,
+              )
+            : nextChunk * 250,
           success_count: newInserted,
           error_count: newRejected,
           ignored_count: newIgnored,
@@ -2897,9 +2906,9 @@ Deno.serve(async (req: Request) => {
         EdgeRuntime.waitUntil(
           (async () => {
             try {
-              let success = false;
-              let lastError = null;
-              
+              let success = false
+              let lastError = null
+
               for (let attempt = 1; attempt <= 3; attempt++) {
                 try {
                   const resNext = await fetch(
@@ -2925,16 +2934,16 @@ Deno.serve(async (req: Request) => {
                     const errText = await resNext.text()
                     throw new Error(`HTTP ${resNext.status}: ${errText}`)
                   }
-                  success = true;
-                  break;
+                  success = true
+                  break
                 } catch (fetchErr) {
-                  lastError = fetchErr;
-                  await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+                  lastError = fetchErr
+                  await new Promise((resolve) => setTimeout(resolve, 1000 * attempt))
                 }
               }
-              
+
               if (!success && lastError) {
-                throw lastError;
+                throw lastError
               }
             } catch (e: any) {
               console.error('Error triggering next chunk:', e)
@@ -3007,9 +3016,9 @@ Deno.serve(async (req: Request) => {
         EdgeRuntime.waitUntil(
           (async () => {
             try {
-              let success = false;
-              let lastError = null;
-              
+              let success = false
+              let lastError = null
+
               for (let attempt = 1; attempt <= 3; attempt++) {
                 try {
                   const resNextBg = await fetch(
@@ -3035,16 +3044,16 @@ Deno.serve(async (req: Request) => {
                     const errText = await resNextBg.text()
                     throw new Error(`HTTP ${resNextBg.status}: ${errText}`)
                   }
-                  success = true;
-                  break;
+                  success = true
+                  break
                 } catch (fetchErr) {
-                  lastError = fetchErr;
-                  await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+                  lastError = fetchErr
+                  await new Promise((resolve) => setTimeout(resolve, 1000 * attempt))
                 }
               }
-              
+
               if (!success && lastError) {
-                throw lastError;
+                throw lastError
               }
             } catch (e: any) {
               console.error('Error triggering next background chunk:', e)
