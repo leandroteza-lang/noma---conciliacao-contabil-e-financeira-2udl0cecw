@@ -389,7 +389,7 @@ export default function Import() {
     const validRecords: any[] = []
 
     rawData.forEach((row, idx) => {
-      const mappedRow: any = {}
+      const mappedRow: any = { _originalIndex: idx + 1 }
       Object.entries(columnMapping).forEach(([sourceCol, targetCol]) => {
         if (targetCol && targetCol !== 'IGNORE') {
           mappedRow[targetCol] = row[sourceCol]
@@ -452,37 +452,98 @@ export default function Import() {
     }
 
     setIsImporting(true)
-    setImportProgress(30)
+    setImportProgress(5)
 
     try {
       const {
-        data: { session },
-      } = await supabase.auth.getSession()
+        data: { user },
+      } = await supabase.auth.getUser()
+      if (!user) throw new Error('Usuário não autenticado')
 
-      const { data, error } = await supabase.functions.invoke('import-data', {
+      const { data: history, error: historyError } = await supabase
+        .from('import_history')
+        .insert({
+          user_id: user.id,
+          import_type: importType,
+          file_name: file?.name || 'Importação',
+          status: 'Processing',
+          total_records: validationInfo.validRecords.length,
+        })
+        .select()
+        .single()
+
+      if (historyError) throw historyError
+
+      setImportProgress(10)
+
+      const CHUNK_SIZE = 1000
+      const totalChunks = Math.ceil(validationInfo.validRecords.length / CHUNK_SIZE)
+
+      for (let i = 0; i < totalChunks; i += 5) {
+        const batch = []
+        for (let j = i; j < i + 5 && j < totalChunks; j++) {
+          const chunk = validationInfo.validRecords.slice(j * CHUNK_SIZE, (j + 1) * CHUNK_SIZE)
+          batch.push(
+            supabase.storage
+              .from('imports')
+              .upload(`${history.id}/chunk_${j}.json`, JSON.stringify(chunk), {
+                contentType: 'application/json',
+                upsert: true,
+              }),
+          )
+        }
+        await Promise.all(batch)
+        setImportProgress(10 + Math.round(((i + 1) / totalChunks) * 50))
+      }
+
+      setImportProgress(60)
+
+      const { error } = await supabase.functions.invoke('import-data', {
         body: {
-          records: validationInfo.validRecords,
+          action: 'PROCESS_CHUNK',
+          importId: history.id,
           type: importType,
+          chunkIndex: 0,
+          totalChunks: totalChunks,
+          totalRecords: validationInfo.validRecords.length,
           fileName: file?.name || 'Importação',
           allowIncomplete: allowIncomplete,
+          userId: user.id,
         },
-        headers: session
-          ? {
-              Authorization: `Bearer ${session.access_token}`,
-            }
-          : undefined,
       })
 
       if (error) throw new Error(error.message || 'Erro desconhecido ao chamar a função')
-      if (data?.error) throw new Error(data.error)
 
-      setImportProgress(100)
-      setImportResult(data)
+      const pollInterval = setInterval(async () => {
+        const { data: hist } = await supabase
+          .from('import_history')
+          .select('*')
+          .eq('id', history.id)
+          .single()
 
-      toast({
-        title: 'Processamento Finalizado',
-        description: `${data.inserted} registros inseridos, ${data.rejected} rejeitados.`,
-      })
+        if (hist) {
+          if (hist.status === 'Completed' || hist.status === 'Error') {
+            clearInterval(pollInterval)
+            setImportProgress(100)
+            setImportResult({
+              inserted: hist.success_count || 0,
+              rejected: hist.error_count || 0,
+              errors: hist.errors_list || [],
+            })
+            setIsImporting(false)
+            toast({
+              title: 'Processamento Finalizado',
+              description: `${hist.success_count || 0} registros inseridos, ${hist.error_count || 0} rejeitados.`,
+            })
+          } else {
+            if (hist.total_records > 0 && hist.processed_records !== null) {
+              setImportProgress(
+                60 + Math.round(((hist.processed_records || 0) / hist.total_records) * 40),
+              )
+            }
+          }
+        }
+      }, 3000)
     } catch (err: any) {
       toast({
         variant: 'destructive',
@@ -490,7 +551,6 @@ export default function Import() {
         description: err.message,
       })
       setImportProgress(0)
-    } finally {
       setIsImporting(false)
     }
   }
