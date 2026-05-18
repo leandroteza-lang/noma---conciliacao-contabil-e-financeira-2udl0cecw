@@ -1963,22 +1963,90 @@ function AccountingConsolidatedTable({
     >
       <TableHeader className="sticky top-0 z-10 shadow-sm border-b border-black">
         <TableRow disableZebra className="bg-indigo-950 hover:bg-indigo-900 border-none">
-          <TableHead className="font-medium text-white text-left border-r border-slate-600 px-2 py-1 h-8 w-[40%]">
-            <ColumnFilter
-              title="Conta Contábil"
-              options={options}
-              selected={colFilter}
-              onChange={setColFilter}
-            />
+          <TableHead
+            className={cn('font-medium text-white px-2 py-1 h-8 w-[40%]')}
+            style={getGridlineStyle(prefs)}
+          >
+            <div
+              className={cn(
+                'flex items-center justify-between w-full',
+                getJustifyClass(prefs, 'account', 'left'),
+              )}
+            >
+              <ColumnFilter
+                title="Conta Contábil"
+                options={options}
+                selected={colFilter}
+                onChange={setColFilter}
+              />
+              <HeaderAlignmentMenu
+                col="account"
+                prefs={prefs}
+                updatePrefs={updatePrefs}
+                boldIcon
+                iconClassName="text-white opacity-100 font-bold"
+              />
+            </div>
           </TableHead>
-          <TableHead className="w-[20%] text-right font-bold text-white border-r border-slate-600 px-2 py-1 h-8">
-            Débito (D)
+          <TableHead
+            className={cn('w-[20%] font-bold text-white px-2 py-1 h-8')}
+            style={getGridlineStyle(prefs)}
+          >
+            <div
+              className={cn(
+                'flex items-center justify-between w-full',
+                getJustifyClass(prefs, 'debit', 'right'),
+              )}
+            >
+              <span>Débito (D)</span>
+              <HeaderAlignmentMenu
+                col="debit"
+                prefs={prefs}
+                updatePrefs={updatePrefs}
+                boldIcon
+                iconClassName="text-white opacity-100 font-bold"
+              />
+            </div>
           </TableHead>
-          <TableHead className="w-[20%] text-right font-bold text-white border-r border-slate-600 px-2 py-1 h-8">
-            Crédito (C)
+          <TableHead
+            className={cn('w-[20%] font-bold text-white px-2 py-1 h-8')}
+            style={getGridlineStyle(prefs)}
+          >
+            <div
+              className={cn(
+                'flex items-center justify-between w-full',
+                getJustifyClass(prefs, 'credit', 'right'),
+              )}
+            >
+              <span>Crédito (C)</span>
+              <HeaderAlignmentMenu
+                col="credit"
+                prefs={prefs}
+                updatePrefs={updatePrefs}
+                boldIcon
+                iconClassName="text-white opacity-100 font-bold"
+              />
+            </div>
           </TableHead>
-          <TableHead className="w-[20%] text-right font-bold text-white px-2 py-1 h-8">
-            Saldo
+          <TableHead
+            className={cn('w-[20%] font-bold text-white px-2 py-1 h-8')}
+            style={getGridlineStyle(prefs)}
+          >
+            <div
+              className={cn(
+                'flex items-center justify-between w-full',
+                getJustifyClass(prefs, 'saldo', 'right'),
+              )}
+            >
+              <span>Saldo</span>
+              <HeaderAlignmentMenu
+                col="saldo"
+                prefs={prefs}
+                updatePrefs={updatePrefs}
+                boldIcon
+                iconClassName="text-white opacity-100 font-bold"
+              />
+            </div>
           </TableHead>
         </TableRow>
       </TableHeader>
@@ -1990,7 +2058,13 @@ function AccountingConsolidatedTable({
               key={item.id}
               className="border-b border-slate-200 last:border-b-0 transition-colors"
             >
-              <TableCell className="px-2 py-1 border-r border-slate-200 text-slate-700 font-medium">
+              <TableCell
+                className={cn(
+                  'px-2 py-1 text-slate-700 font-medium',
+                  getAlignClass(prefs, 'account', 'left'),
+                )}
+                style={getGridlineStyle(prefs)}
+              >
                 <div className="flex items-center gap-1.5">
                   <span className="font-mono bg-slate-100 text-slate-800 px-1.5 py-0.5 rounded text-[0.85em] font-semibold border border-slate-200">
                     {item.code}
@@ -2005,17 +2079,25 @@ function AccountingConsolidatedTable({
                   </span>
                 </div>
               </TableCell>
-              <TableCell className="px-2 py-1 text-right text-slate-700 border-r border-slate-200">
+              <TableCell
+                className={cn('px-2 py-1 text-slate-700', getAlignClass(prefs, 'debit', 'right'))}
+                style={getGridlineStyle(prefs)}
+              >
                 {formatVal(item.debit)}
               </TableCell>
-              <TableCell className="px-2 py-1 text-right text-slate-700 border-r border-slate-200">
+              <TableCell
+                className={cn('px-2 py-1 text-slate-700', getAlignClass(prefs, 'credit', 'right'))}
+                style={getGridlineStyle(prefs)}
+              >
                 {formatVal(item.credit)}
               </TableCell>
               <TableCell
                 className={cn(
-                  'px-2 py-1 text-right font-bold',
+                  'px-2 py-1 font-bold',
+                  getAlignClass(prefs, 'saldo', 'right'),
                   saldo > 0 ? 'text-blue-700' : saldo < 0 ? 'text-rose-700' : 'text-slate-700',
                 )}
+                style={getGridlineStyle(prefs)}
               >
                 {formatVal(Math.abs(saldo))} {saldo !== 0 ? (saldo > 0 ? 'D' : 'C') : ''}
               </TableCell>
@@ -2035,17 +2117,43 @@ function AccountingConsolidatedTable({
           <>
             {(unmappedDebit > 0 || unmappedCredit > 0) && (
               <TableRow disableZebra className="bg-rose-50/50 border-t border-slate-200">
-                <TableCell className="px-2 py-2 border-r border-slate-200 text-slate-600 italic flex items-center gap-2">
-                  <AlertCircle className="h-4 w-4 text-rose-500" />
-                  Valores Pendentes de Mapeamento Contábil
+                <TableCell
+                  className={cn(
+                    'px-2 py-2 text-slate-600 italic',
+                    getAlignClass(prefs, 'account', 'left'),
+                  )}
+                  style={getGridlineStyle(prefs)}
+                >
+                  <div className="flex items-center gap-2">
+                    <AlertCircle className="h-4 w-4 text-rose-500" />
+                    Valores Pendentes de Mapeamento Contábil
+                  </div>
                 </TableCell>
-                <TableCell className="px-2 py-2 text-right text-rose-600 font-medium border-r border-slate-200">
+                <TableCell
+                  className={cn(
+                    'px-2 py-2 text-rose-600 font-medium',
+                    getAlignClass(prefs, 'debit', 'right'),
+                  )}
+                  style={getGridlineStyle(prefs)}
+                >
                   {formatVal(unmappedDebit)}
                 </TableCell>
-                <TableCell className="px-2 py-2 text-right text-rose-600 font-medium border-r border-slate-200">
+                <TableCell
+                  className={cn(
+                    'px-2 py-2 text-rose-600 font-medium',
+                    getAlignClass(prefs, 'credit', 'right'),
+                  )}
+                  style={getGridlineStyle(prefs)}
+                >
                   {formatVal(unmappedCredit)}
                 </TableCell>
-                <TableCell className="px-2 py-2 text-right text-rose-600 font-bold">
+                <TableCell
+                  className={cn(
+                    'px-2 py-2 text-rose-600 font-bold',
+                    getAlignClass(prefs, 'saldo', 'right'),
+                  )}
+                  style={getGridlineStyle(prefs)}
+                >
                   {formatVal(Math.abs(unmappedDebit - unmappedCredit))}{' '}
                   {unmappedDebit - unmappedCredit !== 0
                     ? unmappedDebit > unmappedCredit
@@ -2059,16 +2167,31 @@ function AccountingConsolidatedTable({
               disableZebra
               className="bg-slate-100 font-bold border-t-2 border-slate-300 shadow-inner"
             >
-              <TableCell className="px-2 py-2 border-r border-slate-300 text-right text-slate-900 uppercase">
+              <TableCell
+                className={cn(
+                  'px-2 py-2 text-slate-900 uppercase',
+                  getAlignClass(prefs, 'account', 'right'),
+                )}
+                style={getGridlineStyle(prefs)}
+              >
                 Total Geral:
               </TableCell>
-              <TableCell className="px-2 py-2 text-right text-slate-900 border-r border-slate-300">
+              <TableCell
+                className={cn('px-2 py-2 text-slate-900', getAlignClass(prefs, 'debit', 'right'))}
+                style={getGridlineStyle(prefs)}
+              >
                 {formatVal(totalDebit)}
               </TableCell>
-              <TableCell className="px-2 py-2 text-right text-slate-900 border-r border-slate-300">
+              <TableCell
+                className={cn('px-2 py-2 text-slate-900', getAlignClass(prefs, 'credit', 'right'))}
+                style={getGridlineStyle(prefs)}
+              >
                 {formatVal(totalCredit)}
               </TableCell>
-              <TableCell className="px-2 py-2 text-right text-indigo-700">
+              <TableCell
+                className={cn('px-2 py-2 text-indigo-700', getAlignClass(prefs, 'saldo', 'right'))}
+                style={getGridlineStyle(prefs)}
+              >
                 {formatVal(totalDiff)}{' '}
                 {totalDiff !== 0 ? (totalDebit > totalCredit ? 'D' : 'C') : ''}
               </TableCell>
@@ -3396,12 +3519,16 @@ function SummaryTable({
   dateField = 'data_emissao',
   tableFontSize,
   filterText = '',
+  prefs,
+  updatePrefs,
 }: {
   data: any[]
   type: 'month_account' | 'account_month' | 'month_cost' | 'cost_month'
   dateField?: string
   tableFontSize?: number
   filterText?: string
+  prefs?: any
+  updatePrefs?: any
 }) {
   const [col1Filter, setCol1Filter] = useState<string[]>([])
   const [col2Filter, setCol2Filter] = useState<string[]>([])
@@ -3571,104 +3698,224 @@ function SummaryTable({
     new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v)
 
   return (
-    <Table
-      className="w-full min-w-max"
-      style={{ fontSize: tableFontSize ? `${tableFontSize}px` : undefined }}
-      wrapperClassName="max-h-[500px] overflow-auto finance-table-scrollbar"
-    >
-      <TableHeader className="sticky top-0 z-10 shadow-sm border-b border-black">
-        <TableRow disableZebra className="bg-blue-500 hover:bg-blue-400 border-none">
-          <TableHead
-            className={cn(
-              'font-medium text-white text-left border-r border-black px-2 py-1 h-8',
-              col1Width,
-            )}
-          >
-            <ColumnFilter
-              title={col1Label}
-              options={col1Options}
-              selected={col1Filter}
-              onChange={setCol1Filter}
-            />
-          </TableHead>
-          <TableHead
-            className={cn(
-              'font-medium text-white text-left border-r border-black px-2 py-1 h-8',
-              col2Width,
-            )}
-          >
-            <ColumnFilter
-              title={col2Label}
-              options={col2Options}
-              selected={col2Filter}
-              onChange={setCol2Filter}
-            />
-          </TableHead>
-          <TableHead className="w-[15%] text-left font-bold text-emerald-700 border-r border-black px-2 py-1 h-8">
-            Entradas (+)
-          </TableHead>
-          <TableHead className="w-[15%] text-left font-bold text-rose-700 border-r border-black px-2 py-1 h-8">
-            Saídas (-)
-          </TableHead>
-          <TableHead className="w-[15%] text-left font-bold text-blue-700 px-2 py-1 h-8">
-            Diferença
-          </TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {aggregated.map((group) => (
-          <React.Fragment key={group.name}>
-            <TableRow disableZebra className="bg-slate-200/60 font-bold border-b border-black">
-              <TableCell className="px-2 py-1 border-r border-black text-slate-900">
-                {group.name}
-              </TableCell>
-              <TableCell className="px-2 py-1 border-r border-black text-slate-500 font-medium">
-                Totais do agrupamento
-              </TableCell>
-              <TableCell className="px-2 py-1 text-left text-emerald-700 border-r border-black">
-                {formatVal(group.pos)}
-              </TableCell>
-              <TableCell className="px-2 py-1 text-left text-rose-700 border-r border-black">
-                {formatVal(group.neg)}
-              </TableCell>
-              <TableCell className="px-2 py-1 text-left text-blue-800">
-                {formatVal(group.diff)}
-              </TableCell>
-            </TableRow>
-            {group.items.map((item) => (
-              <TableRow
-                key={item.name}
-                className="border-b border-black last:border-b-0 transition-colors"
+    <TopScrollTableWrapper>
+      <Table
+        className="w-full min-w-max"
+        style={{ fontSize: tableFontSize ? `${tableFontSize}px` : undefined }}
+        wrapperClassName="max-h-[500px] overflow-auto finance-table-scrollbar"
+        rowHeight={prefs?.rowHeight}
+      >
+        <TableHeader className="sticky top-0 z-10 shadow-sm border-b border-black">
+          <TableRow disableZebra className="bg-blue-500 hover:bg-blue-400 border-none">
+            <TableHead
+              className={cn('font-medium text-white px-2 py-1 h-8', col1Width)}
+              style={getGridlineStyle(prefs)}
+            >
+              <div
+                className={cn(
+                  'flex items-center justify-between w-full',
+                  getJustifyClass(prefs, 'col1', 'left'),
+                )}
               >
-                <TableCell className="px-2 py-1 border-r border-black text-slate-400"></TableCell>
-                <TableCell className="px-2 py-1 border-r border-black text-slate-700 font-medium">
-                  {item.name}
+                <ColumnFilter
+                  title={col1Label}
+                  options={col1Options}
+                  selected={col1Filter}
+                  onChange={setCol1Filter}
+                />
+                <HeaderAlignmentMenu
+                  col="col1"
+                  prefs={prefs}
+                  updatePrefs={updatePrefs}
+                  boldIcon
+                  iconClassName="text-white opacity-100 font-bold"
+                />
+              </div>
+            </TableHead>
+            <TableHead
+              className={cn('font-medium text-white px-2 py-1 h-8', col2Width)}
+              style={getGridlineStyle(prefs)}
+            >
+              <div
+                className={cn(
+                  'flex items-center justify-between w-full',
+                  getJustifyClass(prefs, 'col2', 'left'),
+                )}
+              >
+                <ColumnFilter
+                  title={col2Label}
+                  options={col2Options}
+                  selected={col2Filter}
+                  onChange={setCol2Filter}
+                />
+                <HeaderAlignmentMenu
+                  col="col2"
+                  prefs={prefs}
+                  updatePrefs={updatePrefs}
+                  boldIcon
+                  iconClassName="text-white opacity-100 font-bold"
+                />
+              </div>
+            </TableHead>
+            <TableHead
+              className={cn('w-[15%] font-bold text-emerald-700 px-2 py-1 h-8')}
+              style={getGridlineStyle(prefs)}
+            >
+              <div
+                className={cn(
+                  'flex items-center justify-between w-full',
+                  getJustifyClass(prefs, 'pos', 'right'),
+                )}
+              >
+                <span>Entradas (+)</span>
+                <HeaderAlignmentMenu
+                  col="pos"
+                  prefs={prefs}
+                  updatePrefs={updatePrefs}
+                  boldIcon
+                  iconClassName="text-emerald-700 opacity-100 font-bold hover:text-white"
+                />
+              </div>
+            </TableHead>
+            <TableHead
+              className={cn('w-[15%] font-bold text-rose-700 px-2 py-1 h-8')}
+              style={getGridlineStyle(prefs)}
+            >
+              <div
+                className={cn(
+                  'flex items-center justify-between w-full',
+                  getJustifyClass(prefs, 'neg', 'right'),
+                )}
+              >
+                <span>Saídas (-)</span>
+                <HeaderAlignmentMenu
+                  col="neg"
+                  prefs={prefs}
+                  updatePrefs={updatePrefs}
+                  boldIcon
+                  iconClassName="text-rose-700 opacity-100 font-bold hover:text-white"
+                />
+              </div>
+            </TableHead>
+            <TableHead
+              className={cn('w-[15%] font-bold text-blue-700 px-2 py-1 h-8')}
+              style={getGridlineStyle(prefs)}
+            >
+              <div
+                className={cn(
+                  'flex items-center justify-between w-full',
+                  getJustifyClass(prefs, 'diff', 'right'),
+                )}
+              >
+                <span>Diferença</span>
+                <HeaderAlignmentMenu
+                  col="diff"
+                  prefs={prefs}
+                  updatePrefs={updatePrefs}
+                  boldIcon
+                  iconClassName="text-blue-700 opacity-100 font-bold hover:text-white"
+                />
+              </div>
+            </TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {aggregated.map((group) => (
+            <React.Fragment key={group.name}>
+              <TableRow disableZebra className="bg-slate-200/60 font-bold border-b border-black">
+                <TableCell
+                  className={cn('px-2 py-1 text-slate-900', getAlignClass(prefs, 'col1', 'left'))}
+                  style={getGridlineStyle(prefs)}
+                >
+                  {group.name}
                 </TableCell>
-                <TableCell className="px-2 py-1 text-left text-emerald-600/90 border-r border-black">
-                  {formatVal(item.pos)}
+                <TableCell
+                  className={cn(
+                    'px-2 py-1 text-slate-500 font-medium',
+                    getAlignClass(prefs, 'col2', 'left'),
+                  )}
+                  style={getGridlineStyle(prefs)}
+                >
+                  Totais do agrupamento
                 </TableCell>
-                <TableCell className="px-2 py-1 text-left text-rose-600/90 border-r border-black">
-                  {formatVal(item.neg)}
+                <TableCell
+                  className={cn('px-2 py-1 text-emerald-700', getAlignClass(prefs, 'pos', 'right'))}
+                  style={getGridlineStyle(prefs)}
+                >
+                  {formatVal(group.pos)}
                 </TableCell>
-                <TableCell className="px-2 py-1 text-left font-semibold text-slate-700">
-                  {formatVal(item.diff)}
+                <TableCell
+                  className={cn('px-2 py-1 text-rose-700', getAlignClass(prefs, 'neg', 'right'))}
+                  style={getGridlineStyle(prefs)}
+                >
+                  {formatVal(group.neg)}
+                </TableCell>
+                <TableCell
+                  className={cn('px-2 py-1 text-blue-800', getAlignClass(prefs, 'diff', 'right'))}
+                  style={getGridlineStyle(prefs)}
+                >
+                  {formatVal(group.diff)}
                 </TableCell>
               </TableRow>
-            ))}
-          </React.Fragment>
-        ))}
-        {aggregated.length === 0 && (
-          <TableRow disableZebra>
-            <TableCell
-              colSpan={5}
-              className="text-center py-4 text-slate-500 border-t border-black"
-            >
-              Nenhum dado para resumir.
-            </TableCell>
-          </TableRow>
-        )}
-      </TableBody>
-    </Table>
+              {group.items.map((item) => (
+                <TableRow
+                  key={item.name}
+                  className="border-b border-black last:border-b-0 transition-colors"
+                >
+                  <TableCell className="px-2 py-1" style={getGridlineStyle(prefs)}></TableCell>
+                  <TableCell
+                    className={cn(
+                      'px-2 py-1 text-slate-700 font-medium',
+                      getAlignClass(prefs, 'col2', 'left'),
+                    )}
+                    style={getGridlineStyle(prefs)}
+                  >
+                    {item.name}
+                  </TableCell>
+                  <TableCell
+                    className={cn(
+                      'px-2 py-1 text-emerald-600/90',
+                      getAlignClass(prefs, 'pos', 'right'),
+                    )}
+                    style={getGridlineStyle(prefs)}
+                  >
+                    {formatVal(item.pos)}
+                  </TableCell>
+                  <TableCell
+                    className={cn(
+                      'px-2 py-1 text-rose-600/90',
+                      getAlignClass(prefs, 'neg', 'right'),
+                    )}
+                    style={getGridlineStyle(prefs)}
+                  >
+                    {formatVal(item.neg)}
+                  </TableCell>
+                  <TableCell
+                    className={cn(
+                      'px-2 py-1 font-semibold text-slate-700',
+                      getAlignClass(prefs, 'diff', 'right'),
+                    )}
+                    style={getGridlineStyle(prefs)}
+                  >
+                    {formatVal(item.diff)}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </React.Fragment>
+          ))}
+          {aggregated.length === 0 && (
+            <TableRow disableZebra>
+              <TableCell
+                colSpan={5}
+                className="text-center py-4 text-slate-500 border-t border-black"
+              >
+                Nenhum dado para resumir.
+              </TableCell>
+            </TableRow>
+          )}
+        </TableBody>
+      </Table>
+    </TopScrollTableWrapper>
   )
 }
 
@@ -3950,6 +4197,21 @@ export default function FinancialMovements() {
 
   const { prefs: balancetePrefs, updatePrefs: updateBalancetePrefs } =
     useTablePreferences('fin_mov_balancete_table')
+
+  const { prefs: accConsPrefs, updatePrefs: updateAccConsPrefs } =
+    useTablePreferences('fin_mov_acc_cons')
+  const { prefs: consContaPrefs, updatePrefs: updateConsContaPrefs } =
+    useTablePreferences('fin_mov_cons_conta')
+  const { prefs: consCustoPrefs, updatePrefs: updateConsCustoPrefs } =
+    useTablePreferences('fin_mov_cons_custo')
+  const { prefs: mesContaPrefs, updatePrefs: updateMesContaPrefs } =
+    useTablePreferences('fin_mov_mes_conta')
+  const { prefs: contaMesPrefs, updatePrefs: updateContaMesPrefs } =
+    useTablePreferences('fin_mov_conta_mes')
+  const { prefs: mesCustoPrefs, updatePrefs: updateMesCustoPrefs } =
+    useTablePreferences('fin_mov_mes_custo')
+  const { prefs: custoMesPrefs, updatePrefs: updateCustoMesPrefs } =
+    useTablePreferences('fin_mov_custo_mes')
 
   const getBalanceteCellProps = (
     key: string,
@@ -11388,6 +11650,13 @@ export default function FinancialMovements() {
             {visibleCards.consolidado_contabil !== false && (
               <Card className="shadow-sm border-4 border-indigo-950 overflow-hidden lg:col-span-2 xl:col-span-2">
                 <CardHeader className="bg-indigo-950 text-white hover:bg-indigo-900 border-none pb-3 pt-4 transition-colors relative">
+                  <div className="absolute left-4 top-1/2 -translate-y-1/2 flex items-center gap-1 bg-indigo-900 rounded-md p-0.5 border border-indigo-800 shadow-sm">
+                    <TableSettingsControls
+                      prefs={accConsPrefs}
+                      updatePrefs={updateAccConsPrefs}
+                      className="text-white hover:text-white hover:bg-white/20"
+                    />
+                  </div>
                   <h2 className="text-base font-bold text-center w-full uppercase tracking-wider flex items-center justify-center gap-2">
                     <CheckCircle2 className="h-5 w-5" />
                     Totais Consolidados por Conta Contábil (Lançamentos Prontos e Pendentes)
@@ -11398,6 +11667,8 @@ export default function FinancialMovements() {
                     data={resumoData}
                     tableFontSize={tableFontSize}
                     getAccountingEntriesSimulation={getAccountingEntriesSimulation}
+                    prefs={accConsPrefs}
+                    updatePrefs={updateAccConsPrefs}
                   />
                 </CardContent>
               </Card>
@@ -11407,7 +11678,11 @@ export default function FinancialMovements() {
               <Card className="shadow-sm border-4 border-indigo-950 overflow-hidden lg:col-span-2 xl:col-span-2">
                 <CardHeader className="bg-indigo-950 text-white hover:bg-indigo-900 border-none pb-3 pt-4 transition-colors relative">
                   <div className="absolute left-4 top-1/2 -translate-y-1/2 flex items-center gap-1 bg-indigo-900 rounded-md p-0.5 border border-indigo-800 shadow-sm">
-                    <TableSettingsControls prefs={crossPrefs} updatePrefs={updateCrossPrefs} />
+                    <TableSettingsControls
+                      prefs={crossPrefs}
+                      updatePrefs={updateCrossPrefs}
+                      className="text-white hover:text-white hover:bg-white/20"
+                    />
                   </div>
                   <h2 className="text-base font-bold text-center w-full uppercase tracking-wider flex items-center justify-center gap-2">
                     <Columns className="h-5 w-5" />
@@ -11437,6 +11712,13 @@ export default function FinancialMovements() {
             {visibleCards.consolidado_conta !== false && (
               <Card className="shadow-sm border-4 border-indigo-950 overflow-hidden">
                 <CardHeader className="bg-indigo-950 text-white hover:bg-indigo-900 border-none pb-3 pt-4 transition-colors relative">
+                  <div className="absolute left-4 top-1/2 -translate-y-1/2 flex items-center gap-1 bg-indigo-900 rounded-md p-0.5 border border-indigo-800 shadow-sm">
+                    <TableSettingsControls
+                      prefs={consContaPrefs}
+                      updatePrefs={updateConsContaPrefs}
+                      className="text-white hover:text-white hover:bg-white/20"
+                    />
+                  </div>
                   <h2 className="text-base font-bold text-center w-full uppercase tracking-wider">
                     Totais Consolidados por Conta/Caixa
                   </h2>
@@ -11446,6 +11728,8 @@ export default function FinancialMovements() {
                     data={resumoData}
                     type="account"
                     tableFontSize={tableFontSize}
+                    prefs={consContaPrefs}
+                    updatePrefs={updateConsContaPrefs}
                   />
                 </CardContent>
               </Card>
@@ -11454,6 +11738,13 @@ export default function FinancialMovements() {
             {visibleCards.consolidado_custo !== false && (
               <Card className="shadow-sm border-4 border-indigo-950 overflow-hidden">
                 <CardHeader className="bg-indigo-950 text-white hover:bg-indigo-900 border-none pb-3 pt-4 transition-colors relative">
+                  <div className="absolute left-4 top-1/2 -translate-y-1/2 flex items-center gap-1 bg-indigo-900 rounded-md p-0.5 border border-indigo-800 shadow-sm">
+                    <TableSettingsControls
+                      prefs={consCustoPrefs}
+                      updatePrefs={updateConsCustoPrefs}
+                      className="text-white hover:text-white hover:bg-white/20"
+                    />
+                  </div>
                   <h2 className="text-base font-bold text-center w-full uppercase tracking-wider">
                     Totais Consolidados por Centro de Custo
                   </h2>
@@ -11463,6 +11754,8 @@ export default function FinancialMovements() {
                     data={resumoData}
                     type="cost"
                     tableFontSize={tableFontSize}
+                    prefs={consCustoPrefs}
+                    updatePrefs={updateConsCustoPrefs}
                   />
                 </CardContent>
               </Card>
@@ -11471,6 +11764,13 @@ export default function FinancialMovements() {
             {visibleCards.mes_conta !== false && (
               <Card className="shadow-sm border-4 border-indigo-950 overflow-hidden">
                 <CardHeader className="bg-indigo-950 text-white hover:bg-indigo-900 border-none pb-3 pt-4 transition-colors relative">
+                  <div className="absolute left-4 top-1/2 -translate-y-1/2 flex items-center gap-1 bg-indigo-900 rounded-md p-0.5 border border-indigo-800 shadow-sm">
+                    <TableSettingsControls
+                      prefs={mesContaPrefs}
+                      updatePrefs={updateMesContaPrefs}
+                      className="text-white hover:text-white hover:bg-white/20"
+                    />
+                  </div>
                   <h2 className="text-base font-bold text-center w-full">
                     Financeiro (Mês ➔ Conta/Caixa)
                   </h2>
@@ -11481,6 +11781,8 @@ export default function FinancialMovements() {
                     type="month_account"
                     dateField={summaryDateBase}
                     tableFontSize={tableFontSize}
+                    prefs={mesContaPrefs}
+                    updatePrefs={updateMesContaPrefs}
                   />
                 </CardContent>
               </Card>
@@ -11489,6 +11791,13 @@ export default function FinancialMovements() {
             {visibleCards.conta_mes !== false && (
               <Card className="shadow-sm border-4 border-indigo-950 overflow-hidden">
                 <CardHeader className="bg-indigo-950 text-white hover:bg-indigo-900 border-none pb-3 pt-4 transition-colors relative">
+                  <div className="absolute left-4 top-1/2 -translate-y-1/2 flex items-center gap-1 bg-indigo-900 rounded-md p-0.5 border border-indigo-800 shadow-sm">
+                    <TableSettingsControls
+                      prefs={contaMesPrefs}
+                      updatePrefs={updateContaMesPrefs}
+                      className="text-white hover:text-white hover:bg-white/20"
+                    />
+                  </div>
                   <h2 className="text-base font-bold text-center w-full">
                     Financeiro (Conta/Caixa ➔ Mês)
                   </h2>
@@ -11499,6 +11808,8 @@ export default function FinancialMovements() {
                     type="account_month"
                     dateField={summaryDateBase}
                     tableFontSize={tableFontSize}
+                    prefs={contaMesPrefs}
+                    updatePrefs={updateContaMesPrefs}
                   />
                 </CardContent>
               </Card>
@@ -11507,6 +11818,13 @@ export default function FinancialMovements() {
             {visibleCards.mes_custo !== false && (
               <Card className="shadow-sm border-4 border-indigo-950 overflow-hidden">
                 <CardHeader className="bg-indigo-950 text-white hover:bg-indigo-900 border-none pb-3 pt-4 transition-colors relative">
+                  <div className="absolute left-4 top-1/2 -translate-y-1/2 flex items-center gap-1 bg-indigo-900 rounded-md p-0.5 border border-indigo-800 shadow-sm">
+                    <TableSettingsControls
+                      prefs={mesCustoPrefs}
+                      updatePrefs={updateMesCustoPrefs}
+                      className="text-white hover:text-white hover:bg-white/20"
+                    />
+                  </div>
                   <h2 className="text-base font-bold text-center w-full">
                     Custos (Mês ➔ C. Custo)
                   </h2>
@@ -11517,6 +11835,8 @@ export default function FinancialMovements() {
                     type="month_cost"
                     dateField={summaryDateBase}
                     tableFontSize={tableFontSize}
+                    prefs={mesCustoPrefs}
+                    updatePrefs={updateMesCustoPrefs}
                   />
                 </CardContent>
               </Card>
@@ -11525,6 +11845,13 @@ export default function FinancialMovements() {
             {visibleCards.custo_mes !== false && (
               <Card className="shadow-sm border-4 border-indigo-950 overflow-hidden">
                 <CardHeader className="bg-indigo-950 text-white hover:bg-indigo-900 border-none pb-3 pt-4 transition-colors relative">
+                  <div className="absolute left-4 top-1/2 -translate-y-1/2 flex items-center gap-1 bg-indigo-900 rounded-md p-0.5 border border-indigo-800 shadow-sm">
+                    <TableSettingsControls
+                      prefs={custoMesPrefs}
+                      updatePrefs={updateCustoMesPrefs}
+                      className="text-white hover:text-white hover:bg-white/20"
+                    />
+                  </div>
                   <h2 className="text-base font-bold text-center w-full">
                     Custos (C. Custo ➔ Mês)
                   </h2>
@@ -11535,6 +11862,8 @@ export default function FinancialMovements() {
                     type="cost_month"
                     dateField={summaryDateBase}
                     tableFontSize={tableFontSize}
+                    prefs={custoMesPrefs}
+                    updatePrefs={updateCustoMesPrefs}
                   />
                 </CardContent>
               </Card>
