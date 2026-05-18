@@ -146,14 +146,24 @@ const IMPORT_TYPES = {
 interface ImportError {
   row: number
   error: string
-  data: any
+  data?: any
+  type?: string
 }
 
 interface ImportResult {
   inserted: number
   rejected: number
+  ignored: number
+  updated: number
+  skippedEmptyRows: number
   errors: ImportError[]
 }
+
+const PREVIEW_ROW_LIMIT = 5
+const LARGE_DATASET_THRESHOLD = 3000
+const VALIDATION_ERROR_LIMIT = 500
+const CHUNK_SIZE = 700
+const UPLOAD_CONCURRENCY = 4
 
 export default function Import() {
   const { toast } = useToast()
@@ -173,9 +183,11 @@ export default function Import() {
   const [isImporting, setIsImporting] = useState(false)
   const [importProgress, setImportProgress] = useState(0)
   const [importResult, setImportResult] = useState<ImportResult | null>(null)
+  const [processingLabel, setProcessingLabel] = useState('')
   const [showOnlyErrors, setShowOnlyErrors] = useState(false)
   const [allowIncomplete, setAllowIncomplete] = useState(false)
   const [columnMapping, setColumnMapping] = useState<Record<string, string>>({})
+  const [skippedEmptyRows, setSkippedEmptyRows] = useState(0)
 
   const normalizeHeader = (str: string) => {
     return str
@@ -185,61 +197,160 @@ export default function Import() {
       .replace(/[^A-Z0-9]/g, '')
   }
 
-  const parseCSV = (text: string) => {
-    const lines = text.split(/\r?\n/).filter((line) => line.trim() !== '')
-    if (lines.length === 0) return []
+  const normalizeCellValue = (value: unknown) => {
+    if (value === null || value === undefined) return ''
+    if (value instanceof Date) return value.toISOString().split('T')[0]
+    return String(value).replace(/\u00A0/g, ' ').trim()
+  }
 
-    const firstLine = lines[0]
-    const separator = firstLine.includes(';') ? ';' : ','
+  const isEffectivelyEmptyRow = (row: Record<string, unknown>) => {
+    const values = Object.values(row)
+    if (values.length === 0) return true
 
-    const splitLine = (str: string) => {
-      const result = []
-      let current = ''
-      let inQuotes = false
-      for (let i = 0; i < str.length; i++) {
-        const char = str[i]
-        if (char === '"') {
-          inQuotes = !inQuotes
-        } else if (char === separator && !inQuotes) {
-          result.push(current)
-          current = ''
-        } else {
-          current += char
-        }
-      }
-      result.push(current)
-      return result
-    }
+    return values.every((value) => {
+      const normalized = normalizeCellValue(value)
+      if (!normalized) return true
+      const withoutDecorators = normalized.replace(/["'`´\s]/g, '')
+      if (!withoutDecorators) return true
+      return /^[,;|/_.-]+$/.test(withoutDecorators)
+    })
+  }
 
-    const headers = splitLine(lines[0]).map((h) => h.trim())
-    const result = []
+  const sanitizeRows = (rows: any[]) => {
+    const cleanedRows: any[] = []
+    let ignored = 0
 
-    for (let i = 1; i < lines.length; i++) {
-      const values = splitLine(lines[i])
-      const row: any = {}
-      headers.forEach((header, index) => {
-        row[header] = values[index] !== undefined ? values[index].trim() : ''
+    rows.forEach((row) => {
+      const normalizedRow: Record<string, string> = {}
+      Object.entries(row || {}).forEach(([key, value]) => {
+        normalizedRow[String(key).trim()] = normalizeCellValue(value)
       })
-      result.push(row)
+
+      if (isEffectivelyEmptyRow(normalizedRow)) {
+        ignored++
+        return
+      }
+
+      cleanedRows.push(normalizedRow)
+    })
+
+    return { cleanedRows, ignored }
+  }
+
+  const detectCsvDelimiter = (text: string) => {
+    const sample = text.slice(0, 20000)
+    const delimiters = [';', ',', '\t']
+    let bestDelimiter = ';'
+    let bestScore = -1
+
+    delimiters.forEach((delimiter) => {
+      let score = 0
+      let inQuotes = false
+      for (let i = 0; i < sample.length; i++) {
+        const char = sample[i]
+        if (char === '"') {
+          if (inQuotes && sample[i + 1] === '"') {
+            i++
+          } else {
+            inQuotes = !inQuotes
+          }
+          continue
+        }
+
+        if (!inQuotes && char === delimiter) score++
+      }
+
+      if (score > bestScore) {
+        bestDelimiter = delimiter
+        bestScore = score
+      }
+    })
+
+    return bestDelimiter
+  }
+
+  const parseCSV = (text: string) => {
+    const normalizedText = text.replace(/^\uFEFF/, '')
+    if (!normalizedText.trim()) return []
+
+    const delimiter = detectCsvDelimiter(normalizedText)
+    const rows: string[][] = []
+    let currentRow: string[] = []
+    let currentField = ''
+    let inQuotes = false
+
+    const pushField = () => {
+      currentRow.push(currentField.trim())
+      currentField = ''
     }
-    return result
+
+    const pushRow = () => {
+      pushField()
+      if (currentRow.some((field) => field.trim() !== '')) {
+        rows.push(currentRow)
+      }
+      currentRow = []
+    }
+
+    for (let i = 0; i < normalizedText.length; i++) {
+      const char = normalizedText[i]
+
+      if (char === '"') {
+        if (inQuotes && normalizedText[i + 1] === '"') {
+          currentField += '"'
+          i++
+        } else {
+          inQuotes = !inQuotes
+        }
+        continue
+      }
+
+      if (!inQuotes && char === delimiter) {
+        pushField()
+        continue
+      }
+
+      if (!inQuotes && (char === '\n' || char === '\r')) {
+        if (char === '\r' && normalizedText[i + 1] === '\n') i++
+        pushRow()
+        continue
+      }
+
+      currentField += char
+    }
+
+    if (currentField !== '' || currentRow.length > 0) {
+      pushRow()
+    }
+
+    if (rows.length === 0) return []
+
+    const headers = rows[0].map((header, index) => header.trim() || `COLUNA_${index + 1}`)
+    const parsedRows: any[] = []
+
+    for (let i = 1; i < rows.length; i++) {
+      const row = rows[i]
+      const parsedRow: Record<string, string> = {}
+      headers.forEach((header, index) => {
+        parsedRow[header] = row[index] !== undefined ? row[index].trim() : ''
+      })
+      parsedRows.push(parsedRow)
+    }
+
+    return parsedRows
   }
 
   const processSheetData = (ws: XLSX.WorkSheet) => {
     const raw = XLSX.utils.sheet_to_json(ws, { defval: '' })
-    return raw.map((row: any) => {
+    const normalized = raw.map((row: any) => {
       const newRow: any = {}
       for (const key in row) {
-        let val = row[key]
-        if (val instanceof Date) {
-          val = val.toISOString().split('T')[0]
-        } else {
-          val = String(val).trim()
-        }
-        newRow[key.trim()] = val
+        newRow[key.trim()] = normalizeCellValue(row[key])
       }
       return newRow
     })
+
+    return sanitizeRows(normalized)
   }
 
   const detectImportType = (parsedData: any[]) => {
@@ -284,16 +395,23 @@ export default function Import() {
     setWorkbook(null)
     setImportType('')
     setColumnMapping({})
+    setSkippedEmptyRows(0)
+    setProcessingLabel('Lendo arquivo...')
 
     try {
+      let removedRowsCount = 0
       if (selectedFile.name.endsWith('.csv')) {
         const text = await selectedFile.text()
+        setProcessingLabel('Processando CSV...')
         const parsedData = parseCSV(text)
+        const { cleanedRows, ignored } = sanitizeRows(parsedData)
+        removedRowsCount = ignored
 
-        setRawData(parsedData)
+        setRawData(cleanedRows)
+        setSkippedEmptyRows(ignored)
         setSheets(['DADOS (CSV)'])
         setSelectedSheet('DADOS (CSV)')
-        detectImportType(parsedData)
+        detectImportType(cleanedRows)
       } else {
         const arrayBuffer = await selectedFile.arrayBuffer()
         const wb = XLSX.read(arrayBuffer, { type: 'array', cellDates: true })
@@ -304,19 +422,27 @@ export default function Import() {
           const firstSheet = wb.SheetNames[0]
           setSelectedSheet(firstSheet)
 
-          const parsedData = processSheetData(wb.Sheets[firstSheet])
-          setRawData(parsedData)
-          detectImportType(parsedData)
+          setProcessingLabel('Processando planilha...')
+          const { cleanedRows, ignored } = processSheetData(wb.Sheets[firstSheet])
+          removedRowsCount = ignored
+          setRawData(cleanedRows)
+          setSkippedEmptyRows(ignored)
+          detectImportType(cleanedRows)
         }
       }
 
       setIsUploading(false)
+      setProcessingLabel('')
       toast({
         title: 'Arquivo processado',
-        description: 'Dados extraídos com sucesso. Selecione a aba se necessário.',
+        description:
+          removedRowsCount > 0
+            ? `Dados extraídos com sucesso. ${removedRowsCount} linha(s) vazia(s) foram removidas.`
+            : 'Dados extraídos com sucesso. Selecione a aba se necessário.',
       })
     } catch (err: any) {
       setIsUploading(false)
+      setProcessingLabel('')
       toast({
         variant: 'destructive',
         title: 'Erro ao ler arquivo',
@@ -330,9 +456,10 @@ export default function Import() {
     setImportResult(null)
     setColumnMapping({})
     if (workbook) {
-      const parsedData = processSheetData(workbook.Sheets[sheetName])
-      setRawData(parsedData)
-      detectImportType(parsedData)
+      const { cleanedRows, ignored } = processSheetData(workbook.Sheets[sheetName])
+      setRawData(cleanedRows)
+      setSkippedEmptyRows(ignored)
+      detectImportType(cleanedRows)
     }
   }
 
@@ -382,11 +509,13 @@ export default function Import() {
         missingColumns,
         errors: [],
         validRecords: [],
+        hiddenErrors: 0,
       }
     }
 
     const errors: { row: number; missing: string[]; isWarning?: boolean }[] = []
     const validRecords: any[] = []
+    let hiddenErrors = 0
 
     rawData.forEach((row, idx) => {
       const mappedRow: any = { _originalIndex: idx + 1 }
@@ -402,10 +531,18 @@ export default function Import() {
         if (allowIncomplete) {
           valid++
           validRecords.push(mappedRow)
-          errors.push({ row: idx + 1, missing, isWarning: true })
+          if (errors.length < VALIDATION_ERROR_LIMIT) {
+            errors.push({ row: idx + 1, missing, isWarning: true })
+          } else {
+            hiddenErrors++
+          }
         } else {
           invalid++
-          errors.push({ row: idx + 1, missing, isWarning: false })
+          if (errors.length < VALIDATION_ERROR_LIMIT) {
+            errors.push({ row: idx + 1, missing, isWarning: false })
+          } else {
+            hiddenErrors++
+          }
         }
       } else {
         valid++
@@ -420,6 +557,7 @@ export default function Import() {
       missingColumns: allowIncomplete ? [] : missingColumns,
       errors,
       validRecords,
+      hiddenErrors,
     }
   }, [rawData, importType, columnMapping, allowIncomplete])
 
@@ -438,7 +576,7 @@ export default function Import() {
         return req.some((c) => !mappedRow[c] || String(mappedRow[c]).trim() === '')
       })
     }
-    return filtered.slice(0, 5)
+    return filtered.slice(0, PREVIEW_ROW_LIMIT)
   }, [rawData, showOnlyErrors, importType, columnMapping])
 
   const confirmImport = async () => {
@@ -453,6 +591,7 @@ export default function Import() {
 
     setIsImporting(true)
     setImportProgress(5)
+    setProcessingLabel('Preparando importação...')
 
     try {
       const {
@@ -475,28 +614,65 @@ export default function Import() {
       if (historyError) throw historyError
 
       setImportProgress(10)
-
-      const CHUNK_SIZE = 1000
       const totalChunks = Math.ceil(validationInfo.validRecords.length / CHUNK_SIZE)
+      const uploadChunkWithRetry = async (chunkIndex: number, chunkData: any[]) => {
+        let lastError: any = null
+        for (let attempt = 1; attempt <= 3; attempt++) {
+          const { error: uploadError } = await supabase.storage
+            .from('imports')
+            .upload(`${history.id}/chunk_${chunkIndex}.json`, JSON.stringify(chunkData), {
+              contentType: 'application/json',
+              upsert: true,
+            })
 
-      for (let i = 0; i < totalChunks; i += 5) {
-        const batch = []
-        for (let j = i; j < i + 5 && j < totalChunks; j++) {
-          const chunk = validationInfo.validRecords.slice(j * CHUNK_SIZE, (j + 1) * CHUNK_SIZE)
-          batch.push(
-            supabase.storage
-              .from('imports')
-              .upload(`${history.id}/chunk_${j}.json`, JSON.stringify(chunk), {
-                contentType: 'application/json',
-                upsert: true,
-              }),
-          )
+          if (!uploadError) return
+
+          lastError = uploadError
+          await new Promise((resolve) => setTimeout(resolve, attempt * 400))
         }
-        await Promise.all(batch)
-        setImportProgress(10 + Math.round(((i + 1) / totalChunks) * 50))
+
+        throw new Error(
+          `Falha ao enviar lote ${chunkIndex + 1}/${totalChunks}: ${lastError?.message || 'erro desconhecido'}`,
+        )
+      }
+
+      let uploadedChunks = 0
+      const failedUploads: number[] = []
+      for (let i = 0; i < totalChunks; i += UPLOAD_CONCURRENCY) {
+        const currentIndexes = Array.from(
+          { length: Math.min(UPLOAD_CONCURRENCY, totalChunks - i) },
+          (_, offset) => i + offset,
+        )
+        const chunkResults = await Promise.allSettled(
+          currentIndexes.map((chunkIndex) => {
+            const chunkData = validationInfo.validRecords.slice(
+              chunkIndex * CHUNK_SIZE,
+              (chunkIndex + 1) * CHUNK_SIZE,
+            )
+            return uploadChunkWithRetry(chunkIndex, chunkData)
+          }),
+        )
+
+        chunkResults.forEach((result, idx) => {
+          if (result.status === 'fulfilled') {
+            uploadedChunks++
+          } else {
+            failedUploads.push(currentIndexes[idx] + 1)
+          }
+        })
+
+        setProcessingLabel(`Enviando lotes ${uploadedChunks}/${totalChunks}...`)
+        setImportProgress(10 + Math.round((uploadedChunks / totalChunks) * 50))
+      }
+
+      if (failedUploads.length > 0) {
+        throw new Error(
+          `Não foi possível enviar ${failedUploads.length} lote(s): ${failedUploads.slice(0, 5).join(', ')}${failedUploads.length > 5 ? '...' : ''}.`,
+        )
       }
 
       setImportProgress(60)
+      setProcessingLabel('Iniciando processamento no servidor...')
 
       const { error } = await supabase.functions.invoke('import-data', {
         body: {
@@ -528,17 +704,24 @@ export default function Import() {
             setImportResult({
               inserted: hist.success_count || 0,
               rejected: hist.error_count || 0,
+              ignored: hist.ignored_count || 0,
+              updated: hist.updated_count || 0,
+              skippedEmptyRows,
               errors: hist.errors_list || [],
             })
+            setProcessingLabel('')
             setIsImporting(false)
             toast({
-              title: 'Processamento Finalizado',
-              description: `${hist.success_count || 0} registros inseridos, ${hist.error_count || 0} rejeitados.`,
+              title: hist.status === 'Completed' ? 'Processamento Finalizado' : 'Processamento com falhas',
+              description: `${hist.success_count || 0} inseridos, ${hist.error_count || 0} rejeitados${(hist.ignored_count || 0) > 0 ? `, ${hist.ignored_count || 0} ignorados` : ''}.`,
             })
           } else {
             if (hist.total_records > 0 && hist.processed_records !== null) {
               setImportProgress(
                 60 + Math.round(((hist.processed_records || 0) / hist.total_records) * 40),
+              )
+              setProcessingLabel(
+                `Processando no servidor ${hist.processed_records || 0}/${hist.total_records} registros...`,
               )
             }
           }
@@ -551,6 +734,7 @@ export default function Import() {
         description: err.message,
       })
       setImportProgress(0)
+      setProcessingLabel('')
       setIsImporting(false)
     }
   }
@@ -579,6 +763,8 @@ export default function Import() {
     setShowOnlyErrors(false)
     setAllowIncomplete(false)
     setColumnMapping({})
+    setSkippedEmptyRows(0)
+    setProcessingLabel('')
   }
 
   const downloadErrors = () => {
@@ -695,7 +881,7 @@ export default function Import() {
             {isUploading && (
               <div className="mt-4 space-y-2">
                 <div className="flex justify-between text-sm">
-                  <span>Processando arquivo...</span>
+                  <span>{processingLabel || 'Processando arquivo...'}</span>
                 </div>
                 <Progress value={45} className="h-2 animate-pulse" />
               </div>
@@ -890,7 +1076,7 @@ export default function Import() {
                 </div>
               </div>
             ) : (
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div className="bg-muted/50 p-4 rounded-lg flex flex-col items-center justify-center text-center border">
                   <span className="text-3xl font-bold">{validationInfo.total}</span>
                   <span className="text-sm text-muted-foreground font-medium">Total de Linhas</span>
@@ -909,6 +1095,14 @@ export default function Import() {
                   </span>
                   <span className="text-sm text-red-600/80 dark:text-red-500/80 font-medium">
                     Incompletas (Ignoradas)
+                  </span>
+                </div>
+                <div className="bg-blue-500/10 p-4 rounded-lg flex flex-col items-center justify-center text-center border border-blue-500/20">
+                  <span className="text-3xl font-bold text-blue-600 dark:text-blue-500">
+                    {skippedEmptyRows}
+                  </span>
+                  <span className="text-sm text-blue-600/80 dark:text-blue-500/80 font-medium">
+                    Linhas Vazias Removidas
                   </span>
                 </div>
               </div>
@@ -964,6 +1158,12 @@ export default function Import() {
                           </span>
                         </li>
                       ))}
+                      {validationInfo.hiddenErrors > 0 && (
+                        <li className="text-muted-foreground">
+                          + {validationInfo.hiddenErrors} ocorrência(s) adicional(is) não exibidas
+                          para manter a interface responsiva.
+                        </li>
+                      )}
                     </ul>
                   </ScrollArea>
                 </div>
@@ -972,10 +1172,20 @@ export default function Import() {
 
             {columns.length > 0 && (
               <div className="space-y-3">
+                {rawData.length >= LARGE_DATASET_THRESHOLD && (
+                  <Alert className="bg-blue-500/10 text-blue-700 border-blue-500/30">
+                    <AlertCircle className="h-4 w-4 text-blue-600" />
+                    <AlertTitle>Volume alto detectado</AlertTitle>
+                    <AlertDescription>
+                      Esta planilha possui {rawData.length} linhas válidas. O preview e os relatórios
+                      desta etapa são limitados para manter a performance do navegador.
+                    </AlertDescription>
+                  </Alert>
+                )}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <h3 className="font-medium flex items-center gap-2">
                     <FileType2 className="h-4 w-4 text-muted-foreground" />
-                    Preview dos Dados (Exibindo até 5 linhas)
+                    Preview dos Dados (Exibindo até {PREVIEW_ROW_LIMIT} linhas)
                   </h3>
                   {validationInfo.errors.length > 0 &&
                     validationInfo.missingColumns.length === 0 && (
@@ -1029,7 +1239,7 @@ export default function Import() {
                       </TableHeader>
                       <TableBody>
                         {previewData.length > 0 ? (
-                          previewData.map((row, idx) => {
+                          previewData.map((row) => {
                             const originalIndex = rawData.indexOf(row) + 1
                             const req =
                               IMPORT_TYPES[importType as keyof typeof IMPORT_TYPES].required
@@ -1113,7 +1323,7 @@ export default function Import() {
             {isImporting ? (
               <div className="space-y-2">
                 <div className="flex justify-between text-sm font-medium">
-                  <span>Processando dados no servidor (Edge Function)...</span>
+                  <span>{processingLabel || 'Processando dados no servidor (Edge Function)...'}</span>
                   <span>{importProgress}%</span>
                 </div>
                 <Progress value={importProgress} className="h-2" />
@@ -1149,7 +1359,7 @@ export default function Import() {
             </CardDescription>
           </CardHeader>
           <CardContent className="-mt-6">
-            <div className="grid grid-cols-2 gap-4 bg-background border rounded-lg p-6 shadow-sm">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 bg-background border rounded-lg p-6 shadow-sm">
               <div className="flex flex-col items-center gap-1">
                 <span className="text-4xl font-bold text-green-600">{importResult.inserted}</span>
                 <span className="text-sm font-medium text-muted-foreground uppercase tracking-wider text-center">
@@ -1166,7 +1376,38 @@ export default function Import() {
                   Rejeitados/Duplicados
                 </span>
               </div>
+              <div className="flex flex-col items-center gap-1 md:border-l">
+                <span
+                  className={`text-4xl font-bold ${importResult.ignored > 0 ? 'text-blue-500' : 'text-muted-foreground'}`}
+                >
+                  {importResult.ignored}
+                </span>
+                <span className="text-sm font-medium text-muted-foreground uppercase tracking-wider text-center">
+                  Ignorados
+                </span>
+              </div>
+              <div className="flex flex-col items-center gap-1 md:border-l">
+                <span
+                  className={`text-4xl font-bold ${importResult.updated > 0 ? 'text-amber-500' : 'text-muted-foreground'}`}
+                >
+                  {importResult.updated}
+                </span>
+                <span className="text-sm font-medium text-muted-foreground uppercase tracking-wider text-center">
+                  Atualizados
+                </span>
+              </div>
             </div>
+
+            {importResult.skippedEmptyRows > 0 && (
+              <Alert className="mt-4 bg-blue-500/10 text-blue-700 border-blue-500/30">
+                <AlertCircle className="h-4 w-4 text-blue-600" />
+                <AlertTitle>Linhas vazias descartadas no frontend</AlertTitle>
+                <AlertDescription>
+                  {importResult.skippedEmptyRows} linha(s) vazia(s) ou praticamente vazia(s) foram
+                  removidas antes da validação/importação.
+                </AlertDescription>
+              </Alert>
+            )}
 
             {importResult.errors.length > 0 && (
               <div className="mt-6 space-y-4">
