@@ -742,14 +742,15 @@ Deno.serve(async (req: Request) => {
     let updated = 0
     const errors: any[] = []
 
-    const addError = (rowNum: number, msg: string, rowData: any) => {
-      rejected++
-      if (errors.length < 100) {
-        errors.push({ row: rowNum, error: msg })
-      } else if (errors.length === 100) {
+    const addError = (rowNum: number, msg: string, rowData: any, isIgnored = false) => {
+      if (!isIgnored) rejected++
+      if (errors.length < 5000) {
+        errors.push({ row: rowNum, error: msg, type: isIgnored ? 'Ignorado' : 'Erro' })
+      } else if (errors.length === 5000) {
         errors.push({
           row: 0,
-          error: 'Muitos erros encontrados. Exibindo apenas os 100 primeiros.',
+          error: 'Muitas ocorrências encontradas. A lista foi truncada.',
+          type: 'Aviso',
         })
       }
     }
@@ -2822,7 +2823,11 @@ Deno.serve(async (req: Request) => {
             updated += res.updated || 0
             if (res.errors && Array.isArray(res.errors)) {
               res.errors.forEach((err: any) => {
-                addError(err.row || 0, err.error, {})
+                const isIgnored = err.type === 'Ignorado'
+                if (!isIgnored) rejected++
+                if (errors.length < 5000) {
+                  errors.push({ row: err.row || 0, error: err.error, type: err.type || 'Erro' })
+                }
               })
             }
           }
@@ -2835,7 +2840,7 @@ Deno.serve(async (req: Request) => {
       const newRejected = (payload.rejected || 0) + rejected
       const newIgnored = (payload.ignored || 0) + ignored
       const newUpdated = (payload.updated || 0) + updated
-      const newErrors = [...(payload.errors || []), ...errors].slice(0, 100)
+      const newErrors = [...(payload.errors || []), ...errors].slice(0, 5000)
 
       const nextChunk = payload.chunkIndex + 1
       const isDone = nextChunk >= payload.totalChunks
@@ -2843,7 +2848,12 @@ Deno.serve(async (req: Request) => {
       await supabaseAdmin
         .from('import_history')
         .update({
-          processed_records: payload.totalRecords ? Math.min(Math.round((nextChunk / payload.totalChunks) * payload.totalRecords), payload.totalRecords) : nextChunk * 500,
+          processed_records: payload.totalRecords
+            ? Math.min(
+                Math.round((nextChunk / payload.totalChunks) * payload.totalRecords),
+                payload.totalRecords,
+              )
+            : nextChunk * 500,
           success_count: newInserted,
           error_count: newRejected,
           ignored_count: newIgnored,
@@ -2891,8 +2901,8 @@ Deno.serve(async (req: Request) => {
                     status: 'Error',
                     errors_list: [
                       ...newErrors,
-                      { error: `Falha ao iniciar próximo chunk: ${e.message}` },
-                    ].slice(0, 100),
+                      { error: `Falha ao iniciar próximo chunk: ${e.message}`, type: 'Erro' },
+                    ].slice(0, 5000),
                   })
                   .eq('id', payload.importId)
               }
@@ -2921,7 +2931,7 @@ Deno.serve(async (req: Request) => {
       const newRejected = (payload.rejected || 0) + rejected
       const newIgnored = (payload.ignored || 0) + ignored
       const newUpdated = (payload.updated || 0) + updated
-      const newErrors = [...(payload.errors || []), ...errors].slice(0, 100)
+      const newErrors = [...(payload.errors || []), ...errors].slice(0, 5000)
       const nextOffset = (payload.offset || 0) + (payload.limit || 100)
       const rawTotalRecords =
         payload.actualTotalRecords ||
@@ -2985,8 +2995,8 @@ Deno.serve(async (req: Request) => {
                     status: 'Error',
                     errors_list: [
                       ...newErrors,
-                      { error: `Falha ao iniciar próximo chunk bg: ${e.message}` },
-                    ].slice(0, 100),
+                      { error: `Falha ao iniciar próximo chunk bg: ${e.message}`, type: 'Erro' },
+                    ].slice(0, 5000),
                   })
                   .eq('id', payload.importId)
               }

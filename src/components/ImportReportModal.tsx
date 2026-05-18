@@ -15,7 +15,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { AlertCircle, CheckCircle2, FileSpreadsheet, Clock, Database } from 'lucide-react'
+import { AlertCircle, CheckCircle2, FileSpreadsheet, Clock, Database, Download } from 'lucide-react'
 
 export function ImportReportModal({ open, onOpenChange, importData }: any) {
   if (!importData) return null
@@ -30,6 +30,29 @@ export function ImportReportModal({ open, onOpenChange, importData }: any) {
   const formatDate = (dateStr: string) => {
     if (!dateStr) return '-'
     return new Date(dateStr).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'medium' })
+  }
+
+  const exportErrorsToCSV = () => {
+    if (!importData.errors_list || importData.errors_list.length === 0) return
+    const headers = ['Linha', 'Tipo', 'Descrição do Problema']
+    const csvContent = [
+      headers.join(';'),
+      ...importData.errors_list.map((err: any) => {
+        const row = err.row > 0 ? err.row : 'Lote'
+        const type = err.type || 'Erro'
+        const msg = String(err.error || '').replace(/"/g, '""')
+        return `"${row}";"${type}";"${msg}"`
+      }),
+    ].join('\n')
+
+    const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.setAttribute('href', url)
+    link.setAttribute('download', `erros_importacao_${importData.file_name || 'log'}.csv`)
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
   }
 
   return (
@@ -147,15 +170,27 @@ export function ImportReportModal({ open, onOpenChange, importData }: any) {
 
           {importData.errors_list && importData.errors_list.length > 0 && (
             <div>
-              <h4 className="text-sm font-bold text-slate-800 mb-3 uppercase tracking-wider flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 text-rose-600" /> Log de Erros Identificados
-              </h4>
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="text-sm font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 text-rose-600" /> Log de Ocorrências (Erros /
+                  Ignorados)
+                </h4>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={exportErrorsToCSV}
+                  className="gap-2 h-8"
+                >
+                  <Download className="w-4 h-4" /> Exportar Log
+                </Button>
+              </div>
               <div className="border border-slate-200 rounded-xl overflow-hidden shadow-sm bg-white">
                 <Table>
-                  <TableHeader className="bg-rose-50/50">
+                  <TableHeader className="bg-slate-50">
                     <TableRow className="border-b-slate-200">
-                      <TableHead className="w-[100px] text-rose-900 font-bold">Linha</TableHead>
-                      <TableHead className="text-rose-900 font-bold">
+                      <TableHead className="w-[100px] text-slate-700 font-bold">Linha</TableHead>
+                      <TableHead className="w-[120px] text-slate-700 font-bold">Tipo</TableHead>
+                      <TableHead className="text-slate-700 font-bold">
                         Descrição do Problema
                       </TableHead>
                     </TableRow>
@@ -169,16 +204,23 @@ export function ImportReportModal({ open, onOpenChange, importData }: any) {
                         <TableCell className="font-mono text-slate-600 font-medium">
                           {err.row > 0 ? err.row : 'Lote'}
                         </TableCell>
-                        <TableCell className="text-rose-700 font-medium">{err.error}</TableCell>
+                        <TableCell>
+                          <span
+                            className={`px-2 py-0.5 rounded text-xs font-bold ${err.type === 'Ignorado' ? 'bg-slate-200 text-slate-700' : 'bg-rose-100 text-rose-700'}`}
+                          >
+                            {err.type || 'Erro'}
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-slate-700 font-medium">{err.error}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
                 </Table>
               </div>
-              {importData.errors_list.length >= 100 && (
+              {importData.errors_list.length >= 5000 && (
                 <p className="text-xs text-slate-500 mt-3 flex items-center gap-1.5 font-medium">
-                  <AlertCircle className="w-3.5 h-3.5" /> A lista foi truncada exibindo apenas os
-                  primeiros 100 erros encontrados.
+                  <AlertCircle className="w-3.5 h-3.5" /> A lista foi truncada exibindo apenas as
+                  primeiras 5000 ocorrências.
                 </p>
               )}
             </div>
