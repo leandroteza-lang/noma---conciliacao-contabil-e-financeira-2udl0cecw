@@ -76,7 +76,7 @@ Deno.serve(async (req: Request) => {
           file_name: payload.fileName,
           file_path: payload.filePath,
           total_records: payload.totalRecords || 0,
-          status: 'Processing',
+          status: 'Pending',
           organization_id: payload.organizationId,
           mode: payload.mode,
           sheet_name: payload.sheetName,
@@ -86,14 +86,21 @@ Deno.serve(async (req: Request) => {
 
       if (historyError) throw new Error('Erro ao iniciar histórico: ' + historyError.message)
 
-      try {
-        const { data: fileData, error: downloadError } = await supabaseAdmin.storage
-          .from('imports')
-          .download(payload.filePath)
-        if (downloadError)
-          throw new Error('Erro ao baixar arquivo do storage: ' + downloadError.message)
-        const arrayBuffer = await fileData.arrayBuffer()
-        const bytes = new Uint8Array(arrayBuffer)
+      EdgeRuntime.waitUntil(
+        (async () => {
+          try {
+            await supabaseAdmin
+              .from('import_history')
+              .update({ status: 'Processing' })
+              .eq('id', history.id)
+
+            const { data: fileData, error: downloadError } = await supabaseAdmin.storage
+              .from('imports')
+              .download(payload.filePath)
+            if (downloadError)
+              throw new Error('Erro ao baixar arquivo do storage: ' + downloadError.message)
+            const arrayBuffer = await fileData.arrayBuffer()
+            const bytes = new Uint8Array(arrayBuffer)
 
             let isCsv = payload.fileName && payload.fileName.toLowerCase().endsWith('.csv')
             let rawRecords: any[] = []
@@ -208,22 +215,30 @@ Deno.serve(async (req: Request) => {
               let currentRow: string[] = []
               let currentCell = ''
               let inQuotes = false
+              let startIndex = 0
 
               for (let i = 0; i < textContent.length; i++) {
                 const char = textContent[i]
                 const nextChar = textContent[i + 1]
                 if (char === '"') {
                   if (inQuotes && nextChar === '"') {
-                    currentCell += '"'
+                    currentCell += textContent.substring(startIndex, i) + '"'
                     i++
+                    startIndex = i + 1
                   } else {
+                    currentCell += textContent.substring(startIndex, i)
                     inQuotes = !inQuotes
+                    startIndex = i + 1
                   }
                 } else if (char === delimiter && !inQuotes) {
+                  currentCell += textContent.substring(startIndex, i)
                   currentRow.push(currentCell)
                   currentCell = ''
+                  startIndex = i + 1
                 } else if ((char === '\n' || (char === '\r' && nextChar === '\n')) && !inQuotes) {
+                  currentCell += textContent.substring(startIndex, i)
                   if (char === '\r') i++
+                  startIndex = i + 1
                   currentRow.push(currentCell)
                   if (headers.length === 0) {
                     headers = currentRow.map((h) => h.trim())
@@ -236,9 +251,10 @@ Deno.serve(async (req: Request) => {
                   }
                   currentRow = []
                   currentCell = ''
-                } else {
-                  currentCell += char
                 }
+              }
+              if (startIndex < textContent.length) {
+                currentCell += textContent.substring(startIndex)
               }
               if (currentCell || currentRow.length > 0) {
                 currentRow.push(currentCell)
@@ -256,146 +272,144 @@ Deno.serve(async (req: Request) => {
               rawRecords = XLSX.utils.sheet_to_json(sheet, { defval: '' })
             }
 
-        const columnMapping = payload.columnMapping || {}
-        const normalizedRecords = rawRecords.map((r: any, index: number) => {
-          const normalized: any = {}
-          normalized._originalIndex = index + 1
-          for (const key in r) {
-            const mappedKey = columnMapping[key] || key
-            const cleanKey = mappedKey
-              .normalize('NFD')
-              .replace(/[\u0300-\u036f]/g, '')
-              .replace(/[^A-Z0-9]/gi, '')
-              .toUpperCase()
-              .trim()
+            const columnMapping = payload.columnMapping || {}
+            const normalizedRecords = rawRecords.map((r: any, index: number) => {
+              const normalized: any = {}
+              normalized._originalIndex = index + 1
+              for (const key in r) {
+                const mappedKey = columnMapping[key] || key
+                const cleanKey = mappedKey
+                  .normalize('NFD')
+                  .replace(/[\u0300-\u036f]/g, '')
+                  .replace(/[^A-Z0-9]/gi, '')
+                  .toUpperCase()
+                  .trim()
 
-            let val = r[key]
-            if (dateCols.includes(cleanKey)) {
-              val = safeParseDate(val) || ''
-            } else if (numCols.includes(cleanKey)) {
-              val = safeParseNum(val)
-              val = val !== null ? val : ''
-            } else {
-              val =
-                val !== null && val !== undefined
-                  ? String(val)
-                      .replace(/[\u0000-\u0008\u000B-\u000C\u000E-\u001F\u007F-\u009F]/g, '')
-                      .trim()
-                  : ''
-            }
-            normalized[cleanKey] = val
-          }
-          return normalized
-        })
-
-        await supabaseAdmin
-          .from('import_history')
-          .update({ total_records: normalizedRecords.length })
-          .eq('id', history.id)
-
-        const CHUNK_SIZE = 1000
-        const totalChunks = Math.ceil(normalizedRecords.length / CHUNK_SIZE)
-
-        if (totalChunks === 0) {
-          await supabaseAdmin
-            .from('import_history')
-            .update({ status: 'Completed', processed_records: 0 })
-            .eq('id', history.id)
-          
-          return new Response(JSON.stringify({ success: true, importId: history.id }), {
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          })
-        }
-
-        const uploadPromises = []
-        for (let i = 0; i < totalChunks; i++) {
-          const chunk = normalizedRecords.slice(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE)
-          uploadPromises.push(
-            supabaseAdmin.storage
-              .from('imports')
-              .upload(`${history.id}/chunk_${i}.json`, JSON.stringify(chunk), {
-                contentType: 'application/json',
-              }),
-          )
-          if (uploadPromises.length >= 10 || i === totalChunks - 1) {
-            await Promise.all(uploadPromises)
-            uploadPromises.length = 0
-          }
-        }
-
-        EdgeRuntime.waitUntil(
-          (async () => {
-            let success = false;
-            let lastError = null;
-            for (let attempt = 1; attempt <= 3; attempt++) {
-              try {
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 60000);
-                const response = await fetch(`${supabaseUrl}/functions/v1/import-data`, {
-                  method: 'POST',
-                  headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: `Bearer ${supabaseServiceKey}`,
-                  },
-                  body: JSON.stringify({
-                    action: 'PROCESS_CHUNK',
-                    importId: history.id,
-                    type: payload.type,
-                    chunkIndex: 0,
-                    totalChunks: totalChunks,
-                    totalRecords: normalizedRecords.length,
-                    organizationId: payload.organizationId,
-                    mode: payload.mode,
-                    userId: user.id,
-                    allowIncomplete: payload.allowIncomplete,
-                    rootMapping: payload.rootMapping,
-                    columnMapping: payload.columnMapping
-                  }),
-                  signal: controller.signal
-                })
-                clearTimeout(timeoutId);
-                if (!response.ok) {
-                  const errText = await response.text()
-                  throw new Error(`Erro ao iniciar chunk 0: ${response.status} - ${errText}`)
+                let val = r[key]
+                if (dateCols.includes(cleanKey)) {
+                  val = safeParseDate(val) || ''
+                } else if (numCols.includes(cleanKey)) {
+                  val = safeParseNum(val)
+                  val = val !== null ? val : ''
+                } else {
+                  val =
+                    val !== null && val !== undefined
+                      ? String(val)
+                          .replace(/[\u0000-\u0008\u000B-\u000C\u000E-\u001F\u007F-\u009F]/g, '')
+                          .trim()
+                      : ''
                 }
-                success = true;
-                break;
-              } catch (fetchErr) {
-                lastError = fetchErr;
-                await new Promise(resolve => setTimeout(resolve, 2000 * attempt));
+                normalized[cleanKey] = val
               }
-            }
-            if (!success && lastError) {
+              return normalized
+            })
+
+            await supabaseAdmin
+              .from('import_history')
+              .update({ total_records: normalizedRecords.length })
+              .eq('id', history.id)
+
+            const CHUNK_SIZE = 1000
+            const totalChunks = Math.ceil(normalizedRecords.length / CHUNK_SIZE)
+
+            if (totalChunks === 0) {
               await supabaseAdmin
                 .from('import_history')
-                .update({
-                  status: 'Error',
-                  errors_list: [{ error: `Falha ao iniciar processamento de chunks: ${lastError.message}` }],
-                })
+                .update({ status: 'Completed', processed_records: 0 })
                 .eq('id', history.id)
+
+              return new Response(JSON.stringify({ success: true, importId: history.id }), {
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+              })
             }
-          })()
-        )
 
-        return new Response(JSON.stringify({ success: true, importId: history.id }), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        })
+            const uploadPromises = []
+            for (let i = 0; i < totalChunks; i++) {
+              const chunk = normalizedRecords.slice(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE)
+              uploadPromises.push(
+                supabaseAdmin.storage
+                  .from('imports')
+                  .upload(`${history.id}/chunk_${i}.json`, JSON.stringify(chunk), {
+                    contentType: 'application/json',
+                  }),
+              )
+              if (uploadPromises.length >= 10 || i === totalChunks - 1) {
+                await Promise.all(uploadPromises)
+                uploadPromises.length = 0
+              }
+            }
 
-      } catch (e: any) {
-        console.error('Fast background process error:', e)
-        await supabaseAdmin
-          .from('import_history')
-          .update({
-            status: 'Error',
-            errors_list: [{ error: e.message }],
-          })
-          .eq('id', history.id)
+            EdgeRuntime.waitUntil(
+              (async () => {
+                let success = false
+                let lastError = null
+                for (let attempt = 1; attempt <= 3; attempt++) {
+                  try {
+                    const controller = new AbortController()
+                    const timeoutId = setTimeout(() => controller.abort(), 60000)
+                    const response = await fetch(`${supabaseUrl}/functions/v1/import-data`, {
+                      method: 'POST',
+                      headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${supabaseServiceKey}`,
+                      },
+                      body: JSON.stringify({
+                        action: 'PROCESS_CHUNK',
+                        importId: history.id,
+                        type: payload.type,
+                        chunkIndex: 0,
+                        totalChunks: totalChunks,
+                        totalRecords: normalizedRecords.length,
+                        organizationId: payload.organizationId,
+                        mode: payload.mode,
+                        userId: user.id,
+                        allowIncomplete: payload.allowIncomplete,
+                        rootMapping: payload.rootMapping,
+                        columnMapping: payload.columnMapping,
+                      }),
+                      signal: controller.signal,
+                    })
+                    clearTimeout(timeoutId)
+                    if (!response.ok) {
+                      const errText = await response.text()
+                      throw new Error(`Erro ao iniciar chunk 0: ${response.status} - ${errText}`)
+                    }
+                    success = true
+                    break
+                  } catch (fetchErr) {
+                    lastError = fetchErr
+                    await new Promise((resolve) => setTimeout(resolve, 2000 * attempt))
+                  }
+                }
+                if (!success && lastError) {
+                  await supabaseAdmin
+                    .from('import_history')
+                    .update({
+                      status: 'Error',
+                      errors_list: [
+                        { error: `Falha ao iniciar processamento de chunks: ${lastError.message}` },
+                      ],
+                    })
+                    .eq('id', history.id)
+                }
+              })(),
+            )
+          } catch (e: any) {
+            console.error('Fast background process error:', e)
+            await supabaseAdmin
+              .from('import_history')
+              .update({
+                status: 'Error',
+                errors_list: [{ error: e.message }],
+              })
+              .eq('id', history.id)
+          }
+        })(),
+      )
 
-        return new Response(JSON.stringify({ success: false, error: e.message }), {
-          status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        })
-      }
+      return new Response(JSON.stringify({ success: true, importId: history.id }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
     }
 
     let records = payload.records
@@ -502,15 +516,17 @@ Deno.serve(async (req: Request) => {
 
     if (payload.action === 'PROCESS_CHUNK') {
       const { importId, chunkIndex } = payload
-      
+
       const { data: historyRow, error: historyErr } = await supabaseAdmin
         .from('import_history')
-        .select('success_count, error_count, ignored_count, updated_count, errors_list, total_records')
+        .select(
+          'success_count, error_count, ignored_count, updated_count, errors_list, total_records',
+        )
         .eq('id', importId)
         .single()
-        
+
       if (historyErr) {
-         console.error('Erro ao buscar history:', historyErr)
+        console.error('Erro ao buscar history:', historyErr)
       }
 
       const { data: fileData, error: dlErr } = await supabaseAdmin.storage
@@ -518,8 +534,8 @@ Deno.serve(async (req: Request) => {
         .download(`${importId}/chunk_${chunkIndex}.json`)
       if (dlErr) throw new Error('Erro ao baixar chunk do storage')
       records = JSON.parse(await fileData.text())
-      
-      payload._historyRow = historyRow;
+
+      payload._historyRow = historyRow
     } else if (payload.fileBase64 || payload.filePath) {
       try {
         let bytes: Uint8Array
@@ -557,6 +573,7 @@ Deno.serve(async (req: Request) => {
             let currentRow: string[] = []
             let currentCell = ''
             let inQuotes = false
+            let startIndex = 0
 
             for (let i = 0; i < text.length; i++) {
               const char = text[i]
@@ -564,23 +581,31 @@ Deno.serve(async (req: Request) => {
 
               if (char === '"') {
                 if (inQuotes && nextChar === '"') {
-                  currentCell += '"'
+                  currentCell += text.substring(startIndex, i) + '"'
                   i++
+                  startIndex = i + 1
                 } else {
+                  currentCell += text.substring(startIndex, i)
                   inQuotes = !inQuotes
+                  startIndex = i + 1
                 }
               } else if (char === delimiter && !inQuotes) {
+                currentCell += text.substring(startIndex, i)
                 currentRow.push(currentCell)
                 currentCell = ''
+                startIndex = i + 1
               } else if ((char === '\n' || (char === '\r' && nextChar === '\n')) && !inQuotes) {
+                currentCell += text.substring(startIndex, i)
                 if (char === '\r') i++
+                startIndex = i + 1
                 currentRow.push(currentCell)
                 if (currentRow.some((c) => c.trim() !== '')) rows.push(currentRow)
                 currentRow = []
                 currentCell = ''
-              } else {
-                currentCell += char
               }
+            }
+            if (startIndex < text.length) {
+              currentCell += text.substring(startIndex)
             }
             if (currentCell || currentRow.length > 0) {
               currentRow.push(currentCell)
@@ -791,7 +816,7 @@ Deno.serve(async (req: Request) => {
         errors.push({
           row: 0,
           error: 'Muitas ocorrências encontradas. A lista foi truncada para 15000 itens.',
-          type: 'Aviso'
+          type: 'Aviso',
         })
       }
     }
@@ -2839,11 +2864,11 @@ Deno.serve(async (req: Request) => {
       }
 
       for (const [orgId, orgRecords] of recordsByOrg.entries()) {
-        const SUB_CHUNK_SIZE = 100;
-        
+        const SUB_CHUNK_SIZE = 100
+
         for (let j = 0; j < orgRecords.length; j += SUB_CHUNK_SIZE) {
-          const subRecords = orgRecords.slice(j, j + SUB_CHUNK_SIZE);
-          
+          const subRecords = orgRecords.slice(j, j + SUB_CHUNK_SIZE)
+
           const rpcPayload = {
             p_org_id: orgId,
             p_import_id: payload.importId || null,
@@ -2856,19 +2881,16 @@ Deno.serve(async (req: Request) => {
 
           // Retentativa Inteligente
           for (let attempt = 1; attempt <= 3; attempt++) {
-            const result = await supabaseAdmin.rpc(
-              'import_erp_movements_batch_v3',
-              rpcPayload,
-            )
+            const result = await supabaseAdmin.rpc('import_erp_movements_batch_v3', rpcPayload)
             res = result.data
             rpcErr = result.error
-            
+
             if (!rpcErr && res && res.success !== false) {
               break
             }
-            
+
             if (attempt < 3) {
-              await new Promise(resolve => setTimeout(resolve, 1000 * attempt))
+              await new Promise((resolve) => setTimeout(resolve, 1000 * attempt))
             }
           }
 
@@ -2921,7 +2943,9 @@ Deno.serve(async (req: Request) => {
       const isDone = nextChunk >= payload.totalChunks
 
       const totalRecs = payload.totalRecords || historyRow?.total_records || 0
-      const processedRecs = totalRecs ? Math.min(Math.round((nextChunk / payload.totalChunks) * totalRecs), totalRecs) : nextChunk * 100
+      const processedRecs = totalRecs
+        ? Math.min(Math.round((nextChunk / payload.totalChunks) * totalRecs), totalRecs)
+        : nextChunk * 100
 
       // clean up payload before sending next
       delete payload._historyRow
@@ -2943,13 +2967,13 @@ Deno.serve(async (req: Request) => {
         EdgeRuntime.waitUntil(
           (async () => {
             try {
-              let success = false;
-              let lastError = null;
-              
+              let success = false
+              let lastError = null
+
               for (let attempt = 1; attempt <= 3; attempt++) {
                 try {
-                  const controller = new AbortController();
-                  const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s timeout
+                  const controller = new AbortController()
+                  const timeoutId = setTimeout(() => controller.abort(), 60000) // 60s timeout
 
                   const resNext = await fetch(
                     `${Deno.env.get('SUPABASE_URL')}/functions/v1/import-data`,
@@ -2961,34 +2985,38 @@ Deno.serve(async (req: Request) => {
                       },
                       body: JSON.stringify({
                         ...payload,
-                        chunkIndex: nextChunk
+                        chunkIndex: nextChunk,
                       }),
-                      signal: controller.signal
+                      signal: controller.signal,
                     },
                   )
-                  clearTimeout(timeoutId);
+                  clearTimeout(timeoutId)
 
                   if (!resNext.ok) {
                     const errText = await resNext.text()
                     throw new Error(`HTTP ${resNext.status}: ${errText}`)
                   }
-                  success = true;
-                  break;
+                  success = true
+                  break
                 } catch (fetchErr) {
-                  lastError = fetchErr;
-                  await new Promise(resolve => setTimeout(resolve, 2000 * attempt));
+                  lastError = fetchErr
+                  await new Promise((resolve) => setTimeout(resolve, 2000 * attempt))
                 }
               }
-              
+
               if (!success && lastError) {
-                throw lastError;
+                throw lastError
               }
             } catch (e: any) {
               console.error('Error triggering next chunk:', e)
               const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
               if (supabaseServiceKey) {
                 const adminClient = createClient(Deno.env.get('SUPABASE_URL')!, supabaseServiceKey)
-                const { data: errHist } = await adminClient.from('import_history').select('errors_list').eq('id', payload.importId).single()
+                const { data: errHist } = await adminClient
+                  .from('import_history')
+                  .select('errors_list')
+                  .eq('id', payload.importId)
+                  .single()
                 await adminClient
                   .from('import_history')
                   .update({
@@ -3023,7 +3051,9 @@ Deno.serve(async (req: Request) => {
     if (payload.action === 'PROCESS_BACKGROUND') {
       const { data: historyRow } = await supabaseAdmin
         .from('import_history')
-        .select('success_count, error_count, ignored_count, updated_count, errors_list, total_records')
+        .select(
+          'success_count, error_count, ignored_count, updated_count, errors_list, total_records',
+        )
         .eq('id', payload.importId)
         .single()
 
@@ -3068,13 +3098,13 @@ Deno.serve(async (req: Request) => {
         EdgeRuntime.waitUntil(
           (async () => {
             try {
-              let success = false;
-              let lastError = null;
-              
+              let success = false
+              let lastError = null
+
               for (let attempt = 1; attempt <= 3; attempt++) {
                 try {
-                  const controller = new AbortController();
-                  const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s timeout
+                  const controller = new AbortController()
+                  const timeoutId = setTimeout(() => controller.abort(), 60000) // 60s timeout
                   const resNextBg = await fetch(
                     `${Deno.env.get('SUPABASE_URL')}/functions/v1/import-data`,
                     {
@@ -3085,35 +3115,39 @@ Deno.serve(async (req: Request) => {
                       },
                       body: JSON.stringify({
                         ...payload,
-                        offset: nextOffset
+                        offset: nextOffset,
                       }),
-                      signal: controller.signal
+                      signal: controller.signal,
                     },
                   )
-                  clearTimeout(timeoutId);
-                  
+                  clearTimeout(timeoutId)
+
                   if (!resNextBg.ok) {
                     const errText = await resNextBg.text()
                     throw new Error(`HTTP ${resNextBg.status}: ${errText}`)
                   }
-                  success = true;
-                  break;
+                  success = true
+                  break
                 } catch (fetchErr) {
-                  lastError = fetchErr;
-                  await new Promise(resolve => setTimeout(resolve, 2000 * attempt));
+                  lastError = fetchErr
+                  await new Promise((resolve) => setTimeout(resolve, 2000 * attempt))
                 }
               }
-              
+
               if (!success && lastError) {
-                throw lastError;
+                throw lastError
               }
             } catch (e: any) {
               console.error('Error triggering next background chunk:', e)
               const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
               if (supabaseServiceKey) {
                 const adminClient = createClient(Deno.env.get('SUPABASE_URL')!, supabaseServiceKey)
-                const { data: errHist } = await adminClient.from('import_history').select('errors_list').eq('id', payload.importId).single()
-                
+                const { data: errHist } = await adminClient
+                  .from('import_history')
+                  .select('errors_list')
+                  .eq('id', payload.importId)
+                  .single()
+
                 await adminClient
                   .from('import_history')
                   .update({
@@ -3164,15 +3198,19 @@ Deno.serve(async (req: Request) => {
           const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
           if (supabaseServiceKey) {
             const supabaseAdmin = createClient(Deno.env.get('SUPABASE_URL')!, supabaseServiceKey)
-            const { data: errHist } = await supabaseAdmin.from('import_history').select('errors_list').eq('id', requestPayload.importId).single()
+            const { data: errHist } = await supabaseAdmin
+              .from('import_history')
+              .select('errors_list')
+              .eq('id', requestPayload.importId)
+              .single()
             await supabaseAdmin
               .from('import_history')
               .update({
                 status: 'Error',
-                errors_list: [
-                  ...(errHist?.errors_list || []),
-                  { error: err.message }
-                ].slice(0, 15000),
+                errors_list: [...(errHist?.errors_list || []), { error: err.message }].slice(
+                  0,
+                  15000,
+                ),
               })
               .eq('id', requestPayload.importId)
           }
