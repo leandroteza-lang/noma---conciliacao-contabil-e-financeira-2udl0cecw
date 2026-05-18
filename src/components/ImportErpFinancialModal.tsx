@@ -408,186 +408,31 @@ export function ImportErpFinancialModal({ open, onOpenChange, onImportSuccess }:
         description: 'O arquivo está sendo lido e preparado no seu navegador. Por favor, aguarde.',
       })
 
-      let rawRecords: any[] = []
-
-      // 1. Parser Frontend
-      if (file.name.toLowerCase().endsWith('.csv')) {
-        const fileBuffer = await file.arrayBuffer()
-        let textContent = new TextDecoder('utf-8').decode(fileBuffer)
-        if (textContent.includes('\uFFFD')) {
-          textContent = new TextDecoder('iso-8859-1').decode(fileBuffer)
-        }
-        const firstLineLimit =
-          textContent.indexOf('\n') > -1
-            ? textContent.indexOf('\n')
-            : Math.min(textContent.length, 1000)
-        const firstLine = textContent.substring(0, firstLineLimit)
-        const delimiter =
-          (firstLine.match(/;/g) || []).length > (firstLine.match(/,/g) || []).length ? ';' : ','
-
-        let headers: string[] = []
-        let currentRow: string[] = []
-        let currentCell = ''
-        let inQuotes = false
-
-        for (let i = 0; i < textContent.length; i++) {
-          const char = textContent[i]
-          const nextChar = textContent[i + 1]
-          if (char === '"') {
-            if (inQuotes && nextChar === '"') {
-              currentCell += '"'
-              i++
-            } else {
-              inQuotes = !inQuotes
-            }
-          } else if (char === delimiter && !inQuotes) {
-            currentRow.push(currentCell)
-            currentCell = ''
-          } else if ((char === '\n' || (char === '\r' && nextChar === '\n')) && !inQuotes) {
-            if (char === '\r') i++
-            currentRow.push(currentCell)
-            if (headers.length === 0) {
-              headers = currentRow.map((h) => h.trim())
-            } else if (currentRow.some((c) => c.trim() !== '')) {
-              let rowObj: any = {}
-              for (let j = 0; j < headers.length; j++) {
-                rowObj[headers[j] || `COL${j}`] = currentRow[j] || ''
-              }
-              rawRecords.push(rowObj)
-            }
-            currentRow = []
-            currentCell = ''
-          } else {
-            currentCell += char
-          }
-        }
-        if (currentCell || currentRow.length > 0) {
-          currentRow.push(currentCell)
-          if (headers.length > 0 && currentRow.some((c) => c.trim() !== '')) {
-            let rowObj: any = {}
-            for (let j = 0; j < headers.length; j++) {
-              rowObj[headers[j] || `COL${j}`] = currentRow[j] || ''
-            }
-            rawRecords.push(rowObj)
-          }
-        }
-      } else {
-        const arrayBuffer = await file.arrayBuffer()
-        const XLSX = await import('xlsx')
-        const wb = XLSX.read(arrayBuffer, { type: 'array', cellDates: true })
-        const targetSheet = selectedSheet || previewData?.sheets?.[0] || wb.SheetNames[0]
-        const ws = wb.Sheets[targetSheet]
-        rawRecords = XLSX.utils.sheet_to_json(ws, { defval: '' })
-      }
-
-      // 2. Normalizar Registros
-      const dateCols = [
-        'DATAEMISSAO',
-        'EMISSAO',
-        'DTCOMPENS',
-        'COMPENSACAO',
-        'DATAVENCTO',
-        'VENCTO',
-        'VENCIMENTO',
-        'DATACANC',
-        'CANCELAMENTO',
-        'DATAESTORNO',
-        'ESTORNO',
-        'DATA',
-      ]
-      const numCols = ['VALOR', 'VALORLIQUIDO']
-
-      const normalizedRecords = rawRecords.map((r: any, index: number) => {
-        const normalized: any = {}
-        normalized._originalIndex = index + 1
-        for (const key in r) {
-          const mappedKey = columnMapping[key] || key
-          const cleanKey = mappedKey
-            .normalize('NFD')
-            .replace(/[\u0300-\u036f]/g, '')
-            .replace(/[^A-Z0-9]/gi, '')
-            .toUpperCase()
-            .trim()
-
-          let val = r[key]
-          if (dateCols.includes(cleanKey)) {
-            val = safeParseDate(val) || ''
-          } else if (numCols.includes(cleanKey)) {
-            val = safeParseNum(val)
-            val = val !== null ? val : ''
-          } else {
-            // eslint-disable-next-line no-control-regex
-            const controlCharsRegex = /[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\x9F]/g
-            val =
-              val !== null && val !== undefined
-                ? String(val).replace(controlCharsRegex, '').trim()
-                : ''
-          }
-          normalized[cleanKey] = val
-        }
-        return normalized
-      })
-
-      // 3. Criar registro no banco de dados com a quantidade final de registros para evitar update bloqueado por RLS
-      const { data: history, error: historyError } = await supabase
-        .from('import_history')
-        .insert({
-          user_id: user?.id,
-          import_type: 'ERP_FINANCIAL_MOVEMENTS',
-          file_name: file.name,
-          status: 'Processing',
-          organization_id: selectedOrg,
-          total_records: normalizedRecords.length,
-        })
-        .select()
-        .single()
-
-      if (historyError) throw historyError
-
-      const CHUNK_SIZE = 1000
-      const totalChunks = Math.ceil(normalizedRecords.length / CHUNK_SIZE)
-
-      if (totalChunks === 0) {
-        toast({ title: 'Importação Concluída', description: 'Nenhum registro encontrado.' })
-        onImportSuccess()
-        onOpenChange(false)
-        return
-      }
-
       toast({
-        title: 'Preparando envio',
-        description: `Enviando dados (${totalChunks} pacotes) para o servidor...`,
+        title: 'Fazendo upload...',
+        description: 'O arquivo está sendo enviado para o servidor.',
       })
 
-      // 4. Upload de chunks para o storage
-      for (let i = 0; i < totalChunks; i += 5) {
-        const batch = []
-        for (let j = i; j < i + 5 && j < totalChunks; j++) {
-          const chunk = normalizedRecords.slice(j * CHUNK_SIZE, (j + 1) * CHUNK_SIZE)
-          batch.push(
-            supabase.storage
-              .from('imports')
-              .upload(`${history.id}/chunk_${j}.json`, JSON.stringify(chunk), {
-                contentType: 'application/json',
-                upsert: true,
-              }),
-          )
-        }
-        await Promise.all(batch)
-      }
+      // 1. Upload the raw file to storage
+      const fileExt = file.name.split('.').pop()
+      const filePath = `raw/${user?.id}/${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`
 
-      // 5. Iniciar processo de chunks no backend
-      const { error } = await supabase.functions.invoke('import-data', {
+      const { error: uploadError } = await supabase.storage.from('imports').upload(filePath, file)
+
+      if (uploadError) throw new Error('Erro ao fazer upload do arquivo: ' + uploadError.message)
+
+      // 2. Start background processing via Edge Function
+      const { error, data } = await supabase.functions.invoke('import-data', {
         body: {
-          action: 'PROCESS_CHUNK',
-          importId: history.id,
+          action: 'START_BACKGROUND',
+          filePath,
+          fileName: file.name,
           type: 'ERP_FINANCIAL_MOVEMENTS',
-          chunkIndex: 0,
-          totalChunks: totalChunks,
-          totalRecords: normalizedRecords.length,
           organizationId: selectedOrg,
           mode: importMode,
           userId: user?.id,
+          columnMapping,
+          sheetName: selectedSheet,
         },
       })
 

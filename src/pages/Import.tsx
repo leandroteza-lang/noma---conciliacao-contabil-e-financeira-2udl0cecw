@@ -459,66 +459,42 @@ export default function Import() {
         data: { user },
       } = await supabase.auth.getUser()
       if (!user) throw new Error('Usuário não autenticado')
+      if (!file) throw new Error('Arquivo não encontrado')
 
-      const { data: history, error: historyError } = await supabase
-        .from('import_history')
-        .insert({
-          user_id: user.id,
-          import_type: importType,
-          file_name: file?.name || 'Importação',
-          status: 'Processing',
-          total_records: validationInfo.validRecords.length,
-        })
-        .select()
-        .single()
+      setImportProgress(20)
 
-      if (historyError) throw historyError
+      const fileExt = file.name.split('.').pop()
+      const filePath = `raw/${user.id}/${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`
 
-      setImportProgress(10)
+      const { error: uploadError } = await supabase.storage.from('imports').upload(filePath, file)
 
-      const CHUNK_SIZE = 1000
-      const totalChunks = Math.ceil(validationInfo.validRecords.length / CHUNK_SIZE)
+      if (uploadError) throw new Error('Erro ao fazer upload do arquivo: ' + uploadError.message)
 
-      for (let i = 0; i < totalChunks; i += 5) {
-        const batch = []
-        for (let j = i; j < i + 5 && j < totalChunks; j++) {
-          const chunk = validationInfo.validRecords.slice(j * CHUNK_SIZE, (j + 1) * CHUNK_SIZE)
-          batch.push(
-            supabase.storage
-              .from('imports')
-              .upload(`${history.id}/chunk_${j}.json`, JSON.stringify(chunk), {
-                contentType: 'application/json',
-                upsert: true,
-              }),
-          )
-        }
-        await Promise.all(batch)
-        setImportProgress(10 + Math.round(((i + 1) / totalChunks) * 50))
-      }
+      setImportProgress(50)
 
-      setImportProgress(60)
-
-      const { error } = await supabase.functions.invoke('import-data', {
+      const { error, data } = await supabase.functions.invoke('import-data', {
         body: {
-          action: 'PROCESS_CHUNK',
-          importId: history.id,
+          action: 'START_BACKGROUND',
+          filePath,
+          fileName: file.name,
           type: importType,
-          chunkIndex: 0,
-          totalChunks: totalChunks,
-          totalRecords: validationInfo.validRecords.length,
-          fileName: file?.name || 'Importação',
-          allowIncomplete: allowIncomplete,
           userId: user.id,
+          allowIncomplete,
+          columnMapping,
+          sheetName: selectedSheet,
         },
       })
+
+      const historyId = data?.importId
 
       if (error) throw new Error(error.message || 'Erro desconhecido ao chamar a função')
 
       const pollInterval = setInterval(async () => {
+        if (!historyId) return
         const { data: hist } = await supabase
           .from('import_history')
           .select('*')
-          .eq('id', history.id)
+          .eq('id', historyId)
           .single()
 
         if (hist) {
@@ -526,19 +502,19 @@ export default function Import() {
             clearInterval(pollInterval)
             setImportProgress(100)
             setImportResult({
-              inserted: hist.success_count || 0,
+              inserted: (hist.success_count || 0) + (hist.updated_count || 0),
               rejected: hist.error_count || 0,
               errors: hist.errors_list || [],
             })
             setIsImporting(false)
             toast({
               title: 'Processamento Finalizado',
-              description: `${hist.success_count || 0} registros inseridos, ${hist.error_count || 0} rejeitados.`,
+              description: `${(hist.success_count || 0) + (hist.updated_count || 0)} registros processados, ${hist.error_count || 0} rejeitados.`,
             })
           } else {
             if (hist.total_records > 0 && hist.processed_records !== null) {
               setImportProgress(
-                60 + Math.round(((hist.processed_records || 0) / hist.total_records) * 40),
+                50 + Math.round(((hist.processed_records || 0) / hist.total_records) * 50),
               )
             }
           }
