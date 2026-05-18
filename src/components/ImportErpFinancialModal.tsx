@@ -139,14 +139,15 @@ export function ImportErpFinancialModal({ open, onOpenChange, onImportSuccess }:
       setFile(null)
       setPreviewData(null)
       setColumnMapping({})
+      setSelectedOrg('')
       supabase
         .from('organizations')
         .select('id, name')
         .is('deleted_at', null)
+        .order('name')
         .then(({ data }) => {
           if (data) {
             setOrgs(data)
-            if (data.length > 0) setSelectedOrg(data[0].id)
           }
         })
     }
@@ -385,7 +386,11 @@ export function ImportErpFinancialModal({ open, onOpenChange, onImportSuccess }:
 
   const handleImport = async () => {
     if (!selectedOrg) {
-      toast({ title: 'Selecione uma empresa', variant: 'destructive' })
+      toast({
+        title: 'Selecione uma empresa',
+        description: 'O campo Empresa Padrão é obrigatório para prosseguir com a importação.',
+        variant: 'destructive',
+      })
       return
     }
 
