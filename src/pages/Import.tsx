@@ -159,11 +159,20 @@ interface ImportResult {
   errors: ImportError[]
 }
 
+type NormalizedRow = Record<string, string>
+
 const PREVIEW_ROW_LIMIT = 5
 const LARGE_DATASET_THRESHOLD = 3000
 const VALIDATION_ERROR_LIMIT = 500
 const CHUNK_SIZE = 700
 const UPLOAD_CONCURRENCY = 4
+const RETRY_BASE_DELAY_MS = 400
+const MAX_UPLOAD_RETRIES = 3
+const MAX_FAILED_CHUNKS_IN_ERROR_MESSAGE = 5
+const CSV_SAMPLE_SIZE = 20000
+const DEFAULT_COLUMN_LABEL_PREFIX = 'COLUNA'
+const IMPORT_STATUS_COMPLETED = 'completed'
+const IMPORT_STATUS_ERROR = 'error'
 
 export default function Import() {
   const { toast } = useToast()
@@ -210,18 +219,19 @@ export default function Import() {
     return values.every((value) => {
       const normalized = normalizeCellValue(value)
       if (!normalized) return true
+      // Remove aspas, crases, acentos e espaços para detectar linhas praticamente vazias.
       const withoutDecorators = normalized.replace(/["'`´\s]/g, '')
       if (!withoutDecorators) return true
       return /^[,;|/_.-]+$/.test(withoutDecorators)
     })
   }
 
-  const sanitizeRows = (rows: any[]) => {
-    const cleanedRows: any[] = []
+  const sanitizeRows = (rows: Record<string, unknown>[]) => {
+    const cleanedRows: NormalizedRow[] = []
     let ignored = 0
 
     rows.forEach((row) => {
-      const normalizedRow: Record<string, string> = {}
+      const normalizedRow: NormalizedRow = {}
       Object.entries(row || {}).forEach(([key, value]) => {
         normalizedRow[String(key).trim()] = normalizeCellValue(value)
       })
@@ -238,7 +248,7 @@ export default function Import() {
   }
 
   const detectCsvDelimiter = (text: string) => {
-    const sample = text.slice(0, 20000)
+    const sample = text.slice(0, CSV_SAMPLE_SIZE)
     const delimiters = [';', ',', '\t']
     let bestDelimiter = ';'
     let bestScore = -1
@@ -325,8 +335,10 @@ export default function Import() {
 
     if (rows.length === 0) return []
 
-    const headers = rows[0].map((header, index) => header.trim() || `COLUNA_${index + 1}`)
-    const parsedRows: any[] = []
+    const headers = rows[0].map(
+      (header, index) => header.trim() || `${DEFAULT_COLUMN_LABEL_PREFIX}_${index + 1}`,
+    )
+    const parsedRows: NormalizedRow[] = []
 
     for (let i = 1; i < rows.length; i++) {
       const row = rows[i]
@@ -564,9 +576,9 @@ export default function Import() {
   const previewData = useMemo(() => {
     if (!importType || rawData.length === 0) return []
     const req = IMPORT_TYPES[importType as keyof typeof IMPORT_TYPES].required
-    let filtered = rawData
+    let filtered = rawData.map((row, index) => ({ row, originalIndex: index + 1 }))
     if (showOnlyErrors) {
-      filtered = rawData.filter((row) => {
+      filtered = filtered.filter(({ row }) => {
         const mappedRow: any = {}
         Object.entries(columnMapping).forEach(([sourceCol, targetCol]) => {
           if (targetCol && targetCol !== 'IGNORE') {
@@ -615,9 +627,12 @@ export default function Import() {
 
       setImportProgress(10)
       const totalChunks = Math.ceil(validationInfo.validRecords.length / CHUNK_SIZE)
-      const uploadChunkWithRetry = async (chunkIndex: number, chunkData: any[]) => {
+      const uploadChunkWithRetry = async (
+        chunkIndex: number,
+        chunkData: Record<string, unknown>[],
+      ) => {
         let lastError: any = null
-        for (let attempt = 1; attempt <= 3; attempt++) {
+        for (let attempt = 1; attempt <= MAX_UPLOAD_RETRIES; attempt++) {
           const { error: uploadError } = await supabase.storage
             .from('imports')
             .upload(`${history.id}/chunk_${chunkIndex}.json`, JSON.stringify(chunkData), {
@@ -628,11 +643,11 @@ export default function Import() {
           if (!uploadError) return
 
           lastError = uploadError
-          await new Promise((resolve) => setTimeout(resolve, attempt * 400))
+          await new Promise((resolve) => setTimeout(resolve, attempt * RETRY_BASE_DELAY_MS))
         }
 
         throw new Error(
-          `Falha ao enviar lote ${chunkIndex + 1}/${totalChunks}: ${lastError?.message || 'erro desconhecido'}`,
+          `Falha ao enviar chunk ${chunkIndex + 1}/${totalChunks}: ${lastError?.message || 'erro desconhecido'}`,
         )
       }
 
@@ -666,8 +681,11 @@ export default function Import() {
       }
 
       if (failedUploads.length > 0) {
+        const failedChunkPreview = failedUploads
+          .slice(0, MAX_FAILED_CHUNKS_IN_ERROR_MESSAGE)
+          .join(', ')
         throw new Error(
-          `Não foi possível enviar ${failedUploads.length} lote(s): ${failedUploads.slice(0, 5).join(', ')}${failedUploads.length > 5 ? '...' : ''}.`,
+          `Não foi possível enviar ${failedUploads.length} chunk(s) (identificadores: ${failedChunkPreview}${failedUploads.length > MAX_FAILED_CHUNKS_IN_ERROR_MESSAGE ? '...' : ''}).`,
         )
       }
 
@@ -698,7 +716,11 @@ export default function Import() {
           .single()
 
         if (hist) {
-          if (hist.status === 'Completed' || hist.status === 'Error') {
+          const normalizedStatus = String(hist.status || '').toLowerCase()
+          if (
+            normalizedStatus === IMPORT_STATUS_COMPLETED ||
+            normalizedStatus === IMPORT_STATUS_ERROR
+          ) {
             clearInterval(pollInterval)
             setImportProgress(100)
             setImportResult({
@@ -712,7 +734,10 @@ export default function Import() {
             setProcessingLabel('')
             setIsImporting(false)
             toast({
-              title: hist.status === 'Completed' ? 'Processamento Finalizado' : 'Processamento com falhas',
+              title:
+                normalizedStatus === IMPORT_STATUS_COMPLETED
+                  ? 'Processamento Finalizado'
+                  : 'Processamento com falhas',
               description: `${hist.success_count || 0} inseridos, ${hist.error_count || 0} rejeitados${(hist.ignored_count || 0) > 0 ? `, ${hist.ignored_count || 0} ignorados` : ''}.`,
             })
           } else {
@@ -1178,7 +1203,9 @@ export default function Import() {
                     <AlertTitle>Volume alto detectado</AlertTitle>
                     <AlertDescription>
                       Esta planilha possui {rawData.length} linhas válidas. O preview e os relatórios
-                      desta etapa são limitados para manter a performance do navegador.
+                      desta etapa são limitados para manter a performance do navegador (preview até{' '}
+                      {PREVIEW_ROW_LIMIT} linhas e relatório de validação até{' '}
+                      {VALIDATION_ERROR_LIMIT} ocorrências).
                     </AlertDescription>
                   </Alert>
                 )}
@@ -1239,8 +1266,7 @@ export default function Import() {
                       </TableHeader>
                       <TableBody>
                         {previewData.length > 0 ? (
-                          previewData.map((row) => {
-                            const originalIndex = rawData.indexOf(row) + 1
+                          previewData.map(({ row, originalIndex }) => {
                             const req =
                               IMPORT_TYPES[importType as keyof typeof IMPORT_TYPES].required
 
