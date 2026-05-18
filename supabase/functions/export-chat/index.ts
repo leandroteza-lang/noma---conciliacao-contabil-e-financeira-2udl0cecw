@@ -180,7 +180,8 @@ Deno.serve(async (req: Request) => {
     }
 
     if (format === 'txt') {
-      let txt = 'Histórico de Conversa - Assistente NOMA\n=========================================\n\n'
+      let txt =
+        'Histórico de Conversa - Assistente NOMA\n=========================================\n\n'
       messages.forEach((m: any) => {
         const sender = m.role === 'user' ? 'Você' : 'NOMA'
         txt += `[${sender}]:\n`
