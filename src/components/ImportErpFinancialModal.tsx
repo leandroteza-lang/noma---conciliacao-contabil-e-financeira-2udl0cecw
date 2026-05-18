@@ -544,7 +544,7 @@ export function ImportErpFinancialModal({ open, onOpenChange, onImportSuccess }:
 
       if (historyError) throw historyError
 
-      const CHUNK_SIZE = 250
+      const CHUNK_SIZE = 100
       const totalChunks = Math.ceil(normalizedRecords.length / CHUNK_SIZE)
 
       if (totalChunks === 0) {
@@ -588,11 +588,6 @@ export function ImportErpFinancialModal({ open, onOpenChange, onImportSuccess }:
           organizationId: selectedOrg,
           mode: importMode,
           userId: user?.id,
-          inserted: 0,
-          rejected: 0,
-          ignored: 0,
-          updated: 0,
-          errors: [],
         },
       })
 

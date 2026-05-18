@@ -295,10 +295,11 @@ Deno.serve(async (req: Request) => {
               .update({ total_records: normalizedRecords.length })
               .eq('id', history.id)
 
-            const CHUNK_SIZE = 250
+            const CHUNK_SIZE = 100
             const totalChunks = Math.ceil(normalizedRecords.length / CHUNK_SIZE)
 
-            if (totalChunks === 0) {              await supabaseAdmin
+            if (totalChunks === 0) {
+              await supabaseAdmin
                 .from('import_history')
                 .update({ status: 'Completed', processed_records: 0 })
                 .eq('id', history.id)
@@ -321,11 +322,13 @@ Deno.serve(async (req: Request) => {
               }
             }
 
-            let success = false;
-            let lastError = null;
-            
+            let success = false
+            let lastError = null
+
             for (let attempt = 1; attempt <= 3; attempt++) {
               try {
+                const controller = new AbortController()
+                const timeoutId = setTimeout(() => controller.abort(), 60000)
                 const response = await fetch(`${supabaseUrl}/functions/v1/import-data`, {
                   method: 'POST',
                   headers: {
@@ -345,26 +348,23 @@ Deno.serve(async (req: Request) => {
                     allowIncomplete: payload.allowIncomplete,
                     rootMapping: payload.rootMapping,
                     columnMapping: payload.columnMapping,
-                    inserted: 0,
-                    rejected: 0,
-                    ignored: 0,
-                    updated: 0,
-                    errors: [],
                   }),
+                  signal: controller.signal,
                 })
+                clearTimeout(timeoutId)
                 if (!response.ok) {
                   const errText = await response.text()
                   throw new Error(`Erro ao iniciar chunk 0: ${response.status} - ${errText}`)
                 }
-                success = true;
-                break;
+                success = true
+                break
               } catch (fetchErr) {
-                lastError = fetchErr;
-                await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+                lastError = fetchErr
+                await new Promise((resolve) => setTimeout(resolve, 2000 * attempt))
               }
             }
             if (!success && lastError) {
-              throw lastError;
+              throw lastError
             }
           } catch (e: any) {
             console.error('Fast background process error:', e)
@@ -488,11 +488,26 @@ Deno.serve(async (req: Request) => {
 
     if (payload.action === 'PROCESS_CHUNK') {
       const { importId, chunkIndex } = payload
+
+      const { data: historyRow, error: historyErr } = await supabaseAdmin
+        .from('import_history')
+        .select(
+          'success_count, error_count, ignored_count, updated_count, errors_list, total_records',
+        )
+        .eq('id', importId)
+        .single()
+
+      if (historyErr) {
+        console.error('Erro ao buscar history:', historyErr)
+      }
+
       const { data: fileData, error: dlErr } = await supabaseAdmin.storage
         .from('imports')
         .download(`${importId}/chunk_${chunkIndex}.json`)
       if (dlErr) throw new Error('Erro ao baixar chunk do storage')
       records = JSON.parse(await fileData.text())
+
+      payload._historyRow = historyRow
     } else if (payload.fileBase64 || payload.filePath) {
       try {
         let bytes: Uint8Array
@@ -764,7 +779,7 @@ Deno.serve(async (req: Request) => {
         errors.push({
           row: 0,
           error: 'Muitas ocorrências encontradas. A lista foi truncada para 15000 itens.',
-          type: 'Aviso'
+          type: 'Aviso',
         })
       }
     }
@@ -2812,11 +2827,11 @@ Deno.serve(async (req: Request) => {
       }
 
       for (const [orgId, orgRecords] of recordsByOrg.entries()) {
-        const SUB_CHUNK_SIZE = 50;
-        
+        const SUB_CHUNK_SIZE = 50
+
         for (let j = 0; j < orgRecords.length; j += SUB_CHUNK_SIZE) {
-          const subRecords = orgRecords.slice(j, j + SUB_CHUNK_SIZE);
-          
+          const subRecords = orgRecords.slice(j, j + SUB_CHUNK_SIZE)
+
           const rpcPayload = {
             p_org_id: orgId,
             p_import_id: payload.importId || null,
@@ -2829,19 +2844,16 @@ Deno.serve(async (req: Request) => {
 
           // Retentativa Inteligente
           for (let attempt = 1; attempt <= 3; attempt++) {
-            const result = await supabaseAdmin.rpc(
-              'import_erp_movements_batch_v2',
-              rpcPayload,
-            )
+            const result = await supabaseAdmin.rpc('import_erp_movements_batch_v2', rpcPayload)
             res = result.data
             rpcErr = result.error
-            
+
             if (!rpcErr && res && res.success !== false) {
               break
             }
-            
+
             if (attempt < 3) {
-              await new Promise(resolve => setTimeout(resolve, 1000 * attempt))
+              await new Promise((resolve) => setTimeout(resolve, 1000 * attempt))
             }
           }
 
@@ -2877,19 +2889,34 @@ Deno.serve(async (req: Request) => {
     }
 
     if (payload.action === 'PROCESS_CHUNK') {
-      const newInserted = (payload.inserted || 0) + inserted
-      const newRejected = (payload.rejected || 0) + rejected
-      const newIgnored = (payload.ignored || 0) + ignored
-      const newUpdated = (payload.updated || 0) + updated
-      const newErrors = [...(payload.errors || []), ...errors].slice(0, 15000)
+      const historyRow = payload._historyRow
+      const prevInserted = historyRow?.success_count || 0
+      const prevRejected = historyRow?.error_count || 0
+      const prevIgnored = historyRow?.ignored_count || 0
+      const prevUpdated = historyRow?.updated_count || 0
+      const prevErrors = historyRow?.errors_list || []
+
+      const newInserted = prevInserted + inserted
+      const newRejected = prevRejected + rejected
+      const newIgnored = prevIgnored + ignored
+      const newUpdated = prevUpdated + updated
+      const newErrors = [...prevErrors, ...errors].slice(0, 15000)
 
       const nextChunk = payload.chunkIndex + 1
       const isDone = nextChunk >= payload.totalChunks
 
+      const totalRecs = payload.totalRecords || historyRow?.total_records || 0
+      const processedRecs = totalRecs
+        ? Math.min(Math.round((nextChunk / payload.totalChunks) * totalRecs), totalRecs)
+        : nextChunk * 100
+
+      // clean up payload before sending next
+      delete payload._historyRow
+
       await supabaseAdmin
         .from('import_history')
         .update({
-          processed_records: payload.totalRecords ? Math.min(Math.round((nextChunk / payload.totalChunks) * payload.totalRecords), payload.totalRecords) : nextChunk * 250,
+          processed_records: processedRecs,
           success_count: newInserted,
           error_count: newRejected,
           ignored_count: newIgnored,
@@ -2903,11 +2930,14 @@ Deno.serve(async (req: Request) => {
         EdgeRuntime.waitUntil(
           (async () => {
             try {
-              let success = false;
-              let lastError = null;
-              
+              let success = false
+              let lastError = null
+
               for (let attempt = 1; attempt <= 3; attempt++) {
                 try {
+                  const controller = new AbortController()
+                  const timeoutId = setTimeout(() => controller.abort(), 60000) // 60s timeout
+
                   const resNext = await fetch(
                     `${Deno.env.get('SUPABASE_URL')}/functions/v1/import-data`,
                     {
@@ -2919,40 +2949,43 @@ Deno.serve(async (req: Request) => {
                       body: JSON.stringify({
                         ...payload,
                         chunkIndex: nextChunk,
-                        inserted: newInserted,
-                        rejected: newRejected,
-                        ignored: newIgnored,
-                        updated: newUpdated,
-                        errors: newErrors,
                       }),
+                      signal: controller.signal,
                     },
                   )
+                  clearTimeout(timeoutId)
+
                   if (!resNext.ok) {
                     const errText = await resNext.text()
                     throw new Error(`HTTP ${resNext.status}: ${errText}`)
                   }
-                  success = true;
-                  break;
+                  success = true
+                  break
                 } catch (fetchErr) {
-                  lastError = fetchErr;
-                  await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+                  lastError = fetchErr
+                  await new Promise((resolve) => setTimeout(resolve, 2000 * attempt))
                 }
               }
-              
+
               if (!success && lastError) {
-                throw lastError;
+                throw lastError
               }
             } catch (e: any) {
               console.error('Error triggering next chunk:', e)
               const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
               if (supabaseServiceKey) {
                 const adminClient = createClient(Deno.env.get('SUPABASE_URL')!, supabaseServiceKey)
+                const { data: errHist } = await adminClient
+                  .from('import_history')
+                  .select('errors_list')
+                  .eq('id', payload.importId)
+                  .single()
                 await adminClient
                   .from('import_history')
                   .update({
                     status: 'Error',
                     errors_list: [
-                      ...newErrors,
+                      ...(errHist?.errors_list || []),
                       { error: `Falha ao iniciar próximo chunk: ${e.message}`, type: 'Erro' },
                     ].slice(0, 15000),
                   })
@@ -2979,11 +3012,26 @@ Deno.serve(async (req: Request) => {
     }
 
     if (payload.action === 'PROCESS_BACKGROUND') {
-      const newInserted = (payload.inserted || 0) + inserted
-      const newRejected = (payload.rejected || 0) + rejected
-      const newIgnored = (payload.ignored || 0) + ignored
-      const newUpdated = (payload.updated || 0) + updated
-      const newErrors = [...(payload.errors || []), ...errors].slice(0, 15000)
+      const { data: historyRow } = await supabaseAdmin
+        .from('import_history')
+        .select(
+          'success_count, error_count, ignored_count, updated_count, errors_list, total_records',
+        )
+        .eq('id', payload.importId)
+        .single()
+
+      const prevInserted = historyRow?.success_count || 0
+      const prevRejected = historyRow?.error_count || 0
+      const prevIgnored = historyRow?.ignored_count || 0
+      const prevUpdated = historyRow?.updated_count || 0
+      const prevErrors = historyRow?.errors_list || []
+
+      const newInserted = prevInserted + inserted
+      const newRejected = prevRejected + rejected
+      const newIgnored = prevIgnored + ignored
+      const newUpdated = prevUpdated + updated
+      const newErrors = [...prevErrors, ...errors].slice(0, 15000)
+
       const nextOffset = (payload.offset || 0) + (payload.limit || 100)
       const rawTotalRecords =
         payload.actualTotalRecords ||
@@ -3013,11 +3061,13 @@ Deno.serve(async (req: Request) => {
         EdgeRuntime.waitUntil(
           (async () => {
             try {
-              let success = false;
-              let lastError = null;
-              
+              let success = false
+              let lastError = null
+
               for (let attempt = 1; attempt <= 3; attempt++) {
                 try {
+                  const controller = new AbortController()
+                  const timeoutId = setTimeout(() => controller.abort(), 60000) // 60s timeout
                   const resNextBg = await fetch(
                     `${Deno.env.get('SUPABASE_URL')}/functions/v1/import-data`,
                     {
@@ -3029,40 +3079,44 @@ Deno.serve(async (req: Request) => {
                       body: JSON.stringify({
                         ...payload,
                         offset: nextOffset,
-                        inserted: newInserted,
-                        rejected: newRejected,
-                        ignored: newIgnored,
-                        updated: newUpdated,
-                        errors: newErrors,
                       }),
+                      signal: controller.signal,
                     },
                   )
+                  clearTimeout(timeoutId)
+
                   if (!resNextBg.ok) {
                     const errText = await resNextBg.text()
                     throw new Error(`HTTP ${resNextBg.status}: ${errText}`)
                   }
-                  success = true;
-                  break;
+                  success = true
+                  break
                 } catch (fetchErr) {
-                  lastError = fetchErr;
-                  await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+                  lastError = fetchErr
+                  await new Promise((resolve) => setTimeout(resolve, 2000 * attempt))
                 }
               }
-              
+
               if (!success && lastError) {
-                throw lastError;
+                throw lastError
               }
             } catch (e: any) {
               console.error('Error triggering next background chunk:', e)
               const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
               if (supabaseServiceKey) {
                 const adminClient = createClient(Deno.env.get('SUPABASE_URL')!, supabaseServiceKey)
+                const { data: errHist } = await adminClient
+                  .from('import_history')
+                  .select('errors_list')
+                  .eq('id', payload.importId)
+                  .single()
+
                 await adminClient
                   .from('import_history')
                   .update({
                     status: 'Error',
                     errors_list: [
-                      ...newErrors,
+                      ...(errHist?.errors_list || []),
                       { error: `Falha ao iniciar próximo chunk bg: ${e.message}`, type: 'Erro' },
                     ].slice(0, 15000),
                   })
@@ -3107,11 +3161,19 @@ Deno.serve(async (req: Request) => {
           const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
           if (supabaseServiceKey) {
             const supabaseAdmin = createClient(Deno.env.get('SUPABASE_URL')!, supabaseServiceKey)
+            const { data: errHist } = await supabaseAdmin
+              .from('import_history')
+              .select('errors_list')
+              .eq('id', requestPayload.importId)
+              .single()
             await supabaseAdmin
               .from('import_history')
               .update({
                 status: 'Error',
-                errors_list: [{ error: err.message }],
+                errors_list: [...(errHist?.errors_list || []), { error: err.message }].slice(
+                  0,
+                  15000,
+                ),
               })
               .eq('id', requestPayload.importId)
           }
