@@ -544,7 +544,7 @@ export function ImportErpFinancialModal({ open, onOpenChange, onImportSuccess }:
 
       if (historyError) throw historyError
 
-      const CHUNK_SIZE = 100
+      const CHUNK_SIZE = 1000
       const totalChunks = Math.ceil(normalizedRecords.length / CHUNK_SIZE)
 
       if (totalChunks === 0) {
