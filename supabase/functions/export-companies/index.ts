@@ -282,7 +282,7 @@ Deno.serve(async (req: Request) => {
               data.cell.styles.textColor = [15, 23, 42] // #0f172a
             }
             if (data.column.index === 3) {
-              data.cell.styles.textColor = data.cell.styles.fillColor
+               data.cell.styles.textColor = data.cell.styles.fillColor
             }
           }
         },
