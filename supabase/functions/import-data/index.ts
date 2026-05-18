@@ -95,159 +95,166 @@ Deno.serve(async (req: Request) => {
         const arrayBuffer = await fileData.arrayBuffer()
         const bytes = new Uint8Array(arrayBuffer)
 
-        let isCsv = payload.fileName && payload.fileName.toLowerCase().endsWith('.csv')
-        let rawRecords: any[] = []
-        const dateCols = [
-          'DATAEMISSAO',
-          'EMISSAO',
-          'DTCOMPENS',
-          'COMPENSACAO',
-          'DATAVENCTO',
-          'VENCTO',
-          'VENCIMENTO',
-          'DATACANC',
-          'CANCELAMENTO',
-          'DATAESTORNO',
-          'ESTORNO',
-          'DATA',
-        ]
-        const numCols = ['VALOR', 'VALORLIQUIDO']
+            let isCsv = payload.fileName && payload.fileName.toLowerCase().endsWith('.csv')
+            let rawRecords: any[] = []
+            const dateCols = [
+              'DATAEMISSAO',
+              'EMISSAO',
+              'DTCOMPENS',
+              'COMPENSACAO',
+              'DATAVENCTO',
+              'VENCTO',
+              'VENCIMENTO',
+              'DATACANC',
+              'CANCELAMENTO',
+              'DATAESTORNO',
+              'ESTORNO',
+              'DATA',
+            ]
+            const numCols = ['VALOR', 'VALORLIQUIDO']
 
-        const safeParseDate = (val: any) => {
-          if (val === null || val === undefined || val === '') return null
-          const numVal = Number(val)
-          if (!isNaN(numVal) && String(val).trim() !== '' && numVal > 10000 && numVal < 100000) {
-            const date = new Date(Math.round((numVal - 25569) * 86400 * 1000))
-            if (!isNaN(date.getTime())) return date.toISOString().split('T')[0]
-          }
-          if (typeof val === 'string') {
-            let clean = val.trim()
-            if (clean.includes('T')) clean = clean.split('T')[0]
-
-            const ptBrMatch = clean.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/)
-            if (ptBrMatch) {
-              const day = parseInt(ptBrMatch[1], 10)
-              const month = parseInt(ptBrMatch[2], 10)
-              const year = parseInt(ptBrMatch[3], 10)
+            const safeParseDate = (val: any) => {
+              if (val === null || val === undefined || val === '') return null
+              const numVal = Number(val)
               if (
-                year >= 1900 &&
-                year <= 2100 &&
-                month >= 1 &&
-                month <= 12 &&
-                day >= 1 &&
-                day <= 31
+                !isNaN(numVal) &&
+                String(val).trim() !== '' &&
+                numVal > 10000 &&
+                numVal < 100000
               ) {
-                return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+                const date = new Date(Math.round((numVal - 25569) * 86400 * 1000))
+                if (!isNaN(date.getTime())) return date.toISOString().split('T')[0]
               }
-            }
+              if (typeof val === 'string') {
+                let clean = val.trim()
+                if (clean.includes('T')) clean = clean.split('T')[0]
 
-            const ptBrShortMatch = clean.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2})$/)
-            if (ptBrShortMatch) {
-              const day = parseInt(ptBrShortMatch[1], 10)
-              const month = parseInt(ptBrShortMatch[2], 10)
-              let year = parseInt(ptBrShortMatch[3], 10)
-              year = year < 50 ? 2000 + year : 1900 + year
-              if (month >= 1 && month <= 12 && day >= 1 && day <= 31) {
-                return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
-              }
-            }
-
-            const isoMatch = clean.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})$/)
-            if (isoMatch) {
-              return `${isoMatch[1]}-${String(isoMatch[2]).padStart(2, '0')}-${String(isoMatch[3]).padStart(2, '0')}`
-            }
-          }
-          try {
-            const d = new Date(val)
-            if (!isNaN(d.getTime())) return d.toISOString().split('T')[0]
-          } catch (e) {}
-          return null
-        }
-
-        const safeParseNum = (val: any) => {
-          if (val === null || val === undefined || val === '') return null
-          if (typeof val === 'number') return val
-          let str = String(val).trim()
-          if (/^\-?\d+(\.\d+)?$/.test(str)) return parseFloat(str)
-          const commas = (str.match(/,/g) || []).length
-          const dots = (str.match(/\./g) || []).length
-          if (dots > 0 && commas > 0) {
-            const lastComma = str.lastIndexOf(',')
-            const lastDot = str.lastIndexOf('.')
-            if (lastComma > lastDot) str = str.replace(/\./g, '').replace(',', '.')
-            else str = str.replace(/,/g, '')
-          } else if (commas === 1 && dots === 0) str = str.replace(',', '.')
-          else if (commas > 1 && dots === 0) str = str.replace(/,/g, '')
-          else if (dots > 1 && commas === 0) str = str.replace(/\./g, '')
-          str = str.replace(/[^0-9\.\-]/g, '')
-          const parsed = parseFloat(str)
-          return isNaN(parsed) ? null : parsed
-        }
-
-        if (isCsv) {
-          let textContent = new TextDecoder('utf-8').decode(bytes)
-          if (textContent.includes('\uFFFD'))
-            textContent = new TextDecoder('iso-8859-1').decode(bytes)
-
-          const firstLineLimit =
-            textContent.indexOf('\n') > -1
-              ? textContent.indexOf('\n')
-              : Math.min(textContent.length, 1000)
-          const firstLine = textContent.substring(0, firstLineLimit)
-          const delimiter =
-            (firstLine.match(/;/g) || []).length > (firstLine.match(/,/g) || []).length ? ';' : ','
-
-          let headers: string[] = []
-          let currentRow: string[] = []
-          let currentCell = ''
-          let inQuotes = false
-
-          for (let i = 0; i < textContent.length; i++) {
-            const char = textContent[i]
-            const nextChar = textContent[i + 1]
-            if (char === '"') {
-              if (inQuotes && nextChar === '"') {
-                currentCell += '"'
-                i++
-              } else {
-                inQuotes = !inQuotes
-              }
-            } else if (char === delimiter && !inQuotes) {
-              currentRow.push(currentCell)
-              currentCell = ''
-            } else if ((char === '\n' || (char === '\r' && nextChar === '\n')) && !inQuotes) {
-              if (char === '\r') i++
-              currentRow.push(currentCell)
-              if (headers.length === 0) {
-                headers = currentRow.map((h) => h.trim())
-              } else if (currentRow.some((c) => c.trim() !== '')) {
-                let rowObj: any = {}
-                for (let j = 0; j < headers.length; j++) {
-                  rowObj[headers[j] || `COL${j}`] = currentRow[j] || ''
+                const ptBrMatch = clean.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/)
+                if (ptBrMatch) {
+                  const day = parseInt(ptBrMatch[1], 10)
+                  const month = parseInt(ptBrMatch[2], 10)
+                  const year = parseInt(ptBrMatch[3], 10)
+                  if (
+                    year >= 1900 &&
+                    year <= 2100 &&
+                    month >= 1 &&
+                    month <= 12 &&
+                    day >= 1 &&
+                    day <= 31
+                  ) {
+                    return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+                  }
                 }
-                rawRecords.push(rowObj)
+
+                const ptBrShortMatch = clean.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2})$/)
+                if (ptBrShortMatch) {
+                  const day = parseInt(ptBrShortMatch[1], 10)
+                  const month = parseInt(ptBrShortMatch[2], 10)
+                  let year = parseInt(ptBrShortMatch[3], 10)
+                  year = year < 50 ? 2000 + year : 1900 + year
+                  if (month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+                    return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+                  }
+                }
+
+                const isoMatch = clean.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})$/)
+                if (isoMatch) {
+                  return `${isoMatch[1]}-${String(isoMatch[2]).padStart(2, '0')}-${String(isoMatch[3]).padStart(2, '0')}`
+                }
               }
-              currentRow = []
-              currentCell = ''
+              try {
+                const d = new Date(val)
+                if (!isNaN(d.getTime())) return d.toISOString().split('T')[0]
+              } catch (e) {}
+              return null
+            }
+
+            const safeParseNum = (val: any) => {
+              if (val === null || val === undefined || val === '') return null
+              if (typeof val === 'number') return val
+              let str = String(val).trim()
+              if (/^\-?\d+(\.\d+)?$/.test(str)) return parseFloat(str)
+              const commas = (str.match(/,/g) || []).length
+              const dots = (str.match(/\./g) || []).length
+              if (dots > 0 && commas > 0) {
+                const lastComma = str.lastIndexOf(',')
+                const lastDot = str.lastIndexOf('.')
+                if (lastComma > lastDot) str = str.replace(/\./g, '').replace(',', '.')
+                else str = str.replace(/,/g, '')
+              } else if (commas === 1 && dots === 0) str = str.replace(',', '.')
+              else if (commas > 1 && dots === 0) str = str.replace(/,/g, '')
+              else if (dots > 1 && commas === 0) str = str.replace(/\./g, '')
+              str = str.replace(/[^0-9\.\-]/g, '')
+              const parsed = parseFloat(str)
+              return isNaN(parsed) ? null : parsed
+            }
+
+            if (isCsv) {
+              let textContent = new TextDecoder('utf-8').decode(bytes)
+              if (textContent.includes('\uFFFD'))
+                textContent = new TextDecoder('iso-8859-1').decode(bytes)
+
+              const firstLineLimit =
+                textContent.indexOf('\n') > -1
+                  ? textContent.indexOf('\n')
+                  : Math.min(textContent.length, 1000)
+              const firstLine = textContent.substring(0, firstLineLimit)
+              const delimiter =
+                (firstLine.match(/;/g) || []).length > (firstLine.match(/,/g) || []).length
+                  ? ';'
+                  : ','
+
+              let headers: string[] = []
+              let currentRow: string[] = []
+              let currentCell = ''
+              let inQuotes = false
+
+              for (let i = 0; i < textContent.length; i++) {
+                const char = textContent[i]
+                const nextChar = textContent[i + 1]
+                if (char === '"') {
+                  if (inQuotes && nextChar === '"') {
+                    currentCell += '"'
+                    i++
+                  } else {
+                    inQuotes = !inQuotes
+                  }
+                } else if (char === delimiter && !inQuotes) {
+                  currentRow.push(currentCell)
+                  currentCell = ''
+                } else if ((char === '\n' || (char === '\r' && nextChar === '\n')) && !inQuotes) {
+                  if (char === '\r') i++
+                  currentRow.push(currentCell)
+                  if (headers.length === 0) {
+                    headers = currentRow.map((h) => h.trim())
+                  } else if (currentRow.some((c) => c.trim() !== '')) {
+                    let rowObj: any = {}
+                    for (let j = 0; j < headers.length; j++) {
+                      rowObj[headers[j] || `COL${j}`] = currentRow[j] || ''
+                    }
+                    rawRecords.push(rowObj)
+                  }
+                  currentRow = []
+                  currentCell = ''
+                } else {
+                  currentCell += char
+                }
+              }
+              if (currentCell || currentRow.length > 0) {
+                currentRow.push(currentCell)
+                if (headers.length > 0 && currentRow.some((c) => c.trim() !== '')) {
+                  let rowObj: any = {}
+                  for (let j = 0; j < headers.length; j++) {
+                    rowObj[headers[j] || `COL${j}`] = currentRow[j] || ''
+                  }
+                  rawRecords.push(rowObj)
+                }
+              }
             } else {
-              currentCell += char
+              const wb = XLSX.read(bytes, { type: 'array' })
+              const sheet = wb.Sheets[payload.sheetName || wb.SheetNames[0]]
+              rawRecords = XLSX.utils.sheet_to_json(sheet, { defval: '' })
             }
-          }
-          if (currentCell || currentRow.length > 0) {
-            currentRow.push(currentCell)
-            if (headers.length > 0 && currentRow.some((c) => c.trim() !== '')) {
-              let rowObj: any = {}
-              for (let j = 0; j < headers.length; j++) {
-                rowObj[headers[j] || `COL${j}`] = currentRow[j] || ''
-              }
-              rawRecords.push(rowObj)
-            }
-          }
-        } else {
-          const wb = XLSX.read(bytes, { type: 'array' })
-          const sheet = wb.Sheets[payload.sheetName || wb.SheetNames[0]]
-          rawRecords = XLSX.utils.sheet_to_json(sheet, { defval: '' })
-        }
 
         const columnMapping = payload.columnMapping || {}
         const normalizedRecords = rawRecords.map((r: any, index: number) => {
@@ -294,7 +301,7 @@ Deno.serve(async (req: Request) => {
             .from('import_history')
             .update({ status: 'Completed', processed_records: 0 })
             .eq('id', history.id)
-
+          
           return new Response(JSON.stringify({ success: true, importId: history.id }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           })
@@ -318,12 +325,12 @@ Deno.serve(async (req: Request) => {
 
         EdgeRuntime.waitUntil(
           (async () => {
-            let success = false
-            let lastError = null
+            let success = false;
+            let lastError = null;
             for (let attempt = 1; attempt <= 3; attempt++) {
               try {
-                const controller = new AbortController()
-                const timeoutId = setTimeout(() => controller.abort(), 60000)
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 60000);
                 const response = await fetch(`${supabaseUrl}/functions/v1/import-data`, {
                   method: 'POST',
                   headers: {
@@ -342,20 +349,20 @@ Deno.serve(async (req: Request) => {
                     userId: user.id,
                     allowIncomplete: payload.allowIncomplete,
                     rootMapping: payload.rootMapping,
-                    columnMapping: payload.columnMapping,
+                    columnMapping: payload.columnMapping
                   }),
-                  signal: controller.signal,
+                  signal: controller.signal
                 })
-                clearTimeout(timeoutId)
+                clearTimeout(timeoutId);
                 if (!response.ok) {
                   const errText = await response.text()
                   throw new Error(`Erro ao iniciar chunk 0: ${response.status} - ${errText}`)
                 }
-                success = true
-                break
+                success = true;
+                break;
               } catch (fetchErr) {
-                lastError = fetchErr
-                await new Promise((resolve) => setTimeout(resolve, 2000 * attempt))
+                lastError = fetchErr;
+                await new Promise(resolve => setTimeout(resolve, 2000 * attempt));
               }
             }
             if (!success && lastError) {
@@ -363,18 +370,17 @@ Deno.serve(async (req: Request) => {
                 .from('import_history')
                 .update({
                   status: 'Error',
-                  errors_list: [
-                    { error: `Falha ao iniciar processamento de chunks: ${lastError.message}` },
-                  ],
+                  errors_list: [{ error: `Falha ao iniciar processamento de chunks: ${lastError.message}` }],
                 })
                 .eq('id', history.id)
             }
-          })(),
+          })()
         )
 
         return new Response(JSON.stringify({ success: true, importId: history.id }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         })
+
       } catch (e: any) {
         console.error('Fast background process error:', e)
         await supabaseAdmin
@@ -496,17 +502,15 @@ Deno.serve(async (req: Request) => {
 
     if (payload.action === 'PROCESS_CHUNK') {
       const { importId, chunkIndex } = payload
-
+      
       const { data: historyRow, error: historyErr } = await supabaseAdmin
         .from('import_history')
-        .select(
-          'success_count, error_count, ignored_count, updated_count, errors_list, total_records',
-        )
+        .select('success_count, error_count, ignored_count, updated_count, errors_list, total_records')
         .eq('id', importId)
         .single()
-
+        
       if (historyErr) {
-        console.error('Erro ao buscar history:', historyErr)
+         console.error('Erro ao buscar history:', historyErr)
       }
 
       const { data: fileData, error: dlErr } = await supabaseAdmin.storage
@@ -514,8 +518,8 @@ Deno.serve(async (req: Request) => {
         .download(`${importId}/chunk_${chunkIndex}.json`)
       if (dlErr) throw new Error('Erro ao baixar chunk do storage')
       records = JSON.parse(await fileData.text())
-
-      payload._historyRow = historyRow
+      
+      payload._historyRow = historyRow;
     } else if (payload.fileBase64 || payload.filePath) {
       try {
         let bytes: Uint8Array
@@ -787,7 +791,7 @@ Deno.serve(async (req: Request) => {
         errors.push({
           row: 0,
           error: 'Muitas ocorrências encontradas. A lista foi truncada para 15000 itens.',
-          type: 'Aviso',
+          type: 'Aviso'
         })
       }
     }
@@ -2835,11 +2839,11 @@ Deno.serve(async (req: Request) => {
       }
 
       for (const [orgId, orgRecords] of recordsByOrg.entries()) {
-        const SUB_CHUNK_SIZE = 100
-
+        const SUB_CHUNK_SIZE = 100;
+        
         for (let j = 0; j < orgRecords.length; j += SUB_CHUNK_SIZE) {
-          const subRecords = orgRecords.slice(j, j + SUB_CHUNK_SIZE)
-
+          const subRecords = orgRecords.slice(j, j + SUB_CHUNK_SIZE);
+          
           const rpcPayload = {
             p_org_id: orgId,
             p_import_id: payload.importId || null,
@@ -2852,16 +2856,19 @@ Deno.serve(async (req: Request) => {
 
           // Retentativa Inteligente
           for (let attempt = 1; attempt <= 3; attempt++) {
-            const result = await supabaseAdmin.rpc('import_erp_movements_batch_v3', rpcPayload)
+            const result = await supabaseAdmin.rpc(
+              'import_erp_movements_batch_v3',
+              rpcPayload,
+            )
             res = result.data
             rpcErr = result.error
-
+            
             if (!rpcErr && res && res.success !== false) {
               break
             }
-
+            
             if (attempt < 3) {
-              await new Promise((resolve) => setTimeout(resolve, 1000 * attempt))
+              await new Promise(resolve => setTimeout(resolve, 1000 * attempt))
             }
           }
 
@@ -2914,9 +2921,7 @@ Deno.serve(async (req: Request) => {
       const isDone = nextChunk >= payload.totalChunks
 
       const totalRecs = payload.totalRecords || historyRow?.total_records || 0
-      const processedRecs = totalRecs
-        ? Math.min(Math.round((nextChunk / payload.totalChunks) * totalRecs), totalRecs)
-        : nextChunk * 100
+      const processedRecs = totalRecs ? Math.min(Math.round((nextChunk / payload.totalChunks) * totalRecs), totalRecs) : nextChunk * 100
 
       // clean up payload before sending next
       delete payload._historyRow
@@ -2938,13 +2943,13 @@ Deno.serve(async (req: Request) => {
         EdgeRuntime.waitUntil(
           (async () => {
             try {
-              let success = false
-              let lastError = null
-
+              let success = false;
+              let lastError = null;
+              
               for (let attempt = 1; attempt <= 3; attempt++) {
                 try {
-                  const controller = new AbortController()
-                  const timeoutId = setTimeout(() => controller.abort(), 60000) // 60s timeout
+                  const controller = new AbortController();
+                  const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s timeout
 
                   const resNext = await fetch(
                     `${Deno.env.get('SUPABASE_URL')}/functions/v1/import-data`,
@@ -2956,38 +2961,34 @@ Deno.serve(async (req: Request) => {
                       },
                       body: JSON.stringify({
                         ...payload,
-                        chunkIndex: nextChunk,
+                        chunkIndex: nextChunk
                       }),
-                      signal: controller.signal,
+                      signal: controller.signal
                     },
                   )
-                  clearTimeout(timeoutId)
+                  clearTimeout(timeoutId);
 
                   if (!resNext.ok) {
                     const errText = await resNext.text()
                     throw new Error(`HTTP ${resNext.status}: ${errText}`)
                   }
-                  success = true
-                  break
+                  success = true;
+                  break;
                 } catch (fetchErr) {
-                  lastError = fetchErr
-                  await new Promise((resolve) => setTimeout(resolve, 2000 * attempt))
+                  lastError = fetchErr;
+                  await new Promise(resolve => setTimeout(resolve, 2000 * attempt));
                 }
               }
-
+              
               if (!success && lastError) {
-                throw lastError
+                throw lastError;
               }
             } catch (e: any) {
               console.error('Error triggering next chunk:', e)
               const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
               if (supabaseServiceKey) {
                 const adminClient = createClient(Deno.env.get('SUPABASE_URL')!, supabaseServiceKey)
-                const { data: errHist } = await adminClient
-                  .from('import_history')
-                  .select('errors_list')
-                  .eq('id', payload.importId)
-                  .single()
+                const { data: errHist } = await adminClient.from('import_history').select('errors_list').eq('id', payload.importId).single()
                 await adminClient
                   .from('import_history')
                   .update({
@@ -3022,9 +3023,7 @@ Deno.serve(async (req: Request) => {
     if (payload.action === 'PROCESS_BACKGROUND') {
       const { data: historyRow } = await supabaseAdmin
         .from('import_history')
-        .select(
-          'success_count, error_count, ignored_count, updated_count, errors_list, total_records',
-        )
+        .select('success_count, error_count, ignored_count, updated_count, errors_list, total_records')
         .eq('id', payload.importId)
         .single()
 
@@ -3069,13 +3068,13 @@ Deno.serve(async (req: Request) => {
         EdgeRuntime.waitUntil(
           (async () => {
             try {
-              let success = false
-              let lastError = null
-
+              let success = false;
+              let lastError = null;
+              
               for (let attempt = 1; attempt <= 3; attempt++) {
                 try {
-                  const controller = new AbortController()
-                  const timeoutId = setTimeout(() => controller.abort(), 60000) // 60s timeout
+                  const controller = new AbortController();
+                  const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s timeout
                   const resNextBg = await fetch(
                     `${Deno.env.get('SUPABASE_URL')}/functions/v1/import-data`,
                     {
@@ -3086,39 +3085,35 @@ Deno.serve(async (req: Request) => {
                       },
                       body: JSON.stringify({
                         ...payload,
-                        offset: nextOffset,
+                        offset: nextOffset
                       }),
-                      signal: controller.signal,
+                      signal: controller.signal
                     },
                   )
-                  clearTimeout(timeoutId)
-
+                  clearTimeout(timeoutId);
+                  
                   if (!resNextBg.ok) {
                     const errText = await resNextBg.text()
                     throw new Error(`HTTP ${resNextBg.status}: ${errText}`)
                   }
-                  success = true
-                  break
+                  success = true;
+                  break;
                 } catch (fetchErr) {
-                  lastError = fetchErr
-                  await new Promise((resolve) => setTimeout(resolve, 2000 * attempt))
+                  lastError = fetchErr;
+                  await new Promise(resolve => setTimeout(resolve, 2000 * attempt));
                 }
               }
-
+              
               if (!success && lastError) {
-                throw lastError
+                throw lastError;
               }
             } catch (e: any) {
               console.error('Error triggering next background chunk:', e)
               const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
               if (supabaseServiceKey) {
                 const adminClient = createClient(Deno.env.get('SUPABASE_URL')!, supabaseServiceKey)
-                const { data: errHist } = await adminClient
-                  .from('import_history')
-                  .select('errors_list')
-                  .eq('id', payload.importId)
-                  .single()
-
+                const { data: errHist } = await adminClient.from('import_history').select('errors_list').eq('id', payload.importId).single()
+                
                 await adminClient
                   .from('import_history')
                   .update({
@@ -3169,19 +3164,15 @@ Deno.serve(async (req: Request) => {
           const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
           if (supabaseServiceKey) {
             const supabaseAdmin = createClient(Deno.env.get('SUPABASE_URL')!, supabaseServiceKey)
-            const { data: errHist } = await supabaseAdmin
-              .from('import_history')
-              .select('errors_list')
-              .eq('id', requestPayload.importId)
-              .single()
+            const { data: errHist } = await supabaseAdmin.from('import_history').select('errors_list').eq('id', requestPayload.importId).single()
             await supabaseAdmin
               .from('import_history')
               .update({
                 status: 'Error',
-                errors_list: [...(errHist?.errors_list || []), { error: err.message }].slice(
-                  0,
-                  15000,
-                ),
+                errors_list: [
+                  ...(errHist?.errors_list || []),
+                  { error: err.message }
+                ].slice(0, 15000),
               })
               .eq('id', requestPayload.importId)
           }
