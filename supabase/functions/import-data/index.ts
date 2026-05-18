@@ -750,7 +750,7 @@ Deno.serve(async (req: Request) => {
         errors.push({
           row: 0,
           error: 'Muitas ocorrências encontradas. A lista foi truncada.',
-          type: 'Aviso',
+          type: 'Aviso'
         })
       }
     }
@@ -2848,12 +2848,7 @@ Deno.serve(async (req: Request) => {
       await supabaseAdmin
         .from('import_history')
         .update({
-          processed_records: payload.totalRecords
-            ? Math.min(
-                Math.round((nextChunk / payload.totalChunks) * payload.totalRecords),
-                payload.totalRecords,
-              )
-            : nextChunk * 500,
+          processed_records: payload.totalRecords ? Math.min(Math.round((nextChunk / payload.totalChunks) * payload.totalRecords), payload.totalRecords) : nextChunk * 500,
           success_count: newInserted,
           error_count: newRejected,
           ignored_count: newIgnored,
