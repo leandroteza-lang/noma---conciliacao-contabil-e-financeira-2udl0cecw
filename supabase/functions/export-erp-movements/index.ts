@@ -3,7 +3,8 @@ import { jsPDF } from 'npm:jspdf@2.5.1'
 import autoTablePkg from 'npm:jspdf-autotable@3.8.2'
 import * as XLSX from 'npm:xlsx@0.18.5'
 
-const autoTable = typeof autoTablePkg === 'function' ? autoTablePkg : (autoTablePkg as any).default || autoTablePkg
+const autoTable =
+  typeof autoTablePkg === 'function' ? autoTablePkg : (autoTablePkg as any).default || autoTablePkg
 
 if (typeof globalThis.window === 'undefined') {
   ;(globalThis as any).window = globalThis
@@ -15,7 +16,8 @@ if (typeof globalThis.document === 'undefined') {
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, x-supabase-client-platform, apikey, content-type',
+  'Access-Control-Allow-Headers':
+    'authorization, x-client-info, x-supabase-client-platform, apikey, content-type',
 }
 
 Deno.serve(async (req: Request) => {
@@ -37,10 +39,12 @@ Deno.serve(async (req: Request) => {
     }
 
     if (format === 'txt') {
-      let txtContent = 'RELATÓRIO DE MOVIMENTO FINANCEIRO\n=========================================\n\n'
-      
+      let txtContent =
+        'RELATÓRIO DE MOVIMENTO FINANCEIRO\n=========================================\n\n'
+
       if (totals) {
-        const formatCurrency = (val: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val)
+        const formatCurrency = (val: number) =>
+          new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val)
         txtContent += `TOTAIS DO PERÍODO:\n`
         txtContent += `Total (Bruto): ${formatCurrency(totals.valor)}\n`
         txtContent += `Total (Líquido): ${formatCurrency(totals.valor_liquido)}\n`
@@ -51,10 +55,10 @@ Deno.serve(async (req: Request) => {
 
       const headers = Object.keys(data[0] || {})
       data.forEach((r: any) => {
-        headers.forEach(h => {
+        headers.forEach((h) => {
           let val = r[h]
           if (typeof val === 'number') {
-             val = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val)
+            val = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val)
           }
           txtContent += `${h}: ${val || '-'}\n`
         })
@@ -67,10 +71,12 @@ Deno.serve(async (req: Request) => {
 
     if (format === 'pdf') {
       const headers = Object.keys(data[0] || {}).slice(0, 10) // Limit to 10 cols to fit in PDF
-      
-      const formatCurrency = (val: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
 
-      const totalsHtml = totals ? `
+      const formatCurrency = (val: number) =>
+        new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val)
+
+      const totalsHtml = totals
+        ? `
       <div class="totals-container">
         <div class="total-card bg-slate">
           <div class="total-title">Total (Bruto)</div>
@@ -89,7 +95,8 @@ Deno.serve(async (req: Request) => {
           <div class="total-value">${formatCurrency(totals.saidas)}</div>
         </div>
       </div>
-      ` : '';
+      `
+        : ''
 
       const html = `
 <!DOCTYPE html>
@@ -181,21 +188,28 @@ Deno.serve(async (req: Request) => {
       </tr>
     </thead>
     <tbody>
-      ${data.map((row: any, index: number) => {
-        const isEven = index % 2 === 0;
-        return `
+      ${data
+        .map((row: any, index: number) => {
+          const isEven = index % 2 === 0
+          return `
           <tr class="${isEven ? 'row-even' : 'row-odd'}">
-            ${headers.map((h: string) => {
-              let val = row[h];
-              let isNumber = typeof val === 'number';
-              if (isNumber) {
-                val = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
-              }
-              return `<td class="${isNumber ? 'text-right' : ''}">${val || '-'}</td>`;
-            }).join('')}
+            ${headers
+              .map((h: string) => {
+                let val = row[h]
+                let isNumber = typeof val === 'number'
+                if (isNumber) {
+                  val = new Intl.NumberFormat('pt-BR', {
+                    style: 'currency',
+                    currency: 'BRL',
+                  }).format(val)
+                }
+                return `<td class="${isNumber ? 'text-right' : ''}">${val || '-'}</td>`
+              })
+              .join('')}
           </tr>
-        `;
-      }).join('')}
+        `
+        })
+        .join('')}
     </tbody>
   </table>
   <script>
@@ -203,8 +217,8 @@ Deno.serve(async (req: Request) => {
   </script>
 </body>
 </html>
-      `;
-      
+      `
+
       return new Response(JSON.stringify({ html }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })

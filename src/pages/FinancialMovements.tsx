@@ -4357,10 +4357,27 @@ export default function FinancialMovements() {
   const [balanceteExpanded, setBalanceteExpanded] = useState<Record<string, boolean>>({})
 
   const availableMonths = useMemo(() => {
-    return Array.from(new Set(summaryData.map((d) => d[summaryDateBase]?.substring(0, 7))))
-      .filter(Boolean)
-      .sort()
-  }, [summaryData, summaryDateBase])
+    const opts = filterOptions[summaryDateBase] || []
+    const months = new Set<string>()
+    opts.forEach((opt: any) => {
+      if (opt.isParent) {
+        months.add(opt.value)
+      } else if (opt.parent) {
+        months.add(opt.parent)
+      } else if (opt.value && typeof opt.value === 'string' && opt.value.length >= 7) {
+        months.add(opt.value.substring(0, 7))
+      }
+    })
+
+    summaryData.forEach((d) => {
+      const val = d[summaryDateBase]
+      if (val && typeof val === 'string' && val.length >= 7) {
+        months.add(val.substring(0, 7))
+      }
+    })
+
+    return Array.from(months).filter(Boolean).sort()
+  }, [summaryData, summaryDateBase, filterOptions])
 
   const activePeriods = selectedPeriods.length > 0 ? selectedPeriods : availableMonths
   const sortedActivePeriods = [...activePeriods].sort()
@@ -7394,6 +7411,11 @@ export default function FinancialMovements() {
 
     const availableMonthsSet = new Set<string>()
 
+    const opts = filterOptions[summaryDateBase] || []
+    opts.forEach((opt: any) => {
+      if (opt.isParent) availableMonthsSet.add(opt.value)
+    })
+
     summaryData.forEach((row) => {
       const dateStr = row[summaryDateBase] as string
       if (!dateStr) return
@@ -7540,6 +7562,7 @@ export default function FinancialMovements() {
     dashSelectedPeriodStart,
     dashSelectedPeriodEnd,
     dashSelectedCCs,
+    filterOptions,
   ])
 
   // --- New states for "Análise por Grupos" ---
@@ -7605,6 +7628,13 @@ export default function FinancialMovements() {
   const groupAnalysisData = useMemo(() => {
     const monthsSetEmissao = new Set<string>()
     const monthsSetCompens = new Set<string>()
+
+    ;(filterOptions['data_emissao'] || []).forEach((opt: any) => {
+      if (opt.isParent) monthsSetEmissao.add(opt.value)
+    })
+    ;(filterOptions['dt_compens'] || []).forEach((opt: any) => {
+      if (opt.isParent) monthsSetCompens.add(opt.value)
+    })
 
     summaryData.forEach((row) => {
       const de = row.data_emissao
@@ -7729,7 +7759,7 @@ export default function FinancialMovements() {
     })
 
     return { roots, nodesMap, unmappedRoot, monthsEmissao, monthsCompens }
-  }, [summaryData, costCenters])
+  }, [summaryData, costCenters, filterOptions])
 
   const currentGroupAnalysisNodes = useMemo(() => {
     const currentNode =
@@ -8348,96 +8378,154 @@ export default function FinancialMovements() {
             Gestão, visualização e conciliação de lançamentos do ERP
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="hidden sm:flex items-center gap-1 bg-white rounded-md p-0.5 border border-slate-200 shadow-sm mr-2">
+        {activeTab === 'grade' && (
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="hidden sm:flex items-center gap-1 bg-white rounded-md p-0.5 border border-slate-200 shadow-sm mr-2">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-[12px] font-bold text-slate-600 hover:text-slate-900 bg-transparent"
+                      onClick={() => setTableFontSize((p) => Math.max(8, p - 1))}
+                    >
+                      A-
+                    </Button>
+                    <span className="text-[12px] font-medium text-slate-500 w-5 text-center select-none">
+                      {tableFontSize}
+                    </span>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-[14px] font-bold text-slate-600 hover:text-slate-900 bg-transparent"
+                      onClick={() => setTableFontSize((p) => Math.min(24, p + 1))}
+                    >
+                      A+
+                    </Button>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Tamanho da Fonte das Tabelas</p>
+                </TooltipContent>
+              </Tooltip>
+              <div className="w-px h-4 bg-slate-200 mx-1"></div>
+              <TableSettingsControls prefs={prefs} updatePrefs={updatePrefs} />
+            </div>
             <Tooltip>
               <TooltipTrigger asChild>
-                <div className="flex items-center gap-1">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 text-[12px] font-bold text-slate-600 hover:text-slate-900 bg-transparent"
-                    onClick={() => setTableFontSize((p) => Math.max(8, p - 1))}
-                  >
-                    A-
-                  </Button>
-                  <span className="text-[12px] font-medium text-slate-500 w-5 text-center select-none">
-                    {tableFontSize}
-                  </span>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 text-[14px] font-bold text-slate-600 hover:text-slate-900 bg-transparent"
-                    onClick={() => setTableFontSize((p) => Math.min(24, p + 1))}
-                  >
-                    A+
-                  </Button>
-                </div>
+                <Button
+                  variant="outline"
+                  onClick={syncMappings}
+                  disabled={isSyncing || loading}
+                  className="shadow-sm"
+                >
+                  {isSyncing ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <RefreshCw className="mr-2 h-4 w-4" />
+                  )}
+                  Sincronizar Mapeamentos
+                </Button>
               </TooltipTrigger>
-              <TooltipContent>
-                <p>Tamanho da Fonte das Tabelas</p>
-              </TooltipContent>
+              <TooltipContent className="pointer-events-auto select-none max-w-[280px]">
+                <p className="font-medium text-[13px]">
+                  Sincroniza os mapeamentos DE/PARA entre ERP e Contábil
+                </p>
+                <div
+                  className="mt-2 pt-2 border-t border-slate-700/50 flex items-center gap-1.5 text-[11px] font-bold text-indigo-300 hover:text-white cursor-pointer transition-colors"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setHelpTopic('sync')
+                  }}
+                >
+                  <MousePointerClick className="w-3.5 h-3.5" />
+                  <span>Clique para explicação detalhada</span>
+                </div>
+              </TooltipContent>{' '}
             </Tooltip>
-            <div className="w-px h-4 bg-slate-200 mx-1"></div>
-            <TableSettingsControls prefs={prefs} updatePrefs={updatePrefs} />
-          </div>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="outline"
-                onClick={syncMappings}
-                disabled={isSyncing || loading}
-                className="shadow-sm"
-              >
-                {isSyncing ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <RefreshCw className="mr-2 h-4 w-4" />
-                )}
-                Sincronizar Mapeamentos
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent className="pointer-events-auto select-none max-w-[280px]">
-              <p className="font-medium text-[13px]">
-                Sincroniza os mapeamentos DE/PARA entre ERP e Contábil
-              </p>
-              <div
-                className="mt-2 pt-2 border-t border-slate-700/50 flex items-center gap-1.5 text-[11px] font-bold text-indigo-300 hover:text-white cursor-pointer transition-colors"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  setHelpTopic('sync')
-                }}
-              >
-                <MousePointerClick className="w-3.5 h-3.5" />
-                <span>Clique para explicação detalhada</span>
-              </div>
-            </TooltipContent>{' '}
-          </Tooltip>
-          {activeTab === 'grade' && (
-            <>
-              <DropdownMenu>
+            {activeTab === 'grade' && (
+              <>
+                <DropdownMenu>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className="shadow-sm text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
+                          disabled={totalCount === 0 || loading}
+                        >
+                          <Trash2 className="mr-2 h-4 w-4" />
+                          Excluir...
+                        </Button>
+                      </DropdownMenuTrigger>
+                    </TooltipTrigger>
+                    <TooltipContent className="pointer-events-auto select-none max-w-[280px]">
+                      <p className="font-medium text-[13px]">
+                        Exclui registros de movimento financeiro da base
+                      </p>
+                      <div
+                        className="mt-2 pt-2 border-t border-slate-700/50 flex items-center gap-1.5 text-[11px] font-bold text-indigo-300 hover:text-white cursor-pointer transition-colors"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setHelpTopic('delete_all')
+                        }}
+                      >
+                        <MousePointerClick className="w-3.5 h-3.5" />
+                        <span>Clique para explicação detalhada</span>
+                      </div>
+                    </TooltipContent>
+                  </Tooltip>
+                  <DropdownMenuContent align="end" className="w-56">
+                    {(hasActiveFilters ||
+                      search ||
+                      filters['apenas_pendentes']?.length > 0 ||
+                      filters['apenas_mapeados']?.length > 0) && (
+                      <>
+                        <DropdownMenuItem
+                          onClick={() => {
+                            setDeleteMode('filtered')
+                            setDeleteModalOpen(true)
+                          }}
+                          className="text-red-600 focus:text-red-700 focus:bg-red-50 cursor-pointer"
+                        >
+                          Excluir Apenas Filtrados ({totalCount})
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                      </>
+                    )}
+                    <DropdownMenuItem
+                      onClick={() => {
+                        setDeleteMode('all')
+                        setDeleteModalOpen(true)
+                      }}
+                      className="text-red-600 focus:text-red-700 focus:bg-red-50 cursor-pointer"
+                    >
+                      Excluir Toda a Base
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className="shadow-sm text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
-                        disabled={totalCount === 0 || loading}
-                      >
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        Excluir...
-                      </Button>
-                    </DropdownMenuTrigger>
+                    <Button
+                      variant="default"
+                      onClick={() => setGenerateModalOpen(true)}
+                      className="shadow-sm bg-indigo-600 hover:bg-indigo-700 text-white"
+                      disabled={totalCount === 0 || loading}
+                    >
+                      <CheckCircle2 className="mr-2 h-4 w-4" />
+                      Gerar Lançamentos Contábeis
+                    </Button>
                   </TooltipTrigger>
                   <TooltipContent className="pointer-events-auto select-none max-w-[280px]">
                     <p className="font-medium text-[13px]">
-                      Exclui registros de movimento financeiro da base
+                      Gera os lançamentos contábeis a partir dos movimentos mapeados
                     </p>
                     <div
                       className="mt-2 pt-2 border-t border-slate-700/50 flex items-center gap-1.5 text-[11px] font-bold text-indigo-300 hover:text-white cursor-pointer transition-colors"
                       onClick={(e) => {
                         e.stopPropagation()
-                        setHelpTopic('delete_all')
+                        setHelpTopic('generate')
                       }}
                     >
                       <MousePointerClick className="w-3.5 h-3.5" />
@@ -8445,89 +8533,33 @@ export default function FinancialMovements() {
                     </div>
                   </TooltipContent>
                 </Tooltip>
-                <DropdownMenuContent align="end" className="w-56">
-                  {(hasActiveFilters ||
-                    search ||
-                    filters['apenas_pendentes']?.length > 0 ||
-                    filters['apenas_mapeados']?.length > 0) && (
-                    <>
-                      <DropdownMenuItem
-                        onClick={() => {
-                          setDeleteMode('filtered')
-                          setDeleteModalOpen(true)
-                        }}
-                        className="text-red-600 focus:text-red-700 focus:bg-red-50 cursor-pointer"
-                      >
-                        Excluir Apenas Filtrados ({totalCount})
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                    </>
-                  )}
-                  <DropdownMenuItem
-                    onClick={() => {
-                      setDeleteMode('all')
-                      setDeleteModalOpen(true)
-                    }}
-                    className="text-red-600 focus:text-red-700 focus:bg-red-50 cursor-pointer"
-                  >
-                    Excluir Toda a Base
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="default"
-                    onClick={() => setGenerateModalOpen(true)}
-                    className="shadow-sm bg-indigo-600 hover:bg-indigo-700 text-white"
-                    disabled={totalCount === 0 || loading}
-                  >
-                    <CheckCircle2 className="mr-2 h-4 w-4" />
-                    Gerar Lançamentos Contábeis
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent className="pointer-events-auto select-none max-w-[280px]">
-                  <p className="font-medium text-[13px]">
-                    Gera os lançamentos contábeis a partir dos movimentos mapeados
-                  </p>
-                  <div
-                    className="mt-2 pt-2 border-t border-slate-700/50 flex items-center gap-1.5 text-[11px] font-bold text-indigo-300 hover:text-white cursor-pointer transition-colors"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      setHelpTopic('generate')
-                    }}
-                  >
-                    <MousePointerClick className="w-3.5 h-3.5" />
-                    <span>Clique para explicação detalhada</span>
-                  </div>
-                </TooltipContent>
-              </Tooltip>
-            </>
-          )}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button onClick={() => setIsImportOpen(true)} className="shadow-sm">
-                <UploadCloud className="mr-2 h-4 w-4" />
-                Importar Planilha
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent className="pointer-events-auto select-none max-w-[280px]">
-              <p className="font-medium text-[13px]">
-                Importar nova planilha de movimentos financeiros do ERP
-              </p>
-              <div
-                className="mt-2 pt-2 border-t border-slate-700/50 flex items-center gap-1.5 text-[11px] font-bold text-indigo-300 hover:text-white cursor-pointer transition-colors"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  setHelpTopic('import')
-                }}
-              >
-                <MousePointerClick className="w-3.5 h-3.5" />
-                <span>Clique para explicação detalhada</span>
-              </div>
-            </TooltipContent>
-          </Tooltip>
-        </div>
+              </>
+            )}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button onClick={() => setIsImportOpen(true)} className="shadow-sm">
+                  <UploadCloud className="mr-2 h-4 w-4" />
+                  Importar Planilha
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent className="pointer-events-auto select-none max-w-[280px]">
+                <p className="font-medium text-[13px]">
+                  Importar nova planilha de movimentos financeiros do ERP
+                </p>
+                <div
+                  className="mt-2 pt-2 border-t border-slate-700/50 flex items-center gap-1.5 text-[11px] font-bold text-indigo-300 hover:text-white cursor-pointer transition-colors"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setHelpTopic('import')
+                  }}
+                >
+                  <MousePointerClick className="w-3.5 h-3.5" />
+                  <span>Clique para explicação detalhada</span>
+                </div>
+              </TooltipContent>
+            </Tooltip>
+          </div>
+        )}
       </div>
 
       {selectedIds.length > 0 && (
