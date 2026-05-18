@@ -298,8 +298,7 @@ Deno.serve(async (req: Request) => {
             const CHUNK_SIZE = 1000
             const totalChunks = Math.ceil(normalizedRecords.length / CHUNK_SIZE)
 
-            if (totalChunks === 0) {
-              await supabaseAdmin
+            if (totalChunks === 0) {              await supabaseAdmin
                 .from('import_history')
                 .update({ status: 'Completed', processed_records: 0 })
                 .eq('id', history.id)
@@ -322,9 +321,9 @@ Deno.serve(async (req: Request) => {
               }
             }
 
-            let success = false
-            let lastError = null
-
+            let success = false;
+            let lastError = null;
+            
             for (let attempt = 1; attempt <= 3; attempt++) {
               try {
                 const response = await fetch(`${supabaseUrl}/functions/v1/import-data`, {
@@ -357,15 +356,15 @@ Deno.serve(async (req: Request) => {
                   const errText = await response.text()
                   throw new Error(`Erro ao iniciar chunk 0: ${response.status} - ${errText}`)
                 }
-                success = true
-                break
+                success = true;
+                break;
               } catch (fetchErr) {
-                lastError = fetchErr
-                await new Promise((resolve) => setTimeout(resolve, 1000 * attempt))
+                lastError = fetchErr;
+                await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
               }
             }
             if (!success && lastError) {
-              throw lastError
+              throw lastError;
             }
           } catch (e: any) {
             console.error('Fast background process error:', e)
@@ -765,7 +764,7 @@ Deno.serve(async (req: Request) => {
         errors.push({
           row: 0,
           error: 'Muitas ocorrências encontradas. A lista foi truncada para 15000 itens.',
-          type: 'Aviso',
+          type: 'Aviso'
         })
       }
     }
@@ -2825,16 +2824,19 @@ Deno.serve(async (req: Request) => {
 
         // Retentativa Inteligente
         for (let attempt = 1; attempt <= 3; attempt++) {
-          const result = await supabaseAdmin.rpc('import_erp_movements_batch_v2', rpcPayload)
+          const result = await supabaseAdmin.rpc(
+            'import_erp_movements_batch_v2',
+            rpcPayload,
+          )
           res = result.data
           rpcErr = result.error
-
+          
           if (!rpcErr && res && res.success !== false) {
             break
           }
-
+          
           if (attempt < 3) {
-            await new Promise((resolve) => setTimeout(resolve, 1000 * attempt))
+            await new Promise(resolve => setTimeout(resolve, 1000 * attempt))
           }
         }
 
@@ -2881,12 +2883,7 @@ Deno.serve(async (req: Request) => {
       await supabaseAdmin
         .from('import_history')
         .update({
-          processed_records: payload.totalRecords
-            ? Math.min(
-                Math.round((nextChunk / payload.totalChunks) * payload.totalRecords),
-                payload.totalRecords,
-              )
-            : nextChunk * 1000,
+          processed_records: payload.totalRecords ? Math.min(Math.round((nextChunk / payload.totalChunks) * payload.totalRecords), payload.totalRecords) : nextChunk * 1000,
           success_count: newInserted,
           error_count: newRejected,
           ignored_count: newIgnored,
@@ -2900,9 +2897,9 @@ Deno.serve(async (req: Request) => {
         EdgeRuntime.waitUntil(
           (async () => {
             try {
-              let success = false
-              let lastError = null
-
+              let success = false;
+              let lastError = null;
+              
               for (let attempt = 1; attempt <= 3; attempt++) {
                 try {
                   const resNext = await fetch(
@@ -2928,16 +2925,16 @@ Deno.serve(async (req: Request) => {
                     const errText = await resNext.text()
                     throw new Error(`HTTP ${resNext.status}: ${errText}`)
                   }
-                  success = true
-                  break
+                  success = true;
+                  break;
                 } catch (fetchErr) {
-                  lastError = fetchErr
-                  await new Promise((resolve) => setTimeout(resolve, 1000 * attempt))
+                  lastError = fetchErr;
+                  await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
                 }
               }
-
+              
               if (!success && lastError) {
-                throw lastError
+                throw lastError;
               }
             } catch (e: any) {
               console.error('Error triggering next chunk:', e)
@@ -3010,9 +3007,9 @@ Deno.serve(async (req: Request) => {
         EdgeRuntime.waitUntil(
           (async () => {
             try {
-              let success = false
-              let lastError = null
-
+              let success = false;
+              let lastError = null;
+              
               for (let attempt = 1; attempt <= 3; attempt++) {
                 try {
                   const resNextBg = await fetch(
@@ -3038,16 +3035,16 @@ Deno.serve(async (req: Request) => {
                     const errText = await resNextBg.text()
                     throw new Error(`HTTP ${resNextBg.status}: ${errText}`)
                   }
-                  success = true
-                  break
+                  success = true;
+                  break;
                 } catch (fetchErr) {
-                  lastError = fetchErr
-                  await new Promise((resolve) => setTimeout(resolve, 1000 * attempt))
+                  lastError = fetchErr;
+                  await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
                 }
               }
-
+              
               if (!success && lastError) {
-                throw lastError
+                throw lastError;
               }
             } catch (e: any) {
               console.error('Error triggering next background chunk:', e)
