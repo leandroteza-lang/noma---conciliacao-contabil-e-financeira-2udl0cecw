@@ -4070,7 +4070,7 @@ export default function FinancialMovements() {
     if (!user) return
     const toastId = toast.loading('Atualizando status...')
     try {
-      const chunkSize = 200
+      const chunkSize = 1000
       for (let i = 0; i < rowIds.length; i += chunkSize) {
         const chunk = rowIds.slice(i, i + chunkSize)
         const { error } = await supabase
@@ -4301,7 +4301,7 @@ export default function FinancialMovements() {
       }
 
       if (updates.length > 0) {
-        const chunkSize = 200
+        const chunkSize = 1000
         for (let i = 0; i < updates.length; i += chunkSize) {
           const chunk = updates.slice(i, i + chunkSize)
           const groupedByAccount: Record<string, string[]> = {}
@@ -5493,7 +5493,7 @@ export default function FinancialMovements() {
       }
 
       const rowsToProcess = []
-      const chunkSize = 200
+      const chunkSize = 1000
       for (let i = 0; i < idsToProcess.length; i += chunkSize) {
         const chunk = idsToProcess.slice(i, i + chunkSize)
         const { data } = await supabase
@@ -5542,14 +5542,14 @@ export default function FinancialMovements() {
       }
 
       if (entriesToInsert.length > 0) {
-        for (let i = 0; i < entriesToInsert.length; i += 200) {
-          const chunk = entriesToInsert.slice(i, i + 200)
+        for (let i = 0; i < entriesToInsert.length; i += 1000) {
+          const chunk = entriesToInsert.slice(i, i + 1000)
           const { error } = await supabase.from('accounting_entries').insert(chunk)
           if (error) throw error
         }
 
-        for (let i = 0; i < movementsToUpdate.length; i += 200) {
-          const chunk = movementsToUpdate.slice(i, i + 200)
+        for (let i = 0; i < movementsToUpdate.length; i += 1000) {
+          const chunk = movementsToUpdate.slice(i, i + 1000)
           const { error } = await supabase
             .from('erp_financial_movements')
             .update({ status: 'Concluído' })
@@ -6261,7 +6261,7 @@ export default function FinancialMovements() {
         setDeletionState((p) => ({ ...p, total: count }))
 
         let processed = 0
-        const chunkSize = 150
+        const chunkSize = 1000
         while (true) {
           const { data, error: fetchErr } = await supabase
             .from('erp_financial_movements')
@@ -6385,7 +6385,7 @@ export default function FinancialMovements() {
         setDeletionState((p) => ({ ...p, total: idsToDelete.length }))
 
         let processed = 0
-        const chunkSize = 150
+        const chunkSize = 1000
         for (let i = 0; i < idsToDelete.length; i += chunkSize) {
           const chunk = idsToDelete.slice(i, i + chunkSize)
           const { error: updateErr } = await updateWithRetry(chunk, 3)
@@ -6458,7 +6458,7 @@ export default function FinancialMovements() {
     try {
       const isDryRunDelete = deleteMode === 'filtered_dry_run' || deleteMode === 'selected_dry_run'
 
-      const chunkSize = 150
+      const chunkSize = 1000
       for (let i = 0; i < idsToDelete.length; i += chunkSize) {
         const chunk = idsToDelete.slice(i, i + chunkSize)
         if (isDryRunDelete) {
