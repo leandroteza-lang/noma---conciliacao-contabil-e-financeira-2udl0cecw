@@ -6799,8 +6799,8 @@ export default function FinancialMovements() {
   }, [user])
 
   useEffect(() => {
-    let interval: any
     let timerInterval: any
+    let fallbackInterval: any
 
     if (activeImport) {
       if (['Processing', 'Pending'].includes(activeImport.status)) {
@@ -6812,7 +6812,37 @@ export default function FinancialMovements() {
         updateTimer()
         timerInterval = setInterval(updateTimer, 1000)
 
-        interval = setInterval(async () => {
+        const channel = supabase
+          .channel(`import_history_${activeImport.id}`)
+          .on(
+            'postgres_changes',
+            {
+              event: 'UPDATE',
+              schema: 'public',
+              table: 'import_history',
+              filter: `id=eq.${activeImport.id}`,
+            },
+            (payload) => {
+              const newData = payload.new as any
+              setActiveImport(newData)
+              if (newData.status === 'Completed' || newData.status === 'Error') {
+                clearInterval(timerInterval)
+                clearInterval(fallbackInterval)
+                setRefreshKey((k) => k + 1)
+                fetchDataSilent()
+                setElapsedSeconds((prev) => {
+                  localStorage.setItem(
+                    'last_import_time_erp_fin',
+                    JSON.stringify({ id: newData.id, elapsed: prev }),
+                  )
+                  return prev
+                })
+              }
+            },
+          )
+          .subscribe()
+
+        fallbackInterval = setInterval(async () => {
           if (!user) return
           const { data } = await supabase
             .from('import_history')
@@ -6822,11 +6852,11 @@ export default function FinancialMovements() {
 
           if (data) {
             setActiveImport(data)
-            fetchDataSilent()
             if (data.status === 'Completed' || data.status === 'Error') {
-              clearInterval(interval)
               clearInterval(timerInterval)
+              clearInterval(fallbackInterval)
               setRefreshKey((k) => k + 1)
+              fetchDataSilent()
               setElapsedSeconds((prev) => {
                 localStorage.setItem(
                   'last_import_time_erp_fin',
@@ -6836,28 +6866,23 @@ export default function FinancialMovements() {
               })
             }
           }
-        }, 3000)
+        }, 15000)
+
+        return () => {
+          if (timerInterval) clearInterval(timerInterval)
+          if (fallbackInterval) clearInterval(fallbackInterval)
+          supabase.removeChannel(channel)
+        }
       }
     } else {
       setElapsedSeconds(0)
     }
 
     return () => {
-      if (interval) clearInterval(interval)
       if (timerInterval) clearInterval(timerInterval)
+      if (fallbackInterval) clearInterval(fallbackInterval)
     }
-  }, [
-    activeImport?.status,
-    activeImport?.id,
-    activeImport?.created_at,
-    user,
-    page,
-    debouncedSearch,
-    pageSize,
-    sortColumn,
-    sortDirection,
-    filters,
-  ])
+  }, [activeImport?.status, activeImport?.id, activeImport?.created_at, user])
 
   const fetchResumoData = async () => {
     if (!user) return

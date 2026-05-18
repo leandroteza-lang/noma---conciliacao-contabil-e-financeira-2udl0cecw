@@ -489,6 +489,43 @@ export default function Import() {
 
       if (error) throw new Error(error.message || 'Erro desconhecido ao chamar a função')
 
+      const channel = supabase
+        .channel(`import_history_${historyId}`)
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'import_history',
+            filter: `id=eq.${historyId}`,
+          },
+          (payload) => {
+            const hist = payload.new as any
+            if (hist.status === 'Completed' || hist.status === 'Error') {
+              supabase.removeChannel(channel)
+              setImportProgress(100)
+              setImportResult({
+                inserted: (hist.success_count || 0) + (hist.updated_count || 0),
+                rejected: hist.error_count || 0,
+                errors: hist.errors_list || [],
+              })
+              setIsImporting(false)
+              toast({
+                title: 'Processamento Finalizado',
+                description: `${(hist.success_count || 0) + (hist.updated_count || 0)} registros processados, ${hist.error_count || 0} rejeitados.`,
+              })
+            } else {
+              if (hist.total_records > 0 && hist.processed_records !== null) {
+                setImportProgress(
+                  50 + Math.round(((hist.processed_records || 0) / hist.total_records) * 50),
+                )
+              }
+            }
+          },
+        )
+        .subscribe()
+
+      // Fallback polling
       const pollInterval = setInterval(async () => {
         if (!historyId) return
         const { data: hist } = await supabase
@@ -500,6 +537,7 @@ export default function Import() {
         if (hist) {
           if (hist.status === 'Completed' || hist.status === 'Error') {
             clearInterval(pollInterval)
+            supabase.removeChannel(channel)
             setImportProgress(100)
             setImportResult({
               inserted: (hist.success_count || 0) + (hist.updated_count || 0),
@@ -519,7 +557,7 @@ export default function Import() {
             }
           }
         }
-      }, 3000)
+      }, 15000)
     } catch (err: any) {
       toast({
         variant: 'destructive',
