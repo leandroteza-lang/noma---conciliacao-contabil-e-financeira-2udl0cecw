@@ -4307,6 +4307,12 @@ export default function FinancialMovements() {
   const [filtersOpen, setFiltersOpen] = useState(false)
   const [columnsOpen, setColumnsOpen] = useState(false)
   const [filters, setFilters] = useState<Record<string, string[]>>({})
+  const [filterOptions, setFilterOptions] = useState<
+    Record<string, { label: string; value: string; isParent?: boolean; parent?: string }[]>
+  >({})
+  const [expandedDateGroups, setExpandedDateGroups] = useState<Record<string, boolean>>({})
+  const hasActiveFilters = Object.values(filters).some((arr) => arr && arr.length > 0)
+
   const [activeTab, setActiveTab] = useState('grade')
   const [draggedTab, setDraggedTab] = useState<string | null>(null)
 
@@ -5640,12 +5646,6 @@ export default function FinancialMovements() {
     setSavedColumns(updated)
     localStorage.setItem('fin_mov_saved_columns', JSON.stringify(updated))
   }
-
-  const [filterOptions, setFilterOptions] = useState<
-    Record<string, { label: string; value: string; isParent?: boolean; parent?: string }[]>
-  >({})
-  const [expandedDateGroups, setExpandedDateGroups] = useState<Record<string, boolean>>({})
-  const hasActiveFilters = Object.values(filters).some((arr) => arr && arr.length > 0)
 
   const clearFilters = () => {
     setFilters({})
